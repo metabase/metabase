@@ -462,9 +462,11 @@ function PrepareCohortData() {
       let div = cells.item(i).getElementsByTagName("div");
       if (columnindex != 0) {
         if (columnindex == 1) {
-          defaultValue[rowindex] = div[0].innerHTML ? div[0].innerHTML.replace(/\D/g,'') : 1;
+          defaultValue[rowindex] = div[0].innerHTML
+            ? div[0].innerHTML.replace(/\D/g, "")
+            : 1;
         } else if (typeof div[0].dataset.cohortValue == "undefined") {
-          let cellVal = parseFloat(div[0].innerHTML.replace(/\D/g,''));
+          let cellVal = parseFloat(div[0].innerHTML.replace(/\D/g, ""));
           if (defaultValue[rowindex] && cellVal) {
             cohortValue =
               Math.round((cellVal / defaultValue[rowindex]) * 100 * 100) / 100;
@@ -475,18 +477,9 @@ function PrepareCohortData() {
           div[0].dataset.originalValue = div[0].innerHTML
             ? div[0].innerHTML
             : "";
-          if (columnindex != 0) {
-            console.log(
-              "cohortValue: " +
-                cohortValue +
-                " originalValue: " +
-                div[0].innerHTML,
-            );
-          }
         }
       }
     }
-    console.log(defaultValue);
   }
 }
 
@@ -500,6 +493,10 @@ function cohortswitch(cohortSwitch) {
       cells.item(i).dataset.columnindex != 1
     ) {
       let div = cells.item(i).getElementsByTagName("div");
+      if(cells.item(i).dataset.columnindex == 2 && cells.item(i).dataset.rowindex == 0) { //find problem with cell[0,2]
+      console.log(cells.item(i)); 
+      console.log(div); 
+      }
       if (div[0].dataset.cohortValue && div[0].dataset.originalValue) {
         if (cohortSwitch) {
           div[0].innerHTML = div[0].dataset.cohortValue;
