@@ -11,8 +11,8 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-      - image: maildev/maildev
-      - image: nginx
+      - image: node:current-alpine
+        command: npx maildev
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
       - image: metabase/qa-databases:mysql-sample-8
