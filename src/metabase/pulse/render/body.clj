@@ -404,8 +404,8 @@
 
 (s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (let [multi-res (pulse/execute-multi card)
-        bob       (println multires)]
+  (let [multi-res (pulse/execute-multi-card card)
+        bob       (println multi-res)]
   {:attachments nil :content nil}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard

@@ -24,7 +24,8 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import metabase.models.card.CardInstance))
 
 
