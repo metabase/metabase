@@ -2,6 +2,8 @@ version: '3'
 
 services:
   micro:
-    build: .
+    build:
+      context: .
+      dockerfile: ./configs/micro/Dockerfile
     ports:
       - "9095:9095"

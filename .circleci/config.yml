@@ -507,7 +507,9 @@ commands:
       - setup_remote_docker
       - run:
           name: Run Snowplow Micro
-          command: docker-compose -f ./snowplow/docker-compose.yml up -d
+          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
+      - wait-for-port:
+          port: 9095
 
 jobs:
 
@@ -572,7 +574,6 @@ jobs:
               echo 'This is a release or master branch; using cache-busting prefix'
                 echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
-      - run-snowplow-micro
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
