@@ -299,7 +299,7 @@ commands:
   restore-snowplow-deps-cache:
     steps:
       - restore_cache:
-          name: Restore Snowplow Micro Jar
+          name: Restore Snowplow Micro JAR
           <<: *CacheKeySnowplowDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
@@ -485,6 +485,15 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 15m
 
+  wait-for-databases:
+    steps:
+      - wait-for-port:
+          port: 3306
+      - wait-for-port:
+          port: 5432
+      - wait-for-port:
+          port: 27017
+
   fetch-jdbc-driver:
     parameters:
       source:
@@ -516,8 +525,7 @@ commands:
       - run:
           name: Run Snowplow Micro
           command: |
-            java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main \
-              --collector-config snowplow/micro.conf --iglu snowplow/iglu.json
+            java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main --collector-config snowplow/micro.conf --iglu snowplow/iglu.json
           background: true
       - wait-for-port:
           port: 9090
@@ -1357,12 +1365,7 @@ workflows:
           qa-db: true
           before-steps:
             - run-snowplow-micro
-            - wait-for-port:
-                port: 3306
-            - wait-for-port:
-                port: 5432
-            - wait-for-port:
-                port: 27017
+            - wait-for-databases
 
       - fe-tests-cypress:
           matrix:
