@@ -13,6 +13,12 @@
            org.apache.http.impl.client.HttpClients
            org.apache.http.impl.conn.PoolingHttpClientConnectionManager))
 
+(defn- track-event!
+  "Internal function used to track Snowplow events. Can be redefined in tests to instead append event data to an
+  in-memory store."
+  [tracker event]
+  (.track tracker event))
+
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
   :default (if config/is-prod?
@@ -80,7 +86,7 @@
                                              (.subject builder (subject user-id))
                                              builder)
             ^Unstructured event (.build builder')]
-        (.track ^Tracker @tracker event))
+        (track-event! @tracker event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
 
@@ -97,6 +103,8 @@
 (defmethod track-event :new_user_created
   [event user-id]
   (track-schema-event :account "1-0-0" user-id {:event event}))
+
+(track-event :new_user_created 1)
 
 (defmethod track-event :invite_sent
   [event user-id event-data]
