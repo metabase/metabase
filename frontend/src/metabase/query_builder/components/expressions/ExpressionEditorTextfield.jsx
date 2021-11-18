@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 import AceEditor from "react-ace";
 
 import { format } from "metabase/lib/expressions/format";
@@ -34,6 +33,10 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { isExpression } from "metabase/lib/expressions";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
+import {
+  EditorContainer,
+  EditorEqualsSign,
+} from "./ExpressionEditorTextfield.styled";
 
 const HelpText = ({ helpText, width }) =>
   helpText ? (
@@ -302,7 +305,8 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { source, suggestions, errorMessage } = this.state;
 
     return (
-      <div className={cx("relative my1")}>
+      <EditorContainer>
+        <EditorEqualsSign>=</EditorEqualsSign>
         <AceEditor
           ref={this.input}
           value={source}
@@ -330,7 +334,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={this.state.highlightedSuggestionIndex}
         />
-      </div>
+      </EditorContainer>
     );
   }
 }
