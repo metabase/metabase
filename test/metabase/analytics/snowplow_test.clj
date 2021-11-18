@@ -1,4 +1,4 @@
-(ns metabase.util.snowplow-test
+(ns metabase.analytics.snowplow-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [clojure.walk :as walk]
