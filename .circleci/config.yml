@@ -996,6 +996,13 @@ jobs:
       - attach-workspace
       - restore-snowplow-deps-cache
       - run:
+          name: Check if Snowplow Micro JAR exists
+          command: |
+            if [ -f snowplow-micro.jar ]; then
+                echo 'snowplow-micro.jar is present, skipping the rest of the job.'
+                circleci-agent step halt
+            fi
+      - run:
           name: Download Snowplow Micro JAR
           command: |
             wget --output-document=snowplow-micro.jar $SNOWPLOW_MICRO_JAR
