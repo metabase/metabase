@@ -1,4 +1,4 @@
-import React, { useState, useMemo, forwardRef } from "react";
+import React, { useState, useMemo } from "react";
 import * as Tippy from "@tippyjs/react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -14,10 +14,12 @@ interface TippyPopoverProps extends TippyProps {
 
 const OFFSET: [number, number] = [0, 5];
 
-const TippyPopover = forwardRef(function TippyPopover(
-  { disableContentSandbox, lazy = true, content, ...props }: TippyPopoverProps,
-  ref: React.Ref<any>,
-) {
+function TippyPopover({
+  disableContentSandbox,
+  lazy = true,
+  content,
+  ...props
+}: TippyPopoverProps) {
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const [mounted, setMounted] = useState(!lazy);
   const plugins = useMemo(
@@ -44,7 +46,6 @@ const TippyPopover = forwardRef(function TippyPopover(
   return (
     <TippyComponent
       {...props}
-      ref={ref}
       plugins={plugins}
       theme="popover"
       arrow={false}
@@ -54,6 +55,6 @@ const TippyPopover = forwardRef(function TippyPopover(
       content={computedContent}
     />
   );
-});
+}
 
 export default TippyPopover;

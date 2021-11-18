@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React from "react";
 
 import TippyPopover from "./TippyPopover";
@@ -13,35 +12,73 @@ const style = {
   justifyContent: "center",
 };
 
-function Demo({ placement }) {
+const content = (
+  <div
+    style={{
+      ...style,
+      border: "none",
+      height: 200,
+      width: 200,
+    }}
+  >
+    popover body
+  </div>
+);
+
+function Content() {
+  const [opacity, setOpacity] = React.useState(0.1);
+  const timeout = React.useRef();
+
+  React.useEffect(() => {
+    timeout.current = setTimeout(() => {
+      setOpacity(1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeout.current);
+    };
+  }, [opacity]);
+
   return (
-    <div style={{ ...style, width: 1000 }}>
-      <TippyPopover
-        visible
-        placement={placement}
-        render={() => {
-          return (
-            <div
-              style={{
-                ...style,
-                backgroundColor: "white",
-                height: 300,
-                width: 300,
-              }}
-            >
-              popover body
-            </div>
-          );
-        }}
-      >
-        <div style={{ ...style, width: 100, height: 100 }}>popover target</div>
-      </TippyPopover>
+    <div
+      style={{
+        ...style,
+        border: "none",
+        height: 200,
+        width: 200,
+        transition: "opacity 1s",
+        opacity,
+      }}
+    >
+      popover content
     </div>
   );
 }
 
 export const examples = {
-  "vertical placement": <Demo placement="top" />,
-  spacer: <div style={{ height: 250, width: 1000 }} />,
-  "horizontal placement": <Demo placement="left" />,
+  "vertical placement": (
+    <TippyPopover placement="top-start" content={content}>
+      <div style={{ ...style, width: 100, height: 100 }}>popover target</div>
+    </TippyPopover>
+  ),
+  "horizontal placement": (
+    <TippyPopover placement="left-end" content={content}>
+      <div style={{ ...style, width: 100, height: 100 }}>popover target</div>
+    </TippyPopover>
+  ),
+  "lazy content rendering": (
+    <React.Fragment>
+      <TippyPopover placement="left-end" content={<Content />}>
+        <div style={{ ...style, width: 100, height: 100 }}>lazy target</div>
+      </TippyPopover>
+      <TippyPopover lazy={false} placement="left-end" content={<Content />}>
+        <div style={{ ...style, width: 100, height: 100 }}>not lazy target</div>
+      </TippyPopover>
+    </React.Fragment>
+  ),
+  interactive: (
+    <TippyPopover interactive placement="left-end" content={content}>
+      <div style={{ ...style, width: 100, height: 100 }}>popover target</div>
+    </TippyPopover>
+  ),
 };
