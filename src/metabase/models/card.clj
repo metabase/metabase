@@ -6,6 +6,8 @@
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.field-values :as field-values]
             [metabase.models.interface :as i]
@@ -54,17 +56,17 @@
   which is a separate option in line area or bar visualization"
   {:hydrate :multi_cards}
   [{:keys [id]}]
-  (db/query {:select [:dashcard.* :dashcardseries.* :card.*]
-             :from [['DashboardCard :dashcard]]
-             :left-join [['DashboardCardSeries :dashcardseries]
-                         [:= :dashcardseries.dashcard_id :dashcard.id]
-                         ['Card :card]
+  (db/query {:select [:dashcard.* :card.*]
+             :from [[DashboardCard :dashcard]]
+             :left-join [[DashboardCardSeries :dashcardseries]
+                         [:= :dashcardseries.dashboardcard_id :dashcard.id]
+                         [Card :card]
                          [:= :dashcardseries.card_id :card.id]]
              :where [:and
                      [:or
                       [:= :card.archived false]
                       [:= :card.archived nil]]
-                     [:= :card_id id]]}))
+                     [:= :dashcard.card_id id]]}))
 
 (defn average-query-time
   "Average query time of card, taken by query executions which didn't hit cache.
