@@ -98,6 +98,10 @@ export function newQuestion({ mode, creationType, ...options } = {}) {
   }
 }
 
+export function dataset(...args) {
+  return question(...args);
+}
+
 export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
   const options = {
     ...(addCardWithId ? { add: addCardWithId } : {}),
@@ -125,6 +129,8 @@ export function modelToUrl(item) {
   switch (item.model) {
     case "card":
       return question(modelData);
+    case "dataset":
+      return dataset(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "pulse":
