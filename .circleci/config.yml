@@ -507,7 +507,7 @@ commands:
       - setup_remote_docker
       - run: |
           docker create -v /config --name config alpine:3.4 /bin/true
-          docker cp ./snowplow conifg:/config
+          docker cp ./snowplow config:/config
           docker run --volumes-from config --collector-config /config/micro/micro.conf --iglu /config/micro/iglu.json -d
 
 jobs:
