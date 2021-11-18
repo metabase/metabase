@@ -8,6 +8,22 @@
             [metabase.test :as mt]
             [toucan.db :as db]))
 
+;;; --------------------------------------------- google-auth-client-id ----------------------------------------------
+
+(deftest google-auth-client-id-test
+  (testing "Client ID must end with correct suffix"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
+         (google/google-auth-client-id "invalid-client-id"))))
+
+  (testing "Trailing whitespace in client ID is stripped upon save"
+    (google/google-auth-client-id "test-client-id.apps.googleusercontent.com     ")
+    (is (= "test-client-id.apps.googleusercontent.com" (google/google-auth-client-id)))))
+
+
+;;; --------------------------------------------- account autocreation -----------------------------------------------
+
 (deftest allow-autocreation-test
   (with-redefs [premium-features/enable-sso? (constantly false)]
     (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
@@ -32,7 +48,7 @@
              clojure.lang.ExceptionInfo
              (#'google/google-auth-create-new-user! {:first_name "Rasta"
                                                      :last_name  "Toucan"
-                                                     :email      "rasta@metabase.com"})))))
+                                                     :email      "rasta@metabase.com"}))))
 
       (testing "should totally work if the email domains match up"
         (et/with-fake-inbox
@@ -45,7 +61,7 @@
                 (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
                        (select-keys user [:first_name :last_name :email]))))
               (finally
-                (db/delete! User :email "rasta@sf-toucannery.com"))))))))
+                (db/delete! User :email "rasta@sf-toucannery.com")))))))))
 
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
@@ -98,6 +114,7 @@
                                      token-1
                                      token-2)}
                     token-1)))))))
+
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
