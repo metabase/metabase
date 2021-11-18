@@ -24,11 +24,13 @@
   (deferred-tru "Client ID for Google Sign-In. If this is set, Google Sign-In is considered to be enabled.")
   :visibility :public
   :setter (fn [client-id]
-            (let [trimmed-client-id (str/trim client-id)]
-              (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
-                (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
-                                {:status-code 400})))
-              (setting/set-string! :google-auth-client-id trimmed-client-id))))
+            (if client-id
+              (let [trimmed-client-id (str/trim client-id)]
+                (if-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
+                  (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
+                                  {:status-code 400}))
+                  (setting/set-string! :google-auth-client-id trimmed-client-id)))
+              (setting/set-string! :google-auth-client-id nil))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))

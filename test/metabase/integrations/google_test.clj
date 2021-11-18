@@ -69,14 +69,14 @@
 (deftest google-auth-token-info-tests
   (testing "Throws exception"
     (testing "for non-200 status"
-      (is (= [400 "Invalid Google Auth token."]
+      (is (= [400 "Invalid Google Sign-In token."]
              (try
                (#'google/google-auth-token-info {:status 400} "")
                (catch Exception e
                  [(-> e ex-data :status-code) (.getMessage e)])))))
 
     (testing "for invalid data."
-      (is (= [400 "Google Auth token appears to be incorrect. Double check that it matches in Google and Metabase."]
+      (is (= [400 "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Metabase."]
              (try
                (#'google/google-auth-token-info
                 {:status 200
