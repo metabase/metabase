@@ -71,7 +71,7 @@
         card         (Card :id card-id, :archived false)
         multi-cards  (:multi_cards (hydrate card :multi_cards))]
     (for [multi-card multi-cards]
-      (execute-card {:creator_id (:creator_id card)} multi-card))))
+      (execute-card {:creator_id (:creator_id card)} (:card_id multi-card)))))
 
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
