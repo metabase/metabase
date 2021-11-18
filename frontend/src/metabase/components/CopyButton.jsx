@@ -31,13 +31,13 @@ export default class CopyWidget extends Component {
   render() {
     const { value, className, style, ...props } = this.props;
     return (
-      <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
-        <CopyToClipboard text={value} onCopy={this.onCopy}>
-          <div className={className} style={style} data-testid="copy-button">
+      <CopyToClipboard text={value} onCopy={this.onCopy}>
+        <div className={className} style={style} data-testid="copy-button">
+          <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
             <Icon name="copy" {...props} />
-          </div>
-        </CopyToClipboard>
-      </Tooltip>
+          </Tooltip>
+        </div>
+      </CopyToClipboard>
     );
   }
 }

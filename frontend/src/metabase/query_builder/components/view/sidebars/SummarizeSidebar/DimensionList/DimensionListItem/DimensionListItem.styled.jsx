@@ -1,6 +1,7 @@
 import styled, { css } from "styled-components";
-import { color, alpha } from "metabase/lib/colors";
 
+import { color, alpha } from "metabase/lib/colors";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Icon from "metabase/components/Icon";
 
 export const SubDimensionButton = styled.button`
@@ -50,7 +51,7 @@ export const DimensionListItemRemoveButton = styled.button`
   }
 `;
 
-export const DimensionListItemAddButton = styled.button`
+export const _DimensionListItemAddButton = styled.button`
   display: flex;
   align-items: center;
   align-self: stretch;
@@ -61,6 +62,10 @@ export const DimensionListItemAddButton = styled.button`
   color: ${color("white")};
   cursor: pointer;
 `;
+
+export const DimensionListItemAddButton = forwardRefToInnerRef(
+  _DimensionListItemAddButton,
+);
 
 export const DimensionListItemIcon = styled(Icon)`
   color: ${color("text-medium")};
@@ -99,12 +104,12 @@ const unselectedStyle = css`
   &:hover {
     ${DimensionListItemIcon},
     ${DimensionListItemContent},
-    ${DimensionListItemAddButton} {
+    ${_DimensionListItemAddButton} {
       color: ${color("accent1")};
       background-color: ${color("bg-light")};
     }
 
-    ${DimensionListItemAddButton}:hover {
+    ${_DimensionListItemAddButton}:hover {
       background-color: ${color("bg-medium")};
     }
 

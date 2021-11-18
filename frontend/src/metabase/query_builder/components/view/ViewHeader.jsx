@@ -32,7 +32,6 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
-  ViewSQLButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -395,13 +394,11 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <ViewSQLButtonContainer>
-          <NativeQueryButton
-            size={16}
-            question={question}
-            data-metabase-event={`Notebook Mode; Convert to SQL Click`}
-          />
-        </ViewSQLButtonContainer>
+        <NativeQueryButton
+          size={16}
+          question={question}
+          data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+        />
       )}
       {isNative && isSaved && <ExploreResultsLink question={question} />}
       {isRunnable && !isNativeEditorOpen && (

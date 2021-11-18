@@ -48,14 +48,3 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
   position: relative;
   right: 0.38rem;
 `;
-
-export const ViewSQLButtonContainer = styled.div`
-  margin-left: ${space(2)};
-  padding: ${space(1)};
-
-  cursor: pointer;
-  color: ${color("text-medium")};
-  :hover {
-    color: ${color("brand")};
-  }
-`;
