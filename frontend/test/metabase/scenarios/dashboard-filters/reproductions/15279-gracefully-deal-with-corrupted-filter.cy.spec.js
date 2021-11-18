@@ -32,7 +32,7 @@ const questionDetails = {
   query: { "source-table": PEOPLE_ID },
 };
 
-describe("issue 15279", () => {
+describe.skip("issue 15279", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
