@@ -6,7 +6,8 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.util.i18n :as i18n :refer [deferred-tru trs]])
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+            [toucan.db :as db])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
            [com.snowplowanalytics.snowplow.tracker.emitter BatchEmitter BatchEmitter$Builder Emitter]
            [com.snowplowanalytics.snowplow.tracker.events Unstructured Unstructured$Builder]
@@ -22,22 +23,6 @@
   :visibility :public
   :setter     :none
   :getter     #(public-settings/uuid-nonce :analytics-uuid))
-
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (:min (db/select-one [User [:%min.date_joined :min]]))
-                                                                     (java-time/offset-date-time)))
-                      (track-event! :new_instance_created)
-                      (setting/get-timestamp :instance-creation)))))
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to")
@@ -85,7 +70,7 @@
   []
   (new SelfDescribingJson
        "iglu:com.metabase/instance/jsonschema/1-0-0"
-       {"id"             (public-settings/analytics-uuid),
+       {"id"             (analytics-uuid),
         "version"        {"tag" (:tag (public-settings/version))},
         "token-features" (m/map-keys name (public-settings/token-features))}))
 
@@ -98,13 +83,13 @@
        ;; Make sure keywords are converted to strings
        (into {} (for [[k v] event-data] [(name k) (if (keyword? v) (name v) v)]))))
 
-(defn- track-event!
+(defn- track-event-impl!
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
   event data to an in-memory store."
   [tracker event]
   (.track ^Tracker tracker ^Unstructured event))
 
-(defn- track-schema-event
+(defn- track-schema-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance"
   [schema version user-id event-data]
   (when (public-settings/anon-tracking-enabled)
@@ -114,40 +99,69 @@
                                               (.customContext [(context)]))
             ^Unstructured$Builder builder' (set-subject builder user-id)
             ^Unstructured event (.build builder')]
-        (track-event! (tracker) event))
+        (track-event-impl! (tracker) event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
 
 ;; Snowplow analytics interface
 
-(defmulti track-event
+(derive ::new-instance-created           ::account)
+(derive ::new-user-created               ::account)
+(derive ::invite-sent                    ::invite)
+(derive ::dashboard-created              ::dashboard)
+(derive ::question-added-to-dashboard    ::dashboard)
+(derive ::database-connection-successful ::database)
+(derive ::database-connection-failed     ::database)
+
+(defmulti track-event!
   "Send a single analytics event to Snowplow"
   (fn [event & _] (keyword event)))
 
-(defmethod track-event :new_instance_created
+(defmethod track-event! :new_instance_created
   [event]
-  (track-schema-event :account "1-0-0" nil {:event event}))
+  (track-schema-event! :account "1-0-0" nil {:event event}))
 
-(defmethod track-event :new_user_created
+(defmethod track-event! :new_user_created
   [event user-id]
-  (track-schema-event :account "1-0-0" user-id {:event event}))
+  (track-schema-event! :account "1-0-0" user-id {:event event}))
 
-(defmethod track-event :invite_sent
+(defmethod track-event! :invite_sent
   [event user-id event-data]
-  (track-schema-event :invite "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! :invite "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event :dashboard_created
+(defmethod track-event! :dashboard_created
   [event user-id event-data]
-  (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! :dashboard "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event :question_added_to_dashboard
+(defmethod track-event! :question_added_to_dashboard
   [event user-id event-data]
-  (track-schema-event :dashboard "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! :dashboard "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event :database_connection_successful
+(defmethod track-event! :database_connection_successful
   [event user-id event-data]
-  (track-schema-event :database "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! :database "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event :database_connection_failed
+(defmethod track-event! :database_connection_failed
   [event user-id event-data]
-  (track-schema-event :database "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! :database "1-0-0" user-id (assoc event-data :event event)))
+
+(defn- first-user-creation
+  "Returns the earliest user creation timestamp in the database"
+  []
+  (:min (db/select-one [User [:%min.date_joined :min]])))
+
+(defsetting instance-creation
+  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
+  :visibility :public
+  :type       :timestamp
+  :setter     :none
+  :getter     (fn []
+                (if-let [value (setting/get-timestamp :instance-creation)]
+                  value
+                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
+                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
+                  ;; is first read.
+                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
+                                                                     (java-time/offset-date-time)))
+                      (track-event! :new_instance_created)
+                      (setting/get-timestamp :instance-creation)))))

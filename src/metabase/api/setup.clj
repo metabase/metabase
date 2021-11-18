@@ -119,13 +119,13 @@
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
-                (snowplow/track-event :database_connection_failed nil {:database engine, :source :setup})
+                (snowplow/track-event! :database_connection_failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
-      (snowplow/track-event :new_user_created user-id)
-      (when database (snowplow/track-event :database_connection_successful user-id {:database engine}
+      (snowplow/track-event! :new_user_created user-id)
+      (when database (snowplow/track-event! :database_connection_successful user-id {:database engine}
                                                                             :database_id (u/the-id database)
                                                                             :source :setup))
       ;; return response with session ID and set the cookie as well
@@ -141,7 +141,7 @@
                                                              {:errors {field m}}
                                                              {:message m})})]
     (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
-      (when error-or-nil (snowplow/track-event :database_connection_failed nil {:database engine, :source :setup}))
+      (when error-or-nil (snowplow/track-event! :database_connection_failed nil {:database engine, :source :setup}))
       error-or-nil)))
 
 

@@ -20,8 +20,8 @@
   [^LinkedHashMap m]
   (->> m (into {}) walk/keywordize-keys))
 
-(defn- fake-track-event!
-  "A function that can be used in place of track-event! which pulls and decodes the payload, context and subject ID
+(defn- fake-track-event-impl!
+  "A function that can be used in place of track-event-impl! which pulls and decodes the payload, context and subject ID
   from an event and adds it to the in-memory [[*snowplow-collector*]] queue."
   [_ event]
   (let [payload (-> event .getPayload .getMap normalize-map)
@@ -38,7 +38,7 @@
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (binding [*snowplow-collector* (atom [])]
-    (with-redefs [snowplow/track-event! fake-track-event!]
+    (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
       (f))))
 
 (defmacro with-fake-snowplow-collector
@@ -67,9 +67,9 @@
 (deftest custom-content-test
   (testing "Snowplow events include a custom context that includes the instnace ID, version and token features"
     (with-fake-snowplow-collector
-      (snowplow/track-event :new_instance_created)
+      (snowplow/track-event! :new_instance_created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-0-0",
-              :data {:id             (public-settings/analytics-uuid)
+              :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
                      :token-features (public-settings/token-features)}}
              (:context (first @*snowplow-collector*)))))))
@@ -77,12 +77,12 @@
 (deftest track-event-test
   (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector"
     (with-fake-snowplow-collector
-      (snowplow/track-event :new_instance_created)
+      (snowplow/track-event! :new_instance_created)
       (is (= [{:data    {:event "new_instance_created"}
                :user-id nil}]
              (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event :new_user_created 1)
+      (snowplow/track-event! :new_user_created 1)
       (is (= [{:data    {:event "new_user_created"}
                :user-id "1"}]
              (pop-event-data-and-user-id!))))))
@@ -92,17 +92,17 @@
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
         (db/delete! Setting {:key "instance-creation"})
-        (with-redefs [public-settings/first-user-creation (constantly nil)]
-          (let [first-value (public-settings/instance-creation)]
+        (with-redefs [snowplow/first-user-creation (constantly nil)]
+          (let [first-value (snowplow/instance-creation)]
             (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
             (is (= first-value
-                   (public-settings/instance-creation))))))
+                   (snowplow/instance-creation))))))
 
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (db/delete! Setting {:key "instance-creation"})
         (mt/with-test-user :crowberto
           (let [first-user-creation (:min (db/select-one [User [:%min.date_joined :min]]))
-                instance-creation   (public-settings/instance-creation)]
+                instance-creation   (snowplow/instance-creation)]
             (is (= (java-time/local-date-time first-user-creation)
                    (java-time/local-date-time instance-creation))))))
       (finally

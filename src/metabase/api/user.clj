@@ -183,7 +183,7 @@
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
-      (snowplow/track-event :invite_sent api/*current-user-id* {:invited_user_id new-user-id})
+      (snowplow/track-event! :invite_sent api/*current-user-id* {:invited_user_id new-user-id})
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 
