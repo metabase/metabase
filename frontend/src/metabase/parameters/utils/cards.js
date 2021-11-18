@@ -67,6 +67,10 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   metadata,
   parameterValues,
 ) {
+  if (!card) {
+    return [];
+  }
+
   const parameters = getParametersFromCard(card);
   const valuePopulatedParameters = getValuePopulatedParameters(
     parameters,

@@ -10,6 +10,8 @@ import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
+import Question from "../../metabase-lib/lib/Question";
+
 // TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
 // Is there any reason behind keeping them in a central place?
 
@@ -84,6 +86,39 @@ export function getTableMetadata(card, metadata) {
     return metadata.table(query["source-table"]) || null;
   }
   return null;
+}
+
+function getParametersMappedToCard(
+  card,
+  parameterMappings,
+  parameterValues,
+  parameters,
+) {
+  const cardId = card.id || card.original_card_id;
+  return parameters
+    .map(parameter => {
+      const type = parameter.type;
+      const value = parameterValues[parameter.id];
+
+      const mapping =
+        cardId != null &&
+        _.findWhere(parameterMappings, {
+          card_id: cardId,
+          parameter_id: parameter.id,
+        });
+
+      if (mapping) {
+        return {
+          // ...parameter,
+          type,
+          slug: parameter.slug,
+          // value: normalizeParameterValue(type, value),
+          target: mapping.target,
+          id: parameter.id,
+        };
+      }
+    })
+    .filter(Boolean);
 }
 
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
@@ -161,56 +196,69 @@ export function questionUrlWithParameters(
   if (!card.dataset_query) {
     return Urls.question(card);
   }
+  // card = Utils.copy(card);
 
-  card = Utils.copy(card);
+  // const cardParameters = getParametersFromCard(card);
+  // const datasetQuery = applyParameters(
+  //   card,
+  //   parameters,
+  //   parameterValues,
+  //   parameterMappings,
+  // );
 
-  const cardParameters = getParametersFromCard(card);
-  const datasetQuery = applyParameters(
+  const parametersMappedToCard = getParametersMappedToCard(
     card,
-    parameters,
-    parameterValues,
     parameterMappings,
+    parameterValues,
+    parameters,
+  );
+  const question = new Question(card, metadata, parameterValues);
+  const questionsWithAddedParameters = question.setParameters(
+    parametersMappedToCard,
   );
 
-  // If we have a clean question without parameters applied, don't add the dataset query hash
-  if (
-    !cardIsDirty &&
-    !isTransientId(card.id) &&
-    datasetQuery.parameters &&
-    datasetQuery.parameters.length === 0
-  ) {
-    return Urls.question(card);
-  }
+  console.log({ questionsWithAddedParameters });
+  return questionsWithAddedParameters.getUrlWithParameters();
 
-  const query = {};
-  for (const datasetParameter of datasetQuery.parameters || []) {
-    const cardParameter = _.find(cardParameters, p =>
-      Utils.equals(p.target, datasetParameter.target),
-    );
-    if (cardParameter) {
-      // if the card has a real parameter we can use, use that
-      query[cardParameter.slug] = datasetParameter.value;
-    } else if (isStructured(card)) {
-      // if the card is structured, try converting the parameter to an MBQL filter clause
-      const filter = parameterToMBQLFilter(datasetParameter, metadata);
-      if (filter) {
-        card = updateIn(card, ["dataset_query", "query"], query =>
-          Query.addFilter(query, filter),
-        );
-      } else {
-        console.warn("UNHANDLED PARAMETER", datasetParameter);
-      }
-    } else {
-      console.warn("UNHANDLED PARAMETER", datasetParameter);
-    }
-  }
+  // // If we have a clean question without parameters applied, don't add the dataset query hash
+  // if (
+  //   !cardIsDirty &&
+  //   !isTransientId(card.id) &&
+  //   datasetQuery.parameters &&
+  //   datasetQuery.parameters.length === 0
+  // ) {
+  //   return Urls.question(card);
+  // }
 
-  if (isTransientId(card.id)) {
-    card = assoc(card, "id", null);
-  }
-  if (isTransientId(card.original_card_id)) {
-    card = assoc(card, "original_card_id", null);
-  }
+  // const query = {};
+  // for (const datasetParameter of datasetQuery.parameters || []) {
+  //   const cardParameter = _.find(cardParameters, p =>
+  //     Utils.equals(p.target, datasetParameter.target),
+  //   );
+  //   if (cardParameter) {
+  //     // if the card has a real parameter we can use, use that
+  //     query[cardParameter.slug] = datasetParameter.value;
+  //   } else if (isStructured(card)) {
+  //     // if the card is structured, try converting the parameter to an MBQL filter clause
+  //     const filter = parameterToMBQLFilter(datasetParameter, metadata);
+  //     if (filter) {
+  //       card = updateIn(card, ["dataset_query", "query"], query =>
+  //         Query.addFilter(query, filter),
+  //       );
+  //     } else {
+  //       console.warn("UNHANDLED PARAMETER", datasetParameter);
+  //     }
+  //   } else {
+  //     console.warn("UNHANDLED PARAMETER", datasetParameter);
+  //   }
+  // }
 
-  return Urls.question(null, card.dataset_query ? card : undefined, query);
+  // if (isTransientId(card.id)) {
+  //   card = assoc(card, "id", null);
+  // }
+  // if (isTransientId(card.original_card_id)) {
+  //   card = assoc(card, "original_card_id", null);
+  // }
+
+  // return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

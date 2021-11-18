@@ -7,6 +7,7 @@ import Dimension, {
 import { getParameterSubType, isDateParameter } from "./parameter-type";
 import { getParameterOperatorName } from "./operators";
 import { isDimensionTarget } from "./targets";
+import { hasParameterValue } from "./parameter-values";
 
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =
@@ -118,7 +119,8 @@ export function parameterToMBQLFilter(parameter, metadata) {
     !parameter.target ||
     !isDimensionTarget(parameter.target) ||
     !Array.isArray(parameter.target[1]) ||
-    TemplateTagDimension.isTemplateTagClause(parameter.target[1])
+    TemplateTagDimension.isTemplateTagClause(parameter.target[1]) ||
+    !hasParameterValue(parameter.value)
   ) {
     return null;
   }

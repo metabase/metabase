@@ -1174,20 +1174,29 @@ export default class Question {
     if (!this.isStructured()) {
       return this;
     }
-
-    return this.parametersList()
-      .reduce(
-        (query, parameter) =>
-          query.filter(parameterToMBQLFilter(parameter, this.metadata())),
-        this.query(),
-      )
+    return this.parameters()
+      .reduce((query, parameter) => {
+        const filter = parameterToMBQLFilter(parameter, this.metadata());
+        console.log(
+          "convertParametersToFilters",
+          this.parameterValues,
+          parameter,
+          filter,
+        );
+        return filter ? query.filter(filter) : query;
+      }, this.query())
       .question()
       .setParameters([]);
   }
 
   getUrlWithParameters() {
-    const question = this.convertParametersToFilters().markDirty();
-    const query = this.isNative() ? this._parameterValues : undefined;
+    const question = this.query().isEditable()
+      ? this.convertParametersToFilters().markDirty()
+      : this.markDirty();
+    const query =
+      this.isNative() || !this.query().isEditable()
+        ? this._parameterValues
+        : undefined;
     return question.getUrl({
       originalQuestion: this,
       query,

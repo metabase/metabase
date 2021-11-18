@@ -352,7 +352,7 @@ export const initializeQB = (location, params, queryParams) => {
         // if we have a serialized card then unpack and use it
         if (serializedCard) {
           card = deserializeCardFromUrl(serializedCard);
-
+          console.log({ deserializedCard: card });
           // if serialized query has database we normalize syntax to support older mbql
           if (card.dataset_query.database != null) {
             card.dataset_query = normalize(card.dataset_query);
@@ -523,23 +523,40 @@ export const initializeQB = (location, params, queryParams) => {
       );
     }
 
-    for (const [paramId, value] of Object.entries(
-      (card && card.parameterValues) || {},
-    )) {
-      dispatch(setParameterValue(paramId, value));
-    }
-
     card = question && question.card();
     const metadata = getMetadata(getState());
     const parameters = getValueAndFieldIdPopulatedParametersFromCard(
       card,
       metadata,
+      card.parameterValues,
     );
-    const parameterValues = getParameterValuesByIdFromQueryParams(
+    const parameterValuesFromParameterObjects = Object.fromEntries(
+      parameters
+        .filter(parameter => parameter.value != null)
+        .map(parameter => [parameter.id, parameter.value]),
+    );
+    const parameterValuesFromQueryParams = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
       metadata,
     );
+
+    const parameterValues = _.isEmpty(parameterValuesFromQueryParams)
+      ? parameterValuesFromParameterObjects
+      : parameterValuesFromQueryParams;
+
+    Object.entries(parameterValues).forEach(([id, value]) => {
+      if (value != null) {
+        console.log("setting parameterValue", id, value);
+        dispatch(setParameterValue(id, value));
+      }
+    });
+
+    // for (const [paramId, value] of Object.entries(parameterValues || {})) {
+    //   dispatch(setParameterValue(paramId, value));
+    // }
+
+    console.log({ parameters, parameterValues, preserveParameters });
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
