@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  micro:
+    build: .
+    ports:
+      - "9095:9095"

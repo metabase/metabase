@@ -505,10 +505,9 @@ commands:
     steps:
       - attach-workspace
       - setup_remote_docker
-      - run: |
-          docker create -v /config --name config alpine:3.4 /bin/true
-          docker cp ./snowplow config:/config
-          docker run --volumes-from config -d snowplow/snowplow-micro --collector-config /config/micro/micro.conf --iglu /config/micro/iglu.json
+      - run:
+          name: Run Snowplow Micro
+          command: docker-compose -f ./snowplow/docker-compose.yml up -d
 
 jobs:
 
