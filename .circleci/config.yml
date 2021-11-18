@@ -924,7 +924,7 @@ jobs:
       - setup_remote_docker
       - run:
           name: Run Snowplow Micro
-          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
+          command: docker-compose -f ./snowplow/docker-compose.yml up --build
       - wait-for-port:
           port: 9095
 
