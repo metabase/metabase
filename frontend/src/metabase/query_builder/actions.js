@@ -449,6 +449,18 @@ export const initializeQB = (location, params, queryParams) => {
           card = null;
         }
 
+        if (!card.dataset && location.pathname.startsWith("/dataset")) {
+          dispatch(
+            setErrorPage({
+              data: {
+                error_code: "not-found",
+              },
+              context: "query-builder",
+            }),
+          );
+          card = null;
+        }
+
         preserveParameters = true;
       } catch (error) {
         console.warn("initializeQb failed because of an error:", error);
