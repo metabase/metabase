@@ -1311,6 +1311,7 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+
       - shared-tests-cljs:
           requires:
             - fe-deps
@@ -1364,3 +1365,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
+
+      - snowplow-deps:
+          requires:
+            - checkout
