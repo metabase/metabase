@@ -4,7 +4,6 @@ import {
   popover,
   getNotebookStep,
   openNewCollectionItemFlowFor,
-  sidebar,
   visualize,
 } from "__support__/e2e/cypress";
 
@@ -271,7 +270,7 @@ describe("scenarios > datasets", () => {
       cy.visit("/question/1");
 
       openDetailsSidebar();
-      sidebar().within(() => {
+      getDetailsSidebarActions().within(() => {
         cy.icon("pencil").click();
       });
       modal().within(() => {
