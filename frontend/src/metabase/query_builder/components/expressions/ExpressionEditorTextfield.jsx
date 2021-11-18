@@ -113,6 +113,10 @@ export default class ExpressionEditorTextfield extends React.Component {
     placeholder: "write some math!",
   };
 
+  state: {
+    isFocused: false,
+  };
+
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
@@ -232,6 +236,14 @@ export default class ExpressionEditorTextfield extends React.Component {
     return expression;
   }
 
+  handleEditorFocus = () => {
+    this.setState({ isFocused: true });
+  };
+
+  handleEditorBlur = () => {
+    this.setState({ isFocused: false });
+  };
+
   onInputBlur = e => {
     // Switching to another window also triggers the blur event.
     // When our window gets focus again, the input will automatically
@@ -302,10 +314,10 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   render() {
-    const { source, suggestions, errorMessage } = this.state;
+    const { source, suggestions, errorMessage, isFocused } = this.state;
 
     return (
-      <EditorContainer>
+      <EditorContainer isFocused={isFocused}>
         <EditorEqualsSign>=</EditorEqualsSign>
         <AceEditor
           ref={this.input}
@@ -314,6 +326,8 @@ export default class ExpressionEditorTextfield extends React.Component {
           highlightActiveLine={false}
           wrapEnabled={true}
           fontSize={16}
+          onBlur={this.handleEditorBlur}
+          onFocus={this.handleEditorFocus}
           setOptions={{
             indentedSoftWrap: false,
             minLines: 1,

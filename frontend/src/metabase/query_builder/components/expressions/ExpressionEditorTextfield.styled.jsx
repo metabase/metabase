@@ -4,8 +4,10 @@ import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
 export const EditorContainer = styled.div`
-  border: 1px solid ${color("border")};
-  border-radius: ${space(1)};
+  border: 1px solid;
+  border-color: ${({ isFocused }) =>
+    isFocused ? color("brand") : color("border")};
+  border-radius: ${space(0)};
   display: flex;
   position: relative;
   margin: ${space(1)} 0;
