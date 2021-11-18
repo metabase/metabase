@@ -192,7 +192,7 @@ describe("scenarios > datasets", () => {
       cy.visit("/collection/root");
       openNewCollectionItemFlowFor("question");
 
-      cy.findByText("All data").click();
+      cy.findByText("All data").click({ force: true });
 
       cy.findByText("Datasets");
       cy.findByText("Raw Data");
