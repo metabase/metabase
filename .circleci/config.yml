@@ -925,8 +925,6 @@ jobs:
       - run:
           name: Run Snowplow Micro
           command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
-      - wait-for-port:
-          port: 9095
 
   fe-tests-cypress:
     parameters:
@@ -1326,6 +1324,8 @@ workflows:
             - wait-for-port:
                 port: 5432
             - wait-for-port:
+                port: 8081
+            - wait-for-port:
                 port: 27017
 
       - fe-tests-cypress:
@@ -1335,6 +1335,5 @@ workflows:
           name: percy-visual-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - snowplow-micro
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"

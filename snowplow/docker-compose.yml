@@ -6,4 +6,4 @@ services:
       context: .
       dockerfile: ./configs/micro/Dockerfile
     ports:
-      - "9095:9095"
+      - "8081:80"
