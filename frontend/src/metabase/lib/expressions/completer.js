@@ -13,6 +13,13 @@ export function partialMatch(expression) {
   const lastToken = _.last(tokens);
   if (lastToken && lastToken.type === TOKEN.Identifier) {
     if (lastToken.end === expression.length) {
+      const prevToken = tokens[tokens.length - 2];
+      if (prevToken && prevToken.type === TOKEN.String) {
+        if (prevToken.start + 1 === prevToken.end) {
+          // a dangling single- or double-quote
+          return null;
+        }
+      }
       return expression.slice(lastToken.start, lastToken.end);
     }
   }
