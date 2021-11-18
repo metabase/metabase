@@ -1324,6 +1324,8 @@ workflows:
             - wait-for-port:
                 port: 5432
             - wait-for-port:
+                port: 9094
+            - wait-for-port:
                 port: 9095
             - wait-for-port:
                 port: 27017
