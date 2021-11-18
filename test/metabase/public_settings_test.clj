@@ -185,27 +185,6 @@
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
 
-(deftest instance-creation-test
-  (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
-    (try
-      (testing "Instance creation timestamp is set only once when setting is first fetched"
-        (db/delete! Setting {:key "instance-creation"})
-        (with-redefs [public-settings/first-user-creation (constantly nil)]
-          (let [first-value (public-settings/instance-creation)]
-            (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
-            (is (= first-value
-                   (public-settings/instance-creation))))))
-
-      (testing "If a user already exists, we should use the first user's creation timestamp"
-        (db/delete! Setting {:key "instance-creation"})
-        (mt/with-test-user :crowberto
-          (let [first-user-creation (:min (db/select-one [User [:%min.date_joined :min]]))
-                instance-creation   (public-settings/instance-creation)]
-            (is (= (java-time/local-date-time first-user-creation)
-                   (java-time/local-date-time instance-creation))))))
-      (finally
-        (db/update-where! Setting {:key "instance-creation"} :value original-value)))))
-
 (deftest cloud-gateway-ips-test
   (with-redefs [premium-features/is-hosted? (constantly true)]
     (testing "Setting calls Store URL to fetch IP addresses"

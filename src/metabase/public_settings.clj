@@ -60,7 +60,7 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
-(defn- uuid-nonce
+(defn uuid-nonce
   "Getter for settings that should be set to a UUID the first time they are fetched."
   [setting]
   (or (setting/get-string setting)
