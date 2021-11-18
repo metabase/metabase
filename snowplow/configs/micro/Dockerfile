@@ -1,4 +1,4 @@
 FROM snowplow/snowplow-micro
-COPY ./configs /configs
+COPY ./configs/micro /usr/src
 EXPOSE 9095
-CMD ["--collector-config", "/configs/micro.conf", "--iglu", "/configs/iglu.json"]
+CMD ["--collector-config", "/usr/src/micro.conf", "--iglu", "/usr/src/iglu.json"]
