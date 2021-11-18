@@ -104,8 +104,8 @@
                   (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
                                                                      (java-time/offset-date-time)))
                       ;; Resolve analytics ns here to avoid circular dependency
-                      (classloader/require 'metabase.util.analytics)
-                      ((resolve 'metabase.util.analytics/track-event) :new_instance_created)
+                      (classloader/require 'metabase.analytics.snowplow)
+                      ((resolve 'metabase.analytics.snowplow/track-event) :new_instance_created)
                       (setting/get-timestamp :instance-creation)))))
 
 (defn- normalize-site-url [^String s]

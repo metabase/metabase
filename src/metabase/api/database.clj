@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.table :as table-api]
             [metabase.config :as config]
@@ -27,7 +28,6 @@
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
-            [metabase.util.analytics :as analytics]
             [metabase.util.cron :as cron-util]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
@@ -502,12 +502,12 @@
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>)
-        (analytics/track-event :database_connection_successful api/*current-user-id* {:database engine
-                                                                                      :database_id (u/the-id <>)
-                                                                                      :source :admin}))
+        (snowplow/track-event :database_connection_successful api/*current-user-id* {:database engine
+                                                                                     :database_id (u/the-id <>)
+                                                                                     :source :admin}))
       ;; failed to connect, return error
       (do
-        (analytics/track-event :database_connection_failed api/*current-user-id* {:database engine, :source :setup})
+        (snowplow/track-event :database_connection_failed api/*current-user-id* {:database engine, :source :setup})
         {:status 400
          :body   details-or-error}))))
 

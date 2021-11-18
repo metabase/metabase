@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST]]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.email.messages :as email]
@@ -17,7 +18,6 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.analytics :as analytics]
             [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
             [metabase.util.password :as pass]
             [metabase.util.schema :as su]
@@ -60,7 +60,7 @@
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
     (record-login-history! session-uuid (u/the-id user) device-info)
     (when (nil? (:last_login user))
-      (analytics/track-event :new_user_created (u/the-id user)))
+      (snowplow/track-event :new_user_created (u/the-id user)))
     (assoc session :id session-uuid)))
 
 (s/defmethod create-session! :password :- {:id UUID, :type (s/enum :normal :full-app-embed), s/Keyword s/Any}

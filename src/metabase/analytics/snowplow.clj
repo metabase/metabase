@@ -1,4 +1,4 @@
-(ns metabase.util.analytics
+(ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require [clojure.tools.logging :as log]
             [metabase.config :as config]

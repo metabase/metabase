@@ -1,4 +1,4 @@
-(ns metabase.util.stats
+(ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
   (:require [clj-http.client :as client]
             [clojure.string :as str]

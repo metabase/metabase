@@ -3,6 +3,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.events :as events]
@@ -24,7 +25,6 @@
             [metabase.query-processor.util :as qp-util]
             [metabase.related :as related]
             [metabase.util :as u]
-            [metabase.util.analytics :as analytics]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -97,7 +97,7 @@
                 (db/insert! Dashboard dashboard-data))]
       ;; publish event after the txn so that lookup can succeed
       (events/publish-event! :dashboard-create dash)
-      (analytics/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dash)})
+      (snowplow/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dash)})
       (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 
@@ -244,7 +244,7 @@
                            ;; Get cards from existing dashboard and associate to copied dashboard
                            (doseq [card (:ordered_cards existing-dashboard)]
                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
-    (analytics/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dashboard)})
+    (snowplow/track-event :dashboard_created api/*current-user-id* {:dashboard_id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
 
@@ -337,7 +337,7 @@
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
     (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
-    (analytics/track-event :question_added_to_dashboard api/*current-user-id* {:dashboard_id id, :question_id cardId})))
+    (snowplow/track-event :question_added_to_dashboard api/*current-user-id* {:dashboard_id id, :question_id cardId})))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"

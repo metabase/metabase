@@ -1,12 +1,10 @@
-(ns metabase.util.analytics-test
-  (:require [clojure.test :refer :all]
-            [metabase.test.util :as mt]
-            [metabase.util.analytics :as analytics]
+(ns metabase.util.snowplow-test
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [clojure.walk :as walk]
-            [metabase.util :as u]
-            [cheshire.core :as json]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.public-settings :as public-settings]
-            [metabase.config :as config])
+            [metabase.util :as u])
   (:import java.util.LinkedHashMap))
 
 (def ^:dynamic ^:private *snowplow-collector*
@@ -36,7 +34,7 @@
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (binding [*snowplow-collector* (atom [])]
-    (with-redefs [analytics/track-event! fake-track-event!]
+    (with-redefs [snowplow/track-event! fake-track-event!]
       (f))))
 
 (defmacro with-fake-snowplow-collector
@@ -65,7 +63,7 @@
 (deftest custom-content-test
   (testing "Snowplow events include a custom context that includes the instnace ID, version and token features"
     (with-fake-snowplow-collector
-      (analytics/track-event :new_instance_created)
+      (snowplow/track-event :new_instance_created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-0-0",
               :data {:id             (public-settings/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
@@ -73,14 +71,14 @@
              (:context (first @*snowplow-collector*)))))))
 
 (deftest track-event-test
-  (testing "Data sent into [[analytics/track-event!]] for each event type is propagated to the Snowplow collector"
+  (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector"
     (with-fake-snowplow-collector
-      (analytics/track-event :new_instance_created)
+      (snowplow/track-event :new_instance_created)
       (is (= [{:data    {:event "new_instance_created"}
                :user-id nil}]
              (pop-event-data-and-user-id!)))
 
-      (analytics/track-event :new_user_created 1)
+      (snowplow/track-event :new_user_created 1)
       (is (= [{:data    {:event "new_user_created"}
                :user-id "1"}]
              (pop-event-data-and-user-id!))))))
