@@ -766,6 +766,19 @@ export const setParameterValue = createAction(
   },
 );
 
+function getReloadedCard(reloadAction) {
+  let card = Questions.HACK_getObjectFromAction(reloadAction);
+
+  // For GUI dataset, we swap it's `dataset_query`
+  // with clean query using the dataset as a source table,
+  // to enable "simple mode" like features
+  if (card?.dataset && card.dataset_query.type === "query") {
+    card = toAdHocDatasetQuestionCard(card, card);
+  }
+
+  return card;
+}
+
 // refetches the card without triggering a run of the card's query
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
@@ -775,7 +788,7 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
 
-    return Questions.HACK_getObjectFromAction(action);
+    return getReloadedCard(action);
   };
 });
 
@@ -789,7 +802,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
-    const card = Questions.HACK_getObjectFromAction(action);
+    const card = getReloadedCard(action);
 
     dispatch(loadMetadataForCard(card));
 
