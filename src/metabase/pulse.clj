@@ -60,6 +60,18 @@
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
+(defn execute-multi-card
+  "Multi series card is composed of multiple cards, all of which need to be executed.
+
+  This is as opposed to combo cards and cards with visualizations with multiple series,
+  which are viz settings."
+  [card-or-id]
+  (let [card-id      (u/the-id card-or-id)
+        card         (Card :id card-id, :archived false)
+        multi-cards  (:multi_cards (hydrate card :multi_cards))]
+    (for [multi-card multi-cards]
+      (execute-card {:creator_id (:creator_id card)} multi-card))))
+
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try

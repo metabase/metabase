@@ -5,6 +5,7 @@
             [medley.core :as m]
             [metabase.models.card :as cards]
             [metabase.public-settings :as public-settings]
+            [metabase.pulse :as pulse]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
@@ -18,7 +19,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private error-rendered-info
@@ -400,15 +402,12 @@
                [:span {:style (style/style {:margin-left "6px"})}
                 (percentages label)]]))]}))
 
-;; (s/defmethod render :multiple
-;;   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-;;   (let [dashcard             (hydrate
-;;         looks like i might have to do dashboardcardseries fuckery too... fuck
-;;         hydrated-card        (hydrate the card with the dashboard cards somehow???)
-;;         to-call-results      (buncha cards)
-;;         other-series-results (buncha results)
-;;         series               (buncha wrangling)]
-;;   {:attachments nil :content nil})
+(s/defmethod render :multiple
+  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (let [hydrated-card        (hydrate card :multi_cards)
+        multi-res            (mapv pulse/execut)
+        series               (buncha wrangling)]
+  {:attachments nil :content nil}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
