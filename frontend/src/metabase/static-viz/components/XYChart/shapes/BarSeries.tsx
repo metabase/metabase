@@ -13,7 +13,7 @@ interface BarSeriesProps {
   innerHeight: number;
 }
 
-export const BarSeries = ({ series, yScale, xScale, innerHeight }: BarSeriesProps) => {
+export const BarSeries = ({ series, yScale, xScale }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map(series => series.name);
 
   const innerBarScale = scaleBand({
@@ -32,10 +32,11 @@ export const BarSeries = ({ series, yScale, xScale, innerHeight }: BarSeriesProp
               const innerX = innerBarScale(series.name) ?? 0;
 
               const x = groupX + innerX;
-              const y = yScale(getY(datum)) ?? 0;
-
               const width = innerBarScale.bandwidth();
-              const height = innerHeight - y;
+
+              const yZero = yScale(0)!
+              const y = Math.min(yScale(getY(datum)) ?? 0, yZero);
+              const height = Math.abs(yScale(getY(datum))! - yScale(0)!)
 
               return (
                 <Bar

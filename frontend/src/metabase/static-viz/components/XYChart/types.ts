@@ -20,9 +20,26 @@ export type Series = {
   yAxisPosition: YAxisPosition;
 };
 
+export interface DateFormatSettings {
+  date_style: string;
+}
+
+export interface NumberFormatSettings {
+  number_style: string;
+  decimals: number;
+  currency?: string;
+  currency_style?: string;
+}
+
 export type ChartSettings = {
-  xAxisType: XAxisType;
-  yAxisType: YAxisType;
+  x: {
+    type: XAxisType;
+    format: DateFormatSettings | NumberFormatSettings;
+  };
+  y: {
+    type: YAxisType;
+    format: NumberFormatSettings;
+  };
   labels: {
     left?: string;
     bottom?: string;

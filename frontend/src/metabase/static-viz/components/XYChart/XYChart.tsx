@@ -13,9 +13,8 @@ import {
   getYTickLabelProps,
   getYTickWidth,
 } from "../../lib/axes";
-import { formatDate } from "../../lib/dates";
-import { formatNumber } from "../../lib/numbers";
-import { createXScale, createYScales, getY } from "./utils";
+import { createXScale, createYScales, getY, formatXTick } from "./utils";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
 
 const layout = {
   width: 540,
@@ -69,7 +68,7 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
   const { yScaleLeft } = createYScales(
     series,
     [innerHeight, 0],
-    settings.yAxisType,
+    settings.y.type,
   );
 
   const lines = series.filter(series => series.type === "line");
@@ -102,8 +101,7 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
         stroke={palette.textLight}
         tickStroke={palette.textLight}
         labelProps={getLabelProps(layout) as any}
-        // TODO: format settings
-        tickFormat={value => formatNumber(value, null)}
+        tickFormat={value => formatNumber(value, settings.x.format)}
         tickLabelProps={() => getYTickLabelProps(layout) as any}
       />
 
@@ -116,8 +114,9 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
         stroke={palette.textLight}
         tickStroke={palette.textLight}
         labelProps={getLabelProps(layout) as any}
-        // TODO: format
-        // tickFormat={value => formatDate(value, null)}
+        tickFormat={value =>
+          formatXTick(value, settings.x.type, settings.x.format)
+        }
         tickLabelProps={() => getXTickLabelProps(layout) as any}
       />
     </svg>
