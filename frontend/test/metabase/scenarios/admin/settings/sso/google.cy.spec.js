@@ -17,7 +17,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     // Otherwise, the test fails. That's why we added a custom timeout of 6s.
     cy.findByText("Success", { timeout: 6000 }).should("not.exist");
 
-    cy.findByDisplayValue("123").type(
+    cy.findByDisplayValue("fake-client-id.apps.googleusercontent.com").type(
       "fake-client-id2.apps.googleusercontent.com",
     );
     saveSettings();
