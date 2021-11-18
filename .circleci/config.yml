@@ -501,16 +501,6 @@ commands:
           name: Run command
           command: << parameters.command >>
 
-  run-snowplow-micro:
-    steps:
-      - attach-workspace
-      - setup_remote_docker
-      - run:
-          name: Run Snowplow Micro
-          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
-      - wait-for-port:
-          port: 9095
-
 jobs:
 
 ########################################################################################################################
@@ -927,6 +917,17 @@ jobs:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
                   - /home/circleci/metabase/metabase/resources/version.properties
 
+  run-snowplow-micro:
+    executor: clojure-and-node-and-browsers
+    steps:
+      - attach-workspace
+      - setup_remote_docker
+      - run:
+          name: Run Snowplow Micro
+          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
+      - wait-for-port:
+          port: 9095
+
   fe-tests-cypress:
     parameters:
       e:
@@ -1284,6 +1285,10 @@ workflows:
           requires:
             - fe-deps
 
+      - run-snowplow-micro:
+          requires:
+            - checkout
+
       - fe-tests-cypress:
           matrix:
             parameters:
@@ -1311,6 +1316,7 @@ workflows:
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
+            - run-snowplow-micro
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
@@ -1329,5 +1335,6 @@ workflows:
           name: percy-visual-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
+            - run-snowplow-micro
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
