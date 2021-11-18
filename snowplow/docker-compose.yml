@@ -1,9 +1,17 @@
 version: '3'
 
 services:
+  nginx:
+    build:
+      context: .
+      dockerfile: ./configs/nginx/Dockerfile
+    ports:
+      - "9094:9094"
   micro:
     build:
       context: .
       dockerfile: ./configs/micro/Dockerfile
     ports:
-      - "8095:80"
+      - "9095:9095"
+    depends_on:
+      - nginx

@@ -12,6 +12,16 @@
             "uri": "http://iglucentral.com"
           }
         }
+      },
+      {
+        "name": "Metabase",
+        "priority": 10,
+        "vendorPrefixes": ["com.metabase"],
+        "connection": {
+          "http": {
+            "uri": "http://localhost:9094"
+          }
+        }
       }
     ]
   }
