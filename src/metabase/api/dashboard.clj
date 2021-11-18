@@ -26,6 +26,7 @@
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp-util]
             [metabase.related :as related]
             [metabase.util :as u]
@@ -769,5 +770,16 @@
                               :ignore-cached-results? true
                               :format-rows?           false
                               :js-int-to-string?      false}})))
+
+(api/defendpoint POST "/:dashboard-id/card/pivot/:card-id/query"
+  "Pivot table version of `POST /api/dashboard/:dashboard-id/card/:card-id`."
+  [dashboard-id card-id :as {{:keys [parameters], :as body} :body}]
+  {parameters (s/maybe [ParameterWithID])}
+  (m/mapply run-query-for-dashcard-async
+            (merge
+             body
+             {:dashboard-id dashboard-id
+              :card-id      card-id
+              :qp-runner    qp.pivot/run-pivot-query})))
 
 (api/define-routes)

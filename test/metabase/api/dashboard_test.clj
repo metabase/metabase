@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.api.card-test :as card-api-test]
             [metabase.api.dashboard :as dashboard-api]
+            [metabase.api.pivots :as pivots]
             [metabase.http-client :as http]
             [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues
                                      Pulse Revision Table User]]
@@ -1614,3 +1615,23 @@
                                           :parameters (json/generate-string [{:id    "_PRICE_"
                                                                               :value 4}]))
                     export-format)))))))))
+
+(deftest dashboard-card-query-pivot-test
+  (testing "POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query"
+    (mt/test-drivers (pivots/applicable-drivers)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Dashboard     [{dashboard-id :id}]
+                        Card          [card (pivots/pivot-card)]
+                        DashboardCard [_ {:dashboard_id dashboard-id, :card_id (u/the-id card)}]]
+          (let [result (mt/user-http-request :rasta :post 202 (format "dashboard/%d/card/pivot/%d/query"
+                                                                      dashboard-id
+                                                                      (u/the-id card)))
+                  rows   (mt/rows result)]
+              (is (= 1144 (:row_count result)))
+              (is (= "completed" (:status result)))
+              (is (= 6 (count (get-in result [:data :cols]))))
+              (is (= 1144 (count rows)))
+
+              (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+              (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
+              (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
