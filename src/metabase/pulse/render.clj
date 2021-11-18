@@ -94,9 +94,10 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
+        ;;;;;;;;; really annoying and complicated here...
         (and (> @col-sample-count 2)
              (not (#{:combo } display-type)))
-        (chart-type :multiple "result has more than 2 cols, a multiple chart")
+        (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
