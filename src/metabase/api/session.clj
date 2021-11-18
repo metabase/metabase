@@ -59,7 +59,7 @@
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
     (record-login-history! session-uuid (u/the-id user) device-info)
-    (when (nil? (:last_login user))
+    (when-not (:last_login user)
       (snowplow/track-event! :new_user_created (u/the-id user)))
     (assoc session :id session-uuid)))
 
