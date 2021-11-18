@@ -25,11 +25,13 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 
   it(
     "Google sign-in client ID form should show an error message if it does not end with the correct suffix (metabase#15975)",
-  );
-  cy.findByLabelText("Client ID").type("fake-client-id");
-  saveSettings();
+  ),
+    () => {
+      cy.findByLabelText("Client ID").type("fake-client-id");
+      saveSettings();
 
-  cy.findByText("Invalid Google Sign-In Client ID");
+      cy.findByText("Invalid Google Sign-In Client ID");
+    };
 });
 
 function saveSettings() {
