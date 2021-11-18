@@ -502,6 +502,15 @@ commands:
           name: Run command
           command: << parameters.command >>
 
+  run-snowplow-micro:
+    steps:
+      - attach-workspace
+      - setup_remote_docker
+      - run: |
+          docker create -v /config --name config alpine:3.4 /bin/true
+          docker cp /home/circleci/metabase/snowplow conifg:/config
+          docker run --volumes-from config --collector-config /config/micro/micro.conf --iglu /config/micro/iglu.json -d
+
 jobs:
 
 ########################################################################################################################
@@ -565,6 +574,7 @@ jobs:
               echo 'This is a release or master branch; using cache-busting prefix'
                 echo '<< pipeline.id >>' > .CACHE-PREFIX
             fi
+      - run-snowplow-micro
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
