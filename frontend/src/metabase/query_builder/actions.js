@@ -29,6 +29,7 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
@@ -78,6 +79,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
+
+import {
+  isAdHocDatasetQuestion,
+  toAdHocDatasetQuestionCard,
+  toAdHocDatasetQuestion,
+} from "./utils";
 
 type UiControls = {
   isEditing?: boolean,
@@ -492,6 +499,13 @@ export const initializeQB = (location, params, queryParams) => {
       );
     }
 
+    // When opening a dataset, we swap it's `dataset_query`
+    // with clean query using the dataset as a source table,
+    // to enable "simple mode" like features
+    if (originalCard?.dataset && card.dataset_query.type === "query") {
+      card = toAdHocDatasetQuestionCard(card, originalCard);
+    }
+
     /**** All actions are dispatched here ****/
 
     // Fetch alerts for the current question if the question is saved
@@ -752,6 +766,19 @@ export const setParameterValue = createAction(
   },
 );
 
+function getReloadedCard(reloadAction) {
+  let card = Questions.HACK_getObjectFromAction(reloadAction);
+
+  // For GUI dataset, we swap it's `dataset_query`
+  // with clean query using the dataset as a source table,
+  // to enable "simple mode" like features
+  if (card?.dataset && card.dataset_query.type === "query") {
+    card = toAdHocDatasetQuestionCard(card, card);
+  }
+
+  return card;
+}
+
 // refetches the card without triggering a run of the card's query
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
@@ -761,7 +788,7 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
 
-    return Questions.HACK_getObjectFromAction(action);
+    return getReloadedCard(action);
   };
 });
 
@@ -775,7 +802,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     const action = await dispatch(
       Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
     );
-    const card = Questions.HACK_getObjectFromAction(action);
+    const card = getReloadedCard(action);
 
     dispatch(loadMetadataForCard(card));
 
@@ -813,6 +840,12 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       card.id
       ? card
       : null;
+
+    // When the dataset query changes, we should loose the dataset flag,
+    // to start building a new ad-hoc question based on a dataset
+    if (card.dataset) {
+      card.dataset = false;
+    }
 
     // Update the card and originalCard before running the actual query
     dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
@@ -885,6 +918,12 @@ export const updateQuestion = (
       newQuestion.isSaved()
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+
+      // When the dataset query changes, we should loose the dataset flag,
+      // to start building a new ad-hoc question based on a dataset
+      if (newQuestion.isDataset()) {
+        newQuestion = newQuestion.setDataset(false);
+      }
     }
 
     const queryResult = getFirstQueryResult(getState());
@@ -1050,7 +1089,10 @@ export const apiCreateQuestion = question => {
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
 export const apiUpdateQuestion = question => {
   return async (dispatch, getState) => {
+    const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
+
+    const isAdHocDataset = isAdHocDatasetQuestion(question, originalQuestion);
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -1059,10 +1101,13 @@ export const apiUpdateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
-    const updatedQuestion = await questionWithVizSettings
+    let updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .reduxUpdate(dispatch);
+      // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+      // (it's necessary for datasets to behave like tables opened in simple mode)
+      // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
+      .reduxUpdate(dispatch, { excludeDatasetQuery: isAdHocDataset });
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -1078,6 +1123,16 @@ export const apiUpdateQuestion = question => {
       "Update Card",
       updatedQuestion.query().datasetQuery().type,
     );
+
+    if (isAdHocDataset) {
+      // After updatedQuestion.reduxUpdate is called, updatedQuestion replaces its card with the one received from the server
+      // For datasets, it has the original `dataset_query`
+      // Here we swap it with a clean query using the dataset as a source table to enable "simple mode" like features
+      updatedQuestion = toAdHocDatasetQuestion(
+        updatedQuestion,
+        originalQuestion,
+      );
+    }
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
   };
@@ -1420,8 +1475,15 @@ export const revertToRevision = createThunkAction(
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
-  const dataset = question.setDataset(true);
+  let dataset = question.setDataset(true);
+  if (dataset.isStructured()) {
+    // Need to swap dataset's original `dataset_query`
+    // with a clean query using the dataset as a source table
+    // to enable "simple mode" like features
+    dataset = dataset.composeDataset();
+  }
   await dispatch(apiUpdateQuestion(dataset));
+  await dispatch(loadMetadataForCard(dataset.card()));
 
   // When a question is turned into a dataset,
   // its visualization is changed to a table
@@ -1441,13 +1503,25 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
-  const question = dataset.setDataset(false);
+  let question = dataset.setDataset(false);
+  if (question.isStructured()) {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // So, when a dataset is turned back into a saved question,
+    // we also need to replace the "nested" dataset_query with the real one
+    const originalQuestion = getOriginalQuestion(getState());
+    question = question.setDatasetQuery(originalQuestion.datasetQuery());
+  }
   await dispatch(apiUpdateQuestion(question));
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset)],
+      actions: [
+        apiUpdateQuestion(
+          dataset.isStructured() ? dataset.composeDataset() : dataset,
+        ),
+      ],
     }),
   );
 };
