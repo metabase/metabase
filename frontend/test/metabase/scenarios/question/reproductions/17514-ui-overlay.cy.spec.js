@@ -54,7 +54,10 @@ describe("issue 17514", () => {
         ({ body: card }) => {
           const { card_id, dashboard_id } = card;
 
-          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          ).as("cardQuery");
 
           const mapFilterToCard = {
             parameter_mappings: [
