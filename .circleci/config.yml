@@ -917,7 +917,7 @@ jobs:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
                   - /home/circleci/metabase/metabase/resources/version.properties
 
-  run-snowplow-micro:
+  snowplow-micro:
     executor: clojure-and-node-and-browsers
     steps:
       - attach-workspace
@@ -1285,7 +1285,7 @@ workflows:
           requires:
             - fe-deps
 
-      - run-snowplow-micro:
+      - snowplow-micro:
           requires:
             - checkout
 
@@ -1316,7 +1316,7 @@ workflows:
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - run-snowplow-micro
+            - snowplow-micro
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
@@ -1335,6 +1335,6 @@ workflows:
           name: percy-visual-tests-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - run-snowplow-micro
+            - snowplow-micro
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
