@@ -476,6 +476,15 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 15m
 
+  wait-for-databases:
+    steps:
+      - wait-for-port:
+          port: 3306
+      - wait-for-port:
+          port: 5432
+      - wait-for-port:
+          port: 27017
+
   fetch-jdbc-driver:
     parameters:
       source:
@@ -500,6 +509,19 @@ commands:
       - run:
           name: Run command
           command: << parameters.command >>
+
+  run-snowplow-micro:
+    steps:
+      - attach-workspace
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Run Snowplow Micro
+          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
+      - wait-for-port:
+          port: 9094
+      - wait-for-port:
+          port: 9095
 
 jobs:
 
@@ -917,15 +939,6 @@ jobs:
                   - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
                   - /home/circleci/metabase/metabase/resources/version.properties
 
-  snowplow-micro:
-    executor: clojure-and-node-and-browsers
-    steps:
-      - attach-workspace
-      - setup_remote_docker
-      - run:
-          name: Run Snowplow Micro
-          command: docker-compose -f ./snowplow/docker-compose.yml up --build --detach
-
   fe-tests-cypress:
     parameters:
       e:
@@ -1283,10 +1296,6 @@ workflows:
           requires:
             - fe-deps
 
-      - snowplow-micro:
-          requires:
-            - checkout
-
       - fe-tests-cypress:
           matrix:
             parameters:
@@ -1314,21 +1323,12 @@ workflows:
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
-            - snowplow-micro
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
           before-steps:
-            - wait-for-port:
-                port: 3306
-            - wait-for-port:
-                port: 5432
-            - wait-for-port:
-                port: 9094
-            - wait-for-port:
-                port: 9095
-            - wait-for-port:
-                port: 27017
+            - run-snowplow-micro
+            - wait-for-databases
 
       - fe-tests-cypress:
           matrix:
