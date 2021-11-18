@@ -514,10 +514,10 @@ commands:
     steps:
       - restore-snowplow-deps-cache
       - run:
-          name: Run Snowplow Micro
+          name: Launch Snowplow Micro (and keep it running)
           command: |
             java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main \
-              --collector-config snowplow/micro.conf --iglu snowplow/iglu.json
+              --collector-config snowplow/micro.conf --iglu snowplow/iglu.json &
       - wait-for-port:
           port: 9090
 
