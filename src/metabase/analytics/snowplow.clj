@@ -25,8 +25,15 @@
   :setter     :none
   :getter     #(public-settings/uuid-nonce :analytics-uuid))
 
+(defsetting snowplow-available
+  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
+       " "
+       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+  :type :boolean
+  :default config/is-prod?)
+
 (defsetting snowplow-url
-  (deferred-tru "The URL of the Snowplow collector to send analytics events to")
+  (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
   :default (if config/is-prod?
              "https://sp.metabase.com"
              ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
@@ -114,9 +121,10 @@
 (derive ::database-connection-failed     ::database)
 
 (defn track-event!
-  "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance"
+  "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
+  is available."
   [event-kw & [user-id data]]
-  (when (public-settings/anon-tracking-enabled)
+  (when (and (public-settings/anon-tracking-enabled) (snowplow-available))
     (try
       (let [schema (-> event-kw parents first)
             ^Unstructured$Builder builder (-> (. Unstructured builder)

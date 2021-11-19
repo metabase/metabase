@@ -39,9 +39,10 @@
 (defn- do-with-fake-snowplow-collector
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
-  (binding [*snowplow-collector* (atom [])]
-    (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
-      (f))))
+  (mt/with-temporary-setting-values [snowplow-available true]
+    (binding [*snowplow-collector* (atom [])]
+      (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
+        (f)))))
 
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
