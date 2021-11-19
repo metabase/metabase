@@ -55,10 +55,10 @@
   {:hydrate :multi_cards}
   [{:keys [id]}]
   (db/query {:select [:dashcard.* :card.*]
-             :from [['DashboardCard :dashcard]]
-             :left-join [['DashboardCardSeries :dashcardseries]
+             :from [[:report_dashboardcard :dashcard]]
+             :left-join [[:dashboardcard_series :dashcardseries]
                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [Card :card]
+                         [:report_card :card]
                          [:= :dashcardseries.card_id :card.id]]
              :where [:and
                      [:or

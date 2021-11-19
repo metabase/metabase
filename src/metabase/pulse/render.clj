@@ -8,7 +8,8 @@
             [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
