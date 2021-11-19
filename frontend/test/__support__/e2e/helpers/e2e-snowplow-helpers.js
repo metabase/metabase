@@ -9,13 +9,24 @@ export const resetSnowplow = () => {
   }
 };
 
-export const assetSnowplow = () => {
+export const expectGoodEvents = count => {
   if (snowplowMicroUrl) {
     cy.request({
       url: `${snowplowMicroUrl}/micro/bad`,
       json: true,
-    }).then(response => {
-      expect(response.body.length).to.eq(0);
+    }).then($res => {
+      expect($res.body.length).to.eq(count);
+    });
+  }
+};
+
+export const expectNoBadEvents = () => {
+  if (snowplowMicroUrl) {
+    cy.request({
+      url: `${snowplowMicroUrl}/micro/bad`,
+      json: true,
+    }).then($res => {
+      expect($res.body.length).to.eq(0);
     });
   }
 };

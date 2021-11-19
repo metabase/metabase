@@ -1,12 +1,23 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  expectNoBadEvents,
+  resetSnowplow,
+  restore,
+} from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  locales.forEach(locale => {
-    beforeEach(() => restore("blank"));
+  beforeEach(() => {
+    restore("blank");
+    resetSnowplow();
+  });
 
+  afterEach(() => {
+    expectNoBadEvents();
+  });
+
+  locales.forEach(locale => {
     it(`should allow you to sign up using "${locale}" browser locale`, () => {
       // intial redirection and welcome page
       cy.visit("/", {
