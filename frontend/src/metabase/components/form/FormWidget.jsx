@@ -12,7 +12,7 @@ import FormCheckBoxWidget from "./widgets/FormCheckBoxWidget";
 import FormColorWidget from "./widgets/FormColorWidget";
 import FormSelectWidget from "./widgets/FormSelectWidget";
 import FormNumericInputWidget from "./widgets/FormNumericInputWidget";
-import FormToggleWidget from "./widgets/FormToggleWidget";
+import FormBooleanWidget from "./widgets/FormBooleanWidget";
 import FormCollectionWidget from "./widgets/FormCollectionWidget";
 import FormSnippetCollectionWidget from "./widgets/FormSnippetCollectionWidget";
 import FormHiddenWidget from "./widgets/FormHiddenWidget";
@@ -28,7 +28,7 @@ const WIDGETS = {
   password: FormPasswordWidget,
   select: FormSelectWidget,
   integer: FormNumericInputWidget,
-  boolean: FormToggleWidget,
+  boolean: FormBooleanWidget,
   collection: FormCollectionWidget,
   snippetCollection: FormSnippetCollectionWidget,
   hidden: FormHiddenWidget,
