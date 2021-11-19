@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
@@ -161,12 +161,11 @@
   :type       :timestamp
   :setter     :none
   :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
+                (if-not (db/exists? Setting :key "instance-creation")
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                     (java-time/offset-date-time)))
-                      (track-event! ::new-instance-created)
-                      (setting/get-timestamp :instance-creation)))))
+                  (let [value (or (first-user-creation) (java-time/offset-date-time))]
+                    (setting/set-timestamp! :instance-creation value)
+                    (track-event! ::new-instance-created)))
+                (setting/get-timestamp :instance-creation)))

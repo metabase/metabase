@@ -121,23 +121,23 @@
              (pop-event-data-and-user-id!))))))
 
 (deftest instance-creation-test
-  (binding [setting/*disable-cache* true]
-    (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
-      (try
-        (testing "Instance creation timestamp is set only once when setting is first fetched"
-          (db/delete! Setting {:key "instance-creation"})
-          (with-redefs [snowplow/first-user-creation (constantly nil)]
-            (let [first-value (snowplow/instance-creation)]
-              (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
-              (is (= first-value
-                     (snowplow/instance-creation))))))
+  (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
+    (def my-original-value original-value)
+    (try
+      (testing "Instance creation timestamp is set only once when setting is first fetched"
+        (db/delete! Setting {:key "instance-creation"})
+        (with-redefs [snowplow/first-user-creation (constantly nil)]
+          (let [first-value (snowplow/instance-creation)]
+            (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
+            (is (= first-value
+                   (snowplow/instance-creation))))))
 
-        (testing "If a user already exists, we should use the first user's creation timestamp"
-          (mt/with-test-user :crowberto
-            (db/delete! Setting {:key "instance-creation"})
-            (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
-                  instance-creation   (snowplow/instance-creation)]
-              (is (= (java-time/local-date-time first-user-creation)
-                     (java-time/local-date-time instance-creation))))))
-        (finally
-          (db/update-where! Setting {:key "instance-creation"} :value original-value))))))
+      (testing "If a user already exists, we should use the first user's creation timestamp"
+        (mt/with-test-user :crowberto
+          (db/delete! Setting {:key "instance-creation"})
+          (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
+                instance-creation   (snowplow/instance-creation)]
+            (is (= (java-time/local-date-time first-user-creation)
+                   (java-time/local-date-time instance-creation))))))
+      (finally
+        (db/update-where! Setting {:key "instance-creation"} :value original-value)))))
