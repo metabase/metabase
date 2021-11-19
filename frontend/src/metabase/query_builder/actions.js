@@ -361,6 +361,8 @@ export const initializeQB = (location, params, queryParams) => {
           card = {};
         }
 
+        const deserializedCard = card;
+
         // load the card either from `cardId` parameter or the serialized card
         if (cardId) {
           card = await loadCard(cardId);
@@ -369,6 +371,11 @@ export const initializeQB = (location, params, queryParams) => {
           // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
           // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
           card.original_card_id = card.id;
+
+          // if there's a card in the url, it may have parameters from a dashboard
+          if (deserializedCard) {
+            card.parameters = deserializedCard.parameters;
+          }
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
