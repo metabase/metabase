@@ -1,5 +1,6 @@
 import {
   describeWithSnowplow,
+  expectGoodEvents,
   expectNoBadEvents,
   resetSnowplow,
   restore,
@@ -210,7 +211,11 @@ describeWithSnowplow("scenarios > setup", () => {
     expectNoBadEvents();
   });
 
-  it("should send setup events", () => {
+  it("should send page view events", () => {
     cy.visit(`/setup`);
+
+    cy.findByText("Welcome to Metabase");
+
+    expectGoodEvents(1);
   });
 });
