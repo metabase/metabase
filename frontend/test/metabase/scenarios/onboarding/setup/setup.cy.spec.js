@@ -1,4 +1,5 @@
 import {
+  describeWithSnowplow,
   expectNoBadEvents,
   resetSnowplow,
   restore,
@@ -8,16 +9,9 @@ import {
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  beforeEach(() => {
-    restore("blank");
-    resetSnowplow();
-  });
-
-  afterEach(() => {
-    expectNoBadEvents();
-  });
-
   locales.forEach(locale => {
+    beforeEach(() => restore("blank"));
+
     it(`should allow you to sign up using "${locale}" browser locale`, () => {
       // intial redirection and welcome page
       cy.visit("/", {
@@ -203,5 +197,20 @@ describe("scenarios > setup", () => {
       "have.value",
       "Epic Team",
     );
+  });
+});
+
+describeWithSnowplow("scenarios > setup", () => {
+  beforeEach(() => {
+    restore("blank");
+    resetSnowplow();
+  });
+
+  afterEach(() => {
+    expectNoBadEvents();
+  });
+
+  it("should send setup events", () => {
+    cy.visit(`/setup`);
   });
 });

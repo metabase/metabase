@@ -1,10 +1,4 @@
-import {
-  expectNoBadEvents,
-  resetSnowplow,
-  restore,
-  sidebar,
-  visualize,
-} from "__support__/e2e/cypress";
+import { restore, sidebar, visualize } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -15,14 +9,7 @@ const new_user = {
 };
 
 describe("metabase-smoketest > admin", () => {
-  before(() => {
-    restore("blank");
-    resetSnowplow();
-  });
-
-  afterEach(() => {
-    expectNoBadEvents();
-  });
+  before(() => restore("blank"));
 
   describe("Admin can setup an account", () => {
     it("should set up Metabase", () => {

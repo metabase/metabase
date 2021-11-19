@@ -17,8 +17,8 @@
 const hasEnterpriseToken =
   process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
-const snowplowMicroUrl =
-  process.env["MB_SNOWPLOW_ENABLED"] && process.env["MB_SNOWPLOW_URL"];
+const hasSnowplowMicro = process.env["MB_SNOWPLOW_ENABLED"];
+const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
 const isQaDatabase = process.env["QA_DB_ENABLED"];
 
@@ -74,6 +74,7 @@ module.exports = (on, config) => {
   }
 
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
+  config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
   config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
   return config;
