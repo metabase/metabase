@@ -1099,7 +1099,7 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = question => {
+export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
@@ -1147,6 +1147,11 @@ export const apiUpdateQuestion = question => {
     }
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+
+    if (rerunQuery) {
+      await dispatch(loadMetadataForCard(question.card()));
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -1494,21 +1499,12 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
     // to enable "simple mode" like features
     dataset = dataset.composeDataset();
   }
-  await dispatch(apiUpdateQuestion(dataset));
-  await dispatch(loadMetadataForCard(dataset.card()));
-
-  // When a question is turned into a dataset,
-  // its visualization is changed to a table
-  // In order for that transition not to look like something just broke,
-  // we rerun the query
-  if (question.display() !== "table") {
-    dispatch(runQuestionQuery());
-  }
+  await dispatch(apiUpdateQuestion(dataset, { rerunQuery: true }));
 
   dispatch(
     addUndo({
       message: t`This is a dataset now.`,
-      actions: [apiUpdateQuestion(question)],
+      actions: [apiUpdateQuestion(question, { rerunQuery: true })],
     }),
   );
 };
@@ -1524,16 +1520,19 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question.setDatasetQuery(originalQuestion.datasetQuery());
   }
-  await dispatch(apiUpdateQuestion(question));
+  await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
+
+  const undoAction = apiUpdateQuestion(
+    dataset.isStructured() ? dataset.composeDataset() : dataset,
+    {
+      rerunQuery: true,
+    },
+  );
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [
-        apiUpdateQuestion(
-          dataset.isStructured() ? dataset.composeDataset() : dataset,
-        ),
-      ],
+      actions: [undoAction],
     }),
   );
 };
