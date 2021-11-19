@@ -174,6 +174,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   onInputKeyDown = e => {
+    console.log("🚀", "here");
     const { suggestions, highlightedSuggestionIndex } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
@@ -320,6 +321,25 @@ export default class ExpressionEditorTextfield extends React.Component {
       <EditorContainer isFocused={isFocused}>
         <EditorEqualsSign>=</EditorEqualsSign>
         <AceEditor
+          commands={[
+            {
+              name: "commandName",
+              bindKey: { win: "ArrowDown", mac: "ArrowDown" },
+              exec: () => {
+                console.log("🚀, key-binding used");
+              },
+            },
+            {
+              name: "save",
+              bindKey: {
+                win: "Ctrl-enter",
+                mac: "Cmd-enter",
+              },
+              exec: () => {
+                console.log("🚀, key-binding used ctrl-enter");
+              },
+            },
+          ]}
           ref={this.input}
           value={source}
           focus={true}
@@ -327,6 +347,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           wrapEnabled={true}
           fontSize={16}
           onBlur={this.handleEditorBlur}
+          onInput={this.onInputKeyDown}
           onFocus={this.handleEditorFocus}
           setOptions={{
             indentedSoftWrap: false,
