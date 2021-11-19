@@ -57,7 +57,7 @@
   (db/query {:select [:dashcard.* :card.*]
              :from [['DashboardCard :dashcard]]
              :left-join [['DashboardCardSeries :dashcardseries]
-                         [:= :dashcardseries.dashboardcard_id :dashcard.id]
+                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
                          [Card :card]
                          [:= :dashcardseries.card_id :card.id]]
              :where [:and
