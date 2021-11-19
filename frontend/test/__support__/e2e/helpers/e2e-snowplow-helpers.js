@@ -12,7 +12,7 @@ export const resetSnowplow = () => {
 export const expectGoodEvents = count => {
   if (snowplowMicroUrl) {
     cy.request({
-      url: `${snowplowMicroUrl}/micro/bad`,
+      url: `${snowplowMicroUrl}/micro/good`,
       json: true,
     }).then($res => {
       expect($res.body.length).to.eq(count);
