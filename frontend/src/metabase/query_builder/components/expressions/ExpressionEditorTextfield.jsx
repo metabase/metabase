@@ -213,6 +213,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   onInputKeyDown = e => {
+    console.log("🚀", "here");
     const { suggestions, highlightedSuggestionIndex } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
@@ -392,6 +393,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           wrapEnabled={true}
           fontSize={16}
           onBlur={this.handleEditorBlur}
+          onInput={this.onInputKeyDown}
           onFocus={this.handleEditorFocus}
           setOptions={{
             indentedSoftWrap: false,
