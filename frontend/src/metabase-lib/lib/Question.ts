@@ -33,7 +33,10 @@ import {
 import { isTransientId } from "metabase/meta/Card";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import {
+  normalizeParameterValue,
+  getParameterValuesBySlug,
+} from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
   breakout,
@@ -1177,12 +1180,6 @@ export default class Question {
     return this.parameters()
       .reduce((query, parameter) => {
         const filter = parameterToMBQLFilter(parameter, this.metadata());
-        console.log(
-          "convertParametersToFilters",
-          this.parameterValues,
-          parameter,
-          filter,
-        );
         return filter ? query.filter(filter) : query;
       }, this.query())
       .question()
@@ -1193,13 +1190,19 @@ export default class Question {
     const question = this.query().isEditable()
       ? this.convertParametersToFilters().markDirty()
       : this.markDirty();
-    const query =
+
+    const parameterValuesBySlug =
       this.isNative() || !this.query().isEditable()
-        ? this._parameterValues
+        ? getParameterValuesBySlug(this.parameters(), this._parameterValues)
         : undefined;
+
+    // parameterValues get put into the query, unserialized
+    delete question._parameterValues;
+    delete this._parameterValues;
+
     return question.getUrl({
       originalQuestion: this,
-      query,
+      query: parameterValuesBySlug,
       includeDisplayIsLocked: true,
     });
   }

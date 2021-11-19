@@ -241,11 +241,18 @@ export const updateUrl = createThunkAction(
     } else {
       question = new Question(card, getMetadata(getState()));
     }
+
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
         (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    }
+
+    // prevent clobbering of hash when there are fake parameters on the question
+    // consider handling this in a more general way, somehow
+    if (question.isStructured() && question.parameters().length > 0) {
+      dirty = true;
     }
 
     if (!queryBuilderMode) {
@@ -352,7 +359,6 @@ export const initializeQB = (location, params, queryParams) => {
         // if we have a serialized card then unpack and use it
         if (serializedCard) {
           card = deserializeCardFromUrl(serializedCard);
-          console.log({ deserializedCard: card });
           // if serialized query has database we normalize syntax to support older mbql
           if (card.dataset_query.database != null) {
             card.dataset_query = normalize(card.dataset_query);
@@ -532,38 +538,29 @@ export const initializeQB = (location, params, queryParams) => {
 
     card = question && question.card();
     const metadata = getMetadata(getState());
+    // these parameters WON'T have values yet -- parsing them from the URL next
+    // these parameters live on the serialized card in the URL
+    // since they are "fake" -- they come from the dashboard and we need somewhere
+    // to keep them and persist them
     const parameters = getValueAndFieldIdPopulatedParametersFromCard(
       card,
       metadata,
-      card.parameterValues,
     );
-    const parameterValuesFromParameterObjects = Object.fromEntries(
-      parameters
-        .filter(parameter => parameter.value != null)
-        .map(parameter => [parameter.id, parameter.value]),
-    );
-    const parameterValuesFromQueryParams = getParameterValuesByIdFromQueryParams(
+
+    const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
       metadata,
     );
 
-    const parameterValues = _.isEmpty(parameterValuesFromQueryParams)
-      ? parameterValuesFromParameterObjects
-      : parameterValuesFromQueryParams;
-
+    // consider just having an action for this
+    // also, note that we pass parameterValues in the next action `INITIALIZE_QB`,
+    // so maybe this is useless?
     Object.entries(parameterValues).forEach(([id, value]) => {
       if (value != null) {
-        console.log("setting parameterValue", id, value);
         dispatch(setParameterValue(id, value));
       }
     });
-
-    // for (const [paramId, value] of Object.entries(parameterValues || {})) {
-    //   dispatch(setParameterValue(paramId, value));
-    // }
-
-    console.log({ parameters, parameterValues, preserveParameters });
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {

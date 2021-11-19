@@ -260,7 +260,7 @@ export default class View extends React.Component {
                 </div>
               ) : (
                 <SyncedParametersList
-                  className="mt1 ml1"
+                  className="mt2 ml3"
                   parameters={this.props.parameters}
                   setParameterValue={this.props.setParameterValue}
                   commitImmediately
