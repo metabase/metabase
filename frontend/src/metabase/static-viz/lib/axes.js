@@ -2,8 +2,11 @@ import { formatNumber } from "./numbers";
 import { measureText } from "./text";
 
 export const getXTickWidth = (data, accessors, maxWidth) => {
-  const tickWidth = data
-    .map(accessors.x)
+  return getXTickWidthFromValues(data.map(accessors.x), maxWidth);
+};
+
+export const getXTickWidthFromValues = (values, maxWidth) => {
+  const tickWidth = values
     .map(tick => String(tick))
     .map(tick => measureText(tick))
     .reduce((a, b) => Math.max(a, b), 0);
@@ -11,7 +14,7 @@ export const getXTickWidth = (data, accessors, maxWidth) => {
   return Math.min(tickWidth, maxWidth);
 };
 
-export const getXTickHeight = tickWidth => {
+export const getRotatedXTickHeight = tickWidth => {
   return Math.ceil(Math.sqrt(Math.pow(tickWidth, 2) / 2));
 };
 

@@ -1,5 +1,6 @@
 import React from "react";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { Text } from "@visx/text";
+import { AxisBottom, AxisLeft, AxisRight, TickRendererProps } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 import { Series, ChartSettings } from "./types";
@@ -9,20 +10,31 @@ import { AreaSeries } from "./shapes/AreaSeries";
 
 import {
   getLabelProps,
+  getRotatedXTickHeight,
   getXTickLabelProps,
+  getXTickWidthFromValues,
   getYTickLabelProps,
-  getYTickWidth,
 } from "../../lib/axes";
-import { createXScale, createYScales, getY, formatXTick } from "./utils";
+import {
+  createXScale,
+  createYScales,
+  formatXTick,
+  getOrdinalXTickProps,
+  getX,
+  shouldRotateXTicks,
+  getDistinctXValuesCount,
+  getYTickWidths,
+} from "./utils";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
+import { calculateBounds } from "./utils/bounds";
 
 const layout = {
   width: 540,
   height: 300,
   margin: {
     top: 10,
-    left: 55,
-    right: 60,
+    left: 10,
+    right: 10,
     bottom: 40,
   },
   font: {
@@ -41,6 +53,7 @@ const layout = {
   labelPadding: 12,
   areaOpacity: 0.2,
   strokeDasharray: "4",
+  maxTickWidth: 100,
 };
 
 interface XYChartProps {
@@ -50,22 +63,36 @@ interface XYChartProps {
 
 export const XYChart = ({ series, settings }: XYChartProps) => {
   const palette = { ...layout.colors };
-  const yTickWidth = getYTickWidth(
-    series.flatMap(series => series.data),
-    { y: getY },
-    settings,
-  );
-  const yLabelOffset = yTickWidth + layout.labelPadding;
 
-  const xMin = yLabelOffset + layout.font.size * 1.5;
-  const xMax = layout.width - layout.margin.right;
-  const yMin = layout.margin.top;
-  const yMax = layout.height - layout.margin.bottom;
-  const innerWidth = xMax - xMin;
-  const innerHeight = yMax - yMin;
+  const yTickWidths = getYTickWidths(series, settings.y.format);
+
+  const yLabelOffsetLeft = yTickWidths.left + layout.labelPadding;
+  const yLabelOffsetRight = yTickWidths.right + layout.labelPadding;
+
+  const distinctXValuesCount = getDistinctXValuesCount(series);
+  const areXTicksRotated = shouldRotateXTicks(
+    distinctXValuesCount,
+    settings.x.type,
+  );
+
+  const xTickWidth = getXTickWidthFromValues(
+    series.flatMap(s => s.data).map(getX),
+    layout.maxTickWidth,
+  );
+  const xTicksHeight = areXTicksRotated ? getRotatedXTickHeight(xTickWidth) : 0;
+
+  const { xMin, yMin, xMax, innerWidth, innerHeight } = calculateBounds({
+    width: layout.width,
+    height: layout.height,
+    labelFontSize: layout.font.size,
+    margin: layout.margin,
+    yLabelOffsetLeft,
+    yLabelOffsetRight,
+    xTicksHeight,
+  });
 
   const xScale = createXScale(series, [0, innerWidth]);
-  const { yScaleLeft } = createYScales(
+  const { yScaleLeft, yScaleRight } = createYScales(
     series,
     [innerHeight, 0],
     settings.y.type,
@@ -75,49 +102,105 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
   const areas = series.filter(series => series.type === "area");
   const bars = series.filter(series => series.type === "bar");
 
+  const defaultYScale = yScaleLeft || yScaleRight;
+
+  const isOrdinal = settings.x.type === "ordinal";
+
+  const XTickComponent = isOrdinal
+    ? (props: TickRendererProps) => (
+        <Text
+          {...getOrdinalXTickProps({
+            props,
+            tickFontSize: layout.font.size,
+            xScaleBandwidth: xScale.bandwidth(),
+            shouldRotate: areXTicksRotated,
+            xTickWidth,
+          })}
+        />
+      )
+    : undefined;
+
   return (
     <svg width={layout.width} height={layout.height}>
       <Group top={layout.margin.top} left={xMin}>
-        <GridRows scale={yScaleLeft} width={innerWidth} strokeDasharray="4" />
+        {defaultYScale && (
+          <GridRows
+            scale={defaultYScale}
+            width={innerWidth}
+            strokeDasharray="4"
+          />
+        )}
 
         <BarSeries
           series={bars}
-          yScale={yScaleLeft}
+          yScaleLeft={yScaleLeft}
+          yScaleRight={yScaleRight}
           xScale={xScale}
-          innerHeight={innerHeight}
         />
-        <AreaSeries series={areas} yScale={yScaleLeft} xScale={xScale} />
-        <LineSeries series={lines} yScale={yScaleLeft} xScale={xScale} />
+        <AreaSeries
+          series={areas}
+          yScaleLeft={yScaleLeft}
+          yScaleRight={yScaleRight}
+          xScale={xScale}
+        />
+        <LineSeries
+          series={lines}
+          yScaleLeft={yScaleLeft}
+          yScaleRight={yScaleRight}
+          xScale={xScale}
+        />
       </Group>
 
-      <AxisLeft
-        hideTicks
-        hideAxisLine
-        label={settings.labels.left}
-        labelOffset={yLabelOffset}
-        top={layout.margin.top}
-        left={xMin}
-        scale={yScaleLeft}
-        stroke={palette.textLight}
-        tickStroke={palette.textLight}
-        labelProps={getLabelProps(layout) as any}
-        tickFormat={value => formatNumber(value, settings.x.format)}
-        tickLabelProps={() => getYTickLabelProps(layout) as any}
-      />
+      {yScaleLeft && (
+        <AxisLeft
+          hideTicks
+          hideAxisLine
+          label={settings.labels.left}
+          labelOffset={yLabelOffsetLeft}
+          top={layout.margin.top}
+          left={xMin}
+          scale={yScaleLeft}
+          stroke={palette.textLight}
+          tickStroke={palette.textLight}
+          labelProps={getLabelProps(layout) as any}
+          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickLabelProps={() => getYTickLabelProps(layout) as any}
+        />
+      )}
+
+      {yScaleRight && (
+        <AxisRight
+          hideTicks
+          hideAxisLine
+          label={settings.labels.right}
+          labelOffset={yLabelOffsetRight - layout.font.size * 1.5}
+          top={layout.margin.top}
+          left={xMax + yTickWidths.right}
+          scale={yScaleRight}
+          stroke={palette.textLight}
+          tickStroke={palette.textLight}
+          labelProps={getLabelProps(layout) as any}
+          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickLabelProps={() => getYTickLabelProps(layout) as any}
+        />
+      )}
 
       <AxisBottom
         scale={xScale}
-        label={settings.labels.bottom}
-        top={layout.height - layout.margin.bottom}
+        label={areXTicksRotated ? undefined : settings.labels.bottom}
+        top={yMin}
         left={xMin}
-        numTicks={layout.numTicks}
+        numTicks={areXTicksRotated ? distinctXValuesCount : layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
         labelProps={getLabelProps(layout) as any}
+        tickComponent={XTickComponent}
         tickFormat={value =>
           formatXTick(value, settings.x.type, settings.x.format)
         }
-        tickLabelProps={() => getXTickLabelProps(layout) as any}
+        tickLabelProps={() =>
+          getXTickLabelProps(layout, areXTicksRotated) as any
+        }
       />
     </svg>
   );

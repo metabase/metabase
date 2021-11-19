@@ -9,13 +9,16 @@ import { Series } from "../types";
 interface LineSeriesProps {
   series: Series[];
   xScale: ScaleBand<number | string>;
-  yScale: PositionScale;
+  yScaleLeft: PositionScale | null;
+  yScaleRight: PositionScale | null;
 }
 
-export const LineSeries = ({ series, xScale, yScale }: LineSeriesProps) => {
+export const LineSeries = ({ series, xScale, yScaleLeft, yScaleRight }: LineSeriesProps) => {
   return (
     <Group>
-      {series.map(s => (
+      {series.map(s => {
+        const yScale = s.yAxisPosition === 'left' ? yScaleLeft! : yScaleRight!
+        return (
         <LinePath
           key={s.name}
           data={s.data}
@@ -24,7 +27,7 @@ export const LineSeries = ({ series, xScale, yScale }: LineSeriesProps) => {
           stroke={s.color}
           strokeWidth={2}
         />
-      ))}
+      )})}
     </Group>
   );
 };

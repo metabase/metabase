@@ -1,4 +1,5 @@
 export type Range = [number, number];
+export type ContiniousDomain = [number, number];
 
 export type XValue = string | number;
 export type YValue = number;

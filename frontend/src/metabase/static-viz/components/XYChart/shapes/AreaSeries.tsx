@@ -10,13 +10,17 @@ import { getX, getY } from '../utils';
 interface AreaSeriesProps {
   series: Series[];
   xScale: ScaleBand<number | string>;
-  yScale: PositionScale;
+  yScaleLeft: PositionScale | null;
+  yScaleRight: PositionScale | null;
 }
 
-export const AreaSeries = ({ series, xScale, yScale }: AreaSeriesProps) => {
+export const AreaSeries = ({ series, xScale, yScaleLeft, yScaleRight }: AreaSeriesProps) => {
   return (
     <Group>
-      {series.map(s => (
+      {series.map(s => {
+        const yScale = s.yAxisPosition === 'left' ? yScaleLeft! : yScaleRight!
+
+        return (
         <LineArea
           key={s.name}
           yScale={yScale}
@@ -26,7 +30,7 @@ export const AreaSeries = ({ series, xScale, yScale }: AreaSeriesProps) => {
           y={d => yScale(getY(d as any)) ?? 0 }
           y1={yScale(0) ?? 0}
         />
-      ))}
+      )})}
     </Group>
   );
 };
