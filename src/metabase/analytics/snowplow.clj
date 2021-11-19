@@ -32,7 +32,7 @@
              "http://localhost:9095")
   :visibility :public)
 
-(def ^:private ^{:arglists `(^Emitter [])} emitter
+(def ^:private emitter
   "Returns an instance of a Snowplow emitter"
   (let [emitter* (delay
                    (let [client (-> (HttpClients/custom)
@@ -48,7 +48,7 @@
                      (.build ^BatchEmitter$Builder batch-emitter-builder)))]
      (fn [] @emitter*)))
 
-(def ^:private ^{:arglists `(^Tracker [])} tracker
+(def ^:private tracker
   "Returns instance of a Snowplow tracker"
   (let [tracker* (delay
                   (-> (Tracker$TrackerBuilder. ^Emitter (emitter) "sp" "metabase")
@@ -62,7 +62,7 @@
     (let [subject (-> (Subject$SubjectBuilder.)
                       (.userId (str user-id))
                       .build)]
-      (.subject ^Unstructured$Builder builder ^Subject subject))
+      (.subject ^Unstructured$Builder builder subject))
     builder))
 
 (defn- context
