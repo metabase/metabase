@@ -404,9 +404,22 @@
 
 (s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (let [multi-res (pu/execute-multi-card card)
-        bob       (println "WAAEFGKLJEWRFGLKERJGKLERJGL")
-        bob       (println multi-res)]
+  (let [multi-res  (pu/execute-multi-card card)
+        ;; we shove them all together for uniformity's sake
+        cards      (cons card (map :card multi-res))
+        multi-data (cons data (map #(get-in % [:result :data]) multi-res))
+
+        names      (map :name cards)
+        ;; colors go here
+        colors     (map #(get-in % [:viz-settings :color]) multi-data)
+        types      (map :display cards)
+        multi-rows (map :rows multi-data)
+        series     (vec (for [card-name  names
+                              card-color colors
+                              card-type  types
+                              rows       multi-rows]
+                          {:name card-name :color card-color :type card-type :rows rows}))
+        res        (println series)]
   {:attachments nil :content [:div "bob"]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
