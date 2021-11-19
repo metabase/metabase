@@ -31,7 +31,10 @@ import {
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import {
+  getValueAndFieldIdPopulatedParametersFromCard,
+  remapParameterValuesForTemplateTags,
+} from "metabase/parameters/utils/cards";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
@@ -1187,14 +1190,33 @@ export default class Question {
   }
 
   getUrlWithParameters() {
-    const question = this.query().isEditable()
+    let question = this.query().isEditable()
       ? this.convertParametersToFilters().markDirty()
       : this.markDirty();
 
-    const parameterValuesBySlug =
-      this.isNative() || !this.query().isEditable()
-        ? getParameterValuesBySlug(this.parameters(), this._parameterValues)
-        : undefined;
+    let parameterValuesBySlug;
+    if (question.isNative()) {
+      const parametersOnQuestion = question.parameters();
+      // clear parameters on question
+      question = question.setParameters(undefined);
+      const templateTagParameters = question.parameters();
+      // remap parameter values map to template tag params on native question
+      const remappedParameterValues = remapParameterValuesForTemplateTags(
+        parametersOnQuestion,
+        templateTagParameters,
+        question._parameterValues,
+      );
+      // remap values map again to slug keys
+      parameterValuesBySlug = getParameterValuesBySlug(
+        question.parameters(),
+        remappedParameterValues,
+      );
+    } else if (!question.query().isEditable()) {
+      parameterValuesBySlug = getParameterValuesBySlug(
+        question.parameters(),
+        question._parameterValues,
+      );
+    }
 
     // parameterValues get put into the query, unserialized
     delete question._parameterValues;

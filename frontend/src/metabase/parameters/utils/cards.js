@@ -3,7 +3,10 @@ import _ from "underscore";
 import Question from "metabase-lib/lib/Question";
 
 import { areFieldFilterOperatorsEnabled } from "./feature-flag";
-import { getParameterTargetField } from "metabase/parameters/utils/targets";
+import {
+  getParameterTargetField,
+  getTemplateTagFromTarget,
+} from "metabase/parameters/utils/targets";
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
@@ -112,4 +115,29 @@ export function getParametersMappedToCard(card, parameters, parameterMappings) {
       }
     })
     .filter(Boolean);
+}
+
+// when navigating from dashboard --> saved native question,
+// we are given dashboard parameters and a map of dashboard parameter ids to parameter values
+// we need to transform this into a map of template tag ids to parameter values
+// so that we popoulate the template tags in the native editor
+export function remapParameterValuesForTemplateTags(
+  dashboardParameters,
+  templateTagParameters,
+  parameterValuesByDashboardParameterId,
+) {
+  const parameterValues = {};
+  const templateTagParametersBySlug = _.indexBy(templateTagParameters, "slug");
+
+  dashboardParameters.forEach(dashboardParameter => {
+    const { target } = dashboardParameter;
+    const tag = getTemplateTagFromTarget(target);
+    if (templateTagParametersBySlug[tag]) {
+      const templateTagParameter = templateTagParametersBySlug[tag];
+      parameterValues[templateTagParameter.id] =
+        parameterValuesByDashboardParameterId[dashboardParameter.id];
+    }
+  });
+
+  return parameterValues;
 }
