@@ -82,11 +82,13 @@
 (defn- payload
   "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an
   analytics event"
-  [schema version event-data]
+  [schema version event-kw data]
   (new SelfDescribingJson
        (format "iglu:com.metabase/%s/jsonschema/%s" (normalize-kw schema) version)
-       ;; Make sure keywords are converted to strings in snake-case
-       (into {} (for [[k v] event-data] [(normalize-kw k) (if (keyword? v) (normalize-kw v) v)]))))
+       ;; Make sure keywords in payload are converted to strings in snake-case
+       (m/map-kv
+        (fn [k v] [(normalize-kw k) (if (keyword? v) (normalize-kw v) v)])
+        (assoc data :event event-kw))))
 
 (defn- track-event-impl!
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
@@ -94,19 +96,12 @@
   [tracker event]
   (.track ^Tracker tracker ^Unstructured event))
 
-(defn- track-schema-event!
-  "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance"
-  [schema version user-id event-data]
-  (when (public-settings/anon-tracking-enabled)
-    (try
-      (let [^Unstructured$Builder builder (-> (. Unstructured builder)
-                                              (.eventData (payload schema version event-data))
-                                              (.customContext [(context)]))
-            ^Unstructured$Builder builder' (set-subject builder user-id)
-            ^Unstructured event (.build builder')]
-        (track-event-impl! (tracker) event))
-      (catch Throwable e
-        (log/debug e (trs "Error sending Snowplow analytics event {0}" (name (:event event-data))))))))
+(def ^:private schema-version
+  "The most recent version for each event schema"
+  {::account   "1-0-0"
+   ::invite    "1-0-0"
+   ::dashboard "1-0-0"
+   ::database  "1-0-0"})
 
 ;; Snowplow analytics interface
 
@@ -118,37 +113,23 @@
 (derive ::database-connection-successful ::database)
 (derive ::database-connection-failed     ::database)
 
-(defmulti track-event!
-  "Send a single analytics event to Snowplow"
-  (fn [event & _] (keyword event)))
+(defn track-event!
+  "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance"
+  [event-kw & [user-id data]]
+  (when (public-settings/anon-tracking-enabled)
+    (try
+      (let [schema (-> event-kw parents first)
+            ^Unstructured$Builder builder (-> (. Unstructured builder)
+                                              (.eventData (payload schema (schema-version schema) event-kw data))
+                                              (.customContext [(context)]))
+            ^Unstructured$Builder builder' (set-subject builder user-id)
+            ^Unstructured event (.build builder')]
+        (track-event-impl! (tracker) event))
+      (catch Throwable e
+        (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))
 
-(defmethod track-event! ::new-instance-created
-  [event]
-  (track-schema-event! ::account "1-0-0" nil {:event event}))
-
-(defmethod track-event! ::new-user-created
-  [event user-id]
-  (track-schema-event! ::account "1-0-0" user-id {:event event}))
-
-(defmethod track-event! ::invite-sent
-  [event user-id event-data]
-  (track-schema-event! ::invite "1-0-0" user-id (assoc event-data :event event)))
-
-(defmethod track-event! ::dashboard-created
-  [event user-id event-data]
-  (track-schema-event! ::dashboard "1-0-0" user-id (assoc event-data :event event)))
-
-(defmethod track-event! ::question-added-to-dashboard
-  [event user-id event-data]
-  (track-schema-event! ::dashboard "1-0-0" user-id (assoc event-data :event event)))
-
-(defmethod track-event! ::database-connection-successful
-  [event user-id event-data]
-  (track-schema-event! ::database "1-0-0" user-id (assoc event-data :event event)))
-
-(defmethod track-event! ::database-connection-failed
-  [event user-id event-data]
-  (track-schema-event! ::database "1-0-0" user-id (assoc event-data :event event)))
+;; Instance creation timestamp setting.
+;; Must be defined after [[track-event!]] since it sends a Snowplow event the first time the setting is read.
 
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
@@ -161,7 +142,7 @@
   :type       :timestamp
   :setter     :none
   :getter     (fn []
-                (if-not (db/exists? Setting :key "instance-creation")
+                (when-not (db/exists? Setting :key "instance-creation")
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.

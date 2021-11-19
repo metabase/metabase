@@ -140,4 +140,5 @@
             (is (= (java-time/local-date-time first-user-creation)
                    (java-time/local-date-time instance-creation))))))
       (finally
-        (db/update-where! Setting {:key "instance-creation"} :value original-value)))))
+        (if original-value
+          (db/update-where! Setting {:key "instance-creation"} :value original-value))))))
