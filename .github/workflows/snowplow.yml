@@ -2,7 +2,6 @@ name: Snowplow
 
 on:
   pull_request:
-  push:
     branches:
       - '**'
     paths:
