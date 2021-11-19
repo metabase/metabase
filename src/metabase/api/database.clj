@@ -502,12 +502,14 @@
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>)
-        (snowplow/track-event! :database_connection_successful api/*current-user-id* {:database engine
-                                                                                      :database_id (u/the-id <>)
-                                                                                      :source :admin}))
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               api/*current-user-id*
+                               {:database engine, :database-id (u/the-id <>), :source :admin}))
       ;; failed to connect, return error
       (do
-        (snowplow/track-event! :database_connection_failed api/*current-user-id* {:database engine, :source :setup})
+        (snowplow/track-event! ::snowplow/database-connection-failed
+                               api/*current-user-id*
+                               {:database engine, :source :setup})
         {:status 400
          :body   details-or-error}))))
 

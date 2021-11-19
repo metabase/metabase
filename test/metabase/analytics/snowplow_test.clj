@@ -4,12 +4,14 @@
             [clojure.walk :as walk]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.models.setting :refer [Setting]]
-            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db])
   (:import java.util.LinkedHashMap))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:dynamic ^:private *snowplow-collector*
   "Fake Snowplow collector"
@@ -67,7 +69,7 @@
 (deftest custom-content-test
   (testing "Snowplow events include a custom context that includes the instnace ID, version and token features"
     (with-fake-snowplow-collector
-      (snowplow/track-event! :new_instance_created)
+      (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-0-0",
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
@@ -77,12 +79,12 @@
 (deftest track-event-test
   (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector"
     (with-fake-snowplow-collector
-      (snowplow/track-event! :new_instance_created)
+      (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= [{:data    {:event "new_instance_created"}
                :user-id nil}]
              (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! :new_user_created 1)
+      (snowplow/track-event! ::snowplow/new-user-created 1)
       (is (= [{:data    {:event "new_user_created"}
                :user-id "1"}]
              (pop-event-data-and-user-id!))))))
@@ -101,7 +103,7 @@
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (db/delete! Setting {:key "instance-creation"})
         (mt/with-test-user :crowberto
-          (let [first-user-creation (:min (db/select-one [User [:%min.date_joined :min]]))
+          (let [first-user-creation (@#'snowplow/first-user-creation)
                 instance-creation   (snowplow/instance-creation)]
             (is (= (java-time/local-date-time first-user-creation)
                    (java-time/local-date-time instance-creation))))))

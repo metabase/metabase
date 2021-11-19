@@ -6,6 +6,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import [com.snowplowanalytics.snowplow.tracker Subject$SubjectBuilder Tracker Tracker$TrackerBuilder]
@@ -74,14 +75,18 @@
         "version"        {"tag" (:tag (public-settings/version))},
         "token-features" (m/map-keys name (public-settings/token-features))}))
 
+(defn- normalize-kw
+  [kw]
+  (-> kw u/snake-key name))
+
 (defn- payload
   "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an
   analytics event"
   [schema version event-data]
   (new SelfDescribingJson
-       (format "iglu:com.metabase/%s/jsonschema/%s" (name schema) version)
-       ;; Make sure keywords are converted to strings
-       (into {} (for [[k v] event-data] [(name k) (if (keyword? v) (name v) v)]))))
+       (format "iglu:com.metabase/%s/jsonschema/%s" (normalize-kw schema) version)
+       ;; Make sure keywords are converted to strings in snake-case
+       (into {} (for [[k v] event-data] [(normalize-kw k) (if (keyword? v) (normalize-kw v) v)]))))
 
 (defn- track-event-impl!
   "Wrapper function around the `.track` method on a Snowplow tracker. Can be redefined in tests to instead append
@@ -117,33 +122,33 @@
   "Send a single analytics event to Snowplow"
   (fn [event & _] (keyword event)))
 
-(defmethod track-event! :new_instance_created
+(defmethod track-event! ::new-instance-created
   [event]
-  (track-schema-event! :account "1-0-0" nil {:event event}))
+  (track-schema-event! ::account "1-0-0" nil {:event event}))
 
-(defmethod track-event! :new_user_created
+(defmethod track-event! ::new-user-created
   [event user-id]
-  (track-schema-event! :account "1-0-0" user-id {:event event}))
+  (track-schema-event! ::account "1-0-0" user-id {:event event}))
 
-(defmethod track-event! :invite_sent
+(defmethod track-event! ::invite-sent
   [event user-id event-data]
-  (track-schema-event! :invite "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! ::invite "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event! :dashboard_created
+(defmethod track-event! ::dashboard-created
   [event user-id event-data]
-  (track-schema-event! :dashboard "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! ::dashboard "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event! :question_added_to_dashboard
+(defmethod track-event! ::question-added-to-dashboard
   [event user-id event-data]
-  (track-schema-event! :dashboard "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! ::dashboard "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event! :database_connection_successful
+(defmethod track-event! ::database-connection-successful
   [event user-id event-data]
-  (track-schema-event! :database "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! ::database "1-0-0" user-id (assoc event-data :event event)))
 
-(defmethod track-event! :database_connection_failed
+(defmethod track-event! ::database-connection-failed
   [event user-id event-data]
-  (track-schema-event! :database "1-0-0" user-id (assoc event-data :event event)))
+  (track-schema-event! ::database "1-0-0" user-id (assoc event-data :event event)))
 
 (defn- first-user-creation
   "Returns the earliest user creation timestamp in the database"
@@ -163,5 +168,5 @@
                   ;; is first read.
                   (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
                                                                      (java-time/offset-date-time)))
-                      (track-event! :new_instance_created)
+                      (track-event! ::new-instance-created)
                       (setting/get-timestamp :instance-creation)))))
