@@ -1,11 +1,9 @@
 import _ from "underscore";
-import { assoc, updateIn } from "icepick";
+import { updateIn } from "icepick";
 
-import { getParametersFromCard } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import { getParametersMappedToCard } from "metabase/parameters/utils/cards";
 
-import * as Query from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
@@ -88,37 +86,6 @@ export function getTableMetadata(card, metadata) {
   return null;
 }
 
-function getParametersMappedToCard(
-  card,
-  parameterMappings,
-  parameterValues,
-  parameters,
-) {
-  const cardId = card.id || card.original_card_id;
-  return parameters
-    .map(parameter => {
-      const type = parameter.type;
-      const value = parameterValues[parameter.id];
-
-      const mapping =
-        cardId != null &&
-        _.findWhere(parameterMappings, {
-          card_id: cardId,
-          parameter_id: parameter.id,
-        });
-
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-          // this `dashboardId` isn't used yet, but maybe use it to determine endpoints?
-          dashboardId: mapping.dashboard_id,
-        };
-      }
-    })
-    .filter(Boolean);
-}
-
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
 // Query builder uses `Question.getResults` which contains similar logic.
 export function applyParameters(
@@ -187,75 +154,19 @@ export function questionUrlWithParameters(
   card,
   metadata,
   parameters,
-  parameterValues = {},
-  parameterMappings = [],
-  cardIsDirty = true,
+  parameterValues,
+  parameterMappings,
 ) {
-  if (!card.dataset_query) {
-    return Urls.question(card);
-  }
-  // card = Utils.copy(card);
-
-  // const cardParameters = getParametersFromCard(card);
-  // const datasetQuery = applyParameters(
-  //   card,
-  //   parameters,
-  //   parameterValues,
-  //   parameterMappings,
-  // );
-
   const parametersMappedToCard = getParametersMappedToCard(
     card,
-    parameterMappings,
-    parameterValues,
     parameters,
+    parameterMappings,
   );
-  const question = new Question(card, metadata, parameterValues);
-  const questionsWithAddedParameters = question.setParameters(
-    parametersMappedToCard,
-  );
+  const questionWithParameters = new Question(
+    card,
+    metadata,
+    parameterValues,
+  ).setParameters(parametersMappedToCard);
 
-  return questionsWithAddedParameters.getUrlWithParameters();
-
-  // // If we have a clean question without parameters applied, don't add the dataset query hash
-  // if (
-  //   !cardIsDirty &&
-  //   !isTransientId(card.id) &&
-  //   datasetQuery.parameters &&
-  //   datasetQuery.parameters.length === 0
-  // ) {
-  //   return Urls.question(card);
-  // }
-
-  // const query = {};
-  // for (const datasetParameter of datasetQuery.parameters || []) {
-  //   const cardParameter = _.find(cardParameters, p =>
-  //     Utils.equals(p.target, datasetParameter.target),
-  //   );
-  //   if (cardParameter) {
-  //     // if the card has a real parameter we can use, use that
-  //     query[cardParameter.slug] = datasetParameter.value;
-  //   } else if (isStructured(card)) {
-  //     // if the card is structured, try converting the parameter to an MBQL filter clause
-  //     const filter = parameterToMBQLFilter(datasetParameter, metadata);
-  //     if (filter) {
-  //       card = updateIn(card, ["dataset_query", "query"], query =>
-  //         Query.addFilter(query, filter),
-  //       );
-  //     } else {
-  //       console.warn("UNHANDLED PARAMETER", datasetParameter);
-  //     }
-  //   } else {
-  //     console.warn("UNHANDLED PARAMETER", datasetParameter);
-  //   }
-  // }
-
-  // if (isTransientId(card.id)) {
-  //   card = assoc(card, "id", null);
-  // }
-  // if (isTransientId(card.original_card_id)) {
-  //   card = assoc(card, "original_card_id", null);
-  // }
-
-  // return Urls.question(null, card.dataset_query ? card : undefined, query);
+  return questionWithParameters.getUrlWithParameters();
 }

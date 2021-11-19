@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import Question from "metabase-lib/lib/Question";
 
 import { areFieldFilterOperatorsEnabled } from "./feature-flag";
@@ -87,4 +89,27 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
       hasOnlyFieldTargets: field != null,
     };
   });
+}
+
+export function getParametersMappedToCard(card, parameters, parameterMappings) {
+  const cardId = card.id || card.original_card_id;
+  return parameters
+    .map(parameter => {
+      const mapping =
+        cardId != null &&
+        _.findWhere(parameterMappings, {
+          card_id: cardId,
+          parameter_id: parameter.id,
+        });
+
+      if (mapping) {
+        return {
+          ...parameter,
+          target: mapping.target,
+          // this `dashboardId` isn't used yet, but maybe use it to determine endpoints?
+          dashboardId: mapping.dashboard_id,
+        };
+      }
+    })
+    .filter(Boolean);
 }
