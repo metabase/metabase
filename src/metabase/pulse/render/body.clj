@@ -5,7 +5,6 @@
             [medley.core :as m]
             [metabase.models.card :as cards]
             [metabase.public-settings :as public-settings]
-            [metabase.pulse :as pulse]
             [metabase.pulse.render.color :as color]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.datetime :as datetime]
@@ -14,6 +13,7 @@
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
+            [metabase.pulse.util :as pu]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
             [metabase.util :as u]
@@ -404,7 +404,7 @@
 
 (s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (let [multi-res (pulse/execute-multi-card card)
+  (let [multi-res (pu/execute-multi-card card)
         bob       (println multi-res)]
   {:attachments nil :content nil}))
 
