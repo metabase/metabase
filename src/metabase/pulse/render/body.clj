@@ -414,12 +414,17 @@
         colors     (map #(get-in % [:viz-settings :color]) multi-data)
         types      (map :display cards)
         multi-rows (map :rows multi-data)
+        multi-cols (map :cols multi-data)
         series     (vec (for [card-name  names
                               card-color colors
                               card-type  types
-                              rows       multi-rows]
-                          {:name card-name :color card-color :type card-type :rows rows}))
-        res        (println series)]
+                              rows       multi-rows
+                              cols       multi-cols]
+                          {:name card-name
+                           :color card-color
+                           :type card-type
+                           :rows rows
+                           :cols cols}))]
   {:attachments nil :content [:div "bob"]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
