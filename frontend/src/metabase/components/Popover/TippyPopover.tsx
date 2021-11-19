@@ -23,14 +23,17 @@ function TippyPopover({
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const [mounted, setMounted] = useState(!lazy);
   const plugins = useMemo(
-    () => [
-      {
-        fn: () => ({
-          onMount: () => setMounted(true),
-          onHidden: () => setMounted(!lazy),
-        }),
-      },
-    ],
+    () =>
+      lazy
+        ? [
+            {
+              fn: () => ({
+                onMount: () => setMounted(true),
+                onHidden: () => setMounted(false),
+              }),
+            },
+          ]
+        : [],
     [lazy],
   );
 
@@ -45,12 +48,12 @@ function TippyPopover({
 
   return (
     <TippyComponent
-      {...props}
-      plugins={plugins}
       theme="popover"
       arrow={false}
       offset={OFFSET}
       appendTo={() => document.body}
+      plugins={plugins}
+      {...props}
       duration={animationDuration}
       content={computedContent}
     />
