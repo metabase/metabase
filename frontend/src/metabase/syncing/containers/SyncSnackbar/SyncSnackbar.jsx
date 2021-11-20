@@ -8,6 +8,7 @@ export default _.compose(
   Databases.loadList({
     query: { include: "tables" },
     reloadInterval: getReloadInterval,
+    loadingAndErrorWrapper: false,
   }),
   connect(state => ({
     databases: getUserDatabases(state),

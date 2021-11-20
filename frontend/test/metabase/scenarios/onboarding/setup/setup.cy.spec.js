@@ -1,4 +1,4 @@
-import { popover, restore } from "__support__/e2e/cypress";
+import { restore } from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
@@ -85,7 +85,7 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
-      cy.findByText("You’ll need some info about your database", {
+      cy.findByText("Connecting to your own database", {
         exact: false,
       });
 
@@ -103,25 +103,22 @@ describe("scenarios > setup", () => {
       cy.findByText("Next").click();
 
       // check database setup card changes copy
-      cy.get("#formField-engine .AdminSelect").click();
-      popover()
-        .findByText("MySQL")
-        .click();
+      cy.findByText("MySQL").click();
       cy.findByTestId("database-setup-help-card").within(() => {
         cy.findByText("Need help setting up MySQL?");
         cy.findByRole("link", { name: /Our docs can help/i });
       });
 
-      cy.get("#formField-engine .AdminSelect").click();
-      popover()
-        .findByText("SQLite")
-        .click();
+      cy.findByLabelText("Remove database").click();
+      cy.findByPlaceholderText("Search for a database…").type("SQL");
+      cy.findByText("SQLite").click();
       cy.findByTestId("database-setup-help-card").findByText(
         "Need help setting up your database?",
       );
 
       // add h2 database
-      cy.get("#formField-engine .AdminSelect").click();
+      cy.findByLabelText("Remove database").click();
+      cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Name").type("Metabase H2");
       cy.findByText("Next")
@@ -179,16 +176,7 @@ describe("scenarios > setup", () => {
   });
 
   it("should allow pre-filling user details", () => {
-    const details = {
-      user: {
-        first_name: "Testy",
-        last_name: "McTestface",
-        email: "testy@metabase.test",
-        site_name: "Epic Team",
-      },
-    };
-
-    cy.visit(`/setup#${btoa(JSON.stringify(details))}`);
+    cy.visit(`/setup#123456`);
 
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();

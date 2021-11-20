@@ -513,6 +513,35 @@
                                    :font-size :16px})}
          (second labels)]]]]}))
 
+(s/defmethod render :waterfall :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+                            (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        last-rows      (reverse (take-last 2 rows))
+        values         (for [row last-rows]
+                         (some-> row y-axis-rowfn common/format-number))
+        labels         (x-and-y-axis-label-info x-col y-col viz-settings)
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-waterfall
+                         js-svg/categorical-waterfall)
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (render-fn rows
+                                   labels
+                                   (->js-viz x-col y-col viz-settings)))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]

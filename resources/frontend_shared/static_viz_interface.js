@@ -47,6 +47,15 @@ function timeseries_bar(data, labels, settings) {
   });
 }
 
+function timeseries_waterfall(data, labels, settings) {
+  return StaticViz.RenderChart("timeseries/waterfall", {
+    data: toJSArray(data),
+    labels: toJSMap(labels),
+    accessors: date_accessors,
+    settings: JSON.parse(settings),
+  });
+}
+
 function categorical_bar(data, labels, settings) {
   return StaticViz.RenderChart("categorical/bar", {
     data: toJSArray(data),
@@ -70,6 +79,15 @@ function categorical_donut(rows, colors) {
     data: toJSArray(rows),
     colors: toJSMap(colors),
     accessors: dimension_accessors,
+  });
+}
+
+function categorical_waterfall(data, labels, settings) {
+  return StaticViz.RenderChart("categorical/waterfall", {
+    data: toJSArray(data),
+    labels: toJSMap(labels),
+    accessors: positional_accessors,
+    settings: JSON.parse(settings),
   });
 }
 

@@ -15,6 +15,7 @@ export const DATE_PERIODS: RelativeDatetimeUnit[] = [
   "day",
   "week",
   "month",
+  "quarter",
   "year",
 ];
 

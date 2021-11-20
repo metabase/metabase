@@ -61,7 +61,14 @@ export default createEntity({
             : [],
         };
       } else {
-        return searchList(query);
+        const { data, ...rest } = await searchList(query);
+
+        return {
+          ...rest,
+          // TODO Alexander Polyankin 11/09/21
+          // Until BE returns databases and tables before the initial sync, set it to true to unblock FE changes
+          data: data?.map(item => ({ ...item, initial_sync: true })),
+        };
       }
     },
   },

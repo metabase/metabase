@@ -412,6 +412,28 @@
          (render-bar-graph {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
+
+(defn- render-waterfall [results]
+  (body/render :waterfall :inline pacific-tz render.tu/test-card results))
+
+(deftest render-waterfall-test
+  (testing "Render a waterfall graph with non-nil values for the x and y axis"
+    (is (has-inline-image?
+         (render-waterfall {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+         (render-waterfall {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+         (render-waterfall {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+  (testing "Check to make sure we allow nil values for both x and y on different rows"
+    (is (has-inline-image?
+         (render-waterfall {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+
 ;; Test rendering a sparkline
 ;;
 ;; Sparklines are a binary image either in-line or as an attachment, so there's not much introspection that we can do
