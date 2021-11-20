@@ -400,12 +400,14 @@
 
 (s/defmethod render :progress :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (let [value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)
+  (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
         color        (or (:progress.color viz-settings) (first colors))
         settings     (assoc
                        (->js-viz (first cols) (first cols) viz-settings)
                        :color color)
+        ;; ->js-viz fills in our :x but we actually want that under :format key
+        settings     (assoc settings :format (:x settings))
         image-bundle (image-bundle/make-image-bundle
                       render-type
                       (js-svg/progress value goal settings))]
