@@ -399,8 +399,8 @@
                 (percentages label)]]))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
-  [_ render-type _ card {:keys [cols rows viz-settings] :as data}]
-  (let [value        (get-in rows [0 0])
+  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (let [value        (format-cell timezone-id (ffirst rows) (first cols) viz-settings)
         goal         (:progress.goal viz-settings)
         color        (or (:progress.color viz-settings) (first colors))
         settings     (assoc
