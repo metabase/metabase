@@ -8,7 +8,8 @@
             [ring.util.response :as rr]
             [schema.core :as s])
   (:import java.net.URL
-           org.apache.commons.io.input.ReaderInputStream))
+           org.apache.commons.io.input.ReaderInputStream
+           java.net.InetAddress))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     su/NonBlankString
@@ -35,16 +36,13 @@
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
 (def ^:private invalid-hosts
-  #{"169.254.169.254" ; internal metadata for AWS, OpenStack, and Azure
-    "metadata.google.internal"}) ; internal metadata for GCP
-
+  #{"metadata.google.internal"}) ; internal metadata for GCP
 
 (defn- valid-host?
   [^URL url]
-  (let [host->url (fn [host] (URL. (str "http://" host)))
-        base-url (host->url (.getHost url))
-        invalid-base-urls (map host->url invalid-hosts)]
-    (not-any? (fn [invalid-url] (.equals base-url invalid-url)) invalid-base-urls)))
+  (let [host (.getHost url)]
+    (and (not (invalid-hosts host))
+         (not (.isLinkLocalAddress (InetAddress/getByName host))))))
 
 (defn- valid-protocol?
   [^URL url]
