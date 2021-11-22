@@ -3,6 +3,8 @@ import {
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
   convertSavedQuestionToVirtualTable,
 } from "./saved-questions";
 
@@ -81,6 +83,57 @@ describe("saved question helpers", () => {
   describe("getQuestionVirtualTableId", () => {
     it("returns question prefixed question ID", () => {
       expect(getQuestionVirtualTableId({ id: 7 })).toBe("card__7");
+    });
+  });
+
+  describe("isVirtualCardId", () => {
+    it("should return true for virtual table ID", () => {
+      expect(isVirtualCardId("card__4")).toBe(true);
+    });
+
+    it("should return false for normal table ID", () => {
+      expect(isVirtualCardId(4)).toBe(false);
+    });
+
+    it("should return false for garbage", () => {
+      expect(isVirtualCardId()).toBe(false);
+      expect(isVirtualCardId(null)).toBe(false);
+      expect(isVirtualCardId(null)).toBe(false);
+      expect(isVirtualCardId(0)).toBe(false);
+      expect(isVirtualCardId(-1)).toBe(false);
+      expect(isVirtualCardId("1")).toBe(false);
+      expect(isVirtualCardId({ foo: "bar" })).toBe(false);
+    });
+  });
+
+  describe("getQuestionIdFromVirtualTableId", () => {
+    [
+      { tableId: "card__1", cardId: 1 },
+      { tableId: "card__234", cardId: 234 },
+    ].forEach(testCase => {
+      const { tableId, cardId } = testCase;
+      it(`should extract ID from virtual ID (${tableId})`, () => {
+        expect(getQuestionIdFromVirtualTableId(tableId)).toBe(cardId);
+      });
+    });
+
+    [
+      { id: undefined },
+      { id: null },
+      { id: 123 },
+      { id: true },
+      { id: { foo: "bar" } },
+    ].forEach(testCase => {
+      const { id } = testCase;
+      it(`should handle non string input (${id})`, () => {
+        expect(getQuestionIdFromVirtualTableId(id)).toBe(null);
+      });
+    });
+
+    ["card__", "card__test"].forEach(id => {
+      it(`should handle invalid ID ${id}`, () => {
+        expect(getQuestionIdFromVirtualTableId(id)).toBe(null);
+      });
     });
   });
 

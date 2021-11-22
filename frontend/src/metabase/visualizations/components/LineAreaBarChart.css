@@ -7,7 +7,7 @@
 }
 
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
-  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-dasharray: 5, 5;
 }
 
@@ -73,7 +73,7 @@
 
 /* restyle X axis for stacked charts to look like a grid line */
 .LineAreaBarChart .dc-chart .stacked .domain {
-  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke: color-mod(var(--color-text-medium) alpha(-80%));
   stroke-dasharray: 5, 5;
 }
 

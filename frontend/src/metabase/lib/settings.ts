@@ -81,7 +81,8 @@ export type SettingName =
   | "version-info-last-checked"
   | "version-info"
   | "version"
-  | "subscription-allowed-domains";
+  | "subscription-allowed-domains"
+  | "cloud-gateway-ips";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -143,8 +144,12 @@ class Settings {
     return this.get("email-configured?");
   }
 
-  isHosted() {
+  isHosted(): boolean {
     return this.get("is-hosted?");
+  }
+
+  cloudGatewayIps(): string[] {
+    return this.get("cloud-gateway-ips") || [];
   }
 
   googleAuthEnabled() {

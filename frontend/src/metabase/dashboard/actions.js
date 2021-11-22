@@ -997,7 +997,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         );
 
     open(url, {
-      blankOnMetaKey: true,
+      blankOnMetaOrCtrlKey: true,
       openInSameWindow: url => dispatch(push(url)),
     });
   },

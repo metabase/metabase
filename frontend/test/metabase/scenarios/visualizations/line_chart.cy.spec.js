@@ -1,4 +1,9 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  popover,
+  tooltip,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -123,7 +128,7 @@ describe("scenarios > visualizations > line chart", () => {
       .find(".dot")
       .eq(3)
       .trigger("mousemove", { force: true });
-    popover().within(() => {
+    tooltip().within(() => {
       testPairedTooltipValues("Product → Rating", "2.7");
       testPairedTooltipValues("Count", "191");
       testPairedTooltipValues("Sum of Total", "14,747.05");
@@ -240,13 +245,13 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnYAxisValues();
 
             showTooltipForFirstCircleInSeries(0);
-            popover().within(() => {
+            tooltip().within(() => {
               testPairedTooltipValues("Created At", "2016");
               testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
             });
 
             showTooltipForFirstCircleInSeries(1);
-            popover().within(() => {
+            tooltip().within(() => {
               testPairedTooltipValues("Created At", "2016");
               testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
             });

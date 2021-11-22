@@ -284,6 +284,64 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+        <Box>
+          <Subhead>Waterfall chart with timeseries data and no total</Subhead>
+          <StaticChart
+            type="timeseries/waterfall"
+            options={{
+              data: [
+                ["2020-10-20", 20],
+                ["2020-10-21", 20],
+                ["2020-10-22", 100],
+                ["2020-10-23", -10],
+                ["2020-10-24", 20],
+                ["2020-10-25", -30],
+                ["2020-10-26", -10],
+                ["2020-10-27", 20],
+                ["2020-10-28", -15],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Waterfall chart with categorical data and total</Subhead>
+          <StaticChart
+            type="categorical/waterfall"
+            options={{
+              data: [
+                ["Stage 1", 800],
+                ["Stage 2", 400],
+                ["Stage 3", -300],
+                ["Stage 4", -100],
+                ["Stage 5", -50],
+                ["Stage 6", 200],
+                ["Stage 7", -100],
+                ["Stage 8", 300],
+                ["Stage 9", 100],
+                ["Stage 10", -300],
+              ],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              settings: {
+                showTotal: true,
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );

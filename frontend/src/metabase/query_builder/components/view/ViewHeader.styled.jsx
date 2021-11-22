@@ -12,7 +12,7 @@ export const ViewHeaderContainer = styled(ViewSection)`
 
 export const ViewHeaderMainLeftContentContainer = styled.div`
   display: flex;
-  align-items: ${props => props.align || "center"};
+  align-items: center;
   flex-wrap: wrap;
 `;
 
@@ -20,6 +20,10 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+
+  &:not(:empty) {
+    margin-top: ${space(0)};
+  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
@@ -45,13 +49,7 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
   right: 0.38rem;
 `;
 
-export const ViewSQLButtonContainer = styled.div`
-  margin-left: ${space(2)};
-  padding: ${space(1)};
-
-  cursor: pointer;
-  color: ${color("text-medium")};
-  :hover {
-    color: ${color("brand")};
-  }
+export const DatasetHeaderButtonContainer = styled.div`
+  position: relative;
+  right: 0.3rem;
 `;

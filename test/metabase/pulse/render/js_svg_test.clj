@@ -17,6 +17,12 @@
 
 (def parse-svg #'js-svg/parse-svg-string)
 
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+      (thunk))))
+
 (deftest post-process-test
   (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
@@ -140,6 +146,21 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
+(deftest timelineseries-waterfall-test
+  (let [rows     [[#t "2020" 2]
+                  [#t "2021" 3]]
+        labels   {:left "count" :bottom "year"}
+        settings (json/generate-string {:y {:prefix   "prefix"
+                                            :decimals 4}})]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/timelineseries-waterfall rows labels settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows labels settings))
+          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :timelineseries-waterfall svg-string)))))
+
+
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
               ["bananas" 3]]
@@ -149,3 +170,14 @@
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
       (validate-svg-string :categorical/donut svg-string))))
+
+(deftest categorical-waterfall-test
+  (let [rows     [["apples" 2]
+                  ["bananas" 3]]
+        labels   {:left "bob" :right "dobbs"}
+        settings (json/generate-string {})]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/categorical-waterfall rows labels {})]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings))]
+      (validate-svg-string :categorical/waterfall svg-string))))

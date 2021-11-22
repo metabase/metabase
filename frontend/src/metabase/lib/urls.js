@@ -3,6 +3,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+import { stringifyHashOptions } from "metabase/lib/browser";
 
 function appendSlug(path, slug) {
   return slug ? `${path}-${slug}` : path;
@@ -48,6 +49,8 @@ export function question(card, hash = "", query = "") {
   }
 
   const { card_id, id, name } = card;
+  const basePath =
+    card?.dataset || card?.model === "dataset" ? "dataset" : "question";
 
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
@@ -64,10 +67,10 @@ export function question(card, hash = "", query = "") {
    * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
    */
   if (!name) {
-    return `/question/${questionId}${query}${hash}`;
+    return `/${basePath}/${questionId}${query}${hash}`;
   }
 
-  const path = appendSlug(`/question/${questionId}`, slugg(name));
+  const path = appendSlug(`/${basePath}/${questionId}`, slugg(name));
 
   return `${path}${query}${hash}`;
 }
@@ -88,8 +91,8 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function newQuestion({ mode, ...options } = {}) {
-  const url = Question.create(options).getUrl();
+export function newQuestion({ mode, creationType, ...options } = {}) {
+  const url = Question.create(options).getUrl({ creationType });
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
@@ -97,13 +100,19 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboard, { addCardWithId } = {}) {
+export function dataset(...args) {
+  return question(...args);
+}
+
+export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
+  const options = {
+    ...(addCardWithId ? { add: addCardWithId } : {}),
+    ...(editMode ? { edit: editMode } : {}),
+  };
+
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  return addCardWithId != null
-    ? // NOTE: no-color-literals rule thinks #add is a color, oops
-      // eslint-disable-next-line no-color-literals
-      `/dashboard/${path}#add=${addCardWithId}`
-    : `/dashboard/${path}`;
+  const hash = stringifyHashOptions(options);
+  return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
 }
 
 function prepareModel(item) {
@@ -122,6 +131,8 @@ export function modelToUrl(item) {
   switch (item.model) {
     case "card":
       return question(modelData);
+    case "dataset":
+      return dataset(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "pulse":

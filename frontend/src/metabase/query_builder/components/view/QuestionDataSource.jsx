@@ -1,74 +1,178 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
+import PropTypes from "prop-types";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
+import * as Urls from "metabase/lib/urls";
+import Questions from "metabase/entities/questions";
+import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import { TablesDivider } from "./QuestionDataSource.styled";
 
-import Badge, { MaybeLink } from "metabase/components/Badge";
-
-import { browseDatabase, browseSchema } from "metabase/lib/urls";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import cx from "classnames";
-
-const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
-  const parts = getDataSourceParts({ question, subHead, noLink });
-  return subHead ? (
-    <SubHeadBreadcrumbs parts={parts} {...props} />
-  ) : (
-    <HeadBreadcrumbs parts={parts} {...props} />
-  );
+QuestionDataSource.propTypes = {
+  question: PropTypes.object,
+  originalQuestion: PropTypes.object,
+  subHead: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
 };
+
+function isMaybeBasedOnDataset(question) {
+  const tableId = question.query().sourceTableId();
+  return isVirtualCardId(tableId);
+}
+
+function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
+  if (!question) {
+    return null;
+  }
+
+  const variant = subHead ? "subhead" : "head";
+
+  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
+    return (
+      <DataSourceCrumbs question={question} variant={variant} {...props} />
+    );
+  }
+
+  const sourceTable = question.query().sourceTableId();
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+
+  if (originalQuestion?.id() === sourceQuestionId) {
+    return (
+      <SourceDatasetBreadcrumbs
+        dataset={originalQuestion.card()}
+        variant={variant}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
+      {({ question: sourceQuestion }) => {
+        if (!sourceQuestion) {
+          return null;
+        }
+        if (sourceQuestion.dataset) {
+          return (
+            <SourceDatasetBreadcrumbs
+              dataset={sourceQuestion}
+              variant={variant}
+              {...props}
+            />
+          );
+        }
+        return (
+          <DataSourceCrumbs question={question} variant={variant} {...props} />
+        );
+      }}
+    </Questions.Loader>
+  );
+}
+
+DataSourceCrumbs.propTypes = {
+  question: PropTypes.object,
+  variant: PropTypes.oneOf(["head", "subhead"]),
+  isObjectDetail: PropTypes.bool,
+};
+
+function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
+  const parts = getDataSourceParts({
+    question,
+    subHead: variant === "subhead",
+    isObjectDetail,
+  });
+  return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
+}
+
+SourceDatasetBreadcrumbs.propTypes = {
+  dataset: PropTypes.object.isRequired,
+};
+
+function SourceDatasetBreadcrumbs({ dataset, ...props }) {
+  const { collection } = dataset;
+  return (
+    <HeadBreadcrumbs
+      {...props}
+      parts={[
+        <HeadBreadcrumbs.Badge
+          key="dataset-collection"
+          to={Urls.collection(collection)}
+          icon="dataset"
+          inactiveColor="text-light"
+        >
+          {collection?.name || t`Our analytics`}
+        </HeadBreadcrumbs.Badge>,
+        <HeadBreadcrumbs.Badge
+          key="dataset-name"
+          to={Urls.question(dataset)}
+          inactiveColor="text-light"
+        >
+          {dataset.name}
+        </HeadBreadcrumbs.Badge>,
+      ]}
+    />
+  );
+}
 
 QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
   getDataSourceParts({ question, isObjectDetail }).length > 0;
 
-function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
+function getDataSourceParts({ question, subHead, isObjectDetail }) {
   if (!question) {
     return [];
   }
 
   const parts = [];
 
-  let query = question.query();
-  if (query instanceof StructuredQuery) {
-    query = query.rootQuery();
-  }
+  const isStructuredQuery = question.isStructured();
+  const query = isStructuredQuery
+    ? question.query().rootQuery()
+    : question.query();
 
   const database = query.database();
   if (database) {
     parts.push({
       icon: "database",
       name: database.displayName(),
-      href: !noLink && database.id >= 0 && browseDatabase(database),
+      href: database.id >= 0 && Urls.browseDatabase(database),
     });
   }
 
   const table = query.table();
   if (table && table.hasSchema()) {
-    parts.push({
-      icon: "folder",
-      name: table.schema_name,
-      href: !noLink && database.id >= 0 && browseSchema(table),
-    });
+    const isBasedOnSavedQuestion = isVirtualCardId(table.id);
+    if (!isBasedOnSavedQuestion) {
+      parts.push({
+        name: table.schema_name,
+        href: database.id >= 0 && Urls.browseSchema(table),
+      });
+    }
   }
 
   if (table) {
-    let name = table.displayName();
-    if (query instanceof StructuredQuery) {
-      name = query.joins().reduce((name, join) => {
-        const joinedTable = join.joinedTable();
-        if (joinedTable) {
-          return name + " + " + joinedTable.displayName();
-        } else {
-          return name;
-        }
-      }, name);
+    const hasTableLink = subHead || isObjectDetail;
+    if (!isStructuredQuery) {
+      return {
+        name: table.displayName(),
+        link: hasTableLink ? getTableURL() : "",
+      };
     }
-    parts.push({
-      icon: "table_spaced",
-      name: name,
-      href:
-        !noLink && (subHead || isObjectDetail) && table.newQuestion().getUrl(),
-    });
+
+    const allTables = [
+      table,
+      ...query.joins().map(j => j.joinedTable()),
+    ].filter(Boolean);
+
+    parts.push(
+      <QuestionTableBadges
+        tables={allTables}
+        subHead={subHead}
+        hasLink={hasTableLink}
+        isLast={!isObjectDetail}
+      />,
+    );
   }
 
   if (isObjectDetail) {
@@ -77,38 +181,47 @@ function getDataSourceParts({ question, noLink, subHead, isObjectDetail }) {
     });
   }
 
-  return parts.filter(({ name, icon }) => name || icon);
+  return parts.filter(
+    part => React.isValidElement(part) || part.name || part.icon,
+  );
+}
+
+QuestionTableBadges.propTypes = {
+  tables: PropTypes.arrayOf(PropTypes.object).isRequired,
+  hasLink: PropTypes.bool,
+  subHead: PropTypes.bool,
+  isLast: PropTypes.bool,
+};
+
+function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
+  const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
+
+  const parts = tables.map(table => (
+    <HeadBreadcrumbs.Badge
+      key={table.id}
+      to={hasLink ? getTableURL(table) : ""}
+      inactiveColor={badgeInactiveColor}
+    >
+      {table.displayName()}
+    </HeadBreadcrumbs.Badge>
+  ));
+
+  return (
+    <HeadBreadcrumbs
+      parts={parts}
+      variant={subHead ? "subhead" : "head"}
+      divider={<TablesDivider>+</TablesDivider>}
+      data-testid="question-table-badges"
+    />
+  );
+}
+
+function getTableURL(table) {
+  if (isVirtualCardId(table.id)) {
+    const cardId = getQuestionIdFromVirtualTableId(table.id);
+    return Urls.question({ id: cardId, name: table.displayName() });
+  }
+  return table.newQuestion().getUrl();
 }
 
 export default QuestionDataSource;
-
-const SubHeadBreadcrumbs = ({ parts, className, ...props }) => (
-  <span {...props} className={className}>
-    <span className="flex align-center flex-wrap mbn1">
-      {parts.map(({ name, icon, href }, index) => (
-        <Badge key={index} className="mr2 mb1" icon={{ name: icon }} to={href}>
-          {name}
-        </Badge>
-      ))}
-    </span>
-  </span>
-);
-
-const HeadBreadcrumbs = ({ parts, ...props }) => (
-  <span {...props} className="flex align-center flex-wrap">
-    {parts.map(({ name, icon, href }, index) => [
-      <MaybeLink
-        key={index}
-        to={href}
-        className={cx("flex align-center", href ? "text-medium" : "text-dark")}
-      >
-        {name}
-      </MaybeLink>,
-      index < parts.length - 1 ? (
-        <span key={index + "-divider"} className="mx1 text-light text-smaller">
-          •
-        </span>
-      ) : null,
-    ])}
-  </span>
-);

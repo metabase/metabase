@@ -1,4 +1,11 @@
-import { restore, modal, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  popover,
+  getNotebookStep,
+  openNewCollectionItemFlowFor,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > datasets", () => {
   beforeEach(() => {
@@ -7,15 +14,46 @@ describe("scenarios > datasets", () => {
   });
 
   it("allows to turn a question into a dataset", () => {
+    cy.request("PUT", "/api/card/1", { name: "Orders Dataset" });
     cy.visit("/question/1");
 
     turnIntoDataset();
     assertIsDataset();
 
-    cy.findByText("Our analytics").click();
-    getCollectionItemRow("Orders").within(() => {
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.findByText("Filter").click();
+    });
+    selectDimensionOptionFromSidebar("Discount");
+    cy.findByText("Equal to").click();
+    selectFromDropdown("Not empty");
+    cy.button("Add filter").click();
+
+    assertQuestionIsBasedOnDataset({
+      dataset: "Orders Dataset",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+
+    assertQuestionIsBasedOnDataset({
+      questionName: "Q1",
+      dataset: "Orders Dataset",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    cy.findAllByText("Our analytics")
+      .first()
+      .click();
+    getCollectionItemRow("Orders Dataset").within(() => {
       cy.icon("dataset");
     });
+    getCollectionItemRow("Q1").within(() => {
+      cy.icon("table");
+    });
+
+    cy.url().should("not.include", "/question/1");
   });
 
   it("changes dataset's display to table", () => {
@@ -45,7 +83,7 @@ describe("scenarios > datasets", () => {
   it("allows to turn a dataset back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/question/1");
+    cy.visit("/dataset/1");
 
     openDetailsSidebar();
     cy.findByText("Turn back into a saved question").click();
@@ -57,6 +95,19 @@ describe("scenarios > datasets", () => {
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     assertIsDataset();
+  });
+
+  it("shows 404 when opening a question with a /dataset URL", () => {
+    cy.visit("/dataset/1");
+    cy.findByText(/We're a little lost/i);
+  });
+
+  it("redirects to /dataset URL when opening a dataset with /question URL", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/question/1");
+    openDetailsSidebar();
+    assertIsDataset();
+    cy.url().should("include", "/dataset");
   });
 
   describe("data picker", () => {
@@ -151,13 +202,326 @@ describe("scenarios > datasets", () => {
       cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
     });
   });
+
+  describe("simple mode", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", {
+        name: "Orders Dataset",
+        dataset: true,
+      });
+    });
+
+    it("can create a question by filtering and summarizing a dataset", () => {
+      cy.visit("/question/1");
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Filter").click();
+      });
+      selectDimensionOptionFromSidebar("Discount");
+      cy.findByText("Equal to").click();
+      selectFromDropdown("Not empty");
+      cy.button("Add filter").click();
+
+      assertQuestionIsBasedOnDataset({
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Summarize").click();
+      });
+      selectDimensionOptionFromSidebar("Created At");
+      cy.button("Done").click();
+
+      assertQuestionIsBasedOnDataset({
+        questionName: "Count by Created At: Month",
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+
+      assertQuestionIsBasedOnDataset({
+        questionName: "Q1",
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      cy.url().should("not.include", "/question/1");
+    });
+
+    it("can create a question using table click actions", () => {
+      cy.visit("/question/1");
+
+      cy.findByText("Subtotal").click();
+      selectFromDropdown("Sum over time");
+
+      assertQuestionIsBasedOnDataset({
+        questionName: "Sum of Subtotal by Created At: Month",
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+
+      assertQuestionIsBasedOnDataset({
+        questionName: "Q1",
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      cy.url().should("not.include", "/question/1");
+    });
+
+    it("can edit dataset info", () => {
+      cy.intercept("PUT", "/api/card/1").as("updateCard");
+      cy.visit("/question/1");
+
+      openDetailsSidebar();
+      getDetailsSidebarActions().within(() => {
+        cy.icon("pencil").click();
+      });
+      modal().within(() => {
+        cy.findByLabelText("Name")
+          .clear()
+          .type("D1");
+        cy.findByLabelText("Description")
+          .clear()
+          .type("Some helpful dataset description");
+        cy.button("Save").click();
+      });
+      cy.wait("@updateCard");
+
+      cy.findByText("D1");
+      cy.findByText("Some helpful dataset description");
+    });
+  });
+
+  describe("adding a question to collection from its page", () => {
+    it("should offer to pick one of the collection's datasets by default", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("Orders");
+      cy.findByText("Orders, Count");
+      cy.findByText("All data");
+
+      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+      cy.findByText("Saved Questions").should("not.exist");
+      cy.findByText("Sample Dataset").should("not.exist");
+
+      cy.findByText("Orders").click();
+
+      getNotebookStep("data").within(() => {
+        cy.findByText("Orders");
+      });
+
+      cy.button("Visualize");
+    });
+
+    it("should open the default picker after clicking 'All data'", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").click({ force: true });
+
+      cy.findByText("Datasets");
+      cy.findByText("Raw Data");
+      cy.findByText("Saved Questions");
+    });
+
+    it("should automatically use the only collection dataset as a data source", () => {
+      cy.request("PUT", "/api/card/2", { dataset: true });
+
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      getNotebookStep("data").within(() => {
+        cy.findByText("Orders, Count");
+      });
+      cy.button("Visualize");
+    });
+
+    it("should use correct picker if collection has no datasets", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+
+      cy.visit("/collection/9");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").should("not.exist");
+      cy.findByText("Datasets");
+      cy.findByText("Raw Data");
+      cy.findByText("Saved Questions");
+    });
+
+    it("should use correct picker if there are datasets at all", () => {
+      cy.visit("/collection/root");
+      openNewCollectionItemFlowFor("question");
+
+      cy.findByText("All data").should("not.exist");
+      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+
+      cy.findByText("Saved Questions");
+      cy.findByText("Sample Dataset");
+    });
+  });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/3", {
+        name: "Orders Dataset",
+        dataset: true,
+      });
+      cy.intercept("PUT", "/api/card/3").as("updateCard");
+      cy.intercept("POST", "/api/revision/revert").as("revertToRevision");
+    });
+
+    it("should allow reverting to a saved question state", () => {
+      cy.visit("/question/3");
+      openDetailsSidebar();
+      assertIsDataset();
+
+      cy.findByText("History").click();
+      cy.button("Revert").click();
+      cy.wait("@revertToRevision");
+
+      assertIsQuestion();
+      cy.get(".LineAreaBarChart");
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Filter").click();
+      });
+      selectDimensionOptionFromSidebar("Discount");
+      cy.findByText("Equal to").click();
+      selectFromDropdown("Not empty");
+      cy.button("Add filter").click();
+
+      cy.findByText("Save").click();
+      modal().within(() => {
+        cy.findByText(/Replace original question/i);
+      });
+    });
+
+    it("should allow reverting to a dataset state", () => {
+      cy.request("PUT", "/api/card/3", { dataset: false });
+
+      cy.visit("/question/3");
+      openDetailsSidebar();
+      assertIsQuestion();
+
+      cy.findByText("History").click();
+      cy.findByText(/Turned this into a dataset/i)
+        .closest("li")
+        .within(() => {
+          cy.button("Revert").click();
+        });
+      cy.wait("@revertToRevision");
+
+      assertIsDataset();
+      cy.get(".LineAreaBarChart").should("not.exist");
+
+      cy.findByTestId("qb-header-action-panel").within(() => {
+        cy.findByText("Filter").click();
+      });
+      selectDimensionOptionFromSidebar("Count");
+      cy.findByText("Equal to").click();
+      selectFromDropdown("Greater than");
+      cy.findByPlaceholderText("Enter a number").type("2000");
+      cy.button("Add filter").click();
+
+      assertQuestionIsBasedOnDataset({
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      saveQuestionBasedOnDataset({ datasetId: 3, name: "Q1" });
+
+      assertQuestionIsBasedOnDataset({
+        questionName: "Q1",
+        dataset: "Orders Dataset",
+        collection: "Our analytics",
+        table: "Orders",
+      });
+
+      cy.url().should("not.include", "/question/3");
+    });
+  });
 });
+
+function assertQuestionIsBasedOnDataset({
+  questionName,
+  collection,
+  dataset,
+  table,
+}) {
+  if (questionName) {
+    cy.findByText(questionName);
+  }
+
+  // Asserts shows dataset and its collection names
+  // instead of db + table
+  cy.findAllByText(collection);
+  cy.findByText(dataset);
+
+  cy.findByText("Sample Dataset").should("not.exist");
+  cy.findByText(table).should("not.exist");
+}
+
+function assertCreatedNestedQuery(datasetId) {
+  cy.wait("@createCard").then(({ request }) => {
+    expect(request.body.dataset_query.query["source-table"]).to.equal(
+      `card__${datasetId}`,
+    );
+  });
+}
+
+function saveQuestionBasedOnDataset({ datasetId, name }) {
+  cy.intercept("POST", "/api/card").as("createCard");
+
+  cy.findByText("Save").click();
+
+  modal().within(() => {
+    cy.findByText(/Replace original question/i).should("not.exist");
+    if (name) {
+      cy.findByLabelText("Name")
+        .clear()
+        .type(name);
+    }
+    cy.findByText("Save").click();
+  });
+
+  assertCreatedNestedQuery(datasetId);
+
+  modal()
+    .findByText("Not now")
+    .click();
+}
+
+function selectDimensionOptionFromSidebar(name) {
+  cy.get("[data-testid=dimension-list-item]")
+    .contains(name)
+    .click();
+}
 
 function openDetailsSidebar() {
   cy.findByTestId("saved-question-header-button").click();
 }
 
-function getDetailsSidebarActions(iconName) {
+function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
@@ -167,6 +531,7 @@ function assertIsDataset() {
     cy.icon("dataset").should("not.exist");
   });
   cy.findByText("Dataset management");
+  cy.findByText("Sample Dataset").should("not.exist");
 }
 
 // Requires question details sidebar to be open
@@ -175,6 +540,7 @@ function assertIsQuestion() {
     cy.icon("dataset");
   });
   cy.findByText("Dataset management").should("not.exist");
+  cy.findByText("Sample Dataset");
 }
 
 function turnIntoDataset() {

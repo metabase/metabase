@@ -54,29 +54,6 @@ describe("table entity", () => {
       });
     });
 
-    it("should update virtual questions", () => {
-      const { question, virtualTable } = getQuestion();
-
-      const nextState = Tables.reducer(
-        {
-          [virtualTable.id]: virtualTable,
-        },
-        getUpdateAction({
-          ...question,
-          name: "New name",
-          description: "New description",
-        }),
-      );
-
-      expect(nextState).toEqual({
-        [virtualTable.id]: {
-          ...virtualTable,
-          display_name: "New name",
-          description: "New description",
-        },
-      });
-    });
-
     it("should remove saved question from state when archived", () => {
       const { question, virtualTable } = getQuestion({ archived: true });
 

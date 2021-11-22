@@ -18,6 +18,7 @@ import colors from "metabase/lib/colors";
 import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 
 import {
+  KEYCODE_TAB,
   KEYCODE_ENTER,
   KEYCODE_ESCAPE,
   KEYCODE_LEFT,
@@ -192,7 +193,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       return;
     }
 
-    if (e.keyCode === KEYCODE_ENTER) {
+    if (e.keyCode === KEYCODE_ENTER || e.keyCode === KEYCODE_TAB) {
       this.onSuggestionSelected(highlightedSuggestionIndex);
       e.preventDefault();
     } else if (e.keyCode === KEYCODE_UP) {

@@ -139,6 +139,7 @@ export default class Question {
   static create({
     databaseId,
     tableId,
+    collectionId,
     metadata,
     parameterValues,
     type = "query",
@@ -161,6 +162,7 @@ export default class Question {
   } = {}) {
     let card: CardObject = {
       name,
+      collection_id: collectionId,
       display,
       visualization_settings,
       dataset_query,
@@ -440,6 +442,10 @@ export default class Question {
     return this.datasetQuery().type;
   }
 
+  creationType(): string {
+    return this.card().creationType;
+  }
+
   isEmpty(): boolean {
     return this.query().isEmpty();
   }
@@ -544,6 +550,19 @@ export default class Question {
       };
       return this.setCard(card);
     }
+  }
+
+  composeDataset() {
+    if (!this.isStructured() || !this.isDataset()) {
+      return this;
+    }
+    return this.setDatasetQuery({
+      type: "query",
+      database: this.databaseId(),
+      query: {
+        "source-table": "card__" + this.id(),
+      },
+    });
   }
 
   drillPK(field: Field, value: Value): ?Question {
@@ -829,11 +848,13 @@ export default class Question {
     clean = true,
     query,
     includeDisplayIsLocked,
+    creationType,
   }: {
     originalQuestion?: Question,
     clean?: boolean,
     query?: { [string]: any },
     includeDisplayIsLocked?: boolean,
+    creationType: string,
   } = {}): string {
     if (
       !this.id() ||
@@ -841,7 +862,7 @@ export default class Question {
     ) {
       return Urls.question(
         null,
-        this._serializeForUrl({ clean, includeDisplayIsLocked }),
+        this._serializeForUrl({ clean, includeDisplayIsLocked, creationType }),
         query,
       );
     } else {
@@ -1005,9 +1026,13 @@ export default class Question {
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
-  async reduxUpdate(dispatch) {
+  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
+    const fullCard = this.card();
+    const card = excludeDatasetQuery
+      ? _.omit(fullCard, "dataset_query")
+      : fullCard;
     const action = await dispatch(
-      Questions.actions.update({ id: this.id() }, this.card()),
+      Questions.actions.update({ id: this.id() }, card),
     );
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
@@ -1060,12 +1085,14 @@ export default class Question {
     includeOriginalCardId = true,
     clean = true,
     includeDisplayIsLocked = false,
+    creationType,
   } = {}) {
     const query = clean ? this.query().clean() : this.query();
 
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
+      collection_id: this._card.collection_id,
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
@@ -1081,6 +1108,7 @@ export default class Question {
             displayIsLocked: this._card.displayIsLocked,
           }
         : {}),
+      ...(creationType ? { creationType } : {}),
     };
 
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));

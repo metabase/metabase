@@ -268,6 +268,10 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
-          (qp query rff context))
+        (let [dataset? (db/select-one-field :dataset Card :id card-id)]
+          (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
+            (qp query
+                (fn [metadata]
+                  (rff (cond-> metadata dataset? (assoc :dataset dataset?))))
+                context)))
         (qp query rff context)))))

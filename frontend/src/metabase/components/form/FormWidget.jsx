@@ -3,6 +3,7 @@ import React from "react";
 
 import { PLUGIN_FORM_WIDGETS } from "metabase/plugins";
 
+import FormEmptyWidget from "./widgets/FormEmptyWidget";
 import FormInputWidget from "./widgets/FormInputWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
 import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
@@ -18,6 +19,7 @@ import FormHiddenWidget from "./widgets/FormHiddenWidget";
 import FormTextFileWidget from "./widgets/FormTextFileWidget";
 
 const WIDGETS = {
+  empty: FormEmptyWidget,
   input: FormInputWidget,
   email: FormEmailWidget,
   text: FormTextAreaWidget,

@@ -79,8 +79,9 @@
     (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
           possible-secret-prop-names (keys (conn-props->secret-props-by-name conn-props))]
       (doseq [secret-id (reduce (fn [acc prop-name]
-                                  (when-let [secret-id (get details (keyword (str prop-name "-id")))]
-                                    (conj acc secret-id)))
+                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)
+                                    acc))
                                 []
                                 possible-secret-prop-names)]
         (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
@@ -105,22 +106,18 @@
   each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
   (or update an existing) Secret instance and point to the inserted -id instead."
   [database details conn-prop-nm conn-prop]
-  (let [sub-prop  (fn [suffix]
-                    (keyword (str conn-prop-nm suffix)))
-        id-kw     (sub-prop "-id")
-        new-name  (format "%s for %s" (:display-name conn-prop) (:name database))
+  (let [sub-prop   (fn [suffix]
+                     (keyword (str conn-prop-nm suffix)))
+        id-kw      (sub-prop "-id")
+        value-kw   (sub-prop "-value")
+        new-name   (format "%s for %s" (:display-name conn-prop) (:name database))
+        kind       (:secret-kind conn-prop)
         ;; in the future, when secret values can simply be changed by passing
         ;; in a new ID (as opposed to a new value), this behavior will change,
         ;; but for now, we should simply look for the value
-        path-kw   (sub-prop "-path")
-        value-kw  (sub-prop "-value")
-        value     (if-let [v (value-kw details)]     ; the -value suffix was specified; use that
-                    v
-                    (when-let [path (path-kw details)] ; the -path suffix was specified; this is actually a :file-path
-                      path))
-        kind      (:secret-kind conn-prop)
-        source    (when (path-kw details)
-                    :file-path)]                     ; set the :source due to the -path suffix (see above)
+        secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
+        value      (:value secret-map)
+        source     (:source secret-map)]                     ; set the :source due to the -path suffix (see above)
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
       (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
@@ -131,9 +128,9 @@
                                                  value)]
         ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
         (-> details
-          (dissoc value-kw)
+          (dissoc value-kw (sub-prop "-path"))
           (assoc id-kw id)
-          (assoc (sub-prop "-source") source)
+          (assoc (sub-prop "-source") source) ; TODO: figure out why this is needed
           (assoc (sub-prop "-creator-id") creator_id)
           (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
 

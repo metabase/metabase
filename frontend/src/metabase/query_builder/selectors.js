@@ -20,6 +20,7 @@ import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import Databases from "metabase/entities/databases";
 
@@ -491,4 +492,25 @@ export const getIsLiveResizable = createSelector(
 export const getQuestionDetailsTimelineDrawerState = createSelector(
   [getUiControls],
   uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
+);
+
+export const getSourceTable = createSelector(
+  [getQuestion],
+  question => {
+    const query = question.isStructured()
+      ? question.query().rootQuery()
+      : question.query();
+    return query.table();
+  },
+);
+
+export const isBasedOnExistingQuestion = createSelector(
+  [getSourceTable, getOriginalQuestion],
+  (sourceTable, originalQuestion) => {
+    if (sourceTable != null) {
+      return isVirtualCardId(sourceTable.id);
+    } else {
+      return originalQuestion != null;
+    }
+  },
 );
