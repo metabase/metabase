@@ -488,11 +488,11 @@ commands:
   wait-for-databases:
     steps:
       - wait-for-port:
-          port: 3306
+          port: 3306 # mysql
       - wait-for-port:
-          port: 5432
+          port: 5432 # postgres
       - wait-for-port:
-          port: 27017
+          port: 27017 # mongo
 
   fetch-jdbc-driver:
     parameters:
