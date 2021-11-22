@@ -213,14 +213,14 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should send snowplow events", () => {
-    // 1 - page view
+    // 1 - pageview
     cy.visit(`/setup`);
 
-    // 2 - setup / step seen
+    // 2 - setup/step_seen
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
 
-    // 3 - setup / step seen
+    // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
     expectGoodSnowplowEvents(3);
