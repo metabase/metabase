@@ -146,7 +146,9 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     if (suggestion) {
       const { tokens } = tokenize(source);
+      const { editor } = this.input.current;
       const token = tokens.find(t => t.end >= suggestion.index);
+
       if (token) {
         const prefix = source.slice(0, token.start);
         const postfix = source.slice(token.end);
@@ -162,13 +164,14 @@ export default class ExpressionEditorTextfield extends React.Component {
         const updatedExpression = prefix + replacement.trim() + postfix;
         this.onExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
-        setTimeout(() => {
-          this._setCaretPosition(caretPos, true);
-        });
+
+        const { row } = editor.getCursorPosition();
+        editor.moveCursorTo(row, caretPos);
       } else {
         const newExpression = source + suggestion.text;
         this.onExpressionChange(newExpression);
-        setTimeout(() => this._setCaretPosition(newExpression.length, true));
+        const { row } = editor.getCursorPosition();
+        this.input.current.editor.moveCursorTo(row, newExpression.length);
       }
     }
   };
