@@ -49,7 +49,7 @@ function timeseries_bar(data, labels, settings) {
 
 function timeseries_multiple(series, labels, settings) {
   return StaticViz.RenderChart("timeseries/multiple", {
-    series: toJSArray(series).map(toJSMap),
+    series: JSON.parse(series),
     labels: toJSMap(labels),
     accessors: date_accessors,
     settings: JSON.parse(settings),

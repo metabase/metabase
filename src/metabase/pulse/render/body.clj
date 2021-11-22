@@ -407,33 +407,26 @@
   (let [multi-res     (pu/execute-multi-card card)
         ;; we shove them all together for uniformity's sake
         cards         (cons card (map :card multi-res))
-        multi-data  (cons data (map #(get-in % [:result :data]) multi-res))
-        rowfns        (for [card cards
-                            data multi-data]
-                        (common/graphing-column-row-fns card data))
-        row-iters     (for [data              multi-data
-                            [x-rowfn y-rowfn] rowfns]
-                        (mapv (juxt x-rowfn y-rowfn)
-                             (common/non-nil-rows x-rowfn y-rowfn (:rows data))))
+        multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
+        rowfns        (mapv common/graphing-column-row-fns cards multi-data)
+        ;; this doesn't currently actually select the columns in row...
+        row-iters     (map :rows multi-data)
         col-iters     (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-iters))
         labels        (x-and-y-axis-label-info x-col y-col viz-settings)
         names         (map :name cards)
-        colors        (map #(get-in % [:viz-settings :color]) multi-data)
+        colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->js-viz x-col y-col viz-settings)
         series        (vec (for [card-name  names
                                  card-color colors
                                  card-type  types
                                  rows       row-iters]
-                             {:name card-name
+                             {:name  card-name
                               :color card-color
-                              :type card-type
-                              :rows rows}))
-        bob        (println "==============\n\n\n\n")
-        bob        (println series)
-        bob        (println "==============\n\n\n\n")
+                              :type  card-type
+                              :rows  rows}))
         image-bundle  (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/timelineseries-multiple series labels settings))]
