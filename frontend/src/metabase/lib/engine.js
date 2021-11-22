@@ -61,7 +61,7 @@ export function getElevatedEngines() {
     "postgres",
     "sqlserver",
     "redshift",
-    "bigquery",
+    "bigquery-cloud-sdk",
     "snowflake",
   ];
 }
