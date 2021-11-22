@@ -83,7 +83,7 @@ describe("scenarios > datasets", () => {
   it("allows to turn a dataset back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/question/1");
+    cy.visit("/dataset/1");
 
     openDetailsSidebar();
     cy.findByText("Turn back into a saved question").click();
@@ -95,6 +95,19 @@ describe("scenarios > datasets", () => {
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     assertIsDataset();
+  });
+
+  it("shows 404 when opening a question with a /dataset URL", () => {
+    cy.visit("/dataset/1");
+    cy.findByText(/We're a little lost/i);
+  });
+
+  it("redirects to /dataset URL when opening a dataset with /question URL", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/question/1");
+    openDetailsSidebar();
+    assertIsDataset();
+    cy.url().should("include", "/dataset");
   });
 
   describe("data picker", () => {
@@ -508,7 +521,7 @@ function openDetailsSidebar() {
   cy.findByTestId("saved-question-header-button").click();
 }
 
-function getDetailsSidebarActions(iconName) {
+function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
