@@ -15,7 +15,7 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
     title: t`Use an SSH-tunnel`,
-    description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
+    description: t`If a direct connection to your database isn't possible, you may want to use an SSH tunnel.`,
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
