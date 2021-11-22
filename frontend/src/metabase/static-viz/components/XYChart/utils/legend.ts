@@ -48,15 +48,28 @@ export const calculateLegendItems = (
 ) => {
   const columnWidth = width / 2
   const maxTextWidth = columnWidth - LEGEND_TEXT_MARGIN * 2;
-  const [leftColumn, rightColumn] = partitionByYAxis(series).map(columnSeries =>
-    calculateLegendColumn(columnSeries, maxTextWidth, lineHeight),
-  );
+  const [leftSeries, rightSeries] = partitionByYAxis(series);
+
+  if (leftSeries?.length > 0 && rightSeries?.length > 0) {
+    const leftColumn = calculateLegendColumn(leftSeries, maxTextWidth, lineHeight)
+    const rightColumn = calculateLegendColumn(rightSeries, maxTextWidth, lineHeight)
+
+    return {
+      leftItems: leftColumn.items,
+      rightItems: rightColumn.items,
+      height: Math.max(leftColumn.columnHeight, rightColumn.columnHeight),
+      columnWidth,
+      maxTextWidth,
+    }
+  }
+
+  const singleColumnSeries = leftSeries?.length > 0 ? leftSeries : rightSeries
+  const singleColumnTextWidth = width - LEGEND_TEXT_MARGIN * 2
+  const leftColumn = calculateLegendColumn(singleColumnSeries, singleColumnTextWidth, lineHeight);
 
   return {
-    leftItems: leftColumn?.items,
-    rightItems: rightColumn?.items,
-    height: Math.max(leftColumn?.columnHeight, rightColumn?.columnHeight),
-    columnWidth,
-    maxTextWidth,
+    leftItems: leftColumn.items,
+    height: leftColumn.columnHeight,
+    maxTextWidth: singleColumnTextWidth
   }
 };
