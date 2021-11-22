@@ -1,6 +1,7 @@
 import {
   blockSnowplow,
   describeWithSnowplow,
+  expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
@@ -207,17 +208,25 @@ describeWithSnowplow("scenarios > setup", () => {
     resetSnowplow();
   });
 
-  it("should send page view events", () => {
-    cy.visit(`/setup`);
-
-    cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started").click();
-    cy.findByText("What's your preferred language?");
-
+  afterEach(() => {
     expectNoBadSnowplowEvents();
   });
 
-  it("should ignore snowplow failures", () => {
+  it("should send snowplow events", () => {
+    // 1 - page view
+    cy.visit(`/setup`);
+
+    // 2 - setup / step seen
+    cy.findByText("Welcome to Metabase");
+    cy.findByText("Let's get started").click();
+
+    // 3 - setup / step seen
+    cy.findByText("What's your preferred language?");
+
+    expectGoodSnowplowEvents(3);
+  });
+
+  it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
     cy.visit(`/setup`);
 
@@ -225,6 +234,6 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
-    expectNoBadSnowplowEvents();
+    expectGoodSnowplowEvents(0);
   });
 });
