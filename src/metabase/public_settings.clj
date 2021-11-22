@@ -77,37 +77,6 @@
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :getter     #(uuid-nonce :site-uuid))
 
-(defsetting analytics-uuid
-  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
-       " "
-       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
-  :visibility :public
-  :setter     :none
-  :getter     #(uuid-nonce :analytics-uuid))
-
-(defn- first-user-creation
-  "Returns the timestamp at which the first user was created."
-  []
-  (:min (db/select-one ['User [:%min.date_joined :min]])))
-
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.2), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                     (java-time/offset-date-time)))
-                      ;; Resolve analytics ns here to avoid circular dependency
-                      (classloader/require 'metabase.analytics.snowplow)
-                      ((resolve 'metabase.analytics.snowplow/track-event) :new_instance_created)
-                      (setting/get-timestamp :instance-creation)))))
-
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
         s (str/replace s #"/$" "")
@@ -120,7 +89,6 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
->>>>>>> 44e6948e46 (remove debugging code)
 (declare redirect-all-requests-to-https)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
