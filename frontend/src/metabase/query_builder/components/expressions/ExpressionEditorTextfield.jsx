@@ -173,14 +173,50 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
+  handleArrowUp = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.setState({
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length - 1) %
+          suggestions.length,
+      });
+    } else {
+      this.input.current.editor.navigateLineEnd();
+    }
+  };
+
+  handleArrowDown = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.setState({
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length + 1) %
+          suggestions.length,
+      });
+    } else {
+      this.input.current.editor.navigateLineEnd();
+    }
+  };
+
+  handleEnter = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.onSuggestionSelected(highlightedSuggestionIndex);
+    }
+  };
+
   onInputKeyDown = e => {
-    console.log("🚀", "here");
     const { suggestions, highlightedSuggestionIndex } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
       setTimeout(() => this._triggerAutosuggest());
       return;
     }
+
     if (e.keyCode === KEYCODE_ESCAPE) {
       e.stopPropagation();
       e.preventDefault();
@@ -323,20 +359,24 @@ export default class ExpressionEditorTextfield extends React.Component {
         <AceEditor
           commands={[
             {
-              name: "commandName",
-              bindKey: { win: "ArrowDown", mac: "ArrowDown" },
+              name: "arrowDown",
+              bindKey: { win: "Down", mac: "Down" },
               exec: () => {
-                console.log("🚀, key-binding used");
+                this.handleArrowDown();
               },
             },
             {
-              name: "save",
-              bindKey: {
-                win: "Ctrl-enter",
-                mac: "Cmd-enter",
-              },
+              name: "arrowUp",
+              bindKey: { win: "Up", mac: "Up" },
               exec: () => {
-                console.log("🚀, key-binding used ctrl-enter");
+                this.handleArrowUp();
+              },
+            },
+            {
+              name: "enter",
+              bindKey: { win: "Enter", mac: "Enter" },
+              exec: () => {
+                this.handleEnter();
               },
             },
           ]}
@@ -347,7 +387,6 @@ export default class ExpressionEditorTextfield extends React.Component {
           wrapEnabled={true}
           fontSize={16}
           onBlur={this.handleEditorBlur}
-          onInput={this.onInputKeyDown}
           onFocus={this.handleEditorFocus}
           setOptions={{
             indentedSoftWrap: false,
