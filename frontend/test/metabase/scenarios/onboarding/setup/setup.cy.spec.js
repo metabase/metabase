@@ -224,5 +224,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
     cy.findByText("What's your preferred language?");
+
+    expectNoBadSnowplowEvents();
   });
 });
