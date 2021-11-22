@@ -31,7 +31,7 @@
        (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
   :default    config/is-prod?
-  :visibliity :public)
+  :visibility :public)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
