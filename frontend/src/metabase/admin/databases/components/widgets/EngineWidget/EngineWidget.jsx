@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import { getEngineLogo } from "metabase/lib/engine";
+import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/components/ExternalLink";
 import {
@@ -148,7 +149,7 @@ const EngineEmptyState = ({ isHosted }) => {
         <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-          <ExternalLink href="https://www.metabase.com/docs/latest/developers-guide-drivers.html">
+          <ExternalLink href={Settings.docsUrl("developers-guide-drivers")}>
             {t`Community Drivers`}
           </ExternalLink>
         )} page to see if it’s available for self-hosting.`}</EngineEmptyText>

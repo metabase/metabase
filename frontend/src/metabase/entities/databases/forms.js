@@ -15,7 +15,7 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
     title: t`Use an SSH-tunnel`,
-    description: t`If a direct connection to your database isn't possible, you may want to use an SSH tunnel.`,
+    description: getSshDescription(),
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
@@ -118,6 +118,21 @@ export const DEFAULT_SCHEDULES = {
 
 function concatTrimmed(a, b) {
   return (a || "").trim() + (b || "").trim();
+}
+
+function getSshDescription() {
+  const link = (
+    <ExternalLink
+      className="link"
+      href={MetabaseSettings.docsUrl(
+        "administration-guide/ssh-tunnel-for-database-connections",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
 }
 
 function getClientIdDescription(engine, details) {
