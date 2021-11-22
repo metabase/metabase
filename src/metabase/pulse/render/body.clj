@@ -433,8 +433,15 @@
                               :rows rows}))
         image-bundle  (image-bundle/make-image-bundle
                                      render-type
-                                     (js-svg/multiple series labels settings))]
-  {:attachments nil :content [:div "bob"]}))
+                                     (js-svg/timelineseries-multiple series labels settings))]
+  {:attachments
+   (when image-bundle
+     (image-bundle/image-bundle->attachment image-bundle))
+   :content
+   [:div
+    [:img {:style (style/style {:display :block
+                                :width   :100%})
+           :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
