@@ -29,15 +29,16 @@
   (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
        " "
        (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
-  :type :boolean
-  :default config/is-prod?)
+  :type       :boolean
+  :default    config/is-prod?
+  :visibliity :public)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
-  :default (if config/is-prod?
-             "https://sp.metabase.com"
-             ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
-             "http://localhost:9095")
+  :default    (if config/is-prod?
+                "https://sp.metabase.com"
+                ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
+                "http://localhost:9095")
   :visibility :public)
 
 (def ^:private emitter
@@ -103,22 +104,23 @@
   [tracker event]
   (.track ^Tracker tracker ^Unstructured event))
 
-(def ^:private schema-version
-  "The most recent version for each event schema"
+(def ^:private schema->version
+  "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
+  to SnowcatCloud, at the same time that the data sent to the collector is updated."
   {::account   "1-0-0"
    ::invite    "1-0-0"
    ::dashboard "1-0-0"
    ::database  "1-0-0"})
 
-;; Snowplow analytics interface
-
-(derive ::new-instance-created           ::account)
-(derive ::new-user-created               ::account)
-(derive ::invite-sent                    ::invite)
-(derive ::dashboard-created              ::dashboard)
-(derive ::question-added-to-dashboard    ::dashboard)
-(derive ::database-connection-successful ::database)
-(derive ::database-connection-failed     ::database)
+(def ^:private event->schema
+  "The schema to use for each analytics event."
+  {::new-instance-created           ::account
+   ::new-user-created               ::account
+   ::invite-sent                    ::invite
+   ::dashboard-created              ::dashboard
+   ::question-added-to-dashboard    ::dashboard
+   ::database-connection-successful ::database
+   ::database-connection-failed     ::database})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
@@ -126,9 +128,9 @@
   [event-kw & [user-id data]]
   (when (and (public-settings/anon-tracking-enabled) (snowplow-available))
     (try
-      (let [schema (-> event-kw parents first)
+      (let [schema (event->schema event-kw)
             ^Unstructured$Builder builder (-> (. Unstructured builder)
-                                              (.eventData (payload schema (schema-version schema) event-kw data))
+                                              (.eventData (payload schema (schema->version schema) event-kw data))
                                               (.customContext [(context)]))
             ^Unstructured$Builder builder' (set-subject builder user-id)
             ^Unstructured event (.build builder')]
