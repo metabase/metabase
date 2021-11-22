@@ -161,16 +161,17 @@ export default class DatabaseConnectionStep extends Component {
                 {formFields.map(({ name }) => (
                   <FormField key={name} name={name} />
                 ))}
-                {values.engine && <FormFooter submitTitle={t`Next`} />}
+                {
+                  <FormFooter
+                    isReverse={true}
+                    submitTitle={t`Connect database`}
+                    cancelTitle={t`Skip`}
+                    onCancel={this.skipDatabase}
+                  />
+                }
               </Form>
             )}
           </Databases.Form>
-
-          <div className="mt3">
-            <a className="link" onClick={this.skipDatabase}>
-              {t`I'll add my data later`}
-            </a>
-          </div>
         </Box>
       );
     }

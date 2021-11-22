@@ -14,7 +14,7 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
-    title: t`Use an SSH-tunnel for database connections`,
+    title: t`Use an SSH-tunnel`,
     description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
   "use-jvm-timezone": () => ({
@@ -406,7 +406,7 @@ forms.setup = {
       ...field,
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
     })),
 };
 
@@ -431,6 +431,12 @@ forms.scheduling = {
 const SCHEDULING_FIELDS = new Set([
   "schedules.metadata_sync",
   "schedules.cache_field_values",
+]);
+
+const ADVANCED_FIELDS = new Set([
+  "auto_run_queries",
+  "details.let-user-control-scheduling",
+  ...SCHEDULING_FIELDS,
 ]);
 
 export default forms;
