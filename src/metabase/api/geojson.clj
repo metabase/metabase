@@ -40,8 +40,11 @@
 
 (defn- valid-host?
   [^URL url]
-  (let [host (.getHost url)]
-    (and (not (invalid-hosts host))
+  (let [host (.getHost url)
+        host->url (fn [host] (URL. (str "http://" host)))
+        base-url  (host->url (.getHost url))]
+    (and (not-any? (fn [invalid-url] (.equals base-url invalid-url))
+                   (map host->url invalid-hosts))
          (not (.isLinkLocalAddress (InetAddress/getByName host))))))
 
 (defn- valid-protocol?
