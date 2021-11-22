@@ -8,9 +8,8 @@
             [ring.util.codec :as rc]
             [ring.util.response :as rr]
             [schema.core :as s])
-  (:import java.net.URL
-           org.apache.commons.io.input.ReaderInputStream
-           java.net.InetAddress))
+  (:import [java.net InetAddress URL]
+           org.apache.commons.io.input.ReaderInputStream))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     su/NonBlankString
