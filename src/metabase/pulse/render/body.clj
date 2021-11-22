@@ -413,7 +413,7 @@
                         (common/graphing-column-row-fns card data))
         row-iters     (for [data              multi-data
                             [x-rowfn y-rowfn] rowfns]
-                        (map (juxt x-rowfn y-rowfn)
+                        (mapv (juxt x-rowfn y-rowfn)
                              (common/non-nil-rows x-rowfn y-rowfn (:rows data))))
         col-iters     (map :cols multi-data)
         first-rowfns  (first rowfns)
@@ -431,6 +431,9 @@
                               :color card-color
                               :type card-type
                               :rows rows}))
+        bob        (println "==============\n\n\n\n")
+        bob        (println series)
+        bob        (println "==============\n\n\n\n")
         image-bundle  (image-bundle/make-image-bundle
                                      render-type
                                      (js-svg/timelineseries-multiple series labels settings))]
