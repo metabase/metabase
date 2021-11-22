@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  micro:
+    image: snowplow/snowplow-micro:1.1.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - .:/app
+    command: "--collector-config /app/micro.conf --iglu /app/iglu.json"
