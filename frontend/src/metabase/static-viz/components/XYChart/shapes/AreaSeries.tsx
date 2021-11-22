@@ -1,20 +1,19 @@
 import React from 'react'
 
-import type { ScaleBand } from "d3-scale";
 import { Group } from '@visx/group';
-import { LineArea } from './LineArea';
 import { PositionScale } from '@visx/shape/lib/types';
-import { Series } from '../types';
+import { LineArea } from './LineArea';
+import { Series, SeriesDatum } from '../types';
 import { getX, getY } from '../utils';
 
 interface AreaSeriesProps {
   series: Series[];
-  xScale: ScaleBand<number | string>;
   yScaleLeft: PositionScale | null;
   yScaleRight: PositionScale | null;
+  xAccessor: (datum: SeriesDatum) => number
 }
 
-export const AreaSeries = ({ series, xScale, yScaleLeft, yScaleRight }: AreaSeriesProps) => {
+export const AreaSeries = ({ series, yScaleLeft, yScaleRight, xAccessor }: AreaSeriesProps) => {
   return (
     <Group>
       {series.map(s => {
@@ -26,7 +25,7 @@ export const AreaSeries = ({ series, xScale, yScaleLeft, yScaleRight }: AreaSeri
           yScale={yScale}
           color={s.color}
           data={s.data}
-          x={d => (xScale(getX(d as any)) ?? 0) + xScale.bandwidth() / 2}
+          x={xAccessor as any}
           y={d => yScale(getY(d as any)) ?? 0 }
           y1={yScale(0) ?? 0}
         />

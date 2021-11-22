@@ -4,7 +4,7 @@ import { truncateText } from "metabase/static-viz/lib/text";
 import { formatDate } from "../../../lib/dates";
 import { formatNumber } from "../../../lib/numbers";
 import { ChartSettings, Series, XAxisType, XValue } from "../types";
-import { getX, getY } from "./seriesAccessors";
+import { getX, getY } from "./series";
 
 export const formatXTick = (
   value: XValue,
@@ -74,7 +74,7 @@ export const calculateYTickWidth = (
     series.flatMap(series => series.data),
     { y: getY },
     settings,
-  );
+  ) as number;
 };
 
 export const getYTickWidths = (

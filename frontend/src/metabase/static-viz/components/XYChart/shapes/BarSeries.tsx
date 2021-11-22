@@ -3,23 +3,24 @@ import { Bar} from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
 import type { ScaleBand } from "d3-scale";
-import { Series } from "../types";
+import { Series, SeriesDatum } from "../types";
 import { getX, getY } from "../utils";
 import { PositionScale } from "@visx/shape/lib/types";
 
 interface BarSeriesProps {
   series: Series[];
-  xScale: ScaleBand<string | number>
   yScaleLeft: PositionScale | null;
   yScaleRight: PositionScale | null;
+  xAccessor: (datum: SeriesDatum) => number,
+  bandwidth: number
 }
 
-export const BarSeries = ({ series, yScaleLeft, yScaleRight, xScale }: BarSeriesProps) => {
+export const BarSeries = ({ series, yScaleLeft, yScaleRight, xAccessor, bandwidth }: BarSeriesProps) => {
   const innerBarScaleDomain = series.map(series => series.name);
 
   const innerBarScale = scaleBand({
     domain: innerBarScaleDomain,
-    range: [0, xScale.bandwidth()],
+    range: [0, bandwidth],
   });
 
   return (
@@ -30,8 +31,7 @@ export const BarSeries = ({ series, yScaleLeft, yScaleRight, xScale }: BarSeries
         return (
           <>
             {series.data.map((datum, index) => {
-
-              const groupX = xScale(getX(datum).valueOf()) ?? 0;
+              const groupX = xAccessor(datum);
               const innerX = innerBarScale(series.name) ?? 0;
 
               const x = groupX + innerX;

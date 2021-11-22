@@ -1,3 +1,3 @@
 export * from "./scales";
-export * from "./seriesAccessors";
+export * from "./series";
 export * from "./axes";

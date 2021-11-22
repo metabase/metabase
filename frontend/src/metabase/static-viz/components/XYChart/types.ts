@@ -32,9 +32,12 @@ export interface NumberFormatSettings {
   currency_style?: string;
 }
 
+type TickDisplay = "show" | "hide" | "rotate-45";
+
 export type ChartSettings = {
   x: {
     type: XAxisType;
+    tick_display?: TickDisplay;
     format: DateFormatSettings | NumberFormatSettings;
   };
   y: {
@@ -59,3 +62,8 @@ export interface Margin {
   bottom: number;
   left: number;
 }
+
+export type ChartStyle = {
+  labelFontSize: number;
+  tickFontSize: number;
+};

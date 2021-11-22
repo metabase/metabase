@@ -1,21 +1,86 @@
-import { scaleBand, scaleLinear, scaleLog, scalePower } from "@visx/scale";
-import { getX, getY } from "./seriesAccessors";
-import { ContiniousDomain, Range, Series, YAxisType } from "../types";
-import { max, min } from "d3";
+import d3, { max, min } from "d3";
+import {
+  SeriesDatum,
+  XAxisType,
+  ContiniousDomain,
+  Range,
+  Series,
+  YAxisType,
+} from "./../types";
+import {
+  scaleBand,
+  scaleLinear,
+  scaleLog,
+  scalePower,
+  scaleTime,
+} from "@visx/scale";
+import { getX, getY } from "./series";
 
-export const createXScale = (series: Series[], range: Range) => {
-  const domain = series
+export const createXScale = (
+  series: Series[],
+  range: Range,
+  axisType: XAxisType,
+) => {
+  const hasBars = series.some(series => series.type === "bar");
+  const isOrdinal = axisType === "ordinal";
+
+  const shouldUseBandScale = hasBars || isOrdinal;
+
+  if (shouldUseBandScale) {
+    const domain = series
+      .flatMap(series => series.data)
+      .map(datum => getX(datum).valueOf());
+
+    const xScale = scaleBand({
+      domain,
+      range,
+      round: true,
+      padding: 0.1,
+    });
+
+    return {
+      scale: xScale,
+      bandwidth: xScale.bandwidth(),
+      lineAccessor: (datum: SeriesDatum) =>
+        (xScale(getX(datum)) || 0) + xScale.bandwidth() / 2,
+      barAccessor: (datum: SeriesDatum) => xScale(getX(datum).valueOf()) || 0,
+    };
+  }
+
+  if (axisType === "timeseries") {
+    const values = series
+      .flatMap(series => series.data)
+      .map(datum => new Date(getX(datum)).valueOf());
+    const domain = d3.extent(values);
+    const xScale = scaleTime({
+      range,
+      domain,
+      nice: true,
+    });
+
+    return {
+      scale: xScale,
+      lineAccessor: (datum: SeriesDatum) =>
+        xScale(new Date(getX(datum).valueOf())),
+      nice: true,
+    };
+  }
+
+  const values = series
     .flatMap(series => series.data)
-    .map(datum => getX(datum).valueOf());
-
-  const xScale = scaleBand({
-    domain,
+    .map(datum => parseInt(getX(datum).toString()));
+  const domain = d3.extent(values);
+  const xScale = scaleLinear({
     range,
-    round: true,
-    padding: 0.1,
+    domain,
+    // nice: true,
   });
 
-  return xScale;
+  return {
+    scale: xScale,
+    lineAccessor: (datum: SeriesDatum) =>
+      xScale(parseInt(getX(datum).toString())),
+  };
 };
 
 const calculateYDomain = (series: Series[]): ContiniousDomain => {
@@ -28,7 +93,6 @@ const calculateYDomain = (series: Series[]): ContiniousDomain => {
   return [Math.min(0, minValue), Math.max(0, maxValue)];
 };
 
-// Synchronize 0 position on Y-axes between each other
 const calculateYDomains = (series: Series[]) => {
   const leftScaleSeries = series.filter(
     series => series.yAxisPosition === "left",
@@ -44,28 +108,10 @@ const calculateYDomains = (series: Series[]) => {
     return { right: calculateYDomain(rightScaleSeries) };
   }
 
-  let [leftYMin, leftYMax] = calculateYDomain(leftScaleSeries);
-  let [rightYMin, rightYMax] = calculateYDomain(rightScaleSeries);
-
-  const leftRatio = leftYMax / (leftYMax - leftYMin);
-  const rightRatio = rightYMax / (rightYMax - rightYMin);
-
-  const isZeroAligned =
-    (leftYMin > 0 && rightYMin > 0 && rightYMin > 0 && rightYMax > 0) ||
-    (leftYMin < 0 && rightYMin < 0 && rightYMin < 0 && rightYMax < 0);
-
-  if (!isZeroAligned && leftRatio !== rightRatio) {
-    if (leftRatio < rightRatio) {
-      rightYMin = (leftYMin / leftYMax) * rightYMax;
-    } else {
-      leftYMin = (rightYMin / rightYMax) * leftYMax;
-    }
-  }
-
-  const left: ContiniousDomain = [leftYMin, leftYMax];
-  const right: ContiniousDomain = [rightYMin, rightYMax];
-
-  return { left, right };
+  return {
+    left: calculateYDomain(leftScaleSeries),
+    right: calculateYDomain(rightScaleSeries),
+  };
 };
 
 export const createYScale = (
