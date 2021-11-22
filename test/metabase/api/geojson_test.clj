@@ -38,6 +38,16 @@
                     "//metadata.google.internal"               false
                     "169.254.169.254"                          false
                     "http://169.254.169.254/secret-stuff.json" false
+                    ;; Prohibited hosts in alternate encodings (hex, octal, integer)
+                    "http://0xa9fea9fe"                        false
+                    "https://0xa9fea9fe"                       false
+                    "http://0xA9FEA9FE"                        false
+                    "http://0xa9.0xfe.0xa9.0xfe"               false
+                    "http://0XA9.0XFE.0xA9.0XFE"               false
+                    "http://0xa9fea9fe/secret-stuff.json"      false
+                    "http://025177524776"                      false
+                    "http://0251.0376.0251.0376"               false
+                    "http://2852039166"                        false
                     ;; Prohibited protocols
                     "ftp://example.com/rivendell.json"         false
                     "example.com/rivendell.json"               false
@@ -45,6 +55,8 @@
                     "http://example.com/"                      true
                     "https://example.com/"                     true
                     "http://example.com/rivendell.json"        true
+                    "http://192.0.2.0"                         true
+                    "http://0xc0000200"                        true
                     ;; Resources (files on classpath) are valid
                     "c3p0.properties"                          true
                     ;; Other files are not
