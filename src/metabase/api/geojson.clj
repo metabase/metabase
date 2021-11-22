@@ -37,12 +37,14 @@
 
 (def ^:private invalid-hosts
   #{"169.254.169.254" ; internal metadata for AWS, OpenStack, and Azure
-    "metadata.google.internal" ; internal metadata for GCP
-    })
+    "metadata.google.internal"}) ; internal metadata for GCP
 
 (defn- valid-host?
   [^URL url]
-  (not (invalid-hosts (.getHost url))))
+  (let [host->url (fn [host] (URL. (str "http://" host)))
+        base-url (host->url (.getHost url))
+        invalid-base-urls (map host->url invalid-hosts)]
+    (not-any? (fn [invalid-url] (.equals base-url invalid-url)) invalid-base-urls)))
 
 (defn- valid-protocol?
   [^URL url]
@@ -52,8 +54,8 @@
   [url-string]
   (try
     (let [url (URL. url-string)]
-      (and (valid-host? url)
-           (valid-protocol? url)))
+      (and (valid-protocol? url)
+           (valid-host? url)))
     (catch Throwable e
       (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
 
