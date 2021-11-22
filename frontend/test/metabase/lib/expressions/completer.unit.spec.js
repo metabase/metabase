@@ -28,6 +28,11 @@ describe("metabase/lib/expressions/completer", () => {
       expect(partialMatch("")).toEqual(null);
       expect(partialMatch(" ")).toEqual(null);
     });
+
+    it("should handle a dangling quote", () => {
+      expect(partialMatch("concat('s")).toEqual(null);
+      expect(partialMatch('length("c')).toEqual(null);
+    });
   });
 
   describe("enclosingFunction", () => {

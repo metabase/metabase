@@ -163,33 +163,38 @@ export default class FunnelNormal extends Component {
             <div className={styles.Subtitle}>&nbsp;</div>
           </div>
         </div>
-        {infos.slice(1).map((info, index) => (
-          <div
-            key={index}
-            className={cx(styles.FunnelStep, "flex flex-column")}
-          >
-            <Ellipsified className={styles.Head}>
-              {formatDimension(rows[index + 1][dimensionIndex])}
-            </Ellipsified>
-            <GraphSection
-              className={cx({ "cursor-pointer": isClickable })}
-              index={index}
-              info={info}
-              infos={infos}
-              hovered={hovered}
-              onHoverChange={onHoverChange}
-              onVisualizationClick={isClickable ? onVisualizationClick : null}
-            />
-            <div className={styles.Infos}>
-              <Ellipsified className={styles.Title}>
-                {formatPercent(info.value / initial.value)}
+        {infos.slice(1).map((info, index) => {
+          const stepPercentage =
+            initial.value > 0 ? info.value / initial.value : 0;
+
+          return (
+            <div
+              key={index}
+              className={cx(styles.FunnelStep, "flex flex-column")}
+            >
+              <Ellipsified className={styles.Head}>
+                {formatDimension(rows[index + 1][dimensionIndex])}
               </Ellipsified>
-              <Ellipsified className={styles.Subtitle}>
-                {formatMetric(rows[index + 1][metricIndex])}
-              </Ellipsified>
+              <GraphSection
+                className={cx({ "cursor-pointer": isClickable })}
+                index={index}
+                info={info}
+                infos={infos}
+                hovered={hovered}
+                onHoverChange={onHoverChange}
+                onVisualizationClick={isClickable ? onVisualizationClick : null}
+              />
+              <div className={styles.Infos}>
+                <Ellipsified className={styles.Title}>
+                  {formatPercent(stepPercentage)}
+                </Ellipsified>
+                <Ellipsified className={styles.Subtitle}>
+                  {formatMetric(rows[index + 1][metricIndex])}
+                </Ellipsified>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }

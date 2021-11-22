@@ -440,3 +440,19 @@
   :type       :json
   :setter     :none
   :getter     fetch-cloud-gateway-ips-fn)
+
+(defsetting snowplow-available
+  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
+       " "
+       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+  :type       :boolean
+  :default    config/is-prod?
+  :visibility :public)
+
+(defsetting snowplow-url
+  (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
+  :default    (if config/is-prod?
+                "https://sp.metabase.com"
+                ;; Run `docker compose up` from the `snowplow/` subdirectory to start a local Snowplow collector
+                "http://localhost:9095")
+  :visibility :public)
