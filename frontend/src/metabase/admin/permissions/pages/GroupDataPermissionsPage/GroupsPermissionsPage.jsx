@@ -157,9 +157,6 @@ function GroupsPermissionsPage({
 
 GroupsPermissionsPage.propTypes = propTypes;
 
-export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
-)(GroupsPermissionsPage);
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  GroupsPermissionsPage,
+);

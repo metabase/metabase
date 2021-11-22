@@ -26,10 +26,7 @@ const mapDispatchToProps = {
   goBack,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class CollectionCreate extends Component {
   render() {
     const { form, initialCollectionId, goBack } = this.props;

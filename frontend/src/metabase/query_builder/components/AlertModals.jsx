@@ -468,10 +468,7 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
-  null,
-)
+@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,

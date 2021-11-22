@@ -116,13 +116,10 @@ export default class AlertListPopoverContent extends Component {
   }
 }
 
-@connect(
-  state => ({ user: getUser(state) }),
-  {
-    unsubscribeFromAlert,
-    deleteAlert,
-  },
-)
+@connect(state => ({ user: getUser(state) }), {
+  unsubscribeFromAlert,
+  deleteAlert,
+})
 export class AlertListItem extends Component {
   props: {
     alert: any,

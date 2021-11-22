@@ -331,7 +331,7 @@ function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
 }
 
 function getIsSplitYAxis(left, right) {
-  return right && right.series.length && (left && left.series.length > 0);
+  return right && right.series.length && left && left.series.length > 0;
 }
 
 function getYAxisProps(props, yExtents, datas) {
@@ -622,14 +622,19 @@ function addGoalChartAndGetOnGoalHover(
   }
 
   const goalValue = settings["graph.goal_value"];
-  const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+  const goalData = [
+    [xDomain[0], goalValue],
+    [xDomain[1], goalValue],
+  ];
   const goalDimension = crossfilter(goalData).dimension(d => d[0]);
 
   // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
   // has just a single row / datapoint
-  const goalGroup = goalDimension
-    .group()
-    .reduce((p, d) => d[1], (p, d) => p, () => 0);
+  const goalGroup = goalDimension.group().reduce(
+    (p, d) => d[1],
+    (p, d) => p,
+    () => 0,
+  );
   const goalIndex = charts.length;
 
   const goalChart = dc
@@ -691,9 +696,11 @@ function addTrendlineChart(
 
       // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
       // has just a single row / datapoint
-      const trendGroup = trendDimension
-        .group()
-        .reduce((p, d) => d[1], (p, d) => p, () => 0);
+      const trendGroup = trendDimension.group().reduce(
+        (p, d) => d[1],
+        (p, d) => p,
+        () => 0,
+      );
       const trendIndex = charts.length;
 
       const trendChart = dc

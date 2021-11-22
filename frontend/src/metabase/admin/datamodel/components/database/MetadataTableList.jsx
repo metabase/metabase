@@ -15,16 +15,13 @@ import cx from "classnames";
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
 
-@connect(
-  null,
-  {
-    setVisibilityForTables: (tables, visibility_type) =>
-      Tables.actions.bulkUpdate({
-        ids: tables.map(t => t.id),
-        visibility_type,
-      }),
-  },
-)
+@connect(null, {
+  setVisibilityForTables: (tables, visibility_type) =>
+    Tables.actions.bulkUpdate({
+      ids: tables.map(t => t.id),
+      visibility_type,
+    }),
+})
 export default class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);

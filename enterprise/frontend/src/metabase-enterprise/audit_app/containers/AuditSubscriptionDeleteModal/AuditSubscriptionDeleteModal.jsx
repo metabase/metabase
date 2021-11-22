@@ -16,8 +16,5 @@ export default _.compose(
   Pulses.load({
     id: (state, props) => Number.parseInt(props.params.pulseId),
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(AuditNotificationDeleteModal);

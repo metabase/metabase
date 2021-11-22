@@ -97,14 +97,11 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getEditingParameterId = createSelector(
-  [getSidebar],
-  sidebar => {
-    return sidebar.name === SIDEBAR_NAME.editParameter
-      ? sidebar.props?.parameterId
-      : null;
-  },
-);
+export const getEditingParameterId = createSelector([getSidebar], sidebar => {
+  return sidebar.name === SIDEBAR_NAME.editParameter
+    ? sidebar.props?.parameterId
+    : null;
+});
 
 export const getIsEditingParameter = createSelector(
   [getEditingParameterId],

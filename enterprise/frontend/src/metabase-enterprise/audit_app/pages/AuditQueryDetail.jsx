@@ -70,10 +70,7 @@ import { loadMetadataForCard } from "metabase/query_builder/actions";
 const mapStateToProps = state => ({ metadata: getMetadata(state) });
 const mapDispatchToProps = { loadMetadataForCard };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @ExplicitSize()
 class QueryBuilderReadOnly extends React.Component {
   state = {
