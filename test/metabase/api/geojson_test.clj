@@ -35,13 +35,16 @@
 
 (deftest validate-geojson-test
   (testing "It validates URLs and files appropriately"
-    (let [examples {;; Prohibited hosts (see explanation in source file)
+    (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
                     "https://metadata.google.internal"         false
                     "//metadata.google.internal"               false
+                    ;; Link-local addresses (internal metadata for AWS, OpenStack, and Azure)
+                    "http://169.254.0.0"                       false
+                    "http://fe80::"                            false
                     "169.254.169.254"                          false
                     "http://169.254.169.254/secret-stuff.json" false
-                    ;; Prohibited hosts in alternate encodings (hex, octal, integer)
+                    ;; alternate IPv4 encodings (hex, octal, integer)
                     "http://0xa9fea9fe"                        false
                     "https://0xa9fea9fe"                       false
                     "http://0xA9FEA9FE"                        false
@@ -54,6 +57,7 @@
                     ;; Prohibited protocols
                     "ftp://example.com/rivendell.json"         false
                     "example.com/rivendell.json"               false
+                    "jar:file:test.jar!/test.json"             false
                     ;; Acceptable URLs
                     "http://example.com/"                      true
                     "https://example.com/"                     true
