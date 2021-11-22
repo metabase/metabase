@@ -4,32 +4,38 @@ const snowplowMicroUrl = Cypress.env("SNOWPLOW_MICRO_URL");
 export const describeWithSnowplow = hasSnowplowMicro ? describe : describe.skip;
 
 export const resetSnowplow = () => {
-  cy.request({
-    url: `${snowplowMicroUrl}/micro/reset`,
+  sendSnowplowRequest("micro/reset");
+};
+
+export const blockSnowplow = () => {
+  blockSnowplowRequest("*/tp2");
+};
+
+export const expectGoodSnowplowEvents = count => {
+  retrySnowplowRequest("micro/good")
+    .its("body")
+    .should("have.length", count);
+};
+
+export const expectNoBadSnowplowEvents = () => {
+  retrySnowplowRequest("micro/bad")
+    .its("body")
+    .should("be.empty");
+};
+
+const sendSnowplowRequest = url => {
+  return cy.request({
+    url: `${snowplowMicroUrl}/${url}`,
     json: true,
   });
 };
 
-export const blockSnowplow = () => {
-  cy.intercept("POST", `${snowplowMicroUrl}/*/tp2`, req => {
+const blockSnowplowRequest = url => {
+  return cy.intercept("POST", `${snowplowMicroUrl}/${url}`, req => {
     req.destroy();
   });
 };
 
-export const expectGoodEvents = count => {
-  cy.request({
-    url: `${snowplowMicroUrl}/micro/good`,
-    json: true,
-  }).then(res => {
-    expect(res.body.length).to.eq(count);
-  });
-};
-
-export const expectNoBadEvents = () => {
-  cy.request({
-    url: `${snowplowMicroUrl}/micro/bad`,
-    json: true,
-  }).then(res => {
-    expect(res.body.length).to.eq(0);
-  });
+const retrySnowplowRequest = url => {
+  return cy.wrap({ command: () => sendSnowplowRequest(url) }).invoke("command");
 };

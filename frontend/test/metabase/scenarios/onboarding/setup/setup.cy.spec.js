@@ -1,7 +1,7 @@
 import {
   blockSnowplow,
   describeWithSnowplow,
-  expectNoBadEvents,
+  expectNoBadSnowplowEvents,
   resetSnowplow,
   restore,
 } from "__support__/e2e/cypress";
@@ -214,7 +214,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
-    expectNoBadEvents();
+    expectNoBadSnowplowEvents();
   });
 
   it("should ignore snowplow failures", () => {
