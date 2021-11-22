@@ -715,7 +715,13 @@ describe("scenarios > visualizations > pivot tables", () => {
       human_readable_field_id: null,
     });
     cy.request("POST", `/api/field/${REVIEWS.RATING}/values`, {
-      values: [[1, "A"], [2, "B"], [3, "C"], [4, "D"], [5, "E"]],
+      values: [
+        [1, "A"],
+        [2, "B"],
+        [3, "C"],
+        [4, "D"],
+        [5, "E"],
+      ],
     });
 
     visitQuestionAdhoc({
@@ -783,7 +789,10 @@ describe("scenarios > visualizations > pivot tables", () => {
             ["field", ORDERS.PRODUCT_ID, null],
           ],
           columns: [],
-          values: [["aggregation", 0], ["aggregation", 1]],
+          values: [
+            ["aggregation", 0],
+            ["aggregation", 1],
+          ],
         },
         "pivot_table.collapsed_rows": {
           value: [],

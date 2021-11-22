@@ -43,10 +43,7 @@ DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @BodyComponent
 export default class UndoListing extends Component {
   static propTypes = {

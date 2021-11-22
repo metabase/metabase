@@ -22,10 +22,7 @@ const settingsGoogleFormPropTypes = {
   updateSettings: PropTypes.func,
 };
 
-@connect(
-  null,
-  { updateSettings },
-)
+@connect(null, { updateSettings })
 export default class SettingsGoogleForm extends Component {
   render() {
     const { elements, settingValues, updateSettings } = this.props;

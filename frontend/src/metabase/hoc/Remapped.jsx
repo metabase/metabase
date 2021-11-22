@@ -14,10 +14,7 @@ const mapDispatchToProps = {
 };
 
 export default ComposedComponent =>
-  @connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  )
+  @connect(mapStateToProps, mapDispatchToProps)
   class extends Component {
     static displayName =
       "Remapped[" +

@@ -75,9 +75,8 @@ export default class Select extends Component {
         ? props.defaultValue
         : props.value;
 
-    const _getValues = createSelector(
-      [_getValue],
-      value => (Array.isArray(value) ? value : [value]),
+    const _getValues = createSelector([_getValue], value =>
+      Array.isArray(value) ? value : [value],
     );
     const _getValuesSet = createSelector(
       [_getValues],

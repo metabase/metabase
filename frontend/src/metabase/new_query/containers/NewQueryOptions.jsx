@@ -45,10 +45,7 @@ const mapDispatchToProps = {
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class NewQueryOptions extends Component {
   props: Props;
 

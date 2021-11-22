@@ -45,10 +45,7 @@ const mapDispatchToProps = {
 };
 
 @Database.loadList()
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
   constructor(props) {
     super(props);

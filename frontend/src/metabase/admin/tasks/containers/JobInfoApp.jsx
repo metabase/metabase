@@ -57,10 +57,7 @@ const renderJobsTable = jobs => {
   );
 };
 
-@connect(
-  null,
-  { fetchJobInfo },
-)
+@connect(null, { fetchJobInfo })
 export default class JobInfoApp extends React.Component {
   async componentDidMount() {
     try {

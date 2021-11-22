@@ -114,7 +114,7 @@ export default class PulseEdit extends Component {
                 c.recipients.length,
               )}
             </strong>
-          )} ${<strong>{c.schedule_type}</strong>}`}
+          )} ${(<strong>{c.schedule_type}</strong>)}`}
           .
         </span>
       ) : c.channel_type === "slack" ? (

@@ -56,7 +56,10 @@ import { color, desaturated } from "metabase/lib/colors";
 
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
-  ...COLORS.map(color => [["white", color], [color, "white"]]),
+  ...COLORS.map(color => [
+    ["white", color],
+    [color, "white"],
+  ]),
   [
     [color("error"), "white", color("success")],
     [color("success"), "white", color("error")],

@@ -619,9 +619,9 @@ function Cell({
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
-  );
+  const currentSettingFieldRefs = Object.values(
+    storedValue,
+  ).flatMap(fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)));
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 
