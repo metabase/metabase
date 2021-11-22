@@ -1,8 +1,7 @@
 # Snowplow integration
 
 Metabase uses [Snowplow](https://snowplowanalytics.com/) and [SnowcatCloud](https://www.snowcatcloud.com/) for
-collecting analytics data. We only send events when `Anonymous tracking` is enabled. We do not record personal
-identifiable information with the events.
+collecting analytics data. We only send events when `Anonymous tracking` is enabled.
 
 ## How to test events manually
 
