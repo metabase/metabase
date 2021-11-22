@@ -123,7 +123,6 @@ function concatTrimmed(a, b) {
 function getSshDescription() {
   const link = (
     <ExternalLink
-      className="link"
       href={MetabaseSettings.docsUrl(
         "administration-guide/ssh-tunnel-for-database-connections",
       )}
