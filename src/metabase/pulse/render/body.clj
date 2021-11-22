@@ -403,28 +403,37 @@
                 (percentages label)]]))]}))
 
 (s/defmethod render :multiple
-  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
-  (let [multi-res  (pu/execute-multi-card card)
+  [_ render-type timezone-id card {:keys [viz-settings] :as data}]
+  (let [multi-res     (pu/execute-multi-card card)
         ;; we shove them all together for uniformity's sake
-        cards      (cons card (map :card multi-res))
-        multi-data (cons data (map #(get-in % [:result :data]) multi-res))
-
-        names      (map :name cards)
-        ;; colors go here
-        colors     (map #(get-in % [:viz-settings :color]) multi-data)
-        types      (map :display cards)
-        multi-rows (map :rows multi-data)
-        multi-cols (map :cols multi-data)
-        series     (vec (for [card-name  names
-                              card-color colors
-                              card-type  types
-                              rows       multi-rows
-                              cols       multi-cols]
-                          {:name card-name
-                           :color card-color
-                           :type card-type
-                           :rows rows
-                           :cols cols}))]
+        cards         (cons card (map :card multi-res))
+        multi-data  (cons data (map #(get-in % [:result :data]) multi-res))
+        rowfns        (for [card cards
+                            data multi-data]
+                        (common/graphing-column-row-fns card data))
+        row-iters     (for [data              multi-data
+                            [x-rowfn y-rowfn] rowfns]
+                        (map (juxt x-rowfn y-rowfn)
+                             (common/non-nil-rows x-rowfn y-rowfn (:rows data))))
+        col-iters     (map :cols multi-data)
+        first-rowfns  (first rowfns)
+        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-iters))
+        labels        (x-and-y-axis-label-info x-col y-col viz-settings)
+        names         (map :name cards)
+        colors        (map #(get-in % [:viz-settings :color]) multi-data)
+        types         (map :display cards)
+        settings      (->js-viz x-col y-col viz-settings)
+        series        (vec (for [card-name  names
+                                 card-color colors
+                                 card-type  types
+                                 rows       row-iters]
+                             {:name card-name
+                              :color card-color
+                              :type card-type
+                              :rows rows}))
+        image-bundle  (image-bundle/make-image-bundle
+                                     render-type
+                                     (js-svg/multiple series labels settings))]
   {:attachments nil :content [:div "bob"]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
