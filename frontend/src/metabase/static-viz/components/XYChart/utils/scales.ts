@@ -1,20 +1,23 @@
 import d3, { max, min } from "d3";
 import {
-  SeriesDatum,
-  XAxisType,
-  ContiniousDomain,
-  Range,
-  Series,
-  YAxisType,
-} from "./../types";
-import {
   scaleBand,
   scaleLinear,
   scaleLog,
   scalePower,
   scaleTime,
 } from "@visx/scale";
-import { getX, getY } from "./series";
+import {
+  SeriesDatum,
+  XAxisType,
+  ContiniousDomain,
+  Range,
+  Series,
+  YAxisType,
+} from "metabase/static-viz/components/XYChart/types";
+import {
+  getX,
+  getY,
+} from "metabase/static-viz/components/XYChart/utils/series";
 
 export const createXScale = (
   series: Series[],
@@ -24,7 +27,8 @@ export const createXScale = (
   const hasBars = series.some(series => series.type === "bar");
   const isOrdinal = axisType === "ordinal";
 
-  const shouldUseBandScale = hasBars || isOrdinal;
+  // TODO: for now use band scale when we have bars even for linear or time scales
+  const shouldUseBandScale = isOrdinal || hasBars;
 
   if (shouldUseBandScale) {
     const domain = series
@@ -55,14 +59,12 @@ export const createXScale = (
     const xScale = scaleTime({
       range,
       domain,
-      nice: true,
     });
 
     return {
       scale: xScale,
       lineAccessor: (datum: SeriesDatum) =>
         xScale(new Date(getX(datum).valueOf())),
-      nice: true,
     };
   }
 
@@ -73,7 +75,6 @@ export const createXScale = (
   const xScale = scaleLinear({
     range,
     domain,
-    // nice: true,
   });
 
   return {

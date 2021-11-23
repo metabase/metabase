@@ -64,6 +64,17 @@ export interface Margin {
 }
 
 export type ChartStyle = {
-  labelFontSize: number;
-  tickFontSize: number;
+  fontFamily: string;
+  axes: {
+    color: string;
+    ticks: {
+      color: string;
+      fontSize: number;
+    };
+    labels: {
+      color: string;
+      fontSize: number;
+      fontWeight: number;
+    };
+  };
 };

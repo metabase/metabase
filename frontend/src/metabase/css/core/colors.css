@@ -4,7 +4,7 @@
 :root {
   --color-brand: #509ee3;
   --color-brand-light: #ddecfa;
-  --color-accent1: #88bf4d;
+  --color-accent1: hsl(89, 47%, 53%);
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
   --color-accent4: #f9d45c;

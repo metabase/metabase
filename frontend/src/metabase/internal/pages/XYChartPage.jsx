@@ -105,6 +105,10 @@ const LINE_ORDINAL = {
     ["Stage 5", 44],
     ["Stage 6", 51],
     ["Stage 7", 14],
+    ["Stage 8", 44],
+    ["Stage 9", 51],
+    ["Stage 10", 14],
+    ["Stage 11", 14],
   ],
 };
 
@@ -113,7 +117,7 @@ export default function XYChartPage() {
     <Box py={4}>
       <Box className="wrapper wrapper--trim">
         <Heading>XYChart</Heading>
-        <Box py={3}>
+        {/* <Box py={3}>
           <Subhead>Line/Area/Bar time scale multi-series</Subhead>
           <XYChart
             settings={{
@@ -140,6 +144,41 @@ export default function XYChartPage() {
             ]}
           />
         </Box>
+
+        <Box py={3}>
+          <Subhead>Line time scale</Subhead>
+          <XYChart
+            settings={{
+              x: {
+                type: "timeseries",
+                format: {
+                  date_style: "MMM",
+                },
+              },
+              y: {
+                type: "linear",
+              },
+              labels: {
+                left: "Left values",
+                bottom: "Date",
+              },
+            }}
+            series={[
+              {
+                color: "#f9d45c",
+                yAxisPosition: "left",
+                type: "line",
+                name: "something",
+                data: [
+                  ["2020-01-10", 10],
+                  ["2020-06-10", 60],
+                  ["2020-12-10", 80],
+                ],
+              },
+            ]}
+          />
+        </Box>
+
         <Box py={3}>
           <Subhead>Line time scale</Subhead>
           <XYChart
@@ -221,13 +260,14 @@ export default function XYChartPage() {
             }}
             series={[LINE_LINEAR, BAR_LINEAR, AREA_LINEAR]}
           />
-        </Box>
+        </Box> */}
 
         <Box py={3}>
           <Subhead>Line ordinal</Subhead>
           <XYChart
             settings={{
               x: {
+                tick_display: "rotate-45",
                 type: "ordinal",
               },
               y: {

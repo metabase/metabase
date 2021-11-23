@@ -1,3 +1,6 @@
 export * from "./scales";
 export * from "./series";
-export * from "./axes";
+export * from "./ticks";
+export * from "./margin";
+export * from "./legend";
+export * from "./bounds";

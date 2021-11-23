@@ -2,8 +2,8 @@ import React from "react";
 import { Group } from "@visx/group";
 import { LinePath } from "@visx/shape";
 import { PositionScale } from "@visx/shape/lib/types";
-import { getY } from "../utils";
-import { Series, SeriesDatum } from "../types";
+import { getY } from "metabase/static-viz/components/XYChart/utils";
+import { Series, SeriesDatum } from "metabase/static-viz/components/XYChart/types";
 
 interface LineSeriesProps {
   series: Series[];

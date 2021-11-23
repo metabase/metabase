@@ -1,5 +1,5 @@
-import { Group } from "@visx/group";
 import React from "react";
+import { Group } from "@visx/group";
 import { LegendItem } from "./LegendItem";
 
 type LegendItem = {

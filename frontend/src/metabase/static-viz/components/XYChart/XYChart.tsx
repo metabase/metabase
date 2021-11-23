@@ -1,29 +1,41 @@
 import React from "react";
+import { Text } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
-import { Series, ChartSettings } from "./types";
-import { LineSeries } from "./shapes/LineSeries";
-import { BarSeries } from "./shapes/BarSeries";
-import { AreaSeries } from "./shapes/AreaSeries";
 
 import {
   getLabelProps,
   getXTickLabelProps,
   getYTickLabelProps,
-} from "../../lib/axes";
+} from "metabase/static-viz/lib/axes";
+import { formatNumber } from "metabase/static-viz/lib/numbers";
+
+import {
+  Series,
+  ChartSettings,
+  ChartStyle,
+} from "metabase/static-viz/components/XYChart/types";
+import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
+import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
+import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
+import { Legend } from "metabase/static-viz/components/XYChart/legend/Legend";
+import {
+  CHART_PADDING,
+  LABEL_PADDING,
+} from "metabase/static-viz/components/XYChart/constants";
 import {
   createXScale,
   createYScales,
   formatXTick,
   getYTickWidths,
-} from "./utils";
-import { formatNumber } from "metabase/static-viz/lib/numbers";
-import { calculateMargin } from "./utils/margin";
-import { getXTicksDimensions } from "./utils/ticks";
-import { Legend } from "./legend/Legend";
-import { CHART_PADDING } from "./constants";
-import { calculateLegendItems } from "./utils/legend";
+  getXTickProps,
+  calculateMargin,
+  getXTicksDimensions,
+  getXTickWidthLimit,
+  calculateLegendItems,
+  calculateBounds,
+} from "metabase/static-viz/components/XYChart/utils";
 
 const layout = {
   width: 540,
@@ -49,35 +61,39 @@ export interface XYChartProps {
   height: number;
   series: Series[];
   settings: ChartSettings;
+  style: ChartStyle;
 }
 
-export const XYChart = ({ series, settings }: XYChartProps) => {
-  const palette = { ...layout.colors };
-
+export const XYChart = ({
+  width,
+  height,
+  series,
+  settings,
+  style,
+}: XYChartProps) => {
   const yTickWidths = getYTickWidths(series, settings.y.format);
   const xTicksDimensions = getXTicksDimensions(
     series,
     settings.x,
-    layout.font.size,
+    style.axes.ticks.fontSize,
   );
 
-  const yLabelOffsetLeft = yTickWidths.left + layout.labelPadding;
-  const yLabelOffsetRight = layout.labelPadding;
+  const yLabelOffsetLeft = yTickWidths.left + LABEL_PADDING;
+  const yLabelOffsetRight = LABEL_PADDING;
 
   const margin = calculateMargin(
     yTickWidths.left,
     yTickWidths.right,
     xTicksDimensions.height,
     settings.labels,
-    layout.font.size,
+    style.axes.ticks.fontSize,
   );
 
-  const innerWidth = layout.width - margin.left - margin.right;
-  const innerHeight = layout.height - margin.top - margin.bottom;
-  const xMin = margin.left;
-  const xMax = xMin + innerWidth;
-  const yMax = margin.top;
-  const yMin = yMax + innerHeight;
+  const { xMin, xMax, yMin, innerHeight, innerWidth } = calculateBounds(
+    margin,
+    width,
+    height,
+  );
 
   const xScale = createXScale(series, [0, innerWidth], settings.x.type);
   const { yScaleLeft, yScaleRight } = createYScales(
@@ -92,11 +108,18 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
 
   const defaultYScale = yScaleLeft || yScaleRight;
 
-  const legendWidth = layout.width - 2 * CHART_PADDING;
+  const legendWidth = width - 2 * CHART_PADDING;
   const legend = calculateLegendItems(series, legendWidth, 16);
 
+  const xTickWidthLimit = getXTickWidthLimit(
+    settings.x,
+    xTicksDimensions.maxTextWidth,
+    xScale.bandwidth,
+  );
+  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 5;
+
   return (
-    <svg width={layout.width} height={layout.height + legend.height}>
+    <svg width={width} height={height + legend.height}>
       <Group top={margin.top} left={xMin}>
         {defaultYScale && (
           <GridRows
@@ -106,13 +129,15 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
           />
         )}
 
-        <BarSeries
-          series={bars}
-          yScaleLeft={yScaleLeft}
-          yScaleRight={yScaleRight}
-          xAccessor={xScale.barAccessor!}
-          bandwidth={xScale.bandwidth!}
-        />
+        {xScale.barAccessor && xScale.bandwidth && (
+          <BarSeries
+            series={bars}
+            yScaleLeft={yScaleLeft}
+            yScaleRight={yScaleRight}
+            xAccessor={xScale.barAccessor}
+            bandwidth={xScale.bandwidth}
+          />
+        )}
         <AreaSeries
           series={areas}
           yScaleLeft={yScaleLeft}
@@ -136,8 +161,8 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
           top={margin.top}
           left={xMin}
           scale={yScaleLeft}
-          stroke={palette.textLight}
-          tickStroke={palette.textLight}
+          stroke={style.axes.color}
+          tickStroke={style.axes.color}
           labelProps={getLabelProps(layout) as any}
           tickFormat={value => formatNumber(value, settings.y.format)}
           tickLabelProps={() => getYTickLabelProps(layout) as any}
@@ -153,8 +178,8 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
           top={margin.top}
           left={xMax + yTickWidths.right}
           scale={yScaleRight}
-          stroke={palette.textLight}
-          tickStroke={palette.textLight}
+          stroke={style.axes.color}
+          tickStroke={style.axes.color}
           labelProps={getLabelProps(layout) as any}
           tickFormat={value => formatNumber(value, settings.y.format)}
           tickLabelProps={() => getYTickLabelProps(layout) as any}
@@ -166,20 +191,30 @@ export const XYChart = ({ series, settings }: XYChartProps) => {
         label={settings.labels.bottom}
         top={yMin}
         left={xMin}
-        numTicks={layout.numTicks}
-        stroke={palette.textLight}
-        tickStroke={palette.textLight}
+        numTicks={xTicksCount}
+        stroke={style.axes.color}
+        tickStroke={style.axes.color}
         labelProps={getLabelProps(layout) as any}
         tickFormat={value =>
           formatXTick(value.valueOf(), settings.x.type, settings.x.format)
         }
+        tickComponent={props => (
+          <Text
+            {...getXTickProps(
+              props,
+              style.axes.ticks.fontSize,
+              xTickWidthLimit,
+              settings.x.tick_display === "rotate-45",
+            )}
+          />
+        )}
         tickLabelProps={() => getXTickLabelProps(layout) as any}
       />
 
       <Legend
         legend={legend}
         left={CHART_PADDING}
-        top={layout.height}
+        top={height}
         width={legendWidth}
       />
     </svg>

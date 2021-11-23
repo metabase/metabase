@@ -2,10 +2,9 @@ import React from "react";
 import { Bar} from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
-import type { ScaleBand } from "d3-scale";
-import { Series, SeriesDatum } from "../types";
-import { getX, getY } from "../utils";
 import { PositionScale } from "@visx/shape/lib/types";
+import { Series, SeriesDatum } from "metabase/static-viz/components/XYChart/types";
+import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 interface BarSeriesProps {
   series: Series[];

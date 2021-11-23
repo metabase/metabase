@@ -1,7 +1,10 @@
 import React from "react";
 import { Group } from "@visx/group";
-import { Text } from "../../Text";
-import { LEGEND_CIRCLE_SIZE, LEGEND_TEXT_MARGIN } from "../constants";
+import { Text } from "metabase/static-viz/components/Text";
+import {
+  LEGEND_CIRCLE_SIZE,
+  LEGEND_TEXT_MARGIN,
+} from "metabase/static-viz/components/XYChart/constants";
 
 type LegendItemProps = {
   label: string;

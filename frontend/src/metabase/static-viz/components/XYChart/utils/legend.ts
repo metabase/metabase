@@ -1,7 +1,7 @@
 import { measureText } from "metabase/static-viz/lib/text";
-import { LEGEND_TEXT_MARGIN } from "../constants";
-import { Series } from "../types";
-import { partitionByYAxis } from "./series";
+import { LEGEND_TEXT_MARGIN } from "metabase/static-viz/components/XYChart/constants";
+import { Series } from "metabase/static-viz/components/XYChart/types";
+import { partitionByYAxis } from "metabase/static-viz/components/XYChart/utils";
 
 const calculateLegendItemHeight = (
   label: string,
@@ -64,12 +64,22 @@ export const calculateLegendItems = (
   }
 
   const singleColumnSeries = leftSeries?.length > 0 ? leftSeries : rightSeries
+
+  if (singleColumnSeries.length < 2) {
+    return {
+      height: 0,
+      columnWidth: 0,
+      maxTextWidth: 0
+    }
+  }
+
   const singleColumnTextWidth = width - LEGEND_TEXT_MARGIN * 2
   const leftColumn = calculateLegendColumn(singleColumnSeries, singleColumnTextWidth, lineHeight);
 
   return {
     leftItems: leftColumn.items,
     height: leftColumn.columnHeight,
+    columnWidth: singleColumnTextWidth,
     maxTextWidth: singleColumnTextWidth
   }
 };

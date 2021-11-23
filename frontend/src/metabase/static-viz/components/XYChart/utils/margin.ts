@@ -1,8 +1,8 @@
 import { measureTextHeight } from "metabase/static-viz/lib/text";
-import { CHART_PADDING } from "../constants";
-import { ChartSettings } from "../types";
+import { CHART_PADDING } from "metabase/static-viz/components/XYChart/constants";
+import { ChartSettings } from "metabase/static-viz/components/XYChart/types";
 
-const LABEL_OFFSET = 10;
+export const LABEL_OFFSET = 10;
 
 const calculateSideMargin = (
   tickSpace: number,

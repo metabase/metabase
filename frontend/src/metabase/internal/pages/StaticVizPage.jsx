@@ -345,6 +345,97 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+        <Box py={3}>
+          <Subhead>Line/Area/Bar chart with multiple series</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "timeseries",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  right: "Sum",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "line series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "line",
+                  data: [
+                    ["2020-10-20", 15],
+                    ["2020-10-21", 20],
+                    ["2020-10-22", 35],
+                    ["2020-10-23", 40],
+                    ["2020-10-24", 55],
+                    ["2020-10-25", 60],
+                    ["2020-10-26", 75],
+                    ["2020-10-27", 80],
+                    ["2020-10-28", 95],
+                  ],
+                },
+                {
+                  name: "bar series 1",
+                  color: "#88bf4d",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: [
+                    ["2020-10-20", 90],
+                    ["2020-10-21", 80],
+                    ["2020-10-22", 70],
+                    ["2020-10-23", 60],
+                    ["2020-10-24", 50],
+                    ["2020-10-25", 40],
+                    ["2020-10-26", 30],
+                    ["2020-10-27", 20],
+                    ["2020-10-28", 10],
+                  ],
+                },
+                {
+                  name: "bar series 2 with a really really really long name",
+                  color: "#a989c5",
+                  yAxisPosition: "right",
+                  type: "bar",
+                  data: [
+                    ["2020-10-20", 4],
+                    ["2020-10-21", 5],
+                    ["2020-10-22", 6],
+                    ["2020-10-23", 7],
+                    ["2020-10-24", 6],
+                    ["2020-10-25", 5],
+                    ["2020-10-26", 4],
+                    ["2020-10-27", 3],
+                    ["2020-10-28", 2],
+                  ],
+                },
+                {
+                  name: "area series",
+                  color: "#ef8c8c",
+                  yAxisPosition: "right",
+                  type: "area",
+                  data: [
+                    ["2020-10-20", 4],
+                    ["2020-10-21", 5],
+                    ["2020-10-22", 3],
+                    ["2020-10-23", 4],
+                    ["2020-10-24", 5],
+                    ["2020-10-25", 8],
+                    ["2020-10-26", 9],
+                    ["2020-10-27", 12],
+                    ["2020-10-28", 15],
+                  ],
+                },
+              ],
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );

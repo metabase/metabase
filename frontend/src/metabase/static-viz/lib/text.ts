@@ -2,7 +2,7 @@ const CHAR_WIDTH = 6;
 const CHAR_ELLIPSES = "…";
 
 export const measureTextHeight = (fontSize: number) => {
-  return fontSize * 1.5;
+  return fontSize * 1.25;
 };
 
 export const measureText = (text: string, charWidth = CHAR_WIDTH) => {
