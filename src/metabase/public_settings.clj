@@ -482,5 +482,5 @@
   :default    (if config/is-prod?
                 "https://sp.metabase.com"
                 ;; Run `docker compose up` from the `snowplow/` subdirectory to start a local Snowplow collector
-                "http://localhost:9095")
+                "http://localhost:9090")
   :visibility :public)

@@ -82,7 +82,7 @@ const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
 };
 
 const createSnowplowTracker = store => {
-  Snowplow.newTracker("sp", "https://sp.metabase.com", {
+  Snowplow.newTracker("sp", Settings.snowplowUrl(), {
     appId: "metabase",
     platform: "web",
     eventMethod: "post",
