@@ -40,7 +40,7 @@
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
-                      (anon-tracking-enabled)))
+                      (public-settings/anon-tracking-enabled)))
   :visibility :public)
 
 (defsetting snowplow-url
