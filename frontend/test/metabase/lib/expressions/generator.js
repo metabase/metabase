@@ -1,6 +1,6 @@
 import { createRandom } from "./prng";
 
-export function generateExpression(seed, depth = 13) {
+export function generateExpression(seed, resultType, depth = 13) {
   const random = createRandom(seed);
 
   const randomInt = max => Math.floor(max * random());
@@ -346,8 +346,31 @@ export function generateExpression(seed, depth = 13) {
     };
   };
 
-  const tree = oneOf([numberExpression, booleanExpression, stringExpression])();
+  const generatorFunctions = [];
+  switch (resultType) {
+    case "boolean":
+      generatorFunctions.push(booleanExpression);
+      break;
+    case "number":
+      generatorFunctions.push(numberExpression);
+      break;
+    case "string":
+      generatorFunctions.push(stringExpression);
+      break;
+    // alias for number | string
+    case "expression":
+      generatorFunctions.push(numberExpression);
+      generatorFunctions.push(stringExpression);
+      break;
 
+    default:
+      generatorFunctions.push(booleanExpression);
+      generatorFunctions.push(numberExpression);
+      generatorFunctions.push(stringExpression);
+      break;
+  }
+
+  const tree = oneOf(generatorFunctions)();
   const expression = format(tree);
 
   return { tree, expression };
