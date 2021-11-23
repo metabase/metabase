@@ -381,31 +381,33 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { source, suggestions, errorMessage, isFocused } = this.state;
 
     return (
-      <EditorContainer isFocused={isFocused}>
-        <EditorEqualsSign>=</EditorEqualsSign>
-        <AceEditor
-          commands={this.commands}
-          ref={this.input}
-          value={source}
-          focus={true}
-          highlightActiveLine={false}
-          wrapEnabled={true}
-          fontSize={16}
-          onBlur={this.handleEditorBlur}
-          onFocus={this.handleEditorFocus}
-          setOptions={{
-            indentedSoftWrap: false,
-            minLines: 1,
-            maxLines: 9,
-            showLineNumbers: false,
-            showGutter: false,
-            showFoldWidgets: false,
-            showPrintMargin: false,
-          }}
-          onChange={source => this.onExpressionChange(source)}
-          onCursorChange={selection => this.onCursorChange(selection)}
-          width="100%"
-        />
+      <React.Fragment>
+        <EditorContainer isFocused={isFocused} hasError={Boolean(errorMessage)}>
+          <EditorEqualsSign>=</EditorEqualsSign>
+          <AceEditor
+            commands={this.commands}
+            ref={this.input}
+            value={source}
+            focus={true}
+            highlightActiveLine={false}
+            wrapEnabled={true}
+            fontSize={12}
+            onBlur={this.onInputBlur}
+            onFocus={this.handleEditorFocus}
+            setOptions={{
+              indentedSoftWrap: false,
+              minLines: 1,
+              maxLines: 9,
+              showLineNumbers: false,
+              showGutter: false,
+              showFoldWidgets: false,
+              showPrintMargin: false,
+            }}
+            onChange={source => this.onExpressionChange(source)}
+            onCursorChange={selection => this.onCursorChange(selection)}
+            width="100%"
+          />
+        </EditorContainer>
         <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
         <ExpressionEditorSuggestions
@@ -413,7 +415,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={this.state.highlightedSuggestionIndex}
         />
-      </EditorContainer>
+      </React.Fragment>
     );
   }
 }
