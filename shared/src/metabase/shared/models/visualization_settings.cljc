@@ -560,7 +560,7 @@
                  (let [k1 (parse-db-column-ref k)
                        v1 (db->norm-column-settings-entries v)]
                    (assoc m k1 v1))
-                 (catch Exception e
+                 (catch #?(:clj Throwable :cljs js/Error) e
                    m)))
              {}
              settings))
