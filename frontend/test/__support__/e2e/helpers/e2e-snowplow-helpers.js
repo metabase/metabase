@@ -1,7 +1,7 @@
 const HAS_SNOWPLOW = Cypress.env("HAS_SNOWPLOW_MICRO");
 const SNOWPLOW_URL = Cypress.env("SNOWPLOW_MICRO_URL");
 const SNOWPLOW_INTERVAL = 100;
-const SNOWPLOW_RETRIES = 10;
+const SNOWPLOW_TIMEOUT = 1000;
 
 export const describeWithSnowplow = HAS_SNOWPLOW ? describe : describe.skip;
 
@@ -32,15 +32,15 @@ const sendSnowplowRequest = url => {
   });
 };
 
-const retrySnowplowRequest = (url, condition, retries = SNOWPLOW_RETRIES) => {
+const retrySnowplowRequest = (url, condition, timeout = SNOWPLOW_TIMEOUT) => {
   return sendSnowplowRequest(url).then(response => {
     if (condition(response)) {
       return cy.wrap(response);
-    } else if (retries > 0) {
+    } else if (timeout > 0) {
       cy.wait(SNOWPLOW_INTERVAL);
-      return retrySnowplowRequest(url, condition, retries - 1);
+      return retrySnowplowRequest(url, condition, timeout - SNOWPLOW_INTERVAL);
     } else {
-      throw new Error(response);
+      throw new Error("Snowplow retry timeout");
     }
   });
 };
