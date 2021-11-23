@@ -30,7 +30,7 @@
        " "
        (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
-  :visibility :internal
+  :visibility :public
   :default    config/is-prod?)
 
 (defsetting snowplow-enabled
