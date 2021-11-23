@@ -146,8 +146,10 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     if (suggestion) {
       const { tokens } = tokenize(source);
-      const { editor } = this.input.current;
       const token = tokens.find(t => t.end >= suggestion.index);
+
+      const { editor } = this.input.current;
+      const { row } = editor.getCursorPosition();
 
       if (token) {
         const prefix = source.slice(0, token.start);
@@ -165,12 +167,10 @@ export default class ExpressionEditorTextfield extends React.Component {
         this.onExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
 
-        const { row } = editor.getCursorPosition();
         editor.moveCursorTo(row, caretPos);
       } else {
         const newExpression = source + suggestion.text;
         this.onExpressionChange(newExpression);
-        const { row } = editor.getCursorPosition();
         this.input.current.editor.moveCursorTo(row, newExpression.length);
       }
     }
@@ -353,6 +353,37 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
+  commands = [
+    {
+      name: "arrowDown",
+      bindKey: { win: "Down", mac: "Down" },
+      exec: () => {
+        this.handleArrowDown();
+      },
+    },
+    {
+      name: "arrowUp",
+      bindKey: { win: "Up", mac: "Up" },
+      exec: () => {
+        this.handleArrowUp();
+      },
+    },
+    {
+      name: "enter",
+      bindKey: { win: "Enter", mac: "Enter" },
+      exec: () => {
+        this.handleEnter();
+      },
+    },
+    {
+      name: "tab",
+      bindKey: { win: "Tab", mac: "Tab" },
+      exec: () => {
+        this.handleEnter();
+      },
+    },
+  ];
+
   render() {
     const { source, suggestions, errorMessage, isFocused } = this.state;
 
@@ -360,29 +391,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       <EditorContainer isFocused={isFocused}>
         <EditorEqualsSign>=</EditorEqualsSign>
         <AceEditor
-          commands={[
-            {
-              name: "arrowDown",
-              bindKey: { win: "Down", mac: "Down" },
-              exec: () => {
-                this.handleArrowDown();
-              },
-            },
-            {
-              name: "arrowUp",
-              bindKey: { win: "Up", mac: "Up" },
-              exec: () => {
-                this.handleArrowUp();
-              },
-            },
-            {
-              name: "enter",
-              bindKey: { win: "Enter", mac: "Enter" },
-              exec: () => {
-                this.handleEnter();
-              },
-            },
-          ]}
+          commands={this.commands}
           ref={this.input}
           value={source}
           focus={true}
