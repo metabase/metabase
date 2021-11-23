@@ -25,6 +25,7 @@ export const BarSeries = ({ series, yScaleLeft, yScaleRight, xAccessor, bandwidt
   return (
     <Group>
       {series.map((series) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const yScale = series.yAxisPosition === 'left' ? yScaleLeft! : yScaleRight!
 
         return (

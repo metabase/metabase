@@ -16,6 +16,7 @@ export const AreaSeries = ({ series, yScaleLeft, yScaleRight, xAccessor }: AreaS
   return (
     <Group>
       {series.map(s => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const yScale = s.yAxisPosition === 'left' ? yScaleLeft! : yScaleRight!
 
         return (

@@ -16,7 +16,9 @@ export const LineSeries = ({ series, yScaleLeft, yScaleRight, xAccessor }: LineS
   return (
     <Group>
       {series.map(s => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const yScale = s.yAxisPosition === 'left' ? yScaleLeft! : yScaleRight!
+
         return (
         <LinePath
           key={s.name}

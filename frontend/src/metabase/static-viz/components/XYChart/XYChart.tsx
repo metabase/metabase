@@ -1,16 +1,10 @@
 import React from "react";
-import { Text } from "@visx/text";
+import { Text, TextProps } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
 
-import {
-  getLabelProps,
-  getXTickLabelProps,
-  getYTickLabelProps,
-} from "metabase/static-viz/lib/axes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
-
 import {
   Series,
   ChartSettings,
@@ -36,25 +30,6 @@ import {
   calculateLegendItems,
   calculateBounds,
 } from "metabase/static-viz/components/XYChart/utils";
-
-const layout = {
-  width: 540,
-  height: 300,
-  font: {
-    size: 11,
-  },
-  colors: {
-    brand: "#509ee3",
-    brandLight: "#DDECFA",
-    textLight: "#b8bbc3",
-    textMedium: "#949aab",
-  },
-  numTicks: 5,
-  strokeWidth: 2,
-  labelFontWeight: 700,
-  labelPadding: 12,
-  maxTickWidth: 100,
-};
 
 export interface XYChartProps {
   width: number;
@@ -118,6 +93,21 @@ export const XYChart = ({
   );
   const xTicksCount = settings.x.type === "ordinal" ? Infinity : 5;
 
+  const labelProps: Partial<TextProps> = {
+    fontWeight: style.axes.labels.fontWeight,
+    fontSize: style.axes.labels.fontSize,
+    fontFamily: style.fontFamily,
+    fill: style.axes.labels.color,
+    textAnchor: "middle",
+  };
+
+  const tickProps: Partial<TextProps> = {
+    fontSize: style.axes.ticks.fontSize,
+    fontFamily: style.fontFamily,
+    fill: style.axes.ticks.color,
+    textAnchor: "end",
+  };
+
   return (
     <svg width={width} height={height + legend.height}>
       <Group top={margin.top} left={xMin}>
@@ -163,9 +153,9 @@ export const XYChart = ({
           scale={yScaleLeft}
           stroke={style.axes.color}
           tickStroke={style.axes.color}
-          labelProps={getLabelProps(layout) as any}
+          labelProps={labelProps}
           tickFormat={value => formatNumber(value, settings.y.format)}
-          tickLabelProps={() => getYTickLabelProps(layout) as any}
+          tickLabelProps={() => tickProps}
         />
       )}
 
@@ -180,9 +170,9 @@ export const XYChart = ({
           scale={yScaleRight}
           stroke={style.axes.color}
           tickStroke={style.axes.color}
-          labelProps={getLabelProps(layout) as any}
+          labelProps={labelProps}
           tickFormat={value => formatNumber(value, settings.y.format)}
-          tickLabelProps={() => getYTickLabelProps(layout) as any}
+          tickLabelProps={() => tickProps}
         />
       )}
 
@@ -194,7 +184,7 @@ export const XYChart = ({
         numTicks={xTicksCount}
         stroke={style.axes.color}
         tickStroke={style.axes.color}
-        labelProps={getLabelProps(layout) as any}
+        labelProps={labelProps}
         tickFormat={value =>
           formatXTick(value.valueOf(), settings.x.type, settings.x.format)
         }
@@ -208,7 +198,7 @@ export const XYChart = ({
             )}
           />
         )}
-        tickLabelProps={() => getXTickLabelProps(layout) as any}
+        tickLabelProps={() => tickProps}
       />
 
       <Legend
