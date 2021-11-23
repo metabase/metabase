@@ -166,6 +166,13 @@
   :default    "UA-60817802-1"
   :visibility :public)
 
+(defsetting ga-enabled
+  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
+  :visibility :public)
+
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
