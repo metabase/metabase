@@ -484,7 +484,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
         });
         cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        cy.route(
+          "POST",
+          `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+        ).as("cardQuery");
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
@@ -726,9 +729,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
               ],
             });
           });
-          cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
-            "secondCardQuery",
-          );
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION2_ID}/query`,
+          ).as("secondCardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.wait("@secondCardQuery");
