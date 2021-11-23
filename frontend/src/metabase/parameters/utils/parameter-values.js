@@ -195,3 +195,19 @@ export function normalizeParameterValue(type, value) {
     return value;
   }
 }
+
+export function getParameterValuesByIdFromSlugs(
+  parameters,
+  parameterValuesBySlug,
+) {
+  const parameterValuesById = {};
+
+  parameters.forEach(parameter => {
+    const value = parameterValuesBySlug[parameter.slug];
+    if (hasParameterValue(value)) {
+      parameterValuesById[parameter.id] = value;
+    }
+  });
+
+  return parameterValuesById;
+}

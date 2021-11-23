@@ -39,6 +39,7 @@ import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
+  getParameterValuesByIdFromSlugs,
 } from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
@@ -1094,6 +1095,23 @@ export default class Question {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
 
+  setParameterValues(parameterValues) {
+    const question = this.clone();
+    question._parameterValues = parameterValues;
+    return question;
+  }
+
+  setParameterValuesBySlug(parameterValuesBySlug) {
+    const parameters = this.parameters();
+    const parameterValues = getParameterValuesByIdFromSlugs(
+      parameters,
+      parameterValuesBySlug,
+    );
+    const question = this.clone();
+    question._parameterValues = parameterValues;
+    return question;
+  }
+
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
@@ -1190,41 +1208,24 @@ export default class Question {
   }
 
   getUrlWithParameters() {
-    let question = this.query().isEditable()
+    const question = this.query().isEditable()
       ? this.convertParametersToFilters().markDirty()
       : this.markDirty();
 
-    let parameterValuesBySlug;
-    if (question.isNative()) {
-      const parametersOnQuestion = question.parameters();
-      // clear parameters on question
-      question = question.setParameters(undefined);
-      const templateTagParameters = question.parameters();
-      // remap parameter values map to template tag params on native question
-      const remappedParameterValues = remapParameterValuesForTemplateTags(
-        parametersOnQuestion,
-        templateTagParameters,
-        question._parameterValues,
-      );
-      // remap values map again to slug keys
-      parameterValuesBySlug = getParameterValuesBySlug(
-        question.parameters(),
-        remappedParameterValues,
-      );
-    } else if (!question.query().isEditable()) {
-      parameterValuesBySlug = getParameterValuesBySlug(
+    let parameterValues;
+    if (question.isNative() || !question.query().isEditable()) {
+      parameterValues = getParameterValuesBySlug(
         question.parameters(),
         question._parameterValues,
       );
     }
 
-    // parameterValues get put into the query, unserialized
     delete question._parameterValues;
     delete this._parameterValues;
 
     return question.getUrl({
       originalQuestion: this,
-      query: parameterValuesBySlug,
+      query: parameterValues,
       includeDisplayIsLocked: true,
     });
   }

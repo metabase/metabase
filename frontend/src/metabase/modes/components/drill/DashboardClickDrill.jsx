@@ -64,10 +64,15 @@ export default ({ question, clicked }) => {
 
       behavior = { url: () => url.toString() };
     } else if (linkType === "question" && extraData && extraData.questions) {
+      const queryParams = getQueryParams(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
       let targetQuestion = new Question(
         extraData.questions[targetId],
         question.metadata(),
-        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
       ).lockDisplay();
 
       if (targetQuestion.isStructured()) {
@@ -77,13 +82,16 @@ export default ({ question, clicked }) => {
             .map(({ target, id, source }) => ({
               target: target.dimension,
               id,
+              slug: id,
               type: getTypeForSource(source, extraData),
             }))
             .value(),
         );
       }
 
-      const url = targetQuestion.getUrlWithParameters();
+      const url = targetQuestion
+        .setParameterValuesBySlug(queryParams)
+        .getUrlWithParameters();
       behavior = { url: () => url };
     }
   }

@@ -281,7 +281,7 @@ function formatDateForParameterType(value, parameterType, unit) {
 export function getTargetForQueryParams(target, { extraData, clickBehavior }) {
   if (target.type === "parameter") {
     const parameter = getParameter(target, { extraData, clickBehavior });
-    return parameter && parameter.slug;
+    return parameter && parameter.id;
   }
   return target.id;
 }

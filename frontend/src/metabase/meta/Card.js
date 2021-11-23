@@ -1,8 +1,14 @@
 import _ from "underscore";
 import { updateIn } from "icepick";
 
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-import { getParametersMappedToCard } from "metabase/parameters/utils/cards";
+import {
+  normalizeParameterValue,
+  getParameterValuesBySlug,
+} from "metabase/parameters/utils/parameter-values";
+import {
+  getParametersMappedToCard,
+  remapParameterValuesForTemplateTags,
+} from "metabase/parameters/utils/cards";
 
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
@@ -149,7 +155,6 @@ export function isTransientId(id) {
   return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
-/** returns a question URL with parameters added to query string or MBQL filters */
 export function questionUrlWithParameters(
   card,
   metadata,
@@ -157,16 +162,29 @@ export function questionUrlWithParameters(
   parameterValues,
   parameterMappings,
 ) {
-  const parametersMappedToCard = getParametersMappedToCard(
+  const dashboardParametersMappedToCard = getParametersMappedToCard(
     card,
     parameters,
     parameterMappings,
   );
-  const questionWithParameters = new Question(
-    card,
-    metadata,
-    parameterValues,
-  ).setParameters(parametersMappedToCard);
 
-  return questionWithParameters.getUrlWithParameters();
+  const question = new Question(card, metadata);
+  if (question.isStructured()) {
+    return question
+      .setParameters(dashboardParametersMappedToCard)
+      .setParameterValues(parameterValues)
+      .getUrlWithParameters();
+  } else if (question.isNative()) {
+    const templateTagParameters = question.parameters();
+    const parameterValuesByTemplateTag = remapParameterValuesForTemplateTags(
+      dashboardParametersMappedToCard,
+      templateTagParameters,
+      parameterValues,
+    );
+
+    return question
+      .setParameterValues(parameterValuesByTemplateTag)
+      .setParameterValues(parameterValuesByTemplateTag)
+      .getUrlWithParameters();
+  }
 }
