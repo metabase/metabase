@@ -25,6 +25,7 @@ export * from "./helpers/e2e-data-model-helpers";
 export * from "./helpers/e2e-misc-helpers";
 export * from "./helpers/e2e-email-helpers";
 export * from "./helpers/e2e-slack-helpers";
+export * from "./helpers/e2e-snowplow-helpers";
 export * from "./helpers/e2e-custom-column-helpers";
 export * from "./helpers/e2e-dimension-list-helpers";
 export * from "./helpers/e2e-downloads-helpers";
