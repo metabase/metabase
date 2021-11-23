@@ -1,37 +1,62 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 import Settings from "metabase/lib/settings";
-import { isProduction } from "metabase/env";
 import { getUserId } from "metabase/selectors/user";
+import { isProduction } from "metabase/env";
 
 export const createTracker = store => {
-  if (isTrackingEnabled()) {
+  if (isGoogleAnalyticsEnabled()) {
     createGoogleAnalyticsTracker();
+  }
+
+  if (isSnowplowEnabled()) {
     createSnowplowTracker(store);
+  }
+
+  if (isGoogleAnalyticsEnabled() || isSnowplowEnabled()) {
     document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
 
 export const trackPageView = url => {
-  if (isTrackingEnabled() && url) {
+  if (!url) {
+    return;
+  }
+
+  if (isGoogleAnalyticsEnabled()) {
     trackGoogleAnalyticsPageView(url);
+  }
+
+  if (isSnowplowEnabled()) {
     trackSnowplowPageView(url);
   }
 };
 
 export const trackStructEvent = (category, action, label, value) => {
-  if (isTrackingEnabled() && category && label) {
+  if (!category || !label) {
+    return;
+  }
+
+  if (isGoogleAnalyticsEnabled()) {
     trackGoogleAnalyticsStructEvent(category, action, label, value);
   }
 };
 
 export const trackSchemaEvent = (schema, version, data) => {
-  if (isTrackingEnabled() && schema) {
+  if (!schema) {
+    return;
+  }
+
+  if (isSnowplowEnabled()) {
     trackSnowplowSchemaEvent(schema, version, data);
   }
 };
 
-const isTrackingEnabled = () => {
-  return isProduction && Settings.trackingEnabled();
+const isGoogleAnalyticsEnabled = () => {
+  return Settings.trackingEnabled() && isProduction;
+};
+
+const isSnowplowEnabled = () => {
+  return Settings.trackingEnabled() && Settings.snowplowAvailable();
 };
 
 const createGoogleAnalyticsTracker = () => {
@@ -114,7 +139,7 @@ const trackSnowplowSchemaEvent = (schema, version, data) => {
 };
 
 const handleStructEventClick = event => {
-  if (!isTrackingEnabled()) {
+  if (!Settings.trackingEnabled()) {
     return;
   }
 
