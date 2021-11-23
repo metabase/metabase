@@ -147,6 +147,10 @@ export default class ExpressionEditorTextfield extends React.Component {
     if (suggestion) {
       const { tokens } = tokenize(source);
       const token = tokens.find(t => t.end >= suggestion.index);
+
+      const { editor } = this.input.current;
+      const { row } = editor.getCursorPosition();
+
       if (token) {
         const prefix = source.slice(0, token.start);
         const postfix = source.slice(token.end);
@@ -162,14 +166,49 @@ export default class ExpressionEditorTextfield extends React.Component {
         const updatedExpression = prefix + replacement.trim() + postfix;
         this.onExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
-        setTimeout(() => {
-          this._setCaretPosition(caretPos, true);
-        });
+
+        editor.moveCursorTo(row, caretPos);
       } else {
         const newExpression = source + suggestion.text;
         this.onExpressionChange(newExpression);
-        setTimeout(() => this._setCaretPosition(newExpression.length, true));
+        this.input.current.editor.moveCursorTo(row, newExpression.length);
       }
+    }
+  };
+
+  handleArrowUp = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.setState({
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length - 1) %
+          suggestions.length,
+      });
+    } else {
+      this.input.current.editor.navigateLineEnd();
+    }
+  };
+
+  handleArrowDown = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.setState({
+        highlightedSuggestionIndex:
+          (highlightedSuggestionIndex + suggestions.length + 1) %
+          suggestions.length,
+      });
+    } else {
+      this.input.current.editor.navigateLineEnd();
+    }
+  };
+
+  handleEnter = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
+      this.onSuggestionSelected(highlightedSuggestionIndex);
     }
   };
 
@@ -180,6 +219,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       setTimeout(() => this._triggerAutosuggest());
       return;
     }
+
     if (e.keyCode === KEYCODE_ESCAPE) {
       e.stopPropagation();
       e.preventDefault();
@@ -313,6 +353,37 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
+  commands = [
+    {
+      name: "arrowDown",
+      bindKey: { win: "Down", mac: "Down" },
+      exec: () => {
+        this.handleArrowDown();
+      },
+    },
+    {
+      name: "arrowUp",
+      bindKey: { win: "Up", mac: "Up" },
+      exec: () => {
+        this.handleArrowUp();
+      },
+    },
+    {
+      name: "enter",
+      bindKey: { win: "Enter", mac: "Enter" },
+      exec: () => {
+        this.handleEnter();
+      },
+    },
+    {
+      name: "tab",
+      bindKey: { win: "Tab", mac: "Tab" },
+      exec: () => {
+        this.handleEnter();
+      },
+    },
+  ];
+
   render() {
     const { source, suggestions, errorMessage, isFocused } = this.state;
 
@@ -320,6 +391,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       <EditorContainer isFocused={isFocused}>
         <EditorEqualsSign>=</EditorEqualsSign>
         <AceEditor
+          commands={this.commands}
           ref={this.input}
           value={source}
           focus={true}
