@@ -88,6 +88,30 @@ export function generateExpression(seed, resultType, depth = 13) {
     return String(str);
   };
 
+  const coalesce = fn => {
+    return {
+      type: NODE.FunctionCall,
+      value: "coalesce",
+      params: listOf(1 + randomInt(3), [fn])(),
+    };
+  };
+
+  const caseExpression = fn => {
+    const params = [];
+    for (let i = 0; i < 1 + randomInt(3); ++i) {
+      params.push(booleanExpression());
+      params.push(fn());
+    }
+    if (randomInt(10) < 3) {
+      params.push(fn());
+    }
+    return {
+      type: NODE.FunctionCall,
+      value: "case",
+      params,
+    };
+  };
+
   const numberExpression = () => {
     --depth;
     const node =
@@ -102,6 +126,8 @@ export function generateExpression(seed, resultType, depth = 13) {
             power,
             stringLength,
             numberGroup,
+            coalesceNumber,
+            caseNumber,
           ])();
     ++depth;
     return node;
@@ -183,6 +209,10 @@ export function generateExpression(seed, resultType, depth = 13) {
       child: numberExpression(),
     };
   };
+
+  const coalesceNumber = () => coalesce(numberExpression);
+
+  const caseNumber = () => caseExpression(numberExpression);
 
   const booleanExpression = () => {
     --depth;
@@ -284,6 +314,8 @@ export function generateExpression(seed, resultType, depth = 13) {
             stringReplace,
             substring,
             regexextract,
+            coalesceString,
+            caseString,
           ])();
     ++depth;
     return node;
@@ -336,6 +368,10 @@ export function generateExpression(seed, resultType, depth = 13) {
       params: [field(), stringLiteral()], // FIXME: maybe regexpLiteral?
     };
   };
+
+  const coalesceString = () => coalesce(stringExpression);
+
+  const caseString = () => caseExpression(stringExpression);
 
   const generatorFunctions = [];
   switch (resultType) {
