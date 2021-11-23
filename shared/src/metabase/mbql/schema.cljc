@@ -687,7 +687,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   field
+  field   Field
   n       (s/cond-pre
            s/Int
            (s/enum :current :last :next))
