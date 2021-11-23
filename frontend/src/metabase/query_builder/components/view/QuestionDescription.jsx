@@ -7,7 +7,11 @@ import QuestionDataSource from "./QuestionDataSource";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-const QuestionDescription = ({ question, isObjectDetail }) => {
+const QuestionDescription = ({
+  question,
+  originalQuestion,
+  isObjectDetail,
+}) => {
   const query = question.query();
   if (query instanceof StructuredQuery) {
     const topQuery = query.topLevelQuery();
@@ -47,7 +51,11 @@ const QuestionDescription = ({ question, isObjectDetail }) => {
   }
   if (question.database()) {
     return (
-      <QuestionDataSource question={question} isObjectDetail={isObjectDetail} />
+      <QuestionDataSource
+        question={question}
+        originalQuestion={originalQuestion}
+        isObjectDetail={isObjectDetail}
+      />
     );
   } else {
     return <span>{t`New question`}</span>;
