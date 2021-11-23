@@ -26,10 +26,10 @@
   :setter (fn [client-id]
             (if client-id
               (let [trimmed-client-id (str/trim client-id)]
-                (if-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
+                (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
                   (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
-                                  {:status-code 400}))
-                  (setting/set-string! :google-auth-client-id trimmed-client-id)))
+                                  {:status-code 400})))
+                (setting/set-string! :google-auth-client-id trimmed-client-id))
               (setting/set-string! :google-auth-client-id nil))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
