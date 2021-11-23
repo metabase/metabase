@@ -117,19 +117,10 @@ export function generateExpression(seed, resultType, depth = 13) {
     };
   };
 
-  const validIdentifier = () => {
-    const KEYWORDS = ["and", "or", "not"];
-    let candidate;
-    do {
-      candidate = identifier();
-    } while (KEYWORDS.includes(candidate.toLowerCase()));
-    return candidate;
-  };
-
   const field = () => {
     const fk = () => "[" + identifier() + " → " + identifier() + "]";
     const bracketedName = () => "[" + identifier() + "]";
-    const name = oneOf([validIdentifier, fk, bracketedName])();
+    const name = oneOf([fk, bracketedName])();
     return {
       type: NODE.Field,
       value: name,
