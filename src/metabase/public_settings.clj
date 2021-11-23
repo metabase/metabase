@@ -474,6 +474,7 @@
        " "
        (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
+  :visibility :internal
   :default    config/is-prod?)
 
 (defsetting snowplow-enabled
@@ -483,7 +484,8 @@
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
-                      (anon-tracking-enabled))))
+                      (anon-tracking-enabled)))
+  :visibility :public)
 
 (defsetting snowplow-url
   (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
