@@ -24,6 +24,10 @@ export const EditorContainer = styled.div`
     css`
       border-color: ${color("error")};
     `}
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 export const EditorEqualsSign = styled.div`
