@@ -8661,6 +8661,20 @@ databaseChangeLog:
                   name: moderated_item_id
 
   - changeSet:
+      id: 383
+      author: camsaul
+      comment: Added 0.41.3 -- Add index to QueryExecution card_id + started_at to fix performance issue #19053
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id_started_at
+            columns:
+              - column:
+                  name: card_id
+              - column:
+                  name: started_at
+
+  - changeSet:
       id: v42.00-000
       author: camsaul
       comment: Added 0.42.0 Remove unused column (#5240)
