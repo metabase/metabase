@@ -1,4 +1,11 @@
-import { restore } from "__support__/e2e/cypress";
+import {
+  blockSnowplow,
+  describeWithSnowplow,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  restore,
+} from "__support__/e2e/cypress";
 
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
@@ -192,5 +199,41 @@ describe("scenarios > setup", () => {
       "have.value",
       "Epic Team",
     );
+  });
+});
+
+describeWithSnowplow("scenarios > setup", () => {
+  beforeEach(() => {
+    restore("blank");
+    resetSnowplow();
+  });
+
+  afterEach(() => {
+    expectNoBadSnowplowEvents();
+  });
+
+  it("should send snowplow events", () => {
+    // 1 - pageview
+    cy.visit(`/setup`);
+
+    // 2 - setup/step_seen
+    cy.findByText("Welcome to Metabase");
+    cy.findByText("Let's get started").click();
+
+    // 3 - setup/step_seen
+    cy.findByText("What's your preferred language?");
+
+    expectGoodSnowplowEvents(3);
+  });
+
+  it("should ignore snowplow failures and work as normal", () => {
+    blockSnowplow();
+    cy.visit(`/setup`);
+
+    cy.findByText("Welcome to Metabase");
+    cy.findByText("Let's get started").click();
+    cy.findByText("What's your preferred language?");
+
+    expectGoodSnowplowEvents(0);
   });
 });

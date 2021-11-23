@@ -82,7 +82,9 @@ export type SettingName =
   | "version-info"
   | "version"
   | "subscription-allowed-domains"
-  | "cloud-gateway-ips";
+  | "cloud-gateway-ips"
+  | "snowplow-available"
+  | "snowplow-url";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -174,6 +176,14 @@ class Settings {
 
   trackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
+  }
+
+  snowplowAvailable() {
+    return this.get("snowplow-available") || false;
+  }
+
+  snowplowUrl() {
+    return this.get("snowplow-url");
   }
 
   formattingOptions() {

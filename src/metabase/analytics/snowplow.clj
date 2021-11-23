@@ -30,7 +30,17 @@
        " "
        (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
   :type       :boolean
-  :default    config/is-prod?
+  :visibility :internal
+  :default    config/is-prod?)
+
+(defsetting snowplow-enabled
+  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow. True if anonymous tracking")
+       " "
+       (deferred-tru "is enabled for this instance, and a Snowplow collector is available."))
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (and (snowplow-available)
+                      (anon-tracking-enabled)))
   :visibility :public)
 
 (defsetting snowplow-url
@@ -38,7 +48,7 @@
   :default    (if config/is-prod?
                 "https://sp.metabase.com"
                 ;; See the iglu-schema-registry repo for instructions on how to run Snowplow Micro locally for development
-                "http://localhost:9095")
+                "http://localhost:9090")
   :visibility :public)
 
 (def ^:private emitter
