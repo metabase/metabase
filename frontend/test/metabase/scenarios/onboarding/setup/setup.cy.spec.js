@@ -212,7 +212,7 @@ describeWithSnowplow("scenarios > setup", () => {
     expectNoBadSnowplowEvents();
   });
 
-  it.only("should send snowplow events", () => {
+  it("should send snowplow events", () => {
     // 1 - pageview
     cy.visit(`/setup`);
 
