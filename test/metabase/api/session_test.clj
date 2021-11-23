@@ -369,11 +369,11 @@
 
 (deftest google-auth-test
   (testing "POST /google_auth"
-    (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
         (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
           (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                           "\"email_verified\":\"true\","
                                                           "\"first_name\":\"test\","
                                                           "\"last_name\":\"user\","
@@ -383,7 +383,7 @@
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                           "\"email_verified\":\"true\","
                                                           "\"first_name\":\"test\","
                                                           "\"last_name\":\"user\","
