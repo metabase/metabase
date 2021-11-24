@@ -65,6 +65,7 @@ type Props = {
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
 
   isNativeEditorOpen: boolean,
+  isInitiallyOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
   nativeEditorSelectedText: string,
   setNativeEditorSelectedRange: any => void,
@@ -148,8 +149,8 @@ export default class NativeQueryEditor extends Component {
   };
 
   UNSAFE_componentWillMount() {
-    const { question, setIsNativeEditorOpen } = this.props;
-    setIsNativeEditorOpen(!question || !question.isSaved());
+    const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
+    setIsNativeEditorOpen(!question || !question.isSaved() || isInitiallyOpen);
   }
 
   componentDidMount() {
