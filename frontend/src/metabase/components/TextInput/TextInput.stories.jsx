@@ -6,4 +6,4 @@ export default {
   component: TextInput,
 };
 
-export const Default = () => <TextInput />;
+export const Default = props => <TextInput {...props} />;
