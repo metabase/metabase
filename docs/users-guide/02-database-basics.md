@@ -1,8 +1,8 @@
-## A Short Overview of Databases
+# A Short Overview of Databases
 
 Before you jump into working with Metabase, it's helpful to know a few key database terms.
 
-#### Tables
+## Tables
 
 Fundamentally, databases are made up of one or more _tables_. Tables contain one or more _columns_ and one or more _rows_. A row is made up of _cells_, and each cell has a _value_ that corresponds to the column it falls under.
 
@@ -15,13 +15,13 @@ Here's an example of a table:
 
 Here, the columns are `Name` and `Age`. The first row contains two cells, one with `John` and one with `25`, corresponding to the Name and Age columns, respectively.
 
-#### Columns
+## Columns
 
 All the cells in a column contain the same type of information. For example, in the sample table above, the `Name` column contains names in each cell, while the `Age` column lists ages.
 
 Columns are also sometimes interchangeably referred to as _fields_. Each field has a type that describes what kind of data is stored in the field.
 
-#### Keys
+## Keys
 
 A primary key is a field in a table that uniquely identifies each row. For example, imagine a car reservation app where you can book a car in advance. The ID of the reservation could be the reservation number, and no two reservations would share the same reservation number, allowing each reservation to be uniquely identified by its reservation number.
 
@@ -36,7 +36,7 @@ _Reservations Table_
 
 In the above table, the `Reservation ID` field is the ID (primary key).
 
-#### Relationships
+## Relationships
 
 Tables can contain references to other tables, which establishes a relationship between them.
 
