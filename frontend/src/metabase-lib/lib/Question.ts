@@ -31,10 +31,7 @@ import {
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
-import {
-  getValueAndFieldIdPopulatedParametersFromCard,
-  remapParameterValuesForTemplateTags,
-} from "metabase/parameters/utils/cards";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,

@@ -1,10 +1,7 @@
 import _ from "underscore";
 import { updateIn } from "icepick";
 
-import {
-  normalizeParameterValue,
-  getParameterValuesBySlug,
-} from "metabase/parameters/utils/parameter-values";
+import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 import {
   getParametersMappedToCard,
   remapParameterValuesForTemplateTags,
@@ -12,7 +9,6 @@ import {
 
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
 
 import Question from "../../metabase-lib/lib/Question";
 

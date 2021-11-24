@@ -38,7 +38,6 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import DatasetEditor from "../DatasetEditor";
 
