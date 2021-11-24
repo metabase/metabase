@@ -24,8 +24,5 @@ export default _.compose(
     id: (state, props) => Number.parseInt(props.params.alertId),
   }),
   Users.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(AuditNotificationEditModal);

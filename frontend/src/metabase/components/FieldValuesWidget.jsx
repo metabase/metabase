@@ -582,7 +582,4 @@ const OptionsMessage = ({ message }) => (
 
 OptionsMessage.propTypes = optionsMessagePropTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldValuesWidget);
+export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);

@@ -260,7 +260,10 @@ export const STACKABLE_SETTINGS = {
     title: t`Stacked chart type`,
     widget: "segmentedControl",
     props: {
-      options: [{ icon: "area", value: "area" }, { icon: "bar", value: "bar" }],
+      options: [
+        { icon: "area", value: "area" },
+        { icon: "bar", value: "bar" },
+      ],
     },
     getDefault: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);

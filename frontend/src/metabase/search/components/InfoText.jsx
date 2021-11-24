@@ -40,9 +40,9 @@ export function InfoText({ result }) {
     case "table":
       return <TablePath result={result} />;
     case "segment":
-      return jt`Segment of ${<TableLink result={result} />}`;
+      return jt`Segment of ${(<TableLink result={result} />)}`;
     case "metric":
-      return jt`Metric for ${<TableLink result={result} />}`;
+      return jt`Metric for ${(<TableLink result={result} />)}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result.getCollection(),

@@ -76,10 +76,7 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @fitViewport
 @title(({ dashboard }) => dashboard && dashboard.name)
 @titleWithLoadingTime("loadingStartTime")

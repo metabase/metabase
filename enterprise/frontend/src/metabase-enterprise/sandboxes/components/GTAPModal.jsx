@@ -54,10 +54,7 @@ type State = {
 };
 
 @withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class GTAPModal extends React.Component {
   props: Props;
   state: State = {
@@ -339,7 +336,9 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
       </div>
       <SummaryRow
         icon="group"
-        content={jt`Users in ${<GroupName groupId={gtap.group_id} />} can view`}
+        content={jt`Users in ${(
+          <GroupName groupId={gtap.group_id} />
+        )} can view`}
       />
       <SummaryRow
         icon="table"
@@ -348,7 +347,7 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
             ? jt`rows in the ${(
                 <QuestionName questionId={gtap.card_id} />
               )} question`
-            : jt`rows in the ${<TableName tableId={gtap.table_id} />} table`
+            : jt`rows in the ${(<TableName tableId={gtap.table_id} />)} table`
         }
       />
       {Object.entries(gtap.attribute_remappings).map(
@@ -360,10 +359,10 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
               index === 0
                 ? jt`where ${(
                     <TargetName gtap={gtap} target={target} />
-                  )} equals ${<span className="text-code">{attribute}</span>}`
+                  )} equals ${(<span className="text-code">{attribute}</span>)}`
                 : jt`and ${(
                     <TargetName gtap={gtap} target={target} />
-                  )} equals ${<span className="text-code">{attribute}</span>}`
+                  )} equals ${(<span className="text-code">{attribute}</span>)}`
             }
           />
         ),

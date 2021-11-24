@@ -134,10 +134,7 @@ function PermissionsPageLayout({
 PermissionsPageLayout.propTypes = propTypes;
 
 export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
   fitViewport,
   withRouter,
 )(PermissionsPageLayout);

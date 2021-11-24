@@ -246,7 +246,7 @@ function getConfirmItems(pulse) {
               c.recipients.length,
             )}
           </strong>
-        )} ${<strong key="type">{c.schedule_type}</strong>}`}
+        )} ${(<strong key="type">{c.schedule_type}</strong>)}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (
