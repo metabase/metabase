@@ -900,13 +900,15 @@ export const updateQuestion = (
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
+    const mode = getQueryBuilderMode(getState());
 
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
       !doNotClearNameAndId &&
       !getIsEditing(getState()) &&
-      newQuestion.isSaved()
+      newQuestion.isSaved() &&
+      mode !== "dataset"
     ) {
       newQuestion = newQuestion.withoutNameAndId();
 
