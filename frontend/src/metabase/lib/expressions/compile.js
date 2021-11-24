@@ -91,9 +91,11 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
         // the last one holds the function options
         const fnOptions = this.visit(parameters.pop());
 
-        // HACK: very specific to some string functions for now
+        // HACK: very specific to some string/time functions for now
         if (fnOptions === "case-insensitive") {
           options.push({ "case-sensitive": false });
+        } else if (fnOptions === "include-current") {
+          options.push({ "include-current": true });
         }
       }
     }
