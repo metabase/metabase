@@ -11,18 +11,23 @@ import {
 } from "./DatabaseBanner.styled";
 
 const propTypes = {
-  databaseId: PropTypes.number,
+  database: PropTypes.object,
+  isEnabled: PropTypes.bool,
   onClose: PropTypes.func,
 };
 
-const DatabaseBanner = ({ databaseId, onClose }) => {
+const DatabaseBanner = ({ database, isEnabled, onClose }) => {
+  if (!database || !isEnabled) {
+    return null;
+  }
+
   return (
     <BannerRoot>
       <BannerWarningIcon name="warning" />
       <BannerContent>
         {t`You’re using a database driver which is now deprecated and will be removed in the next release.`}{" "}
         <BannerLink
-          to={Urls.editDatabase(databaseId)}
+          to={Urls.editDatabase(database.id)}
           onClick={onClose}
         >{t`Show me`}</BannerLink>
       </BannerContent>

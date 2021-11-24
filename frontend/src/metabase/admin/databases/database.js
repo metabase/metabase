@@ -9,7 +9,7 @@ import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { MetabaseApi } from "metabase/services";
+import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
@@ -77,6 +77,9 @@ export const INITIALIZE_DATABASE_ERROR =
 export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
+
+export const CLOSE_DATABASE_BANNER =
+  "metabase/admin/databases/CLOSE_DATABASE_BANNER";
 
 export const reset = createAction(RESET);
 
@@ -320,6 +323,23 @@ export const discardSavedFieldValues = createThunkAction(
         return call;
       } catch (error) {
         console.log("error syncing database", error);
+      }
+    };
+  },
+);
+
+export const closeDatabaseBanner = createThunkAction(
+  CLOSE_DATABASE_BANNER,
+  function() {
+    return async function() {
+      const key = "engine-deprecation-notice-enabled";
+      const value = false;
+
+      try {
+        MetabaseSettings.set(key, value);
+        await SettingsApi.put({ key, value });
+      } catch (error) {
+        console.log("error saving database banner preferences", error);
       }
     };
   },

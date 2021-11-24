@@ -84,7 +84,8 @@ export type SettingName =
   | "subscription-allowed-domains"
   | "cloud-gateway-ips"
   | "snowplow-available"
-  | "snowplow-url";
+  | "snowplow-url"
+  | "engine-deprecation-notice-enabled";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
