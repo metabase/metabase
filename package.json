@@ -289,7 +289,6 @@
     "test-visual": "ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" yarn build && ./bin/build-for-test && yarn test-visual-no-build",
     "test-visual-no-build": "percy exec -- yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
-    "prepare": "husky install",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook"
   },
