@@ -402,6 +402,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             fontSize={12}
             onBlur={this.onInputBlur}
             onFocus={this.handleEditorFocus}
+            role="ace-editor"
             setOptions={{
               indentedSoftWrap: false,
               minLines: 1,
