@@ -116,6 +116,12 @@
     "@cypress/webpack-preprocessor": "^5.9.1",
     "@percy/cli": "^1.0.0-beta.48",
     "@percy/cypress": "^3.0.0",
+    "@storybook/addon-actions": "^6.3.12",
+    "@storybook/addon-essentials": "^6.3.12",
+    "@storybook/addon-links": "^6.3.12",
+    "@storybook/builder-webpack5": "^6.3.12",
+    "@storybook/manager-webpack5": "^6.3.12",
+    "@storybook/react": "^6.3.12",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
@@ -283,7 +289,9 @@
     "test-visual": "ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" yarn build && ./bin/build-for-test && yarn test-visual-no-build",
     "test-visual-no-build": "percy exec -- yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,ts,tsx,css}": [
