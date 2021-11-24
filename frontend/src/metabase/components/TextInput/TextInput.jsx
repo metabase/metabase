@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Icon from "metabase/components/Icon";
 
 import {
