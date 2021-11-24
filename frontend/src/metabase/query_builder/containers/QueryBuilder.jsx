@@ -14,7 +14,6 @@ import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import {
   getCard,
-  getDataset,
   getDatabasesList,
   getOriginalCard,
   getLastRunCard,
@@ -88,7 +87,6 @@ const mapStateToProps = (state, props) => {
     question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),
     lastRunCard: getLastRunCard(state),
-    dataset: getDataset(state),
 
     parameterValues: getParameterValues(state),
 

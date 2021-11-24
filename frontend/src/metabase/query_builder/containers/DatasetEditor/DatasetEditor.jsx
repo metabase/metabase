@@ -11,12 +11,12 @@ import QueryVisualization from "metabase/query_builder/components/QueryVisualiza
 import { Root, MainContainer, TableContainer } from "./DatasetEditor.styled";
 
 const propTypes = {
-  dataset: PropTypes.object.isRequired,
+  question: PropTypes.object.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
 };
 
 function DatasetEditor(props) {
-  const { dataset, setQueryBuilderMode } = props;
+  const { question: dataset, setQueryBuilderMode } = props;
 
   const onCancel = () => {
     setQueryBuilderMode("view");
