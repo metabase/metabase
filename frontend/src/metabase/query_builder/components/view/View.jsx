@@ -10,6 +10,8 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Subhead from "metabase/components/type/Subhead";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import DatasetEditor from "metabase/query_builder/containers/DatasetEditor";
+
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
@@ -141,6 +143,12 @@ export default class View extends React.Component {
             />
           </div>
         </div>
+      );
+    }
+
+    if (card.dataset && queryBuilderMode === "dataset") {
+      return (
+        <DatasetEditor {...this.props} onSave={this.props.onSaveDataset} />
       );
     }
 
