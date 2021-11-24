@@ -13,6 +13,10 @@ import {
   HelpCardContainer,
   IconContainer,
 } from "./AddDatabaseHelpCard.styled";
+import {
+  allEngines,
+  engineSupersedesMap,
+} from "metabase/entities/databases/forms";
 
 export const ENGINE_DOCS = {
   bigquery: MetabaseSettings.docsUrl("administration-guide/databases/bigquery"),
@@ -40,14 +44,18 @@ function AddDatabaseHelpCard({ engine, hasCircle = true, ...props }) {
   const displayName = useMemo(() => {
     const hasEngineDoc = !!ENGINE_DOCS[engine];
     if (!hasEngineDoc) {
-      return "your database";
+      return t`your database`;
     }
-    const engines = MetabaseSettings.get("engines");
-    return (engines[engine] || {})["driver-name"];
+    return (allEngines[engine] || {})["driver-name"];
   }, [engine]);
 
   const docsLink = ENGINE_DOCS[engine] || GENERAL_DB_DOC;
   const shouldDisplayHelpLink = MetabaseSettings.isHosted();
+  const supersededBy = engineSupersedesMap["superseded_by"][engine];
+
+  if (supersededBy) {
+    return null;
+  }
 
   return (
     <HelpCardContainer p={2} {...props}>
