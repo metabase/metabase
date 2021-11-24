@@ -109,8 +109,6 @@ export function getParametersMappedToCard(card, parameters, parameterMappings) {
         return {
           ...parameter,
           target: mapping.target,
-          // this `dashboardId` isn't used yet, but maybe use it to determine endpoints?
-          dashboardId: mapping.dashboard_id,
         };
       }
     })

@@ -47,7 +47,12 @@ import {
   pivot,
   toUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-import { CardApi, maybeUsePivotEndpoint, MetabaseApi } from "metabase/services";
+import {
+  DashboardApi,
+  CardApi,
+  maybeUsePivotEndpoint,
+  MetabaseApi,
+} from "metabase/services";
 import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
@@ -838,6 +843,10 @@ export default class Question {
     );
   }
 
+  setDashboardId(dashboardId: number): Question {
+    return this.setCard(assoc(this.card(), "dashboardId", dashboardId));
+  }
+
   description(): string | null | undefined {
     return this._card && this._card.description;
   }
@@ -1017,14 +1026,17 @@ export default class Question {
       });
 
     if (canUseCardApiEndpoint) {
+      const dashboardId = this._card.dashboardId;
+
       const queryParams = {
         cardId: this.id(),
+        dashboardId,
         ignore_cache: ignoreCache,
         parameters,
       };
       return [
         await maybeUsePivotEndpoint(
-          CardApi.query,
+          dashboardId ? DashboardApi.cardQuery : CardApi.query,
           this.card(),
           this.metadata(),
         )(queryParams, {
@@ -1145,7 +1157,12 @@ export default class Question {
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
     const [a, b] = [this, originalQuestion].map(q => {
-      return q && new Question(q.card(), this.metadata()).setParameters([]);
+      return (
+        q &&
+        new Question(q.card(), this.metadata())
+          .setParameters([])
+          .setDashboardId(undefined)
+      );
     });
     return a.isDirtyComparedTo(b);
   }
@@ -1182,11 +1199,9 @@ export default class Question {
             displayIsLocked: this._card.displayIsLocked,
           }
         : {}),
-      ...(creationType
-        ? {
-            creationType,
-          }
-        : {}),
+
+      ...(creationType ? { creationType } : {}),
+      dashboardId: this._card.dashboardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }

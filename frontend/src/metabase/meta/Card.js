@@ -156,8 +156,10 @@ export function questionUrlWithParameters(
   metadata,
   parameters,
   parameterValues,
-  parameterMappings,
+  dashcard,
 ) {
+  const parameterMappings = dashcard?.parameter_mappings;
+  const dashboardId = dashcard?.dashboard_id;
   const dashboardParametersMappedToCard = getParametersMappedToCard(
     card,
     parameters,
@@ -166,10 +168,14 @@ export function questionUrlWithParameters(
 
   const question = new Question(card, metadata);
   if (question.isStructured()) {
-    return question
-      .setParameters(dashboardParametersMappedToCard)
-      .setParameterValues(parameterValues)
-      .getUrlWithParameters();
+    return (
+      question
+        // when a user doesn't have perms, we run the card like it is in a dashboard
+        .setDashboardId(question.query().isEditable() ? undefined : dashboardId)
+        .setParameters(dashboardParametersMappedToCard)
+        .setParameterValues(parameterValues)
+        .getUrlWithParameters()
+    );
   } else if (question.isNative()) {
     const templateTagParameters = question.parameters();
     const parameterValuesByTemplateTag = remapParameterValuesForTemplateTags(

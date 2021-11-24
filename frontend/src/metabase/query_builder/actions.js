@@ -381,6 +381,7 @@ export const initializeQB = (location, params, queryParams) => {
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard) {
             card.parameters = deserializedCard.parameters;
+            card.dashboardId = deserializedCard.dashboardId;
           }
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
