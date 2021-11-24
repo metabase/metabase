@@ -16,8 +16,5 @@ export default _.compose(
   Alerts.load({
     id: (state, props) => Number.parseInt(props.params.alertId),
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(AuditNotificationDeleteModal);

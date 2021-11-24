@@ -197,7 +197,10 @@ export default function StaticVizPage() {
           <StaticChart
             type="categorical/donut"
             options={{
-              data: [["donut", 2000], ["cronut", 3100]],
+              data: [
+                ["donut", 2000],
+                ["cronut", 3100],
+              ],
               colors: {
                 donut: "#509EE3",
                 cronut: "#DDECFA",

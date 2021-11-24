@@ -82,10 +82,7 @@ const mapDispatchToProps = {
   discardFieldValues,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class FieldApp extends React.Component {
   state = {
     tab: "general",

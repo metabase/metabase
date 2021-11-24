@@ -57,10 +57,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(
-  makeMapStateToProps,
-  mapDispatchToProps,
-)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,

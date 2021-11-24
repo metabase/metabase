@@ -16,7 +16,10 @@ import L from "leaflet";
 
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-const WORLD_BOUNDS = [[-90, -180], [90, 180]];
+const WORLD_BOUNDS = [
+  [-90, -180],
+  [90, 180],
+];
 
 type Props = VisualizationProps;
 

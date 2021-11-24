@@ -65,10 +65,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
@@ -166,14 +163,20 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          EmbedApi.cardQuery,
+          card,
+        )({
           token,
           ...getParameterValuesBySlug(parameters, parameterValues),
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(card, parameters, parameterValues);
-        newResult = await maybeUsePivotEndpoint(PublicApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          PublicApi.cardQuery,
+          card,
+        )({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
         });
