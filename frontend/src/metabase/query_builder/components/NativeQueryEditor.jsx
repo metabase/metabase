@@ -68,6 +68,7 @@ type Props = {
   setIsNativeEditorOpen: (isOpen: boolean) => void,
   nativeEditorSelectedText: string,
   setNativeEditorSelectedRange: any => void,
+  hasParametersList: boolean,
 
   isRunnable: boolean,
   isRunning: boolean,
@@ -467,6 +468,7 @@ export default class NativeQueryEditor extends Component {
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
+      hasParametersList = true,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -487,14 +489,16 @@ export default class NativeQueryEditor extends Component {
             setDatabaseId={this.setDatabaseId}
             setTableId={this.setTableId}
           />
-          <SyncedParametersList
-            className="mt1"
-            parameters={parameters}
-            setParameterValue={setParameterValue}
-            setParameterIndex={this.setParameterIndex}
-            isEditing
-            commitImmediately
-          />
+          {hasParametersList && (
+            <SyncedParametersList
+              className="mt1"
+              parameters={parameters}
+              setParameterValue={setParameterValue}
+              setParameterIndex={this.setParameterIndex}
+              isEditing
+              commitImmediately
+            />
+          )}
           {query.hasWritePermission() && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}
