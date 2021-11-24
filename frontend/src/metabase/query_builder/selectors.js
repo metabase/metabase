@@ -186,6 +186,16 @@ export const getQuestion = createSelector(
   },
 );
 
+export const getDataset = createSelector(
+  [getMetadata, getCard, getParameterValues],
+  (metadata, card, parameterValues) => {
+    if (!metadata || !card || !card.dataset) {
+      return;
+    }
+    return new Question(card, metadata, parameterValues);
+  },
+);
+
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
