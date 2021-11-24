@@ -415,14 +415,14 @@ export default class ExpressionEditorTextfield extends React.Component {
             onCursorChange={selection => this.onCursorChange(selection)}
             width="100%"
           />
+          <ExpressionEditorSuggestions
+            suggestions={suggestions}
+            onSuggestionMouseDown={this.onSuggestionSelected}
+            highlightedIndex={this.state.highlightedSuggestionIndex}
+          />
         </EditorContainer>
         <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
-        <ExpressionEditorSuggestions
-          suggestions={suggestions}
-          onSuggestionMouseDown={this.onSuggestionSelected}
-          highlightedIndex={this.state.highlightedSuggestionIndex}
-        />
       </React.Fragment>
     );
   }
