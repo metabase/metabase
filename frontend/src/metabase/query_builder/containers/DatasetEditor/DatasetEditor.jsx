@@ -6,17 +6,33 @@ import Button from "metabase/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
 
+import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
-import { Root, MainContainer, TableContainer } from "./DatasetEditor.styled";
+import ResizableNotebook from "./ResizableNotebook";
+import {
+  Root,
+  MainContainer,
+  QueryEditorContainer,
+  TableContainer,
+} from "./DatasetEditor.styled";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
+  height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  handleResize: PropTypes.func.isRequired,
 };
 
+const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
+
 function DatasetEditor(props) {
-  const { question: dataset, setQueryBuilderMode } = props;
+  const {
+    question: dataset,
+    height,
+    setQueryBuilderMode,
+    handleResize,
+  } = props;
 
   const onCancel = () => {
     setQueryBuilderMode("view");
@@ -33,6 +49,22 @@ function DatasetEditor(props) {
       />
       <Root>
         <MainContainer>
+          <QueryEditorContainer>
+            {dataset.isNative() ? (
+              <NativeQueryEditor
+                {...props}
+                isInitiallyOpen
+                viewHeight={height}
+                hasParametersList={false}
+              />
+            ) : (
+              <ResizableNotebook
+                {...props}
+                height={INITIAL_NOTEBOOK_EDITOR_HEIGHT}
+                onResizeStop={handleResize}
+              />
+            )}
+          </QueryEditorContainer>
           <TableContainer>
             <DebouncedFrame className="flex-full" enabled={false}>
               <QueryVisualization {...props} className="spread" noHeader />
