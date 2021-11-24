@@ -92,8 +92,5 @@ DataPermissionsPage.propTypes = propTypes;
 export default _.compose(
   Groups.loadList(),
   Databases.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

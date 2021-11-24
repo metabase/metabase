@@ -20,7 +20,11 @@ describe("metabase/visualization/lib/table", () => {
     const series = [
       {
         data: {
-          rows: [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+          rows: [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+          ],
           cols: [DIMENSION_COLUMN, METRIC_COLUMN, RAW_COLUMN],
         },
       },
@@ -52,7 +56,10 @@ describe("metabase/visualization/lib/table", () => {
       const colIndex = 2;
       const isPivoted = true;
       const pivotedData = {
-        sourceRows: [[null, 0, 1], [null, null, 2]],
+        sourceRows: [
+          [null, 0, 1],
+          [null, null, 2],
+        ],
       };
 
       expect(
@@ -75,7 +82,10 @@ describe("metabase/visualization/lib/table", () => {
       const colIndex = 1;
       const isPivoted = true;
       const pivotedData = {
-        sourceRows: [[null, 0, 1], [null, null, 2]],
+        sourceRows: [
+          [null, 0, 1],
+          [null, null, 2],
+        ],
       };
 
       expect(

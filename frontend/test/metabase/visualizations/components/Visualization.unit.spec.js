@@ -58,7 +58,10 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 1], ["bar", 2]],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
             },
           },
         ]);
@@ -79,7 +82,10 @@ describe("Visualization", () => {
                 NumberColumn({ name: "Count" }),
                 NumberColumn({ name: "Sum" }),
               ],
-              rows: [["foo", 1, 3], ["bar", 2, 4]],
+              rows: [
+                ["foo", 1, 3],
+                ["bar", 2, 4],
+              ],
             },
           },
         ]);
@@ -129,7 +135,10 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 1], ["bar", 2]],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
             },
           },
           {
@@ -139,7 +148,10 @@ describe("Visualization", () => {
                 StringColumn({ name: "Dimension" }),
                 NumberColumn({ name: "Count" }),
               ],
-              rows: [["foo", 3], ["bar", 4]],
+              rows: [
+                ["foo", 3],
+                ["bar", 4],
+              ],
             },
           },
         ]);

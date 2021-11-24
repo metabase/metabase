@@ -39,9 +39,8 @@ import {
 const PAGE_PADDING = [1, 2, 4];
 const ROOT_COLLECTIONS_LOAD_LIMIT = 500;
 
-const getGreeting = createSelector(
-  [getUser],
-  user => Greeting.sayHello(user.first_name),
+const getGreeting = createSelector([getUser], user =>
+  Greeting.sayHello(user.first_name),
 );
 
 //class Overworld extends Zelda

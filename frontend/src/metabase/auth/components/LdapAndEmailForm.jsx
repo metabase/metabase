@@ -13,10 +13,7 @@ import { login } from "../auth";
 
 const mapDispatchToProps = { login };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 export default class LdapAndEmailForm extends Component {
   onSubmit = async credentials => {
     const { login, location } = this.props;

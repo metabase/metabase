@@ -41,12 +41,9 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-@connect(
-  null,
-  {
-    deleteMembership,
-  },
-)
+@connect(null, {
+  deleteMembership,
+})
 export default class GroupDetail extends Component {
   constructor(props, context) {
     super(props, context);

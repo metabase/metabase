@@ -275,7 +275,10 @@ function equivalentArgument(field, table) {
   if (isBoolean(field)) {
     return {
       type: "select",
-      values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
+      values: [
+        { key: true, name: t`True` },
+        { key: false, name: t`False` },
+      ],
       default: true,
     };
   }

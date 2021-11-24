@@ -14,10 +14,7 @@ const GOOGLE_AUTH_ERRORS = {
   popup_closed_by_user: t`The window was closed before completing Google Authentication.`,
 };
 
-@connect(
-  null,
-  { loginGoogle },
-)
+@connect(null, { loginGoogle })
 export default class GoogleButton extends Component {
   constructor(props) {
     super(props);

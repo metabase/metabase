@@ -54,7 +54,4 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(AuditDashboard);
+export default connect(mapStateToProps, mapDispatchToProps)(AuditDashboard);
