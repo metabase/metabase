@@ -11,7 +11,7 @@ Click the toggle at the top of the form to enable JWT-based authentication, then
 
 Here's a breakdown of each of the settings:
 
-**Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identify provider.
+**Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
 
 **String Used by the JWT Signing Key:** This is a string used to seed the private key that is used to validate JWT messages.
 
