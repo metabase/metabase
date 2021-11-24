@@ -1,23 +1,32 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import * as Urls from "metabase/lib/urls";
 import {
+  BannerCloseIcon,
   BannerContent,
+  BannerLink,
   BannerRoot,
-  BannerWarning,
+  BannerWarningIcon,
 } from "./DatabaseBanner.styled";
 
 const propTypes = {
   databaseId: PropTypes.number,
-  onShow: PropTypes.func,
   onClose: PropTypes.func,
 };
 
-const DatabaseBanner = ({ databaseId, onShow, onClose }) => {
+const DatabaseBanner = ({ databaseId, onClose }) => {
   return (
     <BannerRoot>
-      <BannerWarning name="warning" />
-      <BannerContent>{t`You’re using a database driver which is now deprecated and will be removed in the next release.`}</BannerContent>
+      <BannerWarningIcon name="warning" />
+      <BannerContent>
+        {t`You’re using a database driver which is now deprecated and will be removed in the next release.`}{" "}
+        <BannerLink
+          to={Urls.editDatabase(databaseId)}
+          onClick={onClose}
+        >{t`Show me`}</BannerLink>
+      </BannerContent>
+      <BannerCloseIcon name="close" onClick={onClose} />
     </BannerRoot>
   );
 };
