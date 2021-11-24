@@ -80,7 +80,11 @@ import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
 
-import { isAdHocDatasetQuestion } from "./utils";
+import {
+  getQueryBuilderModeFromLocation,
+  getPathNameFromQueryBuilderMode,
+  isAdHocDatasetQuestion,
+} from "./utils";
 
 type UiControls = {
   isEditing?: boolean,
@@ -152,10 +156,6 @@ export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
-
-function getQueryBuilderModeFromLocation(location) {
-  return location.pathname.endsWith("/notebook") ? "notebook" : "view";
-}
 
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
@@ -276,9 +276,10 @@ export const updateUrl = createThunkAction(
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
-      pathname:
-        (urlParsed.pathname || "") +
-        (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
+      pathname: getPathNameFromQueryBuilderMode({
+        pathname: urlParsed.pathname || "",
+        queryBuilderMode,
+      }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
       state: newState,

@@ -65,7 +65,7 @@ const DEFAULT_UI_CONTROLS = {
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" or "notebook"
+  queryBuilderMode: false, // "view" | "notebook" | "dataset"
   snippetCollectionId: null,
 };
 
