@@ -1,3 +1,6 @@
+import { createSelector } from "reselect";
+import { isDeprecatedEngine } from "metabase/lib/engine";
+
 // Database Edit
 export const getEditingDatabase = state =>
   state.admin.databases.editingDatabase;
@@ -15,3 +18,25 @@ export const getAddSampleDatasetError = state =>
 
 export const getInitializeError = state =>
   state.admin.databases.initializeError;
+
+// Database Banner
+
+export const getDatabases = createSelector(
+  state => state.entities.databases,
+  databases => Object.values(databases),
+);
+
+export const getDeprecatedDatabase = createSelector(
+  [getDatabases],
+  databases => databases.find(d => d.id && isDeprecatedEngine(d.engine)),
+);
+
+export const getSettings = createSelector(
+  state => state.settings,
+  settings => settings.values,
+);
+
+export const isDeprecationBannerEnabled = createSelector(
+  [getSettings],
+  settings => settings["engine-deprecation-notice-enabled"],
+);

@@ -13,6 +13,7 @@ import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
+import { refreshSiteSettings } from "metabase/redux/settings";
 
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
@@ -331,13 +332,13 @@ export const discardSavedFieldValues = createThunkAction(
 export const closeDatabaseBanner = createThunkAction(
   CLOSE_DATABASE_BANNER,
   function() {
-    return async function() {
-      const key = "engine-deprecation-notice-enabled";
-      const value = false;
-
+    return async function(dispatch) {
       try {
-        MetabaseSettings.set(key, value);
-        await SettingsApi.put({ key, value });
+        await SettingsApi.put({
+          key: "engine-deprecation-notice-enabled",
+          value: false,
+        });
+        await dispatch(refreshSiteSettings());
       } catch (error) {
         console.log("error saving database banner preferences", error);
       }
