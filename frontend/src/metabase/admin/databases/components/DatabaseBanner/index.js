@@ -1,1 +1,1 @@
-export { default } from "./DriverBanner";
+export { default } from "./DatabaseBanner";
