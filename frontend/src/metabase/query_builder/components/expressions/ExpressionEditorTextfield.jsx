@@ -212,6 +212,17 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
+  handleTab = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+    const { editor } = this.input.current;
+
+    if (suggestions.length) {
+      this.onSuggestionSelected(highlightedSuggestionIndex);
+    } else {
+      editor.commands.byName.tab();
+    }
+  };
+
   onInputKeyDown = e => {
     const { suggestions, highlightedSuggestionIndex } = this.state;
 
@@ -380,7 +391,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       name: "tab",
       bindKey: { win: "Tab", mac: "Tab" },
       exec: () => {
-        this.handleEnter();
+        this.handleTab();
       },
     },
   ];
