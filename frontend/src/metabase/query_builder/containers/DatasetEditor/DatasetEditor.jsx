@@ -12,17 +12,22 @@ import { Root, MainContainer, TableContainer } from "./DatasetEditor.styled";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
+  setQueryBuilderMode: PropTypes.func.isRequired,
 };
 
 function DatasetEditor(props) {
-  const { dataset } = props;
+  const { dataset, setQueryBuilderMode } = props;
+
+  const onCancel = () => {
+    setQueryBuilderMode("view");
+  };
 
   return (
     <React.Fragment>
       <EditBar
         title={`You're editing ${dataset.displayName()}`}
         buttons={[
-          <Button key="cancel" small>{t`Cancel`}</Button>,
+          <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
           <Button key="save" small>{t`Save changes`}</Button>,
         ]}
       />
