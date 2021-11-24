@@ -973,7 +973,10 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+    if (
+      getQueryBuilderMode(getState()) === "notebook" &&
+      newQuestion.isNative()
+    ) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
