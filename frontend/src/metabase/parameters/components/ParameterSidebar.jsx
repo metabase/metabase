@@ -146,9 +146,10 @@ class OtherParameterList extends React.Component {
       filtered,
       filtering,
     });
-    const columnPairs = Object.entries(result).flatMap(
-      ([filteredId, filteringIds]) =>
-        filteringIds.map(filteringId => [filteringId, filteredId]),
+    const columnPairs = Object.entries(
+      result,
+    ).flatMap(([filteredId, filteringIds]) =>
+      filteringIds.map(filteringId => [filteringId, filteredId]),
     );
 
     this.setState({ columnPairs, loading: false });

@@ -7,14 +7,12 @@ export const getAllDatabases = createSelector(
   databases => Object.values(databases),
 );
 
-export const getSampleDatabase = createSelector(
-  [getAllDatabases],
-  databases => databases.find(d => d.is_sample),
+export const getSampleDatabase = createSelector([getAllDatabases], databases =>
+  databases.find(d => d.is_sample),
 );
 
-export const getUserDatabases = createSelector(
-  [getAllDatabases],
-  databases => databases.filter(d => !d.is_sample && d.tables != null),
+export const getUserDatabases = createSelector([getAllDatabases], databases =>
+  databases.filter(d => !d.is_sample && d.tables != null),
 );
 
 export const getSyncingDatabases = createSelector(

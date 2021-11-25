@@ -30,7 +30,4 @@ function DatasetManagementSection({ turnDatasetIntoQuestion }) {
   );
 }
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(DatasetManagementSection);
+export default connect(null, mapDispatchToProps)(DatasetManagementSection);
