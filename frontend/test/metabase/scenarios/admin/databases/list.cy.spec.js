@@ -73,4 +73,22 @@ describe("scenarios > admin > databases > list", () => {
     cy.contains("Sample Dataset").click();
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
+
+  it("should display a deprecated database warning", () => {
+    cy.intercept(/\/api\/database$/, req => {
+      req.reply(res => {
+        res.body.data = res.body.data.map(database => ({
+          ...database,
+          engine: "presto",
+        }));
+      });
+    });
+
+    cy.visit("/admin");
+    cy.findByText("You’re using a database driver", { exact: false });
+    cy.findByText("Show me").click();
+
+    cy.location("pathname").should("eq", "/admin/databases/1");
+    cy.findByText("Show me").should("not.exist");
+  });
 });
