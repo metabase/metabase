@@ -9,12 +9,20 @@ export const measureText = (text: string, charWidth = CHAR_WIDTH) => {
   return text.length * charWidth;
 };
 
-export const truncateText = (text: string, width: number) => {
-  if (measureText(text) <= width) {
+export const measureTextHeight = (fontSize: number) => {
+  return fontSize * 1.3;
+};
+
+export const truncateText = (
+  text: string,
+  width: number,
+  charWidth = CHAR_WIDTH,
+) => {
+  if (measureText(text, charWidth) <= width) {
     return text;
   }
 
-  while (text.length && measureText(text + CHAR_ELLIPSES) > width) {
+  while (text.length && measureText(text + CHAR_ELLIPSES, charWidth) > width) {
     text = text.substring(0, text.length - 1);
   }
 
