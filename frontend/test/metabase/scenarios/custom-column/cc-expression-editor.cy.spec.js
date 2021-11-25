@@ -24,8 +24,9 @@ describe("scenarios > question > custom column > expression editor", () => {
   });
 
   it("should not accidentally delete Custom Column formula value and/or Custom Column name (metabase#15734)", () => {
-    cy.get("@formula")
-      .click()
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
       .type("{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}")
       .blur();
     cy.findByDisplayValue("Math");
@@ -38,8 +39,9 @@ describe("scenarios > question > custom column > expression editor", () => {
    *  - This gives it enough time to update the DOM. The same result can be achieved with `cy.wait(1)`
    */
   it("should not erase Custom column formula and Custom column name when expression is incomplete (metabase#16126)", () => {
-    cy.get("@formula")
-      .click()
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
       .type("{movetoend}{backspace}")
       .blur();
     cy.findByText("Expected expression");
