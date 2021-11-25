@@ -22,6 +22,7 @@ const FormInputWidget = ({
   autoFocus,
 }) => (
   <Input
+    {...formDomOnlyProps(field)}
     type={type}
     placeholder={placeholder}
     aria-labelledby={`${field.name}-label`}
@@ -29,7 +30,7 @@ const FormInputWidget = ({
     autoFocus={autoFocus}
     error={field.visited && !field.active && field.error != null}
     fullWidth
-    {...formDomOnlyProps(field)}
+    helpText={"123"}
   />
 );
 

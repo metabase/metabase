@@ -1,20 +1,23 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { InputField, InputRoot } from "./Input.styled";
+import Icon from "metabase/components/Icon";
+import { InputField, InputHelpButton, InputRoot } from "./Input.styled";
 
 const propTypes = {
   error: PropTypes.bool,
   fullWidth: PropTypes.bool,
-  startAdornment: PropTypes.node,
-  endAdornment: PropTypes.node,
+  helpText: PropTypes.node,
 };
 
-const Input = ({ error, fullWidth, startAdornment, endAdornment, ...rest }) => {
+const Input = ({ error, fullWidth, helpText, ...rest }) => {
   return (
     <InputRoot fullWidth={fullWidth}>
-      {startAdornment}
       <InputField {...rest} fullWidth={fullWidth} error={error} />
-      {endAdornment}
+      {helpText && (
+        <InputHelpButton>
+          <Icon name="info" />
+        </InputHelpButton>
+      )}
     </InputRoot>
   );
 };
