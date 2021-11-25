@@ -10,6 +10,7 @@ import {
 
 import { MBQL_CLAUSES } from "./config";
 import { ExpressionCstVisitor, parse } from "./parser";
+import { resolve } from "./resolver";
 
 const NEGATIVE_FILTER_SHORTHANDS = {
   contains: "does-not-contain",
@@ -169,6 +170,15 @@ export function compile({ cst, ...options }) {
   if (!cst) {
     ({ cst } = parse(options));
   }
+  const { startRule } = options;
+
+  const stubResolve = (kind, name) => [kind || "dimension", name];
+  const vistor = new ExpressionMBQLCompilerVisitor({
+    ...options,
+    resolve: stubResolve,
+  });
+  const expr = vistor.visit(cst);
+
   function resolveMBQLField(kind, name) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
@@ -191,9 +201,12 @@ export function compile({ cst, ...options }) {
       return dimension.mbql();
     }
   }
-  const resolve = options.resolve ? options.resolve : resolveMBQLField;
-  const vistor = new ExpressionMBQLCompilerVisitor({ ...options, resolve });
-  return vistor.visit(cst);
+
+  return resolve(
+    expr,
+    startRule,
+    options.resolve ? options.resolve : resolveMBQLField,
+  );
 }
 
 export function parseOperators(operands, operators) {
