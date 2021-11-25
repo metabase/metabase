@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { isDeprecatedEngine } from "metabase/lib/engine";
 import Databases from "metabase/entities/databases";
-import EngineDeprecationBanner from "../../components/EngineDeprecationBanner";
+import DriverDeprecationBanner from "../../components/DriverDeprecationBanner";
 import { closeDeprecationNotice } from "../../database";
 import { isDeprecationNoticeEnabled } from "../../selectors";
 
@@ -23,4 +23,4 @@ export default _.compose(
     mapStateToProps,
     mapDispatchToProps,
   ),
-)(EngineDeprecationBanner);
+)(DriverDeprecationBanner);

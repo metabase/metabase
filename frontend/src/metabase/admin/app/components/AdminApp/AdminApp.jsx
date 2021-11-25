@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import EngineDeprecationBanner from "metabase/admin/databases/containers/EngineDeprecationBanner";
+import DriverDeprecationBanner from "metabase/admin/databases/containers/DriverDeprecationBanner";
 
 const propTypes = {
   children: PropTypes.node,
@@ -9,7 +9,7 @@ const propTypes = {
 const AdminApp = ({ children }) => {
   return (
     <div>
-      <EngineDeprecationBanner />
+      <DriverDeprecationBanner />
       {children}
     </div>
   );

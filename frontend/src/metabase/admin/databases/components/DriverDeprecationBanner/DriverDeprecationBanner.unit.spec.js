@@ -1,25 +1,25 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import EngineDeprecationBanner from "./EngineDeprecationBanner";
+import DriverDeprecationBanner from "./DriverDeprecationBanner";
 
-describe("EngineDeprecationBanner", () => {
+describe("DriverDeprecationBanner", () => {
   const database = { id: 1 };
 
   it("should not render if not enabled", () => {
-    render(<EngineDeprecationBanner database={database} isEnabled={false} />);
+    render(<DriverDeprecationBanner database={database} isEnabled={false} />);
 
     expect(screen.queryByText("Show me")).not.toBeInTheDocument();
   });
 
   it("should no render if there is no deprecated database", () => {
-    render(<EngineDeprecationBanner isEnabled={true} />);
+    render(<DriverDeprecationBanner isEnabled={true} />);
 
     expect(screen.queryByText("Show me")).not.toBeInTheDocument();
   });
 
   it("should render a warning with a link to the database", () => {
-    render(<EngineDeprecationBanner database={database} isEnabled={true} />);
+    render(<DriverDeprecationBanner database={database} isEnabled={true} />);
 
     expect(screen.getByText("Show me")).toBeInTheDocument();
   });
@@ -28,7 +28,7 @@ describe("EngineDeprecationBanner", () => {
     const onClose = jest.fn();
 
     render(
-      <EngineDeprecationBanner
+      <DriverDeprecationBanner
         database={database}
         isEnabled={true}
         onClose={onClose}

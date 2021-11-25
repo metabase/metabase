@@ -8,7 +8,7 @@ import {
   BannerLink,
   BannerRoot,
   BannerWarningIcon,
-} from "./EngineDeprecationBanner.styled";
+} from "./DriverDeprecationBanner.styled";
 
 const propTypes = {
   database: PropTypes.object,
@@ -16,7 +16,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const EngineDeprecationBanner = ({ database, isEnabled, onClose }) => {
+const DriverDeprecationBanner = ({ database, isEnabled, onClose }) => {
   if (!database || !isEnabled) {
     return null;
   }
@@ -36,6 +36,6 @@ const EngineDeprecationBanner = ({ database, isEnabled, onClose }) => {
   );
 };
 
-EngineDeprecationBanner.propTypes = propTypes;
+DriverDeprecationBanner.propTypes = propTypes;
 
-export default EngineDeprecationBanner;
+export default DriverDeprecationBanner;
