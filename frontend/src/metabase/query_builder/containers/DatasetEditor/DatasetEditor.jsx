@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
@@ -50,7 +51,15 @@ function DatasetEditor(props) {
         title={`You're editing ${dataset.displayName()}`}
         buttons={[
           <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
-          <Button key="save" onClick={onSave} small>{t`Save changes`}</Button>,
+          <ActionButton
+            key="save"
+            actionFn={onSave}
+            normalText={t`Save changes`}
+            activeText={t`Saving…`}
+            failedText={t`Save failed`}
+            successText={t`Saved`}
+            className="Button Button--primary Button--small"
+          />,
         ]}
       />
       <Root>
