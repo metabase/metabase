@@ -21,6 +21,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
 };
 
@@ -38,13 +39,18 @@ function DatasetEditor(props) {
     setQueryBuilderMode("view");
   };
 
+  const onSave = async () => {
+    await props.onSave(dataset.card());
+    setQueryBuilderMode("view");
+  };
+
   return (
     <React.Fragment>
       <EditBar
         title={`You're editing ${dataset.displayName()}`}
         buttons={[
           <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
-          <Button key="save" small>{t`Save changes`}</Button>,
+          <Button key="save" onClick={onSave} small>{t`Save changes`}</Button>,
         ]}
       />
       <Root>

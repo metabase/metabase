@@ -147,9 +147,7 @@ export default class View extends React.Component {
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
-      return (
-        <DatasetEditor {...this.props} onSave={this.props.onSaveDataset} />
-      );
+      return <DatasetEditor {...this.props} />;
     }
 
     const topQuery = isStructured && query.topLevelQuery();
