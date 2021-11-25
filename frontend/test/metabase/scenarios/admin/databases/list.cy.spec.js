@@ -93,6 +93,7 @@ describe("scenarios > admin > databases > list", () => {
     cy.findByText(message).should("not.exist");
 
     cy.reload();
+    cy.findByText("Metabase Admin");
     cy.findByText(message).should("not.exist");
   });
 });
