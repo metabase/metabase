@@ -1,11 +1,18 @@
 import styled from "styled-components";
 import { color, darken } from "metabase/lib/colors";
 
+export const InputRoot = styled.div`
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  width: ${props => (props.fullWidth ? "100%" : "")};
+`;
+
 export const InputField = styled.input`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
-  color: ${props => color(props.hasError ? "error" : "text-dark")};
+  color: ${props => color(props.error ? "error" : "text-dark")};
   background-color: ${color("bg-white")};
   width: ${props => (props.fullWidth ? "100%" : "")};
   padding: 0.75rem;
