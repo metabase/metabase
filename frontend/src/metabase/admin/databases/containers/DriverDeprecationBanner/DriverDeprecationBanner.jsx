@@ -19,8 +19,5 @@ export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DriverDeprecationBanner);
