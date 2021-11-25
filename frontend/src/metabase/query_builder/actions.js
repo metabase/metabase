@@ -42,6 +42,7 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
+  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -1472,6 +1473,15 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
+export const onCancelDatasetChanges = () => (dispatch, getState) => {
+  const cardBeforeChanges = getOriginalCard(getState());
+  dispatch.action(CANCEL_DATASET_CHANGES, {
+    card: cardBeforeChanges,
+  });
+  dispatch(runQuestionQuery());
+};
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());

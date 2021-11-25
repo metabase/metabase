@@ -23,6 +23,7 @@ const propTypes = {
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
 };
 
@@ -33,10 +34,12 @@ function DatasetEditor(props) {
     question: dataset,
     height,
     setQueryBuilderMode,
+    onCancelDatasetChanges,
     handleResize,
   } = props;
 
   const onCancel = () => {
+    onCancelDatasetChanges();
     setQueryBuilderMode("view");
   };
 
