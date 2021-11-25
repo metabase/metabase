@@ -436,6 +436,84 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+
+        <Box py={3}>
+          <Subhead>
+            Line/Area/Bar chart with negative values, different X ranges, and
+            right Y-axis
+          </Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "timeseries",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  right: "Sum",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "line series",
+                  color: "#509ee3",
+                  yAxisPosition: "right",
+                  type: "line",
+                  data: [
+                    ["2020-10-18", -65],
+                    ["2020-10-19", -55],
+                    ["2020-10-20", -45],
+                    ["2020-10-21", -30],
+                    ["2020-10-22", -25],
+                    ["2020-10-23", -10],
+                    ["2020-10-24", 0],
+                    ["2020-10-25", 10],
+                    ["2020-10-26", 20],
+                    ["2020-10-27", 80],
+                  ],
+                },
+                {
+                  name: "bar series",
+                  color: "#88bf4d",
+                  yAxisPosition: "right",
+                  type: "bar",
+                  data: [
+                    ["2020-10-20", -90],
+                    ["2020-10-21", -80],
+                    ["2020-10-22", -70],
+                    ["2020-10-23", -60],
+                    ["2020-10-24", 10],
+                    ["2020-10-25", 20],
+                    ["2020-10-26", 30],
+                    ["2020-10-27", 40],
+                    ["2020-10-28", 50],
+                  ],
+                },
+                {
+                  name: "area series",
+                  color: "#ef8c8c",
+                  yAxisPosition: "right",
+                  type: "area",
+                  data: [
+                    ["2020-10-22", 13],
+                    ["2020-10-23", 10],
+                    ["2020-10-24", 5],
+                    ["2020-10-25", -8],
+                    ["2020-10-26", -9],
+                    ["2020-10-27", -22],
+                    ["2020-10-28", -85],
+                    ["2020-10-29", -100],
+                    ["2020-10-30", -120],
+                  ],
+                },
+              ],
+            }}
+          />
+        </Box>
       </Box>
     </Box>
   );
