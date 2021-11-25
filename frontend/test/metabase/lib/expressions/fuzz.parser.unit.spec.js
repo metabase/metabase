@@ -18,8 +18,16 @@ describe("metabase/lib/expressions/parser", () => {
 
 fuzz("FUZZING metabase/lib/expressions/parser", () => {
   for (let seed = 1; seed < 1e4; ++seed) {
-    it("should parse generated expression from seed " + seed, () => {
-      const { expression } = generateExpression(seed);
+    it("should parse generated number expression from seed " + seed, () => {
+      const { expression } = generateExpression(seed, "number");
+      expect(() => handle(expression)).not.toThrow();
+    });
+    it("should parse generated string expression from seed " + seed, () => {
+      const { expression } = generateExpression(seed, "string");
+      expect(() => handle(expression)).not.toThrow();
+    });
+    it("should parse generated boolean expression from seed " + seed, () => {
+      const { expression } = generateExpression(seed, "boolean");
       expect(() => handle(expression)).not.toThrow();
     });
   }

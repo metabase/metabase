@@ -12,7 +12,7 @@ describe("metabase/lib/expressions/tokenizer", () => {
 });
 
 fuzz("FUZZING metabase/lib/expressions/tokenizer", () => {
-  const MAX_SEED = 5e4;
+  const MAX_SEED = 2e4;
 
   for (let seed = 0; seed < MAX_SEED; ++seed) {
     it("should handle generated expression from seed " + seed, () => {

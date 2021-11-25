@@ -117,9 +117,10 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
-      ({ id }, fieldOrder) => (dispatch, getState) =>
-        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    setFieldOrder: compose(
+      withAction(UPDATE_TABLE_FIELD_ORDER),
+    )(({ id }, fieldOrder) => (dispatch, getState) =>
+      updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
     ),
   },
 

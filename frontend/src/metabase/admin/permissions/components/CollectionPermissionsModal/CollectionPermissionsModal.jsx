@@ -164,8 +164,5 @@ export default _.compose(
     query: () => ({ tree: true }),
   }),
   Groups.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionPermissionsModal);

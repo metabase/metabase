@@ -179,9 +179,8 @@ export default class Form extends React.Component {
         };
       },
     );
-    const getFormObject = createSelector(
-      [getFormDefinition],
-      formDef => makeFormObject(formDef),
+    const getFormObject = createSelector([getFormDefinition], formDef =>
+      makeFormObject(formDef),
     );
     const getInitialValues = createSelector(
       [

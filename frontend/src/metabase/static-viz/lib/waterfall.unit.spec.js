@@ -7,7 +7,11 @@ const accessors = {
 
 describe("calculateWaterfallEntries", () => {
   it("calculates waterfall entries without total", () => {
-    const data = [["1", 100], ["2", -50], ["3", 10]];
+    const data = [
+      ["1", 100],
+      ["2", -50],
+      ["3", 10],
+    ];
     const entries = calculateWaterfallEntries(data, accessors, false);
 
     expect(entries).toStrictEqual([
@@ -33,7 +37,11 @@ describe("calculateWaterfallEntries", () => {
   });
 
   it("calculates waterfall entries with positive total", () => {
-    const data = [["1", 100], ["2", -50], ["3", 10]];
+    const data = [
+      ["1", 100],
+      ["2", -50],
+      ["3", 10],
+    ];
     const entries = calculateWaterfallEntries(data, accessors, true);
 
     expect(entries).toStrictEqual([
@@ -66,7 +74,11 @@ describe("calculateWaterfallEntries", () => {
   });
 
   it("calculates waterfall entries with negative total", () => {
-    const data = [["1", 100], ["2", -200], ["3", 50]];
+    const data = [
+      ["1", 100],
+      ["2", -200],
+      ["3", 50],
+    ];
     const entries = calculateWaterfallEntries(data, accessors, true);
 
     expect(entries).toStrictEqual([

@@ -108,10 +108,7 @@ const mapDispatchToProps = {
   query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
 })
 @User.loadList({ loadingAndErrorWrapper: false })
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 class SharingSidebar extends React.Component {
   state = {
     editingMode: "list-pulses",
@@ -286,7 +283,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-email" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
@@ -328,7 +326,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-slack" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
