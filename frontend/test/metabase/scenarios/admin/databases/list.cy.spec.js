@@ -85,10 +85,14 @@ describe("scenarios > admin > databases > list", () => {
     });
 
     cy.visit("/admin");
-    cy.findByText("You’re using a database driver", { exact: false });
-    cy.findByText("Show me").click();
 
+    const message = `You’re using a database driver which is now deprecated and will be removed in the next release.`;
+    cy.findByText(message);
+    cy.findByText("Show me").click();
     cy.location("pathname").should("eq", "/admin/databases/1");
-    cy.findByText("Show me").should("not.exist");
+    cy.findByText(message).should("not.exist");
+
+    cy.reload();
+    cy.findByText(message).should("not.exist");
   });
 });
