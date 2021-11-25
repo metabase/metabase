@@ -345,6 +345,7 @@ const forms = {
           placeholder: t`How would you like to refer to this database?`,
           validate: value => !value && t`required`,
           hidden: !engine,
+          helperText: t`Choose what this data will be called in Metabase.`,
         },
         ...(getEngineFormFields(engine, details, id) || []),
         {
