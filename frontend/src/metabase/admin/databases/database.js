@@ -13,7 +13,6 @@ import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
-import { refreshSiteSettings } from "metabase/redux/settings";
 
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
@@ -79,8 +78,8 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
-export const CLOSE_DATABASE_BANNER =
-  "metabase/admin/databases/CLOSE_DATABASE_BANNER";
+export const CLOSE_DEPRECATION_NOTICE =
+  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
 
 export const reset = createAction(RESET);
 
@@ -329,18 +328,17 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
-export const closeDatabaseBanner = createThunkAction(
-  CLOSE_DATABASE_BANNER,
+export const closeDeprecationNotice = createThunkAction(
+  CLOSE_DEPRECATION_NOTICE,
   function() {
-    return async function(dispatch) {
+    return async function() {
       try {
         await SettingsApi.put({
-          key: "engine-deprecation-notice-enabled",
-          value: false,
+          key: "engine-deprecation-notice-version",
+          value: MetabaseSettings.currentVersion(),
         });
-        await dispatch(refreshSiteSettings());
       } catch (error) {
-        console.log("error saving database banner preferences", error);
+        console.log("error saving deprecation notice version", error);
       }
     };
   },
@@ -406,6 +404,13 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
+const isDeprecationNoticeEnabled = handleActions(
+  {
+    [CLOSE_DEPRECATION_NOTICE]: () => false,
+  },
+  MetabaseSettings.engineDeprecationNoticeEnabled(),
+);
+
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -413,4 +418,5 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
+  isDeprecationNoticeEnabled,
 });

@@ -1,25 +1,25 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import DatabaseBanner from "./DatabaseBanner";
+import EngineDeprecationBanner from "./EngineDeprecationBanner";
 
-describe("DatabaseBanner", () => {
+describe("EngineDeprecationBanner", () => {
   const database = { id: 1 };
 
   it("should not render if not enabled", () => {
-    render(<DatabaseBanner database={database} isEnabled={false} />);
+    render(<EngineDeprecationBanner database={database} isEnabled={false} />);
 
     expect(screen.queryByText("Show me")).not.toBeInTheDocument();
   });
 
   it("should no render if there is no deprecated database", () => {
-    render(<DatabaseBanner isEnabled={true} />);
+    render(<EngineDeprecationBanner isEnabled={true} />);
 
     expect(screen.queryByText("Show me")).not.toBeInTheDocument();
   });
 
   it("should render a warning with a link to the database", () => {
-    render(<DatabaseBanner database={database} isEnabled={true} />);
+    render(<EngineDeprecationBanner database={database} isEnabled={true} />);
 
     expect(screen.getByText("Show me")).toBeInTheDocument();
   });
@@ -28,7 +28,11 @@ describe("DatabaseBanner", () => {
     const onClose = jest.fn();
 
     render(
-      <DatabaseBanner database={database} isEnabled={true} onClose={onClose} />,
+      <EngineDeprecationBanner
+        database={database}
+        isEnabled={true}
+        onClose={onClose}
+      />,
     );
 
     userEvent.click(screen.getByLabelText("close icon"));

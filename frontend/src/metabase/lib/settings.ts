@@ -86,7 +86,7 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-enabled";
+  | "engine-deprecation-notice-version";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -190,6 +190,14 @@ class Settings {
 
   snowplowUrl() {
     return this.get("snowplow-url");
+  }
+
+  engineDeprecationNoticeVersion() {
+    return this.get("engine-deprecation-notice-version");
+  }
+
+  engineDeprecationNoticeEnabled() {
+    return this.currentVersion() !== this.engineDeprecationNoticeVersion();
   }
 
   formattingOptions() {

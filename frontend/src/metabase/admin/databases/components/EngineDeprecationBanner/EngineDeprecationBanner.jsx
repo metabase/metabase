@@ -8,7 +8,7 @@ import {
   BannerLink,
   BannerRoot,
   BannerWarningIcon,
-} from "./DatabaseBanner.styled";
+} from "./EngineDeprecationBanner.styled";
 
 const propTypes = {
   database: PropTypes.object,
@@ -16,7 +16,7 @@ const propTypes = {
   onClose: PropTypes.func,
 };
 
-const DatabaseBanner = ({ database, isEnabled, onClose }) => {
+const EngineDeprecationBanner = ({ database, isEnabled, onClose }) => {
   if (!database || !isEnabled) {
     return null;
   }
@@ -36,6 +36,6 @@ const DatabaseBanner = ({ database, isEnabled, onClose }) => {
   );
 };
 
-DatabaseBanner.propTypes = propTypes;
+EngineDeprecationBanner.propTypes = propTypes;
 
-export default DatabaseBanner;
+export default EngineDeprecationBanner;
