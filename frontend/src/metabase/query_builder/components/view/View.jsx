@@ -10,8 +10,6 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Subhead from "metabase/components/type/Subhead";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import DatasetEditor from "metabase/query_builder/containers/DatasetEditor";
-
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
@@ -39,6 +37,8 @@ import { Motion, spring } from "react-motion";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
+import DatasetEditor from "../DatasetEditor";
 
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
