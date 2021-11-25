@@ -66,6 +66,7 @@ export type SettingName =
   | "enable-xrays"
   | "engines"
   | "ga-code"
+  | "ga-enabled"
   | "google-auth-client-id"
   | "has-sample-dataset?"
   | "hide-embed-branding?"
@@ -83,7 +84,7 @@ export type SettingName =
   | "version"
   | "subscription-allowed-domains"
   | "cloud-gateway-ips"
-  | "snowplow-available"
+  | "snowplow-enabled"
   | "snowplow-url"
   | "engine-deprecation-notice-enabled";
 
@@ -179,8 +180,12 @@ class Settings {
     return this.get("anon-tracking-enabled") || false;
   }
 
-  snowplowAvailable() {
-    return this.get("snowplow-available") || false;
+  googleAnalyticsEnabled() {
+    return this.get("ga-enabled") || false;
+  }
+
+  snowplowEnabled() {
+    return this.get("snowplow-enabled") || false;
   }
 
   snowplowUrl() {

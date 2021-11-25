@@ -1,18 +1,17 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
-import { isProduction } from "metabase/env";
 
 export const createTracker = store => {
-  if (isGoogleAnalyticsEnabled()) {
+  if (Settings.googleAnalyticsEnabled()) {
     createGoogleAnalyticsTracker();
   }
 
-  if (isSnowplowEnabled()) {
+  if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
   }
 
-  if (isGoogleAnalyticsEnabled() || isSnowplowEnabled()) {
+  if (Settings.googleAnalyticsEnabled() || Settings.snowplowEnabled()) {
     document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
@@ -22,11 +21,11 @@ export const trackPageView = url => {
     return;
   }
 
-  if (isGoogleAnalyticsEnabled()) {
+  if (Settings.googleAnalyticsEnabled()) {
     trackGoogleAnalyticsPageView(url);
   }
 
-  if (isSnowplowEnabled()) {
+  if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(url);
   }
 };
@@ -36,7 +35,7 @@ export const trackStructEvent = (category, action, label, value) => {
     return;
   }
 
-  if (isGoogleAnalyticsEnabled()) {
+  if (Settings.googleAnalyticsEnabled()) {
     trackGoogleAnalyticsStructEvent(category, action, label, value);
   }
 };
@@ -46,17 +45,9 @@ export const trackSchemaEvent = (schema, version, data) => {
     return;
   }
 
-  if (isSnowplowEnabled()) {
+  if (Settings.snowplowEnabled()) {
     trackSnowplowSchemaEvent(schema, version, data);
   }
-};
-
-const isGoogleAnalyticsEnabled = () => {
-  return Settings.trackingEnabled() && isProduction;
-};
-
-const isSnowplowEnabled = () => {
-  return Settings.trackingEnabled() && Settings.snowplowAvailable();
 };
 
 const createGoogleAnalyticsTracker = () => {
