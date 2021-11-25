@@ -12,11 +12,12 @@ export const InputField = styled.input`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
-  color: ${props => color(props.error ? "error" : "text-dark")};
+  color: ${color("text-dark")};
   background-color: ${color("bg-white")};
   width: ${props => (props.fullWidth ? "100%" : "")};
   padding: 0.75rem;
-  border: 1px solid ${darken("border", 0.1)};
+  border: 1px solid
+    ${props => (props.error ? color("error") : darken("border", 0.1))};
   border-radius: 4px;
   outline: none;
 
