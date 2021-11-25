@@ -29,8 +29,8 @@ const FormInputWidget = ({
     readOnly={readOnly}
     autoFocus={autoFocus}
     error={field.visited && !field.active && field.error != null}
+    tooltip="123"
     fullWidth
-    helpText={"123"}
   />
 );
 
