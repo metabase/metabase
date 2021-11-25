@@ -265,6 +265,7 @@ function getEngineFormFields(engine, details, id) {
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
+        helperText: field["helper-text"],
         ...(overrides && overrides(engine, details, id)),
       };
     });

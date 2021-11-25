@@ -44,7 +44,7 @@ export const InputField = styled.input`
     `}
 `;
 
-export const InputInfoButtonRoot = styled(IconButtonWrapper)`
+export const InputHelpButton = styled(IconButtonWrapper)`
   position: absolute;
   right: 0.75rem;
   color: ${color("text-light")};

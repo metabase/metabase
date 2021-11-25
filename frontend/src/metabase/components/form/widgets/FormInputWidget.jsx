@@ -12,6 +12,7 @@ const propTypes = {
   field: PropTypes.object,
   readOnly: PropTypes.bool,
   autoFocus: PropTypes.bool,
+  helperText: PropTypes.node,
 };
 
 const FormInputWidget = ({
@@ -20,6 +21,7 @@ const FormInputWidget = ({
   field,
   readOnly,
   autoFocus,
+  helperText,
 }) => (
   <Input
     {...formDomOnlyProps(field)}
@@ -29,7 +31,7 @@ const FormInputWidget = ({
     readOnly={readOnly}
     autoFocus={autoFocus}
     error={field.visited && !field.active && field.error != null}
-    tooltip="123"
+    helperText={helperText}
     fullWidth
   />
 );
