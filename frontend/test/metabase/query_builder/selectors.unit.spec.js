@@ -6,14 +6,40 @@ import {
 } from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_dataset_fixture";
 
+function getBaseState({ uiControls = {}, ...state } = {}) {
+  return {
+    ...sampleState,
+    qb: {
+      ...state,
+      uiControls: {
+        queryBuilderMode: "view",
+        ...uiControls,
+      },
+    },
+  };
+}
+
+function getBaseCard(opts) {
+  return {
+    ...opts,
+    dataset_query: {
+      database: 1,
+      ...opts.dataset_query,
+    },
+  };
+}
+
 describe("getIsResultDirty", () => {
   describe("structure query", () => {
-    function getState(q1, q2) {
-      const card = query => ({
-        dataset_query: { database: 1, type: "query", query },
+    function getCard(query) {
+      return getBaseCard({ dataset_query: { type: "query", query } });
+    }
+
+    function getState(lastRunCardQuery, cardQuery) {
+      return getBaseState({
+        card: getCard(cardQuery),
+        lastRunCard: getCard(lastRunCardQuery),
       });
-      const qb = { lastRunCard: card(q1), card: card(q2) };
-      return { ...sampleState, qb };
     }
 
     it("should not be dirty for empty queries", () => {
@@ -93,13 +119,17 @@ describe("getIsResultDirty", () => {
       expect(getIsResultDirty(state)).toBe(false);
     });
   });
+
   describe("native query", () => {
-    function getState(q1, q2) {
-      const card = native => ({
-        dataset_query: { database: 1, type: "query", native },
+    function getCard(native) {
+      return getBaseCard({ dataset_query: { type: "native", native } });
+    }
+
+    function getState(lastRunCardQuery, cardQuery) {
+      return getBaseState({
+        card: getCard(cardQuery),
+        lastRunCard: getCard(lastRunCardQuery),
       });
-      const qb = { lastRunCard: card(q1), card: card(q2) };
-      return { ...sampleState, qb };
     }
 
     it("should not be dirty if template-tags is empty vs an empty object", () => {
@@ -116,22 +146,20 @@ describe("getIsResultDirty", () => {
     });
 
     describe("native editor selection/cursor", () => {
-      function getState(start, end) {
-        return {
-          qb: {
-            card: {
-              dataset_query: {
-                database: 1,
-                type: "query",
-                native: { query: "1\n22\n333" },
-              },
+      function getStateWithSelectedQueryText(start, end) {
+        return getBaseState({
+          card: getBaseCard({
+            dataset_query: {
+              type: "native",
+              native: { query: "1\n22\n333" },
             },
-            uiControls: {
-              nativeEditorSelectedRange: { start, end },
-            },
+          }),
+          uiControls: {
+            nativeEditorSelectedRange: { start, end },
           },
-        };
+        });
       }
+
       [
         [{ row: 0, column: 0 }, 0],
         [{ row: 1, column: 1 }, 3],
@@ -140,7 +168,7 @@ describe("getIsResultDirty", () => {
         it(`should correctly determine the cursor offset for ${JSON.stringify(
           position,
         )}`, () => {
-          const state = getState(position, position);
+          const state = getStateWithSelectedQueryText(position, position);
           expect(getNativeEditorCursorOffset(state)).toBe(offset);
         }),
       );
@@ -153,7 +181,7 @@ describe("getIsResultDirty", () => {
         it(`should correctly get selected text from ${JSON.stringify(
           start,
         )} to ${JSON.stringify(end)}`, () => {
-          const state = getState(start, end);
+          const state = getStateWithSelectedQueryText(start, end);
           expect(getNativeEditorSelectedText(state)).toBe(text);
         }),
       );
