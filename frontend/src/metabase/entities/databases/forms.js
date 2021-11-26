@@ -356,7 +356,7 @@ const forms = {
         {
           name: "auto_run_queries",
           type: "boolean",
-          title: t`Automatically run queries when doing simple filtering and summarizing`,
+          title: t`Rerun queries for simple explorations`,
           description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
           hidden: !engine,
         },
