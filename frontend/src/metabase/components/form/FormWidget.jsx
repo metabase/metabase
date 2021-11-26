@@ -8,6 +8,7 @@ import FormInputWidget from "./widgets/FormInputWidget";
 import FormEmailWidget from "./widgets/FormEmailWidget";
 import FormTextAreaWidget from "./widgets/FormTextAreaWidget";
 import FormPasswordWidget from "./widgets/FormPasswordWidget";
+import FormRadioWidget from "./widgets/FormRadioWidget";
 import FormCheckBoxWidget from "./widgets/FormCheckBoxWidget";
 import FormColorWidget from "./widgets/FormColorWidget";
 import FormSelectWidget from "./widgets/FormSelectWidget";
@@ -26,6 +27,7 @@ const WIDGETS = {
   checkbox: FormCheckBoxWidget,
   color: FormColorWidget,
   password: FormPasswordWidget,
+  radio: FormRadioWidget,
   select: FormSelectWidget,
   integer: FormNumericInputWidget,
   boolean: FormToggleWidget,
