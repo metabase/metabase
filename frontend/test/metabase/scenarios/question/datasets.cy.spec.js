@@ -565,6 +565,33 @@ describe("scenarios > datasets", () => {
       cy.url().should("not.include", "/query");
     });
 
+    it("locks display to table", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/dataset/1/query");
+
+      cy.findByTestId("action-buttons")
+        .findByText("Join data")
+        .click();
+      selectFromDropdown("People");
+
+      cy.button("Save changes").click();
+      openDetailsSidebar();
+      cy.findByText("Edit query definition").click();
+
+      cy.findByTestId("action-buttons")
+        .findByText("Summarize")
+        .click();
+      selectFromDropdown("Count of rows");
+      cy.findByText("Pick a column to group by").click();
+      selectFromDropdown("Created At");
+
+      cy.get(".RunButton").click();
+      cy.wait("@dataset");
+
+      cy.get(".LineAreaBarChart").should("not.exist");
+      cy.get(".TableInteractive");
+    });
+
     it("allows to edit native dataset query", () => {
       cy.createNativeQuestion(
         {

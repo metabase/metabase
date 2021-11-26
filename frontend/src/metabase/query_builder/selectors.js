@@ -185,7 +185,7 @@ export const getQuestion = createSelector(
     const question = new Question(card, metadata, parameterValues);
 
     if (queryBuilderMode === "dataset") {
-      return question;
+      return question.lockDisplay();
     }
 
     // When opening a dataset, we swap it's `dataset_query`
