@@ -317,7 +317,7 @@ forms.setup = {
       ...field,
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
     })),
 };
 
@@ -342,6 +342,12 @@ forms.scheduling = {
 const SCHEDULING_FIELDS = new Set([
   "schedules.metadata_sync",
   "schedules.cache_field_values",
+]);
+
+const ADVANCED_FIELDS = new Set([
+  "auto_run_queries",
+  "details.let-user-control-scheduling",
+  ...SCHEDULING_FIELDS,
 ]);
 
 export default forms;
