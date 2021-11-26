@@ -553,7 +553,7 @@ export default class Question {
   }
 
   composeDataset() {
-    if (!this.isStructured() || !this.isDataset()) {
+    if (!this.isDataset()) {
       return this;
     }
     return this.setDatasetQuery({
