@@ -148,6 +148,11 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(expr(["case", [[P, Q]], opt]).segments).toEqual(["P", "A"]);
       expect(expr(["case", [[P, Q]], opt]).dimensions).toEqual(["Q", "B"]);
     });
+    it("should handle CASE inside COALESCE", () => {
+      // COALESCE(CASE(A, B))
+      expect(expr(["coalesce", ["case", [[A, B]]]]).segments).toEqual(["A"]);
+      expect(expr(["coalesce", ["case", [[A, B]]]]).dimensions).toEqual(["B"]);
+    });
   });
 
   it("should handle unknown MBQL gracefully", () => {
