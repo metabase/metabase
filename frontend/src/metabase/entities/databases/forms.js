@@ -72,27 +72,6 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
 };
 
-const AUTH_URL_PREFIXES = {
-  bigquery:
-    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=",
-  bigquery_with_drive:
-    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery%20https://www.googleapis.com/auth/drive&client_id=",
-  googleanalytics:
-    "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=",
-};
-
-const ENABLE_API_PREFIXES = {
-  googleanalytics:
-    "https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=",
-};
-
-const CREDENTIALS_URL_PREFIXES = {
-  bigquery:
-    "https://console.developers.google.com/apis/credentials/oauthclient?project=",
-  googleanalytics:
-    "https://console.developers.google.com/apis/credentials/oauthclient?project=",
-};
-
 function getSshDescription() {
   const link = (
     <ExternalLink
