@@ -346,7 +346,7 @@ const forms = {
         },
         {
           name: "name",
-          title: t`Name`,
+          title: t`Display name`,
           placeholder: t`Our ${getEngineName(engine)}`,
           validate: value => !value && t`required`,
           hidden: !engine,
