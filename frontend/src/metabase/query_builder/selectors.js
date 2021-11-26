@@ -27,6 +27,8 @@ import Databases from "metabase/entities/databases";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
 
+import { isAdHocDatasetQuestion } from "./utils";
+
 export const getUiControls = state => state.qb.uiControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
@@ -164,6 +166,26 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
     .filter(p => p !== undefined),
 );
 
+export const getOriginalQuestion = createSelector(
+  [getMetadata, getOriginalCard],
+  (metadata, card) => metadata && card && new Question(card, metadata),
+);
+
+export const getQuestion = createSelector(
+  [getMetadata, getCard, getParameterValues],
+  (metadata, card, parameterValues) => {
+    if (!metadata || !card) {
+      return;
+    }
+    const question = new Question(card, metadata, parameterValues);
+
+    // When opening a dataset, we swap it's `dataset_query`
+    // with clean query using the dataset as a source table,
+    // to enable "simple mode" like features
+    return question.isDataset() ? question.composeDataset() : question;
+  },
+);
+
 function normalizeClause(clause) {
   return typeof clause?.raw === "function" ? clause.raw() : clause;
 }
@@ -205,6 +227,8 @@ export function normalizeQuery(query, tableMetadata) {
 
 export const getIsResultDirty = createSelector(
   [
+    getQuestion,
+    getOriginalQuestion,
     getLastRunDatasetQuery,
     getNextRunDatasetQuery,
     getLastRunParameterValues,
@@ -212,12 +236,23 @@ export const getIsResultDirty = createSelector(
     getTableMetadata,
   ],
   (
+    question,
+    originalQuestion,
     lastDatasetQuery,
     nextDatasetQuery,
     lastParameters,
     nextParameters,
     tableMetadata,
   ) => {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // We need to escape the isDirty check as it will always be true in this case,
+    // and the page will always be covered with a 'rerun' overlay.
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (question && isAdHocDatasetQuestion(question, originalQuestion)) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
     return (
@@ -227,23 +262,10 @@ export const getIsResultDirty = createSelector(
   },
 );
 
-export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) =>
-    metadata && card && new Question(card, metadata, parameterValues),
-);
-
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
   (metadata, card, parameterValues) =>
     card && metadata && new Question(card, metadata, parameterValues),
-);
-
-export const getOriginalQuestion = createSelector(
-  [getMetadata, getOriginalCard],
-  (metadata, card) =>
-    // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
-    metadata && card && new Question(card, metadata),
 );
 
 export const getMode = createSelector(
@@ -262,8 +284,17 @@ export const getIsObjectDetail = createSelector(
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) =>
-    question && question.isDirtyComparedToWithoutParameters(originalQuestion),
+  (question, originalQuestion) => {
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // (it's necessary for datasets to behave like tables opened in simple mode)
+    // We need to escape the isDirty check as it will always be true in this case,
+    // and the page will always be covered with a 'rerun' overlay.
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (!question || isAdHocDatasetQuestion(question, originalQuestion)) {
+      return false;
+    }
+    return question.isDirtyComparedToWithoutParameters(originalQuestion);
+  },
 );
 
 export const getQuery = createSelector(
