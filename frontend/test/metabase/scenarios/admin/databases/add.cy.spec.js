@@ -40,11 +40,13 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Host", "localhost");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
@@ -62,7 +64,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Host", "localhost  \n  ");
     typeField("Database name", " test_postgres_db");
     typeField("Username", "   uberadmin   ");
@@ -81,7 +83,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
@@ -91,7 +93,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.wait("@createDatabase");
 
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
+    toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Next")
       .should("not.be.disabled")
@@ -108,13 +110,13 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
     cy.button("Save").should("not.be.disabled");
 
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
+    toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Next")
       .should("not.be.disabled")
@@ -144,7 +146,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
@@ -198,12 +200,10 @@ describe("scenarios > admin > databases > add", () => {
 
     chooseDatabase("H2");
 
-    typeField("Name", databaseName);
+    typeField("Display name", databaseName);
     typeField("Connection String", H2_CONNECTION_STRING);
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    )
+    cy.findByLabelText("Choose when syncs and scans happen")
       .click()
       .should("have.attr", "aria-checked", "true");
 
@@ -231,7 +231,7 @@ describe("scenarios > admin > databases > add", () => {
       });
 
       // enter text
-      typeField("Name", "bq db");
+      typeField("Display name", "bq db");
       typeField("Dataset ID", "some-dataset");
 
       // create blob to act as selected file
@@ -317,7 +317,7 @@ describe("scenarios > admin > databases > add", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Name", "Test db name");
+      typeField("Display name", "Test db name");
       typeField("Host", "localhost");
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
@@ -333,7 +333,7 @@ describe("scenarios > admin > databases > add", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Name", "Test db name");
+      typeField("Display name", "Test db name");
       typeField("Host", "localhost");
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");

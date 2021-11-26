@@ -37,13 +37,17 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Use a secure connection (SSL)?");
     cy.findByLabelText("Authenticate with Kerberos?");
     // Turned on by default
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    ).should("have.attr", "aria-checked", "");
+    cy.findByLabelText("Choose when syncs and scans happen").should(
+      "have.attr",
+      "aria-checked",
+      "",
+    );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",
@@ -87,13 +91,17 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Use a secure connection (SSL)?");
     cy.findByLabelText("Use an SSH-tunnel for database connections");
 
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    ).should("have.attr", "aria-checked", "");
+    cy.findByLabelText("Choose when syncs and scans happen").should(
+      "have.attr",
+      "aria-checked",
+      "",
+    );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",

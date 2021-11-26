@@ -142,9 +142,7 @@ describe("scenarios > setup", () => {
 
       // return to db settings and turn on manual scheduling
       cy.findByText("Connecting to Metabase H2").click();
-      cy.findByLabelText(
-        "This is a large database, so let me choose when Metabase syncs and scans",
-      ).click();
+      cy.findByLabelText("Choose when syncs and scans happen").click();
       cy.findByText("Next").click();
 
       // now, we should see the sync scheduling form
