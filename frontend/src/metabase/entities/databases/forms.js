@@ -17,7 +17,7 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
-    title: t`Use an SSH-tunnel for database connections`,
+    title: t`Use an SSH-tunnel`,
     description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
   "use-jvm-timezone": () => ({
@@ -185,7 +185,7 @@ function getAuthCodeEnableAPILink(engine, details) {
 
 function getEngineName(engine) {
   const engineInfo = ENGINES[engine];
-  return engineInfo != null ? ["display-name"] : t`Database`;
+  return engineInfo != null ? engineInfo["driver-name"] : t`Database`;
 }
 
 function getEngineInfo(engine, details, id) {
@@ -356,7 +356,7 @@ const forms = {
           name: "refingerprint",
           type: "boolean",
           title: t`Periodically refingerprint tables`,
-          description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
+          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
           hidden: !engine,
         },
         getDatabaseCachingField(),
