@@ -198,6 +198,11 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
+function getEngineName(engine) {
+  const engineInfo = ENGINES[engine];
+  return engineInfo != null ? ["display-name"] : t`Database`;
+}
+
 function getEngineInfo(engine, details, id) {
   const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
   switch (engine) {
@@ -342,7 +347,7 @@ const forms = {
         {
           name: "name",
           title: t`Name`,
-          placeholder: t`How would you like to refer to this database?`,
+          placeholder: t`Our ${getEngineName(engine)}`,
           validate: value => !value && t`required`,
           hidden: !engine,
           helperText: t`Choose what this data will be called in Metabase.`,

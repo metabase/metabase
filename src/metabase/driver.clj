@@ -289,6 +289,9 @@
     ;; placeholders, you cannot specify both `:default` and `:placeholder`.
     (s/optional-key :placeholder) s/Any
 
+    ;; Human-readable text that gives context about a field's input.
+    (s/optional-key :helper-text) s/Str
+
     ;; Is this property required? Defaults to `false`.
     (s/optional-key :required?) s/Bool
 

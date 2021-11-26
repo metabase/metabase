@@ -25,7 +25,8 @@ driver:
         - name: pass
     - name: authdb
       display-name: Authentication Database
-      placeholder: Optional database to use when authenticating
+      helper-text: Database to use when authenticating.
+      placeholder: admin
     - merge:
         - additional-options
         - display-name: Additional Mongo connection string options
