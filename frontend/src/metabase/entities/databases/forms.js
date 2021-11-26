@@ -22,26 +22,15 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
-    description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
+    description: t`We suggest you leave this off unless you plan on doing a lot of manual timezone casting with this data.`,
   }),
   "include-user-id-and-hash": () => ({
     title: t`Include User ID and query hash in queries`,
-    description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
+    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
   }),
   "use-srv": () => ({
-    title: t`Use DNS SRV when connecting`,
-    description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
-  }),
-  "client-id": (engine, details) => ({
-    description: getClientIdDescription(engine, details),
-  }),
-  "auth-code": (engine, details) => ({
-    description: (
-      <div>
-        <div>{getAuthCodeLink(engine, details)}</div>
-        <div>{getAuthCodeEnableAPILink(engine, details)}</div>
-      </div>
-    ),
+    title: t`Connect using DNS SRV`,
+    description: t`If you're connecting to an Atlas cluster, you might need to turn this on. Note that your provided host must be a fully qualified domain name.`,
   }),
   "service-account-json": (engine, details, id) => ({
     validate: value => {
@@ -63,7 +52,7 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "tunnel-private-key": () => ({
     title: t`SSH private key`,
-    placeholder: t`Paste the contents of your ssh private key here`,
+    placeholder: t`Paste the contents of your ssh private key here…`,
     type: "text",
   }),
   "tunnel-private-key-passphrase": () => ({
@@ -78,7 +67,7 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "ssl-cert": () => ({
     title: t`Server SSL certificate chain`,
-    placeholder: t`Paste the contents of the server's SSL certificate chain here`,
+    placeholder: t`Paste the contents of the server's SSL certificate chain here…`,
     type: "text",
   }),
 };
@@ -104,10 +93,6 @@ const CREDENTIALS_URL_PREFIXES = {
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
 };
 
-function concatTrimmed(a, b) {
-  return (a || "").trim() + (b || "").trim();
-}
-
 function getSshDescription() {
   const link = (
     <ExternalLink
@@ -120,81 +105,6 @@ function getSshDescription() {
   );
 
   return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
-}
-
-function getClientIdDescription(engine, details) {
-  if (CREDENTIALS_URL_PREFIXES[engine]) {
-    const credentialsURL = concatTrimmed(
-      CREDENTIALS_URL_PREFIXES[engine],
-      details["project-id"] || "",
-    );
-    return (
-      <span>
-        {jt`${(
-          <ExternalLink className="link" href={credentialsURL}>
-            {t`Click here`}
-          </ExternalLink>
-        )} to generate a Client ID and Client Secret for your project.`}{" "}
-        {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
-      </span>
-    );
-  }
-}
-
-function getAuthCodeLink(engine, details) {
-  if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
-    const authCodeURL = concatTrimmed(
-      AUTH_URL_PREFIXES[engine],
-      details["client-id"],
-    );
-    const googleDriveAuthCodeURL = concatTrimmed(
-      AUTH_URL_PREFIXES["bigquery_with_drive"],
-      details["client-id"],
-    );
-    return (
-      <span>
-        {jt`${(
-          <ExternalLink href={authCodeURL}>{t`Click here`}</ExternalLink>
-        )} to get an auth code.`}
-        {engine === "bigquery" && (
-          <span>
-            {" "}
-            ({t`or`}{" "}
-            <ExternalLink href={googleDriveAuthCodeURL}>
-              {t`with Google Drive permissions`}
-            </ExternalLink>
-            )
-          </span>
-        )}
-      </span>
-    );
-  }
-}
-function getAuthCodeEnableAPILink(engine, details) {
-  // for Google Analytics we need to show a link for people to go to the Console to enable the GA API
-  if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
-    // projectID is just the first numeric part of the client-id.
-    // e.g. client-id might be 123436115855-q8z42hilmjf8iplnnu49n7jbudmxxdf.apps.googleusercontent.com
-    // then project-id would be 123436115855
-    const projectID =
-      details["client-id"] && (details["client-id"].match(/^\d+/) || [])[0];
-    if (ENABLE_API_PREFIXES[engine] && projectID) {
-      // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
-      const enableAPIURL = concatTrimmed(
-        ENABLE_API_PREFIXES[engine],
-        projectID,
-      );
-
-      return (
-        <span>
-          {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}{" "}
-          {jt`${(
-            <ExternalLink href={enableAPIURL}>{t`Click here`}</ExternalLink>
-          )} to go to the console if you haven't already done so.`}
-        </span>
-      );
-    }
-  }
 }
 
 function getEngineName(engine) {
@@ -356,14 +266,14 @@ const forms = {
           name: "auto_run_queries",
           type: "boolean",
           title: t`Rerun queries for simple explorations`,
-          description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
+          description: t`We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.`,
           hidden: !engine,
         },
         {
           name: "details.let-user-control-scheduling",
           type: "boolean",
-          title: t`This is a large database, so let me choose when Metabase syncs and scans`,
-          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
+          title: t`Choose when syncs and scans happen`,
+          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
           hidden: !engine,
         },
         {

@@ -17,7 +17,7 @@ driver:
     - merge:
         - dbname
         - name: db
-          placeholder: toucan_sightings
+          placeholder: birds_of_the_world
     - user
     - password
     - merge:
