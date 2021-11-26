@@ -146,7 +146,8 @@ export default class DatabaseConnectionStep extends Component {
           <StepTitle title={stepText} circleText={String(stepNumber)} />
 
           <div className="Form-field mb4">
-            {t`Connecting to your own database will let you get the most out of Metabase. But if you're not ready to do that right now, you can skip this and check out the included sample database instead.`}
+            <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
+            <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
           </div>
 
           <Databases.Form
@@ -160,16 +161,17 @@ export default class DatabaseConnectionStep extends Component {
                 {formFields.map(({ name }) => (
                   <FormField key={name} name={name} />
                 ))}
-                {values.engine && <FormFooter submitTitle={t`Next`} />}
+                {
+                  <FormFooter
+                    isReverse={true}
+                    submitTitle={t`Connect database`}
+                    cancelTitle={t`Skip`}
+                    onCancel={this.skipDatabase}
+                  />
+                }
               </Form>
             )}
           </Databases.Form>
-
-          <div className="mt3">
-            <a className="link" onClick={this.skipDatabase}>
-              {t`I'll add my data later`}
-            </a>
-          </div>
         </Box>
       );
     }

@@ -18,7 +18,7 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
     title: t`Use an SSH-tunnel`,
-    description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
+    description: getSshDescription(),
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
@@ -70,7 +70,7 @@ const DATABASE_DETAIL_OVERRIDES = {
     title: t`Passphrase for the SSH private key`,
   }),
   "tunnel-auth-option": () => ({
-    title: t`SSH Authentication`,
+    title: t`SSH authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
@@ -106,6 +106,20 @@ const CREDENTIALS_URL_PREFIXES = {
 
 function concatTrimmed(a, b) {
   return (a || "").trim() + (b || "").trim();
+}
+
+function getSshDescription() {
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "administration-guide/ssh-tunnel-for-database-connections",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
 }
 
 function getClientIdDescription(engine, details) {
