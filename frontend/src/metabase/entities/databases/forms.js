@@ -32,6 +32,17 @@ const DATABASE_DETAIL_OVERRIDES = {
     title: t`Connect using DNS SRV`,
     description: t`If you're connecting to an Atlas cluster, you might need to turn this on. Note that your provided host must be a fully qualified domain name.`,
   }),
+  "client-id": (engine, details) => ({
+    description: getClientIdDescription(engine, details),
+  }),
+  "auth-code": (engine, details) => ({
+    description: (
+      <div>
+        <div>{getAuthCodeLink(engine, details)}</div>
+        <div>{getAuthCodeEnableAPILink(engine, details)}</div>
+      </div>
+    ),
+  }),
   "service-account-json": (engine, details, id) => ({
     validate: value => {
       // this field is only required if this is a new entry
@@ -72,20 +83,6 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
 };
 
-function getSshDescription() {
-  const link = (
-    <ExternalLink
-      href={MetabaseSettings.docsUrl(
-        "administration-guide/ssh-tunnel-for-database-connections",
-      )}
-    >
-      {t`Learn more`}
-    </ExternalLink>
-  );
-
-  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
-}
-
 function getEngineName(engine) {
   const engineInfo = ENGINES[engine];
   return engineInfo != null ? engineInfo["driver-name"] : t`Database`;
@@ -117,6 +114,120 @@ function shouldShowEngineProvidedField(field, details) {
   }
 
   return true;
+}
+
+function getSshDescription() {
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "administration-guide/ssh-tunnel-for-database-connections",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
+}
+
+const AUTH_URL_PREFIXES = {
+  bigquery:
+    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=",
+  bigquery_with_drive:
+    "https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery%20https://www.googleapis.com/auth/drive&client_id=",
+  googleanalytics:
+    "https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=",
+};
+
+const ENABLE_API_PREFIXES = {
+  googleanalytics:
+    "https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=",
+};
+
+const CREDENTIALS_URL_PREFIXES = {
+  bigquery:
+    "https://console.developers.google.com/apis/credentials/oauthclient?project=",
+  googleanalytics:
+    "https://console.developers.google.com/apis/credentials/oauthclient?project=",
+};
+
+function concatTrimmed(a, b) {
+  return (a || "").trim() + (b || "").trim();
+}
+
+function getClientIdDescription(engine, details) {
+  if (CREDENTIALS_URL_PREFIXES[engine]) {
+    const credentialsURL = concatTrimmed(
+      CREDENTIALS_URL_PREFIXES[engine],
+      details["project-id"] || "",
+    );
+    return (
+      <span>
+        {jt`${(
+          <ExternalLink className="link" href={credentialsURL}>
+            {t`Click here`}
+          </ExternalLink>
+        )} to generate a Client ID and Client Secret for your project.`}{" "}
+        {t`Choose "Desktop App" as the application type. Name it whatever you'd like.`}
+      </span>
+    );
+  }
+}
+
+function getAuthCodeLink(engine, details) {
+  if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
+    const authCodeURL = concatTrimmed(
+      AUTH_URL_PREFIXES[engine],
+      details["client-id"],
+    );
+    const googleDriveAuthCodeURL = concatTrimmed(
+      AUTH_URL_PREFIXES["bigquery_with_drive"],
+      details["client-id"],
+    );
+    return (
+      <span>
+        {jt`${(
+          <ExternalLink href={authCodeURL}>{t`Click here`}</ExternalLink>
+        )} to get an auth code.`}
+        {engine === "bigquery" && (
+          <span>
+            {" "}
+            ({t`or`}{" "}
+            <ExternalLink href={googleDriveAuthCodeURL}>
+              {t`with Google Drive permissions`}
+            </ExternalLink>
+            )
+          </span>
+        )}
+      </span>
+    );
+  }
+}
+function getAuthCodeEnableAPILink(engine, details) {
+  // for Google Analytics we need to show a link for people to go to the Console to enable the GA API
+  if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
+    // projectID is just the first numeric part of the client-id.
+    // e.g. client-id might be 123436115855-q8z42hilmjf8iplnnu49n7jbudmxxdf.apps.googleusercontent.com
+    // then project-id would be 123436115855
+    const projectID =
+      details["client-id"] && (details["client-id"].match(/^\d+/) || [])[0];
+    if (ENABLE_API_PREFIXES[engine] && projectID) {
+      // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
+      const enableAPIURL = concatTrimmed(
+        ENABLE_API_PREFIXES[engine],
+        projectID,
+      );
+
+      return (
+        <span>
+          {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}{" "}
+          {jt`${(
+            <ExternalLink href={enableAPIURL}>{t`Click here`}</ExternalLink>
+          )} to go to the console if you haven't already done so.`}
+        </span>
+      );
+    }
+  }
 }
 
 function getDefaultValue(field) {
