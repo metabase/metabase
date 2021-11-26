@@ -187,6 +187,68 @@ describe("getIsResultDirty", () => {
       );
     });
   });
+
+  describe("datasets", () => {
+    function getDataset(query) {
+      return getBaseCard({
+        id: 1,
+        dataset: true,
+        dataset_query: { type: "query", query },
+      });
+    }
+
+    function getState(state) {
+      return getBaseState(state);
+    }
+
+    const dataset = getDataset({ "source-table": 1 });
+
+    it("should not be dirty if dataset is not changed", () => {
+      const state = getState({
+        card: dataset,
+        originalCard: dataset,
+        lastRunCard: dataset,
+      });
+      expect(getIsResultDirty(state)).toBe(false);
+    });
+
+    it("should be dirty if dataset is changed", () => {
+      const state = getState({
+        card: dataset,
+        originalCard: dataset,
+        lastRunCard: getDataset({ "source-table": 2 }),
+      });
+      expect(getIsResultDirty(state)).toBe(false);
+    });
+
+    it("should not be dirty if dataset simple mode is active", () => {
+      const adHocDatasetCard = getDataset({ "source-table": "card__1" });
+      const state = getState({
+        card: adHocDatasetCard,
+        originalCard: dataset,
+        lastRunCard: adHocDatasetCard,
+      });
+      expect(getIsResultDirty(state)).toBe(false);
+    });
+
+    it("should be dirty when building a new question on a dataset", () => {
+      const card = getBaseCard({
+        dataset_query: {
+          type: "query",
+          query: {
+            aggregate: [["count"]],
+            "source-table": "card__1",
+          },
+        },
+      });
+      const state = getState({
+        card,
+        originalCard: dataset,
+        lastRunCard: dataset,
+      });
+      expect(getIsResultDirty(state)).toBe(true);
+    });
+  });
 });
 
 describe("getQuestionDetailsTimelineDrawerState", () => {
