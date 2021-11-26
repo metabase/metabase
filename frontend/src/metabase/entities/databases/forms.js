@@ -104,21 +104,6 @@ const CREDENTIALS_URL_PREFIXES = {
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
 };
 
-export const DEFAULT_SCHEDULES = {
-  cache_field_values: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: 0,
-    schedule_type: "daily",
-  },
-  metadata_sync: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_type: "hourly",
-  },
-};
-
 function concatTrimmed(a, b) {
   return (a || "").trim() + (b || "").trim();
 }
