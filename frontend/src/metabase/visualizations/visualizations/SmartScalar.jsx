@@ -215,11 +215,10 @@ export default class Smart extends React.Component {
                   color: color("text-medium"),
                 }}
               >
-                {!isFullscreen &&
-                  jt`${separator} was ${formatValue(
-                    previousValue,
-                    settings.column(column),
-                  )} ${granularityDisplay}`}
+                {jt`${separator} was ${formatValue(
+                  previousValue,
+                  settings.column(column),
+                )} ${granularityDisplay}`}
               </h4>
             </Flex>
           )}
