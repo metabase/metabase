@@ -52,7 +52,7 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "tunnel-private-key": () => ({
     title: t`SSH private key`,
-    placeholder: t`Paste the contents of your ssh private key here…`,
+    placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
   "tunnel-private-key-passphrase": () => ({
@@ -67,7 +67,7 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "ssl-cert": () => ({
     title: t`Server SSL certificate chain`,
-    placeholder: t`Paste the contents of the server's SSL certificate chain here…`,
+    placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
 };
