@@ -13,7 +13,7 @@ import {
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
-import { Legend } from "metabase/static-viz/components/XYChart/legend/Legend";
+import { Legend } from "metabase/static-viz/components/XYChart/Legend/Legend";
 import {
   CHART_PADDING,
   LABEL_PADDING,
@@ -29,7 +29,9 @@ import {
   getXTickWidthLimit,
   calculateLegendItems,
   calculateBounds,
+  calculateYDomains,
 } from "metabase/static-viz/components/XYChart/utils";
+import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
 export interface XYChartProps {
   width: number;
@@ -46,7 +48,12 @@ export const XYChart = ({
   settings,
   style,
 }: XYChartProps) => {
-  const yTickWidths = getYTickWidths(series, settings.y.format);
+  const yDomains = calculateYDomains(series, settings.goal?.value);
+  const yTickWidths = getYTickWidths(
+    settings.y.format,
+    yDomains.left,
+    yDomains.right,
+  );
   const xTicksDimensions = getXTicksDimensions(
     series,
     settings.x,
@@ -62,6 +69,7 @@ export const XYChart = ({
     xTicksDimensions.height,
     settings.labels,
     style.axes.ticks.fontSize,
+    !!settings.goal,
   );
 
   const { xMin, xMax, yMin, innerHeight, innerWidth } = calculateBounds(
@@ -72,9 +80,10 @@ export const XYChart = ({
 
   const xScale = createXScale(series, [0, innerWidth], settings.x.type);
   const { yScaleLeft, yScaleRight } = createYScales(
-    series,
     [innerHeight, 0],
     settings.y.type,
+    yDomains.left,
+    yDomains.right,
   );
 
   const lines = series.filter(series => series.type === "line");
@@ -140,6 +149,17 @@ export const XYChart = ({
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
         />
+
+        {settings.goal && (
+          <GoalLine
+            label={settings.goal.label}
+            x1={0}
+            x2={innerWidth}
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            y={defaultYScale!(settings.goal.value)}
+            color={style.goalColor}
+          />
+        )}
       </Group>
 
       {yScaleLeft && (

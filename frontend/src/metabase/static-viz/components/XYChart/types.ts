@@ -44,6 +44,10 @@ export type ChartSettings = {
     type: YAxisType;
     format: NumberFormatSettings;
   };
+  goal?: {
+    value: number;
+    label: string;
+  };
   labels: {
     left?: string;
     bottom?: string;
@@ -77,4 +81,5 @@ export type ChartStyle = {
       fontWeight: number;
     };
   };
+  goalColor: string;
 };

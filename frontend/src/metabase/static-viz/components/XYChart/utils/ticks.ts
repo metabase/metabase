@@ -10,14 +10,12 @@ import {
 import { MAX_ROTATED_TICK_WIDTH } from "metabase/static-viz/components/XYChart/constants";
 import {
   ChartSettings,
+  ContiniousDomain,
   Series,
   XAxisType,
   XValue,
 } from "metabase/static-viz/components/XYChart/types";
-import {
-  getX,
-  getY,
-} from "metabase/static-viz/components/XYChart/utils/series";
+import { getX } from "metabase/static-viz/components/XYChart/utils/series";
 
 export const getRotatedXTickHeight = (tickWidth: number) => {
   return Math.ceil(Math.sqrt(Math.pow(tickWidth, 2) / 2));
@@ -108,33 +106,24 @@ export const getDistinctXValuesCount = (series: Series[]) =>
   new Set(series.flatMap(s => s.data).map(getX)).size;
 
 export const calculateYTickWidth = (
-  series: Series[],
+  domain: ContiniousDomain,
   settings: ChartSettings["y"]["format"],
 ) => {
-  if (series.length === 0) {
-    return 0;
-  }
-
   return getYTickWidth(
-    series.flatMap(series => series.data),
-    { y: getY },
+    domain,
+    { y: (value: number) => value },
     settings,
   ) as number;
 };
 
 export const getYTickWidths = (
-  series: Series[],
   settings: ChartSettings["y"]["format"],
+  leftYDomain?: ContiniousDomain,
+  rightYDomain?: ContiniousDomain,
 ) => {
-  const leftScaleSeries = series.filter(
-    series => series.yAxisPosition === "left",
-  );
-  const rightScaleSeries = series.filter(
-    series => series.yAxisPosition === "right",
-  );
-
   return {
-    left: calculateYTickWidth(leftScaleSeries, settings),
-    right: calculateYTickWidth(rightScaleSeries, settings),
+    left: leftYDomain != null ? calculateYTickWidth(leftYDomain, settings) : 0,
+    right:
+      rightYDomain != null ? calculateYTickWidth(rightYDomain, settings) : 0,
   };
 };

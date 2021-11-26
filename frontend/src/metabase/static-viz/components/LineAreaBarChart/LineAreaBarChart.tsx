@@ -37,6 +37,7 @@ const LineAreaBarChart = ({
         fontWeight: 700,
       },
     },
+    goalColor: palette.textMedium,
   };
 
   return (

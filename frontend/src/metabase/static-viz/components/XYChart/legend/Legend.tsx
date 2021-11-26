@@ -10,18 +10,18 @@ type LegendItem = {
 
 type LegendProps = {
   legend: {
-    leftItems?: LegendItem[]
-    rightItems?: LegendItem[]
-    columnWidth: number,
-    maxTextWidth: number,
-  }
+    leftItems?: LegendItem[];
+    rightItems?: LegendItem[];
+    columnWidth: number;
+    maxTextWidth: number;
+  };
   width: number;
   top: number;
   left: number;
 };
 
 export const Legend = ({ legend, top, left, width }: LegendProps) => {
-  const { leftItems, rightItems, columnWidth, maxTextWidth } = legend
+  const { leftItems, rightItems, columnWidth, maxTextWidth } = legend;
 
   return (
     <Group left={left} top={top}>

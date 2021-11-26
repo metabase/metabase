@@ -46,13 +46,21 @@ export const calculateLegendItems = (
   width: number,
   lineHeight: number,
 ) => {
-  const columnWidth = width / 2
+  const columnWidth = width / 2;
   const maxTextWidth = columnWidth - LEGEND_TEXT_MARGIN * 2;
   const [leftSeries, rightSeries] = partitionByYAxis(series);
 
   if (leftSeries?.length > 0 && rightSeries?.length > 0) {
-    const leftColumn = calculateLegendColumn(leftSeries, maxTextWidth, lineHeight)
-    const rightColumn = calculateLegendColumn(rightSeries, maxTextWidth, lineHeight)
+    const leftColumn = calculateLegendColumn(
+      leftSeries,
+      maxTextWidth,
+      lineHeight,
+    );
+    const rightColumn = calculateLegendColumn(
+      rightSeries,
+      maxTextWidth,
+      lineHeight,
+    );
 
     return {
       leftItems: leftColumn.items,
@@ -60,26 +68,30 @@ export const calculateLegendItems = (
       height: Math.max(leftColumn.columnHeight, rightColumn.columnHeight),
       columnWidth,
       maxTextWidth,
-    }
+    };
   }
 
-  const singleColumnSeries = leftSeries?.length > 0 ? leftSeries : rightSeries
+  const singleColumnSeries = leftSeries?.length > 0 ? leftSeries : rightSeries;
 
   if (singleColumnSeries.length < 2) {
     return {
       height: 0,
       columnWidth: 0,
-      maxTextWidth: 0
-    }
+      maxTextWidth: 0,
+    };
   }
 
-  const singleColumnTextWidth = width - LEGEND_TEXT_MARGIN * 2
-  const leftColumn = calculateLegendColumn(singleColumnSeries, singleColumnTextWidth, lineHeight);
+  const singleColumnTextWidth = width - LEGEND_TEXT_MARGIN * 2;
+  const leftColumn = calculateLegendColumn(
+    singleColumnSeries,
+    singleColumnTextWidth,
+    lineHeight,
+  );
 
   return {
     leftItems: leftColumn.items,
     height: leftColumn.columnHeight,
     columnWidth: singleColumnTextWidth,
-    maxTextWidth: singleColumnTextWidth
-  }
+    maxTextWidth: singleColumnTextWidth,
+  };
 };

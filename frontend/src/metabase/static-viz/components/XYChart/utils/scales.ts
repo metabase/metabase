@@ -84,17 +84,23 @@ export const createXScale = (
   };
 };
 
-const calculateYDomain = (series: Series[]): ContiniousDomain => {
+const calculateYDomain = (
+  series: Series[],
+  goalValue?: number,
+): ContiniousDomain => {
   const values = series
     .flatMap(series => series.data)
     .map(datum => getY(datum));
   const minValue = min(values);
   const maxValue = max(values);
 
-  return [Math.min(0, minValue), Math.max(0, maxValue)];
+  return [
+    Math.min(0, minValue, goalValue ?? 0),
+    Math.max(0, maxValue, goalValue ?? 0),
+  ];
 };
 
-const calculateYDomains = (series: Series[]) => {
+export const calculateYDomains = (series: Series[], goalValue?: number) => {
   const leftScaleSeries = series.filter(
     series => series.yAxisPosition === "left",
   );
@@ -103,14 +109,14 @@ const calculateYDomains = (series: Series[]) => {
   );
 
   if (leftScaleSeries.length > 0 && rightScaleSeries.length === 0) {
-    return { left: calculateYDomain(leftScaleSeries) };
+    return { left: calculateYDomain(leftScaleSeries, goalValue) };
   }
   if (rightScaleSeries.length > 0 && leftScaleSeries.length === 0) {
-    return { right: calculateYDomain(rightScaleSeries) };
+    return { right: calculateYDomain(rightScaleSeries, goalValue) };
   }
 
   return {
-    left: calculateYDomain(leftScaleSeries),
+    left: calculateYDomain(leftScaleSeries, goalValue),
     right: calculateYDomain(rightScaleSeries),
   };
 };
@@ -142,18 +148,15 @@ export const createYScale = (
 };
 
 export const createYScales = (
-  series: Series[],
   range: Range,
   axisType: YAxisType,
+  leftYDomain?: ContiniousDomain,
+  rightYDomain?: ContiniousDomain,
 ) => {
-  const domains = calculateYDomains(series);
-
   return {
-    yScaleLeft: domains.left
-      ? createYScale(domains.left, range, axisType)
-      : null,
-    yScaleRight: domains.right
-      ? createYScale(domains.right, range, axisType)
+    yScaleLeft: leftYDomain ? createYScale(leftYDomain, range, axisType) : null,
+    yScaleRight: rightYDomain
+      ? createYScale(rightYDomain, range, axisType)
       : null,
   };
 };

@@ -351,6 +351,10 @@ export default function StaticVizPage() {
             type="combo-chart"
             options={{
               settings: {
+                goal: {
+                  value: 140,
+                  label: "Goal",
+                },
                 x: {
                   type: "timeseries",
                 },

@@ -3,6 +3,7 @@ import { CHART_PADDING } from "metabase/static-viz/components/XYChart/constants"
 import { ChartSettings } from "metabase/static-viz/components/XYChart/types";
 
 export const LABEL_OFFSET = 10;
+export const GOAL_MARGIN = 6;
 
 const calculateSideMargin = (
   tickSpace: number,
@@ -24,9 +25,10 @@ export const calculateMargin = (
   xTickHeight: number,
   labels: ChartSettings["labels"],
   labelFontSize: number,
+  hasGoalLine?: boolean,
 ) => {
   return {
-    top: CHART_PADDING,
+    top: hasGoalLine ? GOAL_MARGIN + CHART_PADDING : CHART_PADDING,
     left: calculateSideMargin(leftYTickWidth, labelFontSize, labels.left),
     right: calculateSideMargin(rightYTickWidth, labelFontSize, labels.right),
     bottom: calculateSideMargin(xTickHeight, labelFontSize, labels.bottom),
