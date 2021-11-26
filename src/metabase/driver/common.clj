@@ -99,7 +99,7 @@
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)")
    :type         :boolean
    :default      false})
 

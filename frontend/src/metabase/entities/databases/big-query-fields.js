@@ -69,22 +69,25 @@ export default function getFieldsForBigQuery(details) {
         : [
             {
               name: "project-id",
-              "display-name": "Project ID",
-              placeholder: "praxis-beacon-120871",
+              "display-name": t`Project ID`,
+              "helper-text": t`Project ID to be used for authentication. You can omit this field if you are only querying datasets owned by your organization.`,
+              placeholder: "1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u",
               required: true,
             },
           ]),
       {
         name: "dataset-id",
-        "display-name": "Dataset ID",
-        placeholder: "toucanSightings",
+        "display-name": t`Dataset ID`,
+        "helper-text": t`Make sure to leave out the Project ID prefix in "project_name:dataset_id" and only enter “dataset_id”`,
+        placeholder: "dataset_id",
         required: true,
       },
       ...(useServiceAccount
         ? [
             {
               name: "service-account-json",
-              "display-name": "Service account JSON file",
+              "display-name": t`Service account JSON file`,
+              "helper-text": t`This JSON file contains the credentials Metabase needs to read and query your dataset.`,
               type: "textFile",
               required: true,
             },
@@ -92,33 +95,33 @@ export default function getFieldsForBigQuery(details) {
         : [
             {
               name: "client-id",
-              "display-name": "Client ID",
+              "display-name": t`Client ID`,
               placeholder:
                 "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com",
               required: true,
             },
             {
               name: "client-secret",
-              "display-name": "Client Secret",
+              "display-name": t`Client Secret`,
               placeholder: "dJNi4utWgMzyIFo2JbnsK6Np",
               required: true,
             },
             {
               name: "auth-code",
-              "display-name": "Auth Code",
+              "display-name": t`Auth Code`,
               placeholder: "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek",
               required: true,
             },
           ]),
       {
         name: "use-jvm-timezone",
-        "display-name": "Use JVM Time Zone",
+        "display-name": t`Use the Java Virtual Machine (JVM) timezone`,
         default: false,
         type: "boolean",
       },
       {
         name: "include-user-id-and-hash",
-        "display-name": "Include User ID and query hash in queries",
+        "display-name": t`Include User ID and query hash in queries`,
         default: true,
         type: "boolean",
       },

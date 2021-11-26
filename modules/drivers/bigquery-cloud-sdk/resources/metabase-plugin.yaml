@@ -23,7 +23,7 @@ driver:
       display-name: Dataset ID
       helper-text: Make sure to leave out the Project ID prefix in "project_name:dataset_id" and only enter “dataset_id”.
       required: true
-      placeholder: toucanSightings
+      placeholder: dataset_id
     - name: use-jvm-timezone
       display-name: Use JVM Time Zone
       default: false
