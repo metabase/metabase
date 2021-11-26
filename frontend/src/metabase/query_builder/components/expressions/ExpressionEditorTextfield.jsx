@@ -278,6 +278,7 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   handleEditorFocus = () => {
     this.setState({ isFocused: true });
+    setTimeout(() => this._triggerAutosuggest());
   };
 
   onInputBlur = e => {

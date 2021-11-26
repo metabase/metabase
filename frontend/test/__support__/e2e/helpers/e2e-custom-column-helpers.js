@@ -5,5 +5,7 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .focus()
     .type(formula);
 
-  cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  if (name) {
+    cy.findByPlaceholderText("Something nice and descriptive").type(name);
+  }
 }
