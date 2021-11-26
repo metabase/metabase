@@ -9,7 +9,11 @@ describe("calculateFunnelSteps", () => {
     const stepWidth = 100;
     const funnelHeight = 100;
     const steps = calculateFunnelSteps(
-      [["funnel step 1", 100], ["funnel step 2", 50], ["funnel step 3", 0]],
+      [
+        ["funnel step 1", 100],
+        ["funnel step 2", 50],
+        ["funnel step 3", 0],
+      ],
       stepWidth,
       funnelHeight,
     );
