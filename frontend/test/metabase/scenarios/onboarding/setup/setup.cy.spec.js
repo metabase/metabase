@@ -127,7 +127,7 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Remove database").click();
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
-      cy.findByLabelText("Name").type("Metabase H2");
+      cy.findByLabelText("Display name").type("Metabase H2");
       cy.findByText("Next")
         .closest("button")
         .should("be.disabled");
@@ -135,20 +135,10 @@ describe("scenarios > setup", () => {
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next")
+      cy.findByText("Connect database")
         .closest("button")
         .should("not.be.disabled")
         .click();
-
-      // return to db settings and turn on manual scheduling
-      cy.findByText("Connecting to Metabase H2").click();
-      cy.findByLabelText("Choose when syncs and scans happen").click();
-      cy.findByText("Next").click();
-
-      // now, we should see the sync scheduling form
-      cy.findByText("Scanning for Filter Values");
-      cy.findByText("Never, I'll do this manually if I need to").click();
-      cy.findByText("Next").click();
 
       // test database setup help card is hidden on the next step
       cy.findByTestId("database-setup-help-card").should("not.be.visible");

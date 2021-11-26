@@ -19,7 +19,7 @@ describe("admin > database > add > Presto", () => {
       cy.findByText("Presto").click();
     });
 
-    cy.findByLabelText("Name").type("Foo");
+    cy.findByLabelText("Display name").type("Foo");
 
     /**
      *  No need to fill out all these fields, because we can't connect to Presto from Cypress.
@@ -34,8 +34,8 @@ describe("admin > database > add > Presto", () => {
     // Implicit assertion - reproduces metabase#18351
     cy.findByLabelText("Additional JDBC options");
 
-    cy.findByLabelText("Use a secure connection (SSL)?");
-    cy.findByLabelText("Authenticate with Kerberos?");
+    cy.findByLabelText("Use a secure connection (SSL)");
+    cy.findByLabelText("Authenticate with Kerberos");
     // Turned on by default
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
@@ -88,7 +88,7 @@ describe("admin > database > add > Presto", () => {
     // Reproduces metabase#18351
     cy.findByLabelText("Additional JDBC options").should("not.exist");
 
-    cy.findByLabelText("Use a secure connection (SSL)?");
+    cy.findByLabelText("Use a secure connection (SSL)");
     cy.findByLabelText("Use an SSH-tunnel for database connections");
 
     cy.findByLabelText("Rerun queries for simple explorations").should(

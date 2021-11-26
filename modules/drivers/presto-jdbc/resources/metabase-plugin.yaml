@@ -35,7 +35,7 @@ driver:
     - ssl
     - name: kerberos
       type: boolean
-      display-name: Authenticate with Kerberos?
+      display-name: Authenticate with Kerberos
       default: false
     - name: kerberos-principal
       display-name: Kerberos principal

@@ -17,7 +17,7 @@ describe("admin > database > add > external databases", () => {
     cy.contains("PostgreSQL").click({ force: true });
     cy.contains("Additional JDBC connection string options");
 
-    typeAndBlurUsingLabel("Name", "QA Postgres12");
+    typeAndBlurUsingLabel("Display name", "QA Postgres12");
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "5432");
     typeAndBlurUsingLabel("Database name", "sample");
@@ -43,7 +43,7 @@ describe("admin > database > add > external databases", () => {
     cy.contains("MongoDB").click({ force: true });
     cy.contains("Additional Mongo connection");
 
-    typeAndBlurUsingLabel("Name", "QA Mongo4");
+    typeAndBlurUsingLabel("Display name", "QA Mongo4");
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "27017");
     typeAndBlurUsingLabel("Database name", "sample");
@@ -70,7 +70,7 @@ describe("admin > database > add > external databases", () => {
     cy.contains("MySQL").click({ force: true });
     cy.contains("Additional JDBC connection string options");
 
-    typeAndBlurUsingLabel("Name", "QA MySQL8");
+    typeAndBlurUsingLabel("Display name", "QA MySQL8");
     typeAndBlurUsingLabel("Host", "localhost");
     typeAndBlurUsingLabel("Port", "3306");
     typeAndBlurUsingLabel("Database name", "sample");

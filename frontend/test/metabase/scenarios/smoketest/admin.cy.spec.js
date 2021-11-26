@@ -49,7 +49,7 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
-      cy.findByLabelText("Name").type("Metabase H2");
+      cy.findByLabelText("Display name").type("Metabase H2");
 
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
