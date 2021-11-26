@@ -82,7 +82,6 @@ export default class Smart extends React.Component {
       onChangeCardAndRun,
       onVisualizationClick,
       isDashboard,
-      isFullscreen,
       settings,
       visualizationIsClickable,
       series: [
