@@ -276,6 +276,9 @@
     ;; Human-readable name that should be displayed to the User in UI for editing this field.
     :display-name su/NonBlankString
 
+    ;; Human-readable text that gives context about a field's input.
+    (s/optional-key :helper-text) s/Str
+
     ;; Type of this property. Defaults to `:string` if unspecified.
     ;; `:select` is a `String` in the backend.
     (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
@@ -288,9 +291,6 @@
     ;; is *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as
     ;; placeholders, you cannot specify both `:default` and `:placeholder`.
     (s/optional-key :placeholder) s/Any
-
-    ;; Human-readable text that gives context about a field's input.
-    (s/optional-key :helper-text) s/Str
 
     ;; Is this property required? Defaults to `false`.
     (s/optional-key :required?) s/Bool
