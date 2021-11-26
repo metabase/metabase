@@ -1,4 +1,6 @@
+import Question from "metabase-lib/lib/Question";
 import {
+  getQuestion,
   getIsResultDirty,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
@@ -28,6 +30,82 @@ function getBaseCard(opts) {
     },
   };
 }
+
+describe("getQuestion", () => {
+  it("should be nothing if card data is missing", () => {
+    const state = getBaseState({ card: null });
+    expect(getQuestion(state)).toBe(undefined);
+  });
+
+  it("should return question instance correctly", () => {
+    const card = {
+      id: 5,
+      dataset_query: {
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": 1,
+        },
+      },
+    };
+
+    const question = getQuestion(getBaseState({ card }));
+
+    expect(question).toBeInstanceOf(Question);
+    expect(question.card()).toEqual(card);
+  });
+
+  it("should return composed dataset when dataset is open", () => {
+    const card = {
+      id: 5,
+      dataset: true,
+      dataset_query: {
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": 1,
+        },
+      },
+    };
+
+    const question = getQuestion(getBaseState({ card }));
+
+    expect(question.card()).toEqual({
+      ...card,
+      dataset_query: {
+        ...card.dataset_query,
+        query: {
+          "source-table": "card__5",
+        },
+      },
+    });
+  });
+
+  it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
+    const card = {
+      id: 5,
+      dataset: true,
+      dataset_query: {
+        database: 1,
+        type: "query",
+        query: {
+          "source-table": 1,
+        },
+      },
+    };
+
+    const question = getQuestion(
+      getBaseState({
+        card,
+        uiControls: {
+          queryBuilderMode: "dataset",
+        },
+      }),
+    );
+
+    expect(question.card()).toEqual(card);
+  });
+});
 
 describe("getIsResultDirty", () => {
   describe("structure query", () => {
