@@ -13,7 +13,7 @@ import {
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
 import { AreaSeries } from "metabase/static-viz/components/XYChart/shapes/AreaSeries";
-import { Legend } from "metabase/static-viz/components/XYChart/Legend/Legend";
+import { Legend } from "metabase/static-viz/components/XYChart/Legend";
 import {
   CHART_PADDING,
   LABEL_PADDING,
