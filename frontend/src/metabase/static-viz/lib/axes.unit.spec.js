@@ -1,4 +1,4 @@
-import { getXTickHeight, getXTickWidth, getYTickWidth } from "./axes";
+import { getRotatedXTickHeight, getXTickWidth, getYTickWidth } from "./axes";
 
 describe("getXTickWidth", () => {
   it("should get tick width for x axis assuming 6px char width", () => {
@@ -12,9 +12,9 @@ describe("getXTickWidth", () => {
   });
 });
 
-describe("getXTickHeight", () => {
+describe("getRotatedXTickHeight", () => {
   it("should get tick height by width assuming 45deg rotation", () => {
-    expect(getXTickHeight(12)).toBe(9);
+    expect(getRotatedXTickHeight(12)).toBe(9);
   });
 });
 

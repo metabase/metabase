@@ -10,7 +10,7 @@ import {
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
-  getXTickHeight,
+  getRotatedXTickHeight,
   getLabelProps,
 } from "../../lib/axes";
 import { formatNumber } from "../../lib/numbers";
@@ -63,7 +63,7 @@ const CategoricalAreaChart = ({ data, accessors, settings, labels }) => {
   const colors = settings?.colors;
   const isVertical = data.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
-  const xTickHeight = getXTickHeight(xTickWidth);
+  const xTickHeight = getRotatedXTickHeight(xTickWidth);
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
