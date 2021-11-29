@@ -1,8 +1,4 @@
-import {
-  calculateFunnelPolygonPoints,
-  calculateFunnelSteps,
-  formatPercent,
-} from ".";
+import { calculateFunnelPolygonPoints, calculateFunnelSteps } from "./funnel";
 
 describe("calculateFunnelSteps", () => {
   it("calculates funnel steps from data", () => {
@@ -44,13 +40,6 @@ describe("calculateFunnelSteps", () => {
         top: 50,
       },
     ]);
-  });
-});
-
-describe("formatPercent", () => {
-  it("formats percent with two decimals", () => {
-    expect(formatPercent(0.12245)).toBe("12.25 %");
-    expect(formatPercent(0)).toBe("0.00 %");
   });
 });
 

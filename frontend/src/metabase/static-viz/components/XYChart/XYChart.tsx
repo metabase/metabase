@@ -51,6 +51,7 @@ export const XYChart = ({
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,
+    style.axes.ticks.fontSize,
     yDomains.left,
     yDomains.right,
   );
@@ -93,7 +94,8 @@ export const XYChart = ({
   const defaultYScale = yScaleLeft || yScaleRight;
 
   const legendWidth = width - 2 * CHART_PADDING;
-  const legend = calculateLegendItems(series, legendWidth, 16);
+  // FIXME:
+  const legend = calculateLegendItems(series, legendWidth, 16, 13);
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,

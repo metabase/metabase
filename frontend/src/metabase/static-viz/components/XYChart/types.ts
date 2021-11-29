@@ -1,3 +1,6 @@
+import { DateFormatOptions } from "metabase/static-viz/lib/dates";
+import { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
+
 export type Range = [number, number];
 export type ContiniousDomain = [number, number];
 
@@ -21,28 +24,17 @@ export type Series = {
   yAxisPosition: YAxisPosition;
 };
 
-export interface DateFormatSettings {
-  date_style: string;
-}
-
-export interface NumberFormatSettings {
-  number_style: string;
-  decimals: number;
-  currency?: string;
-  currency_style?: string;
-}
-
 type TickDisplay = "show" | "hide" | "rotate-45";
 
 export type ChartSettings = {
   x: {
     type: XAxisType;
     tick_display?: TickDisplay;
-    format: DateFormatSettings | NumberFormatSettings;
+    format: DateFormatOptions | NumberFormatOptions;
   };
   y: {
     type: YAxisType;
-    format: NumberFormatSettings;
+    format: NumberFormatOptions;
   };
   goal?: {
     value: number;

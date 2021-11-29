@@ -1,5 +1,7 @@
 import { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
-import { FunnelDatum, FunnelStep } from "./../types";
+import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
+import { truncateText } from "metabase/static-viz/lib/text";
+import { FunnelDatum, FunnelSettings, FunnelStep } from "../types";
 
 export const calculateFunnelSteps = (
   data: FunnelDatum[],
@@ -28,9 +30,6 @@ export const calculateFunnelSteps = (
 export const calculateStepOpacity = (index: number, stepsCount: number) =>
   1 - index * (0.9 / (stepsCount + 1));
 
-export const formatPercent = (percent: number) =>
-  `${(100 * percent).toFixed(2)} %`;
-
 type StepDimensions = Pick<FunnelStep, "top" | "left" | "height">;
 
 export const calculateFunnelPolygonPoints = (
@@ -46,4 +45,44 @@ export const calculateFunnelPolygonPoints = (
   ];
 
   return points;
+};
+
+export const getFormattedStep = (
+  step: FunnelStep,
+  maxStepTextWidth: number,
+  stepFontSize: number,
+  measureFontSize: number,
+  percentFontSize: number,
+  settings: FunnelSettings,
+  isFirst: boolean,
+) => {
+  const formattedStepName =
+    typeof step.step === "number"
+      ? formatNumber(step.step, settings?.step?.format)
+      : step.step;
+  const stepName = truncateText(
+    formattedStepName,
+    maxStepTextWidth,
+    stepFontSize,
+  );
+
+  const formattedMeasure = formatNumber(
+    step.measure,
+    settings?.measure?.format,
+  );
+  const measure = isFirst
+    ? formattedMeasure
+    : truncateText(formattedMeasure, maxStepTextWidth, measureFontSize);
+
+  const percent = truncateText(
+    formatPercent(step.percent),
+    maxStepTextWidth,
+    percentFontSize,
+  );
+
+  return {
+    percent,
+    measure,
+    stepName,
+  };
 };

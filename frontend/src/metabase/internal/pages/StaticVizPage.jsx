@@ -529,11 +529,16 @@ export default function StaticVizPage() {
                 ["Finished sign up", 200],
                 ["Opened app", 195],
                 ["Finished onboarding", 150],
-                ["Activated", 50],
+                ["Activated", 25],
               ],
               settings: {
                 step: {
                   name: "Step",
+                },
+                measure: {
+                  format: {
+                    suffix: "k",
+                  },
                 },
               },
             }}

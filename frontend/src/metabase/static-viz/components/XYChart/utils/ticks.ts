@@ -60,7 +60,7 @@ export const getXTicksDimensions = (
     .flatMap(s => s.data)
     .map(datum => {
       const tick = formatXTick(getX(datum), settings.type, settings.format);
-      return measureText(tick, 8);
+      return measureText(tick, fontSize);
     })
     .reduce((a, b) => Math.max(a, b), 0);
 
@@ -89,7 +89,7 @@ export const getXTickProps = (
 ): TickRendererProps => {
   const value =
     truncateToWidth != null
-      ? truncateText(props.formattedValue || "", truncateToWidth)
+      ? truncateText(props.formattedValue || "", truncateToWidth, tickFontSize)
       : props.formattedValue;
 
   const textBaseline = Math.floor(tickFontSize / 2);
@@ -108,22 +108,30 @@ export const getDistinctXValuesCount = (series: Series[]) =>
 export const calculateYTickWidth = (
   domain: ContiniousDomain,
   settings: ChartSettings["y"]["format"],
+  fontSize: number,
 ) => {
   return getYTickWidth(
     domain,
     { y: (value: number) => value },
     settings,
+    fontSize,
   ) as number;
 };
 
 export const getYTickWidths = (
   settings: ChartSettings["y"]["format"],
+  fontSize: number,
   leftYDomain?: ContiniousDomain,
   rightYDomain?: ContiniousDomain,
 ) => {
   return {
-    left: leftYDomain != null ? calculateYTickWidth(leftYDomain, settings) : 0,
+    left:
+      leftYDomain != null
+        ? calculateYTickWidth(leftYDomain, settings, fontSize)
+        : 0,
     right:
-      rightYDomain != null ? calculateYTickWidth(rightYDomain, settings) : 0,
+      rightYDomain != null
+        ? calculateYTickWidth(rightYDomain, settings, fontSize)
+        : 0,
   };
 };

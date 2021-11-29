@@ -1,28 +1,28 @@
-const CHAR_WIDTH = 6;
 const CHAR_ELLIPSES = "…";
 
-export const measureTextHeight = (fontSize: number) => {
-  return fontSize * 1.25;
+// TODO: Replace this rough simple approximation with a correct one
+const getCharWidth = (fontSize: number) => {
+  if (fontSize <= 16) {
+    return fontSize / 1.82;
+  }
+
+  return fontSize / 1.7;
 };
 
-export const measureText = (text: string, charWidth = CHAR_WIDTH) => {
-  return text.length * charWidth;
+export const measureText = (text: string, fontSize: number) => {
+  return text.length * getCharWidth(fontSize);
 };
 
 export const measureTextHeight = (fontSize: number) => {
   return fontSize * 1.3;
 };
 
-export const truncateText = (
-  text: string,
-  width: number,
-  charWidth = CHAR_WIDTH,
-) => {
-  if (measureText(text, charWidth) <= width) {
+export const truncateText = (text: string, width: number, fontSize: number) => {
+  if (measureText(text, fontSize) <= width) {
     return text;
   }
 
-  while (text.length && measureText(text + CHAR_ELLIPSES, charWidth) > width) {
+  while (text.length && measureText(text + CHAR_ELLIPSES, fontSize) > width) {
     text = text.substring(0, text.length - 1);
   }
 

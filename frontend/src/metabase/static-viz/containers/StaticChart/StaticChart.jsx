@@ -9,7 +9,7 @@ import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
 import ProgressBar from "../../components/ProgressBar";
-import Funnel from "../../components/Funnel";
+import Funnel from "../../components/FunnelChart";
 import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
 
