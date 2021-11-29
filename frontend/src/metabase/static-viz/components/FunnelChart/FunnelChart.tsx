@@ -18,7 +18,7 @@ import { calculateMargin } from "./utils/margin";
 const layout = {
   width: 540,
   height: 300,
-  stepFontSize: 14,
+  stepFontSize: 12,
   measureFontSize: 11,
   percentFontSize: 16,
   initialMeasureFontSize: 24,

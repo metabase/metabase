@@ -1,7 +1,6 @@
-import { DateFormatOptions } from "./../../../lib/dates";
 import { TickRendererProps } from "@visx/axis";
 import { getYTickWidth } from "metabase/static-viz/lib/axes";
-import { formatDate } from "metabase/static-viz/lib/dates";
+import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
 import {
   formatNumber,
   NumberFormatOptions,
