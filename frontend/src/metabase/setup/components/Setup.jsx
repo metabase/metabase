@@ -8,7 +8,6 @@ import { trackStructEvent } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
-import DriverWarning from "metabase/components/DriverWarning";
 import ExternalLink from "metabase/components/ExternalLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
@@ -143,7 +142,6 @@ export default class Setup extends Component {
       databaseFormName,
       databaseDetails,
       selectedDatabaseEngine,
-      setDatabaseEngine,
       userDetails,
     } = this.props;
 
@@ -250,12 +248,6 @@ export default class Setup extends Component {
                 border: `1px solid ${color("border")}`,
                 backgroundColor: color("white"),
               }}
-            />
-            <DriverWarning
-              engine={selectedDatabaseEngine}
-              ml={26}
-              onChangeEngine={setDatabaseEngine}
-              data-testid="database-setup-driver-warning"
             />
           </AddDatabaseHelpCardHolder>
         </div>

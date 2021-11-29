@@ -13,24 +13,3 @@ export function isAdHocDatasetQuestion(question, originalQuestion) {
 
   return isDataset && isSameCard && isSelfReferencing;
 }
-
-export function toAdHocDatasetQuestionCard(card, originalCard) {
-  return {
-    ...card,
-    dataset_query: {
-      ...originalCard.dataset_query,
-      query: {
-        "source-table": getQuestionVirtualTableId(originalCard),
-      },
-    },
-  };
-}
-
-export function toAdHocDatasetQuestion(question, originalQuestion) {
-  return question.setDatasetQuery({
-    ...originalQuestion.datasetQuery(),
-    query: {
-      "source-table": getQuestionVirtualTableId(originalQuestion.card()),
-    },
-  });
-}

@@ -500,6 +500,25 @@
                [:div [:span "•"] [:span "Widget"] [:span "25%"]]]]
              (prune (:content (render [["Doohickey" 75] ["Widget" 25]]))))))))
 
+(deftest render-progress
+  (let [col [{:name          "NumPurchased",
+              :display_name  "NumPurchased",
+              :base_type     :type/Integer
+              :semantic_type nil}]
+        render  (fn [rows]
+                  (body/render :progress :inline pacific-tz
+                               render.tu/test-card
+                               {:cols col :rows rows}))
+        prune   (fn prune [html-tree]
+                  (walk/prewalk (fn no-maps [x]
+                                  (if (vector? x)
+                                    (filterv (complement map?) x)
+                                    x))
+                                html-tree))]
+    (testing "Renders without error"
+      (let [rendered-info (render [[25]])]
+        (is (has-inline-image? rendered-info))))))
+
 (def donut-info #'body/donut-info)
 
 (deftest donut-info-test
