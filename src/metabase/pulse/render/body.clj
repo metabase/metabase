@@ -12,11 +12,14 @@
             [metabase.pulse.render.sparkline :as sparkline]
             [metabase.pulse.render.style :as style]
             [metabase.pulse.render.table :as table]
+            [metabase.pulse.util :as pu]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [schema.core :as s])
+            [metabase.util.ui-logic :as ui-logic]
+            [schema.core :as s]
+            [toucan.hydrate :refer [hydrate]])
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private error-rendered-info
@@ -479,7 +482,7 @@
                               (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
         labels           (combo-label-info x-col y-cols viz-settings)
-        series           (some crap)
+        ;; series           (some crap)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
                            (js-svg/combo-chart series labels
