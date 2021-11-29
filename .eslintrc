@@ -29,6 +29,7 @@
       "warn",
       { "additionalHooks": "useSyncedQueryString" }
     ],
+    "no-color-literals": 1,
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": "error",
