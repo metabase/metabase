@@ -32,10 +32,7 @@ type Props = {
   fetchField: FieldId => void,
 };
 
-@connect(
-  state => ({ metadata: getMetadata(state) }),
-  { fetchField },
-)
+@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
 export default class TagEditorParam extends Component {
   props: Props;
 
@@ -251,7 +248,8 @@ export default class TagEditorParam extends Component {
         </div>
 
         {((tag.type !== "dimension" && tag.required) ||
-          (tag.type === "dimension" || tag["widget-type"])) && (
+          tag.type === "dimension" ||
+          tag["widget-type"]) && (
           <div className="pb3">
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget

@@ -12,7 +12,4 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(AccountLayout);
+export default connect(mapStateToProps, mapDispatchToProps)(AccountLayout);

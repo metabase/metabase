@@ -28,10 +28,11 @@ export default function QuickFilterDrill({
   }
 
   const { column } = clicked;
-  const initialFilter = new Filter([], null, query).setDimension(
-    column.field_ref,
-    { useDefaultOperator: true },
-  );
+  const initialFilter = new Filter(
+    [],
+    null,
+    query,
+  ).setDimension(column.field_ref, { useDefaultOperator: true });
 
   return [
     {

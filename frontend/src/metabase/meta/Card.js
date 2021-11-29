@@ -147,6 +147,7 @@ export function applyParameters(
         type,
         value: normalizeParameterValue(type, value),
         target: mapping.target,
+        id: parameter.id,
       });
     } else if (parameter.target) {
       // inline target, e.x. on a card
@@ -154,6 +155,7 @@ export function applyParameters(
         type,
         value: normalizeParameterValue(type, value),
         target: parameter.target,
+        id: parameter.id,
       });
     }
   }

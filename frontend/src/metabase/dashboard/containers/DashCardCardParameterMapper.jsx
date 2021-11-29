@@ -50,10 +50,7 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
 };
 
-@connect(
-  makeMapStateToProps,
-  mapDispatchToProps,
-)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class DashCardCardParameterMapper extends Component {
   props: {
     card: Card,

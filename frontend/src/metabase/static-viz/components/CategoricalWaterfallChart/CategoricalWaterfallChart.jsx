@@ -13,7 +13,7 @@ import {
   getYTickLabelProps,
   getYTickWidth,
   getXTickWidth,
-  getXTickHeight,
+  getRotatedXTickHeight,
 } from "metabase/static-viz/lib/axes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
@@ -77,7 +77,7 @@ const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
   const colors = settings?.colors;
   const isVertical = entries.length > 10;
   const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
-  const xTickHeight = getXTickHeight(xTickWidth);
+  const xTickHeight = getRotatedXTickHeight(xTickWidth);
   const yTickWidth = getYTickWidth(data, accessors, settings);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;

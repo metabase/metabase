@@ -170,10 +170,7 @@ const mapDispatchToProps = {
   },
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ErrorDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(ErrorDetail);
 
 ErrorDetail.propTypes = {
   params: PropTypes.object,

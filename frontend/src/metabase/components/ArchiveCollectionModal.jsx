@@ -17,10 +17,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 @Collection.load({
   id: (state, props) => Urls.extractCollectionId(props.params.slug),
 })

@@ -13,88 +13,101 @@
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(defn count-of-venues-card []
-  {:dataset_query (mt/mbql-query venues
-                    {:aggregation [[:count]]})})
-
-(defn shared-obj []
+(defn- shared-obj []
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
 
-(defmacro with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
-  `(let [card-defaults# ~card
-         card-settings# (merge (when-not (:dataset_query card-defaults#) (count-of-venues-card))
-                               (shared-obj)
-                               card-defaults#)]
-     (mt/with-temp Card [card# card-settings#]
-       ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
-       ;; public sharing is disabled; but we still want to test it
-       (let [~binding (assoc card# :public_uuid (:public_uuid card-settings#))]
-         ~@body))))
+(defn- do-with-temp-public-card [m f]
+  (let [m (merge (when-not (:dataset_query m)
+                   {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
+                 (shared-obj)
+                 m)]
+    (mt/with-temp Card [card m]
+      ;; add :public_uuid back in to the value that gets bound because it might not come back from post-select if
+      ;; public sharing is disabled; but we still want to test it
+      (f (assoc card :public_uuid (:public_uuid m))))))
 
-(defmacro with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
-  `(let [dashboard-defaults# ~dashboard
-         dashboard-settings# (merge
-                              (when-not (:parameters dashboard-defaults#)
-                                {:parameters [{:id      "_VENUE_ID_"
-                                               :name    "Venue ID"
-                                               :slug    "venue_id"
-                                               :type    "id"
-                                               :target  [:dimension (mt/id :venues :id)]
-                                               :default nil}]})
-                              (shared-obj)
-                              dashboard-defaults#)]
-     (mt/with-temp Dashboard [dashboard# dashboard-settings#]
-       (let [~binding (assoc dashboard# :public_uuid (:public_uuid dashboard-settings#))]
-         ~@body))))
+(defmacro ^:private with-temp-public-card {:style/indent 1} [[binding & [card]] & body]
+  `(do-with-temp-public-card
+    ~card
+    (fn [~binding]
+      ~@body)))
 
-(defn add-card-to-dashboard! {:style/indent 2} [card dashboard & {:as kvs}]
-  (db/insert! DashboardCard (merge {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card)}
+(defn- do-with-temp-public-dashboard [m f]
+  (let [m (merge
+           (when-not (:parameters m)
+             {:parameters [{:id      "_VENUE_ID_"
+                            :name    "Venue ID"
+                            :slug    "venue_id"
+                            :type    "id"
+                            :target  [:dimension (mt/id :venues :id)]
+                            :default nil}]})
+           (shared-obj)
+           m)]
+    (mt/with-temp Dashboard [dashboard m]
+      (f (assoc dashboard :public_uuid (:public_uuid m))))))
+
+(defmacro ^:private with-temp-public-dashboard {:style/indent 1} [[binding & [dashboard]] & body]
+  `(do-with-temp-public-dashboard
+    ~dashboard
+    (fn [~binding]
+      ~@body)))
+
+(defn- add-card-to-dashboard! [card dashboard & {parameter-mappings :parameter_mappings, :as kvs}]
+  (db/insert! DashboardCard (merge {:dashboard_id       (u/the-id dashboard)
+                                    :card_id            (u/the-id card)
+                                    :parameter_mappings (or parameter-mappings
+                                                            [{:parameter_id "_VENUE_ID_"
+                                                              :card_id      (u/the-id card)
+                                                              :target       [:dimension [:field (mt/id :venues :id) nil]]}])}
                                    kvs)))
 
+;; TODO -- we can probably use [[metabase.api.dashboard-test/with-chain-filter-fixtures]] for mocking this stuff
+;; instead since it does mostly the same stuff anyway
 (defmacro ^:private with-temp-public-dashboard-and-card
   {:style/indent 1}
   [[dashboard-binding card-binding & [dashcard-binding]] & body]
-  `(with-temp-public-dashboard [dash#]
-     (with-temp-public-card [card#]
-       (let [~dashboard-binding        dash#
-             ~card-binding             card#
-             ~(or dashcard-binding
-                  (gensym "dashcard")) (add-card-to-dashboard! card# dash#)]
-         ~@body))))
+  (let [dashcard-binding (or dashcard-binding (gensym "dashcard"))]
+    `(with-temp-public-dashboard [dash#]
+       (with-temp-public-card [card#]
+         (let [~dashboard-binding dash#
+               ~card-binding      card#
+               ~dashcard-binding  (add-card-to-dashboard! card# dash#)]
+           ~@body)))))
 
 
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
-(deftest check-that-we--cannot--fetch-a-publiccard-if-the-setting-is-disabled
-  (mt/with-temporary-setting-values [enable-public-sharing false]
-    (with-temp-public-card [{uuid :public_uuid}]
-      (is (= "An error occurred."
-             (http/client :get 400 (str "public/card/" uuid)))))))
+(deftest fetch-card-test
+  (testing "GET /api/public/card/:uuid"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      ;; TODO -- shouldn't this return a 404? I guess it's because we're 'genericizing' all the errors in public
+      ;; endpoints in [[metabase.server.middleware.exceptions/genericize-exceptions]]
+      (testing "should return 400 if Card doesn't exist"
+        (is (= "An error occurred."
+               (http/client :get 400 (str "public/card/" (UUID/randomUUID))))))
 
+      (with-temp-public-card [{uuid :public_uuid, card-id :id}]
+        (testing "Happy path -- should be able to fetch the Card"
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
+                 (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
-(deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (is (= "An error occurred."
-           (http/client :get 400 (str "public/card/" (UUID/randomUUID)))))))
+        (testing "Check that we cannot fetch a public Card if public sharing is disabled"
+          (mt/with-temporary-setting-values [enable-public-sharing false]
+            (is (= "An error occurred."
+                   (http/client :get 400 (str "public/card/" uuid))))))
 
-(deftest check-that-we--cannot--fetch-a-publiccard-if-the-card-has-been-archived
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid} {:archived true}]
-      (is (= "An error occurred."
-             (http/client :get 400 (str "public/card/" uuid)))))))
-
-(deftest check-that-we-can-fetch-a-publiccard
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid}]
-      (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
-             (set (keys (http/client :get 200 (str "public/card/" uuid)))))))))
+        (testing "Check that we cannot fetch a public Card that has been archived"
+          (mt/with-temp-vals-in-db Card card-id {:archived true}
+            (is (= "An error occurred."
+                   (http/client :get 400 (str "public/card/" uuid))))))))))
 
 (deftest make-sure--param-values-get-returned-as-expected
   (mt/with-temp Card [card {:dataset_query
@@ -173,11 +186,11 @@
         (perms/revoke-collection-permissions! (group/all-users) collection-id)
         (with-temp-public-card [{card-id :id, uuid :public_uuid} {:collection_id collection-id}]
           (is (= "You don't have permissions to do that."
-                 ((mt/user->client :rasta) :post 403 (format "card/%d/query" card-id)))
+                 (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id)))
               "Sanity check: shouldn't be allowed to run the query normally")
           (is (= [[100]]
                  (mt/rows
-                   ((mt/user->client :rasta) :get 202 (str "public/card/" uuid "/query"))))))))))
+                  (mt/user-http-request :rasta :get 202 (str "public/card/" uuid "/query"))))))))))
 
 (deftest check-that-we-can-exec-a-publiccard-with---parameters-
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -359,19 +372,22 @@
                (mt/rows (http/client :get 202 (dashcard-url dash card)))))
 
         (testing "with parameters"
-          (is (= [{:id      "_VENUE_ID_"
-                   :name    "Venue ID"
-                   :slug    "venue_id"
-                   :target  ["dimension" (mt/id :venues :id)]
-                   :value   [10]
-                   :default nil
-                   :type    "id"}]
-                 (get-in (http/client :get 202 (dashcard-url dash card)
-                                      :parameters (json/encode [{:name   "Venue ID"
-                                                                 :slug   :venue_id
-                                                                 :target [:dimension (mt/id :venues :id)]
-                                                                 :value  [10]}]))
-                         [:json_query :parameters]))))))))
+          (is (schema= {:json_query {:parameters (s/eq [{:id      "_VENUE_ID_"
+                                                         :name    "Venue ID"
+                                                         :slug    "venue_id"
+                                                         :target  ["dimension" ["field" (mt/id :venues :id) nil]]
+                                                         :value   [10]
+                                                         :type    "id"}])
+                                     s/Keyword   s/Any}
+                        :data       {:rows     (s/eq [[1]])
+                                     s/Keyword s/Any}
+                        s/Keyword   s/Any}
+                       (http/client :get 202 (dashcard-url dash card)
+                                    :parameters (json/encode [{:name   "Venue ID"
+                                                               :slug   :venue_id
+                                                               :target [:dimension (mt/id :venues :id)]
+                                                               :value  [10]
+                                                               :id     "_VENUE_ID_"}])))))))))
 
 (deftest execute-public-dashcard-as-user-without-perms-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -382,12 +398,11 @@
           (with-temp-public-dashboard-and-card [dash {card-id :id, :as card}]
             (db/update! Card card-id :collection_id collection-id)
             (is (= "You don't have permissions to do that."
-                   ((mt/user->client :rasta) :post 403 (format "card/%d/query" card-id)))
+                   (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id)))
                 "Sanity check: shouldn't be allowed to run the query normally")
             (is (= [[100]]
                    (mt/rows
-                     ((mt/user->client :rasta) :get 202 (dashcard-url dash card)))))))))))
-
+                    (mt/user-http-request :rasta :get 202 (dashcard-url dash card)))))))))))
 
 (deftest execute-public-dashcard-params-validation-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -398,9 +413,9 @@
             (is (= [[1]]
                    (mt/rows (http/client :get 202 (dashcard-url dash card)
                                          :parameters (json/encode [{:name   "Venue ID"
-                                                                    :slug   :venue_id
                                                                     :target [:dimension (mt/id :venues :id)]
-                                                                    :value  [10]}]))))
+                                                                    :value  [10]
+                                                                    :id     "_VENUE_ID_"}]))))
                 "This should pass because venue_id *is* one of the Dashboard's :parameters"))
 
           (testing "should fail if"
@@ -408,9 +423,9 @@
               (is (= "An error occurred."
                      (http/client :get 400 (dashcard-url dash card)
                                   :parameters (json/encode [{:name   "Venue Name"
-                                                             :slug   :venue_name
                                                              :target [:dimension (mt/id :venues :name)]
-                                                             :value  ["PizzaHacker"]}])))))))))))
+                                                             :value  ["PizzaHacker"]
+                                                             :id     "_VENUE_NAME_"}])))))))))))
 
 (deftest execute-public-dashcard-additional-series-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
@@ -440,21 +455,21 @@
                                                                                      :default      "1"}}}}}]
             (with-temp-public-dashboard [dash {:parameters [{:name "Num"
                                                              :slug "num"
-                                                             :id   "537e37b4"
+                                                             :id   "_NUM_"
                                                              :type "category"}]}]
               (add-card-to-dashboard! card dash
-                :parameter_mappings [{:card_id      (u/the-id card)
-                                      :target       [:variable
-                                                     [:template-tag :num]]
-                                      :parameter_id "537e37b4"}])
+                                      :parameter_mappings [{:card_id      (u/the-id card)
+                                                            :target       [:variable [:template-tag :num]]
+                                                            :parameter_id "_NUM_"}])
               (is (= [[50]]
-                     (-> ((mt/user->client :crowberto)
-                          :get (str (dashcard-url dash card)
-                                    "?parameters="
-                                    (json/generate-string
-                                     [{:type   :category
-                                       :target [:variable [:template-tag :num]]
-                                       :value  "50"}])))
+                     (-> (mt/user-http-request :crowberto
+                                               :get (str (dashcard-url dash card)
+                                                         "?parameters="
+                                                         (json/generate-string
+                                                          [{:type   :category
+                                                            :target [:variable [:template-tag :num]]
+                                                            :value  "50"
+                                                            :id     "_NUM_"}])))
                          mt/rows))))))
 
         (testing "with MBQL queries"
@@ -465,20 +480,21 @@
                                                                  :aggregation  [:count]}}}]
               (with-temp-public-dashboard [dash {:parameters [{:name "Venue ID"
                                                                :slug "venue_id"
-                                                               :id   "22486e00"
+                                                               :id   "_VENUE_ID_"
                                                                :type "id"}]}]
                 (add-card-to-dashboard! card dash
-                  :parameter_mappings [{:parameter_id "22486e00"
-                                        :card_id      (u/the-id card)
-                                        :target       [:dimension [:field (mt/id :venues :id) nil]]}])
+                                        :parameter_mappings [{:parameter_id "_VENUE_ID_"
+                                                              :card_id      (u/the-id card)
+                                                              :target       [:dimension [:field (mt/id :venues :id) nil]]}])
                 (is (= [[1]]
-                       (-> ((mt/user->client :crowberto)
-                            :get (str (dashcard-url dash card)
-                                      "?parameters="
-                                      (json/generate-string
-                                       [{:type   :id
-                                         :target [:dimension [:field (mt/id :venues :id) nil]]
-                                         :value  "50"}])))
+                       (-> (mt/user-http-request :crowberto
+                                                 :get (str (dashcard-url dash card)
+                                                           "?parameters="
+                                                           (json/generate-string
+                                                            [{:type   :id
+                                                              :target [:dimension [:field (mt/id :venues :id) nil]]
+                                                              :value  "50"
+                                                              :id     "_VENUE_ID_"}])))
                            mt/rows))))))
 
           (testing "temporal parameters"
@@ -489,22 +505,23 @@
                                                                    :aggregation  [:count]}}}]
                 (with-temp-public-dashboard [dash {:parameters [{:name "Date Filter"
                                                                  :slug "date_filter"
-                                                                 :id   "18a036ec"
+                                                                 :id   "_DATE_"
                                                                  :type "date/all-options"}]}]
                   (add-card-to-dashboard! card dash
-                    :parameter_mappings [{:parameter_id "18a036ec"
-                                          :card_id      (u/the-id card)
-                                          :target       [:dimension
-                                                         [:field
-                                                          (mt/id :checkins :date) nil]]}])
+                                          :parameter_mappings [{:parameter_id "_DATE_"
+                                                                :card_id      (u/the-id card)
+                                                                :target       [:dimension
+                                                                               [:field
+                                                                                (mt/id :checkins :date) nil]]}])
                   (is (= [[733]]
-                         (-> ((mt/user->client :crowberto)
-                              :get (str (dashcard-url dash card)
-                                        "?parameters="
-                                        (json/generate-string
-                                         [{:type   "date/all-options"
-                                           :target [:dimension [:field (mt/id :checkins :date) nil]]
-                                           :value  "~2015-01-01"}])))
+                         (-> (mt/user-http-request :crowberto
+                                                   :get (str (dashcard-url dash card)
+                                                             "?parameters="
+                                                             (json/generate-string
+                                                              [{:type   "date/all-options"
+                                                                :target [:dimension [:field (mt/id :checkins :date) nil]]
+                                                                :value  "~2015-01-01"
+                                                                :id     "_DATE_"}])))
                              mt/rows))))))))))))
 
 (deftest execute-public-dashcard-dimension-value-params-test
@@ -515,7 +532,8 @@
         (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                   :type     :native
                                                   :native   {:query         "SELECT {{msg}} AS message"
-                                                             :template-tags {:msg {:id           "181da7c5"
+                                                             :template-tags {:msg {:id           "_MSG_
+"
                                                                                    :name         "msg"
                                                                                    :display-name "Message"
                                                                                    :type         "text"
@@ -523,21 +541,22 @@
                                                                                    :default      "Wow"}}}}}]
           (with-temp-public-dashboard [dash {:parameters [{:name "Message"
                                                            :slug "msg"
-                                                           :id   "181da7c5"
+                                                           :id   "_MSG_"
                                                            :type "category"}]}]
             (add-card-to-dashboard! card dash
-              :parameter_mappings [{:card_id      (u/the-id card)
-                                    :target       [:variable [:template-tag :msg]]
-                                    :parameter_id "181da7c5"}])
+                                    :parameter_mappings [{:card_id      (u/the-id card)
+                                                          :target       [:variable [:template-tag :msg]]
+                                                          :parameter_id "_MSG_"}])
             (is (= [["World"]]
-                   (-> ((mt/user->client :crowberto)
-                        :get (str (dashcard-url dash card)
-                                  "?parameters="
-                                  (json/generate-string
-                                   [{:type    :category
-                                     :target  [:variable [:template-tag :msg]]
-                                     :value   "World"
-                                     :default "Hello"}])))
+                   (-> (mt/user-http-request :crowberto
+                                             :get (str (dashcard-url dash card)
+                                                       "?parameters="
+                                                       (json/generate-string
+                                                        [{:type    :category
+                                                          :target  [:variable [:template-tag :msg]]
+                                                          :value   "World"
+                                                          :default "Hello"
+                                                          :id      "_MSG_"}])))
                        mt/rows)))))))))
 
 
@@ -1055,47 +1074,53 @@
   (str "public/pivot/dashboard/" (:public_uuid dash) "/card/" (u/the-id card)))
 
 (deftest pivot-public-dashcard-test
-  (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
-      (let [dashboard-defaults {:parameters [{:id      "_STATE_"
-                                              :name    "State"
-                                              :slug    "state"
-                                              :type    "string"
-                                              :target  [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
-                                              :default nil}]}]
-        (testing "GET /api/public/pivot/dashboard/:uuid/card/:card-id"
-          (testing "without parameters"
-            (mt/with-temporary-setting-values [enable-public-sharing true]
-              (with-temp-public-dashboard [dash dashboard-defaults]
-                (with-temp-public-card [card (pivots/pivot-card)]
-                  (add-card-to-dashboard! card dash)
-                  (let [result (http/client :get 202 (pivot-dashcard-url dash card))
-                        rows   (mt/rows result)]
-                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-                    (is (= "completed" (:status result)))
+  (testing "GET /api/public/pivot/dashboard/:uuid/card/:card-id"
+    (mt/test-drivers (pivots/applicable-drivers)
+      (mt/dataset sample-dataset
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
+                                                           :name    "State"
+                                                           :slug    "state"
+                                                           :type    "string"
+                                                           :target  [:dimension (mt/$ids $orders.user_id->people.state)]
+                                                           :default nil}]}]
+            (with-temp-public-card [card (pivots/pivot-card)]
+              (add-card-to-dashboard!
+               card dash
+               :parameter_mappings [{:parameter_id "_STATE_"
+                                     :card_id      (u/the-id card)
+                                     :target       [:dimension (mt/$ids $orders.user_id->people.state)]}])
+              (letfn [(results [& query-parameters]
+                        (apply http/client :get 202 (pivot-dashcard-url dash card) query-parameters))]
+                (testing "without parameters"
+                  (let [result (results)]
+                    (is (schema= {:status   (s/eq "completed")
+                                  s/Keyword s/Any}
+                                 result))
+                    ;; [[metabase.api.public/transform-results]] should remove `row_count`
+                    (testing "row_count isn't included in public endpoints"
+                      (is (nil? (:row_count result))))
                     (is (= 6 (count (get-in result [:data :cols]))))
-                    (is (= 1144 (count rows)))
+                    (let [rows (mt/rows result)]
+                      (is (= 1144 (count rows)))
+                      (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
+                      (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
+                      (is (= [nil nil nil 7 18760 69540] (last rows))))))
 
-                    (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
-                    (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
-                    (is (= [nil nil nil 7 18760 69540] (last rows))))))))
-
-          (testing "with parameters"
-            (mt/with-temporary-setting-values [enable-public-sharing true]
-              (with-temp-public-dashboard [dash dashboard-defaults]
-                (with-temp-public-card [card (pivots/pivot-card)]
-                  (add-card-to-dashboard! card dash)
-                  (let [result (http/client :get 202 (pivot-dashcard-url dash card)
-                                            :parameters (json/encode [{:name   "State"
-                                                                       :slug   :state
-                                                                       :target [:dimension [:fk-> (mt/$ids $orders.user_id) (mt/$ids $people.state)]]
-                                                                       :value  ["CA" "WA"]}]))
-                        rows   (mt/rows result)]
-                    (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
-                    (is (= "completed" (:status result)))
+                (testing "with parameters"
+                  (let [result (results :parameters (json/encode [{:name   "State"
+                                                                   :id     "_STATE_"
+                                                                   :slug   :state
+                                                                   :target [:dimension (mt/$ids $orders.user_id->people.state)]
+                                                                   :value  ["CA" "WA"]}]))]
+                    (is (schema= {:status   (s/eq "completed")
+                                  s/Keyword s/Any}
+                                 result))
+                    (testing "row_count isn't included in public endpoints"
+                      (is (nil? (:row_count result))))
                     (is (= 6 (count (get-in result [:data :cols]))))
-                    (is (= 80 (count rows)))
-
-                    (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
-                    (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
-                    (is (= [nil nil nil 7 1015 3758] (last rows)))))))))))))
+                    (let [rows (mt/rows result)]
+                      (is (= 80 (count rows)))
+                      (is (= ["CA" "Affiliate" "Doohickey" 0 16 48] (first rows)))
+                      (is (= [nil "Google" "Gizmo" 1 52 186] (nth rows 50)))
+                      (is (= [nil nil nil 7 1015 3758] (last rows))))))))))))))

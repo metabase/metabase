@@ -63,7 +63,4 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
 
 NewDatasetModal.propTypes = propTypes;
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(NewDatasetModal);
+export default connect(null, mapDispatchToProps)(NewDatasetModal);

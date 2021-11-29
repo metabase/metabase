@@ -553,7 +553,7 @@ export default class Question {
   }
 
   composeDataset() {
-    if (!this.isStructured() || !this.isDataset()) {
+    if (!this.isDataset()) {
       return this;
     }
     return this.setDatasetQuery({
@@ -960,12 +960,13 @@ export default class Question {
       // include only parameters that have a value applied
       .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value"))
-      .map(({ type, value, target }) => {
+      .map(param => _.pick(param, "type", "target", "value", "id"))
+      .map(({ type, value, target, id }) => {
         return {
           type,
           value: normalizeParameterValue(type, value),
           target,
+          id,
         };
       });
 
