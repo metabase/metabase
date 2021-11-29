@@ -18,7 +18,7 @@ describe("scenarios > admin > databases > edit", () => {
   describe("Connection tab", () => {
     it("shows the connection settings for sample dataset correctly", () => {
       cy.visit("/admin/databases/1");
-      cy.findByLabelText("Name").should("have.value", "Sample Dataset");
+      cy.findByLabelText("Display name").should("have.value", "Sample Dataset");
       cy.findByLabelText("Connection String").should($input =>
         expect($input[0].value).to.match(/sample-dataset\.db/),
       );
