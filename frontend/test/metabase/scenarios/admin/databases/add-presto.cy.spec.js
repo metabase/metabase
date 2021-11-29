@@ -79,8 +79,8 @@ describe("admin > database > add > Presto", () => {
 
     cy.findByLabelText("Host");
     cy.findByLabelText("Port");
-    cy.findByLabelText("Database name");
-    cy.findByLabelText("Catalog").should("not.exist");
+    cy.findByLabelText("Catalog");
+    cy.findByLabelText("Database name").should("not.exist");
     cy.findByLabelText("Schema (optional)").should("not.exist");
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
@@ -89,7 +89,7 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Additional JDBC options").should("not.exist");
 
     cy.findByLabelText("Use a secure connection (SSL)");
-    cy.findByLabelText("Use an SSH-tunnel for database connections");
+    cy.findByLabelText("Use an SSH-tunnel");
 
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
