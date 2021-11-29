@@ -94,8 +94,12 @@ export const XYChart = ({
   const defaultYScale = yScaleLeft || yScaleRight;
 
   const legendWidth = width - 2 * CHART_PADDING;
-  // FIXME:
-  const legend = calculateLegendItems(series, legendWidth, 16, 13);
+  const legend = calculateLegendItems(
+    series,
+    legendWidth,
+    style.legend.lineHeight,
+    style.legend.fontSize,
+  );
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,

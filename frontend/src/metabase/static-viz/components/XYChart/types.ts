@@ -73,5 +73,9 @@ export type ChartStyle = {
       fontWeight: number;
     };
   };
+  legend: {
+    fontSize: number;
+    lineHeight: number;
+  };
   goalColor: string;
 };
