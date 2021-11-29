@@ -4,7 +4,7 @@ const fontSize = 11;
 
 describe("measureText", () => {
   it("should measure text assuming 6px char width", () => {
-    expect(Math.round(measureText("abc", fontSize))).toBe(18);
+    expect(Math.round(measureText("abc", fontSize))).toBe(15);
   });
 });
 
@@ -14,7 +14,7 @@ describe("truncateText", () => {
   });
 
   it("should truncate text with ellipses if there is overflow", () => {
-    expect(truncateText("John Doe", 47, fontSize)).toBe("John D…");
+    expect(truncateText("John Doe", 40, fontSize)).toBe("John D…");
   });
 
   it("should use ellipses in case there is no space for text at all", () => {
