@@ -158,4 +158,11 @@ describe("metabase/lib/expressions/resolve", () => {
   it("should handle unknown MBQL gracefully", () => {
     expect(() => collect(["abc-xyz", B])).not.toThrow();
   });
+
+  it("should not fail on literal 0", () => {
+    const opt = { default: 0 };
+    expect(resolve(["case", [[1, 0]]])).toEqual(["case", [[1, 0]]]);
+    expect(resolve(["case", [[1, 0]], opt])).toEqual(["case", [[1, 0]], opt]);
+    expect(resolve(["case", [[1, 2]], opt])).toEqual(["case", [[1, 2]], opt]);
+  });
 });
