@@ -508,6 +508,22 @@ describe("scenarios > question > filter", () => {
       .and("not.eq", transparent);
   });
 
+  it("should highlight the correct matching for suggestions", () => {
+    openExpressionEditorFromFreshlyLoadedPage();
+
+    typeInExpressionEditor("[");
+
+    popover().findByText("Body");
+
+    typeInExpressionEditor("p");
+
+    // only "P" (of Products etc) should be highlighted, and not "Pr"
+    popover()
+      .get("span.text-dark")
+      .contains("Pr")
+      .should("not.exist");
+  });
+
   it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
