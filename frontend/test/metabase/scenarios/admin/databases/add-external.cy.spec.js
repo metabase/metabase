@@ -34,7 +34,7 @@ describe("admin > database > add > external databases", () => {
     cy.findByText("QA Postgres12");
   });
 
-  it("should add Mongo database and redirect to listing", () => {
+  it.only("should add Mongo database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
@@ -49,7 +49,7 @@ describe("admin > database > add > external databases", () => {
     typeAndBlurUsingLabel("Database name", "sample");
     typeAndBlurUsingLabel("Username", "metabase");
     typeAndBlurUsingLabel("Password", "metasample123");
-    typeAndBlurUsingLabel("Authentication Database", "admin");
+    typeAndBlurUsingLabel("Authentication database (optional)", "admin");
 
     cy.findByText("Save")
       .should("not.be.disabled")
