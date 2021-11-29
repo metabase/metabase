@@ -20,7 +20,7 @@ jobs:
 
   fe-fuzz-tokenizer:
     runs-on: ubuntu-20.04
-    timeout-minutes: 7
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
@@ -45,7 +45,7 @@ jobs:
 
   fe-fuzz-parser:
     runs-on: ubuntu-20.04
-    timeout-minutes: 7
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
