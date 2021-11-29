@@ -43,7 +43,7 @@
   (let [host (.getHost url)
         host->url (fn [host] (URL. (str "http://" host)))
         base-url  (host->url (.getHost url))]
-    (and (not-any? (fn [invalid-url] (.equals base-url invalid-url))
+    (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
                    (map host->url invalid-hosts))
          (not (.isLinkLocalAddress (InetAddress/getByName host))))))
 
