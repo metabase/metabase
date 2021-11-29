@@ -1,6 +1,7 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.database :as database-api]
             [metabase.api.table :as table-api]
@@ -23,8 +24,7 @@
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :as hydrate]
-            [clojure.string :as str]))
+            [toucan.hydrate :as hydrate]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
