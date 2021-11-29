@@ -83,7 +83,7 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall} display-type)
+        (#{:progress :waterfall :combo} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -94,7 +94,8 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
-        (and (> @col-sample-count 2)
+        (and ;;;; is multi stuff...
+             (> @col-sample-count 2)
              (not (#{:combo } display-type)))
         (chart-type :multiple "result has more than 2 cols, a multiple chart")
 
