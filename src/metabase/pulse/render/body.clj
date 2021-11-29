@@ -305,6 +305,17 @@
    :left   (or (:graph.y_axis.title_text viz-settings)
                (:display_name y-col))})
 
+(defn- combo-label-info
+  "X and Y axis labels passed into the `labels` argument needs to be different
+  for combos specifically (as opposed to multiples)"
+  [x-col y-cols viz-settings]
+  {:bottom (or (:graph.x_axis.title_text viz-settings)
+               (:display_name x-col))
+   :left   (or (:graph.y_axis.title_text viz-settings)
+               (:display_name (first y-cols)))
+   :right  (or (:graph.y_axis.title_text viz-settings)
+               (:display_name (second y-cols)))})
+
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
@@ -452,11 +463,36 @@
   {:attachments
    (when image-bundle
      (image-bundle/image-bundle->attachment image-bundle))
+
    :content
    [:div
     [:img {:style (style/style {:display :block
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :combo :- common/RenderedPulseCard
+  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
+  (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
+        ;; Special y-axis-rowfn because we have more than 1 y-axis
+        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
+        rows             (mapv (juxt x-axis-rowfn y-axis-rowfn)
+                              (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        labels           (combo-label-info x-col y-cols viz-settings)
+        series           (some crap)
+        image-bundle     (image-bundle/make-image-bundle
+                           render-type
+                           (js-svg/combo-chart series labels
+                                                        (->js-viz x-col y-cols viz-settings)
+                                                        y-cols))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
