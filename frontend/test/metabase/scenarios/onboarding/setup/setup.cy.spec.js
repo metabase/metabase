@@ -92,9 +92,7 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
-      cy.findByText("Connecting to your own database", {
-        exact: false,
-      });
+      cy.findByText("Add your data");
 
       // test database setup help card is NOT displayed before DB is selected
       cy.findByTestId("database-setup-help-card").should("not.be.visible");
@@ -128,7 +126,7 @@ describe("scenarios > setup", () => {
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Display name").type("Metabase H2");
-      cy.findByText("Next")
+      cy.findByText("Connect database")
         .closest("button")
         .should("be.disabled");
 
