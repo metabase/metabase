@@ -33,8 +33,6 @@
   (testing "test srv connection string"
     (is (= "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb"
            (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "datadb" "authdb")))))
-    (is (= "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=admin"
-           (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "datadb")))))
 
 (deftest srv-toggle-test
   (testing "test that srv toggle works"
