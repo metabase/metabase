@@ -88,10 +88,15 @@
                                                                                                          :catalog))))
    "debugUnreturnedConnectionStackTraces" true        ; print a stack trace from when a leaked connection was acquired
                                                       ; if it was never returned
-   "unreturnedConnectionTimeout"          (* 10 60)   ; this will kill ANY connection that is still active 10 min after
-                                                      ; being checked out from the pool
-   "maxAdministrativeTaskTime"            30})        ; no idea what "administrative tasks" are but let's interrupt them
-                                                      ; if they haven't finished within 30 seconds
+   ;; this will kill ANY connection that is still active 10 min after being checked out from the pool
+   ;; override with MB_C3P0_UNRETURNED_CONN_TIMEOUT (in seconds)
+   "unreturnedConnectionTimeout"          (if-let [v (System/getenv "MB_C3P0_UNRETURNED_CONN_TIMEOUT")]
+                                            (Long. v)
+                                            (* 10 60))
+   ;; no idea what "administrative tasks" are, but add a hook to interrupt them after some time if needed
+   "maxAdministrativeTaskTime"            (if-let [v (System/getenv "MB_C3P0_MAX_ADMIN_TASK_TIME")]
+                                            (Long. v)
+                                            0)})
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
