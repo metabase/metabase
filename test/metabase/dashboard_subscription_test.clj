@@ -172,7 +172,8 @@
      :fixture
      (fn [_ thunk]
        (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
-         (thunk)))
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -245,7 +246,8 @@
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
        (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "# header"}}]
-         (thunk)))
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -285,6 +287,11 @@
           :dashboard test-dashboard}
     "Dashboard subscription that includes a dashboard filters"
     {:card (checkins-query-card {})
+
+     :fixture
+     (fn [_ thunk]
+       (mt/with-temporary-setting-values [site-name "Metabase Test"]
+          (thunk)))
 
      :assert
      {:email

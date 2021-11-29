@@ -90,3 +90,10 @@ function categorical_waterfall(data, labels, settings) {
     settings: JSON.parse(settings),
   });
 }
+
+function progress(data, settings) {
+  return StaticViz.RenderChart("progress", {
+    data: JSON.parse(data),
+    settings: JSON.parse(settings),
+  });
+}

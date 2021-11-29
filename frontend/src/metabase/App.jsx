@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => ({
 const getErrorComponent = ({ status, data, context }) => {
   if (status === 403) {
     return <Unauthorized />;
-  } else if (status === 404) {
+  } else if (status === 404 || data?.error_code === "not-found") {
     return <NotFound />;
   } else if (
     data &&

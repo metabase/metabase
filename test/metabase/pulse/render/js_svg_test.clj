@@ -171,6 +171,21 @@
     (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
       (validate-svg-string :categorical/donut svg-string))))
 
+(deftest progress-test
+  (let [value    1234
+        goal     1337
+        settings {:color "#333333"}]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/progress value goal settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString ^Value
+                                (js/execute-fn-name
+                                  @context
+                                  "progress"
+                                  (json/generate-string {:value value :goal goal})
+                                  (json/generate-string settings)))]
+      (validate-svg-string :progress svg-string))))
+
 (deftest categorical-waterfall-test
   (let [rows     [["apples" 2]
                   ["bananas" 3]]

@@ -53,7 +53,4 @@ class CollectionEdit extends Component {
   }
 }
 
-export default connect(
-  null,
-  mapDispatchToProps,
-)(CollectionEdit);
+export default connect(null, mapDispatchToProps)(CollectionEdit);

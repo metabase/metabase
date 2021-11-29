@@ -174,10 +174,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("My Param").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "num: {{my_number}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("num: {{my_number}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // wait to leave editing mode and set a param value
@@ -228,10 +227,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "text: {{my_string}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("text: {{my_string}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // click on table value
@@ -484,7 +482,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
         });
         cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        cy.route(
+          "POST",
+          `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+        ).as("cardQuery");
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
@@ -726,9 +727,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
               ],
             });
           });
-          cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
-            "secondCardQuery",
-          );
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION2_ID}/query`,
+          ).as("secondCardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.wait("@secondCardQuery");

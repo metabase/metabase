@@ -77,6 +77,8 @@ export const BackendResource = createSharedResource("BackendResource", {
                 site_name: "Epic Team",
               },
             }),
+            MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+            MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||

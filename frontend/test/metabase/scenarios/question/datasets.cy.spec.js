@@ -13,7 +13,7 @@ describe("scenarios > datasets", () => {
     cy.signInAsAdmin();
   });
 
-  it("allows to turn a question into a dataset", () => {
+  it("allows to turn a GUI question into a dataset", () => {
     cy.request("PUT", "/api/card/1", { name: "Orders Dataset" });
     cy.visit("/question/1");
 
@@ -35,6 +35,56 @@ describe("scenarios > datasets", () => {
     });
 
     saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+
+    assertQuestionIsBasedOnDataset({
+      questionName: "Q1",
+      dataset: "Orders Dataset",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    cy.findAllByText("Our analytics")
+      .first()
+      .click();
+    getCollectionItemRow("Orders Dataset").within(() => {
+      cy.icon("dataset");
+    });
+    getCollectionItemRow("Q1").within(() => {
+      cy.icon("table");
+    });
+
+    cy.url().should("not.include", "/question/1");
+  });
+
+  it("allows to turn a native question into a dataset", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Orders Dataset",
+        native: {
+          query: "SELECT * FROM orders",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    turnIntoDataset();
+    assertIsDataset();
+
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.findByText("Filter").click();
+    });
+    selectDimensionOptionFromSidebar("DISCOUNT");
+    cy.findByText("Equal to").click();
+    selectFromDropdown("Not empty");
+    cy.button("Add filter").click();
+
+    assertQuestionIsBasedOnDataset({
+      dataset: "Orders Dataset",
+      collection: "Our analytics",
+      table: "Orders",
+    });
+
+    saveQuestionBasedOnDataset({ datasetId: 4, name: "Q1" });
 
     assertQuestionIsBasedOnDataset({
       questionName: "Q1",
@@ -83,7 +133,7 @@ describe("scenarios > datasets", () => {
   it("allows to turn a dataset back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/question/1");
+    cy.visit("/dataset/1");
 
     openDetailsSidebar();
     cy.findByText("Turn back into a saved question").click();
@@ -95,6 +145,19 @@ describe("scenarios > datasets", () => {
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     assertIsDataset();
+  });
+
+  it("shows 404 when opening a question with a /dataset URL", () => {
+    cy.visit("/dataset/1");
+    cy.findByText(/We're a little lost/i);
+  });
+
+  it("redirects to /dataset URL when opening a dataset with /question URL", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/question/1");
+    openDetailsSidebar();
+    assertIsDataset();
+    cy.url().should("include", "/dataset");
   });
 
   describe("data picker", () => {
@@ -508,7 +571,7 @@ function openDetailsSidebar() {
   cy.findByTestId("saved-question-header-button").click();
 }
 
-function getDetailsSidebarActions(iconName) {
+function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
@@ -519,6 +582,10 @@ function assertIsDataset() {
   });
   cy.findByText("Dataset management");
   cy.findByText("Sample Dataset").should("not.exist");
+
+  // For native
+  cy.findByText("This question is written in SQL.").should("not.exist");
+  cy.get("ace_content").should("not.exist");
 }
 
 // Requires question details sidebar to be open

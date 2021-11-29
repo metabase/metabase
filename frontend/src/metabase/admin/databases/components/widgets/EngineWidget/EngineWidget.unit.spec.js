@@ -32,13 +32,13 @@ describe("EngineWidget", () => {
 
     userEvent.click(screen.getByText("Show more options"));
     expect(screen.getByText("MySQL")).toBeInTheDocument();
-    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-    expect(screen.getByText("SQL Server")).toBeInTheDocument();
+    expect(screen.getByText("H2")).toBeInTheDocument();
+    expect(screen.getByText("Presto")).toBeInTheDocument();
 
     userEvent.click(screen.getByText("Show less options"));
     expect(screen.getByText("MySQL")).toBeInTheDocument();
-    expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-    expect(screen.queryByText("SQL Server")).not.toBeInTheDocument();
+    expect(screen.getByText("H2")).toBeInTheDocument();
+    expect(screen.queryByText("Presto")).not.toBeInTheDocument();
   });
 
   it("should allow searching for a database", () => {
@@ -86,18 +86,35 @@ const getOptions = () => [
     name: "MySQL",
     value: "mysql",
     index: 1,
-    official: true,
-  },
-  {
-    name: "SQL Server",
-    value: "sqlserver",
-    index: -1,
-    official: true,
   },
   {
     name: "PostgreSQL",
     value: "postgres",
-    index: 0,
-    official: false,
+    index: 2,
+  },
+  {
+    name: "SQL Server",
+    value: "sqlserver",
+    index: 3,
+  },
+  {
+    name: "Amazon Redshift",
+    value: "redshift",
+    index: 4,
+  },
+  {
+    name: "Snowflake",
+    value: "snowflake",
+    index: 5,
+  },
+  {
+    name: "H2",
+    value: "h2",
+    index: -1,
+  },
+  {
+    name: "Presto",
+    value: "presto-jdbc",
+    index: -1,
   },
 ];

@@ -16,10 +16,7 @@ import Dashboards from "metabase/entities/dashboards";
   id: (state, props) => Urls.extractEntityId(props.params.slug),
   wrapped: false,
 })
-@connect(
-  null,
-  { fetchDashboard, fetchDashboardCardData },
-)
+@connect(null, { fetchDashboard, fetchDashboardCardData })
 export default class DashboardHistoryModal extends React.Component {
   render() {
     const {

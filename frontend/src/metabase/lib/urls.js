@@ -49,6 +49,8 @@ export function question(card, hash = "", query = "") {
   }
 
   const { card_id, id, name } = card;
+  const basePath =
+    card?.dataset || card?.model === "dataset" ? "dataset" : "question";
 
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
@@ -65,10 +67,10 @@ export function question(card, hash = "", query = "") {
    * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
    */
   if (!name) {
-    return `/question/${questionId}${query}${hash}`;
+    return `/${basePath}/${questionId}${query}${hash}`;
   }
 
-  const path = appendSlug(`/question/${questionId}`, slugg(name));
+  const path = appendSlug(`/${basePath}/${questionId}`, slugg(name));
 
   return `${path}${query}${hash}`;
 }

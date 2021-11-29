@@ -278,7 +278,15 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(card, metadata);
+    if (!metadata || !card) {
+      return;
+    }
+    const question = new Question(card, metadata);
+
+    // Datasets in QB should behave as raw tables opened in simple mode
+    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
+    // Ideally, this logic should happen somewhere else
+    return question.isDataset() ? question.composeDataset() : question;
   }
 
   getClickActions(clicked: ?ClickObject) {
