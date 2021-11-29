@@ -223,7 +223,8 @@ describeWithSnowplow("scenarios > setup", () => {
     // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(3);
+    // One backend event should be recorded (on new instance initialization)
+    expectGoodSnowplowEvents(4);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
@@ -234,6 +235,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(0);
+    // One backend event should be recorded (on new instance initialization)
+    expectGoodSnowplowEvents(1);
   });
 });
