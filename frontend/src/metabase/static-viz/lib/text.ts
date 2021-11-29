@@ -3,7 +3,7 @@ const CHAR_ELLIPSES = "…";
 // TODO: Replace this rough simple approximation with a correct one
 const getCharWidth = (fontSize: number) => {
   if (fontSize <= 16) {
-    return fontSize / 1.82;
+    return fontSize / 1.84;
   }
 
   return fontSize / 1.7;

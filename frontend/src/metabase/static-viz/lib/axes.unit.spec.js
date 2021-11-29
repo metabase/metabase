@@ -1,14 +1,16 @@
 import { getRotatedXTickHeight, getXTickWidth, getYTickWidth } from "./axes";
 
+const FONT_SIZE = 11;
+
 describe("getXTickWidth", () => {
   it("should get tick width for x axis assuming 6px char width", () => {
     const data = [{ x: 1 }, { x: 200 }, { x: 15 }];
     const accessors = { x: d => d.x };
     const maxWidth = 20;
 
-    const xTickHeight = getXTickWidth(data, accessors, maxWidth);
+    const xTickHeight = getXTickWidth(data, accessors, maxWidth, FONT_SIZE);
 
-    expect(xTickHeight).toBe(18);
+    expect(Math.round(xTickHeight)).toBe(18);
   });
 });
 
@@ -23,8 +25,8 @@ describe("getYTickWidth", () => {
     const data = [{ y: 1 }, { y: 20 }, { y: 15 }];
     const accessors = { y: d => d.y };
 
-    const yTickHeight = getYTickWidth(data, accessors);
+    const yTickHeight = getYTickWidth(data, accessors, null, FONT_SIZE);
 
-    expect(yTickHeight).toBe(12);
+    expect(Math.round(yTickHeight)).toBe(12);
   });
 });
