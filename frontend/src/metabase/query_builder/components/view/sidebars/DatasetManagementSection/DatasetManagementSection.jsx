@@ -36,7 +36,15 @@ function DatasetManagementSection({
   turnDatasetIntoQuestion,
 }) {
   const onEditQueryDefinitionClick = () => {
-    setQueryBuilderMode("dataset");
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "query",
+    });
+  };
+
+  const onCustomizeMetadataClick = () => {
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "metadata",
+    });
   };
 
   return (
@@ -53,6 +61,10 @@ function DatasetManagementSection({
             <DatasetMetadataStrengthIndicator dataset={dataset} />
           </MetadataIndicatorContainer>
         </Row>
+        <Button
+          icon="label"
+          onClick={onCustomizeMetadataClick}
+        >{t`Customize Metadata`}</Button>
         <Button
           icon="dataset_framed"
           onClick={turnDatasetIntoQuestion}
