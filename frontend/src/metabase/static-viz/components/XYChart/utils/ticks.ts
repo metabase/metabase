@@ -1,7 +1,11 @@
+import { DateFormatOptions } from "./../../../lib/dates";
 import { TickRendererProps } from "@visx/axis";
 import { getYTickWidth } from "metabase/static-viz/lib/axes";
 import { formatDate } from "metabase/static-viz/lib/dates";
-import { formatNumber } from "metabase/static-viz/lib/numbers";
+import {
+  formatNumber,
+  NumberFormatOptions,
+} from "metabase/static-viz/lib/numbers";
 import {
   measureText,
   measureTextHeight,
@@ -27,14 +31,17 @@ export const formatXTick = (
   formatSettings: ChartSettings["x"]["format"],
 ) => {
   if (xAxisType === "timeseries") {
-    return formatDate(new Date(value as string).valueOf(), formatSettings);
+    return formatDate(
+      new Date(value as string),
+      formatSettings as DateFormatOptions,
+    );
   }
 
   if (xAxisType !== "ordinal") {
-    return formatNumber(value, formatSettings);
+    return formatNumber(Number(value), formatSettings as NumberFormatOptions);
   }
 
-  return value;
+  return value.toString();
 };
 
 export const getXTickWidthLimit = (
@@ -60,7 +67,7 @@ export const getXTicksDimensions = (
     .flatMap(s => s.data)
     .map(datum => {
       const tick = formatXTick(getX(datum), settings.type, settings.format);
-      return measureText(tick, fontSize);
+      return measureText(tick.toString(), fontSize);
     })
     .reduce((a, b) => Math.max(a, b), 0);
 

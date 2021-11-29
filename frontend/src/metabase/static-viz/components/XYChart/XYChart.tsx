@@ -176,7 +176,7 @@ export const XYChart = ({
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           labelProps={labelProps}
-          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
           tickLabelProps={() => tickProps}
         />
       )}
@@ -193,7 +193,7 @@ export const XYChart = ({
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           labelProps={labelProps}
-          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
           tickLabelProps={() => tickProps}
         />
       )}
