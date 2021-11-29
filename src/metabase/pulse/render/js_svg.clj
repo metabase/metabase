@@ -127,14 +127,16 @@
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
-(defn timelineseries-multiple
-  "Clojure entrypoint to render a timeseries multiple chart.
-  Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar'.
+(defn combo-chart
+  "Clojure entrypoint to render a combo or multiple chart.
+  These are different conceptions in the BE but being smushed together
+  because they're supposed to display similarly.
+  Series should be list of dicts of {rows: rows, cols: cols, type: type}, where types is 'line' or 'bar' or 'area'.
   Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [series labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context
-                                                  "timeseries_multiple"
+                                                  "combo_chart"
                                                   (json/generate-string series)
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
