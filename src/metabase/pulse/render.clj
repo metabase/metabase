@@ -8,7 +8,8 @@
             [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -94,10 +95,9 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
-        (and ;;;; is multi stuff...
-             (> @col-sample-count 2)
+        (and (> (count (hydrate card :multi_cards)) 0)
              (not (#{:combo } display-type)))
-        (chart-type :multiple "result has more than 2 cols, a multiple chart")
+        (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
