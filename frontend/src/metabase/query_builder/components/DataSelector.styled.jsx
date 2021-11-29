@@ -119,3 +119,32 @@ export function DataBucketListItem(props) {
     </DataBucketListItemContainer>
   );
 }
+
+export const CollectionDatasetSelectList = styled(SelectList)`
+  width: 300px;
+  max-width: 300px;
+  padding: 0.5rem;
+`;
+
+CollectionDatasetSelectList.Item = SelectList.Item;
+
+export const CollectionDatasetAllDataLink = styled(SelectList.BaseItem)`
+  padding: 0.5rem;
+
+  color: ${color("text-light")};
+  font-weight: bold;
+  cursor: pointer;
+
+  :hover {
+    color: ${color("brand")};
+  }
+`;
+
+CollectionDatasetAllDataLink.Content = styled.span`
+  display: flex;
+  align-items: center;
+
+  .Icon {
+    margin-left: ${space(0)};
+  }
+`;

@@ -12,6 +12,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import { Box, Flex } from "grid-styled";
 
@@ -217,7 +218,7 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ColorButton = styled(Button)`
+const ColorButton = forwardRefToInnerRef(styled(Button)`
   border: none;
   color: ${({ color }) => (color ? color : c("text-medium"))};
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
@@ -227,7 +228,7 @@ const ColorButton = styled(Button)`
       color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
   }
   transition: background 300ms;
-`;
+`);
 
 const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
   const button = (

@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
+import * as Urls from "metabase/lib/urls";
+
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
@@ -16,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
+import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
@@ -27,12 +30,12 @@ import NativeQueryButton from "./NativeQueryButton";
 import ViewSection from "./ViewSection";
 import {
   AdHocViewHeading,
+  DatasetHeaderButtonContainer,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
-  ViewSQLButtonContainer,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -102,6 +105,7 @@ export function ViewTitleHeader(props) {
   const isStructured = question.isStructured();
   const isNative = question.isNative();
   const isSaved = question.isSaved();
+  const isDataset = question.isDataset();
 
   const isSummarized =
     isStructured &&
@@ -114,7 +118,14 @@ export function ViewTitleHeader(props) {
 
   return (
     <ViewHeaderContainer className={className} style={style}>
-      {isSaved ? (
+      {isDataset ? (
+        <DatasetLeftSide
+          {...props}
+          areFiltersExpanded={areFiltersExpanded}
+          onExpandFilters={expandFilters}
+          onCollapseFilters={collapseFilters}
+        />
+      ) : isSaved ? (
         <SavedQuestionLeftSide
           {...props}
           lastEditInfo={lastEditInfo}
@@ -136,6 +147,7 @@ export function ViewTitleHeader(props) {
       <ViewTitleHeaderRightSide
         {...props}
         isSaved={isSaved}
+        isDataset={isDataset}
         isNative={isNative}
         isSummarized={isSummarized}
       />
@@ -251,6 +263,7 @@ function AhHocQuestionLeftSide(props) {
           ) : (
             <QuestionDescription
               question={question}
+              originalQuestion={originalQuestion}
               isObjectDetail={isObjectDetail}
             />
           )}
@@ -295,10 +308,93 @@ function AhHocQuestionLeftSide(props) {
   );
 }
 
+DatasetLeftSide.propTypes = {
+  question: PropTypes.object.isRequired,
+  areFiltersExpanded: PropTypes.bool.isRequired,
+  showFiltersInHeading: PropTypes.bool.isRequired,
+  isShowingQuestionDetailsSidebar: PropTypes.bool,
+  onExpandFilters: PropTypes.func.isRequired,
+  onCollapseFilters: PropTypes.func.isRequired,
+  onOpenQuestionDetails: PropTypes.func.isRequired,
+  onCloseQuestionDetails: PropTypes.func.isRequired,
+};
+
+function DatasetLeftSide(props) {
+  const {
+    question,
+    areFiltersExpanded,
+    isShowingQuestionDetailsSidebar,
+    showFiltersInHeading,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+    onExpandFilters,
+    onCollapseFilters,
+  } = props;
+  return (
+    <div>
+      <ViewHeaderMainLeftContentContainer>
+        <AdHocViewHeading>
+          <HeadBreadcrumbs
+            divider="/"
+            parts={[
+              <DatasetCollectionBadge key="collection" dataset={question} />,
+              <DatasetHeaderButtonContainer key="dataset-header-button">
+                <SavedQuestionHeaderButton
+                  question={question}
+                  isActive={isShowingQuestionDetailsSidebar}
+                  onClick={
+                    isShowingQuestionDetailsSidebar
+                      ? onCloseQuestionDetails
+                      : onOpenQuestionDetails
+                  }
+                />
+              </DatasetHeaderButtonContainer>,
+            ]}
+          />
+        </AdHocViewHeading>
+        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mr2"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </ViewHeaderMainLeftContentContainer>
+      <ViewHeaderLeftSubHeading>
+        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
+          <QuestionFilters
+            className="mb1"
+            question={question}
+            expanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        )}
+      </ViewHeaderLeftSubHeading>
+    </div>
+  );
+}
+
+DatasetCollectionBadge.propTypes = {
+  dataset: PropTypes.object.isRequired,
+};
+
+function DatasetCollectionBadge({ dataset }) {
+  const { collection } = dataset.card();
+  return (
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="dataset">
+      {collection?.name || t`Our analytics`}
+    </HeadBreadcrumbs.Badge>
+  );
+}
+
 ViewTitleHeaderRightSide.propTypes = {
   question: PropTypes.object.isRequired,
   result: PropTypes.object,
   queryBuilderMode: PropTypes.oneOf(["view", "notebook"]),
+  isDataset: PropTypes.bool,
   isSaved: PropTypes.bool,
   isNative: PropTypes.bool,
   isRunnable: PropTypes.bool,
@@ -325,6 +421,7 @@ function ViewTitleHeaderRightSide(props) {
     result,
     queryBuilderMode,
     isSaved,
+    isDataset,
     isNative,
     isRunnable,
     isRunning,
@@ -346,8 +443,11 @@ function ViewTitleHeaderRightSide(props) {
   const isShowingNotebook = queryBuilderMode === "notebook";
 
   return (
-    <div className="ml-auto flex align-center">
-      {!!isDirty && (
+    <div
+      className="ml-auto flex align-center"
+      data-testid="qb-header-action-panel"
+    >
+      {!!isDirty && !isDataset && (
         <SaveButton
           disabled={!question.canRun()}
           data-metabase-event={
@@ -395,13 +495,11 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {NativeQueryButton.shouldRender(props) && (
-        <ViewSQLButtonContainer>
-          <NativeQueryButton
-            size={16}
-            question={question}
-            data-metabase-event={`Notebook Mode; Convert to SQL Click`}
-          />
-        </ViewSQLButtonContainer>
+        <NativeQueryButton
+          size={16}
+          question={question}
+          data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+        />
       )}
       {isNative && isSaved && <ExploreResultsLink question={question} />}
       {isRunnable && !isNativeEditorOpen && (

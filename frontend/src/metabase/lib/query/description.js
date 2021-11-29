@@ -283,7 +283,13 @@ export function formatAggregationDescription({ aggregation }, options = {}) {
 
 export function formatBreakoutDescription({ breakout }, options = {}) {
   if (breakout && breakout.length > 0) {
-    return [t`Grouped by `, joinList(breakout.map(b => b), " and ")];
+    return [
+      t`Grouped by `,
+      joinList(
+        breakout.map(b => b),
+        " and ",
+      ),
+    ];
   } else {
     return [];
   }

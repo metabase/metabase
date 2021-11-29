@@ -183,6 +183,7 @@
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
+  select-keys-sequentially
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes

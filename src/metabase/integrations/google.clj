@@ -21,8 +21,16 @@
   (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
 
 (defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
-  :visibility :public)
+  (deferred-tru "Client ID for Google Sign-In. If this is set, Google Sign-In is considered to be enabled.")
+  :visibility :public
+  :setter (fn [client-id]
+            (if client-id
+              (let [trimmed-client-id (str/trim client-id)]
+                (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
+                  (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
+                                  {:status-code 400})))
+                (setting/set-string! :google-auth-client-id trimmed-client-id))
+              (setting/set-string! :google-auth-client-id nil))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
@@ -40,12 +48,12 @@
   ([token-info-response client-id]
    (let [{:keys [status body]} token-info-response]
      (when-not (= status 200)
-       (throw (ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
+       (throw (ex-info (tru "Invalid Google Sign-In token.") {:status-code 400})))
      (u/prog1 (json/parse-string body keyword)
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (str (deferred-tru "Google Auth token appears to be incorrect. ")
+           (throw (ex-info (str (deferred-tru "Google Sign-In token appears to be incorrect. ")
                                 (deferred-tru "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
@@ -87,5 +95,5 @@
   [{{:keys [token]} :body, :as request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
-    (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
+    (log/info (trs "Successfully authenticated Google Sign-In token for: {0} {1}" given_name family_name))
     (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))))

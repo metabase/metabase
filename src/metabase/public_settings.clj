@@ -166,6 +166,13 @@
   :default    "UA-60817802-1"
   :visibility :public)
 
+(defsetting ga-enabled
+  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
+  :visibility :public)
+
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -481,3 +488,29 @@
                     (not (db/exists? 'Database :is_sample false))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
+
+(defsetting snowplow-available
+  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
+       " "
+       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+  :type       :boolean
+  :visibility :internal
+  :default    config/is-prod?)
+
+(defsetting snowplow-enabled
+  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow. True if anonymous tracking")
+       " "
+       (deferred-tru "is enabled for this instance, and a Snowplow collector is available."))
+  :type   :boolean
+  :setter :none
+  :getter (fn [] (and (snowplow-available)
+                      (anon-tracking-enabled)))
+  :visibility :public)
+
+(defsetting snowplow-url
+  (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
+  :default    (if config/is-prod?
+                "https://sp.metabase.com"
+                ;; Run `docker compose up` from the `snowplow/` subdirectory to start a local Snowplow collector
+                "http://localhost:9090")
+  :visibility :public)

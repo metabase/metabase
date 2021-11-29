@@ -140,7 +140,8 @@
   ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
   ;; list of exception classes (like, driver-specific exceptions)
   [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
-   com.mchange.v2.resourcepool.CannotAcquireResourceException])
+   com.mchange.v2.resourcepool.CannotAcquireResourceException
+   javax.net.ssl.SSLHandshakeException])
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default

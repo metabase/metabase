@@ -1,12 +1,13 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
-
-import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import _ from "underscore";
 import styled from "styled-components";
 import { color, space } from "styled-system";
+
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import Icon from "metabase/components/Icon";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -24,18 +25,21 @@ const BUTTON_VARIANTS = [
   "onlyIcon",
 ];
 
-const BaseButton = ({
-  className,
-  icon,
-  iconRight,
-  iconSize,
-  iconColor,
-  iconVertical,
-  labelBreakpoint,
-  color,
-  children,
-  ...props
-}) => {
+const BaseButton = forwardRef(function BaseButton(
+  {
+    className,
+    icon,
+    iconRight,
+    iconSize,
+    iconColor,
+    iconVertical,
+    labelBreakpoint,
+    color,
+    children,
+    ...props
+  },
+  ref,
+) {
   const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
@@ -46,6 +50,7 @@ const BaseButton = ({
       className={cx("Button", className, "flex-no-shrink", variantClasses, {
         p1: !children,
       })}
+      ref={ref}
     >
       <div
         className={cx("flex layout-centered", { "flex-column": iconVertical })}
@@ -75,7 +80,7 @@ const BaseButton = ({
       </div>
     </button>
   );
-};
+});
 
 BaseButton.propTypes = {
   className: PropTypes.string,
@@ -95,10 +100,10 @@ BaseButton.propTypes = {
   borderless: PropTypes.bool,
 };
 
-const Button = styled(BaseButton)`
+const Button = forwardRefToInnerRef(styled(BaseButton)`
   ${color};
   ${space};
-`;
+`);
 
 Button.displayName = "Button";
 

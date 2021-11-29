@@ -130,7 +130,8 @@ export function suggest({
     ]) {
       const lower = (text || "").toLowerCase();
       if (lower.startsWith(partial)) {
-        suggestion.range = [0, partial.length];
+        const offset = partial[0] === "[" ? 1 : 0;
+        suggestion.range = [0, partial.length - offset];
         break suggestion;
       }
       let index = 0;

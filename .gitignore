@@ -57,6 +57,7 @@
 /screenshots
 /sqlite.db
 /stats.json
+/storybook-static
 /target
 /test-report-*
 \#*\#

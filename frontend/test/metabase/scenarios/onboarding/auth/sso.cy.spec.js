@@ -13,7 +13,7 @@ describe("scenarios > auth > signin > SSO", () => {
     cy.signInAsAdmin();
     // Set fake Google client ID
     cy.request("PUT", "/api/setting/google-auth-client-id", {
-      value: "123",
+      value: "fake-client-id.apps.googleusercontent.com",
     });
   });
 

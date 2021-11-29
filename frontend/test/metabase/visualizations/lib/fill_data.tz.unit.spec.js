@@ -18,7 +18,11 @@ testAcrossTimezones(reportTz => {
       const time1 = moment.tz("2019-03-01T00:00:00", reportTz);
       const time2 = moment.tz("2019-03-30T00:00:00", reportTz);
       const time3 = moment.tz("2019-03-31T00:00:00", reportTz);
-      const rows = [[time1, 1], [time2, 2], [time3, 3]];
+      const rows = [
+        [time1, 1],
+        [time2, 2],
+        [time3, 3],
+      ];
       const [filledData] = fillMissingValuesInDatas(
         {
           series: [{}],

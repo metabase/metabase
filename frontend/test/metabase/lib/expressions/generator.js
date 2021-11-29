@@ -1,6 +1,6 @@
 import { createRandom } from "./prng";
 
-export function generateExpression(seed, depth = 13) {
+export function generateExpression(seed, resultType, depth = 13) {
   const random = createRandom(seed);
 
   const randomInt = max => Math.floor(max * random());
@@ -88,6 +88,30 @@ export function generateExpression(seed, depth = 13) {
     return String(str);
   };
 
+  const coalesce = fn => {
+    return {
+      type: NODE.FunctionCall,
+      value: "coalesce",
+      params: listOf(1 + randomInt(3), [fn])(),
+    };
+  };
+
+  const caseExpression = fn => {
+    const params = [];
+    for (let i = 0; i < 1 + randomInt(3); ++i) {
+      params.push(booleanExpression());
+      params.push(fn());
+    }
+    if (randomInt(10) < 3) {
+      params.push(fn());
+    }
+    return {
+      type: NODE.FunctionCall,
+      value: "case",
+      params,
+    };
+  };
+
   const numberExpression = () => {
     --depth;
     const node =
@@ -102,6 +126,8 @@ export function generateExpression(seed, depth = 13) {
             power,
             stringLength,
             numberGroup,
+            coalesceNumber,
+            caseNumber,
           ])();
     ++depth;
     return node;
@@ -117,19 +143,10 @@ export function generateExpression(seed, depth = 13) {
     };
   };
 
-  const validIdentifier = () => {
-    const KEYWORDS = ["and", "or", "not"];
-    let candidate;
-    do {
-      candidate = identifier();
-    } while (KEYWORDS.includes(candidate.toLowerCase()));
-    return candidate;
-  };
-
   const field = () => {
     const fk = () => "[" + identifier() + " → " + identifier() + "]";
     const bracketedName = () => "[" + identifier() + "]";
-    const name = oneOf([validIdentifier, fk, bracketedName])();
+    const name = oneOf([fk, bracketedName])();
     return {
       type: NODE.Field,
       value: name,
@@ -192,6 +209,10 @@ export function generateExpression(seed, depth = 13) {
       child: numberExpression(),
     };
   };
+
+  const coalesceNumber = () => coalesce(numberExpression);
+
+  const caseNumber = () => caseExpression(numberExpression);
 
   const booleanExpression = () => {
     --depth;
@@ -293,6 +314,8 @@ export function generateExpression(seed, depth = 13) {
             stringReplace,
             substring,
             regexextract,
+            coalesceString,
+            caseString,
           ])();
     ++depth;
     return node;
@@ -346,8 +369,35 @@ export function generateExpression(seed, depth = 13) {
     };
   };
 
-  const tree = oneOf([numberExpression, booleanExpression, stringExpression])();
+  const coalesceString = () => coalesce(stringExpression);
 
+  const caseString = () => caseExpression(stringExpression);
+
+  const generatorFunctions = [];
+  switch (resultType) {
+    case "boolean":
+      generatorFunctions.push(booleanExpression);
+      break;
+    case "number":
+      generatorFunctions.push(numberExpression);
+      break;
+    case "string":
+      generatorFunctions.push(stringExpression);
+      break;
+    // alias for number | string
+    case "expression":
+      generatorFunctions.push(numberExpression);
+      generatorFunctions.push(stringExpression);
+      break;
+
+    default:
+      generatorFunctions.push(booleanExpression);
+      generatorFunctions.push(numberExpression);
+      generatorFunctions.push(stringExpression);
+      break;
+  }
+
+  const tree = oneOf(generatorFunctions)();
   const expression = format(tree);
 
   return { tree, expression };

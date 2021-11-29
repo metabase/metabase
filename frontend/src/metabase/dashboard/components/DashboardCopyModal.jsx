@@ -31,10 +31,7 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 class DashboardCopyModal extends React.Component {
   render() {
     const {

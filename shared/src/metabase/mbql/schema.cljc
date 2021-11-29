@@ -687,7 +687,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   field
+  field   Field
   n       (s/cond-pre
            s/Int
            (s/enum :current :last :next))
@@ -1053,7 +1053,11 @@
 
 (def ^:private Parameter
   "Schema for a valid, normalized query parameter."
-  s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
+  ;; [[s/Any]] for now until we move over the stuff from the parameters middleware
+  ;;
+  ;; TODO -- I think this is actually supposed to be [[metabase.driver.common.parameters/ParamValue]]. But it's
+  ;; probably also supposed to have `:id` as a required key -- need to verify this.
+  s/Any)
 
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------

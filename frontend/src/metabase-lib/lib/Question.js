@@ -139,6 +139,7 @@ export default class Question {
   static create({
     databaseId,
     tableId,
+    collectionId,
     metadata,
     parameterValues,
     type = "query",
@@ -161,6 +162,7 @@ export default class Question {
   } = {}) {
     let card: CardObject = {
       name,
+      collection_id: collectionId,
       display,
       visualization_settings,
       dataset_query,
@@ -548,6 +550,19 @@ export default class Question {
       };
       return this.setCard(card);
     }
+  }
+
+  composeDataset() {
+    if (!this.isDataset()) {
+      return this;
+    }
+    return this.setDatasetQuery({
+      type: "query",
+      database: this.databaseId(),
+      query: {
+        "source-table": "card__" + this.id(),
+      },
+    });
   }
 
   drillPK(field: Field, value: Value): ?Question {
@@ -945,12 +960,13 @@ export default class Question {
       // include only parameters that have a value applied
       .filter(param => _.has(param, "value"))
       // only the superset of parameters object that API expects
-      .map(param => _.pick(param, "type", "target", "value"))
-      .map(({ type, value, target }) => {
+      .map(param => _.pick(param, "type", "target", "value", "id"))
+      .map(({ type, value, target, id }) => {
         return {
           type,
           value: normalizeParameterValue(type, value),
           target,
+          id,
         };
       });
 
@@ -1011,9 +1027,13 @@ export default class Question {
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
 
-  async reduxUpdate(dispatch) {
+  async reduxUpdate(dispatch, { excludeDatasetQuery = false } = {}) {
+    const fullCard = this.card();
+    const card = excludeDatasetQuery
+      ? _.omit(fullCard, "dataset_query")
+      : fullCard;
     const action = await dispatch(
-      Questions.actions.update({ id: this.id() }, this.card()),
+      Questions.actions.update({ id: this.id() }, card),
     );
     return this.setCard(Questions.HACK_getObjectFromAction(action));
   }
@@ -1073,6 +1093,7 @@ export default class Question {
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
+      collection_id: this._card.collection_id,
       dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,

@@ -54,10 +54,7 @@ const mapDispatchToProps = {
 };
 
 @User.loadList()
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ pulse }) => pulse && pulse.name)
 export default class PulseEditApp extends Component {
   render() {

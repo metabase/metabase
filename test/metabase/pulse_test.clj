@@ -557,7 +557,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -600,7 +600,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest native-query-with-user-specified-axes-test
