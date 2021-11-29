@@ -451,18 +451,16 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->js-viz x-col y-col viz-settings)
+        series        (map vector names colors types row-iters)
         ;;; this shouldnt be for...
-        series        (vec (for [card-name  names
-                                 card-color colors
-                                 card-type  types
-                                 rows       row-iters]
+        series        (vec (for [[card-name card-color card-type rows] series]
                              {:name  card-name
                               :color card-color
                               :type  card-type
                               :rows  rows}))
         image-bundle  (image-bundle/make-image-bundle
-                                     render-type
-                                     (js-svg/combo-chart series labels settings))]
+                        render-type
+                        (js-svg/combo-chart series labels settings))]
   {:attachments
    (when image-bundle
      (image-bundle/image-bundle->attachment image-bundle))
