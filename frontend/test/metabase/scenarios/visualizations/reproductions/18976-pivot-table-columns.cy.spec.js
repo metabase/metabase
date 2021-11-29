@@ -6,7 +6,7 @@ const questionDetails = {
     database: 1,
     type: "native",
     native: {
-      query: "select 'a', 'b', 1",
+      query: "select 'a', 'b'",
       "template-tags": {},
     },
   },
