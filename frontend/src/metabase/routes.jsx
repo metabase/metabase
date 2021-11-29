@@ -13,7 +13,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import ActivityApp from "metabase/home/containers/HomepageApp";
+import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
 import AuthApp from "metabase/auth/AuthApp";
