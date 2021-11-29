@@ -38,10 +38,10 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("round([Temperature])").should("not.exist");
 
     // Should also work with escape key
-    cy.get("@formula").click({ force: true });
+    cy.get("@formula").focus();
     cy.findByText("round([Temperature])");
 
-    cy.get("@formula").type("{esc}", { force: true });
+    cy.get("@formula").type("{esc}");
     cy.findByText("round([Temperature])").should("not.exist");
   });
 

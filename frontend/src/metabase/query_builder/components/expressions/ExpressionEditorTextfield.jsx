@@ -276,9 +276,10 @@ export default class ExpressionEditorTextfield extends React.Component {
     return expression;
   }
 
-  handleEditorFocus = () => {
+  handleFocus = () => {
     this.setState({ isFocused: true });
-    setTimeout(() => this._triggerAutosuggest());
+    const { editor } = this.input.current;
+    this.onCursorChange(editor.selection);
   };
 
   onInputBlur = e => {
@@ -402,7 +403,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             wrapEnabled={true}
             fontSize={12}
             onBlur={this.onInputBlur}
-            onFocus={this.handleEditorFocus}
+            onFocus={this.handleFocus}
             role="ace-editor"
             setOptions={{
               indentedSoftWrap: false,
