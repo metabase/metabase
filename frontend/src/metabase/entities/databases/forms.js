@@ -2,7 +2,10 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getElevatedEngines } from "metabase/lib/engine";
+import {
+  getElevatedEngines,
+  getEngineSupportsFirewall,
+} from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
@@ -14,8 +17,8 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
-    title: t`Use an SSH-tunnel`,
-    description: getSshDescription(),
+    title: t`Use an SSH-tunnel for database connections`,
+    description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
@@ -118,20 +121,6 @@ export const DEFAULT_SCHEDULES = {
 
 function concatTrimmed(a, b) {
   return (a || "").trim() + (b || "").trim();
-}
-
-function getSshDescription() {
-  const link = (
-    <ExternalLink
-      href={MetabaseSettings.docsUrl(
-        "administration-guide/ssh-tunnel-for-database-connections",
-      )}
-    >
-      {t`Learn more`}
-    </ExternalLink>
-  );
-
-  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
 }
 
 function getClientIdDescription(engine, details) {
@@ -352,7 +341,7 @@ const forms = {
         {
           name: "name",
           title: t`Name`,
-          placeholder: t`Choose a name`,
+          placeholder: t`How would you like to refer to this database?`,
           validate: value => !value && t`required`,
           hidden: !engine,
         },
@@ -360,22 +349,22 @@ const forms = {
         {
           name: "auto_run_queries",
           type: "boolean",
-          title: t`Rerun queries for simple explorations`,
-          description: t`We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.`,
+          title: t`Automatically run queries when doing simple filtering and summarizing`,
+          description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
           hidden: !engine,
         },
         {
           name: "details.let-user-control-scheduling",
           type: "boolean",
-          title: t`Choose when syncs and scans happen`,
-          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
+          title: t`This is a large database, so let me choose when Metabase syncs and scans`,
+          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
           hidden: !engine,
         },
         {
           name: "refingerprint",
           type: "boolean",
           title: t`Periodically refingerprint tables`,
-          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
+          description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
           hidden: !engine,
         },
         getDatabaseCachingField(),
@@ -420,7 +409,7 @@ forms.setup = {
       ...field,
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
-      hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
+      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
     })),
 };
 
@@ -445,12 +434,6 @@ forms.scheduling = {
 const SCHEDULING_FIELDS = new Set([
   "schedules.metadata_sync",
   "schedules.cache_field_values",
-]);
-
-const ADVANCED_FIELDS = new Set([
-  "auto_run_queries",
-  "details.let-user-control-scheduling",
-  ...SCHEDULING_FIELDS,
 ]);
 
 export default forms;
