@@ -34,6 +34,38 @@
   [{:keys [id]}]
   (db/count 'DashboardCard, :card_id id))
 
+(defn dashboard-cards
+  "Return the corresponding dashboard cards for this Card"
+  {:hydrate :dashboard_cards}
+  [{:keys [id]}]
+  (db/select 'DashboardCard, :card_id id))
+
+(defn multi-cards
+  "Return the cards which are other cards with respect to this card
+  in multiple series display for dashboard.
+
+  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
+
+  This is actually completely different from the combo display,
+  which is a visualization type in visualization option.
+
+  This is also actually completely different from having multiple series display
+  from the visualization with same type (line bar or whatever),
+  which is a separate option in line area or bar visualization"
+  {:hydrate :multi_cards}
+  [{:keys [id]}]
+  (db/query {:select [:dashcard.* :card.*]
+             :from [[:report_dashboardcard :dashcard]]
+             :left-join [[:dashboardcard_series :dashcardseries]
+                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                         [:report_card :card]
+                         [:= :dashcardseries.card_id :card.id]]
+             :where [:and
+                     [:or
+                      [:= :card.archived false]
+                      [:= :card.archived nil]]
+                     [:= :dashcard.card_id id]]}))
+
 (defn average-query-time
   "Average query time of card, taken by query executions which didn't hit cache.
   If it's nil we don't have any query executions on file"
