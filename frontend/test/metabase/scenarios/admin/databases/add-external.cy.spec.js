@@ -34,7 +34,7 @@ describe("admin > database > add > external databases", () => {
     cy.findByText("QA Postgres12");
   });
 
-  it.only("should add Mongo database and redirect to listing", () => {
+  it("should add Mongo database and redirect to listing", () => {
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
