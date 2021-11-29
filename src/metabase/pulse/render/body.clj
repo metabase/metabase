@@ -482,7 +482,7 @@
                               (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
         labels           (combo-label-info x-col y-cols viz-settings)
-        ;; series           (some crap)
+        series           ["lol"]
         image-bundle     (image-bundle/make-image-bundle
                            render-type
                            (js-svg/combo-chart series labels
