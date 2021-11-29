@@ -45,7 +45,7 @@ describe("metabase-smoketest > admin", () => {
       // Database
 
       cy.findByText("Add your data");
-      cy.findByText("I'll add my data later");
+      cy.findByText("Skip");
 
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
@@ -54,7 +54,7 @@ describe("metabase-smoketest > admin", () => {
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next").click();
+      cy.findByText("Connect database").click();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
