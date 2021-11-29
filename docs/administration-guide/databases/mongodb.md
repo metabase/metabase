@@ -31,7 +31,7 @@ The default way to connect to MongoDB is to fill out your connection details in 
 - Username
 - Password
 - Authentication Database (optional database to use when authenticating)
-- Additional Mongo connection string options
+- Additional connection string options (optional)
 
 Additional settings:
 

@@ -41,7 +41,7 @@ describe("admin > database > add > external databases", () => {
       .find("a")
       .click();
     cy.contains("MongoDB").click({ force: true });
-    cy.contains("Additional Mongo connection");
+    cy.contains("Additional connection string options");
 
     typeAndBlurUsingLabel("Display name", "QA Mongo4");
     typeAndBlurUsingLabel("Host", "localhost");
