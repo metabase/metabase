@@ -5,8 +5,10 @@
             [metabase.api.dashboard-test :as api.dashboard-test]
             [metabase.models :refer [Card Dashboard DashboardCard FieldValues Table]]
             [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (deftest params-values-test
@@ -62,3 +64,25 @@
             (api.dashboard-test/let-url [url (api.dashboard-test/chain-filter-search-url dashboard "_CATEGORY_NAME_" "a")]
               (is (= ["African" "American"]
                      (mt/user-http-request :rasta :get 200 url))))))))))
+
+(deftest add-card-parameter-mapping-permissions-test
+  (testing "POST /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (mt/with-gtaps {:gtaps {:venues {}}}
+        (api.dashboard-test/do-with-add-card-parameter-mapping-permissions-fixtures
+         (fn [{:keys [card-id dashboard-id mappings add-card! dashcards]}]
+           (testing "Should be able to add a card with `parameter_mapping` with only sandboxed perms"
+             (perms/grant-permissions! (group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
+             (is (schema= {:card_id            (s/eq card-id)
+                           :parameter_mappings [(s/one
+                                                 {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                  :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                  s/Keyword     s/Any}
+                                                 "mapping")]
+                           s/Keyword           s/Any}
+                          (add-card! 200)))
+             (is (schema= [(s/one {:card_id            (s/eq card-id)
+                                   :parameter_mappings (s/eq mappings)
+                                   s/Keyword           s/Any}
+                                  "DashboardCard")]
+                          (dashcards))))))))))

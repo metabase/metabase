@@ -22,6 +22,7 @@
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
+            [metabase.models.query.permissions :as query.perms]
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
@@ -333,29 +334,40 @@
    :card-id  su/IntGreaterThanZero
    s/Keyword s/Any})
 
+(defn- param-target->field-id [target query]
+  (when-let [field-clause (params/param-target->field-clause target {:card {:dataset_query query}})]
+    (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
+
 ;; TODO -- should we only check *new* or *modified* mappings?
 (s/defn ^:private check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   [parameter-mappings :- [ParameterMappingWithCardID]]
   (when (seq parameter-mappings)
-    (let [card-ids       (into #{} (map :card-id) parameter-mappings)
-          card-id->query (db/select-id->field :dataset_query Card :id [:in card-ids])
-          field-ids      (set (for [{:keys [target card-id]} parameter-mappings
-                                    :let                     [query        (api/check-404 (card-id->query card-id))
-                                                              field-clause (params/param-target->field-clause
-                                                                            target
-                                                                            {:card {:dataset_query query}})
-                                                              field-id     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
-                                    :when                    field-id]
-                                field-id))
-          table-ids      (when (seq field-ids)
-                           (db/select-field :table_id Field :id [:in field-ids]))]
-      (doseq [table-id table-ids]
-        (when-not (mi/can-read? Table table-id)
+    ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
+    ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
+    ;; if there happen to be a lot of parameters
+    (let [card-ids              (into #{} (map :card-id) parameter-mappings)
+          card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+          field-ids             (set (for [{:keys [target card-id]} parameter-mappings
+                                           :let                     [query    (api/check-404 (card-id->query card-id))
+                                                                     field-id (param-target->field-id target query)]
+                                           :when                    field-id]
+                                       field-id))
+          table-ids             (when (seq field-ids)
+                                  (db/select-field :table_id Field :id [:in field-ids]))
+          table-id->database-id (when (seq table-ids)
+                                  (db/select-id->field :db_id Table :id [:in table-ids]))]
+      (doseq [table-id table-ids
+              :let     [database-id (table-id->database-id table-id)]]
+        ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
+        (when-not (query.perms/can-query-table? database-id table-id)
           (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
                                (pr-str (db/select-one-field :name Table :id table-id)))
-                          {:status-code 403})))))))
+                          {:status-code        403
+                           :database-id        database-id
+                           :table-id           table-id
+                           :actual-permissions @api/*current-user-permissions-set*})))))))
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
