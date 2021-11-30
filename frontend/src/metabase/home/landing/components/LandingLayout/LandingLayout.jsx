@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { LandingLayoutRoot } from "./LandingLayout.styled";
 
 const propTypes = {
   GreetingSection: PropTypes.element,
@@ -9,10 +10,10 @@ const propTypes = {
 
 const LandingLayout = ({ GreetingSection, OurDataSection, showOurData }) => {
   return (
-    <div>
+    <LandingLayoutRoot>
       <GreetingSection />
       {showOurData && <OurDataSection />}
-    </div>
+    </LandingLayoutRoot>
   );
 };
 
