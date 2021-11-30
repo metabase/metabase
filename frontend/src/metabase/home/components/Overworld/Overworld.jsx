@@ -7,6 +7,7 @@ import {
   DatabaseGrid,
   DatabaseIcon,
   DatabaseTitle,
+  GreetingTitle,
   OverworldRoot,
   Section,
   SectionHeader,
@@ -16,17 +17,38 @@ import {
 import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Button from "metabase/components/Button";
+import MetabotLogo from "metabase/components/MetabotLogo";
 
-const Overworld = ({ databases }) => {
+const Overworld = ({ greeting, databases }) => {
   return (
     <OverworldRoot>
+      <GreetingSection greeting={greeting} />
       <DatabaseSection databases={databases} />
     </OverworldRoot>
   );
 };
 
 Overworld.propTypes = {
-  databases: PropTypes.array,
+  greeting: PropTypes.string.isRequired,
+  databases: PropTypes.array.isRequired,
+};
+
+const GreetingSection = ({ greeting }) => {
+  return (
+    <Section>
+      <Tooltip
+        tooltip={t`Don't tell anyone, but you're my favorite.`}
+        placement="bottom"
+      >
+        <MetabotLogo />
+      </Tooltip>
+      <GreetingTitle>{greeting}</GreetingTitle>
+    </Section>
+  );
+};
+
+GreetingSection.propTypes = {
+  greeting: PropTypes.string.isRequired,
 };
 
 const DatabaseSection = ({ databases, onRemoveSection }) => {

@@ -1,11 +1,12 @@
 import styled from "styled-components";
 import { Link } from "react-router";
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
+import Subhead from "metabase/components/type/Subhead";
 
 export const OverworldRoot = styled.div`
   padding: 0 1rem;
@@ -17,6 +18,10 @@ export const OverworldRoot = styled.div`
   ${breakpointMinMedium} {
     padding: 0 4rem;
   }
+`;
+
+export const GreetingTitle = styled(Subhead)`
+  margin-left: 2rem;
 `;
 
 export const DatabaseGrid = styled.div`
@@ -77,6 +82,8 @@ export const SectionIcon = styled(Icon)`
 `;
 
 export const Section = styled.div`
+  margin: 2.5rem 0;
+
   ${SectionIcon} {
     visibility: collapse;
   }
