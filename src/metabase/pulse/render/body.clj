@@ -567,7 +567,6 @@
 
         labels           (combo-label-info x-col y-cols viz-settings)
         settings         (->ts-viz x-col y-cols labels viz-settings)
-        
 
         series           (join-series names colors types series-rowseqs y-pos)
         image-bundle     (image-bundle/make-image-bundle
