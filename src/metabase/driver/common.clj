@@ -128,6 +128,8 @@
    :user               default-user-details})
 
 (def cloud-ip-address-info
+  "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior
+  to being returned to the client, in [[metabase.driver.util/connection-props-server->client]]."
   {:name   "cloud-ip-address-info"
    :type   :info
    :getter (fn []
@@ -137,8 +139,8 @@
                     (clojure.string/join " - " (public-settings/cloud-gateway-ips)))))})
 
 (def default-connection-info-fields
-  "Defaults options for informational text that can be included in a database connection form. These keys can be added
-  to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
+  "Default definitions for informational banners that can be included in a database connection form. These keys can be
+  added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
 
