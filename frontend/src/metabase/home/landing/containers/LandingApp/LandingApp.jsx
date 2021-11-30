@@ -4,7 +4,7 @@ import GreetingSection from "../../containers/GreetingSection";
 import OurDataSection from "../../containers/OurDataSection";
 import XraySection from "../../containers/XraySection";
 
-const mapStateToProps = state => ({
+const mapStateToProps = () => ({
   GreetingSection: GreetingSection,
   XraySection: XraySection,
   OurDataSection: OurDataSection,

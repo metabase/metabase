@@ -46,7 +46,9 @@ const SectionRemoveModal = ({ children, onSubmit }) => {
       footer={<Button danger onClick={onSubmit}>{t`Remove`}</Button>}
       triggerElement={children}
     >
-      {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables.`}
+      <span>
+        {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables.`}
+      </span>
     </ModalWithTrigger>
   );
 };

@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import { LandingRoot } from "./LandingApp.styled";
 
 const propTypes = {
-  GreetingSection: PropTypes.element.isRequired,
-  XraySection: PropTypes.element.isRequired,
-  OurDataSection: PropTypes.element.isRequired,
+  GreetingSection: PropTypes.elementType,
+  XraySection: PropTypes.elementType.isRequired,
+  OurDataSection: PropTypes.elementType.isRequired,
   showXrays: PropTypes.bool,
   showOurData: PropTypes.bool,
 };
