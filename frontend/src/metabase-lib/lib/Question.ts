@@ -1210,13 +1210,18 @@ export default class Question {
     if (!this.isStructured()) {
       return this;
     }
-    return this.parameters()
-      .reduce((query, parameter) => {
+
+    const [query, isAltered] = this.parameters().reduce(
+      ([query, isAltered], parameter) => {
         const filter = parameterToMBQLFilter(parameter, this.metadata());
-        return filter ? query.filter(filter) : query;
-      }, this.query())
-      .question()
-      .setParameters([]);
+        return filter ? [query.filter(filter), true] : [query, isAltered];
+      },
+      [this.query(), false],
+    );
+
+    const question = query.question().setParameters([]);
+
+    return isAltered ? question.markDirty() : question;
   }
 
   getUrlWithParameters() {
