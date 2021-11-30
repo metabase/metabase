@@ -54,6 +54,21 @@ GreetingSection.propTypes = {
   greeting: PropTypes.string.isRequired,
 };
 
+const CollectionSection = ({ user, collections }) => {
+  return <CollectionEmptyState user={user} />;
+};
+
+CollectionSection.propTypes = {
+  user: PropTypes.object.isRequired,
+  collections: PropTypes.array.isRequired,
+};
+
+const CollectionEmptyState = ({ user }) => {};
+
+CollectionEmptyState.propTypes = {
+  user: PropTypes.object.isRequired,
+};
+
 const DatabaseSection = ({ databases, onRemoveSection }) => {
   return (
     <Section>
@@ -61,7 +76,7 @@ const DatabaseSection = ({ databases, onRemoveSection }) => {
         <SectionTitle>{t`Our data`}</SectionTitle>
         <DatabaseSectionModal onRemoveSection={onRemoveSection}>
           <Tooltip tooltip={t`Hide this section`}>
-            <SectionIcon name="close" onClick={onRemoveSection} />
+            <SectionIcon name="close" />
           </Tooltip>
         </DatabaseSectionModal>
       </SectionHeader>
