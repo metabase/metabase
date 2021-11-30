@@ -49,9 +49,6 @@ function timeseries_bar(data, labels, settings) {
 
 function combo_chart(series, settings, colors) {
   // Thinking of combo as similar to multiple, although they're different in BE
-  console.log(series);
-  console.log(settings);
-  console.log(colors);
   return StaticViz.RenderChart("combo-chart", {
     series: JSON.parse(series),
     settings: JSON.parse(settings),
