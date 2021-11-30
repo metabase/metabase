@@ -69,6 +69,7 @@ export const SectionTitle = styled.div`
 export const SectionIcon = styled(Icon)`
   display: block;
   color: ${color("text-medium")};
+  cursor: pointer;
 
   &:hover {
     color: ${color("brand")};
