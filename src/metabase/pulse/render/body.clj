@@ -485,7 +485,8 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (repeat "left"))
+  (conj (repeat "right")
+        "left"))
 
 (defn- join-series
   [names colors types row-seqs y-axis-positions]
@@ -508,6 +509,8 @@
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
         ;;;;;;;;;;;;;;;
         row-seqs      (map :rows multi-data)
+        bob           (println row-seqs)
+        bob           (println rowfns)
         col-seqs      (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
@@ -516,7 +519,6 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        ;;;;;; merge this one too...
         y-pos         (take (count names) default-y-pos)
         series        (join-series names colors types row-seqs y-pos)
         image-bundle  (image-bundle/make-image-bundle
@@ -558,12 +560,13 @@
                            colors)
         types            (replace {nil "line"}
                                   (map (partial get-in-series :display) metrics))
+        y-pos            (fill-vector-maybe
+                           (map (partial get-in-series :axis) metrics)
+                           (take (count names) default-y-pos))
 
         labels           (combo-label-info x-col y-cols viz-settings)
         settings         (->ts-viz x-col y-cols labels viz-settings)
-        ;;;;; merge this one too...
-        ;;;;;;;;;;;;;;;;
-        y-pos            (take (count names) default-y-pos)
+        
 
         series           (join-series names colors types series-rowseqs y-pos)
         image-bundle     (image-bundle/make-image-bundle

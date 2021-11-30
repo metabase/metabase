@@ -54,16 +54,17 @@
   which is a separate option in line area or bar visualization"
   {:hydrate :multi_cards}
   [{:keys [id]}]
-  (db/query {:select [:dashcard.* :card.*]
+  (db/query {:select [:newcard.*]
              :from [[:report_dashboardcard :dashcard]]
              :left-join [[:dashboardcard_series :dashcardseries]
                          [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :card]
-                         [:= :dashcardseries.card_id :card.id]]
+                         [:report_card :newcard]
+                         [:= :dashcardseries.card_id :newcard.id]]
              :where [:and
+                     [:<> :newcard.id nil]
                      [:or
-                      [:= :card.archived false]
-                      [:= :card.archived nil]]
+                      [:= :newcard.archived false]
+                      [:= :newcard.archived nil]]
                      [:= :dashcard.card_id id]]}))
 
 (defn average-query-time
