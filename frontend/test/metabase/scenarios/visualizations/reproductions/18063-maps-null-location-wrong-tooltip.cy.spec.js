@@ -1,4 +1,4 @@
-import { restore, popover, tooltip } from "__support__/e2e/cypress";
+import { restore, popover, tippyPopover } from "__support__/e2e/cypress";
 
 const questionDetails = {
   name: "18063",
@@ -39,7 +39,7 @@ describe.skip("issue 18063", () => {
 
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
-    tooltip().within(() => {
+    tippyPopover().within(() => {
       testPairedTooltipValues("LATITUDE", "55.6761");
       testPairedTooltipValues("LONGITUDE", "12.5683");
       testPairedTooltipValues("COUNT", "1");
