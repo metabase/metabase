@@ -2,7 +2,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import Databases from "metabase/entities/databases";
 import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -23,7 +22,7 @@ const propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-export const OurDataSection = ({ databases, onRemoveSection }) => {
+const OurDataSection = ({ databases, onRemoveSection }) => {
   return (
     <Section>
       <SectionHeader>
@@ -93,4 +92,4 @@ const SectionRemoveModal = ({ children, onRemoveSection }) => {
 
 SectionRemoveModal.propTypes = modalPropTypes;
 
-export default Databases.loadList()(OurDataSection);
+export default OurDataSection;
