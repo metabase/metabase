@@ -2,11 +2,16 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import Button from "metabase/components/Button";
+import MetabotLogo from "metabase/components/MetabotLogo";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
 import {
   DatabaseCardRoot,
   DatabaseGrid,
   DatabaseIcon,
   DatabaseTitle,
+  GreetingContent,
   GreetingTitle,
   OverworldRoot,
   Section,
@@ -14,10 +19,6 @@ import {
   SectionIcon,
   SectionTitle,
 } from "./Overworld.styled";
-import Tooltip from "metabase/components/Tooltip";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Button from "metabase/components/Button";
-import MetabotLogo from "metabase/components/MetabotLogo";
 
 const Overworld = ({ greeting, databases }) => {
   return (
@@ -36,13 +37,15 @@ Overworld.propTypes = {
 const GreetingSection = ({ greeting }) => {
   return (
     <Section>
-      <Tooltip
-        tooltip={t`Don't tell anyone, but you're my favorite.`}
-        placement="bottom"
-      >
-        <MetabotLogo />
-      </Tooltip>
-      <GreetingTitle>{greeting}</GreetingTitle>
+      <GreetingContent>
+        <Tooltip
+          tooltip={t`Don't tell anyone, but you're my favorite.`}
+          placement="bottom"
+        >
+          <MetabotLogo />
+        </Tooltip>
+        <GreetingTitle>{greeting}</GreetingTitle>
+      </GreetingContent>
     </Section>
   );
 };
