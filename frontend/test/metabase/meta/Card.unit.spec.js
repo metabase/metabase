@@ -1,25 +1,12 @@
 import * as Card from "metabase/meta/Card";
-
+import { parse } from "url";
 import { assocIn, dissoc } from "icepick";
-import { getMetadata } from "metabase/selectors/metadata";
+
+import { deserializeCardFromUrl } from "metabase/lib/card";
+import { metadata } from "__support__/sample_dataset_fixture";
 
 describe("metabase/meta/Card", () => {
   describe("questionUrlWithParameters", () => {
-    const metadata = getMetadata({
-      entities: {
-        databases: {},
-        schemas: {},
-        tables: {},
-        fields: {
-          2: {
-            base_type: "type/Integer",
-          },
-        },
-        metrics: {},
-        segments: {},
-      },
-    });
-
     const parameters = [
       {
         id: 1,
@@ -49,47 +36,98 @@ describe("metabase/meta/Card", () => {
     ];
 
     describe("with SQL card", () => {
-      const card = {
+      const cardWithTextFilter = {
         id: 1,
         dataset_query: {
           type: "native",
           native: {
             "template-tags": {
-              baz: { name: "baz", type: "text" },
+              baz: { name: "baz", type: "text", id: "foo" },
             },
           },
         },
       };
+
       const parameterMappings = [
         {
           card_id: 1,
           parameter_id: 1,
           target: ["variable", ["template-tag", "baz"]],
         },
+        {
+          card_id: 2,
+          parameter_id: 5,
+          target: ["dimension", ["template-tag", "bar"]],
+        },
       ];
-      it("should return question URL with no parameters", () => {
-        const url = Card.questionUrlWithParameters(card, metadata, []);
+
+      const cardWithFieldFilter = {
+        id: 2,
+        dataset_query: {
+          type: "native",
+          native: {
+            "template-tags": {
+              bar: { name: "bar", type: "number/=", id: "abc" },
+            },
+          },
+        },
+      };
+
+      const dashcard = {
+        parameter_mappings: parameterMappings,
+        dashboardId: 1,
+      };
+
+      it("should return question URL when there are no parameters", () => {
+        const parameters = [];
+        const parameterValues = {};
+        const url = Card.questionUrlWithParameters(
+          cardWithTextFilter,
+          metadata,
+          parameters,
+          parameterValues,
+          dashcard,
+        );
         expect(parseUrl(url)).toEqual({
-          pathname: "/question",
+          pathname: "/question/1",
           query: {},
-          card: dissoc(card, "id"),
+          card: null,
         });
       });
-      it("should return question URL with query string parameter", () => {
+
+      it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
         const url = Card.questionUrlWithParameters(
-          card,
+          cardWithTextFilter,
           metadata,
           parameters,
           { "1": "bar" },
-          parameterMappings,
+          dashcard,
         );
+
         expect(parseUrl(url)).toEqual({
-          pathname: "/question",
+          pathname: "/question/1",
           query: { baz: "bar" },
-          card: dissoc(card, "id"),
+          card: null,
+        });
+      });
+
+      it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
+        const url = Card.questionUrlWithParameters(
+          cardWithFieldFilter,
+          metadata,
+          parameters,
+          { "5": 111 },
+          dashcard,
+        );
+
+        expect(parseUrl(url)).toEqual({
+          pathname: "/question/2",
+          query: { bar: "111" },
+          card: null,
         });
       });
     });
+
     describe("with structured card", () => {
       const card = {
         id: 1,
@@ -100,6 +138,7 @@ describe("metabase/meta/Card", () => {
           },
         },
       };
+
       const parameterMappings = [
         {
           card_id: 1,
@@ -119,7 +158,7 @@ describe("metabase/meta/Card", () => {
         {
           card_id: 1,
           parameter_id: 4,
-          target: ["dimension", ["field", 5, { "source-field": 4 }]],
+          target: ["dimension", ["field", 2, { "source-field": 1 }]],
         },
         {
           card_id: 1,
@@ -127,54 +166,53 @@ describe("metabase/meta/Card", () => {
           target: ["dimension", ["field", 2, null]],
         },
       ];
+
+      const dashcard = {
+        parameter_mappings: parameterMappings,
+        dashboardId: 1,
+      };
+
       it("should return question URL with no parameters", () => {
-        const url = Card.questionUrlWithParameters(card, metadata, []);
+        const parameters = [];
+        const parameterValues = {};
+
+        const url = Card.questionUrlWithParameters(
+          card,
+          metadata,
+          parameters,
+          parameterValues,
+          dashcard,
+        );
         expect(parseUrl(url)).toEqual({
-          pathname: "/question",
+          pathname: "/question/1",
           query: {},
-          card: dissoc(card, "id"),
+          card: null,
         });
       });
+
       it("should return question URL with string MBQL filter added", () => {
         const url = Card.questionUrlWithParameters(
           card,
           metadata,
           parameters,
           { "1": "bar" },
-          parameterMappings,
+          dashcard,
         );
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: assocIn(
+
+        const deserializedCard = {
+          ...assocIn(
             dissoc(card, "id"),
             ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field", 1, null], "bar"]],
+            ["=", ["field", 1, null], "bar"],
           ),
-        });
-      });
-      it("should return question URL even if only original_card_id is present", () => {
-        const cardWithOnlyOriginalCardId = {
-          ...card,
-          id: undefined,
           original_card_id: card.id,
+          parameters: [],
         };
 
-        const url = Card.questionUrlWithParameters(
-          cardWithOnlyOriginalCardId,
-          metadata,
-          parameters,
-          { "1": "bar" },
-          parameterMappings,
-        );
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
           query: {},
-          card: assocIn(
-            cardWithOnlyOriginalCardId,
-            ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field", 1, null], "bar"]],
-          ),
+          card: deserializedCard,
         });
       });
 
@@ -184,16 +222,20 @@ describe("metabase/meta/Card", () => {
           metadata,
           parameters,
           { "5": 123 },
-          parameterMappings,
+          dashcard,
         );
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
           query: {},
-          card: assocIn(
-            dissoc(card, "id"),
-            ["dataset_query", "query", "filter"],
-            ["and", ["=", ["field", 2, null], 123]],
-          ),
+          card: {
+            ...assocIn(
+              dissoc(card, "id"),
+              ["dataset_query", "query", "filter"],
+              ["=", ["field", 2, null], 123],
+            ),
+            original_card_id: card.id,
+            parameters: [],
+          },
         });
       });
 
@@ -203,53 +245,26 @@ describe("metabase/meta/Card", () => {
           metadata,
           parameters,
           { "3": "2017-05" },
-          parameterMappings,
+          dashcard,
         );
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
           query: {},
-          card: assocIn(
-            dissoc(card, "id"),
-            ["dataset_query", "query", "filter"],
-            [
-              "and",
+          card: {
+            ...assocIn(
+              dissoc(card, "id"),
+              ["dataset_query", "query", "filter"],
               ["=", ["field", 3, { "temporal-unit": "month" }], "2017-05-01"],
-            ],
-          ),
-        });
-      });
-      it("should return question URL with date MBQL filter on a FK added", () => {
-        const url = Card.questionUrlWithParameters(
-          card,
-          metadata,
-          parameters,
-          { "4": "2017-05" },
-          parameterMappings,
-        );
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: assocIn(
-            dissoc(card, "id"),
-            ["dataset_query", "query", "filter"],
-            [
-              "and",
-              [
-                "=",
-                ["field", 5, { "source-field": 4, "temporal-unit": "month" }],
-                "2017-05-01",
-              ],
-            ],
-          ),
+            ),
+            original_card_id: card.id,
+            parameters: [],
+          },
         });
       });
     });
   });
 });
-
-import { parse } from "url";
-import { deserializeCardFromUrl } from "metabase/lib/card";
 
 function parseUrl(url) {
   const parsed = parse(url, true);
