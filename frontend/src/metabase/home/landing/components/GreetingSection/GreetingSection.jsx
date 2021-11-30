@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
-import LandingSection from "../LandingSection";
+import Section from "../LandingSection";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
 const propTypes = {
@@ -12,7 +12,7 @@ const propTypes = {
 
 const GreetingSection = ({ greeting }) => {
   return (
-    <LandingSection>
+    <Section>
       <GreetingContent>
         <Tooltip
           tooltip={t`Don't tell anyone, but you're my favorite.`}
@@ -22,7 +22,7 @@ const GreetingSection = ({ greeting }) => {
         </Tooltip>
         <GreetingTitle>{greeting}</GreetingTitle>
       </GreetingContent>
-    </LandingSection>
+    </Section>
   );
 };
 

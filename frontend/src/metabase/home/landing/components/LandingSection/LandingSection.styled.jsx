@@ -2,12 +2,12 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const LandingSectionHeader = styled.div`
+export const SectionHeader = styled.div`
   display: flex;
   margin-bottom: 1rem;
 `;
 
-export const LandingSectionTitle = styled.div`
+export const SectionTitle = styled.div`
   color: ${color("text-medium")};
   font-size: 0.83em;
   font-weight: 900;
@@ -16,7 +16,7 @@ export const LandingSectionTitle = styled.div`
   letter-spacing: 0.06em;
 `;
 
-export const LandingSectionIcon = styled(Icon)`
+export const SectionIcon = styled(Icon)`
   display: block;
   color: ${color("text-medium")};
   cursor: pointer;
@@ -26,14 +26,14 @@ export const LandingSectionIcon = styled(Icon)`
   }
 `;
 
-export const LandingSection = styled.div`
+export const Section = styled.div`
   margin-top: 2.5rem;
 
-  ${LandingSectionIcon} {
+  ${SectionIcon} {
     visibility: collapse;
   }
 
-  &:hover ${LandingSectionIcon} {
+  &:hover ${SectionIcon} {
     visibility: visible;
   }
 `;

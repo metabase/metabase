@@ -1,6 +1,6 @@
 export {
-  LandingSection as default,
-  LandingSectionHeader,
-  LandingSectionTitle,
-  LandingSectionIcon,
+  Section as default,
+  SectionHeader,
+  SectionTitle,
+  SectionIcon,
 } from "./LandingSection.styled";
