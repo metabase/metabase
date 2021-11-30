@@ -1,3 +1,14 @@
+export type NumberFormatOptions = {
+  number_style?: string;
+  currency?: string;
+  currency_style?: string;
+  number_separators?: ".,";
+  decimals?: number;
+  scale?: number;
+  prefix?: string;
+  suffix?: string;
+};
+
 const DEFAULT_OPTIONS = {
   number_style: "decimal",
   currency: undefined,
@@ -9,7 +20,7 @@ const DEFAULT_OPTIONS = {
   suffix: "",
 };
 
-export const formatNumber = (number, options) => {
+export const formatNumber = (number: number, options: NumberFormatOptions) => {
   const {
     number_style,
     currency,
@@ -38,3 +49,6 @@ export const formatNumber = (number, options) => {
 
   return `${prefix}${formattedNumber}${suffix}`;
 };
+
+export const formatPercent = (percent: number) =>
+  `${(100 * percent).toFixed(2)} %`;

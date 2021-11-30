@@ -9,6 +9,7 @@ import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
 import ProgressBar from "../../components/ProgressBar";
+import Funnel from "../../components/FunnelChart";
 import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
 
@@ -25,6 +26,7 @@ const propTypes = {
     "timeseries/waterfall",
     "progress",
     "combo-chart",
+    "funnel",
   ]).isRequired,
   options: PropTypes.object.isRequired,
 };
@@ -53,6 +55,8 @@ const StaticChart = ({ type, options }) => {
       return <ProgressBar {...options} />;
     case "combo-chart":
       return <LineAreaBarChart {...options} />;
+    case "funnel":
+      return <Funnel {...options} />;
   }
 };
 

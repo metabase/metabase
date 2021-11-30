@@ -7,8 +7,9 @@ const calculateLegendItemHeight = (
   label: string,
   maxTextWidth: number,
   lineHeight: number,
+  fontSize: number,
 ) => {
-  const linesCount = Math.ceil(measureText(label) / maxTextWidth);
+  const linesCount = Math.ceil(measureText(label, fontSize) / maxTextWidth);
   return linesCount * lineHeight;
 };
 
@@ -16,6 +17,7 @@ const calculateLegendColumn = (
   columnSeries: Series[],
   maxTextWidth: number,
   lineHeight: number,
+  fontSize: number,
 ) => {
   let currentOffset = 0;
 
@@ -30,6 +32,7 @@ const calculateLegendColumn = (
       item.label,
       maxTextWidth,
       lineHeight,
+      fontSize,
     );
 
     return item;
@@ -45,6 +48,7 @@ export const calculateLegendItems = (
   series: Series[],
   width: number,
   lineHeight: number,
+  fontSize: number,
 ) => {
   const columnWidth = width / 2;
   const maxTextWidth = columnWidth - LEGEND_TEXT_MARGIN * 2;
@@ -55,11 +59,13 @@ export const calculateLegendItems = (
       leftSeries,
       maxTextWidth,
       lineHeight,
+      fontSize,
     );
     const rightColumn = calculateLegendColumn(
       rightSeries,
       maxTextWidth,
       lineHeight,
+      fontSize,
     );
 
     return {
@@ -86,6 +92,7 @@ export const calculateLegendItems = (
     singleColumnSeries,
     singleColumnTextWidth,
     lineHeight,
+    fontSize,
   );
 
   return {
