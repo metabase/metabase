@@ -30,6 +30,7 @@ import {
   calculateLegendItems,
   calculateBounds,
   calculateYDomains,
+  sortSeries,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -48,6 +49,7 @@ export const XYChart = ({
   settings,
   style,
 }: XYChartProps) => {
+  series = sortSeries(series, settings.x.type);
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,
