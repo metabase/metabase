@@ -1,8 +1,7 @@
 # Field types in Metabase
 
-Understanding what field types are and how they function in Metabase will help you become more familiar with your own data and get the most out of Metabase.
 
-While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information that about your data—that you can change in Metabase.
+While data types indicate to a database how it should interpret the values in a field, __field types__ or __semantic types__ describe the _meaning_ of a field. For example, a column's data type could be ```type/text``` but the semantic type may be __Email__. Field types are just one example of metadata—information about data—that Admins can change in Metabase.
 
 ## List of Metabase Field Types
 
@@ -78,7 +77,7 @@ Metabase recognizes the following field types:
 
 ### X-rays
 
-When you [X-ray](14-x-rays.md) a chart or table, Metabase considers both the data type and the field type and based on those categorizations displays insights that you may find useful.
+When you [X-ray](14-x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
