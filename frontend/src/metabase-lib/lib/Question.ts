@@ -1221,7 +1221,7 @@ export default class Question {
 
   getUrlWithParameters() {
     const question = this.query().isEditable()
-      ? this.convertParametersToFilters().markDirty()
+      ? this.convertParametersToFilters()
       : this.markDirty();
 
     let parameterValues;
@@ -1233,10 +1233,12 @@ export default class Question {
     }
 
     delete question._parameterValues;
-    delete this._parameterValues;
+
+    const originalQuestion = this.setParameters([]);
+    delete originalQuestion._parameterValues;
 
     return question.getUrl({
-      originalQuestion: this,
+      originalQuestion,
       query: parameterValues,
       includeDisplayIsLocked: true,
     });
