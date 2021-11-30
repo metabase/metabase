@@ -297,6 +297,20 @@
         y-col-settings
         (assoc :y (for-js y-col-settings y-col))))))
 
+(defn- ->ts-viz
+  "Include viz settings for the typed settings, initially in XY charts.
+  These are actually completely different than the previous settings format inasmuch:
+  1. The labels are in the settings
+  2. Colors are in the series
+  3. Many fewer things are optional
+
+  For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
+  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
+  (let [some shit (or some default some shit)]
+    {:colors (public-settings/application-colors)
+     :x {}
+     :y {}})
+
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
   to [[metabase.pulse.render.js-svg/timelineseries-bar]] and other similar functions for rendering charts with X and Y
@@ -453,6 +467,7 @@
         ;; this doesn't currently actually select the columns in row...
         ;; need to shove them in with the rowfns...
         row-iters     (map :rows multi-data)
+        ;; filter non nil rows...
         col-iters     (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-iters))
@@ -460,11 +475,11 @@
         names         (map :name cards)
         colors        (take (count multi-data) colors)
         types         (map :display cards)
-        settings      (->js-viz x-col y-col viz-settings)
+        settings      (->ts-viz x-col y-col viz-settings)
         series        (join-series names colors types row-iters)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
-                        (js-svg/combo-chart series labels settings))]
+                        (js-svg/combo-chart series settings))]
   {:attachments
    (when image-bundle
      (image-bundle/image-bundle->attachment image-bundle))
@@ -480,13 +495,14 @@
   (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
         ;; Special y-axis-rowfn because we have more than 1 y-axis
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
+        rows             (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
         x-rows           (map x-axis-rowfn rows)
         y-rows           (map y-axis-rowfn rows)
 
         ;; This amounts to a transposition
         series-rows      (apply mapv vector y-rows)
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        settings         (->js-viz x-col y-cols viz-settings)
+        settings         (->ts-viz x-col y-cols viz-settings)
 
         metrics          (:graph.metrics viz-settings)
         get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
@@ -498,7 +514,7 @@
         series           (join-series names colors types series-rows)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
-                           (js-svg/combo-chart series labels settings))]
+                           (js-svg/combo-chart series settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))

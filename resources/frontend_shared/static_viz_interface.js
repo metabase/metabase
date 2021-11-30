@@ -47,13 +47,12 @@ function timeseries_bar(data, labels, settings) {
   });
 }
 
-function combo_chart(series, labels, settings) {
+function combo_chart(series, settings, colors) {
   // Thinking of combo as similar to multiple, although they're different in BE
   return StaticViz.RenderChart("combo-chart", {
     series: JSON.parse(series),
-    labels: toJSMap(labels),
-    accessors: date_accessors,
     settings: JSON.parse(settings),
+    colors: JSON.parse(colors),
   });
 }
 
