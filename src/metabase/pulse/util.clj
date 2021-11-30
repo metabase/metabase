@@ -48,4 +48,4 @@
         card         (Card :id card-id, :archived false)
         multi-cards  (:multi_cards (hydrate card :multi_cards))]
     (for [multi-card multi-cards]
-      (execute-card {:creator_id (:creator_id card)} (:card_id multi-card)))))
+      (execute-card {:creator_id (:creator_id card)} (:id multi-card)))))

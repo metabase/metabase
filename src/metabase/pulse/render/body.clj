@@ -507,10 +507,11 @@
         cards         (cons card (map :card multi-res))
         multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
-        ;;;;;;;;;;;;;;;
         row-seqs      (map :rows multi-data)
-        bob           (println row-seqs)
-        bob           (println rowfns)
+        row-seqs      (for [[row-seq rowfnpair] (map vector row-seqs rowfns)]
+                        (let [[x-rowfn y-rowfn] rowfnpair]
+                          (map (juxt x-rowfn y-rowfn)
+                               (common/non-nil-rows x-rowfn y-rowfn row-seq))))
         col-seqs      (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
