@@ -6,6 +6,7 @@ class EditBar extends Component {
   static propTypes = {
     title: PropTypes.string.isRequired,
     subtitle: PropTypes.string,
+    center: PropTypes.node,
     buttons: PropTypes.oneOfType([PropTypes.element, PropTypes.array])
       .isRequired,
     admin: PropTypes.bool,
@@ -16,18 +17,26 @@ class EditBar extends Component {
   };
 
   render() {
-    const { admin, buttons, subtitle, title } = this.props;
+    const { admin, buttons, subtitle, title, center } = this.props;
     return (
       <div
-        className={cx("EditHeader wrapper py1 flex align-center", {
-          "EditHeader--admin": admin,
-        })}
-      >
-        <span className="EditHeader-title">{title}</span>
-        {subtitle && (
-          <span className="EditHeader-subtitle mx1">{subtitle}</span>
+        className={cx(
+          "EditHeader wrapper py1 flex align-center justify-between",
+          {
+            "EditHeader--admin": admin,
+          },
         )}
-        <span className="flex-align-right flex">{buttons}</span>
+      >
+        <div>
+          <span className="EditHeader-title">{title}</span>
+          {subtitle && (
+            <span className="EditHeader-subtitle mx1">{subtitle}</span>
+          )}
+        </div>
+        {center && <div>{center}</div>}
+        <div>
+          <span className="flex">{buttons}</span>
+        </div>
       </div>
     );
   }
