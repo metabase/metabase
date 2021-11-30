@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import LandingLayout from "../../components/LandingLayout";
+import LandingPage from "../../components/LandingPage";
 import GreetingSection from "../../containers/GreetingSection";
 import OurDataSection from "../../containers/OurDataSection";
 
@@ -9,4 +9,4 @@ const mapStateToProps = state => ({
   showOurData: true,
 });
 
-export default connect(mapStateToProps)(LandingLayout);
+export default connect(mapStateToProps)(LandingPage);

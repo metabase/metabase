@@ -84,7 +84,7 @@ import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetail
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import LandingApp from "metabase/home/landing/containers/LandingApp";
+import LandingPage from "metabase/home/landing/containers/LandingPage";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -186,7 +186,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={LandingApp}
+          component={LandingPage}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {

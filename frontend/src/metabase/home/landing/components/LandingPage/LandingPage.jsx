@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { LandingLayoutRoot } from "./LandingLayout.styled";
+import { LandingPageRoot } from "./LandingPage.styled";
 
 const propTypes = {
   GreetingSection: PropTypes.element,
@@ -8,15 +8,15 @@ const propTypes = {
   showOurData: PropTypes.bool,
 };
 
-const LandingLayout = ({ GreetingSection, OurDataSection, showOurData }) => {
+const LandingPage = ({ GreetingSection, OurDataSection, showOurData }) => {
   return (
-    <LandingLayoutRoot>
+    <LandingPageRoot>
       <GreetingSection />
       {showOurData && <OurDataSection />}
-    </LandingLayoutRoot>
+    </LandingPageRoot>
   );
 };
 
-LandingLayout.propTypes = propTypes;
+LandingPage.propTypes = propTypes;
 
-export default LandingLayout;
+export default LandingPage;
