@@ -267,6 +267,19 @@
    "dddd, MMMM D, YYYY" {:week "MMMM D, YYYY"
                          :month "MMMM, YYYY"}})
 
+(defn- update-date-style
+  [date-style unit]
+  (let [unit (or unit :default)]
+    (or (get-in override-date-styles [date-style unit])
+        (get-in default-date-styles [unit])
+        date-style)))
+
+(defn- backfill-currency
+  [{:keys [number_style currency] :as settings}]
+  (cond-> settings
+    (and (= number_style "currency") (nil? currency))
+    (assoc :currency "USD")))
+
 (defn- ->js-viz
   "Include viz settings for js.
 
@@ -276,15 +289,6 @@
   [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
   (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
                               (get column-settings {::mb.viz/column-name (:name col)})))
-          (update-date-style [date-style unit]
-            (let [unit (or unit :default)]
-              (or (get-in override-date-styles [date-style unit])
-                  (get-in default-date-styles [unit])
-                  date-style)))
-          (backfill-currency [{:keys [number_style currency] :as settings}]
-            (cond-> settings
-              (and (= number_style "currency") (nil? currency))
-              (assoc :currency "USD")))
           (for-js [col-settings col]
             (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
                 (backfill-currency)
@@ -301,15 +305,29 @@
   "Include viz settings for the typed settings, initially in XY charts.
   These are actually completely different than the previous settings format inasmuch:
   1. The labels are in the settings
-  2. Colors are in the series
+  2. Colors are in the series, only the whitelabel colors are here
   3. Many fewer things are optional
+  4. Must explicitly have yAxisPosition in all the series
 
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
-  [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
-  (let [some shit (or some default some shit)]
+  [x-col y-col labels {::mb.viz/keys [column-settings] :as _viz-settings}]
+  (let [x-format (if (isa? (:effective_type x-col) :type/Temporal)
+                   {:date_style some shit}
+                   {:number_style some shit
+                    :decimals some shit
+                    :currency some shit
+                    :currency_style some shit})
+        y-format {:number_style some shit
+                  :decimals some shit
+                  :currency some shit
+                  :currency_style some shit}]
     {:colors (public-settings/application-colors)
-     :x {}
-     :y {}})
+     :x      {:type some shit
+              :tick_display some shit
+              :format x-format}
+     :y      {:type some shit shit
+              :format y-format }
+     :labels labels}))
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
@@ -360,6 +378,14 @@
   ["#509EE3" "#88BF4D" "#A989C5" "#EF8C8C" "#F9D45C" "#F2A86F" "#98D9D9" "#7172AD" "#6450e3" "#4dbf5e"
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
+
+(defn- fill-maybe-colors
+  "You have a sequence of colors, only some of which actually are colors and the rest are nil.
+  Fills those nil bits in with the default colors."
+  [maybe-colors]
+  (let [pairs (map vector maybe-colors colors)]
+    (map #(first filter some? %) pairs)))
+
 
 (defn format-percentage
   "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
@@ -467,7 +493,6 @@
         ;; this doesn't currently actually select the columns in row...
         ;; need to shove them in with the rowfns...
         row-iters     (map :rows multi-data)
-        ;; filter non nil rows...
         col-iters     (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-iters))
@@ -475,7 +500,7 @@
         names         (map :name cards)
         colors        (take (count multi-data) colors)
         types         (map :display cards)
-        settings      (->ts-viz x-col y-col viz-settings)
+        settings      (->ts-viz x-col y-col labels viz-settings)
         series        (join-series names colors types row-iters)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
@@ -502,15 +527,18 @@
         ;; This amounts to a transposition
         series-rows      (apply mapv vector y-rows)
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        settings         (->ts-viz x-col y-cols viz-settings)
 
         metrics          (:graph.metrics viz-settings)
         get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
         names            (map (partial get-in-series :title) metrics)
-        colors           (map (partial get-in-series :color) metrics)
-        types            (map (partial get-in-series :display) metrics)
+        colors           (fill-maybe-colors
+                           (map (partial get-in-series :color) metrics))
+        types            (replace {nil "line"}
+                                  (map (partial get-in-series :display) metrics))
 
         labels           (combo-label-info x-col y-cols viz-settings)
+        settings         (->ts-viz x-col y-cols labels viz-settings)
+
         series           (join-series names colors types series-rows)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
