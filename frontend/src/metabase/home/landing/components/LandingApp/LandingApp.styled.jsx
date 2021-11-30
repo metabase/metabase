@@ -4,7 +4,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const LandingPageRoot = styled.div`
+export const LandingRoot = styled.div`
   padding: 0 1rem;
 
   ${breakpointMinSmall} {
