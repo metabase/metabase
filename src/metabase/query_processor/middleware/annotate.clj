@@ -71,9 +71,7 @@
                   :first-row        (first rows)
                   :type             error-type/qp}))))))
 
-(defmethod column-info :native
-  [_ {:keys [cols rows]}]
-  (check-driver-native-columns cols rows)
+(defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
     (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
@@ -87,6 +85,11 @@
               (when-not (str/blank? col-name)
                 {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
               driver-col-metadata))))))
+
+(defmethod column-info :native
+  [_query {:keys [cols rows] :as results}]
+  (check-driver-native-columns cols rows)
+  (annotate-native-cols cols))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -491,17 +494,36 @@
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols]
-  (let [field-id->metadata (u/key-by :id source-metadata)]
+  (let [ref->metadata (u/key-by (comp u/field-ref->key :field_ref) source-metadata)]
     (for [col cols]
-      (if-let [source-metadata-for-field (-> col :id field-id->metadata)]
+      (if-let [source-metadata-for-field (-> col :field_ref u/field-ref->key ref->metadata)]
         (merge-source-metadata-col source-metadata-for-field col)
+        col))))
+
+(def preserved-keys
+  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
+  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
+  can be merged on top."
+  [:description :display_name :semantic_type])
+
+(defn- combine-metadata
+  "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
+  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
+  the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
+  ensure survives."
+  [computed from-db]
+  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
+    (for [{:keys [field_ref] :as col} computed]
+      (if-let [existing (get by-key (u/field-ref->key field_ref))]
+        (merge col (select-keys existing preserved-keys))
         col))))
 
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
-  (if native-source-query
-    (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
-    (mbql-cols source-query results)))
+  (let [columns       (if native-source-query
+                        (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
+                        (mbql-cols source-query results))]
+    (combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -586,10 +608,8 @@
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
   [query {cols-returned-by-driver :cols, :as result}]
-  ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
-  ;; the FE uses it as a key for stuff like column settings
   (deduplicate-cols-names
-   (merge-cols-returned-by-driver (map (partial into {}) (column-info query result)) cols-returned-by-driver)))
+   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
 
 (defn base-type-inferer
   "Native queries don't have the type information from the original `Field` objects used in the query.
@@ -612,20 +632,29 @@
                                                           (assoc col :base_type base-type)))
                             base-types)]
        (rf (cond-> result
-             (map? result) (assoc-in [:data :cols] (merged-column-info
-                                                    query
-                                                    (assoc metadata :rows truncated-rows)))))))))
+             (map? result)
+             (assoc-in [:data :cols]
+                       (merged-column-info
+                        query
+                        (assoc metadata :rows truncated-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
-  (fn [{query-type :type, :as query} rff context]
+  (fn [{query-type :type, :as query
+        {:keys [:metadata/dataset-metadata]} :middleware} rff context]
     (qp
      query
      (fn [metadata]
        (if (= query-type :query)
-         (rff (assoc metadata :cols (merged-column-info query metadata)))
+         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+                (seq dataset-metadata)
+                (update :cols combine-metadata dataset-metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
-         (add-column-info-xform query metadata (rff metadata))))
+         (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+                          ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+                          (seq dataset-metadata)
+                          (update :cols combine-metadata dataset-metadata))]
+           (add-column-info-xform query metadata (rff metadata)))))
      context)))

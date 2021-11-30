@@ -719,11 +719,16 @@
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id] :id card-id))
+        card  (api/read-check
+               (db/select-one [Card :id :name :dataset_query :database_id
+                                    :cache_ttl :collection_id :dataset :result_metadata]
+                              :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
+                                         (when (and (:dataset card) (:result_metadata card))
+                                           {:metadata/dataset-metadata (:result_metadata card)})
                                          middleware))))
         info  {:executed-by  api/*current-user-id*
                :context      context
