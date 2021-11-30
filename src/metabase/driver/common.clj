@@ -7,6 +7,7 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -125,6 +126,20 @@
    :port               default-port-details
    :ssl                default-ssl-details
    :user               default-user-details})
+
+(def cloud-ip-address-info
+  {:name   "cloud-ip-address-info"
+   :type   :info
+   :getter (fn []
+             (when-let [ips (public-settings/cloud-gateway-ips)]
+               (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
+                    "\n"
+                    (clojure.string/join " - " (public-settings/cloud-gateway-ips)))))})
+
+(def default-connection-info-fields
+  "Defaults options for informational text that can be included in a database connection form. These keys can be added
+  to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
+  {:cloud-ip-address-info cloud-ip-address-info})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

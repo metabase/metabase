@@ -1,6 +1,7 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -140,9 +141,21 @@
   {:added "0.42.0"}
   [conn-props]
   (reduce (fn [acc conn-prop]
-            (if (= "secret" (:type conn-prop))
+            (case (keyword (:type conn-prop))
+              :secret
               (concat acc (expand-secret-conn-prop conn-prop))
-              (concat acc [conn-prop]))) [] conn-props))
+
+              :info
+              (let [getter  (:getter conn-prop)
+                    content (or (:placeholder conn-prop)
+                                (getter))]
+                (if-not (str/blank? content)
+                  (concat acc [(assoc conn-prop :placeholder content)])
+                  acc))
+
+              (concat acc [conn-prop])))
+          []
+          conn-props))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
