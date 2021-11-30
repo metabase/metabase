@@ -387,11 +387,12 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
-(defn- fill-maybe-colors
-  "You have a sequence of colors, only some of which actually are colors and the rest are nil.
-  Fills those nil bits in with the default colors."
-  [maybe-colors]
-  (let [pairs (map vector maybe-colors colors)]
+(defn- fill-vector-maybe
+  "You have a sequence of colors or names or whatever,
+  only some of which actually are colors or names and the rest are nil.
+  Fills those nil bits in with the default given seq"
+  [maybe-vector defaults]
+  (let [pairs (map vector maybe-vector defaults)]
     (map #(first (filter some? %)) pairs)))
 
 
@@ -482,13 +483,13 @@
              :src   (:image-src image-bundle)}]]}))
 
 (defn- join-series
-  [names colors types row-iters]
-  (let [joined (map vector names colors types row-iters)]
+  [names colors types row-seqs]
+  (let [joined (map vector names colors types row-seqs)]
     (vec (for [[card-name card-color card-type rows] joined]
            {:name  card-name
             :color card-color
             :type  card-type
-            :rows  rows}))))
+            :data  rows}))))
 
 
 (s/defmethod render :multiple
@@ -500,16 +501,16 @@
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
         ;; this doesn't currently actually select the columns in row...
         ;; need to shove them in with the rowfns...
-        row-iters     (map :rows multi-data)
-        col-iters     (map :cols multi-data)
+        row-seqs     (map :rows multi-data)
+        col-seqs     (map :cols multi-data)
         first-rowfns  (first rowfns)
-        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-iters))
+        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
         labels        (x-and-y-axis-label-info x-col y-col viz-settings)
         names         (map :name cards)
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        series        (join-series names colors types row-iters)
+        series        (join-series names colors types row-seqs)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
@@ -532,15 +533,24 @@
         x-rows           (map x-axis-rowfn rows)
         y-rows           (map y-axis-rowfn rows)
 
-        ;; This amounts to a transposition
-        series-rows      (apply mapv vector y-rows)
+        ;; This amounts to a transposition, and then sticking the x-rows back on again
+        series-rowseqs   (apply mapv vector y-rows)
+        series-rowseqs   (for [series-rowseq series-rowseqs]
+                           (map vector x-rows series-rowseq))
+        fuckery          (println "FWEKFJWELFKEWJFKLEWJFWLEKF")
+        fuckery          (println series-rowseqs)
+        fuckery          (println "FWEKFJWELFKEWJFKLEWJFWLEKF")
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
 
         metrics          (:graph.metrics viz-settings)
+        metric-cols      (filterv #((set metrics) (:name %)) cols)
         get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
-        names            (map (partial get-in-series :title) metrics)
-        colors           (fill-maybe-colors
-                           (map (partial get-in-series :color) metrics))
+        names            (fill-vector-maybe
+                           (map (partial get-in-series :title) metrics)
+                           (map :display_name metric-cols))
+        colors           (fill-vector-maybe
+                           (map (partial get-in-series :color) metrics)
+                           colors)
         types            (replace {nil "line"}
                                   (map (partial get-in-series :display) metrics))
 
@@ -548,7 +558,7 @@
         settings         (->ts-viz x-col y-cols labels viz-settings)
         bob              (println settings)
 
-        series           (join-series names colors types series-rows)
+        series           (join-series names colors types series-rowseqs)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
                            (js-svg/combo-chart series settings))]
