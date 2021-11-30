@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, enterCustomColumnDetails } from "__support__/e2e/cypress";
 
 const PG_DB_NAME = "QA Postgres12";
 
@@ -15,9 +15,9 @@ describe("postgres > question > custom columns", () => {
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
     cy.icon("add_data").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("Percentile([Subtotal], 0.1)");
+    enterCustomColumnDetails({
+      formula: "Percentile([Subtotal], 0.1)",
+    });
     cy.findByPlaceholderText("Something nice and descriptive")
       .as("description")
       .click();
