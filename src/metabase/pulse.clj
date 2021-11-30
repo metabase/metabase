@@ -13,9 +13,9 @@
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
-            [metabase.pulse.util :as pu]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor :as qp]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
@@ -24,8 +24,7 @@
             [metabase.util.ui-logic :as ui]
             [metabase.util.urls :as urls]
             [schema.core :as s]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]])
+            [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 
 
