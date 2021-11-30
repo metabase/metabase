@@ -18,8 +18,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ui-logic :as ui-logic]
-            [schema.core :as s]
-            [toucan.hydrate :refer [hydrate]])
+            [schema.core :as s])
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private error-rendered-info
@@ -434,6 +433,16 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- join-series
+  [names colors types row-iters]
+  (let [joined (map vector names colors types row-iters)]
+    (vec (for [[card-name card-color card-type rows] joined]
+           {:name  card-name
+            :color card-color
+            :type  card-type
+            :rows  rows}))))
+
+
 (s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [viz-settings] :as data}]
   (let [multi-res     (pu/execute-multi-card card)
@@ -442,6 +451,7 @@
         multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
         ;; this doesn't currently actually select the columns in row...
+        ;; need to shove them in with the rowfns...
         row-iters     (map :rows multi-data)
         col-iters     (map :cols multi-data)
         first-rowfns  (first rowfns)
@@ -451,13 +461,7 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->js-viz x-col y-col viz-settings)
-        series        (map vector names colors types row-iters)
-        ;;; this shouldnt be for...
-        series        (vec (for [[card-name card-color card-type rows] series]
-                             {:name  card-name
-                              :color card-color
-                              :type  card-type
-                              :rows  rows}))
+        series        (join-series names colors types row-iters)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series labels settings))]
@@ -476,16 +480,25 @@
   (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
         ;; Special y-axis-rowfn because we have more than 1 y-axis
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
-        rows             (mapv (juxt x-axis-rowfn y-axis-rowfn)
-                              (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
+        x-rows           (map x-axis-rowfn rows)
+        y-rows           (map y-axis-rowfn rows)
+
+        ;; This amounts to a transposition
+        series-rows      (apply mapv vector y-rows)
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        settings         (->js-viz x-col y-cols viz-settings)
+
+        metrics          (:graph.metrics viz-settings)
+        get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
+        names            (map (partial get-in-series :title) metrics)
+        colors           (map (partial get-in-series :color) metrics)
+        types            (map (partial get-in-series :display) metrics)
+
         labels           (combo-label-info x-col y-cols viz-settings)
-        series           ["lol"]
+        series           (join-series names colors types series-rows)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
-                           (js-svg/combo-chart series labels
-                                                        (->js-viz x-col y-cols viz-settings)
-                                                        y-cols))]
+                           (js-svg/combo-chart series labels settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
