@@ -1,11 +1,11 @@
 import { createEntity } from "metabase/lib/entities";
 import { AutoApi } from "metabase/services";
 
-const DbCandidates = createEntity({
-  name: "dbCandidates",
+const DatabaseCandidates = createEntity({
+  name: "databaseCandidates",
   api: {
     list: AutoApi.db_candidates,
   },
 });
 
-export default DbCandidates;
+export default DatabaseCandidates;
