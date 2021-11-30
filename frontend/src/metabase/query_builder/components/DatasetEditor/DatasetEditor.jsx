@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
@@ -15,7 +16,12 @@ import DataReference from "metabase/query_builder/components/dataref/DataReferen
 import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
 
+import { setDatasetEditorTab } from "metabase/query_builder/actions";
+import { getDatasetEditorTab } from "metabase/query_builder/selectors";
+
+import EditorTabs from "./EditorTabs";
 import ResizableNotebook from "./ResizableNotebook";
+
 import {
   Root,
   MainContainer,
@@ -25,8 +31,10 @@ import {
 
 const propTypes = {
   question: PropTypes.object.isRequired,
+  datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
+  setDatasetEditorTab: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
@@ -41,6 +49,14 @@ const propTypes = {
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
+
+function mapStateToProps(state) {
+  return {
+    datasetEditorTab: getDatasetEditorTab(state),
+  };
+}
+
+const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(props) {
   const {
@@ -70,11 +86,17 @@ function getSidebar(props) {
 function DatasetEditor(props) {
   const {
     question: dataset,
+    datasetEditorTab,
     height,
     setQueryBuilderMode,
+    setDatasetEditorTab,
     onCancelDatasetChanges,
     handleResize,
   } = props;
+
+  const onChangeEditorTab = tab => {
+    setDatasetEditorTab(tab);
+  };
 
   const onCancel = () => {
     onCancelDatasetChanges();
@@ -92,6 +114,16 @@ function DatasetEditor(props) {
     <React.Fragment>
       <EditBar
         title={t`You're editing ${dataset.displayName()}`}
+        center={
+          <EditorTabs
+            currentTab={datasetEditorTab}
+            onChange={onChangeEditorTab}
+            options={[
+              { id: "query", name: t`Query`, icon: "notebook" },
+              { id: "metadata", name: t`Metadata`, icon: "label" },
+            ]}
+          />
+        }
         buttons={[
           <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
           <ActionButton
@@ -144,4 +176,4 @@ function DatasetEditor(props) {
 
 DatasetEditor.propTypes = propTypes;
 
-export default DatasetEditor;
+export default connect(mapStateToProps, mapDispatchToProps)(DatasetEditor);
