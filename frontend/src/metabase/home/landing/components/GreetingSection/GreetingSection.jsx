@@ -7,7 +7,7 @@ import Section from "../LandingSection";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
 const propTypes = {
-  greeting: PropTypes.string.isRequired,
+  greeting: PropTypes.string,
 };
 
 const GreetingSection = ({ greeting }) => {
@@ -20,7 +20,7 @@ const GreetingSection = ({ greeting }) => {
         >
           <MetabotLogo />
         </Tooltip>
-        <GreetingTitle>{greeting}</GreetingTitle>
+        {greeting && <GreetingTitle>{greeting}</GreetingTitle>}
       </GreetingContent>
     </Section>
   );

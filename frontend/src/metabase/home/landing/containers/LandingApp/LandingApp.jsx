@@ -1,15 +1,20 @@
 import { connect } from "react-redux";
+import _ from "underscore";
+import Databases from "metabase/entities/databases";
+import DatabaseCandidates from "metabase/entities/database-candidates";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import LandingApp from "../../components/LandingApp";
-import GreetingSection from "../../containers/GreetingSection";
-import OurDataSection from "../../containers/OurDataSection";
-import XraySection from "../../containers/XraySection";
+import { getGreeting } from "../../selectors";
 
-const mapStateToProps = () => ({
-  GreetingSection: GreetingSection,
-  XraySection: XraySection,
-  OurDataSection: OurDataSection,
+const mapStateToProps = state => ({
+  greeting: getGreeting(state),
+  isAdmin: getUserIsAdmin(state),
   showXrays: true,
   showOurData: true,
 });
 
-export default connect(mapStateToProps)(LandingApp);
+export default _.compose(
+  Databases.loadList(),
+  DatabaseCandidates.loadList({ query: { id: 1 } }),
+  connect(mapStateToProps),
+)(LandingApp);

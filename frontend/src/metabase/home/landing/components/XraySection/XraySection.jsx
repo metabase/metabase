@@ -11,6 +11,7 @@ import Section, {
 import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
+  databaseCandidates: PropTypes.array.isRequired,
   isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
