@@ -10,6 +10,11 @@ import EditBar from "metabase/components/EditBar";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
+import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
+import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
+
 import ResizableNotebook from "./ResizableNotebook";
 import {
   Root,
@@ -25,9 +30,42 @@ const propTypes = {
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
+
+  // Native editor sidebars
+  isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
+  isShowingDataReference: PropTypes.bool.isRequired,
+  isShowingSnippetSidebar: PropTypes.bool.isRequired,
+  toggleTemplateTagsEditor: PropTypes.func.isRequired,
+  toggleDataReference: PropTypes.func.isRequired,
+  toggleSnippetSidebar: PropTypes.func.isRequired,
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
+
+function getSidebar(props) {
+  const {
+    question: dataset,
+    isShowingTemplateTagsEditor,
+    isShowingDataReference,
+    isShowingSnippetSidebar,
+    toggleTemplateTagsEditor,
+    toggleDataReference,
+    toggleSnippetSidebar,
+  } = props;
+  if (!dataset.isNative()) {
+    return null;
+  }
+  if (isShowingTemplateTagsEditor) {
+    return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
+  }
+  if (isShowingDataReference) {
+    return <DataReference {...props} onClose={toggleDataReference} />;
+  }
+  if (isShowingSnippetSidebar) {
+    return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;
+  }
+  return null;
+}
 
 function DatasetEditor(props) {
   const {
@@ -47,6 +85,8 @@ function DatasetEditor(props) {
     await props.onSave(dataset.card());
     setQueryBuilderMode("view");
   };
+
+  const sidebar = getSidebar(props);
 
   return (
     <React.Fragment>
@@ -83,7 +123,7 @@ function DatasetEditor(props) {
               />
             )}
           </QueryEditorContainer>
-          <TableContainer>
+          <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className="flex-full" enabled={false}>
               <QueryVisualization
                 {...props}
@@ -94,6 +134,9 @@ function DatasetEditor(props) {
             </DebouncedFrame>
           </TableContainer>
         </MainContainer>
+        <ViewSidebar side="right" isOpen={!!sidebar}>
+          {sidebar}
+        </ViewSidebar>
       </Root>
     </React.Fragment>
   );
