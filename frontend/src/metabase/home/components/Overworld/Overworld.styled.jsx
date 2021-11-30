@@ -22,7 +22,7 @@ export const OverworldRoot = styled.div`
 export const DatabaseGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
 `;
 
 export const DatabaseIcon = styled(Icon)`
@@ -30,18 +30,17 @@ export const DatabaseIcon = styled(Icon)`
   color: ${props => color(props.isActive ? "database" : "bg-medium")};
   width: 2rem;
   height: 2rem;
-  margin-bottom: 4.5rem;
+  margin-bottom: 3rem;
 `;
 
 export const DatabaseTitle = styled.span`
   display: block;
   color: ${props => color(props.isActive ? "text-dark" : "brand")};
-  font-size: 1.25rem;
+  font-size: 1.17em;
   font-weight: 700;
-  line-height: 1.5rem;
 `;
 
-export const DatabaseCard = styled(Link)`
+export const DatabaseCardRoot = styled(Link)`
   display: block;
   padding: 1.875rem;
   border: 0.125rem solid ${color("bg-medium")};
@@ -73,5 +72,15 @@ export const SectionIcon = styled(Icon)`
 
   &:hover {
     color: ${color("brand")};
+  }
+`;
+
+export const Section = styled.div`
+  ${SectionIcon} {
+    visibility: collapse;
+  }
+
+  &:hover ${SectionIcon} {
+    visibility: visible;
   }
 `;

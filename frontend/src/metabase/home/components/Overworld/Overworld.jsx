@@ -3,11 +3,12 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import {
-  DatabaseCard,
+  DatabaseCardRoot,
   DatabaseGrid,
   DatabaseIcon,
   DatabaseTitle,
   OverworldRoot,
+  Section,
   SectionHeader,
   SectionIcon,
   SectionTitle,
@@ -27,27 +28,27 @@ Overworld.propTypes = {
 
 const DatabaseSection = ({ databases, onRemoveSection }) => {
   return (
-    <div>
+    <Section>
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
         <SectionIcon name="close" onClick={onRemoveSection} />
       </SectionHeader>
       <DatabaseGrid>
         {databases.map(database => (
-          <DatabaseItem
+          <DatabaseCard
             key={database.id}
             title={database.name}
             link={Urls.browseDatabase(database)}
             isActive={true}
           />
         ))}
-        <DatabaseItem
+        <DatabaseCard
           title={t`Add a database`}
           link={Urls.newDatabase()}
           isActive={false}
         />
       </DatabaseGrid>
-    </div>
+    </Section>
   );
 };
 
@@ -56,16 +57,16 @@ DatabaseSection.propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-const DatabaseItem = ({ title, link, isActive }) => {
+const DatabaseCard = ({ title, link, isActive }) => {
   return (
-    <DatabaseCard to={link} isActive={isActive}>
+    <DatabaseCardRoot to={link} isActive={isActive}>
       <DatabaseIcon name="database" isActive={isActive} />
       <DatabaseTitle isActive={isActive}>{title}</DatabaseTitle>
-    </DatabaseCard>
+    </DatabaseCardRoot>
   );
 };
 
-DatabaseItem.propTypes = {
+DatabaseCard.propTypes = {
   title: PropTypes.string.isRequired,
   link: PropTypes.string.isRequired,
   isActive: PropTypes.bool,
