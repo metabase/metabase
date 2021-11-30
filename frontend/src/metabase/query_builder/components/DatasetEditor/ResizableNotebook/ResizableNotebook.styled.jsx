@@ -3,10 +3,6 @@ import styled from "styled-components";
 import { color, darken } from "metabase/lib/colors";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
-export const Root = styled.div`
-  overflow-y: scroll;
-`;
-
 export const NotebookContainer = styled.div`
   width: 100%;
   overflow-y: scroll;
