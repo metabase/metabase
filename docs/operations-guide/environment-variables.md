@@ -189,7 +189,11 @@ Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
-Example: `jdbc:postgresql://db.example.com:port/mydb?user=dbuser&password=dbpassword&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
+Example:
+
+```
+jdbc:postgresql://db.example.com:port/mydb?user=dbuser&password=dbpassword&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory`
+```
 
 ### `MB_DB_DBNAME`
 
