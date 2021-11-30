@@ -241,6 +241,13 @@
     "xlsx": "^0.17.0",
     "yaml-lint": "^1.2.4"
   },
+  "resolutions": {
+    "ansi-regex": "5.0.1",
+    "nth-check": "2.0.1",
+    "set-value": "4.0.1",
+    "immer": "9.0.6",
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+  },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
     "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
