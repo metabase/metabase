@@ -13,23 +13,23 @@ import {
   DatabaseTitle,
   GreetingContent,
   GreetingTitle,
-  OverworldRoot,
+  LandingRoot,
   Section,
   SectionHeader,
   SectionIcon,
   SectionTitle,
-} from "./Overworld.styled";
+} from "./Landing.styled";
 
-const Overworld = ({ greeting, databases }) => {
+const Landing = ({ greeting, databases }) => {
   return (
-    <OverworldRoot>
+    <LandingRoot>
       <GreetingSection greeting={greeting} />
       <DatabaseSection databases={databases} />
-    </OverworldRoot>
+    </LandingRoot>
   );
 };
 
-Overworld.propTypes = {
+Landing.propTypes = {
   greeting: PropTypes.string.isRequired,
   databases: PropTypes.array.isRequired,
 };
@@ -123,4 +123,4 @@ DatabaseSectionModal.propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-export default Overworld;
+export default Landing;
