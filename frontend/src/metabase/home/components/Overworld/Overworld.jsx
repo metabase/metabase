@@ -38,8 +38,14 @@ const DatabaseSection = ({ databases, onRemoveSection }) => {
             key={database.id}
             title={database.name}
             link={Urls.browseDatabase(database)}
+            isActive={true}
           />
         ))}
+        <DatabaseItem
+          title={t`Add a database`}
+          link={Urls.newDatabase()}
+          isActive={false}
+        />
       </DatabaseGrid>
     </div>
   );
@@ -50,11 +56,11 @@ DatabaseSection.propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-const DatabaseItem = ({ title, link }) => {
+const DatabaseItem = ({ title, link, isActive }) => {
   return (
-    <DatabaseCard to={link}>
-      <DatabaseIcon name="database" />
-      <DatabaseTitle>{title}</DatabaseTitle>
+    <DatabaseCard to={link} isActive={isActive}>
+      <DatabaseIcon name="database" isActive={isActive} />
+      <DatabaseTitle isActive={isActive}>{title}</DatabaseTitle>
     </DatabaseCard>
   );
 };
@@ -62,6 +68,7 @@ const DatabaseItem = ({ title, link }) => {
 DatabaseItem.propTypes = {
   title: PropTypes.string.isRequired,
   link: PropTypes.string.isRequired,
+  isActive: PropTypes.bool,
 };
 
 export default Overworld;

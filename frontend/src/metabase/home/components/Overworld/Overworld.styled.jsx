@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -27,7 +27,7 @@ export const DatabaseGrid = styled.div`
 
 export const DatabaseIcon = styled(Icon)`
   display: block;
-  color: ${color("database")};
+  color: ${props => color(props.isActive ? "database" : "bg-medium")};
   width: 2rem;
   height: 2rem;
   margin-bottom: 4.5rem;
@@ -35,7 +35,7 @@ export const DatabaseIcon = styled(Icon)`
 
 export const DatabaseTitle = styled.span`
   display: block;
-  color: ${color("text-dark")};
+  color: ${props => color(props.isActive ? "text-dark" : "brand")};
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
@@ -43,9 +43,10 @@ export const DatabaseTitle = styled.span`
 
 export const DatabaseCard = styled(Link)`
   display: block;
-  padding: 2rem;
+  padding: 1.875rem;
+  border: 0.125rem solid ${color("bg-medium")};
   border-radius: 0.25rem;
-  background-color: ${color("bg-medium")};
+  background-color: ${props => (props.isActive ? color("bg-medium") : "")};
 
   &:hover ${DatabaseTitle} {
     color: ${color("brand")};
