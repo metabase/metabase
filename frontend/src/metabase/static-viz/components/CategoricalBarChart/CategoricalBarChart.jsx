@@ -61,9 +61,14 @@ const layout = {
 const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
   const colors = settings?.colors;
   const isVertical = data.length > 10;
-  const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
+  const xTickWidth = getXTickWidth(
+    data,
+    accessors,
+    layout.maxTickWidth,
+    layout.font.size,
+  );
   const xTickHeight = getRotatedXTickHeight(xTickWidth);
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -101,7 +106,11 @@ const CategoricalBarChart = ({ data, accessors, settings, labels }) => {
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
     const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
-    const truncatedText = truncateText(formattedValue, textWidth);
+    const truncatedText = truncateText(
+      formattedValue,
+      textWidth,
+      layout.font.size,
+    );
     const transform = isVertical
       ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
       : undefined;

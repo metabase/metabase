@@ -10,6 +10,7 @@ import {
 
 import { MBQL_CLAUSES } from "./config";
 import { ExpressionCstVisitor, parse } from "./parser";
+import { resolve } from "./resolver";
 
 const NEGATIVE_FILTER_SHORTHANDS = {
   contains: "does-not-contain",
@@ -91,9 +92,11 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
         // the last one holds the function options
         const fnOptions = this.visit(parameters.pop());
 
-        // HACK: very specific to some string functions for now
+        // HACK: very specific to some string/time functions for now
         if (fnOptions === "case-insensitive") {
           options.push({ "case-sensitive": false });
+        } else if (fnOptions === "include-current") {
+          options.push({ "include-current": true });
         }
       }
     }
@@ -169,6 +172,15 @@ export function compile({ cst, ...options }) {
   if (!cst) {
     ({ cst } = parse(options));
   }
+  const { startRule } = options;
+
+  const stubResolve = (kind, name) => [kind || "dimension", name];
+  const vistor = new ExpressionMBQLCompilerVisitor({
+    ...options,
+    resolve: stubResolve,
+  });
+  const expr = vistor.visit(cst);
+
   function resolveMBQLField(kind, name) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
@@ -191,9 +203,12 @@ export function compile({ cst, ...options }) {
       return dimension.mbql();
     }
   }
-  const resolve = options.resolve ? options.resolve : resolveMBQLField;
-  const vistor = new ExpressionMBQLCompilerVisitor({ ...options, resolve });
-  return vistor.visit(cst);
+
+  return resolve(
+    expr,
+    startRule,
+    options.resolve ? options.resolve : resolveMBQLField,
+  );
 }
 
 export function parseOperators(operands, operators) {

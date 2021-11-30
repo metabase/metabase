@@ -1,7 +1,10 @@
 import { TickRendererProps } from "@visx/axis";
 import { getYTickWidth } from "metabase/static-viz/lib/axes";
-import { formatDate } from "metabase/static-viz/lib/dates";
-import { formatNumber } from "metabase/static-viz/lib/numbers";
+import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
+import {
+  formatNumber,
+  NumberFormatOptions,
+} from "metabase/static-viz/lib/numbers";
 import {
   measureText,
   measureTextHeight,
@@ -27,14 +30,17 @@ export const formatXTick = (
   formatSettings: ChartSettings["x"]["format"],
 ) => {
   if (xAxisType === "timeseries") {
-    return formatDate(new Date(value as string).valueOf(), formatSettings);
+    return formatDate(
+      new Date(value as string),
+      formatSettings as DateFormatOptions,
+    );
   }
 
   if (xAxisType !== "ordinal") {
-    return formatNumber(value, formatSettings);
+    return formatNumber(Number(value), formatSettings as NumberFormatOptions);
   }
 
-  return value;
+  return value.toString();
 };
 
 export const getXTickWidthLimit = (
@@ -60,7 +66,7 @@ export const getXTicksDimensions = (
     .flatMap(s => s.data)
     .map(datum => {
       const tick = formatXTick(getX(datum), settings.type, settings.format);
-      return measureText(tick, 8);
+      return measureText(tick.toString(), fontSize);
     })
     .reduce((a, b) => Math.max(a, b), 0);
 
@@ -89,7 +95,7 @@ export const getXTickProps = (
 ): TickRendererProps => {
   const value =
     truncateToWidth != null
-      ? truncateText(props.formattedValue || "", truncateToWidth)
+      ? truncateText(props.formattedValue || "", truncateToWidth, tickFontSize)
       : props.formattedValue;
 
   const textBaseline = Math.floor(tickFontSize / 2);
@@ -108,22 +114,30 @@ export const getDistinctXValuesCount = (series: Series[]) =>
 export const calculateYTickWidth = (
   domain: ContiniousDomain,
   settings: ChartSettings["y"]["format"],
+  fontSize: number,
 ) => {
   return getYTickWidth(
     domain,
     { y: (value: number) => value },
     settings,
+    fontSize,
   ) as number;
 };
 
 export const getYTickWidths = (
   settings: ChartSettings["y"]["format"],
+  fontSize: number,
   leftYDomain?: ContiniousDomain,
   rightYDomain?: ContiniousDomain,
 ) => {
   return {
-    left: leftYDomain != null ? calculateYTickWidth(leftYDomain, settings) : 0,
+    left:
+      leftYDomain != null
+        ? calculateYTickWidth(leftYDomain, settings, fontSize)
+        : 0,
     right:
-      rightYDomain != null ? calculateYTickWidth(rightYDomain, settings) : 0,
+      rightYDomain != null
+        ? calculateYTickWidth(rightYDomain, settings, fontSize)
+        : 0,
   };
 };

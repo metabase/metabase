@@ -3,6 +3,7 @@ import { calculateLegendItems } from "./legend";
 
 const width = 500;
 const lineHeight = 10;
+const fontSize = 13;
 
 const defaultColor = "#509ee3";
 
@@ -31,6 +32,7 @@ describe("calculateLegendItems", () => {
       series,
       width,
       lineHeight,
+      fontSize,
     );
 
     expect(leftItems).not.toBeDefined();
@@ -47,6 +49,7 @@ describe("calculateLegendItems", () => {
       series,
       width,
       lineHeight,
+      fontSize,
     );
 
     expect(leftItems).toStrictEqual([
@@ -69,6 +72,7 @@ describe("calculateLegendItems", () => {
       series,
       width,
       lineHeight,
+      fontSize,
     );
 
     expect(leftItems).toStrictEqual([

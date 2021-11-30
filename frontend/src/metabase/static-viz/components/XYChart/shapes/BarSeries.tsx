@@ -34,9 +34,12 @@ export const BarSeries = ({
   return (
     <Group>
       {series.map((series, seriesIndex) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const yScale =
-          series.yAxisPosition === "left" ? yScaleLeft! : yScaleRight!;
+          series.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
+
+        if (!yScale) {
+          return null;
+        }
 
         return (
           <>
@@ -47,9 +50,10 @@ export const BarSeries = ({
               const x = groupX + innerX;
               const width = innerBarScale.bandwidth();
 
-              const yZero = yScale(0)!;
-              const y = Math.min(yScale(getY(datum)) ?? 0, yZero);
-              const height = Math.abs(yScale(getY(datum))! - yScale(0)!);
+              const yZero = yScale(0) ?? 0;
+              const yValue = yScale(getY(datum)) ?? 0;
+              const y = Math.min(yValue, yZero);
+              const height = Math.abs(yValue - yZero);
 
               return (
                 <Bar
