@@ -1225,25 +1225,30 @@ export default class Question {
   }
 
   getUrlWithParameters() {
-    const question = this.query().isEditable()
-      ? this.convertParametersToFilters()
-      : this.markDirty();
+    // when a question is structured & editable we convert the parameters on the card into filters
+    // and then ignore/throw away whatever parameter info exists on the card
+    if (this.isStructured() && this.query().isEditable()) {
+      const question = this.convertParametersToFilters();
 
-    let parameterValues;
-    if (question.isNative() || !question.query().isEditable()) {
-      parameterValues = getParameterValuesBySlug(
-        question.parameters(),
-        question._parameterValues,
-      );
+      delete question._parameterValues;
+      delete this._parameterValues;
+
+      return question.getUrl({
+        originalQuestion: this,
+        includeDisplayIsLocked: true,
+      });
     }
 
-    delete question._parameterValues;
+    const parameterValues = getParameterValuesBySlug(
+      this.parameters(),
+      this._parameterValues,
+    );
 
-    const originalQuestion = this.setParameters([]);
-    delete originalQuestion._parameterValues;
-
+    // when a question is structured & NOT editable, we send the card to the QB with parameters attached.
+    // we mark the card as dirty so that the serialized card + parameters are preserved in the url.
+    // native questions rely on the `parameterValues` being a map of template tags to values.
+    const question = this.isStructured() ? this.markDirty() : this;
     return question.getUrl({
-      originalQuestion,
       query: parameterValues,
       includeDisplayIsLocked: true,
     });

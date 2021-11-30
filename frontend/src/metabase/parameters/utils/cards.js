@@ -130,6 +130,7 @@ export function remapParameterValuesForTemplateTags(
   dashboardParameters.forEach(dashboardParameter => {
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
+
     if (templateTagParametersBySlug[tag]) {
       const templateTagParameter = templateTagParametersBySlug[tag];
       parameterValues[templateTagParameter.id] =

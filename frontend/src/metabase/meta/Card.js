@@ -170,13 +170,18 @@ export function questionUrlWithParameters(
   if (question.isStructured()) {
     return (
       question
-        // when a user doesn't have perms, we run the card like it is in a dashboard
+        // when a user doesn't have data perms, we run the card like it is in a dashboard
         .setDashboardId(question.query().isEditable() ? undefined : dashboardId)
+        // set the parameters on the card so that the query builder knows to show them
         .setParameters(dashboardParametersMappedToCard)
         .setParameterValues(parameterValues)
         .getUrlWithParameters()
     );
   } else if (question.isNative()) {
+    // for native questions, dashboard parameters are mapped explicitly to template tags
+    // defined in the native query, so instead of passing dashboard parameters to the qb,
+    // we just need to convert the keys in the parameterValues map from dashboard parameters slugs
+    // to the names of the template tags.
     const templateTagParameters = question.parameters();
     const parameterValuesByTemplateTag = remapParameterValuesForTemplateTags(
       dashboardParametersMappedToCard,
@@ -184,10 +189,8 @@ export function questionUrlWithParameters(
       parameterValues,
     );
 
-    return _.isEmpty(parameterValuesByTemplateTag)
-      ? question.getUrl()
-      : question
-          .setParameterValues(parameterValuesByTemplateTag)
-          .getUrlWithParameters();
+    return question
+      .setParameterValues(parameterValuesByTemplateTag)
+      .getUrlWithParameters();
   }
 }
