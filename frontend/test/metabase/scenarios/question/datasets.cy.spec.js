@@ -563,6 +563,9 @@ describe("scenarios > datasets", () => {
       cy.button("Cancel").click();
       cy.url().should("include", "/dataset/1");
       cy.url().should("not.include", "/query");
+
+      cy.go("back");
+      cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
     });
 
     it("locks display to table", () => {

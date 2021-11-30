@@ -171,13 +171,11 @@ export const popState = createThunkAction(
         await dispatch(setCurrentState(location.state));
       }
     }
-    if (
-      getQueryBuilderMode(getState()) !==
-      getQueryBuilderModeFromLocation(location)
-    ) {
+    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
-        setQueryBuilderMode(getQueryBuilderModeFromLocation(location), {
-          shouldUpdateUrl: false,
+        setQueryBuilderMode(queryBuilderModeFromURL, {
+          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
     }
