@@ -85,7 +85,12 @@ function DatasetEditor(props) {
           </QueryEditorContainer>
           <TableContainer>
             <DebouncedFrame className="flex-full" enabled={false}>
-              <QueryVisualization {...props} className="spread" noHeader />
+              <QueryVisualization
+                {...props}
+                className="spread"
+                noHeader
+                isVisualizationClickable={false}
+              />
             </DebouncedFrame>
           </TableContainer>
         </MainContainer>
