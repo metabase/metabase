@@ -280,6 +280,17 @@
     (and (= number_style "currency") (nil? currency))
     (assoc :currency "USD")))
 
+(defn- settings-from-column
+  [col column-settings]
+  (or (get column-settings {::mb.viz/field-id (:id col)})
+      (get column-settings {::mb.viz/column-name (:name col)})))
+
+(defn- update-col-for-js
+  [col-settings col]
+  (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
+      (backfill-currency)
+      (u/update-when :date_style update-date-style (:unit col))))
+
 (defn- ->js-viz
   "Include viz settings for js.
 
@@ -287,19 +298,13 @@
   - chop off and underscore the nasty keys in our map
   - backfill currency to the default of USD if not present"
   [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
-  (letfn [(settings [col] (or (get column-settings {::mb.viz/field-id (:id col)})
-                              (get column-settings {::mb.viz/column-name (:name col)})))
-          (for-js [col-settings col]
-            (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
-                (backfill-currency)
-                (u/update-when :date_style update-date-style (:unit col))))]
-    (let [x-col-settings (settings x-col)
-          y-col-settings (settings y-col)]
-      (cond-> {:colors (public-settings/application-colors)}
-        x-col-settings
-        (assoc :x (for-js x-col-settings x-col))
-        y-col-settings
-        (assoc :y (for-js y-col-settings y-col))))))
+  (let [x-col-settings (settings-from-column x-col column-settings)
+        y-col-settings (settings-from-column y-col column-settings)]
+    (cond-> {:colors (public-settings/application-colors)}
+      x-col-settings
+      (assoc :x (update-col-for-js x-col-settings x-col))
+      y-col-settings
+      (assoc :y (update-col-for-js y-col-settings y-col)))))
 
 (defn- ->ts-viz
   "Include viz settings for the typed settings, initially in XY charts.
@@ -311,21 +316,24 @@
 
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
   [x-col y-col labels {::mb.viz/keys [column-settings] :as _viz-settings}]
-  (let [x-format (if (isa? (:effective_type x-col) :type/Temporal)
-                   {:date_style some shit}
-                   {:number_style some shit
-                    :decimals some shit
-                    :currency some shit
-                    :currency_style some shit})
-        y-format {:number_style some shit
-                  :decimals some shit
-                  :currency some shit
-                  :currency_style some shit}]
+  (let [default-format {:number_style "decimal"
+                        :decimals 1
+                        :currency "USD"
+                        :currency_style "symbol"}
+        x-col-settings (or (settings-from-column x-col column-settings) {})
+        y-col-settings (or (settings-from-column y-col column-settings) {})
+        x-format (merge
+                   x-col-settings
+                   (if (isa? (:effective_type x-col) :type/Temporal)
+                     {:date_style "MMMM D, YYYY"}
+                     default-format))
+        y-format (merge
+                   y-col-settings
+                   default-format)]
     {:colors (public-settings/application-colors)
-     :x      {:type some shit
-              :tick_display some shit
+     :x      {:type (or (:graph.x_axis.scale _viz-settings) "timeseries")
               :format x-format}
-     :y      {:type some shit shit
+     :y      {:type (or (:graph.y_axis.scale _viz-settings) "linear")
               :format y-format }
      :labels labels}))
 
@@ -384,7 +392,7 @@
   Fills those nil bits in with the default colors."
   [maybe-colors]
   (let [pairs (map vector maybe-colors colors)]
-    (map #(first filter some? %) pairs)))
+    (map #(first (filter some? %)) pairs)))
 
 
 (defn format-percentage
@@ -538,6 +546,7 @@
 
         labels           (combo-label-info x-col y-cols viz-settings)
         settings         (->ts-viz x-col y-cols labels viz-settings)
+        bob              (println settings)
 
         series           (join-series names colors types series-rows)
         image-bundle     (image-bundle/make-image-bundle
