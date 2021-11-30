@@ -57,10 +57,11 @@ export const iconPropTypes = {
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
-  innerRef: PropTypes.func.isRequired,
 };
 
-type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
+type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
+  innerRef?: () => void;
+};
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
