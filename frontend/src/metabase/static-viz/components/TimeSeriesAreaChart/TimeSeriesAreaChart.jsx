@@ -59,7 +59,7 @@ const layout = {
 
 const TimeSeriesAreaChart = ({ data, accessors, settings, labels }) => {
   const colors = settings?.colors;
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;

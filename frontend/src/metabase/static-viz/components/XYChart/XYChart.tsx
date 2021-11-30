@@ -51,6 +51,7 @@ export const XYChart = ({
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,
+    style.axes.ticks.fontSize,
     yDomains.left,
     yDomains.right,
   );
@@ -93,7 +94,12 @@ export const XYChart = ({
   const defaultYScale = yScaleLeft || yScaleRight;
 
   const legendWidth = width - 2 * CHART_PADDING;
-  const legend = calculateLegendItems(series, legendWidth, 16);
+  const legend = calculateLegendItems(
+    series,
+    legendWidth,
+    style.legend.lineHeight,
+    style.legend.fontSize,
+  );
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,
@@ -174,7 +180,7 @@ export const XYChart = ({
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           labelProps={labelProps}
-          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
           tickLabelProps={() => tickProps}
         />
       )}
@@ -191,7 +197,7 @@ export const XYChart = ({
           stroke={style.axes.color}
           tickStroke={style.axes.color}
           labelProps={labelProps}
-          tickFormat={value => formatNumber(value, settings.y.format)}
+          tickFormat={value => formatNumber(value.valueOf(), settings.y.format)}
           tickLabelProps={() => tickProps}
         />
       )}
