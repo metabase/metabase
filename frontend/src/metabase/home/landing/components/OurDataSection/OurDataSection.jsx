@@ -19,19 +19,22 @@ import {
 
 const propTypes = {
   databases: PropTypes.array.isRequired,
+  isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const OurDataSection = ({ databases, onRemoveSection }) => {
+const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
-        <SectionRemoveModal onRemoveSection={onRemoveSection}>
-          <Tooltip tooltip={t`Hide this section`}>
-            <SectionIcon name="close" />
-          </Tooltip>
-        </SectionRemoveModal>
+        {isAdmin && (
+          <SectionRemoveModal onSubmit={onRemoveSection}>
+            <Tooltip tooltip={t`Hide this section`}>
+              <SectionIcon name="close" />
+            </Tooltip>
+          </SectionRemoveModal>
+        )}
       </SectionHeader>
       <DatabaseGrid>
         {databases.map(database => (
@@ -73,14 +76,14 @@ DatabaseCard.propTypes = cardPropTypes;
 
 const modalPropTypes = {
   children: PropTypes.node,
-  onRemoveSection: PropTypes.func,
+  onSubmit: PropTypes.func,
 };
 
-const SectionRemoveModal = ({ children, onRemoveSection }) => {
+const SectionRemoveModal = ({ children, onSubmit }) => {
   return (
     <ModalWithTrigger
       title={t`Remove this section?`}
-      footer={<Button danger onClick={onRemoveSection}>{t`Remove`}</Button>}
+      footer={<Button danger onClick={onSubmit}>{t`Remove`}</Button>}
       triggerElement={children}
     >
       <span>
