@@ -789,6 +789,57 @@
           (is (= #{0}
                  (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
+(deftest add-card-parameter-mapping-permissions-test
+  (testing "POST /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (mt/with-temp-copy-of-db
+        (perms/revoke-data-perms! (group/all-users) (mt/id))
+        (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                         :slug "category_id"
+                                                                         :id   "_CATEGORY_ID_"
+                                                                         :type "category"}]}]
+                        Card          [{card-id :id} {:database_id   (mt/id)
+                                                      :table_id      (mt/id :venues)
+                                                      :dataset_query (mt/mbql-query venues)}]]
+          (let [request-body {:cardId             card-id
+                              :row                0
+                              :col                0
+                              :parameter_mappings [{:parameter_id "_CATEGORY_ID_"
+                                                    :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]}
+                add-card!    (fn [expected-status-code]
+                               (mt/user-http-request :rasta
+                                                     :post expected-status-code (format "dashboard/%d/cards" dashboard-id)
+                                                     request-body))
+                dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))]
+            (is (= "You must have data permissions to add a parameter referencing the Table \"VENUES\"."
+                   (add-card! 403)))
+            (is (= []
+                   (dashcards)))
+            (testing "Permissions for a different table in the same DB should not count"
+              (perms/grant-permissions! (group/all-users) (perms/table-read-path (mt/id :categories)))
+              (is (= "You must have data permissions to add a parameter referencing the Table \"VENUES\"."
+                     (add-card! 403)))
+              (is (= []
+                     (dashcards))))
+            (testing "If they have data permissions, it should be ok"
+              (perms/grant-permissions! (group/all-users) (perms/table-read-path (mt/id :venues)))
+              (is (schema= {:card_id            (s/eq card-id)
+                            :parameter_mappings [(s/one
+                                                  {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                   :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                   s/Keyword     s/Any}
+                                                  "mapping")]
+                            s/Keyword           s/Any}
+                           (add-card! 200)))
+              (is (schema= [(s/one {:card_id            (s/eq card-id)
+                                    :parameter_mappings (s/eq (:parameter_mappings request-body))
+                                    s/Keyword           s/Any}
+                                   "DashboardCard")]
+                           (dashcards))))))))))
+
+;; TODO -- add a test for sandboxed permissions as well
+;; TODO -- add a test for BLOCK permissions as well -- should *NOT* be allowed to add the parameter
+;; TODO -- add a test for the PUT version of the endpoint as well.
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        DELETE /api/dashboard/:id/cards                                         |

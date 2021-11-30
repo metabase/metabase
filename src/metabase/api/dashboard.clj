@@ -24,6 +24,7 @@
             [metabase.models.query :as query :refer [Query]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -327,6 +328,35 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
+(def ^:private ParameterMappingWithCardID
+  {:target   s/Any ; TODO -- validate this is an actual valid target
+   :card-id  su/IntGreaterThanZero
+   s/Keyword s/Any})
+
+;; TODO -- should we only check *new* or *modified* mappings?
+(s/defn ^:private check-parameter-mapping-permissions
+  "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
+  {:added "0.41.0"}
+  [parameter-mappings :- [ParameterMappingWithCardID]]
+  (when (seq parameter-mappings)
+    (let [card-ids       (into #{} (map :card-id) parameter-mappings)
+          card-id->query (db/select-id->field :dataset_query Card :id [:in card-ids])
+          field-ids      (set (for [{:keys [target card-id]} parameter-mappings
+                                    :let                     [query        (api/check-404 (card-id->query card-id))
+                                                              field-clause (params/param-target->field-clause
+                                                                            target
+                                                                            {:card {:dataset_query query}})
+                                                              field-id     (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)]
+                                    :when                    field-id]
+                                field-id))
+          table-ids      (when (seq field-ids)
+                           (db/select-field :table_id Field :id [:in field-ids]))]
+      (doseq [table-id table-ids]
+        (when-not (mi/can-read? Table table-id)
+          (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
+                               (pr-str (db/select-one-field :name Table :id table-id)))
+                          {:status-code 403})))))))
+
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
@@ -336,6 +366,8 @@
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
+  (check-parameter-mapping-permissions (for [mapping parameter_mappings]
+                                         (assoc mapping :card-id cardId)))
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
@@ -354,6 +386,11 @@
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (api/check-not-archived (api/write-check Dashboard id))
+  ;; TODO -- we should probably only check the parameter mapping permissions *if* they've changed
+  (check-parameter-mapping-permissions
+   (for [{mappings :parameter_mappings, card-id :id} cards
+         mapping                                     mappings]
+     (assoc mapping :card-id card-id)))
   (dashboard/update-dashcards! id cards)
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
