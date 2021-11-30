@@ -5,7 +5,14 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const NotebookContainer = styled.div`
   width: 100%;
-  overflow-y: scroll;
+  overflow-y: ${props => {
+    // Prevents automatic scroll effect on queries with lots of steps.
+    // When overflow is 'scroll' and the notebook is being resized,
+    // it's height changes and it scrolls automatically.
+    // Setting the overflow to "hidden" while resizing fixes that behavior
+    // Demo: https://github.com/metabase/metabase/pull/19103#issuecomment-981935878
+    return props.isResizing ? "hidden" : "scroll";
+  }};
 `;
 
 const HandleContainer = styled.div`
