@@ -482,27 +482,33 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(def default-y-pos
+  "Default positions of the y-axes of multiple and combo graphs.
+  You kind of hope there's only two but here's for the eventuality"
+  (repeat "left"))
+
 (defn- join-series
-  [names colors types row-seqs]
-  (let [joined (map vector names colors types row-seqs)]
-    (vec (for [[card-name card-color card-type rows] joined]
-           {:name  card-name
-            :color card-color
-            :type  card-type
-            :data  rows}))))
+  [names colors types row-seqs y-axis-positions]
+  (let [joined (map vector names colors types row-seqs y-axis-positions)]
+    (vec (for [[card-name card-color card-type rows y-axis-position] joined]
+           {:name          card-name
+            :color         card-color
+            :type          card-type
+            :data          rows
+            :yAxisPosition y-axis-position}))))
 
 
 (s/defmethod render :multiple
   [_ render-type timezone-id card {:keys [viz-settings] :as data}]
   (let [multi-res     (pu/execute-multi-card card)
-        ;; we shove them all together for uniformity's sake
+        ;; multi-res gets the other results from the set of multis.
+        ;; we shove cards and data here all together below for uniformity's sake
         cards         (cons card (map :card multi-res))
         multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
-        ;; this doesn't currently actually select the columns in row...
-        ;; need to shove them in with the rowfns...
-        row-seqs     (map :rows multi-data)
-        col-seqs     (map :cols multi-data)
+        ;;;;;;;;;;;;;;;
+        row-seqs      (map :rows multi-data)
+        col-seqs      (map :cols multi-data)
         first-rowfns  (first rowfns)
         [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
         labels        (x-and-y-axis-label-info x-col y-col viz-settings)
@@ -510,7 +516,9 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        series        (join-series names colors types row-seqs)
+        ;;;;;; merge this one too...
+        y-pos         (take (count names) default-y-pos)
+        series        (join-series names colors types row-seqs y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
@@ -536,10 +544,7 @@
         ;; This amounts to a transposition, and then sticking the x-rows back on again
         series-rowseqs   (apply mapv vector y-rows)
         series-rowseqs   (for [series-rowseq series-rowseqs]
-                           (map vector x-rows series-rowseq))
-        fuckery          (println "FWEKFJWELFKEWJFKLEWJFWLEKF")
-        fuckery          (println series-rowseqs)
-        fuckery          (println "FWEKFJWELFKEWJFKLEWJFWLEKF")
+                           (sort-by first (map vector x-rows series-rowseq)))
         [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
 
         metrics          (:graph.metrics viz-settings)
@@ -556,9 +561,11 @@
 
         labels           (combo-label-info x-col y-cols viz-settings)
         settings         (->ts-viz x-col y-cols labels viz-settings)
-        bob              (println settings)
+        ;;;;; merge this one too...
+        ;;;;;;;;;;;;;;;;
+        y-pos            (take (count names) default-y-pos)
 
-        series           (join-series names colors types series-rowseqs)
+        series           (join-series names colors types series-rowseqs y-pos)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
                            (js-svg/combo-chart series settings))]
