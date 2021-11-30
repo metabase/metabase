@@ -1,6 +1,7 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.database :as database-api]
             [metabase.api.table :as table-api]
@@ -302,16 +303,37 @@
                         (some (partial = "PRICE"))))))))))
 
 (deftest autocomplete-suggestions-test
-  (testing "GET /api/database/:id/autocomplete_suggestions"
-    (doseq [[prefix expected] {"u"   [["USERS" "Table"]
-                                      ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
-                               "c"   [["CATEGORIES" "Table"]
-                                      ["CHECKINS" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-                               "cat" [["CATEGORIES" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
-      (is (= expected
-             (mt/user-http-request :rasta :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))))))
+  (let [suggest-fn (fn [db-id prefix]
+                     (mt/user-http-request :rasta :get 200
+                                           (format "database/%d/autocomplete_suggestions" db-id)
+                                           :prefix prefix))]
+    (testing "GET /api/database/:id/autocomplete_suggestions"
+      (doseq [[prefix expected] {"u"   [["USERS" "Table"]
+                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                                 "c"   [["CATEGORIES" "Table"]
+                                        ["CHECKINS" "Table"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                                 "cat" [["CATEGORIES" "Table"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
+        (is (= expected (suggest-fn (mt/id) prefix))))
+      (testing " handles large numbers of tables and fields sensibly"
+        (mt/with-model-cleanup [Field Table Database]
+          (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
+            ;; insert more than 50 temporary tables and fields
+            (doseq [i (range 60)]
+              (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
+                (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
+            ;; for each type-specific prefix, we should get 50 fields
+            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Field"))))
+            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Table"))))
+            (let [my-results (suggest-fn (u/the-id tmp-db) "My")]
+              ;; for this prefix, we should a mixture of 25 fields and 25 tables
+              (is (= 50 (count my-results)))
+              (is (= 25 (-> (filter #(str/starts-with? % "My Field") (map first my-results))
+                            count)))
+              (is (= 25 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
+                          count))))))))))
+
 
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
   (merge
