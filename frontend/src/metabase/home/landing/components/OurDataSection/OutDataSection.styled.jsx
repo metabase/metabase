@@ -52,5 +52,6 @@ export const DatabaseActionLink = styled(Link)`
   display: block;
   margin-left: auto;
   color: ${color("brand")};
+  font-weight: 700;
   cursor: pointer;
 `;
