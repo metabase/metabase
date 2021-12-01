@@ -4,9 +4,8 @@ import Databases from "metabase/entities/databases";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import LandingApp from "../../components/LandingApp";
-import { getGreeting } from "../../selectors";
 
 const dashboardsProps = {
   query: {
@@ -28,8 +27,7 @@ const candidatesProps = {
 };
 
 const mapStateToProps = state => ({
-  greeting: getGreeting(state),
-  isAdmin: getUserIsAdmin(state),
+  user: getUser(state),
   showXrays: true,
   showOurData: true,
 });

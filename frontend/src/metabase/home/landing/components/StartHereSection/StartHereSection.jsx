@@ -21,8 +21,8 @@ import {
 } from "./StartHereSection.styled";
 
 const propTypes = {
+  user: PropTypes.object.isRequired,
   dashboards: PropTypes.array.isRequired,
-  isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 

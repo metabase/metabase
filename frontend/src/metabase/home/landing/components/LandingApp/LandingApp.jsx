@@ -7,32 +7,28 @@ import XraySection from "../XraySection";
 import { LandingRoot } from "./LandingApp.styled";
 
 const propTypes = {
-  greeting: PropTypes.string,
+  user: PropTypes.object,
   databases: PropTypes.array,
   dashboards: PropTypes.array,
   candidates: PropTypes.array,
-  isAdmin: PropTypes.bool,
   showXrays: PropTypes.bool,
   showOurData: PropTypes.bool,
 };
 
 const LandingApp = ({
-  greeting,
+  user,
   databases,
   dashboards,
   candidates,
-  isAdmin,
   showXrays,
   showOurData,
 }) => {
   return (
     <LandingRoot>
-      <GreetingSection greeting={greeting} />
-      <StartHereSection dashboards={dashboards} isAdmin={isAdmin} />
-      {showXrays && <XraySection candidates={candidates} isAdmin={isAdmin} />}
-      {showOurData && (
-        <OurDataSection databases={databases} isAdmin={isAdmin} />
-      )}
+      <GreetingSection user={user} />
+      <StartHereSection user={user} dashboards={dashboards} />
+      {showXrays && <XraySection user={user} candidates={candidates} />}
+      {showOurData && <OurDataSection user={user} databases={databases} />}
     </LandingRoot>
   );
 };

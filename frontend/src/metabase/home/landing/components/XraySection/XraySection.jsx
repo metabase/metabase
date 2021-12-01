@@ -18,19 +18,19 @@ import {
 } from "./XraySection.styled";
 
 const propTypes = {
+  user: PropTypes.object.isRequired,
   candidates: PropTypes.array.isRequired,
-  isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const XraySection = ({ candidates, isAdmin, onRemoveSection }) => {
+const XraySection = ({ user, candidates, onRemoveSection }) => {
   const options = candidates.flatMap(database => database.tables);
 
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Try these x-rays based on your data`}</SectionTitle>
-        {isAdmin && (
+        {user.is_superuser && (
           <SectionRemoveModal onSubmit={onRemoveSection}>
             <Tooltip tooltip={t`Remove these suggestions`}>
               <SectionIcon name="close" />

@@ -1,16 +1,19 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import Greeting from "metabase/lib/greeting";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
 import Section from "../LandingSection";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
 const propTypes = {
-  greeting: PropTypes.string,
+  user: PropTypes.object,
 };
 
-const GreetingSection = ({ greeting }) => {
+const GreetingSection = ({ user: { first_name } }) => {
+  const greeting = useMemo(() => Greeting.sayHello(first_name), [first_name]);
+
   return (
     <Section>
       <GreetingContent>
@@ -20,7 +23,7 @@ const GreetingSection = ({ greeting }) => {
         >
           <MetabotLogo />
         </Tooltip>
-        {greeting && <GreetingTitle>{greeting}</GreetingTitle>}
+        <GreetingTitle>{greeting}</GreetingTitle>
       </GreetingContent>
     </Section>
   );

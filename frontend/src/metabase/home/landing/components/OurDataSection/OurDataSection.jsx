@@ -19,26 +19,26 @@ import {
 } from "./OutDataSection.styled";
 
 const propTypes = {
+  user: PropTypes.object.isRequired,
   databases: PropTypes.array.isRequired,
-  isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
+const OurDataSection = ({ user, databases, onRemoveSection }) => {
   const hasNonSampleDatabase = databases.some(d => !d.is_sample);
 
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
-        {isAdmin && (
+        {user.is_superuser && (
           <SectionRemoveModal onSubmit={onRemoveSection}>
             <Tooltip tooltip={t`Hide this section`}>
               <SectionIcon name="close" />
             </Tooltip>
           </SectionRemoveModal>
         )}
-        {isAdmin && hasNonSampleDatabase && (
+        {user.is_superuser && hasNonSampleDatabase && (
           <ActionLink to={Urls.newDatabase()}>{t`Add a database`}</ActionLink>
         )}
       </SectionHeader>
@@ -51,7 +51,7 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
             isActive={true}
           />
         ))}
-        {isAdmin && !hasNonSampleDatabase && (
+        {user.is_superuser && !hasNonSampleDatabase && (
           <DatabaseCard
             title={t`Add a database`}
             link={Urls.newDatabase()}
