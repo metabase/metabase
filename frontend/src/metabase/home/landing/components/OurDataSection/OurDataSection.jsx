@@ -11,11 +11,11 @@ import Section, {
   SectionTitle,
 } from "../LandingSection";
 import {
-  DatabaseCardRoot,
-  DatabaseGrid,
-  DatabaseCardIcon,
-  DatabaseCardTitle,
-  DatabaseActionLink,
+  CardRoot,
+  GridRoot,
+  CardIcon,
+  CardTitle,
+  ActionLink,
 } from "./OutDataSection.styled";
 
 const propTypes = {
@@ -39,12 +39,12 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
           </SectionRemoveModal>
         )}
         {isAdmin && hasNonSampleDatabase && (
-          <DatabaseActionLink to={Urls.newDatabase()}>
+          <ActionLink to={Urls.newDatabase()}>
             {t`Add a database`}
-          </DatabaseActionLink>
+          </ActionLink>
         )}
       </SectionHeader>
-      <DatabaseGrid>
+      <GridRoot>
         {databases.map(database => (
           <DatabaseCard
             key={database.id}
@@ -60,7 +60,7 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
             isActive={false}
           />
         )}
-      </DatabaseGrid>
+      </GridRoot>
     </Section>
   );
 };
@@ -75,10 +75,10 @@ const cardPropTypes = {
 
 const DatabaseCard = ({ title, link, isActive }) => {
   return (
-    <DatabaseCardRoot to={link} isActive={isActive}>
-      <DatabaseCardIcon name="database" isActive={isActive} />
-      <DatabaseCardTitle>{title}</DatabaseCardTitle>
-    </DatabaseCardRoot>
+    <CardRoot to={link} isActive={isActive}>
+      <CardIcon name="database" isActive={isActive} />
+      <CardTitle>{title}</CardTitle>
+    </CardRoot>
   );
 };
 

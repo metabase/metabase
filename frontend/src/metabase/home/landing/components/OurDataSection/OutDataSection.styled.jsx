@@ -7,7 +7,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const DatabaseGrid = styled.div`
+export const GridRoot = styled.div`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
@@ -21,7 +21,7 @@ export const DatabaseGrid = styled.div`
   }
 `;
 
-export const DatabaseCardRoot = styled(Link)`
+export const CardRoot = styled(Link)`
   display: block;
   padding: 1.875rem;
   color: ${props => color(props.isActive ? "text-dark" : "brand")};
@@ -34,7 +34,7 @@ export const DatabaseCardRoot = styled(Link)`
   }
 `;
 
-export const DatabaseCardIcon = styled(Icon)`
+export const CardIcon = styled(Icon)`
   display: block;
   color: ${props => color(props.isActive ? "database" : "bg-medium")};
   width: 2rem;
@@ -42,13 +42,13 @@ export const DatabaseCardIcon = styled(Icon)`
   margin-bottom: 3rem;
 `;
 
-export const DatabaseCardTitle = styled.span`
+export const CardTitle = styled.span`
   display: block;
   font-size: 1.17em;
   font-weight: 700;
 `;
 
-export const DatabaseActionLink = styled(Link)`
+export const ActionLink = styled(Link)`
   display: block;
   margin-left: auto;
   color: ${color("brand")};

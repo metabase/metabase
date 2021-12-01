@@ -7,7 +7,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const TableGrid = styled.div`
+export const CardGridRoot = styled.div`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
@@ -21,7 +21,7 @@ export const TableGrid = styled.div`
   }
 `;
 
-export const XrayCardRoot = styled(Link)`
+export const CardRoot = styled(Link)`
   display: flex;
   align-items: center;
   padding: 1.125rem 1.5rem;
@@ -35,14 +35,14 @@ export const XrayCardRoot = styled(Link)`
   }
 `;
 
-export const XrayCardIcon = styled(Icon)`
+export const CardIcon = styled(Icon)`
   display: block;
   color: ${color("white")};
   width: 1.25rem;
   height: 1.25rem;
 `;
 
-export const XrayCardIconContainer = styled.span`
+export const CardIconContainer = styled.span`
   display: flex;
   flex: 0 0 auto;
   justify-content: center;
@@ -52,7 +52,7 @@ export const XrayCardIconContainer = styled.span`
   background-color: ${color("accent4")};
 `;
 
-export const XrayCardTitle = styled.span`
+export const CardTitle = styled.span`
   display: block;
   margin-left: 1rem;
 `;

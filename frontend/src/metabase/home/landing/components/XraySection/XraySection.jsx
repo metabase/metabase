@@ -10,11 +10,11 @@ import Section, {
   SectionTitle,
 } from "../LandingSection";
 import {
-  XrayCardRoot,
-  TableGrid,
-  XrayCardIcon,
-  XrayCardIconContainer,
-  XrayCardTitle,
+  CardRoot,
+  CardGridRoot,
+  CardIcon,
+  CardIconContainer,
+  CardTitle,
 } from "./XraySection.styled";
 
 const propTypes = {
@@ -38,11 +38,11 @@ const XraySection = ({ databaseCandidates, isAdmin, onRemoveSection }) => {
           </SectionRemoveModal>
         )}
       </SectionHeader>
-      <TableGrid>
+      <CardGridRoot>
         {options.map(option => (
           <XrayCard key={option.url} option={option} />
         ))}
-      </TableGrid>
+      </CardGridRoot>
     </Section>
   );
 };
@@ -55,14 +55,14 @@ const cardPropTypes = {
 
 const XrayCard = ({ option }) => {
   return (
-    <XrayCardRoot to={option.url}>
-      <XrayCardIconContainer>
-        <XrayCardIcon name="bolt" />
-      </XrayCardIconContainer>
-      <XrayCardTitle>
+    <CardRoot to={option.url}>
+      <CardIconContainer>
+        <CardIcon name="bolt" />
+      </CardIconContainer>
+      <CardTitle>
         {t`A look at your`} <strong>{option.title}</strong>
-      </XrayCardTitle>
-    </XrayCardRoot>
+      </CardTitle>
+    </CardRoot>
   );
 };
 
