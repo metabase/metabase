@@ -37,6 +37,10 @@ const LineAreaBarChart = ({
         fontWeight: 700,
       },
     },
+    legend: {
+      fontSize: 13,
+      lineHeight: 16,
+    },
     goalColor: palette.textMedium,
   };
 

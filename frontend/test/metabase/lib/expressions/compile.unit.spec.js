@@ -18,46 +18,10 @@ function expectFast(fn, milliseconds = 1000) {
 }
 
 describe("metabase/lib/expressions/compile", () => {
-  let compile, parseOperators;
+  let compile;
   it("should load compile quickly", () => {
     expectFast(() => {
-      ({
-        compile,
-        parseOperators,
-      } = require("metabase/lib/expressions/compile"));
-    });
-  });
-
-  describe("parseOperators", () => {
-    it("should compile 1", () => {
-      expect(parseOperators([1], [])).toEqual(1);
-    });
-    it("should compile 1 + 2", () => {
-      expect(parseOperators([1, 2], ["+"])).toEqual(["+", 1, 2]);
-    });
-    it("should compile 1 + 2 - 3", () => {
-      expect(parseOperators([1, 2, 3], ["+", "-"])).toEqual([
-        "-",
-        ["+", 1, 2],
-        3,
-      ]);
-    });
-    it("should compile 1 + 2 - 3 + 4", () => {
-      expect(parseOperators([1, 2, 3, 4], ["+", "-", "+"])).toEqual([
-        "+",
-        ["-", ["+", 1, 2], 3],
-        4,
-      ]);
-    });
-    it("should compile 1 + 2 * 3 * 4 + 5 + 6", () => {
-      expect(
-        parseOperators([1, 2, 3, 4, 5, 6], ["+", "*", "*", "+", "+"]),
-      ).toEqual(["+", 1, ["*", 2, 3, 4], 5, 6]);
-    });
-    it("should compile 1 * 2 + 3 + 4 * 5 * 6", () => {
-      expect(
-        parseOperators([1, 2, 3, 4, 5, 6], ["*", "+", "+", "*", "*"]),
-      ).toEqual(["+", ["*", 1, 2], 3, ["*", 4, 5, 6]]);
+      ({ compile } = require("metabase/lib/expressions/compile"));
     });
   });
 
