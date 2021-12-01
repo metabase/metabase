@@ -19,6 +19,7 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
+import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import EditorTabs from "./EditorTabs";
 import ResizableNotebook from "./ResizableNotebook";
 
@@ -58,7 +59,7 @@ function mapStateToProps(state) {
 
 const mapDispatchToProps = { setDatasetEditorTab };
 
-function getSidebar(props) {
+function getSidebar(props, { datasetEditorTab, focusedField }) {
   const {
     question: dataset,
     isShowingTemplateTagsEditor,
@@ -68,9 +69,15 @@ function getSidebar(props) {
     toggleDataReference,
     toggleSnippetSidebar,
   } = props;
+
+  if (datasetEditorTab === "metadata") {
+    return <DatasetFieldMetadataSidebar field={focusedField} />;
+  }
+
   if (!dataset.isNative()) {
     return null;
   }
+
   if (isShowingTemplateTagsEditor) {
     return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
   }
@@ -80,6 +87,7 @@ function getSidebar(props) {
   if (isShowingSnippetSidebar) {
     return <SnippetSidebar {...props} onClose={toggleSnippetSidebar} />;
   }
+
   return null;
 }
 
@@ -125,7 +133,7 @@ function DatasetEditor(props) {
     setQueryBuilderMode("view");
   };
 
-  const sidebar = getSidebar(props);
+  const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
 
   return (
     <React.Fragment>
