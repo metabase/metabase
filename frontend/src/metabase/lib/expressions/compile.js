@@ -5,7 +5,6 @@ import {
   parseSegment,
   parseStringLiteral,
   parseIdentifierString,
-  OPERATOR_PRECEDENCE,
 } from "../expressions";
 
 import { MBQL_CLAUSES } from "./config";
@@ -209,43 +208,4 @@ export function compile({ cst, ...options }) {
     startRule,
     options.resolve ? options.resolve : resolveMBQLField,
   );
-}
-
-export function parseOperators(operands, operators) {
-  let initial = operands[0];
-  const stack = [];
-  for (let i = 1; i < operands.length; i++) {
-    const operator = operators[i - 1];
-    const operand = operands[i];
-    const top = stack[stack.length - 1];
-    if (top) {
-      if (top[0] === operator) {
-        top.push(operand);
-      } else {
-        const a = OPERATOR_PRECEDENCE[operator];
-        const b = OPERATOR_PRECEDENCE[top[0]];
-        if (b < a) {
-          top[top.length - 1] = [operator, top[top.length - 1], operand];
-          stack.push(top[top.length - 1]);
-        } else {
-          do {
-            stack.pop();
-          } while (
-            stack.length > 0 &&
-            OPERATOR_PRECEDENCE[stack[stack.length - 1][0]] > a
-          );
-          if (stack.length > 0) {
-            stack[stack.length - 1].push(operand);
-          } else {
-            initial = [operator, initial, operand];
-            stack.push(initial);
-          }
-        }
-      }
-    } else {
-      initial = [operator, initial, operand];
-      stack.push(initial);
-    }
-  }
-  return initial;
 }
