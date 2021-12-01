@@ -84,6 +84,131 @@ describe("buildCollectionTree", () => {
     expect(transformed.icon).toEqual({ name: "folder" });
   });
 
+  describe("filtering by models", () => {
+    it("only keeps collections containing target models", () => {
+      const grandchild1 = getCollection({
+        id: 4,
+        name: "Grandchild 1",
+        here: ["dataset"],
+      });
+      const grandchild2 = getCollection({
+        id: 3,
+        name: "Grandchild 2",
+        here: ["dataset"],
+      });
+      const child = getCollection({
+        id: 2,
+        name: "Child",
+        below: ["dataset"],
+        children: [grandchild1, grandchild2],
+      });
+      const collection = getCollection({
+        id: 1,
+        name: "Top-level",
+        below: ["dataset"],
+        children: [child],
+      });
+
+      const transformed = buildCollectionTree([collection], {
+        targetModels: ["dataset"],
+      });
+
+      expect(transformed).toEqual([
+        {
+          id: grandchild1.id,
+          name: grandchild1.name,
+          schemaName: grandchild1.name,
+          icon: { name: "folder" },
+          children: [],
+        },
+        {
+          id: grandchild2.id,
+          name: grandchild2.name,
+          schemaName: grandchild2.name,
+          icon: { name: "folder" },
+          children: [],
+        },
+      ]);
+    });
+
+    it("filters top-level collections not containing target models", () => {
+      const child = getCollection({ id: 2, name: "Child", here: ["dataset"] });
+      const collection = getCollection({
+        id: 1,
+        name: "Top-level",
+        below: ["dataset"],
+        children: [child],
+      });
+      const collectionWithCards = getCollection({
+        id: 5,
+        name: "Top-level 2",
+        below: ["card"],
+      });
+
+      const transformed = buildCollectionTree(
+        [collection, collectionWithCards],
+        {
+          targetModels: ["dataset"],
+        },
+      );
+
+      expect(transformed).toEqual([
+        {
+          id: child.id,
+          name: child.name,
+          schemaName: child.name,
+          icon: { name: "folder" },
+          children: [],
+        },
+      ]);
+    });
+
+    it("doesn't filter collections if targetModels are not passed", () => {
+      const child = getCollection({ id: 2, name: "Child", here: ["dataset"] });
+      const collection = getCollection({
+        id: 1,
+        name: "Top-level",
+        below: ["dataset"],
+        children: [child],
+      });
+      const collectionWithCards = getCollection({
+        id: 5,
+        name: "Top-level 2",
+        below: ["card"],
+      });
+
+      const transformed = buildCollectionTree([
+        collection,
+        collectionWithCards,
+      ]);
+
+      expect(transformed).toEqual([
+        {
+          id: collection.id,
+          name: collection.name,
+          schemaName: collection.name,
+          icon: { name: "folder" },
+          children: [
+            {
+              id: child.id,
+              name: child.name,
+              schemaName: child.name,
+              icon: { name: "folder" },
+              children: [],
+            },
+          ],
+        },
+        {
+          id: collectionWithCards.id,
+          name: collectionWithCards.name,
+          schemaName: collectionWithCards.name,
+          icon: { name: "folder" },
+          children: [],
+        },
+      ]);
+    });
+  });
+
   describe("EE", () => {
     beforeEach(() => {
       setupEnterpriseTest();
