@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const SectionContent = styled.div`
-  padding: 1rem;
+export const CollectionContent = styled.div`
+  padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   background-color: ${color("bg-medium")};
 `;
@@ -30,7 +30,6 @@ export const CollectionLink = styled(Link)`
   justify-content: center;
   align-items: center;
   color: ${color("brand")};
-  margin: 0.5rem 0;
   padding: 1rem;
 `;
 

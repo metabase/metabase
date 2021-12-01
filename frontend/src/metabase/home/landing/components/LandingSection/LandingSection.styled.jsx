@@ -27,7 +27,7 @@ export const SectionCloseIcon = styled(Icon)`
 `;
 
 export const Section = styled.div`
-  margin-top: 2.5rem;
+  margin: 2.5rem 0;
 
   ${SectionCloseIcon} {
     visibility: collapse;

@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import CollectionList from "metabase/components/CollectionList";
 import Section, { SectionHeader, SectionTitle } from "../LandingSection";
 import {
   CollectionLink,
@@ -11,7 +12,7 @@ import {
   EmptyStateImage,
   EmptyStateRoot,
   EmptyStateTitle,
-  SectionContent,
+  CollectionContent,
 } from "./CollectionSection.styled";
 
 const propTypes = {
@@ -19,7 +20,8 @@ const propTypes = {
   collections: PropTypes.array.isRequired,
 };
 
-const CollectionSection = ({ user }) => {
+const CollectionSection = ({ user, collections }) => {
+  const showList = collections.some(c => c.id !== user.personal_collection_id);
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (
@@ -27,13 +29,20 @@ const CollectionSection = ({ user }) => {
       <SectionHeader>
         <SectionTitle>{ROOT_COLLECTION.name}</SectionTitle>
       </SectionHeader>
-      <SectionContent>
-        <EmptyState user={user} />
+      <CollectionContent>
+        {showList ? (
+          <CollectionList
+            collections={collections}
+            analyticsContext="Homepage"
+          />
+        ) : (
+          <EmptyState user={user} />
+        )}
         <CollectionLink to={collectionUrl}>
           <CollectionLinkText>{t`Browse all items`}</CollectionLinkText>
           <CollectionLinkIcon name="chevronright" />
         </CollectionLink>
-      </SectionContent>
+      </CollectionContent>
     </Section>
   );
 };

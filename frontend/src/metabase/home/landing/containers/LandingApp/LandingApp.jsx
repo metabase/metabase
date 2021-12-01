@@ -18,6 +18,7 @@ const collectionsProps = {
     limit: 500,
   },
   listName: "collections",
+  wrapped: true,
   loadingAndErrorWrapper: false,
 };
 
