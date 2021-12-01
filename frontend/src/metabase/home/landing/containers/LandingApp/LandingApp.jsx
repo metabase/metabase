@@ -6,6 +6,8 @@ import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
 import LandingApp from "../../components/LandingApp";
+import { hideData, hidePinMessage, hideXrays } from "../../actions";
+import { getShowData, getShowPinMessage, getShowXrays } from "../../selectors";
 
 const databasesProps = {
   loadingAndErrorWrapper: false,
@@ -45,15 +47,21 @@ const candidatesProps = {
 
 const mapStateToProps = state => ({
   user: getUser(state),
-  showXrays: true,
-  showData: true,
-  showPinNotice: true,
+  showData: getShowData(state),
+  showXrays: getShowXrays(state),
+  showPinMessage: getShowPinMessage(state),
 });
+
+const mapDispatchToProps = {
+  onHideData: hideData,
+  onHideXrays: hideXrays,
+  onHidePinMessage: hidePinMessage,
+};
 
 export default _.compose(
   Databases.loadList(databasesProps),
   Search.loadList(collectionsProps),
   Search.loadList(dashboardsProps),
   DatabaseCandidates.loadList(candidatesProps),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(LandingApp);

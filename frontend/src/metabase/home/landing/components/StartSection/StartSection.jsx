@@ -25,20 +25,20 @@ const propTypes = {
   user: PropTypes.object.isRequired,
   databases: PropTypes.array.isRequired,
   dashboards: PropTypes.array.isRequired,
-  showPinNotice: PropTypes.bool,
-  onHidePinNotice: PropTypes.func,
+  showPinMessage: PropTypes.bool,
+  onHidePinMessage: PropTypes.func,
 };
 
 const StartSection = ({
   user,
   databases,
   dashboards,
-  showPinNotice,
-  onHidePinNotice,
+  showPinMessage,
+  onHidePinMessage,
 }) => {
   const hasUserDatabase = databases.some(d => !d.is_sample);
   const hasDatabaseBanner = user.is_superuser && !hasUserDatabase;
-  const hasDashboardBanner = !dashboards.length && showPinNotice;
+  const hasDashboardBanner = !dashboards.length && showPinMessage;
   const hasDashboardList = dashboards.length > 0;
 
   if (!hasDatabaseBanner && !hasDashboardBanner && !hasDashboardList) {
@@ -52,7 +52,7 @@ const StartSection = ({
       </SectionHeader>
       {hasDatabaseBanner && <DatabaseBanner />}
       {hasDashboardBanner && !hasDatabaseBanner && (
-        <DashboardBanner onHidePinNotice={onHidePinNotice} />
+        <DashboardBanner onHidePinMessage={onHidePinMessage} />
       )}
       {hasDashboardList && (
         <ListRoot hasMargin={hasDatabaseBanner}>
@@ -115,10 +115,10 @@ const DatabaseBanner = () => {
 };
 
 const dashboardBannerProps = {
-  onHidePinNotice: PropTypes.func,
+  onHidePinMessage: PropTypes.func,
 };
 
-const DashboardBanner = ({ onHidePinNotice }) => {
+const DashboardBanner = ({ onHidePinMessage }) => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (
@@ -134,7 +134,7 @@ const DashboardBanner = ({ onHidePinNotice }) => {
           </ExternalLink>
         )} to have them appear in this space for everyone.`}</BannerDescription>
       </BannerContent>
-      <BannerCloseIcon name="close" onClick={onHidePinNotice} />
+      <BannerCloseIcon name="close" onClick={onHidePinMessage} />
     </BannerRoot>
   );
 };

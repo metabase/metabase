@@ -15,10 +15,10 @@ const propTypes = {
   candidates: PropTypes.array,
   showData: PropTypes.bool,
   showXrays: PropTypes.bool,
-  showPinNotice: PropTypes.bool,
+  showPinMessage: PropTypes.bool,
   onHideData: PropTypes.func,
   onHideXrays: PropTypes.func,
-  onHidePinNotice: PropTypes.func,
+  onHidePinMessage: PropTypes.func,
 };
 
 const LandingApp = ({
@@ -29,10 +29,10 @@ const LandingApp = ({
   candidates,
   showData,
   showXrays,
-  showPinNotice,
+  showPinMessage,
   onHideData,
   onHideXrays,
-  onHidePinNotice,
+  onHidePinMessage,
 }) => {
   return (
     <LandingRoot>
@@ -43,8 +43,8 @@ const LandingApp = ({
             user={user}
             databases={databases}
             dashboards={dashboards}
-            showPinNotice={showPinNotice}
-            onHidePinNotice={onHidePinNotice}
+            showPinMessage={showPinMessage}
+            onHidePinMessage={onHidePinMessage}
           />
           <XraySection
             user={user}
