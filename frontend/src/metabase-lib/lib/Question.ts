@@ -39,7 +39,6 @@ import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
-  getParameterValuesByIdFromSlugs,
 } from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
@@ -1109,6 +1108,12 @@ export default class Question {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
 
+  setParameterValues(parameterValues) {
+    const question = this.clone();
+    question._parameterValues = parameterValues;
+    return question;
+  }
+
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
@@ -1213,11 +1218,15 @@ export default class Question {
 
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
+
       if (this.query().isEditable()) {
-        return questionWithParameters.convertParametersToFilters().getUrl({
-          originalQuestion: this,
-          includeDisplayIsLocked,
-        });
+        return questionWithParameters
+          .setParameterValues(parameterValues)
+          .convertParametersToFilters()
+          .getUrl({
+            originalQuestion: this,
+            includeDisplayIsLocked,
+          });
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);
         return questionWithParameters.markDirty().getUrl({
