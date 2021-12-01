@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
+import Icon from "metabase/components/Icon";
 
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -27,6 +29,7 @@ import {
   Root,
   MainContainer,
   QueryEditorContainer,
+  TableHeaderColumnName,
   TableContainer,
 } from "./DatasetEditor.styled";
 
@@ -50,6 +53,17 @@ const propTypes = {
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
+const TABLE_HEADER_HEIGHT = 45;
+
+const isSameField = (f1, f2) => {
+  if (!f1 || !f2) {
+    return false;
+  }
+  const canCompareIDs = f1.id != null && f2.id != null;
+  return canCompareIDs
+    ? f1.id === f2.id
+    : _.isEqual(f1.field_ref, f2.field_ref);
+};
 
 function mapStateToProps(state) {
   return {
@@ -135,6 +149,32 @@ function DatasetEditor(props) {
 
   const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
 
+  const handleTableElementClick = ({ element, ...clickedObject }) => {
+    const isColumnClick =
+      clickedObject?.column && Object.keys(clickedObject)?.length === 1;
+
+    if (isColumnClick) {
+      const field = dataset
+        .getResultMetadata()
+        .find(f => isSameField(clickedObject.column, f));
+      setFocusedField(field);
+    }
+  };
+
+  const renderSelectableTableColumnHeader = (element, column) => (
+    <TableHeaderColumnName
+      isSelected={isSameField(column, focusedField)}
+      onClick={() => handleTableElementClick({ column })}
+    >
+      <Icon name="three_dots" size={14} />
+      <span>{column.display_name}</span>
+    </TableHeaderColumnName>
+  );
+
+  const renderTableHeaderWrapper = isEditingMetadata
+    ? renderSelectableTableColumnHeader
+    : undefined;
+
   return (
     <React.Fragment>
       <EditBar
@@ -187,7 +227,9 @@ function DatasetEditor(props) {
                 {...props}
                 className="spread"
                 noHeader
-                isVisualizationClickable={false}
+                handleVisualizationClick={handleTableElementClick}
+                tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
+                renderTableHeaderWrapper={renderTableHeaderWrapper}
               />
             </DebouncedFrame>
           </TableContainer>
