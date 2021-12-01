@@ -19,10 +19,15 @@ export const MainContainer = styled.div`
 `;
 
 export const QueryEditorContainer = styled.div`
-  margin-bottom: 1rem;
-  border-bottom: 1px solid ${color("border")};
   z-index: 2;
   width: 100%;
+
+  ${props =>
+    props.isResizable &&
+    css`
+      margin-bottom: 1rem;
+      border-bottom: 1px solid ${color("border")};
+    `}
 `;
 
 const tableVisibilityStyle = css`

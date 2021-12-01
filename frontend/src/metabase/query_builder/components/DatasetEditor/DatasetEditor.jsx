@@ -147,7 +147,7 @@ function DatasetEditor(props) {
       />
       <Root>
         <MainContainer>
-          <QueryEditorContainer>
+          <QueryEditorContainer isResizable={isEditingQuery}>
             {dataset.isNative() ? (
               <NativeQueryEditor
                 {...props}
@@ -159,6 +159,7 @@ function DatasetEditor(props) {
               <ResizableNotebook
                 {...props}
                 height={editorHeight}
+                isResizable={isEditingQuery}
                 onResizeStop={handleResize}
               />
             )}
