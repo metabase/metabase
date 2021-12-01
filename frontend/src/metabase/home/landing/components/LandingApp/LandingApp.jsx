@@ -1,10 +1,17 @@
-import React from "react";
+import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import GreetingSection from "../GreetingSection";
 import OurDataSection from "../OurDataSection";
 import StartHereSection from "../StartHereSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./LandingApp.styled";
+import {
+  hasContentSections,
+  hasGreetingSection,
+  hasOurDataSection,
+  hasStartHereSection,
+  hasXraySection,
+} from "../../utils/landing";
 
 const propTypes = {
   user: PropTypes.object,
@@ -15,20 +22,17 @@ const propTypes = {
   showOurData: PropTypes.bool,
 };
 
-const LandingApp = ({
-  user,
-  databases,
-  dashboards,
-  candidates,
-  showXrays,
-  showOurData,
-}) => {
+const LandingApp = props => {
   return (
     <LandingRoot>
-      <GreetingSection user={user} />
-      <StartHereSection user={user} dashboards={dashboards} />
-      {showXrays && <XraySection user={user} candidates={candidates} />}
-      {showOurData && <OurDataSection user={user} databases={databases} />}
+      {hasGreetingSection(props) && <GreetingSection {...props} />}
+      {hasContentSections(props) && (
+        <Fragment>
+          {hasStartHereSection(props) && <StartHereSection {...props} />}
+          {hasXraySection(props) && <XraySection {...props} />}
+          {hasOurDataSection(props) && <OurDataSection {...props} />}
+        </Fragment>
+      )}
     </LandingRoot>
   );
 };

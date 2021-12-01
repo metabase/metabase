@@ -22,7 +22,9 @@ import {
 
 const propTypes = {
   user: PropTypes.object.isRequired,
+  databases: PropTypes.array.isRequired,
   dashboards: PropTypes.array.isRequired,
+  showPinNotice: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 

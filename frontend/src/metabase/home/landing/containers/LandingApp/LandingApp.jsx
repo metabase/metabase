@@ -4,8 +4,12 @@ import Databases from "metabase/entities/databases";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import LandingApp from "../../components/LandingApp";
+
+const databasesProps = {
+  loadingAndErrorWrapper: false,
+};
 
 const dashboardsProps = {
   query: {
@@ -17,6 +21,7 @@ const dashboardsProps = {
     limit: 500,
   },
   listName: "dashboards",
+  loadingAndErrorWrapper: false,
 };
 
 const candidatesProps = {
@@ -24,6 +29,7 @@ const candidatesProps = {
     id: 1,
   },
   listName: "candidates",
+  loadingAndErrorWrapper: false,
 };
 
 const mapStateToProps = state => ({
@@ -33,8 +39,8 @@ const mapStateToProps = state => ({
 });
 
 export default _.compose(
-  Databases.loadList(),
-  DatabaseCandidates.loadList(candidatesProps),
+  Databases.loadList(databasesProps),
   Search.loadList(dashboardsProps),
+  DatabaseCandidates.loadList(candidatesProps),
   connect(mapStateToProps),
 )(LandingApp);

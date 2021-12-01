@@ -1,17 +1,30 @@
-export const hasStartHereSection = options => {
+export const hasGreetingSection = ({ user }) => {
+  return user != null;
+};
+
+export const hasContentSections = ({ user, databases, dashboards }) => {
+  return user != null && databases != null && dashboards != null;
+};
+
+export const hasStartHereSection = ({
+  user,
+  databases,
+  dashboards,
+  showPinNotice,
+}) => {
   return (
-    hasDatabaseBanner(options) ||
-    hasDashboardBanner(options) ||
-    hasDashboardList(options)
+    hasDatabaseBanner({ user, databases }) ||
+    hasDashboardBanner({ dashboards, showPinNotice }) ||
+    hasDashboardList({ dashboards })
   );
 };
 
 export const hasXraySection = ({ candidates, dashboards, showXrays }) => {
-  return candidates.length && !dashboards.length && showXrays;
+  return candidates?.length && !dashboards.length && showXrays;
 };
 
-export const hasOurDataSection = ({ showData }) => {
-  return showData;
+export const hasOurDataSection = ({ showOurData }) => {
+  return showOurData;
 };
 
 export const hasDatabaseBanner = ({ user, databases }) => {
