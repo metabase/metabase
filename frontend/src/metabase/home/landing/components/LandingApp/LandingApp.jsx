@@ -1,6 +1,7 @@
 import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import GreetingSection from "../GreetingSection";
+import OurAnalyticsSection from "../OurAnalyticsSection";
 import OurDataSection from "../OurDataSection";
 import StartHereSection from "../StartHereSection";
 import XraySection from "../XraySection";
@@ -42,6 +43,7 @@ const LandingApp = ({
             candidates={candidates}
             showXrays={showXrays}
           />
+          <OurAnalyticsSection />
           <OurDataSection
             user={user}
             databases={databases}
