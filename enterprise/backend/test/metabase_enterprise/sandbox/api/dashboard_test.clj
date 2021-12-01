@@ -86,3 +86,16 @@
                                    s/Keyword           s/Any}
                                   "DashboardCard")]
                           (dashcards))))))))))
+
+(deftest update-cards-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (mt/with-gtaps {:gtaps {:venues {}}}
+        (api.dashboard-test/do-with-update-cards-parameter-mapping-permissions-fixtures
+         (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+           (testing "Should be able to update `:parameter_mappings` *with* only sandboxed perms"
+             (perms/grant-permissions! (group/all-users) (perms/table-segmented-query-path (mt/id :venues)))
+             (is (= {:status "ok"}
+                    (update-mappings! 200)))
+             (is (= new-mappings
+                    (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))))))))
