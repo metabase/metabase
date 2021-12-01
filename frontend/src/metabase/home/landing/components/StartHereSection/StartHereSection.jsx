@@ -29,10 +29,11 @@ const propTypes = {
 };
 
 const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
-  const hasUserDatabase = databases.some(d => !d.is_sample);
-  const hasDatabaseBanner = user.is_superuser && !hasUserDatabase;
-  const hasDashboardBanner = !dashboards.length && showPinNotice;
-  const hasDashboardList = dashboards.length;
+  const hasDatabaseBanner =
+    user.is_superuser && !databases.some(d => !d.is_sample);
+  const hasDashboardBanner =
+    !dashboards.length && showPinNotice && !hasDatabaseBanner;
+  const hasDashboardList = dashboards.length > 0;
 
   if (!hasDatabaseBanner && !hasDashboardBanner && !hasDashboardList) {
     return null;
