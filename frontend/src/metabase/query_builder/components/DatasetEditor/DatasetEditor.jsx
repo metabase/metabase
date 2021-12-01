@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -100,6 +100,15 @@ function DatasetEditor(props) {
   const [editorHeight, setEditorHeight] = useState(
     isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
   );
+
+  const [focusedField, setFocusedField] = useState();
+
+  useEffect(() => {
+    const resultMetadata = dataset.getResultMetadata();
+    if (!focusedField && resultMetadata?.length > 0) {
+      setFocusedField(resultMetadata[0]);
+    }
+  }, [dataset, focusedField]);
 
   const onChangeEditorTab = tab => {
     setDatasetEditorTab(tab);
