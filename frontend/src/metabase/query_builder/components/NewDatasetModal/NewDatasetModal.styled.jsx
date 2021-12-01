@@ -1,26 +1,32 @@
 import React from "react";
 import { PropTypes } from "prop-types";
 import styled from "styled-components";
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Icon from "metabase/components/Icon";
+import { t } from "ttag";
 
 const FeatureOverviewContainer = styled.div`
-  padding-right: ${space(1)};
+  padding-top: ${space(3)};
+  padding-left: ${space(2)};
+  padding-right: ${space(2)};
 `;
 
-const FeatureIconContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 8px;
-  background-color: ${lighten(color("brand", 0.5))};
-  width: 100px;
-  height: 100px;
+const DatasetImg = styled.img`
+  padding-top: ${space(2)};
 `;
 
-const FeatureDescription = styled.p`
+const DatasetTitle = styled.h2`
+  margin-top: ${space(3)};
+  margin-bottom: ${space(2)};
+`;
+
+const DatasetValueProp = styled.li`
   color: ${color("text-dark")};
+  list-style-type: disc;
+  margin-left: ${space(2)};
+  padding-bottom: ${space(2)};
+  font-size: 14;
+  line-height: 22px;
 `;
 
 DatasetFeatureOverview.propTypes = {
@@ -31,10 +37,21 @@ DatasetFeatureOverview.propTypes = {
 export function DatasetFeatureOverview({ icon, children }) {
   return (
     <FeatureOverviewContainer>
-      <FeatureIconContainer>
-        <Icon name={icon} color={color("brand")} size={40} />
-      </FeatureIconContainer>
-      <FeatureDescription>{children}</FeatureDescription>
+      <DatasetImg src="app/img/dataset-illustration.svg" />
+      <DatasetTitle>{t`Datasets`}</DatasetTitle>
+      <ul>
+        <DatasetValueProp>
+          Let you update column descriptions and customize metadata to create
+          great starting points for exploration.
+        </DatasetValueProp>
+        <DatasetValueProp>
+          Show up higher in search results and get highlighted when other users
+          start new questions to promote reuse.
+        </DatasetValueProp>
+        <DatasetValueProp>
+          Live in collections to keep them separate from messy database schemas.
+        </DatasetValueProp>
+      </ul>
     </FeatureOverviewContainer>
   );
 }

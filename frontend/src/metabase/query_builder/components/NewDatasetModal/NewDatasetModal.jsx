@@ -1,17 +1,15 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import Button from "metabase/components/Button";
+import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
-import {
-  DatasetFeatureOverview,
-  DatasetFeaturesContainer,
-} from "./NewDatasetModal.styled";
+import { DatasetFeatureOverview } from "./NewDatasetModal.styled";
 
 const propTypes = {
   turnQuestionIntoDataset: PropTypes.func.isRequired,
@@ -30,9 +28,12 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
 
   return (
     <ModalContent
-      title={t`Create datasets to make it easier for everyone to explore.`}
       footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
+        <Link
+          className="text-brand"
+          key="cancel"
+          onClick={onClose}
+        >{t`Cancel`}</Link>,
         <Button
           key="action"
           primary
@@ -40,23 +41,7 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
         >{t`Turn this into a dataset`}</Button>,
       ]}
     >
-      <DatasetFeaturesContainer>
-        <DatasetFeatureOverview icon="dataset">
-          {jt`You’ll see them in the ${(
-            <strong>{t`Datasets section`}</strong>
-          )} when creating a new question.`}
-        </DatasetFeatureOverview>
-        <DatasetFeatureOverview icon="folder">
-          {jt`Easily ${(
-            <strong>{t`open a dataset from its collection`}</strong>
-          )} or via Search to start a new question.`}
-        </DatasetFeatureOverview>
-        <DatasetFeatureOverview icon="label">
-          {jt`You can ${(
-            <strong>{t`customize a dataset’s metadata`}</strong>
-          )} to make it even easier to explore the data.`}
-        </DatasetFeatureOverview>
-      </DatasetFeaturesContainer>
+      <DatasetFeatureOverview />
     </ModalContent>
   );
 }
