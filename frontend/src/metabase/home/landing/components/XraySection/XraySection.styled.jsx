@@ -54,5 +54,5 @@ export const XrayIcon = styled(Icon)`
 
 export const XrayTitle = styled.span`
   display: block;
-  margin-left: 1.5rem;
+  margin-left: 1rem;
 `;
