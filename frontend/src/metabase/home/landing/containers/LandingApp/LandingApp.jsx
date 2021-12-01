@@ -46,7 +46,7 @@ const candidatesProps = {
 const mapStateToProps = state => ({
   user: getUser(state),
   showXrays: true,
-  showOurData: true,
+  showData: true,
   showPinNotice: true,
 });
 

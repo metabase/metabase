@@ -13,9 +13,12 @@ const propTypes = {
   collections: PropTypes.array,
   dashboards: PropTypes.array,
   candidates: PropTypes.array,
+  showData: PropTypes.bool,
   showXrays: PropTypes.bool,
-  showOurData: PropTypes.bool,
   showPinNotice: PropTypes.bool,
+  onHideData: PropTypes.func,
+  onHideXrays: PropTypes.func,
+  onHidePinNotice: PropTypes.func,
 };
 
 const LandingApp = ({
@@ -24,9 +27,12 @@ const LandingApp = ({
   collections,
   dashboards,
   candidates,
+  showData,
   showXrays,
-  showOurData,
   showPinNotice,
+  onHideData,
+  onHideXrays,
+  onHidePinNotice,
 }) => {
   return (
     <LandingRoot>
@@ -38,18 +44,21 @@ const LandingApp = ({
             databases={databases}
             dashboards={dashboards}
             showPinNotice={showPinNotice}
+            onHidePinNotice={onHidePinNotice}
           />
           <XraySection
             user={user}
             dashboards={dashboards}
             candidates={candidates}
             showXrays={showXrays}
+            onHideXrays={onHideXrays}
           />
           <CollectionSection user={user} collections={collections} />
           <DatabaseSection
             user={user}
             databases={databases}
-            showOurData={showOurData}
+            showData={showData}
+            onHideData={onHideData}
           />
         </Fragment>
       )}

@@ -21,15 +21,15 @@ import {
 const propTypes = {
   user: PropTypes.object.isRequired,
   databases: PropTypes.array.isRequired,
-  showOurData: PropTypes.bool,
+  showData: PropTypes.bool,
   onHideOurData: PropTypes.func,
 };
 
-const DatabaseSection = ({ user, databases, showOurData, onHideOurData }) => {
+const DatabaseSection = ({ user, databases, showData, onHideOurData }) => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
-  if (!showOurData || (!databases.length && !hasAddLink)) {
+  if (!showData || (!databases.length && !hasAddLink)) {
     return null;
   }
 
