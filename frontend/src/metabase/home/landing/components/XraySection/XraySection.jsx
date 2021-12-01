@@ -2,13 +2,20 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Section, {
   SectionHeader,
   SectionIcon,
   SectionTitle,
 } from "../LandingSection";
-import Tooltip from "metabase/components/Tooltip";
+import {
+  XrayCardRoot,
+  TableGrid,
+  XrayIcon,
+  XrayIconContainer,
+  XrayTitle,
+} from "./XraySection.styled";
 
 const propTypes = {
   databaseCandidates: PropTypes.array.isRequired,
@@ -16,7 +23,9 @@ const propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-const XraySection = ({ isAdmin, onRemoveSection }) => {
+const XraySection = ({ databaseCandidates, isAdmin, onRemoveSection }) => {
+  const options = databaseCandidates.flatMap(database => database.tables);
+
   return (
     <Section>
       <SectionHeader>
@@ -29,11 +38,35 @@ const XraySection = ({ isAdmin, onRemoveSection }) => {
           </SectionRemoveModal>
         )}
       </SectionHeader>
+      <TableGrid>
+        {options.map(option => (
+          <XrayCard key={option.url} option={option} />
+        ))}
+      </TableGrid>
     </Section>
   );
 };
 
 XraySection.propTypes = propTypes;
+
+const cardPropTypes = {
+  option: PropTypes.object.isRequired,
+};
+
+const XrayCard = ({ option }) => {
+  return (
+    <XrayCardRoot to={option.url}>
+      <XrayIconContainer>
+        <XrayIcon name="bolt" />
+      </XrayIconContainer>
+      <XrayTitle>
+        {t`A look at your`} <strong>{option.title}</strong>
+      </XrayTitle>
+    </XrayCardRoot>
+  );
+};
+
+XrayCard.propTypes = cardPropTypes;
 
 const modalPropTypes = {
   children: PropTypes.node,
