@@ -118,6 +118,14 @@
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
+(defn funnel
+  "Clojure entrypoint to render a timeseries waterfall chart. Data should be vec of [{AAAAAHHHHH FILL IN HERE AAAAAHHHH}].
+  Returns a byte array of a png file."
+  [data settings]
+  (let [svg-string (.asString (js/execute-fn-name @context "funnel" (json/generate_string data)
+                                                  (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
 (defn timelineseries-bar
   "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."

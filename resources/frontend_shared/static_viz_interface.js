@@ -56,6 +56,13 @@ function timeseries_waterfall(data, labels, settings) {
   });
 }
 
+function funnel(data, settings) {
+  return StaticViz.RenderChart("funnel", {
+    data: JSON.parse(data),
+    settings: JSON.parse(settings),
+  });
+}
+
 function categorical_bar(data, labels, settings) {
   return StaticViz.RenderChart("categorical/bar", {
     data: toJSArray(data),
