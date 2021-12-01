@@ -1,13 +1,14 @@
 import {
-  restore,
+  enterCustomColumnDetails,
+  getNotebookStep,
+  interceptPromise,
+  modal,
   openOrdersTable,
   openProductsTable,
   popover,
-  modal,
-  visualize,
+  restore,
   visitQuestionAdhoc,
-  interceptPromise,
-  getNotebookStep,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -145,20 +146,19 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("[Price] > 1");
+    enterCustomColumnDetails({ formula: "[Price] > 1" });
+
     cy.button("Done").click();
 
     // change the corresponding custom expression
     cy.findByText("Price is greater than 1").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
+
+    cy.get("@formula")
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
+
     cy.contains(/^Price is less than 5/i);
   });
 
