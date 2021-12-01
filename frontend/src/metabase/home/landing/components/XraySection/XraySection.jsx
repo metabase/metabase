@@ -11,7 +11,7 @@ import Section, {
 } from "../LandingSection";
 import {
   CardRoot,
-  GridRoot,
+  ListRoot,
   CardIcon,
   CardIconContainer,
   CardTitle,
@@ -38,11 +38,11 @@ const XraySection = ({ candidates, isAdmin, onRemoveSection }) => {
           </SectionRemoveModal>
         )}
       </SectionHeader>
-      <GridRoot>
+      <ListRoot>
         {options.map(option => (
           <XrayCard key={option.url} option={option} />
         ))}
-      </GridRoot>
+      </ListRoot>
     </Section>
   );
 };

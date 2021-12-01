@@ -12,7 +12,7 @@ import Section, {
 } from "../LandingSection";
 import {
   CardRoot,
-  GridRoot,
+  ListRoot,
   CardIcon,
   CardTitle,
   ActionLink,
@@ -42,7 +42,7 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
           <ActionLink to={Urls.newDatabase()}>{t`Add a database`}</ActionLink>
         )}
       </SectionHeader>
-      <GridRoot>
+      <ListRoot>
         {databases.map(database => (
           <DatabaseCard
             key={database.id}
@@ -58,7 +58,7 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
             isActive={false}
           />
         )}
-      </GridRoot>
+      </ListRoot>
     </Section>
   );
 };

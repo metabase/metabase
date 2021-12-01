@@ -17,7 +17,7 @@ import {
   CardIcon,
   CardRoot,
   CardTitle,
-  GridRoot,
+  ListRoot,
 } from "./StartHereSection.styled";
 
 const propTypes = {
@@ -32,11 +32,11 @@ const StartHereSection = ({ dashboards }) => {
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      <GridRoot>
+      <ListRoot>
         {dashboards.map(dashboard => (
           <DashboardCard key={dashboard.id} dashboard={dashboard} />
         ))}
-      </GridRoot>
+      </ListRoot>
     </Section>
   );
 };
