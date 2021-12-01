@@ -51,6 +51,22 @@
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["A" 2]]})))
+  (is (= :combo
+         (render/detect-pulse-chart-type {:display :combo}
+                                         {:cols [{:base_type :type/Temporal}
+                                                 {:base_type :type/Number}]
+                                          :rows [[#t "2020" 2]
+                                                 [#t "2021" 3]]})))
+
+  ;; multiple actually depends upon hydration behavior of whole card
+  ;; :multi_cards should be a seq of cards
+  (is (= :multiple
+         (render/detect-pulse-chart-type {:display :something
+                                          :multi_cards [{:display :bar} {:display :line}]}
+                                         {:cols [{:base_type :type/Temporal}
+                                                 {:base_type :type/Number}]
+                                          :rows [[#t "2020" 2]
+                                                 [#t "2021" 3]]})))
 
   ;; timeseries line chart
   (is (= :sparkline

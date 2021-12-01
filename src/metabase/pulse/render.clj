@@ -95,7 +95,7 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
-        (and (> (count (hydrate card :multi_cards)) 0)
+        (and (> (count (:multi_cards (hydrate card :multi_cards))) 0)
              (not (#{:combo } display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
