@@ -18,13 +18,13 @@ import {
 } from "./XraySection.styled";
 
 const propTypes = {
-  databaseCandidates: PropTypes.array.isRequired,
+  candidates: PropTypes.array.isRequired,
   isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const XraySection = ({ databaseCandidates, isAdmin, onRemoveSection }) => {
-  const options = databaseCandidates.flatMap(database => database.tables);
+const XraySection = ({ candidates, isAdmin, onRemoveSection }) => {
+  const options = candidates.flatMap(database => database.tables);
 
   return (
     <Section>

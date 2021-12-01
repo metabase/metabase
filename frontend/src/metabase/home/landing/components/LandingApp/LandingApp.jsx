@@ -9,7 +9,8 @@ import { LandingRoot } from "./LandingApp.styled";
 const propTypes = {
   greeting: PropTypes.string,
   databases: PropTypes.array,
-  databaseCandidates: PropTypes.array,
+  dashboards: PropTypes.array,
+  candidates: PropTypes.array,
   isAdmin: PropTypes.bool,
   showXrays: PropTypes.bool,
   showOurData: PropTypes.bool,
@@ -18,7 +19,8 @@ const propTypes = {
 const LandingApp = ({
   greeting,
   databases,
-  databaseCandidates,
+  dashboards,
+  candidates,
   isAdmin,
   showXrays,
   showOurData,
@@ -26,13 +28,8 @@ const LandingApp = ({
   return (
     <LandingRoot>
       <GreetingSection greeting={greeting} />
-      <StartHereSection isAdmin={isAdmin} />
-      {showXrays && (
-        <XraySection
-          databaseCandidates={databaseCandidates}
-          isAdmin={isAdmin}
-        />
-      )}
+      <StartHereSection dashboards={dashboards} isAdmin={isAdmin} />
+      {showXrays && <XraySection candidates={candidates} isAdmin={isAdmin} />}
       {showOurData && (
         <OurDataSection databases={databases} isAdmin={isAdmin} />
       )}

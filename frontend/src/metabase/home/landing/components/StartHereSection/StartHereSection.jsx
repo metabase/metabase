@@ -17,20 +17,26 @@ import {
   CardIcon,
   CardRoot,
   CardTitle,
+  GridRoot,
 } from "./StartHereSection.styled";
 
 const propTypes = {
+  dashboards: PropTypes.array.isRequired,
   isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const StartHereSection = () => {
+const StartHereSection = ({ dashboards }) => {
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      <DashboardBanner />
+      <GridRoot>
+        {dashboards.map(dashboard => (
+          <DashboardCard key={dashboard.id} dashboard={dashboard} />
+        ))}
+      </GridRoot>
     </Section>
   );
 };

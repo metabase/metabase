@@ -2,11 +2,29 @@ import styled from "styled-components";
 import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import {
+  breakpointMinMedium,
+  breakpointMinSmall,
+} from "metabase/styled-components/theme";
+
+export const GridRoot = styled.div`
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+
+  ${breakpointMinSmall} {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  ${breakpointMinMedium} {
+    grid-template-columns: repeat(3, 1fr);
+  }
+`;
 
 export const CardRoot = styled(Link)`
   display: block;
   padding: 1.5rem;
-  color: ${color("text-medium")};
+  color: ${color("text-dark")};
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
@@ -25,7 +43,6 @@ export const CardIcon = styled(Icon)`
 
 export const CardTitle = styled.span`
   display: block;
-  color: ${color("text-dark")};
   font-weight: 700;
   margin-top: 2.25rem;
 `;
