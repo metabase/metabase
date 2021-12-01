@@ -64,13 +64,21 @@
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
     [{:name     \"A\"
+      :below    #{:card :dataset}
       :children [{:name \"B\"}
                  {:name     \"C\"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     \"D\"
+                              :here     #{:dataset}
                               :children [{:name \"E\"}]}
                              {:name     \"F\"
+                              :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
-     {:name \"H\"}]"
+     {:name \"H\"}]
+
+  The here and below keys indicate the types of items at this particular level of the tree (here) and in its
+  subtree (below)."
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
   (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as x}]
