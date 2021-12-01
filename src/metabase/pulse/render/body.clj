@@ -323,13 +323,13 @@
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
         x-format (merge
-                   x-col-settings
                    (if (isa? (:effective_type x-col) :type/Temporal)
                      {:date_style "MMMM D, YYYY"}
-                     default-format))
+                     default-format)
+                   x-col-settings)
         y-format (merge
-                   y-col-settings
-                   default-format)]
+                   default-format
+                   y-col-settings)]
     {:colors (public-settings/application-colors)
      :x      {:type (or (:graph.x_axis.scale _viz-settings) "timeseries")
               :format x-format}

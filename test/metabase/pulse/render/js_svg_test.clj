@@ -161,25 +161,38 @@
         (validate-svg-string :timelineseries-waterfall svg-string)))))
 
 (deftest combo-test
-  (let [rows1    [[#t "2020" 2]
-                  [#t "2021" 3]]
-        rows2    [[#t "2019" 3]
-                  [#t "2020" 4]]
-        rows     [rows1 rows2]
-        labels   {:left "count" :bottom "year"}
+  (let [rows1    [[#t "1998-03-01T00:00:00Z" 2]
+                  [#t "1999-03-01T00:00:00Z" 3]]
+        rows2    [[#t "2000-03-01T00:00:00Z" 3]
+                  [#t "2002-03-01T00:00:00Z" 4]]
         ;; this one needs more stuff because of stricter ts types
-        settings (json/generate-string {:x {}
-                                        :y {:prefix   "prefix"
-                                            :decimals 4}
-                                        :colors {}
-                                        :labels labels})]
+        series   [{:name          "bob"
+                   :color         "#cccccc"
+                   :type          "area"
+                   :data          rows1
+                   :yAxisPosition "left"}
+                  {:name          "bob2"
+                   :color         "#cccccc"
+                   :type          "line"
+                   :data          rows2
+                   :yAxisPosition "right"}]
+        labels   {:left "count" :bottom "year" :right "something"}
+        settings {:x {:type "timeseries"
+                      :format {:date_style "YYYY"}}
+                  :y {:type "linear"
+                      :format {:number_style "decimal" :decimals 4}}
+                  :colors {}
+                  :labels labels}]
     (testing "It returns bytes"
-      (let [svg-bytes (js-svg/combo-chart rows settings)]
+      (let [svg-bytes (js-svg/combo-chart series settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString (js/execute-fn-name @context "combo_chart" rows labels settings))
+    (let [svg-string (.asString (js/execute-fn-name @context "combo_chart"
+                                                    (json/generate-string series)
+                                                    (json/generate-string settings)
+                                                    (json/generate-string {})))
           svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
       (testing "it returns a valid svg string (no html in it)"
-        (validate-svg-string :timelineseries-waterfall svg-string)))))
+        (validate-svg-string :combo-chart svg-string)))))
 
 
 (deftest categorical-donut-test
