@@ -67,7 +67,7 @@ const DatabaseCard = ({ title, link, isActive }) => {
   return (
     <DatabaseCardRoot to={link} isActive={isActive}>
       <DatabaseIcon name="database" isActive={isActive} />
-      <DatabaseTitle isActive={isActive}>{title}</DatabaseTitle>
+      <DatabaseTitle>{title}</DatabaseTitle>
     </DatabaseCardRoot>
   );
 };
