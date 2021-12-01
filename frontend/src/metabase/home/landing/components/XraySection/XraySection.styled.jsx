@@ -7,7 +7,7 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const CardGridRoot = styled.div`
+export const GridRoot = styled.div`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;

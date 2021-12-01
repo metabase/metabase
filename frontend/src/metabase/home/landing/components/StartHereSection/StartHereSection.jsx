@@ -14,6 +14,9 @@ import {
   BannerIconContainer,
   BannerRoot,
   BannerTitle,
+  CardIcon,
+  CardRoot,
+  CardTitle,
 } from "./StartHereSection.styled";
 
 const propTypes = {
@@ -33,6 +36,23 @@ const StartHereSection = () => {
 };
 
 StartHereSection.propTypes = propTypes;
+
+const cardProps = {
+  dashboard: PropTypes.object,
+};
+
+const DashboardCard = ({ dashboard }) => {
+  const dashboardUrl = Urls.dashboard(dashboard);
+
+  return (
+    <CardRoot to={dashboardUrl}>
+      <CardIcon name="dashboard" />
+      <CardTitle>{dashboard.name}</CardTitle>
+    </CardRoot>
+  );
+};
+
+DashboardCard.propTypes = cardProps;
 
 const DatabaseBanner = () => {
   const userUrl = Urls.newUser();

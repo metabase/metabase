@@ -39,9 +39,7 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
           </SectionRemoveModal>
         )}
         {isAdmin && hasNonSampleDatabase && (
-          <ActionLink to={Urls.newDatabase()}>
-            {t`Add a database`}
-          </ActionLink>
+          <ActionLink to={Urls.newDatabase()}>{t`Add a database`}</ActionLink>
         )}
       </SectionHeader>
       <GridRoot>
