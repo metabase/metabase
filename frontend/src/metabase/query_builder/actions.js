@@ -1485,8 +1485,9 @@ export const revertToRevision = createThunkAction(
   },
 );
 
-export const SET_DATASET_EDITOR_TAB = "metabase/qb/SET_DATASET_EDITOR_TAB";
-export const setDatasetEditorTab = createAction(SET_DATASET_EDITOR_TAB);
+export const setDatasetEditorTab = datasetEditorTab => dispatch => {
+  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+};
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
 export const onCancelDatasetChanges = () => (dispatch, getState) => {

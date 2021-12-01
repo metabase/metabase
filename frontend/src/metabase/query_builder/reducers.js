@@ -36,7 +36,6 @@ import {
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
-  SET_DATASET_EDITOR_TAB,
   CANCEL_DATASET_CHANGES,
   onEditSummary,
   onCloseSummary,
@@ -169,10 +168,6 @@ export const uiControls = handleActions(
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
-    },
-
-    [SET_DATASET_EDITOR_TAB]: {
-      next: (state, { payload }) => ({ ...state, datasetEditorTab: payload }),
     },
 
     [SHOW_CHART_SETTINGS]: {
