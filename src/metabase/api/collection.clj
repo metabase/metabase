@@ -79,7 +79,8 @@
                                :card #{}}
                               (db/reducible-query {:select [:collection_id :dataset]
                                                    :modifiers [:distinct]
-                                                   :from [:report_card]}))]
+                                                   :from [:report_card]
+                                                   :where [:= :archived false]}))]
     (collection/collections->tree
      coll-type-ids
      (db/select Collection
