@@ -1,7 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -132,10 +131,11 @@
                    :visible-if {(keyword (str prop-name "-options")) "local"}}])
     [conn-prop]))
 
-(defn- resolve-info-conn-prop [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+(defn- resolve-info-conn-prop
   "Invokes the getter function on a info type connection property and adds it to the connection property map as its
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
+  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
   (let [getter  (:getter conn-prop)
         content (or (:placeholder conn-prop)
                     (try (getter)
@@ -157,7 +157,6 @@
   This also resolves the :getter function on :type :info properties, if one was provided."
   {:added "0.42.0"}
   [conn-props]
-  (def my-conn-props conn-props)
   (reduce (fn [acc conn-prop]
             (case (keyword (:type conn-prop))
               :secret
