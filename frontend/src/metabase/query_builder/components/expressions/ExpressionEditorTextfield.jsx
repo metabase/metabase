@@ -209,6 +209,8 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     if (suggestions.length) {
       this.onSuggestionSelected(highlightedSuggestionIndex);
+    } else {
+      this.commitExpression();
     }
   };
 
@@ -285,6 +287,14 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { expression } = processSource({ source, query, startRule });
 
     return expression;
+  }
+
+  commitExpression() {
+    const expression = this._compileExpression();
+
+    if (isExpression(expression)) {
+      this.props.onCommit(expression);
+    }
   }
 
   handleFocus = () => {

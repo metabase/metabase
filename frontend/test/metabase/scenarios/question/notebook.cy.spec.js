@@ -1,13 +1,14 @@
 import {
-  restore,
+  enterCustomColumnDetails,
+  getNotebookStep,
+  interceptPromise,
+  modal,
   openOrdersTable,
   openProductsTable,
   popover,
-  modal,
-  visualize,
+  restore,
   visitQuestionAdhoc,
-  interceptPromise,
-  getNotebookStep,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -145,20 +146,19 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("[Price] > 1");
+    enterCustomColumnDetails({ formula: "[Price] > 1" });
+
     cy.button("Done").click();
 
     // change the corresponding custom expression
     cy.findByText("Price is greater than 1").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
+
+    cy.get("@formula")
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
+
     cy.contains(/^Price is less than 5/i);
   });
 
@@ -172,10 +172,7 @@ describe("scenarios > question > notebook", () => {
     // Add filter for ID < 100
     cy.findByText("Add filters to narrow your answer").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("ID < 100", { delay: 50 });
+    enterCustomColumnDetails({ formula: "ID < 100" });
     cy.button("Done")
       .should("not.be.disabled")
       .click();
@@ -188,8 +185,7 @@ describe("scenarios > question > notebook", () => {
     cy.contains("ID is less than 100").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
+    cy.get("@formula")
       .clear()
       .type("ID < 2010");
     cy.button("Done").click();
@@ -338,13 +334,15 @@ describe("scenarios > question > notebook", () => {
       // add a custom column on top of the steps from the #13000 repro which was simply asserting
       // that a question could be made by joining two previously saved questions
       cy.icon("add_data").click();
+
       popover().within(() => {
-        cy.get("[contenteditable='true']").type(
-          "[Question 5 → sum] / [Sum of Rating]",
+        enterCustomColumnDetails({
+          formula: "[Question 5 → sum] / [Sum of Rating]",
+        });
+
+        cy.findByPlaceholderText("Something nice and descriptive").type(
+          "Sum Divide",
         );
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type("Sum Divide");
 
         cy.button("Done")
           .should("not.be.disabled")
@@ -786,10 +784,11 @@ describe("scenarios > question > notebook", () => {
 
     it("should work on custom column with `case`", () => {
       cy.icon("add_data").click();
-      cy.get("[contenteditable='true']")
-        .click()
-        .clear()
-        .type("case([Subtotal] + Tax > 100, 'Big', 'Small')", { delay: 50 });
+
+      enterCustomColumnDetails({
+        formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
+      });
+
       cy.findByPlaceholderText("Something nice and descriptive")
         .click()
         .type("Example", { delay: 100 });
@@ -809,10 +808,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Filter").click();
       cy.findByText("Custom Expression").click();
 
-      cy.get("[contenteditable='true']")
-        .click()
-        .clear()
-        .type("[Subtotal] - Tax > 140", { delay: 50 });
+      enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
 
       cy.contains(/^redundant input/i).should("not.exist");
 
@@ -832,14 +828,12 @@ describe("scenarios > question > notebook", () => {
 
     Object.entries(CASES).forEach(([filter, formula]) => {
       const [expression, result] = formula;
+
       it(`should work on custom aggregation with ${filter}`, () => {
         cy.findByText("Summarize").click();
         cy.findByText("Custom Expression").click();
 
-        cy.get("[contenteditable='true']")
-          .click()
-          .clear()
-          .type(expression, { delay: 50 });
+        enterCustomColumnDetails({ formula: expression });
 
         cy.findByPlaceholderText("Name (required)")
           .click()
@@ -910,9 +904,7 @@ function joinTwoSavedQuestions() {
 }
 
 function addSimpleCustomColumn(name) {
-  cy.get("[contenteditable='true']")
-    .click()
-    .type("C");
+  enterCustomColumnDetails({ formula: "C" });
   cy.findByText("ategory").click();
   cy.findByPlaceholderText("Something nice and descriptive")
     .click()
