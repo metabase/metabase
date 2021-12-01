@@ -27,7 +27,7 @@ const CollectionLanding = ({ params: { slug }, children }) => {
         collectionId={collectionId}
         shouldDisplayMobileSidebar={shouldDisplayMobileSidebar}
       />
-      {/* For now I'm wrapping this here so that we could potentially reuse SectionContent without
+      {/* For now I'm wrapping this here so that we could potentially reuse CollectionContent without
         having the specific page margin and layout concerns, TBD whether that's a good idea or needed
         */}
       <ContentBox
