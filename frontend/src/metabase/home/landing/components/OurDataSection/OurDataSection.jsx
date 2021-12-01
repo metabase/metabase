@@ -21,24 +21,30 @@ import {
 const propTypes = {
   user: PropTypes.object.isRequired,
   databases: PropTypes.array.isRequired,
+  showOurData: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const OurDataSection = ({ user, databases, onRemoveSection }) => {
-  const hasNonSampleDatabase = databases.some(d => !d.is_sample);
+const OurDataSection = ({ user, databases, showOurData, onRemoveSection }) => {
+  const hasAddLink = user.is_superuser;
+  const hasUserDatabase = databases.some(d => !d.is_sample);
+
+  if (!showOurData || (!databases.length && !hasAddLink)) {
+    return null;
+  }
 
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
-        {user.is_superuser && (
+        {hasAddLink && (
           <SectionRemoveModal onSubmit={onRemoveSection}>
             <Tooltip tooltip={t`Hide this section`}>
               <SectionIcon name="close" />
             </Tooltip>
           </SectionRemoveModal>
         )}
-        {user.is_superuser && hasNonSampleDatabase && (
+        {hasAddLink && hasUserDatabase && (
           <ActionLink to={Urls.newDatabase()}>{t`Add a database`}</ActionLink>
         )}
       </SectionHeader>
@@ -51,7 +57,7 @@ const OurDataSection = ({ user, databases, onRemoveSection }) => {
             isActive={true}
           />
         ))}
-        {user.is_superuser && !hasNonSampleDatabase && (
+        {hasAddLink && !hasUserDatabase && (
           <DatabaseCard
             title={t`Add a database`}
             link={Urls.newDatabase()}

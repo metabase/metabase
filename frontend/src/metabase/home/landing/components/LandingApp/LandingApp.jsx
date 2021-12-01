@@ -5,32 +5,48 @@ import OurDataSection from "../OurDataSection";
 import StartHereSection from "../StartHereSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./LandingApp.styled";
-import {
-  hasContentSections,
-  hasGreetingSection,
-  hasOurDataSection,
-  hasStartHereSection,
-  hasXraySection,
-} from "../../utils/landing";
 
 const propTypes = {
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
   databases: PropTypes.array,
   dashboards: PropTypes.array,
   candidates: PropTypes.array,
   showXrays: PropTypes.bool,
   showOurData: PropTypes.bool,
+  showPinNotice: PropTypes.bool,
 };
 
-const LandingApp = props => {
+const LandingApp = ({
+  user,
+  databases,
+  dashboards,
+  candidates,
+  showXrays,
+  showOurData,
+  showPinNotice,
+}) => {
   return (
     <LandingRoot>
-      {hasGreetingSection(props) && <GreetingSection {...props} />}
-      {hasContentSections(props) && (
+      <GreetingSection user={user} />
+      {databases && dashboards && (
         <Fragment>
-          {hasStartHereSection(props) && <StartHereSection {...props} />}
-          {hasXraySection(props) && <XraySection {...props} />}
-          {hasOurDataSection(props) && <OurDataSection {...props} />}
+          <StartHereSection
+            user={user}
+            databases={databases}
+            dashboards={dashboards}
+            showPinNotice={showPinNotice}
+          />
+          <XraySection
+            user={user}
+            dashboards={dashboards}
+            candidates={candidates}
+            showXrays={showXrays}
+          />
+          <OurDataSection
+            user={user}
+            databases={databases}
+            showOurData={showOurData}
+          />
         </Fragment>
       )}
     </LandingRoot>

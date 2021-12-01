@@ -10,21 +10,33 @@ import Section, {
   SectionTitle,
 } from "../LandingSection";
 import {
-  CardRoot,
-  ListRoot,
   CardIcon,
   CardIconContainer,
+  CardRoot,
   CardTitle,
+  ListRoot,
 } from "./XraySection.styled";
 
 const propTypes = {
   user: PropTypes.object.isRequired,
-  candidates: PropTypes.array.isRequired,
+  dashboards: PropTypes.array.isRequired,
+  candidates: PropTypes.array,
+  showXrays: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
 
-const XraySection = ({ user, candidates, onRemoveSection }) => {
-  const options = candidates.flatMap(database => database.tables);
+const XraySection = ({
+  user,
+  dashboards,
+  candidates,
+  showXrays,
+  onRemoveSection,
+}) => {
+  const options = candidates?.flatMap(database => database.tables);
+
+  if (!showXrays || dashboards.length || !candidates?.length) {
+    return null;
+  }
 
   return (
     <Section>

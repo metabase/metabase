@@ -28,17 +28,30 @@ const propTypes = {
   onRemoveSection: PropTypes.func,
 };
 
-const StartHereSection = ({ dashboards }) => {
+const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
+  const hasUserDatabase = databases.some(d => !d.is_sample);
+  const hasDatabaseBanner = user.is_superuser && !hasUserDatabase;
+  const hasDashboardBanner = !dashboards.length && showPinNotice;
+  const hasDashboardList = dashboards.length;
+
+  if (!hasDatabaseBanner && !hasDashboardBanner && !hasDashboardList) {
+    return null;
+  }
+
   return (
     <Section>
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      <ListRoot>
-        {dashboards.map(dashboard => (
-          <DashboardCard key={dashboard.id} dashboard={dashboard} />
-        ))}
-      </ListRoot>
+      {hasDatabaseBanner && <DashboardBanner />}
+      {hasDashboardBanner && <DashboardBanner />}
+      {hasDashboardList && (
+        <ListRoot>
+          {dashboards.map(dashboard => (
+            <DashboardCard key={dashboard.id} dashboard={dashboard} />
+          ))}
+        </ListRoot>
+      )}
     </Section>
   );
 };

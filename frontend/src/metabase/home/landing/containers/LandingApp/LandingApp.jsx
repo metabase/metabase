@@ -36,6 +36,7 @@ const mapStateToProps = state => ({
   user: getUser(state),
   showXrays: true,
   showOurData: true,
+  showPinNotice: true,
 });
 
 export default _.compose(

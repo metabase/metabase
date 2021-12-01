@@ -8,7 +8,7 @@ import Section from "../LandingSection";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
 const propTypes = {
-  user: PropTypes.object,
+  user: PropTypes.object.isRequired,
 };
 
 const GreetingSection = ({ user: { first_name } }) => {
