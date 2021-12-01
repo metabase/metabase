@@ -73,7 +73,7 @@
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (vec (for [{col-name :name, base-type :base_type, :as driver-col-metadata} cols]
+    (vec (for [{col-name :name, :as driver-col-metadata} cols]
            (let [col-name (name col-name)]
              (merge
               {:display_name (u/qualified-name col-name)
@@ -83,7 +83,8 @@
               ;; names in MBQL `:field` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a
               ;; valid `:field`, omit the `:field_ref`.
               (when-not (str/blank? col-name)
-                {:field_ref [:field (unique-name-fn col-name) {:base-type base-type}]})
+                ;; we need field_refs to address columns to merge metadata. Update the type later when types are known
+                {:field_ref [:field (unique-name-fn col-name) {:base-type :type/*}]})
               driver-col-metadata))))))
 
 (defmethod column-info :native
@@ -628,8 +629,12 @@
    [(base-type-inferer metadata)
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
-     (let [metadata (update metadata :cols (partial map (fn [col base-type]
-                                                          (assoc col :base_type base-type)))
+     (let [metadata (update metadata :cols
+                            (partial map (fn [col base-type]
+                                           (-> col
+                                               (assoc :base_type base-type)
+                                               (update :field_ref
+                                                       assoc 2 {:base-type base-type}))))
                             base-types)]
        (rf (cond-> result
              (map? result)
