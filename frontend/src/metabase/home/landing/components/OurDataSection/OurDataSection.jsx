@@ -15,6 +15,7 @@ import {
   DatabaseGrid,
   DatabaseCardIcon,
   DatabaseCardTitle,
+  DatabaseActionLink,
 } from "./OutDataSection.styled";
 
 const propTypes = {
@@ -24,6 +25,8 @@ const propTypes = {
 };
 
 const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
+  const hasNonSampleDatabase = databases.some(d => !d.is_sample);
+
   return (
     <Section>
       <SectionHeader>
@@ -35,6 +38,11 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
             </Tooltip>
           </SectionRemoveModal>
         )}
+        {isAdmin && hasNonSampleDatabase && (
+          <DatabaseActionLink to={Urls.newDatabase()}>
+            {t`Add a database`}
+          </DatabaseActionLink>
+        )}
       </SectionHeader>
       <DatabaseGrid>
         {databases.map(database => (
@@ -45,11 +53,13 @@ const OurDataSection = ({ databases, isAdmin, onRemoveSection }) => {
             isActive={true}
           />
         ))}
-        <DatabaseCard
-          title={t`Add a database`}
-          link={Urls.newDatabase()}
-          isActive={false}
-        />
+        {isAdmin && !hasNonSampleDatabase && (
+          <DatabaseCard
+            title={t`Add a database`}
+            link={Urls.newDatabase()}
+            isActive={false}
+          />
+        )}
       </DatabaseGrid>
     </Section>
   );

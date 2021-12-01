@@ -47,3 +47,10 @@ export const DatabaseCardTitle = styled.span`
   font-size: 1.17em;
   font-weight: 700;
 `;
+
+export const DatabaseActionLink = styled(Link)`
+  display: block;
+  margin-left: auto;
+  color: ${color("brand")};
+  cursor: pointer;
+`;
