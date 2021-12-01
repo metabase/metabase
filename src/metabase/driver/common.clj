@@ -3,6 +3,7 @@
   (:require [clj-time.coerce :as tcoerce]
             [clj-time.core :as time]
             [clj-time.format :as tformat]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -136,7 +137,7 @@
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
                     "\n"
-                    (clojure.string/join " - " (public-settings/cloud-gateway-ips)))))})
+                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
 
 (def default-connection-info-fields
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
