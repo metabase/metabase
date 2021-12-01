@@ -12,9 +12,9 @@ import Section, {
 import {
   XrayCardRoot,
   TableGrid,
-  XrayIcon,
-  XrayIconContainer,
-  XrayTitle,
+  XrayCardIcon,
+  XrayCardIconContainer,
+  XrayCardTitle,
 } from "./XraySection.styled";
 
 const propTypes = {
@@ -56,12 +56,12 @@ const cardPropTypes = {
 const XrayCard = ({ option }) => {
   return (
     <XrayCardRoot to={option.url}>
-      <XrayIconContainer>
-        <XrayIcon name="bolt" />
-      </XrayIconContainer>
-      <XrayTitle>
+      <XrayCardIconContainer>
+        <XrayCardIcon name="bolt" />
+      </XrayCardIconContainer>
+      <XrayCardTitle>
         {t`A look at your`} <strong>{option.title}</strong>
-      </XrayTitle>
+      </XrayCardTitle>
     </XrayCardRoot>
   );
 };

@@ -34,7 +34,7 @@ export const DatabaseCardRoot = styled(Link)`
   }
 `;
 
-export const DatabaseIcon = styled(Icon)`
+export const DatabaseCardIcon = styled(Icon)`
   display: block;
   color: ${props => color(props.isActive ? "database" : "bg-medium")};
   width: 2rem;
@@ -42,7 +42,7 @@ export const DatabaseIcon = styled(Icon)`
   margin-bottom: 3rem;
 `;
 
-export const DatabaseTitle = styled.span`
+export const DatabaseCardTitle = styled.span`
   display: block;
   font-size: 1.17em;
   font-weight: 700;

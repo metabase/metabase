@@ -13,8 +13,8 @@ import Section, {
 import {
   DatabaseCardRoot,
   DatabaseGrid,
-  DatabaseIcon,
-  DatabaseTitle,
+  DatabaseCardIcon,
+  DatabaseCardTitle,
 } from "./OutDataSection.styled";
 
 const propTypes = {
@@ -66,8 +66,8 @@ const cardPropTypes = {
 const DatabaseCard = ({ title, link, isActive }) => {
   return (
     <DatabaseCardRoot to={link} isActive={isActive}>
-      <DatabaseIcon name="database" isActive={isActive} />
-      <DatabaseTitle>{title}</DatabaseTitle>
+      <DatabaseCardIcon name="database" isActive={isActive} />
+      <DatabaseCardTitle>{title}</DatabaseCardTitle>
     </DatabaseCardRoot>
   );
 };

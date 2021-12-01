@@ -35,7 +35,14 @@ export const XrayCardRoot = styled(Link)`
   }
 `;
 
-export const XrayIconContainer = styled.span`
+export const XrayCardIcon = styled(Icon)`
+  display: block;
+  color: ${color("white")};
+  width: 1.25rem;
+  height: 1.25rem;
+`;
+
+export const XrayCardIconContainer = styled.span`
   display: flex;
   flex: 0 0 auto;
   justify-content: center;
@@ -45,14 +52,7 @@ export const XrayIconContainer = styled.span`
   background-color: ${color("accent4")};
 `;
 
-export const XrayIcon = styled(Icon)`
-  display: block;
-  color: ${color("white")};
-  width: 1.25rem;
-  height: 1.25rem;
-`;
-
-export const XrayTitle = styled.span`
+export const XrayCardTitle = styled.span`
   display: block;
   margin-left: 1rem;
 `;
