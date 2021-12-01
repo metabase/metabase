@@ -39,16 +39,16 @@ describe("buildCollectionTree", () => {
   });
 
   it("recursively transforms collection children", () => {
-    const secondChild = getCollection({ id: 3, name: "C3" });
-    const firstChild = getCollection({
+    const grandchild = getCollection({ id: 3, name: "C3" });
+    const child = getCollection({
       id: 2,
       name: "C2",
-      children: [secondChild],
+      children: [grandchild],
     });
     const collection = getCollection({
       id: 1,
       name: "C1",
-      children: [firstChild],
+      children: [child],
     });
 
     const [transformed] = buildCollectionTree([collection]);
@@ -60,15 +60,15 @@ describe("buildCollectionTree", () => {
       icon: { name: "folder" },
       children: [
         {
-          id: firstChild.id,
-          name: firstChild.name,
-          schemaName: firstChild.name,
+          id: child.id,
+          name: child.name,
+          schemaName: child.name,
           icon: { name: "folder" },
           children: [
             {
-              id: secondChild.id,
-              name: secondChild.name,
-              schemaName: secondChild.name,
+              id: grandchild.id,
+              name: grandchild.name,
+              schemaName: grandchild.name,
               icon: { name: "folder" },
               children: [],
             },
