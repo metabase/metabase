@@ -1,9 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Section, { SectionHeader, SectionTitle } from "../LandingSection";
 import {
+  CollectionLink,
+  CollectionLinkIcon,
+  CollectionLinkText,
   EmptyStateImage,
   EmptyStateRoot,
   EmptyStateTitle,
@@ -16,6 +20,8 @@ const propTypes = {
 };
 
 const CollectionSection = ({ user }) => {
+  const collectionUrl = Urls.collection(ROOT_COLLECTION);
+
   return (
     <Section>
       <SectionHeader>
@@ -23,6 +29,10 @@ const CollectionSection = ({ user }) => {
       </SectionHeader>
       <SectionContent>
         <EmptyState user={user} />
+        <CollectionLink to={collectionUrl}>
+          <CollectionLinkText>{t`Browse all items`}</CollectionLinkText>
+          <CollectionLinkIcon name="chevronright" />
+        </CollectionLink>
       </SectionContent>
     </Section>
   );
