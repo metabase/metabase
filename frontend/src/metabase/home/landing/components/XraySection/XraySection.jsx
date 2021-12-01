@@ -6,7 +6,7 @@ import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Section, {
   SectionHeader,
-  SectionIcon,
+  SectionCloseIcon,
   SectionTitle,
 } from "../LandingSection";
 import {
@@ -45,7 +45,7 @@ const XraySection = ({
         {user.is_superuser && (
           <SectionRemoveModal onSubmit={onHideXrays}>
             <Tooltip tooltip={t`Remove these suggestions`}>
-              <SectionIcon name="close" />
+              <SectionCloseIcon name="close" />
             </Tooltip>
           </SectionRemoveModal>
         )}

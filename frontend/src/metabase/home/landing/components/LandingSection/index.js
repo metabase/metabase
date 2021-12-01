@@ -2,5 +2,5 @@ export {
   Section as default,
   SectionHeader,
   SectionTitle,
-  SectionIcon,
+  SectionCloseIcon,
 } from "./LandingSection.styled";

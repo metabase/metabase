@@ -48,15 +48,6 @@ export const CardTitle = styled.span`
   margin-top: 2.25rem;
 `;
 
-export const BannerRoot = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 1.5rem;
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
-  background-color: ${color("white")};
-`;
-
 export const BannerIconContainer = styled.div`
   display: flex;
   flex: 0 0 auto;
@@ -68,11 +59,21 @@ export const BannerIconContainer = styled.div`
   border-radius: 50%;
 `;
 
-export const BannerIcon = styled(Icon)`
+export const BannerModelIcon = styled(Icon)`
   display: block;
   color: ${color("brand")};
   width: 1rem;
   height: 1rem;
+`;
+
+export const BannerCloseIcon = styled(Icon)`
+  display: block;
+  color: ${color("text-medium")};
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
 
 export const BannerContent = styled.div`
@@ -88,4 +89,21 @@ export const BannerTitle = styled.div`
 export const BannerDescription = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.5rem;
+`;
+
+export const BannerRoot = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
+  background-color: ${color("white")};
+
+  ${BannerCloseIcon} {
+    visibility: collapse;
+  }
+
+  &:hover ${BannerCloseIcon} {
+    visibility: visible;
+  }
 `;

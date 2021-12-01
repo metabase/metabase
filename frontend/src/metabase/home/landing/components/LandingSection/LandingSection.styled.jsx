@@ -16,7 +16,7 @@ export const SectionTitle = styled.div`
   letter-spacing: 0.06em;
 `;
 
-export const SectionIcon = styled(Icon)`
+export const SectionCloseIcon = styled(Icon)`
   display: block;
   color: ${color("text-medium")};
   cursor: pointer;
@@ -29,11 +29,11 @@ export const SectionIcon = styled(Icon)`
 export const Section = styled.div`
   margin-top: 2.5rem;
 
-  ${SectionIcon} {
+  ${SectionCloseIcon} {
     visibility: collapse;
   }
 
-  &:hover ${SectionIcon} {
+  &:hover ${SectionCloseIcon} {
     visibility: visible;
   }
 `;

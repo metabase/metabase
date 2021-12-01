@@ -7,7 +7,7 @@ import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Section, {
   SectionHeader,
-  SectionIcon,
+  SectionCloseIcon,
   SectionTitle,
 } from "../LandingSection";
 import {
@@ -40,7 +40,7 @@ const OurDataSection = ({ user, databases, showOurData, onHideOurData }) => {
         {hasAddLink && (
           <SectionRemoveModal onSubmit={onHideOurData}>
             <Tooltip tooltip={t`Hide this section`}>
-              <SectionIcon name="close" />
+              <SectionCloseIcon name="close" />
             </Tooltip>
           </SectionRemoveModal>
         )}

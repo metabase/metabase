@@ -10,7 +10,7 @@ import Section, { SectionHeader, SectionTitle } from "../LandingSection";
 import {
   BannerContent,
   BannerDescription,
-  BannerIcon,
+  BannerModelIcon,
   BannerIconContainer,
   BannerRoot,
   BannerTitle,
@@ -18,6 +18,7 @@ import {
   CardRoot,
   CardTitle,
   ListRoot,
+  BannerCloseIcon,
 } from "./StartHereSection.styled";
 
 const propTypes = {
@@ -28,11 +29,16 @@ const propTypes = {
   onHidePinNotice: PropTypes.func,
 };
 
-const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
-  const hasDatabaseBanner =
-    user.is_superuser && !databases.some(d => !d.is_sample);
-  const hasDashboardBanner =
-    !dashboards.length && showPinNotice && !hasDatabaseBanner;
+const StartHereSection = ({
+  user,
+  databases,
+  dashboards,
+  showPinNotice,
+  onHidePinNotice,
+}) => {
+  const hasUserDatabase = databases.some(d => !d.is_sample);
+  const hasDatabaseBanner = user.is_superuser && !hasUserDatabase;
+  const hasDashboardBanner = !dashboards.length && showPinNotice;
   const hasDashboardList = dashboards.length > 0;
 
   if (!hasDatabaseBanner && !hasDashboardBanner && !hasDashboardList) {
@@ -45,7 +51,9 @@ const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
       {hasDatabaseBanner && <DatabaseBanner />}
-      {hasDashboardBanner && <DashboardBanner />}
+      {hasDashboardBanner && !hasDatabaseBanner && (
+        <DashboardBanner onHidePinNotice={onHidePinNotice} />
+      )}
       {hasDashboardList && (
         <ListRoot hasMargin={hasDatabaseBanner}>
           {dashboards.map(dashboard => (
@@ -84,7 +92,7 @@ const DatabaseBanner = () => {
   return (
     <BannerRoot>
       <BannerIconContainer>
-        <BannerIcon name="database" />
+        <BannerModelIcon name="database" />
       </BannerIconContainer>
       <BannerContent>
         <BannerTitle>{t`Connect your data to get the most out of Metabase`}</BannerTitle>
@@ -106,13 +114,17 @@ const DatabaseBanner = () => {
   );
 };
 
-const DashboardBanner = () => {
+const dashboardBannerProps = {
+  onHidePinNotice: PropTypes.func,
+};
+
+const DashboardBanner = ({ onHidePinNotice }) => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (
     <BannerRoot>
       <BannerIconContainer>
-        <BannerIcon name="pin" />
+        <BannerModelIcon name="pin" />
       </BannerIconContainer>
       <BannerContent>
         <BannerTitle>{t`Your teams’ most important dashboards go here`}</BannerTitle>
@@ -122,8 +134,11 @@ const DashboardBanner = () => {
           </ExternalLink>
         )} to have them appear in this space for everyone.`}</BannerDescription>
       </BannerContent>
+      <BannerCloseIcon name="close" onClick={onHidePinNotice} />
     </BannerRoot>
   );
 };
+
+DashboardBanner.propTypes = dashboardBannerProps;
 
 export default StartHereSection;
