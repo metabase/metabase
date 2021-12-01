@@ -2,11 +2,23 @@ import styled from "styled-components";
 import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import {
+  breakpointMinMedium,
+  breakpointMinSmall,
+} from "metabase/styled-components/theme";
 
 export const TableGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
+
+  ${breakpointMinSmall} {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  ${breakpointMinMedium} {
+    grid-template-columns: repeat(3, 1fr);
+  }
 `;
 
 export const XrayCardRoot = styled(Link)`
@@ -15,7 +27,7 @@ export const XrayCardRoot = styled(Link)`
   padding: 1.125rem 1.5rem;
   color: ${color("text-medium")};
   border: 1px solid ${color("border")};
-  border-radius: 0.125rem;
+  border-radius: 0.25rem;
   background-color: ${color("white")};
 
   &:hover {
@@ -29,7 +41,7 @@ export const XrayIconContainer = styled.span`
   justify-content: center;
   align-items: center;
   padding: 0.625rem;
-  border-radius: 0.125rem;
+  border-radius: 0.25rem;
   background-color: ${color("accent4")};
 `;
 
