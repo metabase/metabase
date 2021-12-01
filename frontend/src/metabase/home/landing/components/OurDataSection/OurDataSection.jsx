@@ -22,10 +22,10 @@ const propTypes = {
   user: PropTypes.object.isRequired,
   databases: PropTypes.array.isRequired,
   showOurData: PropTypes.bool,
-  onRemoveSection: PropTypes.func,
+  onHideOurData: PropTypes.func,
 };
 
-const OurDataSection = ({ user, databases, showOurData, onRemoveSection }) => {
+const OurDataSection = ({ user, databases, showOurData, onHideOurData }) => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -38,7 +38,7 @@ const OurDataSection = ({ user, databases, showOurData, onRemoveSection }) => {
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
         {hasAddLink && (
-          <SectionRemoveModal onSubmit={onRemoveSection}>
+          <SectionRemoveModal onSubmit={onHideOurData}>
             <Tooltip tooltip={t`Hide this section`}>
               <SectionIcon name="close" />
             </Tooltip>

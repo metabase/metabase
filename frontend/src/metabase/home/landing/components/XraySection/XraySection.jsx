@@ -22,7 +22,7 @@ const propTypes = {
   dashboards: PropTypes.array.isRequired,
   candidates: PropTypes.array,
   showXrays: PropTypes.bool,
-  onRemoveSection: PropTypes.func,
+  onHideXrays: PropTypes.func,
 };
 
 const XraySection = ({
@@ -30,7 +30,7 @@ const XraySection = ({
   dashboards,
   candidates,
   showXrays,
-  onRemoveSection,
+  onHideXrays,
 }) => {
   const options = candidates?.flatMap(database => database.tables);
 
@@ -43,7 +43,7 @@ const XraySection = ({
       <SectionHeader>
         <SectionTitle>{t`Try these x-rays based on your data`}</SectionTitle>
         {user.is_superuser && (
-          <SectionRemoveModal onSubmit={onRemoveSection}>
+          <SectionRemoveModal onSubmit={onHideXrays}>
             <Tooltip tooltip={t`Remove these suggestions`}>
               <SectionIcon name="close" />
             </Tooltip>

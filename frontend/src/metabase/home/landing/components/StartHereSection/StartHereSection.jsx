@@ -25,7 +25,7 @@ const propTypes = {
   databases: PropTypes.array.isRequired,
   dashboards: PropTypes.array.isRequired,
   showPinNotice: PropTypes.bool,
-  onRemoveSection: PropTypes.func,
+  onHidePinNotice: PropTypes.func,
 };
 
 const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
