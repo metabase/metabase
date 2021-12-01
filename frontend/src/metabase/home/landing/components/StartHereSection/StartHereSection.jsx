@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Section, { SectionHeader, SectionTitle } from "../LandingSection";
@@ -26,16 +27,12 @@ const StartHereSection = () => {
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      <DatabaseBanner />
+      <DashboardBanner />
     </Section>
   );
 };
 
 StartHereSection.propTypes = propTypes;
-
-const databaseBannerPropTypes = {
-  onChangeLocation: PropTypes.func,
-};
 
 const DatabaseBanner = () => {
   const userUrl = Urls.newUser();
@@ -67,6 +64,24 @@ const DatabaseBanner = () => {
   );
 };
 
-DatabaseBanner.propTypes = databaseBannerPropTypes;
+const DashboardBanner = () => {
+  const collectionUrl = Urls.collection(ROOT_COLLECTION);
+
+  return (
+    <BannerRoot>
+      <BannerIconContainer>
+        <BannerIcon name="pin" />
+      </BannerIconContainer>
+      <BannerContent>
+        <BannerTitle>{t`Your teams’ most important dashboards go here`}</BannerTitle>
+        <BannerDescription>{jt`Pin dashboards in ${(
+          <ExternalLink href={collectionUrl}>
+            {ROOT_COLLECTION.name}
+          </ExternalLink>
+        )} to have them appear in this space for everyone.`}</BannerDescription>
+      </BannerContent>
+    </BannerRoot>
+  );
+};
 
 export default StartHereSection;
