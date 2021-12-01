@@ -494,9 +494,9 @@
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols]
-  (let [ref->metadata (u/key-by (comp u/field-ref->key :field_ref) source-metadata)]
+  (let [name->metadata (u/key-by :name source-metadata)]
     (for [col cols]
-      (if-let [source-metadata-for-field (-> col :field_ref u/field-ref->key ref->metadata)]
+      (if-let [source-metadata-for-field (-> col :name name->metadata)]
         (merge-source-metadata-col source-metadata-for-field col)
         col))))
 
@@ -512,9 +512,9 @@
   the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
   ensure survives."
   [computed from-db]
-  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
-    (for [{:keys [field_ref] :as col} computed]
-      (if-let [existing (get by-key (u/field-ref->key field_ref))]
+  (let [by-name (u/key-by :name from-db)]
+    (for [{nom :name :as col} computed]
+      (if-let [existing (get by-name nom)]
         (merge col (select-keys existing preserved-keys))
         col))))
 
@@ -630,10 +630,7 @@
    (fn combine [result base-types truncated-rows]
      (let [metadata (update metadata :cols
                             (partial map (fn [col base-type]
-                                           (-> col
-                                               (assoc :base_type base-type)
-                                               (update :field_ref
-                                                       assoc 2 {:base-type base-type}))))
+                                           (assoc col :base_type base-type)))
                             base-types)]
        (rf (cond-> result
              (map? result)
@@ -656,8 +653,7 @@
                 (update :cols combine-metadata dataset-metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
-         (let [metadata (cond-> (update metadata :cols annotate-native-cols)
-                          ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+         (let [metadata (cond-> metadata
                           (seq dataset-metadata)
                           (update :cols combine-metadata dataset-metadata))]
            (add-column-info-xform query metadata (rff metadata)))))
