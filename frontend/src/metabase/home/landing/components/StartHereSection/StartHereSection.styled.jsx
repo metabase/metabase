@@ -11,6 +11,7 @@ export const ListRoot = styled.div`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
+  margin-top: ${props => (props.hasMargin ? "2.5rem" : "")};
 
   ${breakpointMinSmall} {
     grid-template-columns: repeat(2, 1fr);

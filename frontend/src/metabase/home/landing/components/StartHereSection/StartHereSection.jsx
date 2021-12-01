@@ -43,10 +43,10 @@ const StartHereSection = ({ user, databases, dashboards, showPinNotice }) => {
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      {hasDatabaseBanner && <DashboardBanner />}
+      {hasDatabaseBanner && <DatabaseBanner />}
       {hasDashboardBanner && <DashboardBanner />}
       {hasDashboardList && (
-        <ListRoot>
+        <ListRoot hasMargin={hasDatabaseBanner}>
           {dashboards.map(dashboard => (
             <DashboardCard key={dashboard.id} dashboard={dashboard} />
           ))}
