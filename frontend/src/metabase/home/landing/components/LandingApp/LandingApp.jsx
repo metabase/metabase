@@ -10,6 +10,7 @@ import { LandingRoot } from "./LandingApp.styled";
 const propTypes = {
   user: PropTypes.object.isRequired,
   databases: PropTypes.array,
+  collections: PropTypes.array,
   dashboards: PropTypes.array,
   candidates: PropTypes.array,
   showXrays: PropTypes.bool,
@@ -20,6 +21,7 @@ const propTypes = {
 const LandingApp = ({
   user,
   databases,
+  collections,
   dashboards,
   candidates,
   showXrays,
@@ -29,7 +31,7 @@ const LandingApp = ({
   return (
     <LandingRoot>
       <GreetingSection user={user} />
-      {databases && dashboards && (
+      {databases && collections && dashboards && (
         <Fragment>
           <StartHereSection
             user={user}
@@ -43,7 +45,7 @@ const LandingApp = ({
             candidates={candidates}
             showXrays={showXrays}
           />
-          <OurAnalyticsSection />
+          <OurAnalyticsSection user={user} collections={collections} />
           <OurDataSection
             user={user}
             databases={databases}

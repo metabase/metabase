@@ -11,6 +11,16 @@ const databasesProps = {
   loadingAndErrorWrapper: false,
 };
 
+const collectionsProps = {
+  query: {
+    collection: ROOT_COLLECTION.id,
+    models: "collection",
+    limit: 500,
+  },
+  listName: "collections",
+  loadingAndErrorWrapper: false,
+};
+
 const dashboardsProps = {
   query: {
     collection: ROOT_COLLECTION.id,
@@ -41,6 +51,7 @@ const mapStateToProps = state => ({
 
 export default _.compose(
   Databases.loadList(databasesProps),
+  Search.loadList(collectionsProps),
   Search.loadList(dashboardsProps),
   DatabaseCandidates.loadList(candidatesProps),
   connect(mapStateToProps),
