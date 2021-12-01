@@ -8,7 +8,7 @@ const propTypes = {
   collections: PropTypes.array.isRequired,
 };
 
-const OurAnalyticsSection = () => {
+const CollectionSection = () => {
   return (
     <Section>
       <SectionHeader>
@@ -18,6 +18,6 @@ const OurAnalyticsSection = () => {
   );
 };
 
-OurAnalyticsSection.propTypes = propTypes;
+CollectionSection.propTypes = propTypes;
 
-export default OurAnalyticsSection;
+export default CollectionSection;

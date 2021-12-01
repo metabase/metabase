@@ -16,7 +16,7 @@ import {
   CardIcon,
   CardTitle,
   ActionLink,
-} from "./OutDataSection.styled";
+} from "./DatabaseSection.styled";
 
 const propTypes = {
   user: PropTypes.object.isRequired,
@@ -25,7 +25,7 @@ const propTypes = {
   onHideOurData: PropTypes.func,
 };
 
-const OurDataSection = ({ user, databases, showOurData, onHideOurData }) => {
+const DatabaseSection = ({ user, databases, showOurData, onHideOurData }) => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -69,7 +69,7 @@ const OurDataSection = ({ user, databases, showOurData, onHideOurData }) => {
   );
 };
 
-OurDataSection.propTypes = propTypes;
+DatabaseSection.propTypes = propTypes;
 
 const cardPropTypes = {
   title: PropTypes.string.isRequired,
@@ -109,4 +109,4 @@ const SectionRemoveModal = ({ children, onSubmit }) => {
 
 SectionRemoveModal.propTypes = modalPropTypes;
 
-export default OurDataSection;
+export default DatabaseSection;

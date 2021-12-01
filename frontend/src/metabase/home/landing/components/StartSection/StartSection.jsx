@@ -19,7 +19,7 @@ import {
   CardTitle,
   ListRoot,
   BannerCloseIcon,
-} from "./StartHereSection.styled";
+} from "./StartSection.styled";
 
 const propTypes = {
   user: PropTypes.object.isRequired,
@@ -29,7 +29,7 @@ const propTypes = {
   onHidePinNotice: PropTypes.func,
 };
 
-const StartHereSection = ({
+const StartSection = ({
   user,
   databases,
   dashboards,
@@ -65,7 +65,7 @@ const StartHereSection = ({
   );
 };
 
-StartHereSection.propTypes = propTypes;
+StartSection.propTypes = propTypes;
 
 const cardProps = {
   dashboard: PropTypes.object,
@@ -141,4 +141,4 @@ const DashboardBanner = ({ onHidePinNotice }) => {
 
 DashboardBanner.propTypes = dashboardBannerProps;
 
-export default StartHereSection;
+export default StartSection;

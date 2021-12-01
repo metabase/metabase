@@ -1,9 +1,9 @@
 import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import GreetingSection from "../GreetingSection";
-import OurAnalyticsSection from "../OurAnalyticsSection";
-import OurDataSection from "../OurDataSection";
-import StartHereSection from "../StartHereSection";
+import CollectionSection from "../CollectionSection";
+import DatabaseSection from "../DatabaseSection";
+import StartSection from "../StartSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./LandingApp.styled";
 
@@ -33,7 +33,7 @@ const LandingApp = ({
       <GreetingSection user={user} />
       {databases && collections && dashboards && (
         <Fragment>
-          <StartHereSection
+          <StartSection
             user={user}
             databases={databases}
             dashboards={dashboards}
@@ -45,8 +45,8 @@ const LandingApp = ({
             candidates={candidates}
             showXrays={showXrays}
           />
-          <OurAnalyticsSection user={user} collections={collections} />
-          <OurDataSection
+          <CollectionSection user={user} collections={collections} />
+          <DatabaseSection
             user={user}
             databases={databases}
             showOurData={showOurData}
