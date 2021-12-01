@@ -1,4 +1,9 @@
-import { restore, popover, visualize } from "__support__/e2e/cypress";
+import {
+  enterCustomColumnDetails,
+  popover,
+  restore,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("issue 17963", () => {
   beforeEach(() => {
@@ -37,8 +42,8 @@ describe("issue 17963", () => {
 });
 
 function typeAndSelect(arr) {
-  arr.forEach(({ string, field }) => {
-    cy.get("[contenteditable=true]").type(string);
+  arr.forEach(({ formula, field }) => {
+    enterCustomColumnDetails({ formula });
 
     popover()
       .contains(field)
