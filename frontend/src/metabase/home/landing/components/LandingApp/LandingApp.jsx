@@ -10,7 +10,6 @@ const propTypes = {
   greeting: PropTypes.string,
   databases: PropTypes.array,
   databaseCandidates: PropTypes.array,
-  dashboards: PropTypes.array,
   isAdmin: PropTypes.bool,
   showXrays: PropTypes.bool,
   showOurData: PropTypes.bool,
@@ -20,7 +19,6 @@ const LandingApp = ({
   greeting,
   databases,
   databaseCandidates,
-  dashboards,
   isAdmin,
   showXrays,
   showOurData,
@@ -28,7 +26,7 @@ const LandingApp = ({
   return (
     <LandingRoot>
       <GreetingSection greeting={greeting} />
-      <StartHereSection dashboards={dashboards} isAdmin={isAdmin} />
+      <StartHereSection isAdmin={isAdmin} />
       {showXrays && (
         <XraySection
           databaseCandidates={databaseCandidates}

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import Section, { SectionHeader, SectionTitle } from "../LandingSection";
 
 const propTypes = {
-  dashboards: PropTypes.array.isRequired,
   isAdmin: PropTypes.bool,
   onRemoveSection: PropTypes.func,
 };
