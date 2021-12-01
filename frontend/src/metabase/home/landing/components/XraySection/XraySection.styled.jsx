@@ -27,7 +27,7 @@ export const XrayCardRoot = styled(Link)`
   padding: 1.125rem 1.5rem;
   color: ${color("text-medium")};
   border: 1px solid ${color("border")};
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   background-color: ${color("white")};
 
   &:hover {

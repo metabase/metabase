@@ -26,7 +26,7 @@ export const DatabaseCardRoot = styled(Link)`
   padding: 1.875rem;
   color: ${props => color(props.isActive ? "text-dark" : "brand")};
   border: 0.125rem solid ${color("bg-medium")};
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   background-color: ${props => (props.isActive ? color("bg-medium") : "")};
 
   &:hover {

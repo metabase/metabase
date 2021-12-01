@@ -7,7 +7,7 @@ export const BannerRoot = styled.div`
   align-items: center;
   padding: 1.5rem;
   border: 1px solid ${color("border")};
-  border-radius: 0.25rem;
+  border-radius: 0.5rem;
   background-color: ${color("white")};
 `;
 
@@ -30,7 +30,8 @@ export const BannerIcon = styled(Icon)`
 `;
 
 export const BannerContent = styled.div`
-  margin-left: 1rem;
+  flex: 1 1 auto;
+  margin: 0 1rem;
 `;
 
 export const BannerTitle = styled.div`
