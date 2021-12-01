@@ -9,7 +9,12 @@ import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
-import { DatasetFeatureOverview } from "./NewDatasetModal.styled";
+import {
+  FeatureOverviewContainer,
+  DatasetImg,
+  DatasetTitle,
+  DatasetValueProp,
+} from "./NewDatasetModal.styled";
 
 const propTypes = {
   turnQuestionIntoDataset: PropTypes.func.isRequired,
@@ -41,7 +46,24 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
         >{t`Turn this into a dataset`}</Button>,
       ]}
     >
-      <DatasetFeatureOverview />
+      <FeatureOverviewContainer>
+        <DatasetImg src="app/img/dataset-illustration.svg" />
+        <DatasetTitle>{t`Datasets`}</DatasetTitle>
+        <ul>
+          <DatasetValueProp>
+            Let you update column descriptions and customize metadata to create
+            great starting points for exploration.
+          </DatasetValueProp>
+          <DatasetValueProp>
+            Show up higher in search results and get highlighted when other
+            users start new questions to promote reuse.
+          </DatasetValueProp>
+          <DatasetValueProp>
+            Live in collections to keep them separate from messy database
+            schemas.
+          </DatasetValueProp>
+        </ul>
+      </FeatureOverviewContainer>
     </ModalContent>
   );
 }
