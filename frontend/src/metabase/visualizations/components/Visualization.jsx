@@ -227,6 +227,8 @@ export default class Visualization extends React.PureComponent {
   };
 
   handleVisualizationClick = clicked => {
+    const { handleVisualizationClick } = this.props;
+
     if (clicked) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
@@ -235,6 +237,11 @@ export default class Visualization extends React.PureComponent {
           clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
         }`,
       );
+    }
+
+    if (typeof handleVisualizationClick === "function") {
+      handleVisualizationClick(clicked);
+      return;
     }
 
     if (

@@ -87,6 +87,7 @@ export default class VisualizationResult extends Component {
           showTitle={false}
           isClickable={isVisualizationClickable}
           metadata={question.metadata()}
+          handleVisualizationClick={this.props.handleVisualizationClick}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
           onUpdateVisualizationSettings={
