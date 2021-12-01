@@ -94,46 +94,25 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   });
 }
 
-export function getParametersMappedToCard(card, parameters, parameterMappings) {
-  const cardId = card.id || card.original_card_id;
-  return parameters
-    .map(parameter => {
-      const mapping =
-        cardId != null &&
-        _.findWhere(parameterMappings, {
-          card_id: cardId,
-          parameter_id: parameter.id,
-        });
-
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter(Boolean);
-}
-
 // when navigating from dashboard --> saved native question,
 // we are given dashboard parameters and a map of dashboard parameter ids to parameter values
 // we need to transform this into a map of template tag ids to parameter values
 // so that we popoulate the template tags in the native editor
-export function remapParameterValuesForTemplateTags(
+export function remapParameterValuesToTemplateTags(
+  templateTags,
   dashboardParameters,
-  templateTagParameters,
   parameterValuesByDashboardParameterId,
 ) {
   const parameterValues = {};
-  const templateTagParametersBySlug = _.indexBy(templateTagParameters, "slug");
+  const templateTagParametersByName = _.indexBy(templateTags, "name");
 
   dashboardParameters.forEach(dashboardParameter => {
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
 
-    if (templateTagParametersBySlug[tag]) {
-      const templateTagParameter = templateTagParametersBySlug[tag];
-      parameterValues[templateTagParameter.id] =
+    if (templateTagParametersByName[tag]) {
+      const templateTagParameter = templateTagParametersByName[tag];
+      parameterValues[templateTagParameter.name] =
         parameterValuesByDashboardParameterId[dashboardParameter.id];
     }
   });

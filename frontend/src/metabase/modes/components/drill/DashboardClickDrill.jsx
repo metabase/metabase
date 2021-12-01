@@ -10,6 +10,7 @@ import {
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import { getParameterValuesByIdFromSlugs } from "metabase/parameters/utils/parameter-values";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -70,28 +71,30 @@ export default ({ question, clicked }) => {
         clickBehavior,
       });
 
-      let targetQuestion = new Question(
+      const targetQuestion = new Question(
         extraData.questions[targetId],
         question.metadata(),
       ).lockDisplay();
 
-      if (targetQuestion.isStructured()) {
-        targetQuestion = targetQuestion.setParameters(
-          _.chain(parameterMapping)
-            .values()
-            .map(({ target, id, source }) => ({
-              target: target.dimension,
-              id,
-              slug: id,
-              type: getTypeForSource(source, extraData),
-            }))
-            .value(),
-        );
-      }
+      const parameters = _.chain(parameterMapping)
+        .values()
+        .map(({ target, id, source }) => ({
+          target: target.dimension,
+          id,
+          slug: id,
+          type: getTypeForSource(source, extraData),
+        }))
+        .value();
 
-      const url = targetQuestion
-        .setParameterValuesBySlug(queryParams)
-        .getUrlWithParameters();
+      const parameterValues = getParameterValuesByIdFromSlugs(
+        parameters,
+        queryParams,
+      );
+
+      const url = targetQuestion.getUrlWithParameters(
+        parameters,
+        parameterValues,
+      );
       behavior = { url: () => url };
     }
   }

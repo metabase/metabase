@@ -2,18 +2,9 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
-import {
-  getParametersMappedToCard,
-  remapParameterValuesForTemplateTags,
-} from "metabase/parameters/utils/cards";
 
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
-
-import Question from "../../metabase-lib/lib/Question";
-
-// TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
-// Is there any reason behind keeping them in a central place?
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   type: "query",
@@ -149,48 +140,4 @@ export function applyParameters(
 
 export function isTransientId(id) {
   return id != null && typeof id === "string" && isNaN(parseInt(id));
-}
-
-export function questionUrlWithParameters(
-  card,
-  metadata,
-  parameters,
-  parameterValues,
-  dashcard,
-) {
-  const parameterMappings = dashcard?.parameter_mappings;
-  const dashboardId = dashcard?.dashboard_id;
-  const dashboardParametersMappedToCard = getParametersMappedToCard(
-    card,
-    parameters,
-    parameterMappings,
-  );
-
-  const question = new Question(card, metadata);
-  if (question.isStructured()) {
-    return (
-      question
-        // when a user doesn't have data perms, we run the card like it is in a dashboard
-        .setDashboardId(question.query().isEditable() ? undefined : dashboardId)
-        // set the parameters on the card so that the query builder knows to show them
-        .setParameters(dashboardParametersMappedToCard)
-        .setParameterValues(parameterValues)
-        .getUrlWithParameters()
-    );
-  } else if (question.isNative()) {
-    // for native questions, dashboard parameters are mapped explicitly to template tags
-    // defined in the native query, so instead of passing dashboard parameters to the qb,
-    // we just need to convert the keys in the parameterValues map from dashboard parameters slugs
-    // to the names of the template tags.
-    const templateTagParameters = question.parameters();
-    const parameterValuesByTemplateTag = remapParameterValuesForTemplateTags(
-      dashboardParametersMappedToCard,
-      templateTagParameters,
-      parameterValues,
-    );
-
-    return question
-      .setParameterValues(parameterValuesByTemplateTag)
-      .getUrlWithParameters();
-  }
 }

@@ -164,3 +164,25 @@ export function getDashboardParametersWithFieldMetadata(
     };
   });
 }
+
+export function getParametersMappedToDashcard(dashboard, dashcard) {
+  const { parameters } = dashboard;
+  const { parameter_mappings, card_id } = dashcard;
+  return parameters
+    .map(parameter => {
+      const mapping =
+        card_id != null &&
+        _.findWhere(parameter_mappings, {
+          card_id: card_id,
+          parameter_id: parameter.id,
+        });
+
+      if (mapping) {
+        return {
+          ...parameter,
+          target: mapping.target,
+        };
+      }
+    })
+    .filter(Boolean);
+}
