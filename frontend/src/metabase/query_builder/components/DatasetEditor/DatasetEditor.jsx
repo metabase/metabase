@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -94,8 +94,16 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
+  const isEditingQuery = datasetEditorTab === "query";
+  const isEditingMetadata = datasetEditorTab === "metadata";
+
+  const [editorHeight, setEditorHeight] = useState(
+    isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
+  );
+
   const onChangeEditorTab = tab => {
     setDatasetEditorTab(tab);
+    setEditorHeight(tab === "query" ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0);
   };
 
   const onCancel = () => {
@@ -150,7 +158,7 @@ function DatasetEditor(props) {
             ) : (
               <ResizableNotebook
                 {...props}
-                height={INITIAL_NOTEBOOK_EDITOR_HEIGHT}
+                height={editorHeight}
                 onResizeStop={handleResize}
               />
             )}
