@@ -3,8 +3,8 @@
 ## Some basics
 
 - [An overview of Metabase](01-what-is-metabase.md)
-- [The basics of databases](02-database-basics.md)
 - [Basic exploration in Metabase](03-basic-exploration.md)
+- [Field types in Metabase](field-types.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 
 ## Asking questions with the query builder
