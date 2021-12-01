@@ -425,7 +425,7 @@
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
+  (testing "Check to make sure we allow nil values for the x-axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
@@ -440,41 +440,12 @@
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
+          (render-combo {:cols default-columns
+                         :rows [[10.0 1 123] [5.0 10 12] [2.50 20 1337] [1.25 30 -22]]}))))
+  (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
-
-(defn- render-multi [results]
-  (body/render :multiple :inline pacific-tz render.tu/test-card results))
-
-(deftest render-multi-test
-  (testing "Render a multiple card graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+          (render-combo {:cols default-columns
+                         :rows [[nil 1 1] [10.0 1 nil] [5.0 10 22] [2.50 nil 22] [1.25 nil nil]]})))))
 
 ;; Test rendering a sparkline
 ;;
