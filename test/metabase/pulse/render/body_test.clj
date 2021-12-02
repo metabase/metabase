@@ -473,7 +473,7 @@
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card results))
 
-(deftest render-funnel
+(deftest render-funnel-test
   (testing "Test that we can render a funnel with all valid values"
     (is (has-inline-image?
          (render-funnel
