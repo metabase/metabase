@@ -90,10 +90,13 @@
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
-  (let [ldap-settings (select-keys settings (keys mb-settings->ldap-details))
-        ldap-details  (-> (set/rename-keys ldap-settings mb-settings->ldap-details)
-                          (assoc :port (when-let [^String ldap-port (not-empty (:ldap-port settings))]
-                                         (Long/parseLong ldap-port))))
+  (def my-settings settings)
+  (comment (clojure.pprint/pprint my-settings))
+  (let [ldap-settings (-> settings
+                          (select-keys (keys mb-settings->ldap-details))
+                          (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
+                                              (Long/parseLong ldap-port))))
+        ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
         results       (if-not (:ldap-enabled settings)
                         ;; when disabled just respond with a success message
                         {:status :SUCCESS}
