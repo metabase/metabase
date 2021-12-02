@@ -539,29 +539,15 @@ export const initializeQB = (location, params, queryParams) => {
 
     card = question && question.card();
     const metadata = getMetadata(getState());
-    // these parameters WON'T have values yet -- parsing them from the URL next
-    // these parameters live on the serialized card in the URL
-    // since they are "fake" -- they come from the dashboard and we need somewhere
-    // to keep them and persist them
     const parameters = getValueAndFieldIdPopulatedParametersFromCard(
       card,
       metadata,
     );
-
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
       metadata,
     );
-
-    // consider just having an action for this
-    // also, note that we pass parameterValues in the next action `INITIALIZE_QB`,
-    // so maybe this is useless?
-    Object.entries(parameterValues).forEach(([id, value]) => {
-      if (value != null) {
-        dispatch(setParameterValue(id, value));
-      }
-    });
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
