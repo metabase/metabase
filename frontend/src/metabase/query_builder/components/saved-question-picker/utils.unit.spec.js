@@ -85,7 +85,7 @@ describe("buildCollectionTree", () => {
   });
 
   describe("filtering by models", () => {
-    it("only keeps collections containing target models", () => {
+    it("only keeps collection branches containing target models", () => {
       const grandchild1 = getCollection({
         id: 4,
         name: "Grandchild 1",
@@ -94,18 +94,18 @@ describe("buildCollectionTree", () => {
       const grandchild2 = getCollection({
         id: 3,
         name: "Grandchild 2",
-        here: ["dataset"],
+        here: ["card"],
       });
       const child = getCollection({
         id: 2,
         name: "Child",
-        below: ["dataset"],
+        below: ["dataset", "card"],
         children: [grandchild1, grandchild2],
       });
       const collection = getCollection({
         id: 1,
         name: "Top-level",
-        below: ["dataset"],
+        below: ["dataset", "card"],
         children: [child],
       });
 
@@ -115,29 +115,37 @@ describe("buildCollectionTree", () => {
 
       expect(transformed).toEqual([
         {
-          id: grandchild1.id,
-          name: grandchild1.name,
-          schemaName: grandchild1.name,
+          id: collection.id,
+          name: collection.name,
+          schemaName: collection.name,
           icon: { name: "folder" },
-          children: [],
-        },
-        {
-          id: grandchild2.id,
-          name: grandchild2.name,
-          schemaName: grandchild2.name,
-          icon: { name: "folder" },
-          children: [],
+          children: [
+            {
+              id: child.id,
+              name: child.name,
+              schemaName: child.name,
+              icon: { name: "folder" },
+              children: [
+                {
+                  id: grandchild1.id,
+                  name: grandchild1.name,
+                  schemaName: grandchild1.name,
+                  icon: { name: "folder" },
+                  children: [],
+                },
+              ],
+            },
+          ],
         },
       ]);
     });
 
     it("filters top-level collections not containing target models", () => {
-      const child = getCollection({ id: 2, name: "Child", here: ["dataset"] });
-      const collection = getCollection({
+      const collectionWithDatasets = getCollection({
         id: 1,
         name: "Top-level",
-        below: ["dataset"],
-        children: [child],
+        here: ["dataset"],
+        children: [],
       });
       const collectionWithCards = getCollection({
         id: 5,
@@ -146,7 +154,7 @@ describe("buildCollectionTree", () => {
       });
 
       const transformed = buildCollectionTree(
-        [collection, collectionWithCards],
+        [collectionWithDatasets, collectionWithCards],
         {
           targetModels: ["dataset"],
         },
@@ -154,9 +162,9 @@ describe("buildCollectionTree", () => {
 
       expect(transformed).toEqual([
         {
-          id: child.id,
-          name: child.name,
-          schemaName: child.name,
+          id: collectionWithDatasets.id,
+          name: collectionWithDatasets.name,
+          schemaName: collectionWithDatasets.name,
           icon: { name: "folder" },
           children: [],
         },

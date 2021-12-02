@@ -1,6 +1,10 @@
 import _ from "underscore";
 import { getCollectionIcon } from "metabase/entities/collections";
 
+function hasIntersection(list1, list2) {
+  return _.intersection(list1, list2).length > 0;
+}
+
 export function buildCollectionTree(collections, { targetModels } = {}) {
   if (collections == null) {
     return [];
@@ -8,23 +12,20 @@ export function buildCollectionTree(collections, { targetModels } = {}) {
 
   const shouldFilterCollections = Array.isArray(targetModels);
 
-  function hasTargetModels(list) {
-    return !_.isEmpty(_.intersection(targetModels, list));
-  }
-
   return collections.flatMap(collection => {
-    if (!shouldFilterCollections || hasTargetModels(collection.here)) {
-      return {
-        id: collection.id,
-        name: collection.name,
-        schemaName: collection.originalName || collection.name,
-        icon: getCollectionIcon(collection),
-        children: buildCollectionTree(collection.children, { targetModels }),
-      };
-    }
+    const hasTargetModels =
+      !shouldFilterCollections ||
+      hasIntersection(targetModels, collection.below) ||
+      hasIntersection(targetModels, collection.here);
 
-    return hasTargetModels(collection.below)
-      ? buildCollectionTree(collection.children, { targetModels })
+    return hasTargetModels
+      ? {
+          id: collection.id,
+          name: collection.name,
+          schemaName: collection.originalName || collection.name,
+          icon: getCollectionIcon(collection),
+          children: buildCollectionTree(collection.children, { targetModels }),
+        }
       : [];
   });
 }
