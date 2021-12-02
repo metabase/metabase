@@ -26,7 +26,7 @@ export const CardRoot = styled(Link)`
   padding: 1.875rem;
   color: ${props => color(props.isActive ? "text-dark" : "brand")};
   border: 0.125rem solid ${color("bg-medium")};
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   background-color: ${props => (props.isActive ? color("bg-medium") : "")};
 
   &:hover {
@@ -36,7 +36,7 @@ export const CardRoot = styled(Link)`
 
 export const CardIcon = styled(Icon)`
   display: block;
-  color: ${props => color(props.isActive ? "database" : "bg-medium")};
+  color: ${props => color(props.isActive ? "database" : "brand-light")};
   width: 2rem;
   height: 2rem;
   margin-bottom: 3rem;

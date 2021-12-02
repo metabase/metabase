@@ -27,7 +27,7 @@ export const CardRoot = styled(Link)`
   padding: 1.5rem;
   color: ${color("text-dark")};
   border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 2px ${color("shadow")};
 
@@ -97,7 +97,7 @@ export const BannerRoot = styled.div`
   align-items: center;
   padding: 1.5rem;
   border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   background-color: ${color("white")};
 
   ${BannerCloseIcon} {

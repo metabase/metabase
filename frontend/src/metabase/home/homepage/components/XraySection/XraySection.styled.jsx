@@ -27,7 +27,7 @@ export const CardRoot = styled(Link)`
   padding: 1.125rem 1.5rem;
   color: ${color("text-medium")};
   border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 2px ${color("shadow")};
 
@@ -49,7 +49,7 @@ export const CardIconContainer = styled.span`
   justify-content: center;
   align-items: center;
   padding: 0.625rem;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
   background-color: ${color("accent4")};
 `;
 

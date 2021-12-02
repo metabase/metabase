@@ -4,8 +4,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const CollectionContent = styled.div`
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  padding: 1rem;
   background-color: ${color("bg-medium")};
 `;
 
