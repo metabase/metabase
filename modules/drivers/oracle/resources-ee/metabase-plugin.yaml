@@ -48,7 +48,7 @@ driver:
     - name: ssl-truststore
       display-name: Truststore
       type: secret
-      secret-kind: truststore
+      secret-kind: keystore
       placeholder: /path/to/truststore.jks
       visible-if:
         ssl-use-truststore: true
