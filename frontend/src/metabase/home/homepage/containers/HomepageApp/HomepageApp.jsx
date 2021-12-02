@@ -5,7 +5,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
-import LandingApp from "../../components/LandingApp";
+import Homepage from "../../components/Homepage";
 import { hideData, hidePinMessage, hideXrays } from "../../actions";
 import { getShowData, getShowPinMessage, getShowXrays } from "../../selectors";
 
@@ -64,4 +64,4 @@ export default _.compose(
   Search.loadList(dashboardsProps),
   DatabaseCandidates.loadList(candidatesProps),
   connect(mapStateToProps, mapDispatchToProps),
-)(LandingApp);
+)(Homepage);

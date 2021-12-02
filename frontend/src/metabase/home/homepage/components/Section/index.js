@@ -3,4 +3,4 @@ export {
   SectionHeader,
   SectionTitle,
   SectionCloseIcon,
-} from "./LandingSection.styled";
+} from "./Section.styled";

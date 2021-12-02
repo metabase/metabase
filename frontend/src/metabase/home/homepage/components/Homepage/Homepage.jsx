@@ -5,7 +5,7 @@ import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
-import { LandingRoot } from "./LandingApp.styled";
+import { LandingRoot } from "./HomepageApp.styled";
 
 const propTypes = {
   user: PropTypes.object.isRequired,
@@ -21,7 +21,7 @@ const propTypes = {
   onHidePinMessage: PropTypes.func,
 };
 
-const LandingApp = ({
+const Homepage = ({
   user,
   databases,
   collections,
@@ -66,6 +66,6 @@ const LandingApp = ({
   );
 };
 
-LandingApp.propTypes = propTypes;
+Homepage.propTypes = propTypes;
 
-export default LandingApp;
+export default Homepage;

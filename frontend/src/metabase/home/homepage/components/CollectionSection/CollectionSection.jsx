@@ -4,7 +4,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import CollectionList from "metabase/components/CollectionList";
-import Section, { SectionHeader, SectionTitle } from "../LandingSection";
+import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   CollectionLink,
   CollectionLinkIcon,

@@ -8,7 +8,7 @@ import Section, {
   SectionHeader,
   SectionCloseIcon,
   SectionTitle,
-} from "../LandingSection";
+} from "../Section";
 import {
   CardIcon,
   CardIconContainer,

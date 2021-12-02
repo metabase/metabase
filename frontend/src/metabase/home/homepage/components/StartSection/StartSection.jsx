@@ -6,7 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
-import Section, { SectionHeader, SectionTitle } from "../LandingSection";
+import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   BannerContent,
   BannerDescription,

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Greeting from "metabase/lib/greeting";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
-import Section from "../LandingSection";
+import Section from "../Section";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
 const propTypes = {

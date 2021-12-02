@@ -1,7 +1,7 @@
 import { createThunkAction } from "metabase/lib/redux";
 import { updateSetting } from "metabase/admin/settings/settings";
 
-export const HIDE_DATA = "metabase/home/landing/HIDE_DATA";
+export const HIDE_DATA = "metabase/home/homepage/HIDE_DATA";
 export const hideData = createThunkAction(HIDE_DATA, function() {
   return async function(dispatch) {
     const setting = { key: "show-homepage-data", value: false };
@@ -9,7 +9,7 @@ export const hideData = createThunkAction(HIDE_DATA, function() {
   };
 });
 
-export const HIDE_XRAYS = "metabase/home/landing/HIDE_XRAYS";
+export const HIDE_XRAYS = "metabase/home/homepage/HIDE_XRAYS";
 export const hideXrays = createThunkAction(HIDE_XRAYS, function() {
   return async function(dispatch) {
     const setting = { key: "show-homepage-xrays", value: false };
@@ -17,7 +17,7 @@ export const hideXrays = createThunkAction(HIDE_XRAYS, function() {
   };
 });
 
-export const HIDE_PIN_MESSAGE = "metabase/home/landing/HIDE_PIN_MESSAGE";
+export const HIDE_PIN_MESSAGE = "metabase/home/homepage/HIDE_PIN_MESSAGE";
 export const hidePinMessage = createThunkAction(HIDE_PIN_MESSAGE, function() {
   return async function(dispatch) {
     const setting = { key: "show-homepage-pin-message", value: false };

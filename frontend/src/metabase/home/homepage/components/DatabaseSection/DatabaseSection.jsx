@@ -9,7 +9,7 @@ import Section, {
   SectionHeader,
   SectionCloseIcon,
   SectionTitle,
-} from "../LandingSection";
+} from "../Section";
 import {
   CardRoot,
   ListRoot,
