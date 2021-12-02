@@ -51,16 +51,16 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
         <DatasetTitle>{t`Datasets`}</DatasetTitle>
         <ul>
           <DatasetValueProp>
-            Let you update column descriptions and customize metadata to create
-            great starting points for exploration.
+            {t`Let you update column descriptions and customize metadata to create
+            great starting points for exploration.`}
           </DatasetValueProp>
           <DatasetValueProp>
-            Show up higher in search results and get highlighted when other
-            users start new questions to promote reuse.
+            {t`Show up higher in search results and get highlighted when other
+            users start new questions to promote reuse.`}
           </DatasetValueProp>
           <DatasetValueProp>
-            Live in collections to keep them separate from messy database
-            schemas.
+            {t`Live in collections to keep them separate from messy database
+            schemas.`}
           </DatasetValueProp>
         </ul>
       </FeatureOverviewContainer>
