@@ -2,7 +2,6 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.api.card :as card-api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
@@ -16,6 +15,7 @@
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
@@ -26,7 +26,6 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
-
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -72,7 +71,7 @@
                                 :when   param]
                             (assoc param :target (:target mapping)))
           result (session/with-current-user owner-id
-                   (card-api/run-query-for-card-async
+                   (qp.card/run-query-for-card-async
                     card-id :api
                     :dashboard-id  (:id dashboard)
                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two

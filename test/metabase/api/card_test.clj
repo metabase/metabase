@@ -11,17 +11,28 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
-                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models
+             :refer
+             [Card
+              CardFavorite
+              Collection
+              Dashboard
+              Database
+              ModerationReview
+              Pulse
+              PulseCard
+              PulseChannel
+              PulseChannelRecipient
+              Table
+              ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query :as query]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
@@ -1360,8 +1371,8 @@
                                             :middleware {:add-default-userland-constraints? true
                                                          :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
-      (let [orig card-api/run-query-for-card-async]
-        (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
+      (let [orig qp.card/run-query-for-card-async]
+        (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
                                                           (apply orig card-id export-format
                                                                  :run (fn [{:keys [constraints]} _]
                                                                         {:constraints constraints})
@@ -1380,35 +1391,6 @@
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
-
-(deftest query-cache-ttl-hierarchy-test
-  (mt/discard-setting-changes [enable-query-caching]
-    (public-settings/enable-query-caching true)
-    (testing "query-magic-ttl converts to seconds correctly"
-      (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
-        ;; fake average execution time (in millis)
-        (with-redefs [query/average-execution-time-ms (constantly 4000)]
-          (mt/with-temp Card [card]
-            ;; the magic multiplier should be ttl-ratio times avg execution time
-            (is (= (* 2 4) (:cache-ttl (card-api/query-for-card card {} {} {}))))))))
-    (testing "card ttl only"
-      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
-    (testing "multiple ttl, dash wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash {:cache_ttl 1338}]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1338) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "multiple ttl, db wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "no ttl, nil res"
-      (mt/with-temp* [Database [db]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- test-download-response-headers
   [url]
