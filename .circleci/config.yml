@@ -1108,7 +1108,7 @@ workflows:
           requires:
             - be-tests-ee
           driver: bigquery,bigquery-cloud-sdk,googleanalytics
-          test-args: :only [metabase.query-processor-test.expressions-test metabase.driver.google-test]
+          test-args: :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test]"
 
       - test-driver:
           name: be-tests-druid-ee
