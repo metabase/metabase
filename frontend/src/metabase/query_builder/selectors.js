@@ -166,18 +166,27 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
     .filter(p => p !== undefined),
 );
 
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
   (metadata, card) => metadata && card && new Question(card, metadata),
 );
 
 export const getQuestion = createSelector(
-  [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) => {
+  [getMetadata, getCard, getParameterValues, getQueryBuilderMode],
+  (metadata, card, parameterValues, queryBuilderMode) => {
     if (!metadata || !card) {
       return;
     }
     const question = new Question(card, metadata, parameterValues);
+
+    if (queryBuilderMode === "dataset") {
+      return question.lockDisplay();
+    }
 
     // When opening a dataset, we swap it's `dataset_query`
     // with clean query using the dataset as a source table,
@@ -391,11 +400,6 @@ export const getTransformedVisualization = createSelector(
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
   series => series && getComputedSettingsForSeries(series),
-);
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
 );
 
 /**
