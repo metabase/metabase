@@ -19,7 +19,7 @@ import {
 
 const propTypes = {
   user: PropTypes.object.isRequired,
-  dashboards: PropTypes.array.isRequired,
+  dashboards: PropTypes.array,
   databaseCandidates: PropTypes.array,
   showXrays: PropTypes.bool,
   onHideXrays: PropTypes.func,
@@ -28,13 +28,13 @@ const propTypes = {
 const XraySection = ({
   user,
   dashboards,
-  databaseCandidates,
+  databaseCandidates = [],
   showXrays,
   onHideXrays,
 }) => {
-  const options = databaseCandidates?.flatMap(database => database.tables);
+  const options = databaseCandidates.flatMap(database => database.tables);
 
-  if (!showXrays || dashboards.length || !options?.length) {
+  if (!showXrays || dashboards.length || !options.length) {
     return null;
   }
 
