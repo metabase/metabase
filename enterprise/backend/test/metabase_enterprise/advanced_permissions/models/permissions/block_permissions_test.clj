@@ -1,6 +1,6 @@
-(ns metabase-enterprise.enhancements.models.permissions.block-permissions-test
+(ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require [clojure.test :refer :all]
-            [metabase-enterprise.enhancements.models.permissions.block-permissions :as block-perms]
+            [metabase-enterprise.advanced-permissions.models.permissions.block-permissions :as block-perms]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api]
             [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
@@ -183,7 +183,7 @@
                       Card                       [{card-id :id} {:collection_id collection-id
                                                                  :dataset_query query}]
                       Permissions                [_ {:group_id group-id, :object (perms/collection-read-path collection-id)}]]
-        (premium-features-test/with-premium-features #{:enhancements}
+        (premium-features-test/with-premium-features #{:advanced-permissions}
           (perms/revoke-data-perms! (group/all-users) (mt/id))
           (perms/revoke-data-perms! group-id (mt/id))
           (letfn [(run-ad-hoc-query []
@@ -208,9 +208,9 @@
                      (check-block-perms))))
             ;; 'grant' the block permissions.
             (mt/with-temp Permissions [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]
-              (testing "if EE token does not have the `:enhancements` feature: should not do check"
+              (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                 (premium-features-test/with-premium-features #{}
-                  (is (= ::block-perms/enhancements-not-enabled
+                  (is (= ::block-perms/advanced-permissions-not-enabled
                          (check-block-perms)))))
               (testing "disallow running the query"
                 (is (thrown-with-msg?
@@ -233,7 +233,7 @@
                           (testing message
                             (is (f)))))))
                   (testing "\nSandboxed permissions"
-                    (premium-features-test/with-premium-features #{:enhancements :sandboxing}
+                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxing}
                       (mt/with-temp* [Permissions            [_ {:group_id group-2-id
                                                                  :object   (perms/table-segmented-query-path (mt/id :venues))}]
                                       GroupTableAccessPolicy [_ {:table_id (mt/id :venues), :group_id group-id}]]
