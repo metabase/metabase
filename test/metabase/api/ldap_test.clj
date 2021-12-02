@@ -1,14 +1,10 @@
 (ns metabase.api.ldap-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [metabase.api.ldap :as ldap-api]
+            [metabase.integrations.ldap :as ldap]
             [metabase.test :as mt]
-            [metabase.test.integrations.ldap :as ldap.test]
-            [clojure.set :as set]
-            [metabase.integrations.ldap :as ldap]))
-
-(ldap.test/with-ldap-server
-  (set/rename-keys (ldap.test/get-ldap-details)
-                   (set/map-invert @#'ldap-api/mb-settings->ldap-details)))
+            [metabase.test.integrations.ldap :as ldap.test]))
 
 (deftest ldap-settings-test
   (testing "PUT /api/ldap/settings"
