@@ -136,8 +136,7 @@
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
   [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
-  (let [getter  (:getter conn-prop)
-        content (or (:placeholder conn-prop)
+  (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
                            (log/error e (trs "Error invoking getter for connection property {0}"
