@@ -545,7 +545,9 @@
 
 (s/defmethod render :funnel :- common/RenderedPulseCard
   [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
-  (let [[x-col y-col] cols
+  ;; x-axis-rowfn is always first, y-axis-rowfn is always second
+  (let [rows          (common/non-nil-rows first second rows)
+        [x-col y-col] cols
         settings      (->js-viz x-col y-col viz-settings)
         settings      (assoc settings
                              :step    {:name   (:display_name x-col)
