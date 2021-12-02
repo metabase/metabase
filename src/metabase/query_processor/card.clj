@@ -58,6 +58,11 @@
         ttl-secs  (ttl-hierarchy card dashboard database query)]
     (assoc query :cache-ttl ttl-secs)))
 
+(defn- validate-card-parameters [card-id parameters]
+  (println "card-id:" card-id) ; NOCOMMIT
+  (println "(pr-str parameters):" (pr-str parameters)) ; NOCOMMIT
+  )
+
 (defn run-query-for-card-async
   "Run the query for Card with `parameters` and `constraints`, and return results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
