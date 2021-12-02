@@ -37,7 +37,7 @@ const dashboardsProps = {
   loadingAndErrorWrapper: false,
 };
 
-const candidatesProps = {
+const databaseCandidatesProps = {
   query: (state, { databases = [] }) => {
     const [sampleDatabases, userDatabases] = _.partition(
       databases,
@@ -50,7 +50,6 @@ const candidatesProps = {
       return { id: sampleDatabases[0].id };
     }
   },
-  listName: "candidates",
   loadingAndErrorWrapper: false,
 };
 
@@ -71,6 +70,6 @@ export default _.compose(
   Databases.loadList(databasesProps),
   Search.loadList(collectionsProps),
   Search.loadList(dashboardsProps),
-  DatabaseCandidates.loadList(candidatesProps),
+  DatabaseCandidates.loadList(databaseCandidatesProps),
   connect(mapStateToProps, mapDispatchToProps),
 )(Homepage);

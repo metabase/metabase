@@ -12,7 +12,7 @@ const propTypes = {
   databases: PropTypes.array,
   collections: PropTypes.array,
   dashboards: PropTypes.array,
-  candidates: PropTypes.array,
+  databaseCandidates: PropTypes.array,
   showData: PropTypes.bool,
   showXrays: PropTypes.bool,
   showPinMessage: PropTypes.bool,
@@ -26,7 +26,7 @@ const Homepage = ({
   databases,
   collections,
   dashboards,
-  candidates,
+  databaseCandidates,
   showData,
   showXrays,
   showPinMessage,
@@ -49,7 +49,7 @@ const Homepage = ({
           <XraySection
             user={user}
             dashboards={dashboards}
-            candidates={candidates}
+            databaseCandidates={databaseCandidates}
             showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
