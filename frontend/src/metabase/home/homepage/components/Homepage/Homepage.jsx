@@ -5,7 +5,7 @@ import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
-import { LandingRoot } from "./HomepageApp.styled";
+import { LandingRoot } from "./Homepage.styled";
 
 const propTypes = {
   user: PropTypes.object.isRequired,

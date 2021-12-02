@@ -4,7 +4,9 @@ import { AutoApi } from "metabase/services";
 const DatabaseCandidates = createEntity({
   name: "databaseCandidates",
   api: {
-    list: AutoApi.db_candidates,
+    list: async (query = {}) => {
+      return query.id ? AutoApi.db_candidates(query) : [];
+    },
   },
 });
 

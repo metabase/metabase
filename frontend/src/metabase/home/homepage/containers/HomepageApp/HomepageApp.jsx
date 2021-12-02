@@ -38,8 +38,17 @@ const dashboardsProps = {
 };
 
 const candidatesProps = {
-  query: {
-    id: 1,
+  query: (state, { databases = [] }) => {
+    const [sampleDatabases, userDatabases] = _.partition(
+      databases,
+      d => d.is_sample,
+    );
+
+    if (userDatabases.length) {
+      return { id: userDatabases[0].id };
+    } else if (sampleDatabases.length) {
+      return { id: sampleDatabases[0].id };
+    }
   },
   listName: "candidates",
   loadingAndErrorWrapper: false,
