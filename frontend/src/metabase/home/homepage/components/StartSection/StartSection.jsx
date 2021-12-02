@@ -8,17 +8,17 @@ import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
+  BannerCloseIcon,
   BannerContent,
   BannerDescription,
-  BannerModelIcon,
   BannerIconContainer,
+  BannerModelIcon,
   BannerRoot,
   BannerTitle,
   CardIcon,
   CardRoot,
   CardTitle,
   ListRoot,
-  BannerCloseIcon,
 } from "./StartSection.styled";
 
 const propTypes = {
@@ -36,12 +36,13 @@ const StartSection = ({
   showPinMessage,
   onHidePinMessage,
 }) => {
-  const hasUserDatabase = databases.some(d => !d.is_sample);
-  const hasDatabaseBanner = user.is_superuser && !hasUserDatabase;
-  const hasDashboardBanner = !dashboards.length && showPinMessage;
-  const hasDashboardList = dashboards.length > 0;
+  const showDatabaseBanner =
+    user.is_superuser && !databases.some(d => !d.is_sample);
+  const showDashboardBanner =
+    !dashboards.length && showPinMessage && !showDatabaseBanner;
+  const showDashboardList = dashboards.length > 0;
 
-  if (!hasDatabaseBanner && !hasDashboardBanner && !hasDashboardList) {
+  if (!showDatabaseBanner && !showDashboardBanner && !showDashboardList) {
     return null;
   }
 
@@ -50,12 +51,12 @@ const StartSection = ({
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      {hasDatabaseBanner && <DatabaseBanner />}
-      {hasDashboardBanner && !hasDatabaseBanner && (
+      {showDatabaseBanner && <DatabaseBanner />}
+      {showDashboardBanner && (
         <DashboardBanner onHidePinMessage={onHidePinMessage} />
       )}
-      {hasDashboardList && (
-        <ListRoot hasMargin={hasDatabaseBanner}>
+      {showDashboardList && (
+        <ListRoot hasMargin={showDatabaseBanner}>
           {dashboards.map(dashboard => (
             <DashboardCard key={dashboard.id} dashboard={dashboard} />
           ))}
