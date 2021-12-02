@@ -91,7 +91,7 @@ function DatasetEditor(props) {
   return (
     <React.Fragment>
       <EditBar
-        title={`You're editing ${dataset.displayName()}`}
+        title={t`You're editing ${dataset.displayName()}`}
         buttons={[
           <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
           <ActionButton
