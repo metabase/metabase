@@ -408,6 +408,7 @@ export default class NativeQueryEditor extends Component {
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
       hasParametersList = true,
+      hasTopBar = true,
       hasEditingSidebar = true,
     } = this.props;
 
@@ -421,32 +422,34 @@ export default class NativeQueryEditor extends Component {
 
     return (
       <div className="NativeQueryEditor bg-light full">
-        <div className="flex align-center" style={{ minHeight: 55 }}>
-          <DataSourceSelectors
-            isNativeEditorOpen={isNativeEditorOpen}
-            query={query}
-            readOnly={readOnly}
-            setDatabaseId={this.setDatabaseId}
-            setTableId={this.setTableId}
-          />
-          {hasParametersList && (
-            <SyncedParametersList
-              className="mt1"
-              parameters={parameters}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              isEditing
-              commitImmediately
-            />
-          )}
-          {query.hasWritePermission() && (
-            <VisibilityToggler
-              isOpen={isNativeEditorOpen}
+        {hasTopBar && (
+          <div className="flex align-center" style={{ minHeight: 55 }}>
+            <DataSourceSelectors
+              isNativeEditorOpen={isNativeEditorOpen}
+              query={query}
               readOnly={readOnly}
-              toggleEditor={this.toggleEditor}
+              setDatabaseId={this.setDatabaseId}
+              setTableId={this.setTableId}
             />
-          )}
-        </div>
+            {hasParametersList && (
+              <SyncedParametersList
+                className="mt1"
+                parameters={parameters}
+                setParameterValue={setParameterValue}
+                setParameterIndex={this.setParameterIndex}
+                isEditing
+                commitImmediately
+              />
+            )}
+            {query.hasWritePermission() && (
+              <VisibilityToggler
+                isOpen={isNativeEditorOpen}
+                readOnly={readOnly}
+                toggleEditor={this.toggleEditor}
+              />
+            )}
+          </div>
+        )}
         <ResizableBox
           ref={this.resizeBox}
           className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
