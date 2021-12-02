@@ -98,26 +98,26 @@
                 :last-name  "Miller"
                 :email      "jane.miller@metabase.com"
                 :groups     []}
-               (ldap/find-user "jane.miller@metabase.com")))
+               (ldap/find-user "jane.miller@metabase.com")))))
 
     ;; Test group lookups for directory servers that use the memberOf attribute overlay, such as Active Directory
-       (ldap.test/with-active-directory-ldap-server
-         (testing "find user with one group using memberOf attribute"
-           (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
-                   :first-name "John"
-                   :last-name  "Smith"
-                   :email      "John.Smith@metabase.com"
-                   :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
-                  (ldap/find-user "jsmith1"))))
+    (ldap.test/with-active-directory-ldap-server
+      (testing "find user with one group using memberOf attribute"
+        (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+                :first-name "John"
+                :last-name  "Smith"
+                :email      "John.Smith@metabase.com"
+                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
+               (ldap/find-user "jsmith1"))))
 
-         (testing "find user with two groups using memberOf attribute"
-           (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
-                   :first-name "Sally"
-                   :last-name  "Brown"
-                   :email      "sally.brown@metabase.com"
-                   :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com",
-                                "cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
-                  (ldap/find-user "sbrown20")))))))))
+      (testing "find user with two groups using memberOf attribute"
+        (is (= {:dn         "cn=Sally Brown,ou=People,dc=metabase,dc=com"
+                :first-name "Sally"
+                :last-name  "Brown"
+                :email      "sally.brown@metabase.com"
+                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com",
+                             "cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
+               (ldap/find-user "sbrown20")))))))
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`

@@ -90,8 +90,6 @@
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
-  (def my-settings settings)
-  (comment (clojure.pprint/pprint my-settings))
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
