@@ -408,6 +408,7 @@ export default class NativeQueryEditor extends Component {
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
       hasParametersList = true,
+      hasEditingSidebar = true,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -482,7 +483,7 @@ export default class NativeQueryEditor extends Component {
               closeModal={this.props.closeSnippetModal}
             />
           )}
-          {!readOnly && (
+          {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
               {...this.props}
