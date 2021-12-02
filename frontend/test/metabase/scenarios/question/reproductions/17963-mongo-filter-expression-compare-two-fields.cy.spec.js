@@ -1,9 +1,4 @@
-import {
-  enterCustomColumnDetails,
-  popover,
-  restore,
-  visualize,
-} from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 describe("issue 17963", () => {
   beforeEach(() => {
@@ -42,8 +37,8 @@ describe("issue 17963", () => {
 });
 
 function typeAndSelect(arr) {
-  arr.forEach(({ formula, field }) => {
-    enterCustomColumnDetails({ formula });
+  arr.forEach(({ string, field }) => {
+    cy.get(".ace_text-input").type(string);
 
     popover()
       .contains(field)
