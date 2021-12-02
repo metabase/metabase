@@ -410,6 +410,7 @@ export default class NativeQueryEditor extends Component {
       hasParametersList = true,
       hasTopBar = true,
       hasEditingSidebar = true,
+      resizableBoxProps = {},
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -457,11 +458,13 @@ export default class NativeQueryEditor extends Component {
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
           handle={dragHandle}
+          resizeHandles={["s"]}
+          {...resizableBoxProps}
           onResizeStop={(e, data) => {
             this.props.handleResize();
+            resizableBoxProps?.onResizeStop(e, data);
             this._editor.resize();
           }}
-          resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref={this.editor} />
 
