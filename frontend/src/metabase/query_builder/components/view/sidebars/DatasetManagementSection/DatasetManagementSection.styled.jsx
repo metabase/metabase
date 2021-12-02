@@ -8,15 +8,17 @@ export const SectionTitle = styled.span`
   color: ${color("text-medium")};
 `;
 
-export const Button = styled(DefaultButton)`
+export const SectionContent = styled.div`
   margin-top: 1rem;
+  position: relative;
+  right: 8px;
+`;
+
+export const Button = styled(DefaultButton)`
   padding: 8px;
   color: ${color("brand")};
   font-weight: 700;
   border: none;
-
-  position: relative;
-  right: 8px;
 `;
 
 Button.defaultProps = {
