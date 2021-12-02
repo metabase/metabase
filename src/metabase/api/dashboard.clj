@@ -422,7 +422,7 @@
 (def ^:private UpdatedDashboardCard
   (su/with-api-error-message
     {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
-                                            (tru "value must be a DashboardCard ID."))
+                                            "value must be a DashboardCard ID.")
      (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
      (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
      (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
@@ -432,7 +432,7 @@
                                                      s/Keyword     s/Any}])
      (s/optional-key :series)             (s/maybe [su/Map])
      s/Keyword                            s/Any}
-    (tru "value must be a valid DashboardCard map.")))
+    "value must be a valid DashboardCard map."))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
