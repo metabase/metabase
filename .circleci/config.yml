@@ -1107,8 +1107,10 @@ workflows:
           name: be-google-related-drivers-classpath-test
           requires:
             - be-tests-ee
-          driver: bigquery,bigquery-cloud-sdk,googleanalytics
-          test-args: :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test]"
+          driver: google,googleanalytics,bigquery,bigquery-cloud-sdk
+          test-args: >-
+            :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
+                    metabase.driver.googleanalytics-test]"
 
       - test-driver:
           name: be-tests-druid-ee
