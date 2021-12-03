@@ -43,6 +43,7 @@ function DatasetManagementSection({
           icon="notebook"
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
+        <Button icon="label">{t`Edit metadata`}</Button>
         <Button
           icon="dataset_framed"
           onClick={turnDatasetIntoQuestion}
