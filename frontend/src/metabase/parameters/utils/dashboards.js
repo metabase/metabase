@@ -166,16 +166,13 @@ export function getDashboardParametersWithFieldMetadata(
 }
 
 export function getParametersMappedToDashcard(dashboard, dashcard) {
-  const { parameters } = dashboard;
-  const { parameter_mappings, card_id } = dashcard;
+  const { parameters = [] } = dashboard;
+  const { parameter_mappings } = dashcard;
   return parameters
     .map(parameter => {
-      const mapping =
-        card_id != null &&
-        _.findWhere(parameter_mappings, {
-          card_id: card_id,
-          parameter_id: parameter.id,
-        });
+      const mapping = _.findWhere(parameter_mappings, {
+        parameter_id: parameter.id,
+      });
 
       if (mapping) {
         return {
