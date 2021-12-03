@@ -4,10 +4,10 @@
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
+            [metabase.analytics.stats :as stats]
             [metabase.public-settings :as public-settings]
             [metabase.task :as task]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.stats :as stats]))
+            [metabase.util.i18n :refer [trs]]))
 
 ;; if we can collect usage data, do so and send it home
 (jobs/defjob SendAnonymousUsageStats [_]

@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.table :as table-api]
             [metabase.config :as config]
@@ -507,10 +508,17 @@
                                       (sync.schedules/default-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               api/*current-user-id*
+                               {:database engine, :database-id (u/the-id <>), :source :admin}))
       ;; failed to connect, return error
-      {:status 400
-       :body   details-or-error})))
+      (do
+        (snowplow/track-event! ::snowplow/database-connection-failed
+                               api/*current-user-id*
+                               {:database engine, :source :setup})
+        {:status 400
+         :body   details-or-error}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

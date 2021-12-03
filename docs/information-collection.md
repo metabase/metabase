@@ -91,4 +91,4 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | Language                                          | How many non-English speaking users do we have? How fast should we be pushing internationalization?                                                     |
 | OS and JVM Version                                | Can we deprecate Java 7 yet?                                                                                                                        |
 
-Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj](https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj).
+Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/analytics/](https://github.com/metabase/metabase/blob/master/src/metabase/analytics).
