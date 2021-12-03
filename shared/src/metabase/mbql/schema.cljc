@@ -1270,19 +1270,14 @@
 (defclause template-tag
   tag-name helpers/NonBlankString)
 
-(def DimensionTarget
-  (one-of template-tag field))
-
 (defclause dimension
-  target DimensionTarget)
-
-(def VariableTarget
-  (one-of template-tag))
+  target (one-of template-tag field))
 
 (defclause variable
-  target VariableTarget)
+  target template-tag)
 
 (def ParameterTarget
+  "Schema for the value of `:target` in a [[Parameter]]."
   (one-of dimension variable))
 
 (def Parameter

@@ -89,4 +89,6 @@
                  options
                  {:parameters   params
                   :dashboard-id dashboard-id})]
-    (m/mapply qp.card/run-query-for-card-async card-id export-format options)))
+    ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
+    (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+      (m/mapply qp.card/run-query-for-card-async card-id export-format options))))

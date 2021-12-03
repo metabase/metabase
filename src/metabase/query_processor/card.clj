@@ -17,7 +17,7 @@
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [toucan.db :as db]))
 
 (defn- query-magic-ttl
