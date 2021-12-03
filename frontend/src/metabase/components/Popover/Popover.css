@@ -38,6 +38,20 @@
   padding: 10px 12px;
 }
 
+.tippy-box[data-theme~="popover"] {
+  background-color: var(--color-bg-white);
+  color: var(--color-text-default);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 10px var(--color-shadow);
+  background-color: var(--color-bg-white);
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.tippy-box[data-theme~="popover"] .tippy-content {
+  padding: 0;
+}
+
 /* remove the max-width in cases where the popover content needs to expand
  * initially added  for date pickers so the dual date picker can fully
  * expand as necessary - metabase#5971
