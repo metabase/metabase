@@ -6,16 +6,17 @@ import Button from "metabase/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Section, {
-  SectionHeader,
   SectionCloseIcon,
+  SectionHeader,
   SectionTitle,
 } from "../Section";
 import {
-  CardRoot,
-  ListRoot,
+  ActionCardRoot,
+  ActionLink,
   CardIcon,
   CardTitle,
-  ActionLink,
+  DatabaseCardRoot,
+  ListRoot,
 } from "./DatabaseSection.styled";
 
 const propTypes = {
@@ -50,19 +51,19 @@ const DatabaseSection = ({ user, databases, showData, onHideData }) => {
       </SectionHeader>
       <ListRoot>
         {databases.map(database => (
-          <DatabaseCard
+          <DatabaseCardRoot
             key={database.id}
-            title={database.name}
-            link={Urls.browseDatabase(database)}
-            isActive={true}
-          />
+            to={Urls.browseDatabase(database)}
+          >
+            <CardIcon name="database" />
+            <CardTitle>{database.name}</CardTitle>
+          </DatabaseCardRoot>
         ))}
         {hasAddLink && !hasUserDatabase && (
-          <DatabaseCard
-            title={t`Add a database`}
-            link={Urls.newDatabase()}
-            isActive={false}
-          />
+          <ActionCardRoot to={Urls.newDatabase()}>
+            <CardIcon name="database" />
+            <CardTitle>{t`Add a database`}</CardTitle>
+          </ActionCardRoot>
         )}
       </ListRoot>
     </Section>
@@ -70,23 +71,6 @@ const DatabaseSection = ({ user, databases, showData, onHideData }) => {
 };
 
 DatabaseSection.propTypes = propTypes;
-
-const cardPropTypes = {
-  title: PropTypes.string.isRequired,
-  link: PropTypes.string.isRequired,
-  isActive: PropTypes.bool,
-};
-
-const DatabaseCard = ({ title, link, isActive }) => {
-  return (
-    <CardRoot to={link} isActive={isActive}>
-      <CardIcon name="database" isActive={isActive} />
-      <CardTitle>{title}</CardTitle>
-    </CardRoot>
-  );
-};
-
-DatabaseCard.propTypes = cardPropTypes;
 
 const modalPropTypes = {
   children: PropTypes.node,

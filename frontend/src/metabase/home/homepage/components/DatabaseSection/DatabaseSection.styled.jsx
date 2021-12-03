@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Link } from "react-router";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
@@ -21,31 +21,56 @@ export const ListRoot = styled.div`
   }
 `;
 
-export const CardRoot = styled(Link)`
+export const CardTitle = styled.span`
   display: block;
-  padding: 1.875rem;
-  color: ${props => color(props.isActive ? "text-dark" : "brand")};
-  border: 0.125rem solid ${color("bg-medium")};
-  border-radius: 0.375rem;
-  background-color: ${props => (props.isActive ? color("bg-medium") : "")};
-
-  &:hover {
-    color: ${color("brand")};
-  }
+  font-size: 1.17em;
+  font-weight: 700;
 `;
 
 export const CardIcon = styled(Icon)`
   display: block;
-  color: ${props => color(props.isActive ? "database" : "brand-light")};
   width: 2rem;
   height: 2rem;
   margin-bottom: 3rem;
 `;
 
-export const CardTitle = styled.span`
+export const CardRoot = styled(Link)`
   display: block;
-  font-size: 1.17em;
-  font-weight: 700;
+  padding: 1.875rem;
+  border: 0.125rem solid ${color("bg-medium")};
+  border-radius: 0.375rem;
+`;
+
+export const DatabaseCardRoot = styled(CardRoot)`
+  color: ${color("text-dark")};
+  background-color: ${color("bg-medium")};
+
+  ${CardIcon} {
+    color: ${color("database")};
+  }
+
+  &:hover ${CardTitle} {
+    color: ${color("brand")};
+  }
+`;
+
+export const ActionCardRoot = styled(CardRoot)`
+  ${CardTitle} {
+    color: ${color("brand")};
+  }
+
+  ${CardIcon} {
+    color: ${color("brand-light")};
+  }
+
+  &:hover {
+    border-color: ${color("brand-light")};
+    background-color: ${color("brand-light")};
+  }
+
+  &:hover ${CardIcon} {
+    color: ${color("brand")};
+  }
 `;
 
 export const ActionLink = styled(Link)`
