@@ -5,9 +5,9 @@ import { color as c } from "metabase/lib/colors";
 
 type Props = {
   percentage: number,
-  animated: boolean,
-  color: string,
-  height: number | string,
+  animated?: boolean,
+  color?: string,
+  height?: number | string,
 };
 
 const ProgressWrapper = styled.div`
