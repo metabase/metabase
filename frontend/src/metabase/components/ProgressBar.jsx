@@ -7,13 +7,13 @@ type Props = {
   percentage: number,
   animated: boolean,
   color: string,
-  height: number,
+  height: number | string,
 };
 
 const ProgressWrapper = styled.div`
   position: relative;
   border: 1px solid ${props => props.color};
-  height: 10px;
+  height: ${props => props.height};
   border-radius: 99px;
 `;
 
@@ -51,12 +51,12 @@ export default class ProgressBar extends Component {
   };
 
   render() {
-    const { percentage, animated, color = c("brand") } = this.props;
+    const { percentage, height, animated, color = c("brand") } = this.props;
 
     const width = percentage * 100;
 
     return (
-      <ProgressWrapper color={color}>
+      <ProgressWrapper color={color} height={height}>
         <Progress width={width} animated={animated} color={color} />
       </ProgressWrapper>
     );
