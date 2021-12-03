@@ -25,10 +25,9 @@
                                            :card_id  (u/the-id card)
                                            :position 0}
                                           pulse-card)]
-                  DashboardCard [{dashcard-id :id} (merge
-                                                    {:dashboard_id (u/the-id dashboard)
-                                                     :card_id (u/the-id card)}
-                                                    dashcard)]
+                  DashboardCard [_ (merge {:dashboard_id (u/the-id dashboard)
+                                           :card_id (u/the-id card)}
+                                          dashcard)]
                   PulseChannel  [{pc-id :id} (case channel
                                                :email
                                                {:pulse_id pulse-id}
