@@ -27,7 +27,7 @@ const DriverDeprecationBanner = ({ database, isEnabled, onClose }) => {
       <BannerContent>
         {t`You’re using a database driver which is now deprecated and will be removed in the next release.`}{" "}
         <BannerLink
-          to={Urls.editDatabase(database.id)}
+          to={Urls.showDatabases()}
           onClick={onClose}
         >{t`Show me`}</BannerLink>
       </BannerContent>

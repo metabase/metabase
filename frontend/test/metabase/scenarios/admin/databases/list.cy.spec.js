@@ -89,7 +89,7 @@ describe("scenarios > admin > databases > list", () => {
     const message = `You’re using a database driver which is now deprecated and will be removed in the next release.`;
     cy.findByText(message);
     cy.findByText("Show me").click();
-    cy.location("pathname").should("eq", "/admin/databases/1");
+    cy.findByText("Sample Dataset");
     cy.findByText(message).should("not.exist");
 
     cy.reload();
