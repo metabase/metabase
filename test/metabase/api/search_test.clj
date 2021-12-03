@@ -194,7 +194,6 @@
              [:like (hsql/call :lower :table_schema) "%foo%"] 0
              [:like (hsql/call :lower :table_name) "%foo%"] 0
              [:like (hsql/call :lower :table_description) "%foo%"] 0
-             [:like (hsql/call :lower :initial_sync_status) "%foo%"] 0
              :else 1)
            (api.search/order-clause "Foo")))))
 

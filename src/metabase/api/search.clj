@@ -343,7 +343,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status}))
+                               (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))
