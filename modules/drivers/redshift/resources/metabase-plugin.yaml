@@ -20,6 +20,7 @@ driver:
           placeholder: toucan_sightings
     - user
     - password
+    - cloud-ip-address-info
     - merge:
       - additional-options
       - placeholder: 'SocketTimeout=0'

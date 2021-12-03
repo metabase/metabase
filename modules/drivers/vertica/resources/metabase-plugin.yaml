@@ -21,6 +21,7 @@ driver:
     - dbname
     - user
     - password
+    - cloud-ip-address-info
     - merge:
         - additional-options
         - placeholder: 'ConnectionLoadBalance=1'

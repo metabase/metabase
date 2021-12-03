@@ -30,6 +30,7 @@ driver:
         - additional-options
         - display-name: Additional Mongo connection string options
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+    - cloud-ip-address-info
     - name: use-srv
       type: boolean
       default: false

@@ -26,6 +26,7 @@ driver:
       placeholder: Optional TNS alias
     - user
     - password
+    - cloud-ip-address-info
     - ssl
     - name: ssl-use-keystore
       display-name: Use SSL server certificate?
