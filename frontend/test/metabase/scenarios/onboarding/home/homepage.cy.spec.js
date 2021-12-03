@@ -10,22 +10,52 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsAdmin();
     });
 
-    it("should show sections for an admin", () => {
+    it("should allow basic navigation", () => {
+      cy.visit("/");
+      cy.findByText("Add my data").click();
+      cy.location("pathname").should("eq", "admin/databases/create");
+
+      cy.visit("/");
+      cy.findByText("Invite a teammate").click();
+      cy.location("pathname").should("eq", "/admin/people/new");
+
+      cy.visit("/");
+      cy.findByText("Products table");
+      cy.location("pathname").should("eq", "/auto/dashboard/table/1");
+
+      cy.visit("/");
+      cy.findByText("Browse all items");
+      cy.location("pathname").should("eq", "/collection/root");
+
+      cy.visit("/");
+      cy.findByText("Sample Dataset").click();
+      cy.location("pathname").should("eq", "/browse/1-sample-dataset");
+
+      cy.visit("/");
+      cy.findByText("Add a database").click();
+      cy.location("pathname").should("eq", "admin/databases/create");
+    });
+
+    it("should allow hiding the data section", () => {
       cy.visit("/");
 
-      cy.findByText("Start here");
-      cy.findByText("Add my data");
+      cy.findByText("Our data")
+        .parent()
+        .within(() => cy.findByLabelText("close icon").click());
 
-      cy.findByText("Try these x-rays based on your data");
-      cy.findByText("Orders table");
+      cy.findByText("Remove").click();
+      cy.findByText("Our data").should("not.exist");
+    });
 
-      cy.findByText("Our analytics");
-      cy.findByText("First collection");
-      cy.findByText("Browse all items");
+    it("should allow hiding the x-ray section", () => {
+      cy.visit("/");
 
-      cy.findByText("Our data");
-      cy.findByText("Sample Dataset");
-      cy.findByText("Add a database");
+      cy.findByText("Try these x-rays based on your data")
+        .parent()
+        .within(() => cy.findByLabelText("close icon").click());
+
+      cy.findByText("Remove").click();
+      cy.findByText("Try these x-rays based on your data").should("not.exist");
     });
   });
 
@@ -34,22 +64,22 @@ describe("scenarios > home > homepage", () => {
       cy.signInAsNormalUser();
     });
 
-    it("should show sections for a normal user", () => {
+    it("should allow basic navigation", () => {
       cy.visit("/");
+      cy.findByRole("link", { name: "Our analytics" }).click();
+      cy.location("pathname").should("eq", "/collection/root");
 
-      cy.findByText("Start here");
-      cy.findByText("Your teams’ most important dashboards go here");
+      cy.visit("/");
+      cy.findByText("Products table");
+      cy.location("pathname").should("eq", "/auto/dashboard/table/1");
 
-      cy.findByText("Try these x-rays based on your data");
-      cy.findByText("Orders table");
-
-      cy.findAllByText("Our analytics");
-      cy.findByText("First collection");
+      cy.visit("/");
       cy.findByText("Browse all items");
+      cy.location("pathname").should("eq", "/collection/root");
 
-      cy.findByText("Our data");
-      cy.findByText("Sample Dataset");
-      cy.findByText("Add a database").should("not.exist");
+      cy.visit("/");
+      cy.findByText("Sample Dataset").click();
+      cy.location("pathname").should("eq", "/browse/1-sample-dataset");
     });
   });
 });
