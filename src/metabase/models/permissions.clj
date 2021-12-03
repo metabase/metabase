@@ -125,7 +125,7 @@
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
   [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
-  [[metabase-enterprise.enhancements.models.permissions.block-permissions]] determines whether the current
+  [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
@@ -397,6 +397,7 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/")))
 
+;; TODO -- consider renaming this to `table-sandboxed-query-path`  since that terminology is used more frequently
 (s/defn table-segmented-query-path :- Path
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
   the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,

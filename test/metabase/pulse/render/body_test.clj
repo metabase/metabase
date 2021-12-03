@@ -470,6 +470,21 @@
           {:cols default-columns
            :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
 
+(defn- render-funnel [results]
+  (body/render :funnel :inline pacific-tz render.tu/test-card results))
+
+(deftest render-funnel-test
+  (testing "Test that we can render a funnel with all valid values"
+    (is (has-inline-image?
+         (render-funnel
+          {:cols default-columns
+           :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Test that we can have some nil values stuck everywhere"
+    (is (has-inline-image?
+         (render-funnel
+          {:cols default-columns
+           :rows [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]})))))
+
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
                   :display_name  "Category",

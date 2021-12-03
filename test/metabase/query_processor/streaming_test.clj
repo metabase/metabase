@@ -1,14 +1,17 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.embed-test :as embed-test]
             [metabase.models.card :as card :refer [Card]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+            [metabase.server.protocols :as server.protocols]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -64,6 +67,40 @@
           (let [[sql & args] (db/honeysql->sql {:select [["Cam 𝌆 Saul 💩" :cam]]})]
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
+
+(def ^:private ^:dynamic *number-of-cans* nil)
+
+(deftest preserve-thread-bindings-test
+  (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
+    (with-open [os (java.io.ByteArrayOutputStream.)]
+      (let [streaming-response (binding [*number-of-cans* 2]
+                                 (qp.streaming/streaming-response [context :json]
+                                   (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
+                                         rows     [[*number-of-cans*]]]
+                                     (qp.context/reducef (qp.context/rff context) context metadata rows))))
+            complete-promise   (promise)]
+        (server.protocols/respond streaming-response
+                                  {:response      (reify javax.servlet.http.HttpServletResponse
+                                                    (setStatus [_ _])
+                                                    (setHeader [_ _ _])
+                                                    (setContentType [_ _])
+                                                    (getOutputStream [_]
+                                                      (proxy [javax.servlet.ServletOutputStream] []
+                                                        (write
+                                                          ([byytes]
+                                                           (.write os ^bytes byytes))
+                                                          ([byytes offset length]
+                                                           (.write os ^bytes byytes offset length))))))
+                                   :async-context (reify javax.servlet.AsyncContext
+                                                    (complete [_]
+                                                      (deliver complete-promise true)))})
+        (is (= true
+               (deref complete-promise 1000 ::timed-out)))
+        (let [response-str (String. (.toByteArray os) "UTF-8")]
+          (is (= "[{\"num_cans\":2}]"
+                 (str/replace response-str #"\n+" "")))
+          (is (= [{:num_cans 2}]
+                 (json/parse-string response-str true))))))))
 
 (defmulti ^:private first-row-map
   "Return the first row in `results` as a map with `col-names` as the keys."
@@ -202,32 +239,33 @@
                                      card-defaults)]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :public :embed])]
-              (case endpoint
-                :dataset
-                (let [results (mt/user-http-request :rasta :post 200
-                                                    (format "dataset/%s" (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                    :query query-json
-                                                    :visualization_settings viz-settings-json)]
-                  ((-> assertions export-format) results))
+              (testing endpoint
+                (case endpoint
+                  :dataset
+                  (let [results (mt/user-http-request :rasta :post 200
+                                                      (format "dataset/%s" (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :query query-json
+                                                      :visualization_settings viz-settings-json)]
+                    ((-> assertions export-format) results))
 
-                :card
-                (let [results (mt/user-http-request :rasta :post 200
-                                                    (format "card/%d/query/%s" (:id card) (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))
+                  :card
+                  (let [results (mt/user-http-request :rasta :post 200
+                                                      (format "card/%d/query/%s" (:id card) (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                :public
-                (let [results (mt/user-http-request :rasta :get 200
-                                                    (format "public/card/%s/query/%s" public-uuid (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))
+                  :public
+                  (let [results (mt/user-http-request :rasta :get 200
+                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                :embed
-                (let [results (mt/user-http-request :rasta :get 200
-                                                    (embed-test/card-query-url card (str "/" (name export-format)))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))))))))))
+                  :embed
+                  (let [results (mt/user-http-request :rasta :get 200
+                                                      (embed-test/card-query-url card (str "/" (name export-format)))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results)))))))))))
 
 (defn- parse-json-results
   "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,

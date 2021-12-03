@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.dataset :as api.dataset]
@@ -14,7 +15,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard delete-dashboard-card!]]
+            [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard delete-dashboard-card!]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.dashboard-favorite :refer [DashboardFavorite]]
             [metabase.models.field :refer [Field]]
@@ -22,8 +23,10 @@
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
+            [metabase.models.query.permissions :as query.perms]
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -102,6 +105,7 @@
                 (db/insert! Dashboard dashboard-data))]
       ;; publish event after the txn so that lookup can succeed
       (events/publish-event! :dashboard-create dash)
+      (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
       (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 
@@ -248,6 +252,7 @@
                            ;; Get cards from existing dashboard and associate to copied dashboard
                            (doseq [card (:ordered_cards existing-dashboard)]
                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
 
@@ -327,6 +332,47 @@
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
+(defn- param-target->field-id [target query]
+  (when-let [field-clause (params/param-target->field-clause target {:card {:dataset_query query}})]
+    (mbql.u/match-one field-clause [:field (id :guard integer?) _] id)))
+
+;; TODO -- should we only check *new* or *modified* mappings?
+(s/defn ^:private check-parameter-mapping-permissions
+  "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
+  {:added "0.41.0"}
+  [parameter-mappings :- [{:target   s/Any
+                           :card-id  su/IntGreaterThanZero
+                           s/Keyword s/Any}]]
+  (when (seq parameter-mappings)
+    ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
+    ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
+    ;; if there happen to be a lot of parameters
+    (let [card-ids              (into #{} (map :card-id) parameter-mappings)
+          card-id->query        (db/select-id->field :dataset_query Card :id [:in card-ids])
+          field-ids             (set (for [{:keys [target card-id]} parameter-mappings
+                                           :let                     [query    (or (card-id->query card-id)
+                                                                                  (throw (ex-info (tru "Card {0} does not exist or does not have a valid query."
+                                                                                                       card-id)
+                                                                                                  {:status-code 404
+                                                                                                   :card-id     card-id})))
+                                                                     field-id (param-target->field-id target query)]
+                                           :when                    field-id]
+                                       field-id))
+          table-ids             (when (seq field-ids)
+                                  (db/select-field :table_id Field :id [:in field-ids]))
+          table-id->database-id (when (seq table-ids)
+                                  (db/select-id->field :db_id Table :id [:in table-ids]))]
+      (doseq [table-id table-ids
+              :let     [database-id (table-id->database-id table-id)]]
+        ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
+        (when-not (query.perms/can-query-table? database-id table-id)
+          (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
+                               (pr-str (db/select-one-field :name Table :id table-id)))
+                          {:status-code        403
+                           :database-id        database-id
+                           :table-id           table-id
+                           :actual-permissions @api/*current-user-permissions-set*})))))))
+
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
   "Add a `Card` to a Dashboard."
@@ -336,24 +382,81 @@
   (api/check-not-archived (api/write-check Dashboard id))
   (when cardId
     (api/check-not-archived (api/read-check Card cardId)))
+  (check-parameter-mapping-permissions (for [mapping parameter_mappings]
+                                         (assoc mapping :card-id cardId)))
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
+    (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                           api/*current-user-id*
+                           {:dashboard-id id, :question-id cardId})))
+
+(defn- existing-parameter-mappings
+  "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
+
+  {<dashboard-card-id> #{{:target       [:dimension [:field 1000 nil]]
+                          :parameter_id \"abcdef\"}}}"
+  [dashboard-id]
+  (m/map-vals (fn [mappings]
+                (into #{} (map #(select-keys % [:target :parameter_id])) mappings))
+              (db/select-id->field :parameter_mappings DashboardCard :dashboard_id dashboard-id)))
+
+(defn- check-updated-parameter-mapping-permissions
+  "In 0.41.0+ you now require data permissions for the Table in question to add or modify Dashboard parameter mappings.
+  Check that the current user has the appropriate permissions. Don't check any parameter mappings that already exist
+  for this Dashboard -- only check permissions for new or modified ones."
+  [dashboard-id dashcards]
+  (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
+        existing-mapping?              (fn [dashcard-id mapping]
+                                         (let [[mapping]         (dashboard-card/normalize-parameter-mappings [mapping])
+                                               existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
+                                           (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
+        new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
+                                             mapping                                         mappings
+                                             :when                                           (not (existing-mapping? dashcard-id mapping))]
+                                         (assoc mapping :dashcard-id dashcard-id))
+        ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
+        dashcard-id->card-id           (when (seq new-mappings)
+                                         (db/select-id->field :card_id DashboardCard
+                                           :dashboard_id dashboard-id
+                                           :id           [:in (set (map :dashcard-id new-mappings))]))
+        new-mappings (for [{:keys [dashcard-id], :as mapping} new-mappings]
+                       (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
+    (check-parameter-mapping-permissions new-mappings)))
+
+(def ^:private UpdatedDashboardCard
+  (su/with-api-error-message
+    {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
+                                            "value must be a DashboardCard ID.")
+     (s/optional-key :sizeX)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :sizeY)              (s/maybe su/IntGreaterThanZero)
+     (s/optional-key :row)                (s/maybe su/IntGreaterThanOrEqualToZero)
+     (s/optional-key :col)                (s/maybe su/IntGreaterThanOrEqualToZero)
+     (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
+                                                     :target       s/Any
+                                                     s/Keyword     s/Any}])
+     (s/optional-key :series)             (s/maybe [su/Map])
+     s/Keyword                            s/Any}
+    "value must be a valid DashboardCard map."))
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
-    {:cards [{:id     ...
-              :sizeX  ...
-              :sizeY  ...
-              :row    ...
-              :col    ...
-              :series [{:id 123
-                        ...}]} ...]}"
+    {:cards [{:id                 ... ; DashboardCard ID
+              :sizeX              ...
+              :sizeY              ...
+              :row                ...
+              :col                ...
+              :parameter_mappings ...
+              :series             [{:id 123
+                                    ...}]}
+             ...]}"
   [id :as {{:keys [cards]} :body}]
+  {cards (su/non-empty [UpdatedDashboardCard])}
   (api/check-not-archived (api/write-check Dashboard id))
+  (check-updated-parameter-mapping-permissions id cards)
   (dashboard/update-dashcards! id cards)
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})

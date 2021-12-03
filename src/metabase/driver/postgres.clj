@@ -85,6 +85,7 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/cloud-ip-address-info
      driver.common/default-ssl-details
      (assoc driver.common/default-additional-options-details
             :placeholder "prepareThreshold=0")]))
