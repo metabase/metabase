@@ -10,8 +10,11 @@ import {
   turnDatasetIntoQuestion,
 } from "metabase/query_builder/actions";
 
+import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {
   Button,
+  MetadataIndicatorContainer,
+  Row,
   SectionContent,
   SectionTitle,
 } from "./DatasetManagementSection.styled";
@@ -28,6 +31,7 @@ DatasetManagementSection.propTypes = {
 };
 
 function DatasetManagementSection({
+  dataset,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
 }) {
@@ -43,7 +47,12 @@ function DatasetManagementSection({
           icon="notebook"
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
-        <Button icon="label">{t`Edit metadata`}</Button>
+        <Row>
+          <Button icon="label">{t`Edit metadata`}</Button>
+          <MetadataIndicatorContainer>
+            <DatasetMetadataStrengthIndicator dataset={dataset} />
+          </MetadataIndicatorContainer>
+        </Row>
         <Button
           icon="dataset_framed"
           onClick={turnDatasetIntoQuestion}
