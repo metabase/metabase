@@ -4,25 +4,17 @@ import { t } from "ttag";
 // eslint-disable-next-line import/namespace, import/default, import/no-named-as-default, import/no-named-as-default-member
 import Question from "metabase-lib/lib/Question";
 
-import ProgressBar from "metabase/components/ProgressBar";
 import Tooltip from "metabase/components/Tooltip";
 
-import { color } from "metabase/lib/colors";
 import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
 
 import {
   Root,
   PercentageLabel,
+  MetadataProgressBar,
   TooltipContent,
   TooltipParagraph,
 } from "./DatasetMetadataStrengthIndicator.styled";
-
-function getIndicatorColor(percentage: number): string {
-  if (percentage <= 0.5) {
-    return color("danger");
-  }
-  return percentage >= 0.9 ? color("success") : color("warning");
-}
 
 function getTooltipMessage(percentage: number) {
   if (percentage === 1) {
@@ -62,23 +54,16 @@ function DatasetMetadataStrengthIndicator({ dataset }: Props) {
   }
 
   const percentage = getDatasetMetadataCompletenessPercentage(resultMetadata);
-  const indicationColor = getIndicatorColor(percentage);
 
   return (
-    <Root>
+    <Root percentage={percentage}>
       <Tooltip
         tooltip={getTooltipMessage(percentage)}
         delay={TOOLTIP_DELAY}
         placement="bottom"
       >
-        <PercentageLabel color={indicationColor}>
-          {formatPercentage(percentage)}
-        </PercentageLabel>
-        <ProgressBar
-          percentage={percentage}
-          color={indicationColor}
-          height="6px"
-        />
+        <PercentageLabel>{formatPercentage(percentage)}</PercentageLabel>
+        <MetadataProgressBar percentage={percentage} height="8px" />
       </Tooltip>
     </Root>
   );

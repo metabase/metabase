@@ -1,4 +1,38 @@
 import styled from "styled-components";
+import ProgressBar from "metabase/components/ProgressBar";
+import { color as c } from "metabase/lib/colors";
+
+function getIndicationColor(percentage: number): string {
+  if (percentage <= 0.5) {
+    return c("danger");
+  }
+  return percentage >= 0.9 ? c("success") : c("warning");
+}
+
+function getDefaultProgressBarColor({
+  percentage,
+}: {
+  percentage: number;
+  color: string;
+}) {
+  const tooIncompleteMetadata = percentage <= 0.5;
+  return tooIncompleteMetadata
+    ? getIndicationColor(percentage)
+    : c("bg-medium");
+}
+
+export const MetadataProgressBar = styled(ProgressBar)<{
+  percentage: number;
+  height: string | number;
+}>`
+  border-color: ${props => getDefaultProgressBarColor(props)};
+  transition: border-color 0.3s;
+
+  ${ProgressBar.Progress} {
+    background-color: ${props => getDefaultProgressBarColor(props)};
+    transition: background-color 0.3s;
+  }
+`;
 
 export const PercentageLabel = styled.span`
   position: absolute;
@@ -7,23 +41,35 @@ export const PercentageLabel = styled.span`
 
   font-size: 0.8rem;
   font-weight: bold;
-  color: ${props => props.color};
+  user-select: none;
 
   opacity: 0;
   transform: translateY(60%);
   transition: all 0.4s;
 `;
 
-export const Root = styled.div`
+export const Root = styled.div<{ percentage: number }>`
   display: flex;
   flex: 1;
   position: relative;
   flex-direction: column;
 
+  ${PercentageLabel} {
+    color: ${props => getIndicationColor(props.percentage)};
+  }
+
   &:hover {
     ${PercentageLabel} {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    ${MetadataProgressBar} {
+      border-color: ${props => getIndicationColor(props.percentage)};
+
+      ${ProgressBar.Progress} {
+        background-color: ${props => getIndicationColor(props.percentage)};
+      }
     }
   }
 `;
