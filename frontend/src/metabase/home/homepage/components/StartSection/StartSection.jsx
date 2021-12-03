@@ -53,7 +53,7 @@ const StartSection = ({
       </SectionHeader>
       {showDatabaseBanner && <DatabaseBanner />}
       {showDashboardBanner && (
-        <DashboardBanner onHidePinMessage={onHidePinMessage} />
+        <DashboardBanner user={user} onHidePinMessage={onHidePinMessage} />
       )}
       {showDashboardList && (
         <ListRoot hasMargin={showDatabaseBanner}>
@@ -118,10 +118,11 @@ const DatabaseBanner = () => {
 };
 
 const dashboardBannerProps = {
+  user: PropTypes.object.isRequired,
   onHidePinMessage: PropTypes.func,
 };
 
-const DashboardBanner = ({ onHidePinMessage }) => {
+const DashboardBanner = ({ user, onHidePinMessage }) => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (
@@ -137,7 +138,9 @@ const DashboardBanner = ({ onHidePinMessage }) => {
           </ExternalLink>
         )} to have them appear in this space for everyone.`}</BannerDescription>
       </BannerContent>
-      <BannerCloseIcon name="close" onClick={onHidePinMessage} />
+      {user.is_superuser && (
+        <BannerCloseIcon name="close" onClick={onHidePinMessage} />
+      )}
     </BannerRoot>
   );
 };
