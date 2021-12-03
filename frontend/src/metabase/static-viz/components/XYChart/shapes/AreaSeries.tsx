@@ -24,8 +24,11 @@ export const AreaSeries = ({
   return (
     <Group>
       {series.map(s => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const yScale = s.yAxisPosition === "left" ? yScaleLeft! : yScaleRight!;
+        const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
+
+        if (!yScale) {
+          return null;
+        }
 
         return (
           <LineArea
@@ -34,7 +37,7 @@ export const AreaSeries = ({
             color={s.color}
             data={s.data}
             x={xAccessor as any}
-            y={d => yScale(getY(d as any)) ?? 0}
+            y={d => yScale(getY(d)) ?? 0}
             y1={yScale(0) ?? 0}
           />
         );

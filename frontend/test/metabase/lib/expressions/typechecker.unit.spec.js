@@ -190,6 +190,10 @@ describe("type-checker", () => {
       expect(() => validate("Lower([State]) > 'AB'")).not.toThrow();
     });
 
+    it("should allow a comparison on the result of COALESCE", () => {
+      expect(() => validate("Coalesce([X],[Y]) > 0")).not.toThrow();
+    });
+
     it("should reject a less/greater comparison on functions returning boolean", () => {
       expect(() => validate("IsEmpty([Tax]) < 5")).toThrow();
       expect(() => validate("IsEmpty([Tax]) >= 0")).toThrow();

@@ -26,6 +26,8 @@ type Props = {
   navigateToNewCardInsideQB: any => void,
   rawSeries: any,
 
+  isVisualizationClickable: boolean,
+
   onOpenChartSettings: () => void,
   onUpdateWarnings: () => void,
   onUpdateVisualizationSettings: (settings: any) => void,
@@ -50,6 +52,7 @@ export default class VisualizationResult extends Component {
     const {
       question,
       isDirty,
+      isVisualizationClickable,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
@@ -107,6 +110,7 @@ export default class VisualizationResult extends Component {
           isEditing={true}
           isQueryBuilder={true}
           showTitle={false}
+          isClickable={isVisualizationClickable}
           metadata={question.metadata()}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}

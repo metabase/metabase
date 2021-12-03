@@ -68,6 +68,12 @@
                                           :rows [[#t "2020" 2]
                                                  [#t "2021" 3]]})))
 
+  (is (= :funnel
+         (render/detect-pulse-chart-type {:display :funnel}
+                                         {:cols [{:base_type :type/Text}
+                                                 {:base_type :type/Number}]
+                                          :rows [["A" 2]]})))
+
   ;; timeseries line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}

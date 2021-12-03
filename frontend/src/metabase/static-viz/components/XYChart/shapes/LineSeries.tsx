@@ -24,8 +24,10 @@ export const LineSeries = ({
   return (
     <Group>
       {series.map(s => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const yScale = s.yAxisPosition === "left" ? yScaleLeft! : yScaleRight!;
+        const yScale = s.yAxisPosition === "left" ? yScaleLeft : yScaleRight;
+        if (!yScale) {
+          return null;
+        }
 
         return (
           <LinePath

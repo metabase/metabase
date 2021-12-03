@@ -84,7 +84,7 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall :combo} display-type)
+        (#{:progress :waterfall :combo :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)

@@ -226,6 +226,7 @@ export const MBQL_CLAUSES = {
     displayName: `interval`,
     type: "boolean",
     args: ["expression", "number", "string"],
+    hasOptions: true,
   },
   "is-null": {
     displayName: `isnull`,
