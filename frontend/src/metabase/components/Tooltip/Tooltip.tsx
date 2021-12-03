@@ -19,7 +19,7 @@ Tooltip.propTypes = {
 
 interface TooltipProps
   extends Partial<
-    Pick<Tippy.TippyProps, "reference" | "placement" | "maxWidth">
+    Pick<Tippy.TippyProps, "delay" | "reference" | "placement" | "maxWidth">
   > {
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
@@ -58,6 +58,7 @@ function getTargetProps(
 function Tooltip({
   tooltip,
   children,
+  delay,
   reference,
   placement,
   isEnabled,
@@ -80,6 +81,7 @@ function Tooltip({
         maxWidth={maxWidth}
         reference={reference}
         duration={animationDuration}
+        delay={delay}
         placement={placement}
         {...targetProps}
       />
