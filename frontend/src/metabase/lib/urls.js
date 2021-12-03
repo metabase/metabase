@@ -263,7 +263,7 @@ export function editDatabase(databaseId) {
   return `/admin/databases/${databaseId}`;
 }
 
-export function showDatabases() {
+export function listDatabases() {
   return `/admin/databases`;
 }
 
