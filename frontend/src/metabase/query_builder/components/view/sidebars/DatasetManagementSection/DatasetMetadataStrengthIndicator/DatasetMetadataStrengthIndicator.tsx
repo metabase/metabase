@@ -46,17 +46,17 @@ type Props = {
 
 const TOOLTIP_DELAY: [number, null] = [500, null];
 
-function DatasetMetadataStrengthIndicator({ dataset }: Props) {
+function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const resultMetadata = dataset.getResultMetadata();
 
-  if (resultMetadata?.length === 0) {
+  if (!Array.isArray(resultMetadata) || resultMetadata.length === 0) {
     return null;
   }
 
   const percentage = getDatasetMetadataCompletenessPercentage(resultMetadata);
 
   return (
-    <Root percentage={percentage}>
+    <Root {...props} percentage={percentage}>
       <Tooltip
         tooltip={getTooltipMessage(percentage)}
         delay={TOOLTIP_DELAY}
