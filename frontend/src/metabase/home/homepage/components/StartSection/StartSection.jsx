@@ -102,7 +102,7 @@ const DatabaseBanner = () => {
             <ExternalLink href={userUrl}>{t`invite a teammate`}</ExternalLink>
           )} or ${(
             <ExternalLink href={docsUrl}>
-              {t`check out our set up guides`}
+              {t`check out our setup guides`}
             </ExternalLink>
           )}.`}
         </BannerDescription>
