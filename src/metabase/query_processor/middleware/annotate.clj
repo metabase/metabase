@@ -629,12 +629,15 @@
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
      (let [metadata (update metadata :cols
-                            (partial map (fn [col base-type]
+                            (comp annotate-native-cols
+                                  (fn [cols]
+                                    (map (fn [col base-type]
                                            (-> col
                                                (assoc :base_type base-type)
-                                               (update :field_ref
-                                                       assoc 2 {:base-type base-type}))))
-                            base-types)]
+                                               ;; annotate will add a field ref with type info
+                                               (dissoc :field_ref)))
+                                         cols
+                                         base-types))))]
        (rf (cond-> result
              (map? result)
              (assoc-in [:data :cols]
@@ -659,6 +662,9 @@
          (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                           ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                           (seq dataset-metadata)
-                          (update :cols combine-metadata dataset-metadata))]
+                          (update :cols combine-metadata dataset-metadata)
+                          ;; but we want those column refs removed since they have type info which we don't know yet
+                          :always
+                          (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
            (add-column-info-xform query metadata (rff metadata)))))
      context)))
