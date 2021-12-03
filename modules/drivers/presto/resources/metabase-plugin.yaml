@@ -20,6 +20,7 @@ driver:
           placeholder: hive
     - user
     - password
+    - cloud-ip-address-info
     - ssl
   connection-properties-include-tunnel-config: true
 init:

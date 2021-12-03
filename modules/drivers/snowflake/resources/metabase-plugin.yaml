@@ -31,6 +31,7 @@ driver:
     - name: role
       display-name: Role
       placeholder: my_role
+    - cloud-ip-address-info
     - additional-options
   connection-properties-include-tunnel-config: true
 init:

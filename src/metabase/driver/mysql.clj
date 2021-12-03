@@ -80,8 +80,7 @@
   {:name         "ssl-cert"
    :display-name (deferred-tru "Server SSL certificate chain")
    :placeholder  ""
-   :visible-if   {"ssl" true}}
-)
+   :visible-if   {"ssl" true}})
 
 (defmethod driver/connection-properties :mysql
   [_]
@@ -91,6 +90,7 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/cloud-ip-address-info
      driver.common/default-ssl-details
      default-ssl-cert-details
      (assoc driver.common/default-additional-options-details

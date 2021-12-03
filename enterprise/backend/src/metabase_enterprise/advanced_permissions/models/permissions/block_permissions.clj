@@ -1,4 +1,4 @@
-(ns metabase-enterprise.enhancements.models.permissions.block-permissions
+(ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   (:require [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as settings.premium-features]
@@ -21,8 +21,8 @@
   exists."
   [{database-id :database, :as query}]
   (cond
-    (not (settings.premium-features/enable-enhancements?))
-    ::enhancements-not-enabled
+    (not (settings.premium-features/enable-advanced-permissions?))
+    ::advanced-permissions-not-enabled
 
     (not (current-user-has-block-permissions-for-database? database-id))
     ::no-block-permissions-for-db

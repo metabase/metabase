@@ -1,5 +1,33 @@
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 
+// Query Builder Mode
+
+export function getQueryBuilderModeFromLocation(location) {
+  const { pathname } = location;
+  if (pathname.endsWith("/notebook")) {
+    return "notebook";
+  }
+  if (pathname.endsWith("/query")) {
+    return "dataset";
+  }
+  return "view";
+}
+
+export function getPathNameFromQueryBuilderMode({
+  pathname,
+  queryBuilderMode,
+}) {
+  if (queryBuilderMode === "view") {
+    return pathname;
+  }
+  if (queryBuilderMode === "dataset") {
+    return `${pathname}/query`;
+  }
+  return `${pathname}/${queryBuilderMode}`;
+}
+
+// Datasets
+
 export function isAdHocDatasetQuestion(question, originalQuestion) {
   if (!originalQuestion || !question.isStructured()) {
     return false;
@@ -12,25 +40,4 @@ export function isAdHocDatasetQuestion(question, originalQuestion) {
     getQuestionVirtualTableId(originalQuestion.card());
 
   return isDataset && isSameCard && isSelfReferencing;
-}
-
-export function toAdHocDatasetQuestionCard(card, originalCard) {
-  return {
-    ...card,
-    dataset_query: {
-      ...originalCard.dataset_query,
-      query: {
-        "source-table": getQuestionVirtualTableId(originalCard),
-      },
-    },
-  };
-}
-
-export function toAdHocDatasetQuestion(question, originalQuestion) {
-  return question.setDatasetQuery({
-    ...originalQuestion.datasetQuery(),
-    query: {
-      "source-table": getQuestionVirtualTableId(originalQuestion.card()),
-    },
-  });
 }

@@ -237,7 +237,6 @@ export default class DatabaseEditApp extends Component {
                               onChangeEngine={engine => {
                                 onChangeField("engine", engine);
                               }}
-                              data-testid="database-setup-driver-warning"
                             />
                           </Box>
                         </Flex>

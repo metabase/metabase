@@ -21,6 +21,7 @@ driver:
       display-name: Dataset ID
       required: true
       placeholder: toucanSightings
+    - cloud-ip-address-info
     - name: use-jvm-timezone
       display-name: Use JVM Time Zone
       default: false

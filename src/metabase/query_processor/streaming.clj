@@ -3,6 +3,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.streaming.csv :as streaming.csv]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
@@ -126,8 +127,9 @@
       (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
   ([export-format os]
    (let [results-writer (i/streaming-results-writer export-format os)]
-     {:rff      (streaming-rff results-writer)
-      :reducedf (streaming-reducedf results-writer os)}))
+     (merge (context.default/default-context)
+            {:rff      (streaming-rff results-writer)
+             :reducedf (streaming-reducedf results-writer os)})))
 
   ([export-format os canceled-chan]
    (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
@@ -170,7 +172,7 @@
   cancelations properly."
   {:style/indent 1}
   [[context-binding export-format filename-prefix] & body]
-  `(streaming-response* ~export-format ~filename-prefix (fn [~context-binding] ~@body)))
+  `(streaming-response* ~export-format ~filename-prefix (bound-fn [~context-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

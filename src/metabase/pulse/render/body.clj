@@ -398,6 +398,28 @@
                [:span {:style (style/style {:margin-left "6px"})}
                 (percentages label)]]))]}))
 
+(s/defmethod render :progress :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  (let [value        (ffirst rows)
+        goal         (:progress.goal viz-settings)
+        color        (or (:progress.color viz-settings) (first colors))
+        settings     (assoc
+                       (->js-viz (first cols) (first cols) viz-settings)
+                       :color color)
+        ;; ->js-viz fills in our :x but we actually want that under :format key
+        settings     (assoc settings :format (:x settings))
+        image-bundle (image-bundle/make-image-bundle
+                      render-type
+                      (js-svg/progress value goal settings))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
+
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
   (let [col             (first cols)
@@ -520,6 +542,26 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :funnel :- common/RenderedPulseCard
+  [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
+  ;; x-axis-rowfn is always first, y-axis-rowfn is always second
+  (let [rows          (common/non-nil-rows first second rows)
+        [x-col y-col] cols
+        settings      (->js-viz x-col y-col viz-settings)
+        settings      (assoc settings
+                             :step    {:name   (:display_name x-col)
+                                       :format (:x settings)}
+                             :measure {:format (:y settings)})
+        svg           (js-svg/funnel rows settings)
+        image-bundle  (image-bundle/make-image-bundle render-type svg)]
+  {:attachments
+   (image-bundle/image-bundle->attachment image-bundle)
+
+   :content
+   [:div
+    [:img {:style (style/style {:display :block :width :100%})
+           :src   (:image-src image-bundle)}]]}))
 
 
 (s/defmethod render :empty :- common/RenderedPulseCard

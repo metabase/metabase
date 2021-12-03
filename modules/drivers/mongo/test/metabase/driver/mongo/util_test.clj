@@ -31,8 +31,8 @@
 
 (deftest srv-conn-str-test
   (testing "test srv connection string"
-    (is (= "mongodb+srv://test-user:test-pass@test-host.place.com/authdb"
-           (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "authdb")))))
+    (is (= "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb"
+           (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "datadb" "authdb")))))
 
 (deftest srv-toggle-test
   (testing "test that srv toggle works"

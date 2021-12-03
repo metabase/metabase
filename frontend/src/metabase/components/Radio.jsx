@@ -14,7 +14,7 @@ import {
   UnderlinedItem,
 } from "./Radio.styled";
 
-const optionShape = PropTypes.shape({
+export const optionShape = PropTypes.shape({
   name: PropTypes.oneOfType([
     PropTypes.string,
     PropTypes.element,

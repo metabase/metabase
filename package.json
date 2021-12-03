@@ -116,6 +116,12 @@
     "@cypress/webpack-preprocessor": "^5.9.1",
     "@percy/cli": "^1.0.0-beta.48",
     "@percy/cypress": "^3.0.0",
+    "@storybook/addon-actions": "^6.3.12",
+    "@storybook/addon-essentials": "^6.3.12",
+    "@storybook/addon-links": "^6.3.12",
+    "@storybook/builder-webpack5": "^6.3.12",
+    "@storybook/manager-webpack5": "^6.3.12",
+    "@storybook/react": "^6.3.12",
     "@testing-library/cypress": "^5.0.2",
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
@@ -235,6 +241,13 @@
     "xlsx": "^0.17.0",
     "yaml-lint": "^1.2.4"
   },
+  "resolutions": {
+    "ansi-regex": "5.0.1",
+    "nth-check": "2.0.1",
+    "set-value": "4.0.1",
+    "immer": "9.0.6",
+    "ansi-html": "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
+  },
   "scripts": {
     "concurrently": "yarn && concurrently --kill-others -p name",
     "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
@@ -283,7 +296,9 @@
     "test-visual": "ELECTRON_EXTRA_LAUNCH_ARGS=\"--force-prefers-reduced-motion\" yarn build && ./bin/build-for-test && yarn test-visual-no-build",
     "test-visual-no-build": "percy exec -- yarn test-cypress-no-build --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,ts,tsx,css}": [

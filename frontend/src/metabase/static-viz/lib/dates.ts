@@ -1,3 +1,11 @@
+export type DateFormatOptions = {
+  date_style?: string;
+  date_abbreviate?: boolean;
+  date_separator?: string;
+  time_style?: string;
+  time_enabled?: boolean;
+};
+
 const DEFAULT_OPTIONS = {
   date_style: "M/D/YYYY",
   date_abbreviate: false,
@@ -6,7 +14,7 @@ const DEFAULT_OPTIONS = {
   time_enabled: false,
 };
 
-const DATE_FORMATS = {
+const DATE_FORMATS: { [key: string]: Intl.DateTimeFormat } = {
   YY: new Intl.DateTimeFormat("en", { year: "2-digit" }),
   YYYY: new Intl.DateTimeFormat("en", { year: "numeric" }),
   M: new Intl.DateTimeFormat("en", { month: "numeric" }),
@@ -25,7 +33,30 @@ const DATE_FORMATS = {
   mm: new Intl.DateTimeFormat("en", { minute: "2-digit" }),
 };
 
-export const formatDate = (date, options) => {
+const findDatePart = (parts: Intl.DateTimeFormatPart[], type: string) => {
+  return parts.find(part => part.type === type)?.value;
+};
+
+const findQuarter = (month: number) => {
+  return Math.floor((month - 1) / 3) + 1;
+};
+
+const formatDatePart = (date: Date, field: string) => {
+  switch (field) {
+    case "h":
+      return findDatePart(DATE_FORMATS.h.formatToParts(date), "hour");
+    case "hh":
+      return findDatePart(DATE_FORMATS.hh.formatToParts(date), "hour");
+    case "A":
+      return findDatePart(DATE_FORMATS.h.formatToParts(date), "dayPeriod");
+    case "Q":
+      return `Q${findQuarter(parseInt(DATE_FORMATS.M.format(date)))}`;
+    default:
+      return DATE_FORMATS[field]?.format(date);
+  }
+};
+
+export const formatDate = (date: Date, options: DateFormatOptions) => {
   const {
     date_style,
     date_abbreviate,
@@ -38,34 +69,11 @@ export const formatDate = (date, options) => {
     .replace(/MMMM/g, date_abbreviate ? "MMM" : "MMMM")
     .replace(/dddd/g, date_abbreviate ? "ddd" : "dddd")
     .replace(/\//g, date_separator)
-    .replace(/\w+/g, field => formatDatePart(date, field));
+    .replace(/\w+/g, field => formatDatePart(date, field) || "");
 
   const formattedTime = time_style
     .replace(/\//g, date_separator)
-    .replace(/\w+/g, field => formatDatePart(date, field));
+    .replace(/\w+/g, field => formatDatePart(date, field) || "");
 
   return time_enabled ? `${formattedDate} ${formattedTime}` : formattedDate;
-};
-
-const formatDatePart = (date, field) => {
-  switch (field) {
-    case "h":
-      return findDatePart(DATE_FORMATS.h.formatToParts(date), "hour");
-    case "hh":
-      return findDatePart(DATE_FORMATS.hh.formatToParts(date), "hour");
-    case "A":
-      return findDatePart(DATE_FORMATS.h.formatToParts(date), "dayPeriod");
-    case "Q":
-      return `Q${findQuarter(DATE_FORMATS.M.format(date))}`;
-    default:
-      return DATE_FORMATS[field].format(date);
-  }
-};
-
-const findDatePart = (parts, type) => {
-  return parts.find(part => part.type === type)?.value;
-};
-
-const findQuarter = month => {
-  return Math.floor((month - 1) / 3) + 1;
 };
