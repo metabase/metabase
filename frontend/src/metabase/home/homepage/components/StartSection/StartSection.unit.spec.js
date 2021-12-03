@@ -24,9 +24,9 @@ describe("StartSection", () => {
     expect(screen.queryByText(/Pin dashboards/)).not.toBeInTheDocument();
   });
 
-  it("should show a banner for admins when there are no databases", () => {
+  it("should show a banner for admins when there are no user databases", () => {
     const user = getUser({ is_superuser: true });
-    const databases = [];
+    const databases = [getDatabase({ is_sample: true })];
     const dashboards = [getDashboard({ name: "Our dashboard" })];
 
     render(
@@ -44,7 +44,7 @@ describe("StartSection", () => {
     expect(screen.queryByText(/Pin dashboards/)).not.toBeInTheDocument();
   });
 
-  it("should not show a banner for regular users when there are no databases", () => {
+  it("should not show a banner for regular users when there are no user databases", () => {
     const user = getUser();
     const databases = [];
     const dashboards = [getDashboard({ name: "Our dashboard" })];
