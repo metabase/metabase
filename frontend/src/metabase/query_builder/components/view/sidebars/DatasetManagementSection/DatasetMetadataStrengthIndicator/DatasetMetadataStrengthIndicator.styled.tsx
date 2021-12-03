@@ -36,15 +36,17 @@ export const MetadataProgressBar = styled(ProgressBar)<{
 
 export const PercentageLabel = styled.span`
   position: absolute;
-  left: 35%;
+
   top: -1rem;
+  left: 50%;
+  transform: translate(-50%, 60%);
 
   font-size: 0.8rem;
   font-weight: bold;
   user-select: none;
 
   opacity: 0;
-  transform: translateY(60%);
+
   transition: all 0.4s;
 `;
 
@@ -61,7 +63,7 @@ export const Root = styled.div<{ percentage: number }>`
   &:hover {
     ${PercentageLabel} {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate(-50%, 0);
     }
 
     ${MetadataProgressBar} {
