@@ -8,6 +8,7 @@ type Props = {
   animated?: boolean,
   color?: string,
   height?: number | string,
+  className?: String,
 };
 
 const ProgressWrapper = styled.div`
@@ -51,14 +52,22 @@ export default class ProgressBar extends Component {
   };
 
   render() {
-    const { percentage, height, animated, color = c("brand") } = this.props;
+    const {
+      percentage,
+      height,
+      animated,
+      color = c("brand"),
+      className,
+    } = this.props;
 
     const width = percentage * 100;
 
     return (
-      <ProgressWrapper color={color} height={height}>
+      <ProgressWrapper color={color} height={height} className={className}>
         <Progress width={width} animated={animated} color={color} />
       </ProgressWrapper>
     );
   }
 }
+
+ProgressBar.Progress = Progress;
