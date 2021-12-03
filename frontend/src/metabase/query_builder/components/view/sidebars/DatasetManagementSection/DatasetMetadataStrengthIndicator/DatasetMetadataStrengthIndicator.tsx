@@ -46,6 +46,7 @@ function DatasetMetadataStrengthIndicator({ dataset }: Props) {
       <ProgressBar
         percentage={percentage}
         color={indicationColor}
+        height="6px"
       />
     </Root>
   );
