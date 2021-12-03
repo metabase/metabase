@@ -676,6 +676,29 @@ describe("scenarios > question > filter", () => {
     cy.get("[contenteditable='true']");
   });
 
+  it("should be able to convert time interval filter to custom expression (metabase#12457)", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    // Via the GUI, create a filter with "include-current" option
+    cy.findByText("Filter").click();
+    cy.findByText("Created At").click();
+    cy.get("input[type='text']").type("{selectall}{del}5");
+    cy.contains("Include today").click();
+    cy.findByText("Add filter").click();
+
+    // Switch to custom expression
+    cy.findByText("Created At Previous 5 Days").click();
+    popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.findByText("Custom Expression").click();
+    });
+    cy.findByText("Done").click();
+
+    // Back to GUI and "Include today" should be still checked
+    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByLabelText("Include today").should("be.checked");
+  });
+
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");

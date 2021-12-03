@@ -1,10 +1,12 @@
 (ns metabase.models.dashboard-card-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.models.card-test :as card-test]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
+            [metabase.models.interface-test :as i.test]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -225,3 +227,23 @@
                                                 :visualization_settings original}]
            (is (= expected
                   (db/select-one-field :visualization_settings DashboardCard :id (u/the-id dashcard))))))))))
+
+(deftest normalize-parameter-mappings-test
+  (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
+    (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
+           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+            (json/generate-string
+             [{:target [:dimension [:fk-> 23 30]]}]))))
+
+    (testing "...but parameter mappings we should not normalize things like :target"
+      (is (= [{:card-id 123, :hash "abc", :target "foo"}]
+             ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+              (json/generate-string
+               [{:card-id 123, :hash "abc", :target "foo"}])))))))
+
+(deftest keep-empty-parameter-mappings-empty-test
+  (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
+                "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
+    (is (= []
+           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+            (json/generate-string []))))))

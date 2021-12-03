@@ -1,10 +1,11 @@
-(ns metabase.util.stats
+(ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
   (:require [clj-http.client :as client]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -114,7 +115,7 @@
    :email_configured     (email/email-configured?)
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (boolean (google/google-auth-client-id))
-   :instance_started     (public-settings/instance-creation)
+   :instance_started     (snowplow/instance-creation)
    :has_sample_data      (db/exists? Database, :is_sample true)})
 
 (defn- user-metrics

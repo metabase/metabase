@@ -19,6 +19,7 @@
   (cond
     (string? prop)
     (or (driver.common/default-options (keyword prop))
+        (driver.common/default-connection-info-fields (keyword prop))
         (throw (Exception. (trs "Default connection property {0} does not exist." prop))))
 
     (not (map? prop))

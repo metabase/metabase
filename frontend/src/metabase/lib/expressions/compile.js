@@ -5,11 +5,11 @@ import {
   parseSegment,
   parseStringLiteral,
   parseIdentifierString,
-  OPERATOR_PRECEDENCE,
 } from "../expressions";
 
 import { MBQL_CLAUSES } from "./config";
 import { ExpressionCstVisitor, parse } from "./parser";
+import { resolve } from "./resolver";
 
 const NEGATIVE_FILTER_SHORTHANDS = {
   contains: "does-not-contain",
@@ -91,9 +91,11 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
         // the last one holds the function options
         const fnOptions = this.visit(parameters.pop());
 
-        // HACK: very specific to some string functions for now
+        // HACK: very specific to some string/time functions for now
         if (fnOptions === "case-insensitive") {
           options.push({ "case-sensitive": false });
+        } else if (fnOptions === "include-current") {
+          options.push({ "include-current": true });
         }
       }
     }
@@ -169,6 +171,15 @@ export function compile({ cst, ...options }) {
   if (!cst) {
     ({ cst } = parse(options));
   }
+  const { startRule } = options;
+
+  const stubResolve = (kind, name) => [kind || "dimension", name];
+  const vistor = new ExpressionMBQLCompilerVisitor({
+    ...options,
+    resolve: stubResolve,
+  });
+  const expr = vistor.visit(cst);
+
   function resolveMBQLField(kind, name) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
@@ -191,46 +202,10 @@ export function compile({ cst, ...options }) {
       return dimension.mbql();
     }
   }
-  const resolve = options.resolve ? options.resolve : resolveMBQLField;
-  const vistor = new ExpressionMBQLCompilerVisitor({ ...options, resolve });
-  return vistor.visit(cst);
-}
 
-export function parseOperators(operands, operators) {
-  let initial = operands[0];
-  const stack = [];
-  for (let i = 1; i < operands.length; i++) {
-    const operator = operators[i - 1];
-    const operand = operands[i];
-    const top = stack[stack.length - 1];
-    if (top) {
-      if (top[0] === operator) {
-        top.push(operand);
-      } else {
-        const a = OPERATOR_PRECEDENCE[operator];
-        const b = OPERATOR_PRECEDENCE[top[0]];
-        if (b < a) {
-          top[top.length - 1] = [operator, top[top.length - 1], operand];
-          stack.push(top[top.length - 1]);
-        } else {
-          do {
-            stack.pop();
-          } while (
-            stack.length > 0 &&
-            OPERATOR_PRECEDENCE[stack[stack.length - 1][0]] > a
-          );
-          if (stack.length > 0) {
-            stack[stack.length - 1].push(operand);
-          } else {
-            initial = [operator, initial, operand];
-            stack.push(initial);
-          }
-        }
-      }
-    } else {
-      initial = [operator, initial, operand];
-      stack.push(initial);
-    }
-  }
-  return initial;
+  return resolve(
+    expr,
+    startRule,
+    options.resolve ? options.resolve : resolveMBQLField,
+  );
 }

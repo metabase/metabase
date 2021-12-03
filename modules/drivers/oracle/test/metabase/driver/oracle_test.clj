@@ -93,6 +93,7 @@
                     {:name "service-name"}
                     {:name "user"}
                     {:name "password"}
+                    {:name "cloud-ip-address-info"}
                     {:name "ssl"}
                     {:name "ssl-use-keystore"}
                     {:name       "ssl-keystore-options"

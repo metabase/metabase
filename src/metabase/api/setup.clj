@@ -1,5 +1,6 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.database :as database-api :refer [DBEngineString]]
             [metabase.config :as config]
@@ -122,10 +123,15 @@
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
+                (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (snowplow/track-event! ::snowplow/new-user-created user-id)
+      (when database (snowplow/track-event! ::snowplow/database-connection-successful
+                                            user-id
+                                            {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookie request {:id session-id} session))))
 
@@ -138,7 +144,11 @@
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
                                                              {:message m})})]
-    (database-api/test-database-connection engine details :invalid-response-handler invalid-response)))
+    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+      (when error-or-nil (snowplow/track-event! ::snowplow/database-connection-failed
+                                                nil
+                                                {:database engine, :source :setup}))
+      error-or-nil)))
 
 
 ;;; Admin Checklist

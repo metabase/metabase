@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.table :as table-api]
             [metabase.config :as config]
@@ -317,15 +318,16 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id prefix]
+(defn- autocomplete-tables [db-id prefix limit]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (str (str/lower-case prefix) "%")]
                      [:= :visibility_type nil]]
-     :order-by [[:%lower.name :asc]]}))
+     :order-by [[:%lower.name :asc]]
+     :limit    limit}))
 
-(defn- autocomplete-fields [db-id prefix]
+(defn- autocomplete-fields [db-id prefix limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
     :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
@@ -333,22 +335,28 @@
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
                  [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]}))
+     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+     :limit     limit}))
 
-(defn- autocomplete-results [tables fields]
-  (concat (for [{table-name :name} tables]
-            [table-name "Table"])
-          (for [{:keys [table_name base_type semantic_type name]} fields]
-            [name (str table_name
-                       " "
-                       base_type
-                       (when semantic_type
-                         (str " " semantic_type)))])))
+(defn- autocomplete-results [tables fields limit]
+  (let [tbl-count   (count tables)
+        fld-count   (count fields)
+        take-tables (min tbl-count (- limit (/ fld-count 2)))
+        take-fields (- limit take-tables)]
+    (concat (for [{table-name :name} (take take-tables tables)]
+              [table-name "Table"])
+            (for [{:keys [table_name base_type semantic_type name]} (take take-fields fields)]
+              [name (str table_name
+                         " "
+                         base_type
+                         (when semantic_type
+                           (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions [db-id prefix]
-  (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
-        fields (readable-fields-only (autocomplete-fields db-id prefix))]
-    (autocomplete-results tables fields)))
+  (let [limit  50
+        tables (filter mi/can-read? (autocomplete-tables db-id prefix limit))
+        fields (readable-fields-only (autocomplete-fields db-id prefix limit))]
+    (autocomplete-results tables fields limit)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`.
@@ -501,10 +509,17 @@
                                       (sync.schedules/default-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               api/*current-user-id*
+                               {:database engine, :database-id (u/the-id <>), :source :admin}))
       ;; failed to connect, return error
-      {:status 400
-       :body   details-or-error})))
+      (do
+        (snowplow/track-event! ::snowplow/database-connection-failed
+                               api/*current-user-id*
+                               {:database engine, :source :setup})
+        {:status 400
+         :body   details-or-error}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

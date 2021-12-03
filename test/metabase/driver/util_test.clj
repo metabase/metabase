@@ -44,8 +44,8 @@
     (is (instance? javax.net.ssl.SSLSocketFactory
                    (driver.u/socket-factory-for-cert (slurp "./test_resources/ssl/ca.pem"))))))
 
-(deftest translate-conn-props-server->client-test
-  (testing "connection-props-server->client works as expected"
+(deftest connection-props-server->client-test
+  (testing "connection-props-server->client works as expected for secret types"
     (doseq [[expected is-hosted?] [[[{:name "host"}
                                      {:name        "password-value"
                                       :type        "password"
@@ -99,7 +99,32 @@
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
                                       :secret-test-driver
                                       :details-fields)]
-            (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))))
+            (is (= expected (mt/select-keys-sequentially expected client-conn-props)))))))
+
+    (testing "connection-props-server->client works as expected for info field types"
+      (testing "info fields with placeholder defined are unmodified"
+        (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info, :placeholder "placeholder"}]))))
+
+      (testing "info fields with getter defined invoke the getter to generate the placeholder"
+        (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info, :getter (constantly "placeholder")}]))))
+
+      (testing "info fields are omitted if getter returns nil, a non-string value, or throws an exception"
+        (is (= []
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info, :getter (constantly nil)}])))
+        (is (= []
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info, :getter (constantly 0)}])))
+        (is (= []
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info, :getter #(throw (Exception. "test error"))}])))
+        (is (= []
+               (driver.u/connection-props-server->client
+                [{:name "test", :type :info}])))))))
 
 (deftest connection-details-client->server-test
   (testing "db-details-client->server works as expected"
