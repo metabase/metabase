@@ -335,8 +335,7 @@
                  (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (tests {:pulse {:skip_if_empty false}
-          :dashcard {:row 0, :col 0}}
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
     {:card (checkins-query-card {})
 
