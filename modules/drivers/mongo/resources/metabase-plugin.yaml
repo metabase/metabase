@@ -12,7 +12,7 @@ driver:
     - name: conn-uri
       type: string
       display-name: Paste your connection string
-      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]'
+      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
     - merge:
         - port

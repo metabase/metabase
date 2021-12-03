@@ -291,8 +291,11 @@
         dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
     (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
       ;; ensure the dashcard we are updating is part of the given dashboard
-      (when (contains? dashcard-ids dashcard-id)
-        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
+      (if (contains? dashcard-ids dashcard-id)
+        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))
+        (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
+                             (u/the-id dashboard-or-id) dashcard-id)
+                        {:status-code 404}))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
