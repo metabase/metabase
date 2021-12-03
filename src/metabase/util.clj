@@ -950,3 +950,10 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn field-ref->key
+  "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
+  be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
+  non-unique at times, numeric ids are not guaranteed."
+  [field-ref]
+  (into [] (take 2) field-ref))
