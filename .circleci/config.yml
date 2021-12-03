@@ -1223,6 +1223,10 @@ workflows:
             - be-tests-ee
           e: postgres-latest
           driver: postgres
+          extra-env: >-
+            MB_POSTGRES_SSL_TEST_SSL=true
+            MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
+            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
 
       - test-driver:
           name: be-tests-presto-ee

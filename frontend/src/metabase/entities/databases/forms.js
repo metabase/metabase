@@ -213,11 +213,21 @@ function shouldShowEngineProvidedField(field, details) {
   const detailAndValueRequiredToShowField = field["visible-if"];
 
   if (detailAndValueRequiredToShowField) {
-    const [detail, expectedDetailValue] = Object.entries(
-      detailAndValueRequiredToShowField,
-    )[0];
+    const pred = currentValue => {
+      const [detail, expectedDetailValue] = currentValue;
 
-    return details[detail] === expectedDetailValue;
+      if (Array.isArray(expectedDetailValue)) {
+        // if the expectedDetailValue is itself an array, then consider the condition satisfied if any of those values
+        // match the current detail value
+        return expectedDetailValue.includes(details[detail]);
+      } else {
+        return details[detail] === expectedDetailValue;
+      }
+    };
+
+    // check all entries in the visible-if map, and only show this field if all key/values are satisfied
+    // (i.e. boolean AND)
+    return Object.entries(detailAndValueRequiredToShowField).every(pred);
   }
 
   return true;
