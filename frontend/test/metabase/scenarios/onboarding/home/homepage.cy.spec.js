@@ -13,36 +13,45 @@ describe("scenarios > home > homepage", () => {
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByText("Add my data").click();
-      cy.location("pathname").should("eq", "admin/databases/create");
+      cy.findByText("Need help setting up your database?");
 
       cy.visit("/");
-      cy.findByText("Invite a teammate").click();
-      cy.location("pathname").should("eq", "/admin/people/new");
+      cy.findByText("invite a teammate").click();
+      cy.findByText("New user");
 
       cy.visit("/");
-      cy.findByText("Products table");
-      cy.location("pathname").should("eq", "/auto/dashboard/table/1");
+      cy.findByText("Products table").click();
+      cy.findByText("Here's a quick look at your Products table");
 
       cy.visit("/");
-      cy.findByText("Browse all items");
-      cy.location("pathname").should("eq", "/collection/root");
+      cy.findByText("Browse all items").click();
+      cy.findByText("Your personal collection");
+      cy.findByText("Other users' personal collections");
 
       cy.visit("/");
       cy.findByText("Sample Dataset").click();
-      cy.location("pathname").should("eq", "/browse/1-sample-dataset");
+      cy.findByText("Learn about our data");
 
       cy.visit("/");
       cy.findByText("Add a database").click();
-      cy.location("pathname").should("eq", "admin/databases/create");
+      cy.findByText("Need help setting up your database?");
+    });
+
+    it("should show pinned dashboards", () => {
+      cy.createDashboard({
+        name: "Pinned dashboard",
+        collection_position: 1,
+      });
+
+      cy.visit("/");
+      cy.findByText("Pinned dashboard").click();
+      cy.findByText("This dashboard is looking empty.");
     });
 
     it("should allow hiding the data section", () => {
       cy.visit("/");
 
-      cy.findByText("Our data")
-        .parent()
-        .within(() => cy.findByLabelText("close icon").click());
-
+      clickOnCloseIconInSection("Our data");
       cy.findByText("Remove").click();
       cy.findByText("Our data").should("not.exist");
     });
@@ -50,10 +59,7 @@ describe("scenarios > home > homepage", () => {
     it("should allow hiding the x-ray section", () => {
       cy.visit("/");
 
-      cy.findByText("Try these x-rays based on your data")
-        .parent()
-        .within(() => cy.findByLabelText("close icon").click());
-
+      clickOnCloseIconInSection("Try these x-rays based on your data");
       cy.findByText("Remove").click();
       cy.findByText("Try these x-rays based on your data").should("not.exist");
     });
@@ -67,19 +73,47 @@ describe("scenarios > home > homepage", () => {
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByRole("link", { name: "Our analytics" }).click();
-      cy.location("pathname").should("eq", "/collection/root");
+      cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByText("Products table");
-      cy.location("pathname").should("eq", "/auto/dashboard/table/1");
+      cy.findByText("Products table").click();
+      cy.findByText("Here's a quick look at your Products table");
 
       cy.visit("/");
-      cy.findByText("Browse all items");
-      cy.location("pathname").should("eq", "/collection/root");
+      cy.findByText("Browse all items").click();
+      cy.findByText("Your personal collection");
 
       cy.visit("/");
       cy.findByText("Sample Dataset").click();
-      cy.location("pathname").should("eq", "/browse/1-sample-dataset");
+      cy.findByText("Learn about our data");
+    });
+
+    it("should hide admin controls", () => {
+      cy.visit("/");
+
+      cy.findByText("Start here");
+      cy.findByText("Add my data").should("not.exist");
+
+      cy.findByText("Our data");
+      cy.findByText("Add a database").should("not.exist");
+    });
+
+    it("should show pinned dashboards", () => {
+      cy.createDashboard({
+        name: "Pinned dashboard",
+        collection_position: 1,
+      });
+
+      cy.visit("/");
+      cy.findByText("Pinned dashboard").click();
+      cy.findByText("This dashboard is looking empty.");
     });
   });
 });
+
+const clickOnCloseIconInSection = name => {
+  cy.findByText(name)
+    .parent()
+    .realHover()
+    .within(() => cy.findByLabelText("close icon").click());
+};
