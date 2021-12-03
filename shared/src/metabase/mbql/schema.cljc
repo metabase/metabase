@@ -986,12 +986,11 @@
 (def TemplateTag
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
   `:type` (see comments above)."
-  (-> (s/conditional
-       #(= (:type %) :dimension) TemplateTag:FieldFilter
-       #(= (:type %) :snippet)   TemplateTag:Snippet
-       #(= (:type %) :card)      TemplateTag:SourceQuery
-       :else                     TemplateTag:RawValue)
-      (s/named "valid template tag")))
+  (s/conditional
+   #(= (:type %) :dimension) TemplateTag:FieldFilter
+   #(= (:type %) :snippet)   TemplateTag:Snippet
+   #(= (:type %) :card)      TemplateTag:SourceQuery
+   :else                     TemplateTag:RawValue))
 
 (def TemplateTagMap
   "Schema for the `:template-tags` map passed in as part of a native query."
@@ -1284,10 +1283,10 @@
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query."
   {:type                     ParameterType
-   ;; TODO -- not sure if these should be optional or not. They SHOULD always be specified but that might break a lot
-   ;; of tests.
-   :id                       helpers/NonBlankString
-   :target                   ParameterTarget
+   ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
+   ;; At some point we need to go fix those tests and then make these keys required
+   (s/optional-key :id)      helpers/NonBlankString
+   (s/optional-key :target)  ParameterTarget
    ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
    ;; on the [[ParameterType]]
    (s/optional-key :value)   s/Any
