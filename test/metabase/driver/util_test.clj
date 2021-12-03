@@ -111,25 +111,31 @@
       (testing "info fields with placeholder defined are unmodified"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :placeholder "placeholder"}]))))
 
       (testing "info fields with getter defined invoke the getter to generate the placeholder"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly "placeholder")}]))))
 
       (testing "info fields are omitted if getter returns nil, a non-string value, or throws an exception"
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly nil)}])))
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly 0)}])))
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter #(throw (Exception. "test error"))}])))
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info}]))))))
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
