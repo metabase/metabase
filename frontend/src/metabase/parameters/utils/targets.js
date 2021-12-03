@@ -9,6 +9,10 @@ export function isVariableTarget(target) {
 }
 
 export function getTemplateTagFromTarget(target) {
+  if (!target?.[1]) {
+    return null;
+  }
+
   const [, [type, tag]] = target;
   return type === "template-tag" ? tag : null;
 }
