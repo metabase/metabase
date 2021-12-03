@@ -22,7 +22,7 @@ function getTooltipMessage(percentage: number) {
   }
 
   const columnCountDescription =
-    percentage <= 0.5 ? t`Most` : percentage >= 0.9 ? t`Some` : t`Many`;
+    percentage <= 0.5 ? t`Most` : percentage >= 0.8 ? t`Some` : t`Many`;
 
   return (
     <TooltipContent>
