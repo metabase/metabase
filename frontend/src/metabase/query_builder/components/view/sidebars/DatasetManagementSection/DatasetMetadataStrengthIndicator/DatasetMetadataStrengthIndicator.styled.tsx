@@ -2,7 +2,7 @@ import styled from "styled-components";
 
 export const PercentageLabel = styled.span`
   position: absolute;
-  left: 30%;
+  left: 35%;
   top: -1rem;
 
   font-size: 0.8rem;
@@ -10,7 +10,7 @@ export const PercentageLabel = styled.span`
   color: ${props => props.color};
 
   opacity: 0;
-  transform: translateY(80%);
+  transform: translateY(60%);
   transition: all 0.4s;
 `;
 
