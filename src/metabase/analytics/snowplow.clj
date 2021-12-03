@@ -34,9 +34,9 @@
   :default    config/is-prod?)
 
 (defsetting snowplow-enabled
-  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow. True if anonymous tracking")
+  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow.")
        " "
-       (deferred-tru "is enabled for this instance, and a Snowplow collector is available."))
+       (deferred-tru "True if anonymous tracking is enabled for this instance, and a Snowplow collector is available."))
   :type   :boolean
   :setter :none
   :getter (fn [] (and (snowplow-available)
