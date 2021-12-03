@@ -33,6 +33,15 @@
   []
   (.getListenPort *ldap-server*))
 
+(defn get-ldap-details []
+  {:host       "localhost"
+   :port       (get-ldap-port)
+   :bind-dn    "cn=Directory Manager"
+   :password   "password"
+   :security   :none
+   :user-base  "dc=metabase,dc=com"
+   :group-base "dc=metabase,dc=com"})
+
 (defn get-default-schema
   "Get the default schema for the directory server."
   []
