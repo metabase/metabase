@@ -166,11 +166,14 @@
   logger is defined for them).
 
     (mt/set-ns-log-level! 'metabase.query-processor.middleware.cache :debug)"
-  [ns-symb new-level :- LogLevelKeyword]
-  (let [logger    (get-or-create-ns-logger! ns-symb)
-        new-level (->Level new-level)]
-    (.setLevel logger new-level)
-    (.updateLoggers (logger-context))))
+  ([new-level :- LogLevelKeyword]
+   (set-ns-log-level! (ns-name *ns*) new-level))
+
+  ([ns-symb new-level :- LogLevelKeyword]
+   (let [logger    (get-or-create-ns-logger! ns-symb)
+         new-level (->Level new-level)]
+     (.setLevel logger new-level)
+     (.updateLoggers (logger-context)))))
 
 (defn do-with-log-messages-for-level [x thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-log-level")

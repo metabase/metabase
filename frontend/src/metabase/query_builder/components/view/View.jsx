@@ -38,6 +38,8 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import DatasetEditor from "../DatasetEditor";
+
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 const DEFAULT_POPOVER_STATE = {
@@ -142,6 +144,10 @@ export default class View extends React.Component {
           </div>
         </div>
       );
+    }
+
+    if (card.dataset && queryBuilderMode === "dataset") {
+      return <DatasetEditor {...this.props} />;
     }
 
     const topQuery = isStructured && query.topLevelQuery();
