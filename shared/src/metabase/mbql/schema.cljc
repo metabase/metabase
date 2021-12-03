@@ -2,20 +2,21 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace])
   #?@
-  (:clj
-   [(:require [clojure.core :as core]
-              [clojure.set :as set]
-              [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-              [metabase.mbql.schema.macros :refer [defclause one-of]]
-              [schema.core :as s])
-    (:import java.time.format.DateTimeFormatter)]
-
-   :cljs
-   [(:require [clojure.core :as core]
-              [clojure.set :as set]
-              [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-              [metabase.mbql.schema.macros :refer [defclause one-of]]
-              [schema.core :as s])]))
+   (:clj
+    [(:require
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])
+     (:import java.time.format.DateTimeFormatter)]
+    :cljs
+    [(:require
+      [clojure.core :as core]
+      [clojure.set :as set]
+      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+      [metabase.mbql.schema.macros :refer [defclause one-of]]
+      [schema.core :as s])]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -845,16 +846,167 @@
 
 ;;; ---------------------------------------------- Native [Inner] Query ----------------------------------------------
 
-;; TODO - schemas for template tags and dimensions live in `metabase.query-processor.middleware.parameters.sql`. Move
-;; them here when we get the chance.
+;; Template tags are used to specify {{placeholders}} in native queries that are replaced with some sort of value when
+;; the query itself runs. There are four basic types of template tag for native queries:
+;;
+;; 1. Field filters, which are used like
+;;
+;;        SELECT * FROM table WHERE {{field_filter}}
+;;
+;;   These reference specific Fields and are replaced with entire conditions, e.g. `some_field > 1000`
+;;
+;; 2. Raw values, which are used like
+;;
+;;        SELECT * FROM table WHERE my_field = {{x}}
+;;
+;;   These are replaced with raw values.
+;;
+;; 3. Native query snippets, which might be used like
+;;
+;;        SELECT * FROM ({{snippet: orders}}) source
+;;
+;;    These are replaced with `NativeQuerySnippet`s from the application database.
+;;
+;; 4. Source query Card IDs, which are used like
+;;
+;;        SELECT * FROM ({{#123}}) source
+;;
+;;   These are replaced with the query from the Card with that ID.
+;;
+;; Field filters and raw values usually have their value specified by `:parameters` (see [[Parameters]] below).
 
-(def ^:private TemplateTag
-  s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
+(def TemplateTagType
+  "Schema for valid values of template tag `:type`."
+  (s/enum :snippet :card :dimension :number :text :date))
+
+(def ^:private TemplateTag:Common
+  "Things required by all template tag types."
+  {:id           helpers/NonBlankString
+   :name         helpers/NonBlankString
+   :display-name helpers/NonBlankString
+   s/Keyword     s/Any})
+
+;; Example:
+;;
+;;    {:id           "c2fc7310-44eb-4f21-c3a0-63806ffb7ddd"
+;;     :name         "snippet: select"
+;;     :display-name "Snippet: select"
+;;     :type         :snippet
+;;     :snippet-name "select"
+;;     :snippet-id   1}
+(def TemplateTag:Snippet
+  "Schema for a native query snippet template tag."
+  (merge
+   TemplateTag:Common
+   {:type                      (s/eq :snippet)
+    :snippet-name              helpers/NonBlankString
+    :snippet-id                helpers/IntGreaterThanZero
+    ;; database to which this Snippet belongs. Doesn't always seen to be specified.
+    (s/optional-key :database) helpers/IntGreaterThanZero}))
+
+;; Example:
+;;
+;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
+;;     :name         "#1635"
+;;     :display-name "#1635"
+;;     :type         :card
+;;     :card-id      1635}
+(def TemplateTag:SourceQuery
+  "Schema for a source query template tag."
+  (merge
+   TemplateTag:Common
+   {:type    (s/eq :card)
+    :card-id helpers/IntGreaterThanZero}))
+
+(def ^:private TemplateTag:Value:Common
+  "Stuff shared between the Field filter and raw value template tag schemas."
+  (merge
+   TemplateTag:Common
+   {;; default value for this parameter
+    (s/optional-key :default)  s/Any
+    ;; whether or not a value for this parameter is required in order to run the query
+    (s/optional-key :required) s/Bool}))
+
+(declare ParameterType)
+
+(def TemplateTag:FieldFilter:WidgetType
+  "Schema for allowed values of `:widget-type` for Field filter template tags. `:widget-type` is only used for Field
+  filter parameters."
+  (s/cond-pre
+   ;; `:widget-type` can be any of the concrete parameter types, or it can also be `:category` (for connecting to a category Field) or `:id` (for connecting to an ID Field) -- whatever that means
+   ;; `:id` or `:category`
+   (s/enum :id :category)
+   (s/recursive #'ParameterType)))
+
+;; Example:
+;;
+;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
+;;     :name         "date"
+;;     :display-name "Date"
+;;     :type         :dimension,
+;;     :dimension    [:field 4 nil]
+;;     :widget-type  :date/all-options}
+(def TemplateTag:FieldFilter
+  "Schema for a field filter template tag."
+  (merge
+   TemplateTag:Value:Common
+   {:type        (s/eq :dimension)
+    :dimension   field
+    ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
+    ;; are allowed to be specified for it.
+    :widget-type TemplateTag:FieldFilter:WidgetType}))
+
+(def raw-value-template-tag-types
+  "Set of valid values of `:type` for raw value template tags."
+  #{:number :text :date})
+
+(def TemplateTag:RawValue:Type
+  "Valid values of `:type` for raw value template tags."
+  (apply s/enum raw-value-template-tag-types))
+
+;; Example:
+;;
+;;    {:id           "35f1ecd4-d622-6d14-54be-750c498043cb"
+;;     :name         "id"
+;;     :display-name "Id"
+;;     :type         :number
+;;     :required     true
+;;     :default      "1"}
+(def TemplateTag:RawValue
+  "Schema for a raw value template tag."
+  (merge
+   TemplateTag:Value:Common
+   ;; `:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
+   ;; which types of parameters are allowed to be passed in for this template tag.
+   {:type TemplateTag:RawValue:Type}))
+
+;; TODO -- if we were using core.spec here I would make this a multimethod-based spec instead and have it dispatch off
+;; of `:type`. Then we could make it possible to add new types dynamically
+
+(def TemplateTag
+  "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
+  `:type` (see comments above)."
+  (-> (s/conditional
+       #(= (:type %) :dimension) TemplateTag:FieldFilter
+       #(= (:type %) :snippet)   TemplateTag:Snippet
+       #(= (:type %) :card)      TemplateTag:SourceQuery
+       :else                     TemplateTag:RawValue)
+      (s/named "valid template tag")))
+
+(def TemplateTagMap
+  "Schema for the `:template-tags` map passed in as part of a native query."
+  ;; map of template tag name -> template tag definition
+  (-> {helpers/NonBlankString TemplateTag}
+      (s/constrained (fn [m]
+                       (every? (fn [[tag-name tag-definition]]
+                                 (= tag-name (:name tag-definition)))
+                               m))
+                     "keys in template tag map must match the :name of their values")))
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   {:query                          s/Any
-   (s/optional-key :template-tags) {helpers/NonBlankString TemplateTag}
+   (s/optional-key :template-tags) TemplateTagMap
    ;; collection (table) this query should run against. Needed for MongoDB
    (s/optional-key :collection)    (s/maybe helpers/NonBlankString)
    ;; other stuff gets added in my different bits of QP middleware to record bits of state or pass info around.
@@ -962,8 +1114,7 @@
      (s/cond-pre
       (s/enum :all :none)
       [field])
-     (str
-      "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`."))
+    "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -1051,14 +1202,114 @@
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
-(def ^:private Parameter
-  "Schema for a valid, normalized query parameter."
-  ;; [[s/Any]] for now until we move over the stuff from the parameters middleware
-  ;;
-  ;; TODO -- I think this is actually supposed to be [[metabase.driver.common.parameters/ParamValue]]. But it's
-  ;; probably also supposed to have `:id` as a required key -- need to verify this.
-  s/Any)
+;; `:parameters` specify the *values* of parameters previously definied for a Dashboard or Card (native query template
+;; tag parameters.) See [[TemplateTag]] above for more information on the later.
 
+(def parameter-types
+  "Map of parameter-type -> info. Info is a map with the following keys:
+
+  ### `:type`
+
+  The general type of this parameter. `:numeric`, `:string`, or `:date`.
+
+  ### `:operator`
+
+  Signifies this is one of the new 'operator' parameter types added in 0.39.0 or so. These parameters can only be used
+  for [[TemplateTag:FieldFilter]]s or for Dashboard parameters mapped to MBQL queries. The value of this key is the
+  arity for the parameter, either `:unary`, `:binary`, or `:variadic`. See
+  the [[metabase.driver.common.parameters.operators]] namespace for more information.
+
+  ### `:allowed-for`
+
+  [[Parameter]]s with this `:type` may be supplied for [[TemplateTag]]s with these `:type`s (or `:widget-type` if
+  `:type` is `:dimension`) types. Example: it is ok to pass a parameter of type `:date/range` for template tag with
+  `:widget-type` `:date/all-options`; but it is NOT ok to pass a parameter of type `:date/range` for a template tag
+  with a widget type `:date`. Why? It's a potential security risk if someone creates a Card with an \"exact-match\"
+  Field filter like `:date` or `:text` and you pass in a parameter like `string/!=` `NOTHING_WILL_MATCH_THIS`.
+  Non-exact-match parameters can be abused to enumerate *all* the rows in a table when the parameter was supposed to
+  lock the results down to a single row or set of rows."
+  ;; `:type` -- the gener
+  {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
+   ;; [[TemplateTag:FieldFilter]] template tags.
+   :number            {:type :numeric, :allowed-for #{:number :number/= :id :category}}
+   :text              {:type :string,  :allowed-for #{:text :string/= :id :category}}
+   :date              {:type :date,    :allowed-for #{:date :date/all-options :id :category}}
+
+   ;; everything else can't be used with raw value template tags -- they can only be used with Dashboard parameters
+   ;; for MBQL queries or Field filters in native queries
+
+   ;; date range types -- these match a range of dates
+   :date/range        {:type :date, :allowed-for #{:date/range :date/all-options}}
+   :date/month-year   {:type :date, :allowed-for #{:date/month-year :date/all-options}}
+   :date/quarter-year {:type :date, :allowed-for #{:date/quarter-year :date/all-options}}
+   :date/relative     {:type :date, :allowed-for #{:date/relative :date/all-options}}
+   :date/all-options  {:type :date, :allowed-for #{:date/all-options}}
+
+   ;; "operator" parameter types.
+   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=} }
+   :number/<=               {:type :numeric, :operator :unary,    :allowed-for #{:number/<=}}
+   :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category}}
+   :number/>=               {:type :numeric, :operator :unary,    :allowed-for #{:number/>=}}
+   :number/between          {:type :numeric, :operator :binary,   :allowed-for #{:number/between}}
+   :string/!=               {:type :string,  :operator :variadic, :allowed-for #{:string/!=}}
+   :string/=                {:type :string,  :operator :variadic, :allowed-for #{:string/= :text :id :category}}
+   :string/contains         {:type :string,  :operator :unary,    :allowed-for #{:string/contains}}
+   :string/does-not-contain {:type :string,  :operator :unary,    :allowed-for #{:string/does-not-contain}}
+   :string/ends-with        {:type :string,  :operator :unary,    :allowed-for #{:string/ends-with}}
+   :string/starts-with      {:type :string,  :operator :unary,    :allowed-for #{:string/starts-with}}})
+
+(defn valid-parameter-type?
+  "Whether `param-type` is a valid non-abstract parameter type."
+  [param-type]
+  (get parameter-types param-type))
+
+(def ParameterType
+  "Schema for valid values of `:type` for a [[Parameter]]."
+  (apply s/enum (keys parameter-types)))
+
+(defclause template-tag
+  tag-name helpers/NonBlankString)
+
+(def DimensionTarget
+  (one-of template-tag field))
+
+(defclause dimension
+  target DimensionTarget)
+
+(def VariableTarget
+  (one-of template-tag))
+
+(defclause variable
+  target VariableTarget)
+
+(def ParameterTarget
+  (one-of dimension variable))
+
+(def Parameter
+  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
+  part of the `:parameters` list in a query."
+  {:type                     ParameterType
+   ;; TODO -- not sure if these should be optional or not. They SHOULD always be specified but that might break a lot
+   ;; of tests.
+   :id                       helpers/NonBlankString
+   :target                   ParameterTarget
+   ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
+   ;; on the [[ParameterType]]
+   (s/optional-key :value)   s/Any
+   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
+   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
+   (s/optional-key :slug)    helpers/NonBlankString
+   (s/optional-key :name)    helpers/NonBlankString
+   (s/optional-key :default) s/Any
+   ;; various other keys are used internally by the frontend
+   s/Keyword                 s/Any})
+
+(def ParameterList
+  "Schema for a list of `:parameters` as passed in to a query."
+  (-> [Parameter]
+      (s/constrained (fn [parameters]
+                       (apply distinct? (map :id parameters)))
+                     "Cannot specify parameter more than once; IDs must be distinct")))
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
@@ -1209,7 +1460,7 @@
     :type                             (s/enum :query :native)
     (s/optional-key :native)          NativeQuery
     (s/optional-key :query)           MBQLQuery
-    (s/optional-key :parameters)      [Parameter]
+    (s/optional-key :parameters)      ParameterList
     ;;
     ;; OPTIONS
     ;;

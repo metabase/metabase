@@ -11,6 +11,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as i]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
@@ -24,14 +25,6 @@
            java.text.NumberFormat
            java.util.UUID
            [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues ReferencedCardQuery ReferencedQuerySnippet]))
-
-(def ^:private ParamType
-  (s/enum :number
-          :dimension ; Field Filter
-          :card
-          :snippet
-          :text
-          :date))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -53,23 +46,6 @@
 ;; Since 'FieldFilter' are considered their own `:type` (confusingly enough, called `:dimension`), to *actually* store
 ;; the type of a FieldFilter look at the key `:widget-type`. This applies to things like the default value for a
 ;; FieldFilter as well.
-(def ^:private TagParam
-  "Schema for a tag parameter declaration, passed in as part of the `:template-tags` list."
-  (s/named
-   {(s/optional-key :id)           su/NonBlankString     ; this is used internally by the frontend
-    :name                          su/NonBlankString
-    :display-name                  su/NonBlankString
-    :type                          ParamType
-    (s/optional-key :dimension)    [s/Any]
-    (s/optional-key :card-id)      su/IntGreaterThanZero
-    (s/optional-key :snippet-name) su/NonBlankString
-    (s/optional-key :snippet-id)   su/IntGreaterThanZero
-    (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
-    (s/optional-key :widget-type)  s/Keyword             ; type of the [default] value if `:type` itself is `dimension`
-    (s/optional-key :required)     s/Bool
-    (s/optional-key :default)      s/Any
-    s/Keyword                      s/Any}
-   "valid template-tags tag"))
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
@@ -81,7 +57,7 @@
 
      [:dimension [:template-tag <param-name>]] ; for FieldFilters (Field Filters)
      [:variable  [:template-tag <param-name>]] ; for other types of params"
-  [params :- (s/maybe [i/ParamValue]), target]
+  [params :- (s/maybe [mbql.s/Parameter]), target]
   (when-let [matching-params (seq (for [param params
                                         :when (= (:target param) target)]
                                     param))]
@@ -100,7 +76,7 @@
 
 (s/defn ^:private default-value-for-field-filter
   "Return the default value for a FieldFilter (`:type` = `:dimension`) param defined by the map `tag`, if one is set."
-  [tag :- TagParam]
+  [tag :- mbql.s/TemplateTag]
   (when (and (:required tag) (not (:default tag)))
     (throw (missing-required-param-exception (:display-name tag))))
   (when-let [default (:default tag)]
@@ -117,7 +93,7 @@
   (second field-filter))
 
 (s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
-  [{field-filter :dimension, :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+  [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag, params :- (s/maybe [mbql.s/Parameter])]
   (i/map->FieldFilter
    ;; TODO - shouldn't this use the QP Store?
    {:field (let [field-id (field-filter->field-id field-filter)]
@@ -149,7 +125,7 @@
                i/no-value)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- TagParam params :- (s/maybe [i/ParamValue])]
+  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -171,7 +147,7 @@
                 e))))))
 
 (s/defmethod parse-tag :snippet :- ReferencedQuerySnippet
-  [{:keys [snippet-name snippet-id], :as tag} :- TagParam, _]
+  [{:keys [snippet-name snippet-id], :as tag} :- mbql.s/TemplateTag, _]
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -191,12 +167,14 @@
 (s/defn ^:private default-value-for-tag
   "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-FieldFilter
   params. Default values for FieldFilter (Field Filter) params are handled above in `default-value-for-field-filter`."
-  [{:keys [default display-name required]} :- TagParam]
+  [{:keys [default display-name required]} :- mbql.s/TemplateTag]
   (or default
       (when required
         (throw (missing-required-param-exception display-name)))))
 
-(s/defn ^:private param-value-for-tag [{tag-name :name, :as tag} :- TagParam, params :- (s/maybe [i/ParamValue])]
+(s/defn ^:private param-value-for-tag
+  [{tag-name :name, :as tag} :- mbql.s/TemplateTag
+   params                    :- (s/maybe [mbql.s/Parameter])]
   (or (:value (param-with-target (map defaulted-param params) [:variable [:template-tag tag-name]]))
       (default-value-for-tag tag)
       i/no-value))
@@ -293,7 +271,7 @@
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
   additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
-  [param-type :- ParamType value]
+  [param-type :- mbql.s/TemplateTagType value]
   (cond
    (= value i/no-value)
    value
@@ -324,7 +302,7 @@
 (s/defn ^:private value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
-  [tag :- TagParam params :- (s/maybe [i/ParamValue])]
+  [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e

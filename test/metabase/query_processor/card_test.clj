@@ -34,4 +34,39 @@
       (mt/with-temp* [Database [db]
                       Dashboard [dash]
                       Card [card {:database_id (u/the-id db)}]]
-        (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))<
+        (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
+
+(defn- field-filter-query []
+  {:database (mt/id)
+   :type     :native
+   :native   {:template-tags {"date" {:id           "_DATE_"
+                                      :name         "date"
+                                      :display-name "Check-In Date"
+                                      :type         :dimension
+                                      :dimension    [:field (mt/id :checkins :date) nil]
+                                      :widget-type  :date/all-options}}
+              :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
+
+(defn- non-field-filter-query []
+  {:database (mt/id)
+   :type     :native
+   :native   {:template-tags {"id"
+                              {:id           "_ID_"
+                               :name         "id"
+                               :display-name "Order ID"
+                               :type         :number
+                               :required     true
+                               :default      "1"}}
+              :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
+
+(deftest card-template-tag-parameters-test
+  (testing "Card with a Field filter parameter"
+    (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+      (is (= {"date" :date/all-options}
+             (#'qp.card/card-template-tag-parameters card-id)))))
+  (testing "Card with a non-Field-filter parameter"
+    (mt/with-temp Card [{card-id :id} {:dataset_query (non-field-filter-query)}]
+      (is (= {"id" :number}
+             (#'qp.card/card-template-tag-parameters card-id)))))
+  ;; TODO -- make sure it ignores native query snippets and source Card IDs
+  )
