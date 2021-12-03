@@ -74,21 +74,27 @@
                       .build))]
     (fn [] @tracker*)))
 
-(defn- set-subject
+(defn- subject
   "Create a Subject object for a given user ID, to be included in analytics events"
-  [builder user-id]
-  (if user-id
-    (let [subject (-> (Subject$SubjectBuilder.)
-                      (.userId (str user-id))
-                      .build)]
-      (.subject ^Unstructured$Builder builder subject))
-    builder))
+  [user-id]
+  (-> (Subject$SubjectBuilder.)
+      (.userId (str user-id))
+      .build))
+
+(def ^:private schema->version
+  "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
+  to SnowcatCloud, at the same time that the data sent to the collector is updated."
+  {::account   "1-0-0"
+   ::invite    "1-0-0"
+   ::dashboard "1-0-0"
+   ::database  "1-0-0"
+   ::instance  "1-1-0"})
 
 (defn- context
   "Common context included in every analytics event"
   []
   (new SelfDescribingJson
-       "iglu:com.metabase/instance/jsonschema/1-0-0"
+       (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
        {"id"             (analytics-uuid),
         "version"        {"tag" (:tag (public-settings/version))},
         "token-features" (m/map-keys name (public-settings/token-features))}))
@@ -114,14 +120,6 @@
   [tracker event]
   (.track ^Tracker tracker ^Unstructured event))
 
-(def ^:private schema->version
-  "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
-  to SnowcatCloud, at the same time that the data sent to the collector is updated."
-  {::account   "1-0-0"
-   ::invite    "1-0-0"
-   ::dashboard "1-0-0"
-   ::database  "1-0-0"})
-
 (def ^:private event->schema
   "The schema to use for each analytics event."
   {::new-instance-created           ::account
@@ -141,9 +139,9 @@
       (let [schema (event->schema event-kw)
             ^Unstructured$Builder builder (-> (. Unstructured builder)
                                               (.eventData (payload schema (schema->version schema) event-kw data))
-                                              (.customContext [(context)]))
-            ^Unstructured$Builder builder' (set-subject builder user-id)
-            ^Unstructured event (.build builder')]
+                                              (.customContext [(context)])
+                                              (cond-> user-id (.subject (subject user-id))))
+            ^Unstructured event (.build builder)]
         (track-event-impl! (tracker) event))
       (catch Throwable e
         (log/debug e (trs "Error sending Snowplow analytics event {0}" event-kw))))))

@@ -71,55 +71,61 @@
   (testing "Snowplow events include a custom context that includes the schema, instance ID, version and token features"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
-      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-0-0",
+      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
               :data {:id             (snowplow/analytics-uuid)
                      :version        {:tag (:tag (public-settings/version))},
                      :token-features (public-settings/token-features)}}
              (:context (first @*snowplow-collector*)))))))
 
 (deftest track-event-test
-  (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
+  (with-fake-snowplow-collector
+    (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
            with keys converted into snake-case strings, and the subject's user ID being converted to a string."
-    (with-fake-snowplow-collector
-      (snowplow/track-event! ::snowplow/new-instance-created)
-      (is (= [{:data    {"event" "new_instance_created"}
-               :user-id nil}]
-             (pop-event-data-and-user-id!)))
+      (mt/with-temporary-setting-values [anon-tracking-enabled true]
+        (snowplow/track-event! ::snowplow/new-instance-created)
+        (is (= [{:data    {"event" "new_instance_created"}
+                 :user-id nil}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/new-user-created 1)
-      (is (= [{:data    {"event" "new_user_created"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (snowplow/track-event! ::snowplow/new-user-created 1)
+        (is (= [{:data    {"event" "new_user_created"}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2})
-      (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2})
+        (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent"}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
-      (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
+        (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/question-added-to-dashboard 1 {:dashboard-id 1, :question-id 2})
-      (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (snowplow/track-event! ::snowplow/question-added-to-dashboard 1 {:dashboard-id 1, :question-id 2})
+        (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/database-connection-successful
-                             1
-                             {:database :postgres, :database-id 1, :source :admin})
-      (is (= [{:data    {"database" "postgres"
-                         "database_id" 1
-                         "event" "database_connection_successful"
-                         "source" "admin"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!)))
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               1
+                               {:database :postgres, :database-id 1, :source :admin})
+        (is (= [{:data    {"database" "postgres"
+                           "database_id" 1
+                           "event" "database_connection_successful"
+                           "source" "admin"}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!)))
 
-      (snowplow/track-event! ::snowplow/database-connection-failed 1 {:database :postgres, :source :admin})
-      (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
-               :user-id "1"}]
-             (pop-event-data-and-user-id!))))))
+        (snowplow/track-event! ::snowplow/database-connection-failed 1 {:database :postgres, :source :admin})
+        (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
+                 :user-id "1"}]
+               (pop-event-data-and-user-id!))))
+
+      (testing "Snowplow events are not sent when tracking is disabled"
+        (mt/with-temporary-setting-values [anon-tracking-enabled false]
+          (snowplow/track-event! ::snowplow/new-instance-created)
+          (is (= [] (pop-event-data-and-user-id!))))))))
 
 (deftest instance-creation-test
   (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
