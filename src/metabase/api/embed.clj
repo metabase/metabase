@@ -26,7 +26,6 @@
             [metabase.driver.common.parameters :as params]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -90,7 +89,9 @@
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
-  [object-embedding-params :- su/EmbeddingParams, token-params :- {s/Keyword s/Any}, user-params :- {s/Keyword s/Any}]
+  [object-embedding-params :- su/EmbeddingParams
+   token-params            :- {s/Keyword s/Any}
+   user-params             :- {s/Keyword s/Any}]
   (check-param-sets object-embedding-params
                     (set (keys (m/filter-vals valid-param? token-params)))
                     (set (keys (m/filter-vals valid-param? user-params))))
@@ -151,19 +152,19 @@
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
-(s/defn ^:private apply-merged-id->value :- (s/maybe [{:slug   su/NonBlankString
-                                                       :type   s/Keyword
-                                                       :target s/Any
-                                                       :value  s/Any}])
-  "Adds `value` to parameters with `slug` matching a key in `merged-id->value` and removes parameters without a
+(s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
+                                                  :type   s/Keyword
+                                                  :target s/Any
+                                                  :value  s/Any}])
+  "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
-  [parameters merged-id->value]
+  [parameters slug->value]
   (when (seq parameters)
     (for [param parameters
-          :let  [value (get merged-id->value (keyword (:slug param)))]
+          :let  [value (get slug->value (keyword (:slug param)))]
           :when (some? value)]
       (assoc (select-keys param [:type :target :slug])
-        :value value))))
+             :value value))))
 
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
@@ -172,21 +173,23 @@
       add-implicit-card-parameters
       :parameters))
 
-(defn- resolve-dashboard-parameters
-  "Returns parameters for a card on a dashboard with `:target` resolved via `:parameter_mappings`."
-  [dashboard-id dashcard-id card-id]
-  (let [param-id->param (u/key-by :id (for [param (db/select-one-field :parameters Dashboard :id dashboard-id)]
-                                        (update param :type keyword)))]
-    ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this
-    ;; Dashboard. We don't need to check that `card-id` matches the DashboardCard because we might be trying to get
-    ;; param info for a series belonging to this dashcard (`card-id` might be for a series)
-    (for [param-mapping (api/check-404 (db/select-one-field :parameter_mappings DashboardCard
-                                         :id           dashcard-id
-                                         :dashboard_id dashboard-id))
-          :when         (= (:card_id param-mapping) card-id)
-          :let          [param (get param-id->param (:parameter_id param-mapping))]
-          :when         param]
-      (assoc param :target (:target param-mapping)))))
+(s/defn ^:private resolve-dashboard-parameters :- [dashboard-api/ParameterWithID]
+  "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
+  that can be passed to various functions in the `metabase.api.dashboard` namespace such as
+  `metabase.api.dashboard/run-query-for-dashcard-async`."
+  [dashboard-id :- su/IntGreaterThanZero
+   slug->value  :- {s/Any s/Any}]
+  (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)
+        slug->id   (into {} (map (juxt :slug :id)) parameters)]
+    (vec (for [[slug value] slug->value
+               :let         [slug (u/qualified-name slug)]]
+           {:slug  slug
+            :id    (or (get slug->id slug)
+                       (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                       {:status-code          400
+                                        :slug                 slug
+                                        :dashboard-parameters parameters})))
+            :value value}))))
 
 (s/defn ^:private normalize-query-params :- {s/Keyword s/Any}
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -220,8 +223,8 @@
   [& {:keys [export-format card-id embedding-params token-params query-params qp-runner constraints options]
       :or   {qp-runner qp/process-query-and-save-execution!}}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
-  (let [merged-id->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters       (apply-merged-id->value (resolve-card-parameters card-id) merged-id->value)]
+  (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply public-api/run-query-for-card-with-id-async
               card-id export-format parameters
               :context :embedded-question,
@@ -253,9 +256,8 @@
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
-  (let [merged-id->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
-        parameters       (apply-merged-id->value (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
-                                                 merged-id->value)]
+  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (public-api/public-dashcard-results-async
      dashboard-id card-id export-format parameters
      :qp-runner   qp-runner

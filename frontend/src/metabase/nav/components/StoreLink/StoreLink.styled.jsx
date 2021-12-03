@@ -1,12 +1,16 @@
 import styled from "styled-components";
+
 import { color, darken } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import ExternalLink from "metabase/components/ExternalLink";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
-export const StoreIconRoot = styled(ExternalLink)`
-  margin-right: ${space(1)};
-`;
+export const StoreIconRoot = forwardRefToInnerRef(
+  styled(ExternalLink)`
+    margin-right: ${space(1)};
+  `,
+);
 
 export const StoreIconWrapper = styled(IconWrapper)`
   color: ${color("white")};

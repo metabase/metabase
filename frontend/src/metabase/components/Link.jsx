@@ -4,17 +4,20 @@ import PropTypes from "prop-types";
 import { Link as ReactRouterLink } from "react-router";
 import styled from "styled-components";
 import { display, color, hover, space } from "styled-system";
+
 import { stripLayoutProps } from "metabase/lib/utils";
+import Tooltip from "metabase/components/Tooltip";
 
 BaseLink.propTypes = {
   to: PropTypes.string.isRequired,
   disabled: PropTypes.bool,
   className: PropTypes.string,
   children: PropTypes.node,
+  tooltip: PropTypes.string,
 };
 
-function BaseLink({ to, className, children, disabled, ...props }) {
-  return (
+function BaseLink({ to, className, children, disabled, tooltip, ...props }) {
+  const link = (
     <ReactRouterLink
       to={to}
       className={cx(className || "link", {
@@ -26,6 +29,8 @@ function BaseLink({ to, className, children, disabled, ...props }) {
       {children}
     </ReactRouterLink>
   );
+
+  return tooltip ? <Tooltip tooltip={tooltip}>{link}</Tooltip> : link;
 }
 
 const Link = styled(BaseLink)`

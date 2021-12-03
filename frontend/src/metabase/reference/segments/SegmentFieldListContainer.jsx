@@ -31,10 +31,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class SegmentFieldListContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

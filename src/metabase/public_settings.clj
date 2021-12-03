@@ -60,7 +60,7 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
-(defn- uuid-nonce
+(defn uuid-nonce
   "Getter for settings that should be set to a UUID the first time they are fetched."
   [setting]
   (or (setting/get-string setting)
@@ -76,34 +76,6 @@
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :getter     #(uuid-nonce :site-uuid))
-
-(defsetting analytics-uuid
-  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
-       " "
-       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
-  :visibility :public
-  :setter     :none
-  :getter     #(uuid-nonce :analytics-uuid))
-
-(defn- first-user-creation
-  "Returns the timestamp at which the first user was created."
-  []
-  (:min (db/select-one ['User [:%min.date_joined :min]])))
-
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                     (java-time/offset-date-time)))
-                      (setting/get-timestamp :instance-creation)))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -164,6 +136,13 @@
 (defsetting ga-code
   (deferred-tru "Google Analytics tracking code.")
   :default    "UA-60817802-1"
+  :visibility :public)
+
+(defsetting ga-enabled
+  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
   :visibility :public)
 
 (defsetting map-tile-server-url

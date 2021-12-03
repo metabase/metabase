@@ -15,7 +15,10 @@ export default function QuestionNotebookButton({
   ...props
 }) {
   return QuestionNotebookButton.shouldRender({ question }) ? (
-    <Tooltip tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}>
+    <Tooltip
+      tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
+      placement="bottom"
+    >
       <Button
         borderless={!isShowingNotebook}
         primary={isShowingNotebook}

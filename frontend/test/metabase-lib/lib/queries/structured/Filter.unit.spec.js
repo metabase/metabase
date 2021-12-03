@@ -57,9 +57,9 @@ describe("Filter", () => {
       ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], 42]);
     });
     it("should set the dimension for new filter clause", () => {
-      expect(filter([]).setDimension(["field", ORDERS.TOTAL.id, null])).toEqual(
-        [null, ["field", ORDERS.TOTAL.id, null]],
-      );
+      expect(
+        filter([]).setDimension(["field", ORDERS.TOTAL.id, null]),
+      ).toEqual([null, ["field", ORDERS.TOTAL.id, null]]);
     });
     it("should set the dimension and default operator for empty filter clauses", () => {
       expect(

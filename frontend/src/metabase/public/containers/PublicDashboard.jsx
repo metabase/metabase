@@ -84,10 +84,7 @@ type Props = {
   setErrorPage: (error: { status: number }) => void,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ dashboard }) => dashboard && dashboard.name)
 @DashboardControls
 // NOTE: this should use DashboardData HoC

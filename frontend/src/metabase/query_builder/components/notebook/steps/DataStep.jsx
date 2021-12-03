@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { CollectionDatasetOrDataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
 
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
@@ -15,8 +15,17 @@ import {
 import FieldsPicker from "./FieldsPicker";
 
 function DataStep({ color, query, updateQuery }) {
+  const question = query.question();
   const table = query.table();
   const canSelectTableColumns = table && query.isRaw();
+
+  const hasCollectionDatasetsStep =
+    question &&
+    !question.isSaved() &&
+    !question.databaseId() &&
+    !question.tableId() &&
+    question.collectionId() !== undefined;
+
   return (
     <NotebookCell color={color}>
       <NotebookCellItem
@@ -36,8 +45,10 @@ function DataStep({ color, query, updateQuery }) {
         rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
+        <CollectionDatasetOrDataSourceSelector
           hasTableSearch
+          collectionId={question.collectionId()}
+          hasCollectionDatasetsStep={hasCollectionDatasetsStep}
           databaseQuery={{ saved: true }}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={query.tableId()}

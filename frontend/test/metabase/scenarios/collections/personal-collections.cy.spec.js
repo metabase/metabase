@@ -1,4 +1,11 @@
-import { restore, popover, modal, sidebar } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  modal,
+  sidebar,
+  assertCanAddItemsToCollection,
+  openNewCollectionItemFlowFor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 describe("personal collections", () => {
@@ -31,12 +38,12 @@ describe("personal collections", () => {
     it("shouldn't be able to change permission levels or edit personal collections", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
-      cy.icon("new_folder");
+      assertCanAddItemsToCollection();
       cy.icon("lock").should("not.exist");
       cy.icon("pencil").should("not.exist");
       // Visit random user's personal collection
       cy.visit("/collection/5");
-      cy.icon("new_folder");
+      assertCanAddItemsToCollection();
       cy.icon("lock").should("not.exist");
       cy.icon("pencil").should("not.exist");
     });
@@ -49,7 +56,7 @@ describe("personal collections", () => {
       sidebar()
         .findByText("Foo")
         .click();
-      cy.icon("new_folder");
+      assertCanAddItemsToCollection();
       cy.icon("pencil");
       cy.icon("lock").should("not.exist");
 
@@ -74,7 +81,7 @@ describe("personal collections", () => {
 
     it.skip("should be able view other users' personal sub-collections (metabase#15339)", () => {
       cy.visit("/collection/5");
-      cy.icon("new_folder").click();
+      openNewCollectionItemFlowFor("collection");
       cy.findByLabelText("Name").type("Foo");
       cy.findByText("Create").click();
       // This repro could possibly change depending on the design decision for this feature implementation
@@ -150,7 +157,7 @@ describe("personal collections", () => {
 });
 
 function addNewCollection(name) {
-  cy.icon("new_folder").click();
+  openNewCollectionItemFlowFor("collection");
   cy.findByLabelText("Name").type(name);
   cy.findByText("Create").click();
 }

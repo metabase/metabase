@@ -38,9 +38,7 @@ function getSupersedesWarningContent(
   return (
     <div>
       <WarningParagraph>
-        {t`This is our new ${
-          allEngines[newDriver]["driver-name"]
-        } driver, which is faster and more reliable.`}
+        {t`This is our new ${allEngines[newDriver]["driver-name"]} driver, which is faster and more reliable.`}
       </WarningParagraph>
 
       <WarningParagraph hasMargin>
@@ -65,9 +63,9 @@ function getSupersededByWarningContent(engine, onChangeEngine) {
       <WarningParagraph hasMargin>
         {t`We recommend that you upgrade to the`}
         &nbsp;
-        <Link onClick={() => onChangeEngine(engine)}>{t`new ${
-          allEngines[engine]["driver-name"]
-        } driver`}</Link>
+        <Link
+          onClick={() => onChangeEngine(engine)}
+        >{t`new ${allEngines[engine]["driver-name"]} driver`}</Link>
         {t`, which is faster and more reliable.`}
       </WarningParagraph>
       <Link href={driverUpgradeHelpLink} target={"_blank"}>

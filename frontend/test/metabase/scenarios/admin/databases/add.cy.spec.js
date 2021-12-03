@@ -235,11 +235,6 @@ describe("scenarios > admin > databases > add", () => {
 
       chooseDatabase("BigQuery");
 
-      //Ensure deprecation warning is shown
-      cy.findByTestId("database-setup-driver-warning").within(() => {
-        cy.contains("The old driver has been deprecated");
-      });
-
       // enter text
       typeField("Name", "bq db");
       typeField("Dataset ID", "some-dataset");
@@ -298,6 +293,21 @@ describe("scenarios > admin > databases > add", () => {
 
       cy.contains("Connect to a Service Account instead");
       cy.contains("generate a Client ID and Client Secret for your project");
+    });
+
+    it("should display driver deprecation messages", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("BigQuery");
+
+      cy.findByText("BigQuery");
+      cy.findByText("Need help setting up your database?");
+      cy.findByText("The old driver has been deprecated", { exact: false });
+
+      cy.findByText("find it here").click();
+      cy.findByText("BigQuery (Deprecated Driver)");
+      cy.findByText("Need help setting up your database?").should("not.exist");
+      cy.findByText("This driver has been deprecated", { exact: false });
     });
   });
 

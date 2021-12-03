@@ -1,30 +1,117 @@
 import React from "react";
+import { t } from "ttag";
 import PropTypes from "prop-types";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
+import Questions from "metabase/entities/questions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
+  originalQuestion: PropTypes.object,
   subHead: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
 };
 
-function QuestionDataSource({ question, subHead, isObjectDetail, ...props }) {
+function isMaybeBasedOnDataset(question) {
+  const tableId = question.query().sourceTableId();
+  return isVirtualCardId(tableId);
+}
+
+function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
+  if (!question) {
+    return null;
+  }
+
+  const variant = subHead ? "subhead" : "head";
+
+  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
+    return (
+      <DataSourceCrumbs question={question} variant={variant} {...props} />
+    );
+  }
+
+  const sourceTable = question.query().sourceTableId();
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+
+  if (originalQuestion?.id() === sourceQuestionId) {
+    return (
+      <SourceDatasetBreadcrumbs
+        dataset={originalQuestion.card()}
+        variant={variant}
+        {...props}
+      />
+    );
+  }
+
+  return (
+    <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
+      {({ question: sourceQuestion }) => {
+        if (!sourceQuestion) {
+          return null;
+        }
+        if (sourceQuestion.dataset) {
+          return (
+            <SourceDatasetBreadcrumbs
+              dataset={sourceQuestion}
+              variant={variant}
+              {...props}
+            />
+          );
+        }
+        return (
+          <DataSourceCrumbs question={question} variant={variant} {...props} />
+        );
+      }}
+    </Questions.Loader>
+  );
+}
+
+DataSourceCrumbs.propTypes = {
+  question: PropTypes.object,
+  variant: PropTypes.oneOf(["head", "subhead"]),
+  isObjectDetail: PropTypes.bool,
+};
+
+function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
   const parts = getDataSourceParts({
     question,
-    subHead,
+    subHead: variant === "subhead",
     isObjectDetail,
   });
+  return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
+}
+
+SourceDatasetBreadcrumbs.propTypes = {
+  dataset: PropTypes.object.isRequired,
+};
+
+function SourceDatasetBreadcrumbs({ dataset, ...props }) {
+  const { collection } = dataset;
   return (
     <HeadBreadcrumbs
-      parts={parts}
-      variant={subHead ? "subhead" : "head"}
       {...props}
+      parts={[
+        <HeadBreadcrumbs.Badge
+          key="dataset-collection"
+          to={Urls.collection(collection)}
+          icon="dataset"
+          inactiveColor="text-light"
+        >
+          {collection?.name || t`Our analytics`}
+        </HeadBreadcrumbs.Badge>,
+        <HeadBreadcrumbs.Badge
+          key="dataset-name"
+          to={Urls.question(dataset)}
+          inactiveColor="text-light"
+        >
+          {dataset.name}
+        </HeadBreadcrumbs.Badge>,
+      ]}
     />
   );
 }

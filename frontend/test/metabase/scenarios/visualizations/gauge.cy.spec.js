@@ -7,7 +7,7 @@ describe("scenarios > visualizations > gauge chart", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept(`/api/card/*/query`).as("cardQuery");
+    cy.intercept(`/api/dashboard/*/card/*/query`).as("cardQuery");
   });
 
   it("should not rerender on gauge arc hover (metabase#15980)", () => {

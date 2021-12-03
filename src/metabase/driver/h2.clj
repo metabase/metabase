@@ -37,7 +37,8 @@
   [{:name         "db"
     :display-name (tru "Connection String")
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
-    :required     true}])
+    :required     true}
+   driver.common/cloud-ip-address-info])
 
 (defmethod driver/db-start-of-week :h2
   [_]

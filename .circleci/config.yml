@@ -267,6 +267,9 @@ cache-key-frontend: &CacheKeyFrontend
 cache-key-uberjar: &CacheKeyUberjar
   key: v5-{{ checksum ".CACHE-PREFIX" }}-uberjar-<< parameters.edition >>-{{ checksum ".BACKEND-CHECKSUMS" }}-{{ checksum ".FRONTEND-CHECKSUMS" }}
 
+cache-key-snowplow-deps: &CacheKeySnowplowDeps
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-snowplow-deps
+
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -292,6 +295,12 @@ commands:
       - restore_cache:
           name: Restore cached frontend dependencies
           <<: *CacheKeyFrontendDeps
+
+  restore-snowplow-deps-cache:
+    steps:
+      - restore_cache:
+          name: Restore Snowplow Micro JAR
+          <<: *CacheKeySnowplowDeps
 
   # run-on-change lets you only run steps if changes have happened to relevant files since the last time it was run
   # successfully. Uses a cache key to record successful runs -- cache key should be unique for job and relevant source
@@ -476,6 +485,15 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 15m
 
+  wait-for-databases:
+    steps:
+      - wait-for-port:
+          port: 3306 # mysql
+      - wait-for-port:
+          port: 5432 # postgres
+      - wait-for-port:
+          port: 27017 # mongo
+
   fetch-jdbc-driver:
     parameters:
       source:
@@ -500,6 +518,17 @@ commands:
       - run:
           name: Run command
           command: << parameters.command >>
+
+  run-snowplow-micro:
+    steps:
+      - restore-snowplow-deps-cache
+      - run:
+          name: Run Snowplow Micro
+          command: |
+            java -cp snowplow-micro.jar:snowplow com.snowplowanalytics.snowplow.micro.Main --collector-config snowplow/micro.conf --iglu snowplow/iglu.json
+          background: true
+      - wait-for-port:
+          port: 9090
 
 jobs:
 
@@ -590,7 +619,6 @@ jobs:
                 name: Verify Liquibase Migrations
                 command: ./bin/lint-migrations-file.sh
                 no_output_timeout: 15m
-
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
@@ -708,6 +736,9 @@ jobs:
       extra-env:
         type: string
         default: ""
+      test-args:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -721,7 +752,9 @@ jobs:
                 name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: << parameters.driver >>
-                command: << parameters.extra-env >> clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+                command: >
+                  << parameters.extra-env >> clojure -X:dev:ci:ee:ee-dev:drivers:drivers-dev:test
+                  << parameters.test-args >>
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
@@ -967,6 +1000,32 @@ jobs:
                   - store_test_results:
                       path: cypress/results
 
+########################################################################################################################
+#                                                       SNOWPLOW                                                       #
+########################################################################################################################
+
+  snowplow-deps:
+    executor: clojure-and-node-and-browsers
+    steps:
+      - attach-workspace
+      - restore-snowplow-deps-cache
+      - run:
+          name: Check if Snowplow Micro JAR exists
+          command: |
+            if [ -f snowplow-micro.jar ]; then
+                echo 'snowplow-micro.jar is present, skipping the rest of the job.'
+                circleci-agent step halt
+            fi
+      - run:
+          name: Download Snowplow Micro JAR
+          command: |
+            wget --output-document=snowplow-micro.jar $SNOWPLOW_MICRO_JAR
+          no_output_timeout: 15m
+      - save_cache:
+          name: Cache Snowplow Micro JAR
+          <<: *CacheKeySnowplowDeps
+          paths:
+            - /home/circleci/metabase/metabase/snowplow-micro.jar
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -1043,6 +1102,15 @@ workflows:
           requires:
             - be-tests-ee
           driver: bigquery-cloud-sdk
+
+      - test-driver:
+          name: be-google-related-drivers-classpath-test
+          requires:
+            - be-tests-ee
+          driver: googleanalytics,bigquery,bigquery-cloud-sdk
+          test-args: >-
+            :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
+                    metabase.driver.googleanalytics-test]"
 
       - test-driver:
           name: be-tests-druid-ee
@@ -1277,6 +1345,7 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+
       - shared-tests-cljs:
           requires:
             - fe-deps
@@ -1308,16 +1377,13 @@ workflows:
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
           requires:
             - build-uberjar-<< matrix.edition >>
+            - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
           before-steps:
-            - wait-for-port:
-                port: 3306
-            - wait-for-port:
-                port: 5432
-            - wait-for-port:
-                port: 27017
+            - run-snowplow-micro
+            - wait-for-databases
 
       - fe-tests-cypress:
           matrix:
@@ -1328,3 +1394,7 @@ workflows:
             - build-uberjar-<< matrix.edition >>
           cypress-group: "percy-visual-<< matrix.edition >>"
           test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
+
+      - snowplow-deps:
+          requires:
+            - checkout

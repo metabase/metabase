@@ -401,7 +401,4 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);

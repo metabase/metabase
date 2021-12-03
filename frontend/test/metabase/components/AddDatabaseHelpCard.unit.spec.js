@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -14,6 +14,10 @@ const ENGINES = {
     "driver-name": "Amazon Redshift",
   },
   bigquery: {
+    "driver-name": "BigQuery (Deprecated Driver)",
+    "superseded-by": "bigquery-cloud-sdk",
+  },
+  "bigquery-cloud-sdk": {
     "driver-name": "BigQuery",
   },
   druid: {
@@ -61,20 +65,38 @@ function setup({ engine = "mongo", isHosted = false } = {}) {
 
 describe("AddDatabaseHelpCard", () => {
   Object.entries(ENGINES).forEach(([engine, info]) => {
-    const expectedDisplayName = ENGINE_DOCS[engine]
+    const expectedCard = ENGINES[engine]["superseded-by"] == null;
+    const expectedName = ENGINE_DOCS[engine]
       ? info["driver-name"]
       : "your database";
     const expectedDocsLink = ENGINE_DOCS[engine] || GENERAL_DB_DOC;
 
-    it(`correctly displays hints for ${engine} setup`, () => {
-      const { queryByText } = setup({ engine });
-      const docsLink = queryByText("Our docs can help.");
-      expect(
-        queryByText(`Need help setting up ${expectedDisplayName}?`),
-      ).toBeInTheDocument();
-      expect(docsLink).toBeInTheDocument();
-      expect(docsLink.getAttribute("href")).toBe(expectedDocsLink);
-    });
+    if (expectedCard) {
+      it(`correctly displays hints for ${engine} setup`, () => {
+        setup({ engine });
+
+        const helpText = screen.getByText(
+          `Need help setting up ${expectedName}?`,
+        );
+        const docsLink = screen.getByText("Our docs can help.");
+
+        expect(helpText).toBeInTheDocument();
+        expect(docsLink).toBeInTheDocument();
+        expect(docsLink.getAttribute("href")).toBe(expectedDocsLink);
+      });
+    } else {
+      it(`correctly hides hints for ${engine} setup`, () => {
+        setup({ engine });
+
+        const helpText = screen.queryByText(
+          `Need help setting up ${expectedName}?`,
+        );
+        const docsLink = screen.queryByText("Our docs can help.");
+
+        expect(helpText).not.toBeInTheDocument();
+        expect(docsLink).not.toBeInTheDocument();
+      });
+    }
   });
 
   it("should display a help link if it's a cloud instance", () => {

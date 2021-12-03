@@ -39,9 +39,8 @@ import {
 const PAGE_PADDING = [1, 2, 4];
 const ROOT_COLLECTIONS_LOAD_LIMIT = 500;
 
-const getGreeting = createSelector(
-  [getUser],
-  user => Greeting.sayHello(user.first_name),
+const getGreeting = createSelector([getUser], user =>
+  Greeting.sayHello(user.first_name),
 );
 
 //class Overworld extends Zelda
@@ -74,7 +73,10 @@ class Overworld extends React.Component {
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
-          <Tooltip tooltip={t`Don't tell anyone, but you're my favorite.`}>
+          <Tooltip
+            tooltip={t`Don't tell anyone, but you're my favorite.`}
+            placement="bottom"
+          >
             <MetabotLogo />
           </Tooltip>
           <Box ml={2}>

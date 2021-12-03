@@ -152,7 +152,9 @@ export default class Activity extends Component {
         if (item.table) {
           description.summary = (
             <span>
-              {t`saved a question about `}
+              {item.model === "dataset"
+                ? t`saved a dataset based on `
+                : t`saved a question about `}
               <Link
                 to={Urls.tableRowsQuery(item.database_id, item.table_id)}
                 data-metabase-event={
@@ -165,11 +167,15 @@ export default class Activity extends Component {
             </span>
           );
         } else {
-          description.summary = t`saved a question`;
+          description.summary =
+            item.model === "dataset" ? t`saved a dataset` : t`saved a question`;
         }
         break;
       case "card-delete":
-        description.summary = t`deleted a question`;
+        description.summary =
+          item.model === "dataset"
+            ? t`deleted a dataset`
+            : t`deleted a question`;
         break;
       case "dashboard-create":
         description.summary = t`created a dashboard`;

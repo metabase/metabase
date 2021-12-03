@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import {
   isVirtualCardId,
+  getQuestionVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase/lib/saved-questions";
 
@@ -25,6 +26,9 @@ import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import Search from "metabase/entities/search";
+
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import {
   SearchResults,
   convertSearchResultToTableLikeItem,
@@ -38,6 +42,8 @@ import {
   DataBucketListItem,
   PickerSpinner,
   RawDataBackButton,
+  CollectionDatasetSelectList,
+  CollectionDatasetAllDataLink,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
 
@@ -60,6 +66,10 @@ const TABLE_STEP = "TABLE";
 // chooses a table field (table has already been selected)
 const FIELD_STEP = "FIELD";
 
+// allows to choose one of collection's dataset (requires collectionId prop)
+// is used while adding a question with the "+" button on collection page
+const COLLECTION_DATASET_STEP = "COLLECTION_DATASET";
+
 export const DataSourceSelector = props => (
   <DataSelector
     steps={[DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP]}
@@ -68,6 +78,31 @@ export const DataSourceSelector = props => (
     {...props}
   />
 );
+
+export const CollectionDatasetOrDataSourceSelector = ({
+  hasCollectionDatasetsStep,
+  ...props
+}) => {
+  const [collectionDatasetsShown, setCollectionDatasetsShown] = useState(
+    !!hasCollectionDatasetsStep,
+  );
+
+  const steps = collectionDatasetsShown
+    ? [COLLECTION_DATASET_STEP]
+    : [DATA_BUCKET_STEP, DATABASE_STEP, SCHEMA_STEP, TABLE_STEP];
+
+  return (
+    <DataSelector
+      steps={steps}
+      combineDatabaseSchemaSteps
+      getTriggerElementContent={TableTriggerContent}
+      {...props}
+      onCloseCollectionDatasets={() => {
+        setCollectionDatasetsShown(false);
+      }}
+    />
+  );
+};
 
 export const DatabaseDataSelector = props => (
   <DataSelector
@@ -806,6 +841,15 @@ export class UnconnectedDataSelector extends Component {
     };
 
     switch (this.state.activeStep) {
+      case COLLECTION_DATASET_STEP:
+        return (
+          <CollectionDatasetPicker
+            {...props}
+            collectionId={this.props.collectionId}
+            handleCollectionDatasetSelect={this.handleCollectionDatasetSelect}
+            onSeeAllData={this.handleCollectionDatasetsPickerClose}
+          />
+        );
       case DATA_BUCKET_STEP:
         return <DataBucketPicker {...props} />;
       case DATABASE_STEP:
@@ -862,6 +906,22 @@ export class UnconnectedDataSelector extends Component {
     this.setState({
       searchText,
     });
+
+  handleCollectionDatasetSelect = async dataset => {
+    const tableId = getQuestionVirtualTableId(dataset);
+    await this.props.fetchFields(tableId);
+    if (this.props.setSourceTableFn) {
+      this.props.setSourceTableFn(tableId);
+    }
+    this.popover.current.toggle();
+    this.props.onCloseCollectionDatasets();
+    this.switchToStep(TABLE_STEP);
+  };
+
+  handleCollectionDatasetsPickerClose = () => {
+    this.props.onCloseCollectionDatasets();
+    this.switchToStep(this.hasDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP);
+  };
 
   handleSearchItemSelect = async item => {
     const table = convertSearchResultToTableLikeItem(item);
@@ -985,6 +1045,77 @@ export class UnconnectedDataSelector extends Component {
       </PopoverWithTrigger>
     );
   }
+}
+
+const CollectionDatasetPicker = ({
+  collectionId,
+  handleCollectionDatasetSelect,
+  onSeeAllData,
+}) => {
+  return (
+    <Search.ListLoader
+      query={{
+        collection: collectionId,
+        models: ["dataset"],
+      }}
+      loadingAndErrorWrapper={false}
+    >
+      {({ list: datasets }) => (
+        <CollectionDatasetList
+          datasets={datasets}
+          onSelect={handleCollectionDatasetSelect}
+          onSeeAllData={onSeeAllData}
+        />
+      )}
+    </Search.ListLoader>
+  );
+};
+
+function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
+  useEffect(() => {
+    if (datasets?.length === 0) {
+      onSeeAllData();
+    } else if (datasets?.length === 1) {
+      onSelect(datasets[0]);
+    }
+  }, [datasets, onSelect, onSeeAllData]);
+
+  // If there are no datasets, in a collection, we just switch to the normal picker
+  // If there is exactly one dataset, we select it and close the picker
+  // The loading indicator is still shown for both cases to prevent flickering
+  // Example: spinner > one dataset shown > it gets selected > the selector closes, everything flickers
+  if (!datasets || datasets.length === 0 || datasets.length === 1) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  return (
+    <CollectionDatasetSelectList>
+      {datasets.map(dataset => {
+        return (
+          <CollectionDatasetSelectList.Item
+            key={dataset.id}
+            name={dataset.name}
+            onSelect={() => onSelect(dataset)}
+            size="small"
+            icon={{ name: "dataset", size: 16 }}
+            rightIcon={PLUGIN_MODERATION.getStatusIcon(
+              dataset.moderated_status,
+            )}
+          />
+        );
+      })}
+      <CollectionDatasetAllDataLink
+        key="all-data"
+        onSelect={onSeeAllData}
+        as={props => <li {...props} />}
+      >
+        <CollectionDatasetAllDataLink.Content>
+          {t`All data`}
+          <Icon key="icon" name="chevronright" size={12} />
+        </CollectionDatasetAllDataLink.Content>
+      </CollectionDatasetAllDataLink>
+    </CollectionDatasetSelectList>
+  );
 }
 
 const DataBucketPicker = ({ onChangeDataBucket }) => {

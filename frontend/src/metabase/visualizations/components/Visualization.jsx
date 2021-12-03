@@ -64,6 +64,7 @@ type Props = {
   isEditing: boolean,
   isSettings: boolean,
   isQueryBuilder: boolean,
+  isClickable: boolean,
 
   headerIcon?: {
     name: string,
@@ -163,6 +164,7 @@ export default class Visualization extends React.PureComponent {
     isEditing: false,
     isSettings: false,
     isQueryBuilder: false,
+    isClickable: true,
     onUpdateVisualizationSettings: () => {},
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: location => {
@@ -278,7 +280,15 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(card, metadata);
+    if (!metadata || !card) {
+      return;
+    }
+    const question = new Question(card, metadata);
+
+    // Datasets in QB should behave as raw tables opened in simple mode
+    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
+    // Ideally, this logic should happen somewhere else
+    return question.isDataset() ? question.composeDataset() : question;
   }
 
   getClickActions(clicked: ?ClickObject) {
@@ -303,8 +313,8 @@ export default class Visualization extends React.PureComponent {
   }
 
   visualizationIsClickable = (clicked: ClickObject) => {
-    const { onChangeCardAndRun } = this.props;
-    if (!onChangeCardAndRun) {
+    const { onChangeCardAndRun, isClickable } = this.props;
+    if (!onChangeCardAndRun || !isClickable) {
       return false;
     }
     try {

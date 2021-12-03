@@ -87,6 +87,7 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/cloud-ip-address-info
      driver.common/default-ssl-details
      {:name         "ssl-mode"
       :display-name (trs "SSL Mode")

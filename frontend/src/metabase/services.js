@@ -82,6 +82,7 @@ export function maybeUsePivotEndpoint(
 
   const mapping = [
     [CardApi.query, CardApi.query_pivot],
+    [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
     [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
@@ -145,6 +146,12 @@ export const DashboardApi = {
   listEmbeddable: GET("/api/dashboard/embeddable"),
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
+
+  cardQuery: POST("/api/dashboard/:dashboardId/card/:cardId/query"),
+  cardQueryPivot: POST("/api/dashboard/:dashboardId/card/pivot/:cardId/query"),
+  exportCardQuery: POST(
+    "/api/dashboard/:dashboardId/card/:cardId/query/:exportFormat",
+  ),
 };
 
 export const CollectionsApi = {
