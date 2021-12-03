@@ -1,3 +1,5 @@
+import { ngettext, msgid, t } from "ttag";
+
 import { OPERATOR as OP } from "./tokenizer";
 import { MBQL_CLAUSES } from "./index";
 
@@ -35,7 +37,12 @@ function findMBQL(op) {
   return clause;
 }
 
-export function resolve(expression, type, fn) {
+const isCompatible = (a, b) =>
+  a === b ||
+  (a === "expression" && (b === "number" || b === "string")) ||
+  (a === "aggregation" && b === "number");
+
+export function resolve(expression, type = "expression", fn = undefined) {
   if (Array.isArray(expression)) {
     const [op, ...operands] = expression;
 
@@ -49,13 +56,20 @@ export function resolve(expression, type, fn) {
     if (LOGICAL_OPS.includes(op)) {
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op) || op === "coalesce") {
-      operandType = type;
+      operandType = type === "aggregation" ? type : "number";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
+      const [firstOperand] = operands;
+      if (typeof firstOperand !== "undefined" && !Array.isArray(firstOperand)) {
+        throw new Error(t`Expecting field but found ${firstOperand}`);
+      }
     } else if (op === "concat") {
       operandType = "string";
     } else if (op === "case") {
       const [pairs, options] = operands;
+      if (pairs.length < 1) {
+        throw new Error(t`CASE expects 2 arguments or more`);
+      }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
         resolve(tst, "boolean", fn),
@@ -80,13 +94,45 @@ export function resolve(expression, type, fn) {
     }
 
     const clause = findMBQL(op);
-    if (clause) {
-      const { args } = clause;
-      return [
-        op,
-        ...operands.map((operand, i) => resolve(operand, args[i], fn)),
-      ];
+    if (!clause) {
+      throw new Error(t`Unknown function ${op}`);
     }
+    const { displayName, args, multiple, hasOptions } = clause;
+    if (!isCompatible(type, clause.type)) {
+      throw new Error(
+        t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
+      );
+    }
+    if (!multiple) {
+      const expectedArgsLength = args.length;
+      const maxArgCount = hasOptions
+        ? expectedArgsLength + 1
+        : expectedArgsLength;
+      if (
+        operands.length < expectedArgsLength ||
+        operands.length > maxArgCount
+      ) {
+        throw new Error(
+          ngettext(
+            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
+            `Function ${displayName} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          ),
+        );
+      }
+    }
+    const resolvedOperands = operands.map((operand, i) => {
+      if (i >= args.length) {
+        // as-is, optional object for e.g. ends-with, time-interval, etc
+        return operand;
+      }
+      return resolve(operand, args[i], fn);
+    });
+    return [op, ...resolvedOperands];
+  } else if (!isCompatible(type, typeof expression)) {
+    throw new Error(
+      t`Expecting ${type} but found ${JSON.stringify(expression)}`,
+    );
   }
   return expression;
 }

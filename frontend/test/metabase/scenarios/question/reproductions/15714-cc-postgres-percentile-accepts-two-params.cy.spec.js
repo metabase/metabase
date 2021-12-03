@@ -14,11 +14,12 @@ describe("postgres > question > custom columns", () => {
   });
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
-    cy.icon("add_data").click();
+    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Custom Expression").click();
     cy.get("[contenteditable='true']")
       .click()
       .type("Percentile([Subtotal], 0.1)");
-    cy.findByPlaceholderText("Something nice and descriptive")
+    cy.findByPlaceholderText("Name (required)")
       .as("description")
       .click();
 
