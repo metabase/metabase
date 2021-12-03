@@ -20,6 +20,7 @@ driver:
       placeholder: Optional TNS alias
     - user
     - password
+    - cloud-ip-address-info
     - ssl
     - name: ssl-use-keystore
       display-name: Use SSL server certificate?
@@ -48,7 +49,7 @@ driver:
     - name: ssl-truststore
       display-name: Truststore
       type: secret
-      secret-kind: truststore
+      secret-kind: keystore
       placeholder: /path/to/truststore.jks
       visible-if:
         ssl-use-truststore: true

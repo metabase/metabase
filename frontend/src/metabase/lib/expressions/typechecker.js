@@ -78,7 +78,11 @@ export function typeCheck(cst, rootType) {
       if (type === "number") {
         const op = getMBQLName(name);
         const returnType = MBQL_CLAUSES[op].type;
-        if (returnType !== "number" && returnType !== "string") {
+        if (
+          returnType !== "number" &&
+          returnType !== "string" &&
+          returnType !== "expression"
+        ) {
           const message = t`Expecting ${type} but found function ${name} returning ${returnType}`;
           this.errors.push({ message });
         }

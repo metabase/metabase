@@ -79,7 +79,7 @@
   `async-context`."
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
-  (let [task (bound-fn []
+  (let [task (^:once fn* []
                (try
                  (do-f* f os finished-chan canceled-chan)
                  (catch Throwable e
@@ -263,5 +263,5 @@
   {:style/indent 2, :arglists '([options [os-binding canceled-chan-binding] & body])}
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(streaming-response* (fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
+  `(streaming-response* (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))

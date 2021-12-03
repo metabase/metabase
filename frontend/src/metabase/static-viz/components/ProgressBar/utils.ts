@@ -45,8 +45,9 @@ export const calculatePointerLabelShift = (
   xMin: number,
   xMax: number,
   pointerWidth: number,
+  fontSize: number,
 ) => {
-  const valueTextWidth = measureText(valueText, 7);
+  const valueTextWidth = measureText(valueText, fontSize);
 
   const distanceToLeftBorder = pointerX - xMin;
   const isCrossingLeftBorder = valueTextWidth / 2 > distanceToLeftBorder;

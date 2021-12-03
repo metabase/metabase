@@ -21,6 +21,7 @@ driver:
       placeholder: N/A
     - user
     - password
+    - cloud-ip-address-info
     - ssl
     - merge:
         - additional-options

@@ -42,6 +42,7 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
+  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -80,7 +81,11 @@ import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase-types/types/Card";
 
-import { isAdHocDatasetQuestion } from "./utils";
+import {
+  getQueryBuilderModeFromLocation,
+  getPathNameFromQueryBuilderMode,
+  isAdHocDatasetQuestion,
+} from "./utils";
 
 type UiControls = {
   isEditing?: boolean,
@@ -153,10 +158,6 @@ export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
 
-function getQueryBuilderModeFromLocation(location) {
-  return location.pathname.endsWith("/notebook") ? "notebook" : "view";
-}
-
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
@@ -170,13 +171,11 @@ export const popState = createThunkAction(
         await dispatch(setCurrentState(location.state));
       }
     }
-    if (
-      getQueryBuilderMode(getState()) !==
-      getQueryBuilderModeFromLocation(location)
-    ) {
+    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
-        setQueryBuilderMode(getQueryBuilderModeFromLocation(location), {
-          shouldUpdateUrl: false,
+        setQueryBuilderMode(queryBuilderModeFromURL, {
+          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
     }
@@ -276,9 +275,10 @@ export const updateUrl = createThunkAction(
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
-      pathname:
-        (urlParsed.pathname || "") +
-        (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
+      pathname: getPathNameFromQueryBuilderMode({
+        pathname: urlParsed.pathname || "",
+        queryBuilderMode,
+      }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
       state: newState,
@@ -741,7 +741,11 @@ export const setTemplateTag = createThunkAction(
       const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (!uiControls.isEditing && updatedCard.id) {
+      if (
+        !uiControls.isEditing &&
+        uiControls.queryBuilderMode !== "dataset" &&
+        updatedCard.id
+      ) {
         delete updatedCard.id;
         delete updatedCard.name;
         delete updatedCard.description;
@@ -899,13 +903,15 @@ export const updateQuestion = (
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
+    const mode = getQueryBuilderMode(getState());
 
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
       !doNotClearNameAndId &&
       !getIsEditing(getState()) &&
-      newQuestion.isSaved()
+      newQuestion.isSaved() &&
+      mode !== "dataset"
     ) {
       newQuestion = newQuestion.withoutNameAndId();
 
@@ -970,7 +976,10 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+    if (
+      getQueryBuilderMode(getState()) === "notebook" &&
+      newQuestion.isNative()
+    ) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
@@ -1466,6 +1475,15 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
+export const onCancelDatasetChanges = () => (dispatch, getState) => {
+  const cardBeforeChanges = getOriginalCard(getState());
+  dispatch.action(CANCEL_DATASET_CHANGES, {
+    card: cardBeforeChanges,
+  });
+  dispatch(runQuestionQuery());
+};
 
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());

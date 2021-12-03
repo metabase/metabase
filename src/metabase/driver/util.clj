@@ -131,18 +131,44 @@
                    :visible-if {(keyword (str prop-name "-options")) "local"}}])
     [conn-prop]))
 
+(defn- resolve-info-conn-prop
+  "Invokes the getter function on a info type connection property and adds it to the connection property map as its
+  placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
+  value or throws an exception."
+  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+  (let [content (or placeholder
+                    (try (getter)
+                         (catch Throwable e
+                           (log/error e (trs "Error invoking getter for connection property {0}"
+                                             (:name conn-prop))))))]
+    (when (string? content)
+      (-> conn-prop
+          (assoc :placeholder content)
+          (dissoc :getter)))))
+
 (defn connection-props-server->client
   "Transforms connection-properties from their server side definition into a client side definition.
 
-  Currently, this just transforms :type :secret properties from the server side definition into other types for client
+  This transforms :type :secret properties from the server side definition into other types for client
   display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
-  all the different options that might be available on the client side for populating the value."
+  all the different options that might be available on the client side for populating the value.
+
+  This also resolves the :getter function on :type :info properties, if one was provided."
   {:added "0.42.0"}
   [conn-props]
   (reduce (fn [acc conn-prop]
-            (if (= "secret" (:type conn-prop))
+            (case (keyword (:type conn-prop))
+              :secret
               (concat acc (expand-secret-conn-prop conn-prop))
-              (concat acc [conn-prop]))) [] conn-props))
+
+              :info
+              (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+                (concat acc [conn-prop'])
+                acc)
+
+              (concat acc [conn-prop])))
+          []
+          conn-props))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.

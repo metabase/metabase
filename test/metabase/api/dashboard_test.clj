@@ -9,8 +9,9 @@
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.pivots :as pivots]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues
-                                     Pulse Revision Table User]]
+            [metabase.models
+             :refer
+             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -788,6 +789,112 @@
                       (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))))
           (is (= #{0}
                  (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
+
+(defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
+  (mt/with-temp-copy-of-db
+    (perms/revoke-data-perms! (group/all-users) (mt/id))
+    (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters [{:name "Category ID"
+                                                                     :slug "category_id"
+                                                                     :id   "_CATEGORY_ID_"
+                                                                     :type "category"}]}]
+                    Card          [{card-id :id} {:database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (mt/mbql-query venues)}]]
+      (let [mappings [{:parameter_id "_CATEGORY_ID_"
+                       :target       [:dimension [:field (mt/id :venues :category_id) nil]]}]]
+        ;; TODO -- check series as well?
+        (f {:dashboard-id dashboard-id
+            :card-id      card-id
+            :mappings     mappings
+            :add-card!    (fn [expected-status-code]
+                            (mt/user-http-request :rasta
+                                                  :post expected-status-code (format "dashboard/%d/cards" dashboard-id)
+                                                  {:cardId             card-id
+                                                   :row                0
+                                                   :col                0
+                                                   :parameter_mappings mappings}))
+            :dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))})))))
+
+(deftest add-card-parameter-mapping-permissions-test
+  (testing "POST /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (do-with-add-card-parameter-mapping-permissions-fixtures
+       (fn [{:keys [card-id dashboard-id mappings add-card! dashcards]}]
+         (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                       s/Keyword s/Any}
+                (add-card! 403)))
+         (is (= []
+                (dashcards)))
+         (testing "Permissions for a different table in the same DB should not count"
+           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :categories)))
+           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                         s/Keyword s/Any}
+                        (add-card! 403)))
+           (is (= []
+                  (dashcards))))
+         (testing "If they have data permissions, it should be ok"
+           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :venues)))
+           (is (schema= {:card_id            (s/eq card-id)
+                         :parameter_mappings [(s/one
+                                               {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                s/Keyword     s/Any}
+                                               "mapping")]
+                         s/Keyword           s/Any}
+                        (add-card! 200)))
+           (is (schema= [(s/one {:card_id            (s/eq card-id)
+                                 :parameter_mappings (s/eq mappings)
+                                 s/Keyword           s/Any}
+                                "DashboardCard")]
+                        (dashcards)))))))))
+
+(defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
+  (do-with-add-card-parameter-mapping-permissions-fixtures
+   (fn [{:keys [dashboard-id card-id mappings]}]
+     (mt/with-temp DashboardCard [dashboard-card {:dashboard_id       dashboard-id
+                                                  :card_id            card-id
+                                                  :parameter_mappings mappings}]
+       (let [dashcard-info     (select-keys dashboard-card [:id :sizeX :sizeY :row :col :parameter_mappings])
+             new-mappings      [{:parameter_id "_CATEGORY_ID_"
+                                 :target       [:dimension [:field (mt/id :venues :price) nil]]}]
+             new-dashcard-info (assoc dashcard-info :sizeX 1000)]
+         (f {:dashboard-id           dashboard-id
+             :card-id                card-id
+             :original-mappings      mappings
+             :new-mappings           new-mappings
+             :original-dashcard-info dashcard-info
+             :new-dashcard-info      new-dashcard-info
+             :update-mappings!       (fn [expected-status-code]
+                                       (mt/user-http-request :rasta :put expected-status-code
+                                                             (format "dashboard/%d/cards" dashboard-id)
+                                                             {:cards [(assoc dashcard-info :parameter_mappings new-mappings)]}))
+             :update-size!           (fn []
+                                       (mt/user-http-request :rasta :put 200
+                                                             (format "dashboard/%d/cards" dashboard-id)
+                                                             {:cards [new-dashcard-info]}))}))))))
+
+(deftest update-cards-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (do-with-update-cards-parameter-mapping-permissions-fixtures
+       (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+         (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
+           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                         s/Keyword s/Any}
+                        (update-mappings! 403)))
+           (is (= original-mappings
+                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Changing another column should be ok even without data permissions."
+           (is (= {:status "ok"}
+                  (update-size!)))
+           (is (= (:sizeX new-dashcard-info)
+                  (db/select-one-field :sizeX DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
+           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :venues)))
+           (is (= {:status "ok"}
+                  (update-mappings! 200)))
+           (is (= new-mappings
+                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

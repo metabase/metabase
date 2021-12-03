@@ -32,6 +32,7 @@ driver:
     - merge:
         - password
         - required: false
+    - cloud-ip-address-info
     - ssl
     - name: kerberos
       type: boolean

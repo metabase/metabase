@@ -88,12 +88,18 @@ function formatSegment([, segmentId], options) {
   return formatSegmentName(segment, options);
 }
 
-// HACK: very specific to some string functions for now
+// HACK: very specific to some string/time functions for now
 function formatFunctionOptions(fnOptions) {
   if (Object.prototype.hasOwnProperty.call(fnOptions, "case-sensitive")) {
     const caseSensitive = fnOptions["case-sensitive"];
     if (!caseSensitive) {
       return "case-insensitive";
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(fnOptions, "include-current")) {
+    const includeCurrent = fnOptions["include-current"];
+    if (includeCurrent) {
+      return "include-current";
     }
   }
 }

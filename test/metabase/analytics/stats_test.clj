@@ -1,5 +1,6 @@
-(ns metabase.util.stats-test
+(ns metabase.analytics.stats-test
   (:require [clojure.test :refer :all]
+            [metabase.analytics.stats :as stats :refer :all]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -10,7 +11,6 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.util.stats :as stats-util :refer :all]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -19,7 +19,7 @@
 
 (deftest bin-small-number-test
   (are [expected n] (= expected
-                       (#'stats-util/bin-small-number n))
+                       (#'stats/bin-small-number n))
     "0"     0
     "1-5"   1
     "1-5"   5
@@ -32,7 +32,7 @@
 
 (deftest bin-medium-number-test
   (are [expected n] (= expected
-                       (#'stats-util/bin-medium-number n))
+                       (#'stats/bin-medium-number n))
     "0"       0
     "1-5"     1
     "1-5"     5
@@ -51,8 +51,8 @@
 
 (deftest bin-large-number-test
   (are [expected n] (= expected
-                       (#'stats-util/bin-large-number n))
-    "0"      0
+                       (#'stats/bin-large-number n))
+    "0"          0
     "1-10"       1
     "1-10"       10
     "11-50"      11
@@ -89,7 +89,7 @@
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
-(def ^:private large-histogram (partial #'stats-util/histogram #'stats-util/bin-large-number))
+(def ^:private large-histogram (partial #'stats/histogram #'stats/bin-large-number))
 
 (defn- old-execution-metrics []
   (let [executions (db/select [QueryExecution :executor_id :running_time :error])]
@@ -100,11 +100,11 @@
                                       "completed")))
      :num_per_user   (large-histogram executions :executor_id)
      :num_by_latency (frequencies (for [{latency :running_time} executions]
-                                    (#'stats-util/bin-large-number (/ latency 1000))))}))
+                                    (#'stats/bin-large-number (/ latency 1000))))}))
 
 (deftest new-impl-test
   (is (= (old-execution-metrics)
-         (#'stats-util/execution-metrics))
+         (#'stats/execution-metrics))
       "the new lazy-seq version of the executions metrics works the same way the old one did"))
 
 
@@ -181,7 +181,7 @@
                     :num_cards_per_pulses {(s/required-key "1-5")  (>= 1)
                                            (s/required-key "6-10") (>= 1)
                                            s/Str                   s/Any}}
-                   (#'metabase.util.stats/pulse-metrics)))
+                   (#'metabase.analytics.stats/pulse-metrics)))
       (is (schema= {:alerts               (>= 4)
                     :with_table_cards     (>= 2)
                     :first_time_only      (>= 1)
@@ -195,4 +195,4 @@
                     :num_cards_per_alerts {(s/required-key "1-5")  (>= 1)
                                            (s/required-key "6-10") (>= 1)
                                            s/Str                   s/Any}}
-                   (#'metabase.util.stats/alert-metrics))))))
+                   (#'metabase.analytics.stats/alert-metrics))))))

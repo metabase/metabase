@@ -35,6 +35,7 @@ driver:
       display-name: Role (optional)
       helper-text: Specify a role to override the database user’s default role.
       placeholder: user
+    - cloud-ip-address-info
     - additional-options
   connection-properties-include-tunnel-config: true
 init:
