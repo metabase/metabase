@@ -44,7 +44,7 @@ type Props = {
   dataset: Question;
 };
 
-const TOOLTIP_DELAY: [number, null] = [500, null];
+const TOOLTIP_DELAY: [number, null] = [700, null];
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const resultMetadata = dataset.getResultMetadata();
