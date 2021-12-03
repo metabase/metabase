@@ -88,7 +88,9 @@ DashboardCard.propTypes = cardProps;
 const DatabaseBanner = () => {
   const userUrl = Urls.newUser();
   const databaseUrl = Urls.newDatabase();
-  const docsUrl = Settings.docsUrl("getting-started");
+  const docsUrl = Settings.docsUrl(
+    "administration-guide/01-managing-databases",
+  );
 
   return (
     <BannerRoot>
