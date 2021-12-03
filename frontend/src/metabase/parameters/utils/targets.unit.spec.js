@@ -2,6 +2,7 @@ import {
   getParameterTargetField,
   isDimensionTarget,
   isVariableTarget,
+  getTemplateTagFromTarget,
 } from "./targets";
 import {
   metadata,
@@ -23,6 +24,25 @@ describe("parameters/utils/targets", () => {
       expect(isVariableTarget(["foo"])).toBe(false);
       expect(isVariableTarget()).toBe(false);
       expect(isVariableTarget(["variable"])).toBe(true);
+    });
+  });
+
+  describe("getTemplateTagFromTarget", () => {
+    it("should return the tag of a template tag target", () => {
+      expect(
+        getTemplateTagFromTarget(["variable", ["template-tag", "foo"]]),
+      ).toBe("foo");
+      expect(
+        getTemplateTagFromTarget(["dimension", ["template-tag", "bar"]]),
+      ).toBe("bar");
+    });
+
+    it("should return null for targets that are not template tags", () => {
+      expect(getTemplateTagFromTarget(["foo"])).toBe(null);
+      expect(getTemplateTagFromTarget()).toBe(null);
+      expect(
+        getTemplateTagFromTarget(["dimension", ["field", 123, null]]),
+      ).toBe(null);
     });
   });
 
