@@ -37,10 +37,18 @@ function findMBQL(op) {
   return clause;
 }
 
-const isCompatible = (a, b) =>
-  a === b ||
-  (a === "expression" && (b === "number" || b === "string")) ||
-  (a === "aggregation" && b === "number");
+const isCompatible = (a, b) => {
+  if (a === b) {
+    return true;
+  }
+  if (a === "expression" && (b === "number" || b === "string")) {
+    return true;
+  }
+  if (a === "aggregation" && b === "number") {
+    return true;
+  }
+  return false;
+};
 
 export function resolve(expression, type = "expression", fn = undefined) {
   if (Array.isArray(expression)) {
