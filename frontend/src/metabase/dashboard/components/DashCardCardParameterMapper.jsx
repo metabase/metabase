@@ -9,6 +9,8 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import { isVariableTarget } from "metabase/parameters/utils/targets";
 import { isDateParameter } from "metabase/parameters/utils/parameter-type";
+import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/lib/Question";
 
 import {
   getEditingParameter,
@@ -25,6 +27,7 @@ import {
   TargetButtonText,
   CloseIconButton,
   ChevrondownIcon,
+  KeyIcon,
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 
@@ -41,6 +44,7 @@ const mapStateToProps = (state, props) => ({
   target: getParameterTarget(state, props),
   mappingOptions: makeGetParameterMappingOptions()(state, props),
   mappingsByParameter: getMappingsByParameter(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -54,6 +58,7 @@ DashCardCardParameterMapper.propTypes = {
   target: PropTypes.object,
   mappingOptions: PropTypes.array.isRequired,
   mappingsByParameter: PropTypes.object.isRequired,
+  metadata: PropTypes.object.isRequired,
   setParameterMapping: PropTypes.func.isRequired,
 };
 
@@ -64,6 +69,7 @@ function DashCardCardParameterMapper({
   target,
   mappingsByParameter,
   mappingOptions,
+  metadata,
   setParameterMapping,
 }) {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
@@ -83,16 +89,31 @@ function DashCardCardParameterMapper({
     [card.id, dashcard.id, editingParameter.id, setParameterMapping],
   );
 
-  const { variant, buttonText, buttonIcon } = useMemo(() => {
-    if (isDisabled) {
+  const hasPermissionsToMap = useMemo(() => {
+    const question = new Question(card, metadata);
+    console.log(question, question.query().isEditable());
+    return question.query().isEditable();
+  }, [card, metadata]);
+
+  const { variant, tooltip, buttonText, buttonIcon } = useMemo(() => {
+    if (!hasPermissionsToMap) {
+      return {
+        variant: "unauthed",
+        tooltip: t`You don’t have permission to see this question’s columns.`,
+        text: null,
+        buttonIcon: <KeyIcon />,
+      };
+    } else if (isDisabled) {
       return {
         variant: "disabled",
+        tooltip: t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`,
         buttonText: t`No valid fields`,
         buttonIcon: null,
       };
     } else if (selectedMappingOption) {
       return {
         variant: "mapped",
+        tooltip: null,
         buttonText: formatSelected(selectedMappingOption),
         buttonIcon: (
           <CloseIconButton
@@ -106,26 +127,25 @@ function DashCardCardParameterMapper({
     } else {
       return {
         variant: "default",
+        tooltip: null,
         buttonText: t`Select…`,
         buttonIcon: <ChevrondownIcon />,
       };
     }
-  }, [isDisabled, selectedMappingOption, handleChangeTarget]);
+  }, [
+    hasPermissionsToMap,
+    isDisabled,
+    selectedMappingOption,
+    handleChangeTarget,
+  ]);
 
   return (
     <Container>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
-
       <Header>{t`Column to filter on`}</Header>
-      <Tooltip
-        tooltip={
-          isDisabled
-            ? t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`
-            : null
-        }
-      >
+      <Tooltip tooltip={tooltip}>
         <TippyPopover
-          visible={isDropdownVisible && !isDisabled}
+          visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
           onClickOutside={() => setIsDropdownVisible(false)}
           placement="bottom-start"
           content={
@@ -143,7 +163,7 @@ function DashCardCardParameterMapper({
             variant={variant}
             aria-haspopup="listbox"
             aria-expanded={isDropdownVisible}
-            aria-disabled={isDisabled}
+            aria-disabled={isDisabled || !hasPermissionsToMap}
             onClick={() => {
               setIsDropdownVisible(true);
             }}
@@ -153,7 +173,7 @@ function DashCardCardParameterMapper({
               }
             }}
           >
-            <TargetButtonText>{buttonText}</TargetButtonText>
+            {buttonText && <TargetButtonText>{buttonText}</TargetButtonText>}
             {buttonIcon}
           </TargetButton>
         </TippyPopover>

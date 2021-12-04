@@ -61,6 +61,15 @@ export const TargetButton = forwardRefToInnerRef(styled.div.attrs({
       background-color: ${color("brand")};
       color: ${color("white")};
     `}
+
+  ${({ variant }) =>
+    variant === "unauthed" &&
+    css`
+      pointer-events: none;
+      border-color: ${color("bg-light")};
+      background-color: ${color("bg-light")};
+      color: ${color("text-medium")};
+    `}
 `);
 
 export const TargetButtonText = styled.span`
@@ -88,6 +97,13 @@ export const ChevrondownIcon = styled(Icon).attrs({
   size: 12,
 })`
   margin-top: 2px;
+`;
+
+export const KeyIcon = styled(Icon).attrs({
+  name: "key",
+  size: 18,
+})`
+  flex: 1;
 `;
 
 export const Warning = styled.span`
