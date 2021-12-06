@@ -1,26 +1,26 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 import CollectionList from "metabase/components/CollectionList";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import * as Urls from "metabase/lib/urls";
+import React from "react";
+import { t } from "ttag";
+import { Collection, User } from "../../types";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
+  CollectionContent,
   CollectionLink,
   CollectionLinkIcon,
   CollectionLinkText,
   EmptyStateImage,
   EmptyStateRoot,
   EmptyStateTitle,
-  CollectionContent,
 } from "./CollectionSection.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  collections: PropTypes.array.isRequired,
-};
+export interface Props {
+  user: User;
+  collections: Collection[];
+}
 
-const CollectionSection = ({ user, collections }) => {
+const CollectionSection = ({ user, collections }: Props) => {
   const showList = collections.some(c => c.id !== user.personal_collection_id);
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
@@ -47,13 +47,11 @@ const CollectionSection = ({ user, collections }) => {
   );
 };
 
-CollectionSection.propTypes = propTypes;
+interface EmptyStateProps {
+  user: User;
+}
 
-const emptyStatePropTypes = {
-  user: PropTypes.object.isRequired,
-};
-
-const EmptyState = ({ user }) => {
+const EmptyState = ({ user }: EmptyStateProps) => {
   return (
     <EmptyStateRoot>
       <EmptyStateImage
@@ -68,7 +66,5 @@ const EmptyState = ({ user }) => {
     </EmptyStateRoot>
   );
 };
-
-EmptyState.propTypes = emptyStatePropTypes;
 
 export default CollectionSection;

@@ -57,7 +57,8 @@ export const iconPropTypes = {
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
-  innerRef: PropTypes.func.isRequired,
+  innerRef: PropTypes.func,
+  onClick: PropTypes.func,
 };
 
 type IconProps = PropTypes.InferProps<typeof iconPropTypes>;

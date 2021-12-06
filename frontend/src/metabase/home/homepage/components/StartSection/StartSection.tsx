@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
+import { Dashboard, Database, User } from "../../types";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   BannerCloseIcon,
@@ -29,13 +30,21 @@ const propTypes = {
   onHidePinMessage: PropTypes.func,
 };
 
+export interface Props {
+  user: User;
+  databases: Database[];
+  dashboards: Dashboard[];
+  showPinMessage?: boolean;
+  onHidePinMessage?: () => void;
+}
+
 const StartSection = ({
   user,
   databases,
   dashboards,
   showPinMessage,
   onHidePinMessage,
-}) => {
+}: Props) => {
   const showDatabaseBanner =
     user.is_superuser && !databases.some(d => !d.is_sample);
   const showDashboardBanner =
@@ -66,13 +75,11 @@ const StartSection = ({
   );
 };
 
-StartSection.propTypes = propTypes;
+export interface DashboardCardProps {
+  dashboard: Dashboard;
+}
 
-const cardProps = {
-  dashboard: PropTypes.object,
-};
-
-const DashboardCard = ({ dashboard }) => {
+const DashboardCard = ({ dashboard }: DashboardCardProps) => {
   const dashboardUrl = Urls.dashboard(dashboard);
 
   return (
@@ -82,8 +89,6 @@ const DashboardCard = ({ dashboard }) => {
     </CardRoot>
   );
 };
-
-DashboardCard.propTypes = cardProps;
 
 const DatabaseBanner = () => {
   const userUrl = Urls.newUser();
@@ -117,12 +122,12 @@ const DatabaseBanner = () => {
   );
 };
 
-const dashboardBannerProps = {
-  user: PropTypes.object.isRequired,
-  onHidePinMessage: PropTypes.func,
-};
+export interface DashboardBannerProps {
+  user: User;
+  onHidePinMessage?: () => void;
+}
 
-const DashboardBanner = ({ user, onHidePinMessage }) => {
+const DashboardBanner = ({ user, onHidePinMessage }: DashboardBannerProps) => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (
@@ -144,7 +149,5 @@ const DashboardBanner = ({ user, onHidePinMessage }) => {
     </BannerRoot>
   );
 };
-
-DashboardBanner.propTypes = dashboardBannerProps;
 
 export default StartSection;

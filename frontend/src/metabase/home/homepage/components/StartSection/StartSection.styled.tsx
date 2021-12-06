@@ -7,7 +7,11 @@ import {
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const ListRoot = styled.div`
+interface ListRootProps {
+  hasMargin?: boolean;
+}
+
+export const ListRoot = styled.div<ListRootProps>`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;

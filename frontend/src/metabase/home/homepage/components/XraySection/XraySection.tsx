@@ -1,12 +1,17 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { t } from "ttag";
 import Button from "metabase/components/Button";
-import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+import React, { ReactNode } from "react";
+import { t } from "ttag";
+import {
+  Dashboard,
+  DatabaseCandidate,
+  TableCandidate,
+  User,
+} from "../../types";
 import Section, {
-  SectionHeader,
   SectionCloseIcon,
+  SectionHeader,
   SectionTitle,
 } from "../Section";
 import {
@@ -17,13 +22,13 @@ import {
   ListRoot,
 } from "./XraySection.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  dashboards: PropTypes.array,
-  databaseCandidates: PropTypes.array,
-  showXrays: PropTypes.bool,
-  onHideXrays: PropTypes.func,
-};
+interface Props {
+  user: User;
+  dashboards: Dashboard[];
+  databaseCandidates: DatabaseCandidate[];
+  showXrays?: boolean;
+  onHideXrays?: () => void;
+}
 
 const XraySection = ({
   user,
@@ -31,7 +36,7 @@ const XraySection = ({
   databaseCandidates = [],
   showXrays,
   onHideXrays,
-}) => {
+}: Props) => {
   const options = databaseCandidates.flatMap(database => database.tables);
 
   if (!showXrays || dashboards.length || !options.length) {
@@ -43,11 +48,11 @@ const XraySection = ({
       <SectionHeader>
         <SectionTitle>{t`Try these x-rays based on your data`}</SectionTitle>
         {user.is_superuser && (
-          <SectionRemoveModal onSubmit={onHideXrays}>
+          <XrayModal onSubmit={onHideXrays}>
             <Tooltip tooltip={t`Remove these suggestions`}>
               <SectionCloseIcon name="close" />
             </Tooltip>
-          </SectionRemoveModal>
+          </XrayModal>
         )}
       </SectionHeader>
       <ListRoot>
@@ -59,13 +64,11 @@ const XraySection = ({
   );
 };
 
-XraySection.propTypes = propTypes;
+interface XrayCardProps {
+  option: TableCandidate;
+}
 
-const cardPropTypes = {
-  option: PropTypes.object.isRequired,
-};
-
-const XrayCard = ({ option }) => {
+const XrayCard = ({ option }: XrayCardProps) => {
   return (
     <CardRoot to={option.url}>
       <CardIconContainer>
@@ -78,14 +81,12 @@ const XrayCard = ({ option }) => {
   );
 };
 
-XrayCard.propTypes = cardPropTypes;
+interface XrayModalProps {
+  children?: ReactNode;
+  onSubmit?: () => void;
+}
 
-const modalPropTypes = {
-  children: PropTypes.node,
-  onSubmit: PropTypes.func,
-};
-
-const SectionRemoveModal = ({ children, onSubmit }) => {
+const XrayModal = ({ children, onSubmit }: XrayModalProps) => {
   return (
     <ModalWithTrigger
       title={t`Remove these suggestions?`}
@@ -98,7 +99,5 @@ const SectionRemoveModal = ({ children, onSubmit }) => {
     </ModalWithTrigger>
   );
 };
-
-SectionRemoveModal.propTypes = modalPropTypes;
 
 export default XraySection;
