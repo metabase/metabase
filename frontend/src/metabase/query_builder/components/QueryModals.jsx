@@ -204,7 +204,7 @@ export default class QueryModals extends React.Component {
         />
       </Modal>
     ) : modal === MODAL_TYPES.TURN_INTO_DATASET ? (
-      <Modal onClose={onCloseModal}>
+      <Modal small onClose={onCloseModal}>
         <NewDatasetModal onClose={onCloseModal} />
       </Modal>
     ) : null;
