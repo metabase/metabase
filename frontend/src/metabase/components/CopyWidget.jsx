@@ -6,8 +6,6 @@ import cx from "classnames";
 import CopyButton from "./CopyButton";
 
 export default class CopyWidget extends Component {
-  props;
-
   render() {
     const { value, onChange, style, ...props } = this.props;
     return (

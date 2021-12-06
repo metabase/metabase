@@ -19,7 +19,6 @@ const DEFAULT_DESCRIPTION = "";
 const DEFAULT_VISIBLE_ITEMS = 4;
 
 export class ExplorePane extends React.Component {
-  props;
   state = {
     schemaName: null,
     visibleItems: DEFAULT_VISIBLE_ITEMS,

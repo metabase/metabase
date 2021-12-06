@@ -23,7 +23,6 @@ const Label = () => (
 );
 
 export default class PasswordReveal extends Component {
-  props;
   state = { visible: false };
 
   render() {

@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 
 export default class Quotes extends Component {
-  props;
   state = {
     count: 0,
   };

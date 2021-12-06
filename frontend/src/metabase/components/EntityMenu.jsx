@@ -13,8 +13,6 @@ import Popover from "metabase/components/Popover";
 const MENU_SHIFT_Y = 10;
 
 class EntityMenu extends Component {
-  props;
-
   state = {
     open: false,
     freezeMenu: false,

@@ -7,9 +7,6 @@ import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";
 
 export default class CopyWidget extends Component {
-  props;
-  state;
-
   constructor(props) {
     super(props);
     this.state = {

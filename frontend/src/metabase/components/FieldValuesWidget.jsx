@@ -73,11 +73,6 @@ function mapStateToProps(state, { fields = [] }) {
 
 @AutoExpanding
 export class FieldValuesWidget extends Component {
-  props;
-  state;
-
-  _cancel;
-
   constructor(props) {
     super(props);
     this.state = {

@@ -10,12 +10,6 @@ import { t } from "ttag";
 import cx from "classnames";
 
 export default class ActionButton extends Component {
-  props;
-  state;
-
-  timeout;
-  actionPromise;
-
   constructor(props) {
     super(props);
 

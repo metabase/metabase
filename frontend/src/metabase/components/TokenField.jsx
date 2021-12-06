@@ -29,9 +29,6 @@ const defaultStyleValue = {
 
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
-  props;
-  state;
-
   scrollElement = null;
 
   constructor(props) {

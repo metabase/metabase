@@ -37,8 +37,6 @@ const Progress = styled.div`
 
 // @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
-  props;
-
   static defaultProps = {
     animated: false,
     height: 10,

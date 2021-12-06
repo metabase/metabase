@@ -24,9 +24,6 @@ function splitValue({
 }
 
 export default class InputWithSelectPrefix extends Component {
-  props;
-  state;
-
   constructor(props) {
     super(props);
 
