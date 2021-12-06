@@ -22,7 +22,7 @@ const CollectionItem = ({ collection, event }) => {
   const icon = getCollectionIcon(collection);
   return (
     <ItemLink to={collection.getUrl()} data-metabase-event={event}>
-      <Card hoverable>
+      <Card hoverable compact>
         <CardContent>
           <IconContainer color={icon.color}>
             <CollectionIcon name={icon.name} tooltip={icon.tooltip} />
