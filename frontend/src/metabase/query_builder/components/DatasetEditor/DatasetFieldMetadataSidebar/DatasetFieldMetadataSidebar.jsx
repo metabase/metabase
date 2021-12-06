@@ -34,7 +34,7 @@ function getFieldSemanticTypes() {
     ...field_semantic_types,
     {
       id: null,
-      name: t`No semantic type`,
+      name: t`No special type`,
       section: t`Other`,
     },
   ];
