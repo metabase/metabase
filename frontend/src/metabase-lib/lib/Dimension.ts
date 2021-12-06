@@ -112,7 +112,7 @@ export default class Dimension {
   }
 
   // for nice debugging/console output.
-  get [Symbol.tostringTag]() {
+  get [Symbol.toStringTag]() {
     return "mbql = " + JSON.stringify(this.mbql());
   }
 
@@ -569,7 +569,7 @@ export class FieldDimension extends Dimension {
    * Whether this Field clause has a string Field name (as opposed to an integer Field ID). This generally means the
    * Field comes from a native query.
    */
-  isstringFieldName(): boolean {
+  isStringFieldName(): boolean {
     return typeof this._fieldIdOrName === "string";
   }
 
@@ -1143,7 +1143,7 @@ export class ExpressionDimension extends Dimension {
       base_type = "type/Float"; // fallback
 
       switch (type) {
-        case MONOTYPE.string:
+        case MONOTYPE.String:
           base_type = "type/Text";
           break;
 
