@@ -32,11 +32,6 @@ import {
   getDataFromClicked,
 } from "metabase/lib/click-behavior";
 
-import type {
-  DateStyle,
-  TimeEnabled,
-  TimeStyle,
-} from "metabase/lib/formatting/date";
 import {
   DEFAULT_DATE_STYLE,
   DEFAULT_TIME_STYLE,
@@ -50,69 +45,13 @@ import {
 } from "metabase/lib/formatting/link";
 import { NULL_DISPLAY_VALUE, NULL_NUMERIC_VALUE } from "metabase/lib/constants";
 
-import type Field from "metabase-lib/lib/metadata/Field";
-import type { Column, Value } from "metabase-types/types/Dataset";
-import type { DatetimeUnit } from "metabase-types/types/Query";
-import type { Moment } from "metabase-types/types";
-import type { ClickObject } from "metabase-types/types/Visualization";
-
 // a one or two character string specifying the decimal and grouping separator characters
-export type NumberSeparators = ".," | ", " | ",." | "." | ".’";
 
 // single character string specifying date separators
-export type DateSeparator = "/" | "-" | ".";
-
-export type FormattingOptions = {
-  // GENERIC
-  column?: Column | Field,
-  majorWidth?: number,
-  type?: "axis" | "cell" | "tooltip",
-  jsx?: boolean,
-  remap?: boolean,
-  // render links for type/URLs, type/Email, etc
-  rich?: boolean,
-  compact?: boolean,
-  // always format as the start value rather than the range, e.x. for bar histogram
-  noRange?: boolean,
-  // NUMBER
-  // TODO: docoument these:
-  number_style?: null | "decimal" | "percent" | "scientific" | "currency",
-  prefix?: string,
-  suffix?: string,
-  scale?: number,
-  negativeInParentheses?: boolean,
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/toLocaleString
-  scale?: number,
-  number_separators?: NumberSeparators,
-  minimumFractionDigits?: number,
-  maximumFractionDigits?: number,
-  // decimals sets both minimumFractionDigits and maximumFractionDigits
-  decimals?: number,
-  // STRING
-  view_as?: null | "link" | "email_link" | "image" | "auto",
-  link_text?: string,
-  link_template?: string,
-  clicked?: ClickObject,
-  // DATE/TIME
-  // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
-  date_style?: DateStyle,
-  date_separator?: DateSeparator,
-  date_abbreviate?: boolean,
-  date_format?: string,
-  time_style?: TimeStyle,
-  time_enabled?: TimeEnabled,
-  time_format?: string,
-  // display in local timezone or parsed timezone
-  local?: boolean,
-  // markdown template
-  markdown_template?: string,
-};
-
-type FormattedString = string | React.Element;
 
 export const FK_SYMBOL = "→";
 
-const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
+const DEFAULT_NUMBER_OPTIONS = {
   compact: false,
   maximumFractionDigits: 2,
 };
@@ -151,7 +90,7 @@ const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
-export function numberFormatterForOptions(options: FormattingOptions) {
+export function numberFormatterForOptions(options) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
@@ -169,7 +108,7 @@ export function numberFormatterForOptions(options: FormattingOptions) {
   });
 }
 
-export function formatNumber(number: number, options: FormattingOptions = {}) {
+export function formatNumber(number, options = {}) {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
@@ -243,10 +182,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
 }
 
 // replaces the decimale and grouping separators with those specified by a NumberSeparators option
-function replaceNumberSeparators(
-  formatted: string,
-  separators: NumberSeparators,
-) {
+function replaceNumberSeparators(formatted, separators) {
   const [decimalSeparator, groupingSeparator] = (separators || ".,").split("");
 
   const separatorMap = {
@@ -257,10 +193,7 @@ function replaceNumberSeparators(
   return formatted.replace(/,|\./g, separator => separatorMap[separator]);
 }
 
-function formatNumberScientific(
-  value: number,
-  options: FormattingOptions,
-): FormattedString {
+function formatNumberScientific(value, options) {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }
@@ -286,7 +219,7 @@ export const COMPACT_CURRENCY_OPTIONS = {
   currency_style: "symbol",
 };
 
-function formatNumberCompact(value: number, options: FormattingOptions) {
+function formatNumberCompact(value, options) {
   if (options.number_style === "percent") {
     return formatNumberCompactWithoutOptions(value * 100) + "%";
   }
@@ -320,7 +253,7 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
   return formatNumberCompactWithoutOptions(value);
 }
 
-function formatNumberCompactWithoutOptions(value: number) {
+function formatNumberCompactWithoutOptions(value) {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -334,10 +267,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   }
 }
 
-export function formatCoordinate(
-  value: number,
-  options: FormattingOptions = {},
-) {
+export function formatCoordinate(value, options = {}) {
   const binWidth =
     options.column &&
     options.column.binning_info &&
@@ -359,11 +289,7 @@ export function formatCoordinate(
   return formattedValue + "°" + direction;
 }
 
-export function formatRange(
-  range: [number, number],
-  formatter: (value: number) => any,
-  options: FormattingOptions = {},
-) {
+export function formatRange(range, formatter, options = {}) {
   const [start, end] = range.map(value => formatter(value, options));
   if ((options.jsx && typeof start !== "string") || typeof end !== "string") {
     return (
@@ -401,11 +327,7 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 /** This formats a time with unit as a date range */
-export function formatDateTimeRangeWithUnit(
-  value: Value,
-  unit: DatetimeUnit,
-  options: FormattingOptions = {},
-) {
+export function formatDateTimeRangeWithUnit(value, unit, options = {}) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -452,7 +374,7 @@ export function formatDateTimeRangeWithUnit(
   }
 }
 
-function formatWeek(m: Moment, options: FormattingOptions = {}) {
+function formatWeek(m, options = {}) {
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 
@@ -490,11 +412,7 @@ function formatDateTime(value, options) {
   return formatDateTimeWithUnit(value, "minute", options);
 }
 
-export function formatDateTimeWithUnit(
-  value: Value,
-  unit: DatetimeUnit,
-  options: FormattingOptions = {},
-) {
+export function formatDateTimeWithUnit(value, unit, options = {}) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -540,7 +458,7 @@ export function formatDateTimeWithUnit(
   return formatDateTimeWithFormats(m, dateFormat, timeFormat, options);
 }
 
-export function formatTime(value: Value) {
+export function formatTime(value) {
   const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
@@ -549,11 +467,7 @@ export function formatTime(value: Value) {
   }
 }
 
-export function formatTimeWithUnit(
-  value: Value,
-  unit: DatetimeUnit,
-  options: FormattingOptions = {},
-) {
+export function formatTimeWithUnit(value, unit, options = {}) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -580,8 +494,8 @@ export function formatTimeWithUnit(
 const EMAIL_ALLOW_LIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+(\.[-!#$%&'*+/0-9=?A-Z^_`a-z{|}~]+)*@[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
 
 export function formatEmail(
-  value: Value,
-  { jsx, rich, view_as = "auto", link_text, clicked }: FormattingOptions = {},
+  value,
+  { jsx, rich, view_as = "auto", link_text, clicked } = {},
 ) {
   const email = String(value);
   const label =
@@ -691,8 +605,8 @@ export function formatUrl(value, options = {}) {
 }
 
 export function formatImage(
-  value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  value,
+  { jsx, rich, view_as = "auto", link_text } = {},
 ) {
   const url = String(value);
   const protocol = getUrlProtocol(url);
@@ -705,7 +619,7 @@ export function formatImage(
 }
 
 // fallback for formatting a string without a column semantic_type
-function formatStringFallback(value: Value, options: FormattingOptions = {}) {
+function formatStringFallback(value, options = {}) {
   if (options.view_as !== null) {
     value = formatUrl(value, options);
     if (typeof value === "string") {
@@ -725,7 +639,7 @@ const MARKDOWN_RENDERERS = {
   ),
 };
 
-export function formatValue(value: Value, options: FormattingOptions = {}) {
+export function formatValue(value, options = {}) {
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
@@ -782,10 +696,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   }
 }
 
-export function getRemappedValue(
-  value: Value,
-  { remap, column }: FormattingOptions = {},
-): ?string {
+export function getRemappedValue(value, { remap, column } = {}) {
   if (remap && column) {
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       return column.remappedValue(value);
@@ -798,7 +709,7 @@ export function getRemappedValue(
   }
 }
 
-export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
+export function formatValueRaw(value, options = {}) {
   options = {
     jsx: false,
     remap: true,
@@ -883,7 +794,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   }
 }
 
-export function formatColumn(column: Column): string {
+export function formatColumn(column) {
   if (!column) {
     return "";
   } else if (column.remapped_to_column != null) {
@@ -898,7 +809,7 @@ export function formatColumn(column: Column): string {
   }
 }
 
-export function formatField(field: Field): string {
+export function formatField(field) {
   if (!field) {
     return "";
   } else if (field.dimensions && field.dimensions.name) {
@@ -937,7 +848,7 @@ export function humanize(...args) {
   return inflection.humanize(...args);
 }
 
-export function conjunct(list: string[], conjunction: string) {
+export function conjunct(list, conjunction) {
   return (
     list.slice(0, -1).join(`, `) +
     (list.length > 2 ? `,` : ``) +
@@ -946,7 +857,7 @@ export function conjunct(list: string[], conjunction: string) {
   );
 }
 
-export function duration(milliseconds: number) {
+export function duration(milliseconds) {
   const SECOND = 1000;
   const MINUTE = 60 * SECOND;
   const HOUR = 60 * MINUTE;
@@ -964,18 +875,18 @@ export function duration(milliseconds: number) {
 }
 
 // Removes trailing "id" from field names
-export function stripId(name: string) {
+export function stripId(name) {
   return name && name.replace(/ id$/i, "").trim();
 }
 
-export function slugify(name: string) {
+export function slugify(name) {
   return name && encodeURIComponent(name.toLowerCase().replace(/\s/g, "_"));
 }
 
 export function assignUserColors(
-  userIds: number[],
-  currentUserId: number,
-  colorClasses: string[] = [
+  userIds,
+  currentUserId,
+  colorClasses = [
     "bg-brand",
     "bg-purple",
     "bg-error",
@@ -1004,7 +915,7 @@ export function assignUserColors(
   return assignments;
 }
 
-export function formatSQL(sql: string) {
+export function formatSQL(sql) {
   if (typeof sql === "string") {
     sql = sql.replace(/\sFROM/, "\nFROM");
     sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
