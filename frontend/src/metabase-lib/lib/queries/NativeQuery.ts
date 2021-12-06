@@ -332,7 +332,6 @@ export default class NativeQuery extends AtomicQuery {
       return this;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let query = this;
 
     for (const snippet of snippets) {

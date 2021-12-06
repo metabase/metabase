@@ -812,7 +812,7 @@ export default class Question {
     return this._card && this._card.name;
   }
 
-  setDisplayName(name: String) {
+  setDisplayName(name: string) {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
