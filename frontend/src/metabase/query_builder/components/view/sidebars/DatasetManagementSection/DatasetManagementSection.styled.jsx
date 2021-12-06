@@ -14,6 +14,12 @@ export const SectionContent = styled.div`
   right: 8px;
 `;
 
+export const Row = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
 export const Button = styled(DefaultButton)`
   padding: 8px;
   color: ${color("brand")};
@@ -24,3 +30,8 @@ export const Button = styled(DefaultButton)`
 Button.defaultProps = {
   iconSize: 16,
 };
+
+export const MetadataIndicatorContainer = styled.div`
+  display: flex;
+  flex: 0.4;
+`;
