@@ -1,23 +1,12 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import type { Field } from "metabase-types/types/Field";
-import type {
-  ClickAction,
-  ClickActionProps,
-  ClickActionPopoverProps,
-} from "metabase-types/types/Visualization";
-
-type FieldFilter = (field: Field) => boolean;
-
 // PivotByDrill displays a breakout picker, and optionally filters by the
 // clicked dimesion values (and removes corresponding breakouts)
-export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
-  question,
-  clicked,
-}: ClickActionProps): ClickAction[] => {
+export default (name, icon, fieldFilter) => ({ question, clicked }) => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];
@@ -52,7 +41,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
         </span>
       ),
       // eslint-disable-next-line react/display-name
-      popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
+      popover: ({ onChangeCardAndRun, onClose }) => (
         <BreakoutPopover
           query={query}
           breakoutOptions={breakoutOptions}
