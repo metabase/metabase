@@ -6,10 +6,6 @@ import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader
 import Visualization from "metabase/visualizations/components/Visualization";
 
 export default class QuestionApp extends React.Component {
-  props;
-
-  static routes;
-
   render() {
     const { location, params } = this.props;
     if (!location.hash && !params.questionId) {
