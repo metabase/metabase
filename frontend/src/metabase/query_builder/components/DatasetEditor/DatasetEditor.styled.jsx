@@ -1,6 +1,11 @@
 import styled, { css } from "styled-components";
+import EditBar from "metabase/components/EditBar";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+
+export const DatasetEditBar = styled(EditBar)`
+  background-color: ${color("nav")};
+`;
 
 export const TableHeaderColumnName = styled.div`
   display: flex;

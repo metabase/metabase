@@ -7,7 +7,6 @@ import _ from "underscore";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import EditBar from "metabase/components/EditBar";
 import Icon from "metabase/components/Icon";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
@@ -26,6 +25,7 @@ import EditorTabs from "./EditorTabs";
 
 import {
   Root,
+  DatasetEditBar,
   MainContainer,
   QueryEditorContainer,
   TableHeaderColumnName,
@@ -176,7 +176,7 @@ function DatasetEditor(props) {
 
   return (
     <React.Fragment>
-      <EditBar
+      <DatasetEditBar
         title={t`You're editing ${dataset.displayName()}`}
         center={
           <EditorTabs
