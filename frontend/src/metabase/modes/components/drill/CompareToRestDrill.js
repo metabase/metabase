@@ -1,14 +1,11 @@
+/* eslint-disable react/prop-types */
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { t } from "ttag";
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
 
 import { isExpressionField } from "metabase/lib/query/field_ref";
 import MetabaseSettings from "metabase/lib/settings";
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked }) => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];

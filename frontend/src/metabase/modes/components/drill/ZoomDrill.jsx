@@ -1,16 +1,9 @@
+/* eslint-disable react/prop-types */
 import { drillDownForDimensions } from "metabase/modes/lib/actions";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
 import { t } from "ttag";
 
-export default ({
-  question,
-  clicked,
-  settings,
-}: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked, settings }) => {
   const dimensions = (clicked && clicked.dimensions) || [];
   const drilldown = drillDownForDimensions(dimensions, question.metadata());
   if (!drilldown) {
