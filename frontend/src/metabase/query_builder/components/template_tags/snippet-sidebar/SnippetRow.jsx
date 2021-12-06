@@ -14,7 +14,7 @@ const ICON_SIZE = 16;
   wrapped: true,
 })
 class SnippetRow extends React.Component {
-  state: { isOpen: boolean };
+  state;
 
   constructor(props) {
     super(props);
