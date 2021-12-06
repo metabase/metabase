@@ -381,7 +381,7 @@ describe("scenarios > admin > databases > add", () => {
       hidden.forEach(field => cy.findByText(field).should("not.exist"));
     };
 
-    const ssl = "Use a secure connection (SSL)?",
+    const ssl = "Use a secure connection (SSL)",
       sslMode = "SSL Mode",
       useClientCert = "Authenticate client certificate?",
       clientPemCert = "SSL Client Certificate (PEM)",
