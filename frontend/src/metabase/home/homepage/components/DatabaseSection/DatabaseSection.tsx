@@ -19,7 +19,7 @@ import {
   ListRoot,
 } from "./DatabaseSection.styled";
 
-export interface Props {
+interface Props {
   user: User;
   databases: Database[];
   showData?: boolean;

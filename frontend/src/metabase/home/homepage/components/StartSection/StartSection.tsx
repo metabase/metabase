@@ -1,11 +1,10 @@
-import React from "react";
-import PropTypes from "prop-types";
-import { jt, t } from "ttag";
+import ExternalLink from "metabase/components/ExternalLink";
+import Link from "metabase/components/Link";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import Link from "metabase/components/Link";
-import ExternalLink from "metabase/components/ExternalLink";
+import React from "react";
+import { jt, t } from "ttag";
 import { Dashboard, Database, User } from "../../types";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
@@ -22,15 +21,7 @@ import {
   ListRoot,
 } from "./StartSection.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  databases: PropTypes.array.isRequired,
-  dashboards: PropTypes.array.isRequired,
-  showPinMessage: PropTypes.bool,
-  onHidePinMessage: PropTypes.func,
-};
-
-export interface Props {
+interface Props {
   user: User;
   databases: Database[];
   dashboards: Dashboard[];
@@ -75,7 +66,7 @@ const StartSection = ({
   );
 };
 
-export interface DashboardCardProps {
+interface DashboardCardProps {
   dashboard: Dashboard;
 }
 
@@ -122,7 +113,7 @@ const DatabaseBanner = () => {
   );
 };
 
-export interface DashboardBannerProps {
+interface DashboardBannerProps {
   user: User;
   onHidePinMessage?: () => void;
 }

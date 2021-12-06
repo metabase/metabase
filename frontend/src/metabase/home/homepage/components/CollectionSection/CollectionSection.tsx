@@ -15,7 +15,7 @@ import {
   EmptyStateTitle,
 } from "./CollectionSection.styled";
 
-export interface Props {
+interface Props {
   user: User;
   collections: Collection[];
 }
