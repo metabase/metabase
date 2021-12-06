@@ -30,8 +30,6 @@ import _ from "underscore";
 // schema: normalizr schema, defaults to `new schema.Entity(entity.name)`
 //
 
-// FIXME
-
 export function createEntity(def) {
   const entity = { ...def };
 
