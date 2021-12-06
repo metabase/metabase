@@ -148,6 +148,7 @@ function DashCardCardParameterMapper({
           visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
           onClickOutside={() => setIsDropdownVisible(false)}
           placement="bottom-start"
+          interactive
           content={
             <ParameterTargetList
               onChange={target => {
