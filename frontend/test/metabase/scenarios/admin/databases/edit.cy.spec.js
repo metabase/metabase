@@ -18,7 +18,7 @@ describe("scenarios > admin > databases > edit", () => {
   describe("Connection tab", () => {
     it("shows the connection settings for sample dataset correctly", () => {
       cy.visit("/admin/databases/1");
-      cy.findByLabelText("Name").should("have.value", "Sample Dataset");
+      cy.findByLabelText("Display name").should("have.value", "Sample Dataset");
       cy.findByLabelText("Connection String").should($input =>
         expect($input[0].value).to.match(/sample-dataset\.db/),
       );
@@ -27,9 +27,7 @@ describe("scenarios > admin > databases > edit", () => {
     it("lets you modify the connection settings", () => {
       cy.visit("/admin/databases/1");
 
-      cy.findByLabelText(
-        "This is a large database, so let me choose when Metabase syncs and scans",
-      ).click();
+      cy.findByLabelText("Choose when syncs and scans happen").click();
 
       cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>
@@ -49,9 +47,11 @@ describe("scenarios > admin > databases > edit", () => {
     it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATASET`", () => {
       cy.visit("/admin/databases/1");
 
-      cy.findByLabelText(
-        "Automatically run queries when doing simple filtering and summarizing",
-      ).should("have.attr", "aria-checked", "true");
+      cy.findByLabelText("Rerun queries for simple explorations").should(
+        "have.attr",
+        "aria-checked",
+        "true",
+      );
     });
 
     it("should respect the settings for automatic query running (metabase#13187)", () => {
@@ -63,9 +63,11 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
 
       cy.log("Reported failing on v0.36.4");
-      cy.findByLabelText(
-        "Automatically run queries when doing simple filtering and summarizing",
-      ).should("have.attr", "aria-checked", "false");
+      cy.findByLabelText("Rerun queries for simple explorations").should(
+        "have.attr",
+        "aria-checked",
+        "false",
+      );
     });
 
     describeWithToken("caching", () => {

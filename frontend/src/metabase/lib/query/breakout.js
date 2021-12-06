@@ -1,14 +1,12 @@
-import type { Breakout, BreakoutClause } from "metabase-types/types/Query";
-
 import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Breakouts, with nulls removed
-export function getBreakouts(breakouts: ?BreakoutClause): Breakout[] {
+export function getBreakouts(breakouts) {
   return (breakouts || []).filter(b => b != null);
 }
 
 // turns a list of Breakouts into the canonical BreakoutClause
-export function getBreakoutClause(breakouts: Breakout[]): ?BreakoutClause {
+export function getBreakoutClause(breakouts) {
   breakouts = getBreakouts(breakouts);
   if (breakouts.length === 0) {
     return undefined;
@@ -17,27 +15,17 @@ export function getBreakoutClause(breakouts: Breakout[]): ?BreakoutClause {
   }
 }
 
-export function addBreakout(
-  breakout: ?BreakoutClause,
-  newBreakout: Breakout,
-): ?BreakoutClause {
+export function addBreakout(breakout, newBreakout) {
   return getBreakoutClause(add(getBreakouts(breakout), newBreakout));
 }
-export function updateBreakout(
-  breakout: ?BreakoutClause,
-  index: number,
-  updatedBreakout: Breakout,
-): ?BreakoutClause {
+export function updateBreakout(breakout, index, updatedBreakout) {
   return getBreakoutClause(
     update(getBreakouts(breakout), index, updatedBreakout),
   );
 }
-export function removeBreakout(
-  breakout: ?BreakoutClause,
-  index: number,
-): ?BreakoutClause {
+export function removeBreakout(breakout, index) {
   return getBreakoutClause(remove(getBreakouts(breakout), index));
 }
-export function clearBreakouts(breakout: ?BreakoutClause): ?BreakoutClause {
+export function clearBreakouts(breakout) {
   return getBreakoutClause(clear());
 }

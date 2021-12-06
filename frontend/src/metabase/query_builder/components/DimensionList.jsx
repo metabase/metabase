@@ -8,41 +8,8 @@ import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { DimensionPicker } from "./DimensionPicker";
-
-// import type { Section } from "metabase/components/AccordionList";
-export type AccordionListItem = {};
-
-export type AccordionListSection = {
-  name: ?string,
-  items: AccordionListItem[],
-};
-
-type Props = {
-  className?: string,
-  maxHeight?: number,
-  width?: ?number | ?string,
-
-  dimension?: ?Dimension,
-  dimensions?: Dimension[],
-  onChangeDimension: (dimension: Dimension) => void,
-  onChangeOther?: (item: any) => void,
-
-  onAddDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-  onRemoveDimension?: (dimension: Dimension, item: AccordionListItem) => void,
-
-  sections: AccordionListSection[],
-
-  alwaysExpanded?: boolean,
-  enableSubDimensions?: boolean,
-  useOriginalDimension?: boolean,
-  preventNumberSubDimensions?: boolean,
-};
-
-type State = {
-  sections: AccordionListSection[],
-};
 
 const SUBMENU_TETHER_OPTIONS = {
   attachment: "top left",
@@ -58,11 +25,7 @@ const SUBMENU_TETHER_OPTIONS = {
 };
 
 export default class DimensionList extends Component {
-  props: Props;
-  state: State = {
-    sections: [],
-  };
-  state: State = {
+  state = {
     sections: [],
   };
 

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 import _ from "underscore";
 
@@ -10,12 +11,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
-
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
   const columnSettings =
     (clicked &&

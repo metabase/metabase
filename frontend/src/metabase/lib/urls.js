@@ -79,7 +79,7 @@ export function serializedQuestion(card) {
   return question(null, card);
 }
 
-export const extractQueryParams = (query: Object): Array => {
+export const extractQueryParams = query => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
 

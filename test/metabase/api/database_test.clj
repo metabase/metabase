@@ -45,19 +45,21 @@
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]
-   (db-details (mt/db)))
+   (-> (db-details (mt/db))
+       (assoc :initial_sync_status "complete")))
 
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name])
-    {:engine   (u/qualified-name (:engine db))
-     :features (map u/qualified-name (driver.u/features driver db))})))
+    {:engine (u/qualified-name (:engine db))
+     :features (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status "complete"})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
              (select-keys table [:active :created_at :db_id :description :display_name :entity_type
-                                 :id :name :rows :schema :updated_at :visibility_type]))
+                                 :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))))
 
@@ -149,7 +151,8 @@
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
                      :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))})
+                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))
+                     :creator_id (s/eq (mt/user->id :crowberto))})
                    (create-db-via-api!))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
@@ -236,41 +239,42 @@
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (mt/object-defaults Database) :details)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone])
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
                                     (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
-                                    {:schema       "PUBLIC"
-                                     :name         "CATEGORIES"
-                                     :display_name "Categories"
-                                     :entity_type  "entity/GenericTable"
-                                     :fields       [(merge
-                                                     (field-details (Field (mt/id :categories :id)))
-                                                     {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/PK"
-                                                      :name              "ID"
-                                                      :display_name      "ID"
-                                                      :database_type     "BIGINT"
-                                                      :base_type         "type/BigInteger"
-                                                      :effective_type    "type/BigInteger"
-                                                      :visibility_type   "normal"
-                                                      :has_field_values  "none"
-                                                      :database_position 0})
-                                                    (merge
-                                                     (field-details (Field (mt/id :categories :name)))
-                                                     {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/Name"
-                                                      :name              "NAME"
-                                                      :display_name      "Name"
-                                                      :database_type     "VARCHAR"
-                                                      :base_type         "type/Text"
-                                                      :effective_type    "type/Text"
-                                                      :visibility_type   "normal"
-                                                      :has_field_values  "list"
-                                                      :database_position 1})]
+                                    {:schema              "PUBLIC"
+                                     :name                "CATEGORIES"
+                                     :display_name        "Categories"
+                                     :entity_type         "entity/GenericTable"
+                                     :initial_sync_status "complete"
+                                     :fields              [(merge
+                                                            (field-details (Field (mt/id :categories :id)))
+                                                            {:table_id          (mt/id :categories)
+                                                             :semantic_type     "type/PK"
+                                                             :name              "ID"
+                                                             :display_name      "ID"
+                                                             :database_type     "BIGINT"
+                                                             :base_type         "type/BigInteger"
+                                                             :effective_type    "type/BigInteger"
+                                                             :visibility_type   "normal"
+                                                             :has_field_values  "none"
+                                                             :database_position 0})
+                                                           (merge
+                                                            (field-details (Field (mt/id :categories :name)))
+                                                            {:table_id          (mt/id :categories)
+                                                             :semantic_type     "type/Name"
+                                                             :name              "NAME"
+                                                             :display_name      "Name"
+                                                             :database_type     "VARCHAR"
+                                                             :base_type         "type/Text"
+                                                             :effective_type    "type/Text"
+                                                             :visibility_type   "normal"
+                                                             :has_field_values  "list"
+                                                             :database_position 1})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)

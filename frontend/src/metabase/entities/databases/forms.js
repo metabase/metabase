@@ -14,20 +14,20 @@ import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidg
 
 const DATABASE_DETAIL_OVERRIDES = {
   "tunnel-enabled": () => ({
-    title: t`Use an SSH-tunnel for database connections`,
-    description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
+    title: t`Use an SSH-tunnel`,
+    description: getSshDescription(),
   }),
   "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
-    description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
+    description: t`We suggest you leave this off unless you plan on doing a lot of manual timezone casting with this data.`,
   }),
   "include-user-id-and-hash": () => ({
     title: t`Include User ID and query hash in queries`,
-    description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
+    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
   }),
   "use-srv": () => ({
-    title: t`Use DNS SRV when connecting`,
-    description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
+    title: t`Connect using DNS SRV`,
+    description: t`If you're connecting to an Atlas cluster, you might need to turn this on. Note that your provided host must be a fully qualified domain name.`,
   }),
   "client-id": (engine, details) => ({
     description: getClientIdDescription(engine, details),
@@ -67,7 +67,7 @@ const DATABASE_DETAIL_OVERRIDES = {
     title: t`Passphrase for the SSH private key`,
   }),
   "tunnel-auth-option": () => ({
-    title: t`SSH Authentication`,
+    title: t`SSH authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
@@ -79,6 +79,63 @@ const DATABASE_DETAIL_OVERRIDES = {
     type: "text",
   }),
 };
+
+function getEngineName(engine) {
+  const engineInfo = ENGINES[engine];
+  return engineInfo != null ? engineInfo["driver-name"] : t`Database`;
+}
+
+function getEngineInfo(engine, details, id) {
+  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
+  switch (engine) {
+    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
+    case "bigquery":
+      return getFieldsForBigQuery(details);
+    // Mongo has special logic to switch between a connection URI and broken out fields
+    case "mongo":
+      return getFieldsForMongo(details, engineInfo, id);
+    default:
+      return engineInfo;
+  }
+}
+
+function shouldShowEngineProvidedField(field, details) {
+  const detailAndValueRequiredToShowField = field["visible-if"];
+
+  if (detailAndValueRequiredToShowField) {
+    const pred = currentValue => {
+      const [detail, expectedDetailValue] = currentValue;
+
+      if (Array.isArray(expectedDetailValue)) {
+        // if the expectedDetailValue is itself an array, then consider the condition satisfied if any of those values
+        // match the current detail value
+        return expectedDetailValue.includes(details[detail]);
+      } else {
+        return details[detail] === expectedDetailValue;
+      }
+    };
+
+    // check all entries in the visible-if map, and only show this field if all key/values are satisfied
+    // (i.e. boolean AND)
+    return Object.entries(detailAndValueRequiredToShowField).every(pred);
+  }
+
+  return true;
+}
+
+function getSshDescription() {
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "administration-guide/ssh-tunnel-for-database-connections",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
+}
 
 const AUTH_URL_PREFIXES = {
   bigquery:
@@ -99,21 +156,6 @@ const CREDENTIALS_URL_PREFIXES = {
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
   googleanalytics:
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
-};
-
-export const DEFAULT_SCHEDULES = {
-  cache_field_values: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: 0,
-    schedule_type: "daily",
-  },
-  metadata_sync: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_type: "hourly",
-  },
 };
 
 function concatTrimmed(a, b) {
@@ -168,6 +210,7 @@ function getAuthCodeLink(engine, details) {
     );
   }
 }
+
 function getAuthCodeEnableAPILink(engine, details) {
   // for Google Analytics we need to show a link for people to go to the Console to enable the GA API
   if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
@@ -193,44 +236,6 @@ function getAuthCodeEnableAPILink(engine, details) {
       );
     }
   }
-}
-
-function getEngineInfo(engine, details, id) {
-  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
-  switch (engine) {
-    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
-    case "bigquery":
-      return getFieldsForBigQuery(details);
-    // Mongo has special logic to switch between a connection URI and broken out fields
-    case "mongo":
-      return getFieldsForMongo(details, engineInfo, id);
-    default:
-      return engineInfo;
-  }
-}
-
-function shouldShowEngineProvidedField(field, details) {
-  const detailAndValueRequiredToShowField = field["visible-if"];
-
-  if (detailAndValueRequiredToShowField) {
-    const pred = currentValue => {
-      const [detail, expectedDetailValue] = currentValue;
-
-      if (Array.isArray(expectedDetailValue)) {
-        // if the expectedDetailValue is itself an array, then consider the condition satisfied if any of those values
-        // match the current detail value
-        return expectedDetailValue.includes(details[detail]);
-      } else {
-        return details[detail] === expectedDetailValue;
-      }
-    };
-
-    // check all entries in the visible-if map, and only show this field if all key/values are satisfied
-    // (i.e. boolean AND)
-    return Object.entries(detailAndValueRequiredToShowField).every(pred);
-  }
-
-  return true;
 }
 
 function getDefaultValue(field) {
@@ -272,6 +277,7 @@ function getEngineFormFields(engine, details, id) {
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
+        helperText: field["helper-text"],
         ...(overrides && overrides(engine, details, id)),
       };
     });
@@ -347,31 +353,32 @@ const forms = {
         },
         {
           name: "name",
-          title: t`Name`,
-          placeholder: t`How would you like to refer to this database?`,
+          title: t`Display name`,
+          placeholder: t`Our ${getEngineName(engine)}`,
           validate: value => !value && t`required`,
           hidden: !engine,
+          helperText: t`Choose what this data will be called in Metabase.`,
         },
         ...(getEngineFormFields(engine, details, id) || []),
         {
           name: "auto_run_queries",
           type: "boolean",
-          title: t`Automatically run queries when doing simple filtering and summarizing`,
-          description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
+          title: t`Rerun queries for simple explorations`,
+          description: t`We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.`,
           hidden: !engine,
         },
         {
           name: "details.let-user-control-scheduling",
           type: "boolean",
-          title: t`This is a large database, so let me choose when Metabase syncs and scans`,
-          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
+          title: t`Choose when syncs and scans happen`,
+          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
           hidden: !engine,
         },
         {
           name: "refingerprint",
           type: "boolean",
           title: t`Periodically refingerprint tables`,
-          description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
+          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
           hidden: !engine,
         },
         getDatabaseCachingField(),
@@ -416,7 +423,7 @@ forms.setup = {
       ...field,
       type: field.name === "engine" ? EngineWidget : field.type,
       title: field.name === "engine" ? null : field.title,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
     })),
 };
 
@@ -441,6 +448,12 @@ forms.scheduling = {
 const SCHEDULING_FIELDS = new Set([
   "schedules.metadata_sync",
   "schedules.cache_field_values",
+]);
+
+const ADVANCED_FIELDS = new Set([
+  "auto_run_queries",
+  "details.let-user-control-scheduling",
+  ...SCHEDULING_FIELDS,
 ]);
 
 export default forms;

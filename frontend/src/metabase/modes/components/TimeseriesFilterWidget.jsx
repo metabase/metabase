@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
@@ -17,42 +18,18 @@ import {
 import cx from "classnames";
 import _ from "underscore";
 
-import type {
-  Card as CardObject,
-  StructuredDatasetQuery,
-} from "metabase-types/types/Card";
-import type { FieldFilter } from "metabase-types/types/Query";
-
-type Props = {
-  className?: string,
-  card: CardObject,
-  setDatasetQuery: (
-    datasetQuery: StructuredDatasetQuery,
-    options: { run: boolean },
-  ) => void,
-};
-
-type State = {
-  filterIndex: number,
-  filter: FieldFilter,
-  currentFilter: any,
-};
-
 export default class TimeseriesFilterWidget extends Component {
-  props: Props;
-  state: State = {
+  state = {
     filter: null,
     filterIndex: -1,
     currentFilter: null,
   };
 
-  _popover: ?any;
-
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const query = Card.getQuery(nextProps.card);
     if (query) {
       const breakouts = Query.getBreakouts(query);
@@ -131,7 +108,7 @@ export default class TimeseriesFilterWidget extends Component {
                 } else {
                   query = Query.addFilter(query, filter);
                 }
-                const datasetQuery: StructuredDatasetQuery = {
+                const datasetQuery = {
                   ...card.dataset_query,
                   query,
                 };

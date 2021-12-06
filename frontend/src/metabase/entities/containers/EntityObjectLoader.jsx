@@ -7,43 +7,8 @@ import _ from "underscore";
 import entityType from "./EntityType";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-export type Props = {
-  // Entity ID, such as a database ID
-  entityId: any,
-  // Entity type name (e.x. "databases", "questions", etc)
-  entityType: string,
-  // Reload the object when the component is mounted (or entityId changes)
-  reload?: boolean,
-  // Wrap the object in the a class that contains helper functions
-  wrapped?: boolean,
-  // List of required properties, if the object is loaded and they are all
-  // present don't bother loading as the object has been loaded by some other means
-  properties?: string[],
-  // Wrap the children in LoadingAndErrorWrapper to display loading and error states
-  // When true (default) the children render prop won't be called until loaded
-  loadingAndErrorWrapper: boolean,
-  // selectorName overrides the default getObject selector
-  selectorName?: string,
-  // Children render prop
-  children?: (props: RenderProps) => ?React.Element,
-};
-
-export type RenderProps = {
-  // the loaded objecvt itself
-  object: ?any,
-  // data was loaded at least once
-  fetched: boolean,
-  // data is loaded and no pending requests
-  loaded: boolean,
-  //  request is pending
-  loading: boolean,
-  // error occured
-  error: ?any,
-  remove: () => Promise<void>,
-};
-
 // props that shouldn't be passed to children in order to properly stack
-const CONSUMED_PROPS: string[] = [
+const CONSUMED_PROPS = [
   "entityType",
   "entityId",
   // "reload", // Masked by `reload` function. Should we rename that?
@@ -70,7 +35,7 @@ const CONSUMED_PROPS: string[] = [
   },
 )
 export default class EntityObjectLoader extends React.Component {
-  props: Props;
+  props;
 
   static defaultProps = {
     loadingAndErrorWrapper: true,
@@ -78,9 +43,9 @@ export default class EntityObjectLoader extends React.Component {
     wrapped: false,
   };
 
-  _getWrappedObject: ?(props: Props) => any;
+  _getWrappedObject;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this._getWrappedObject = createSelector(
@@ -103,7 +68,7 @@ export default class EntityObjectLoader extends React.Component {
       );
     }
   }
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (
       nextProps.entityId !== this.props.entityId &&
       nextProps.entityId != null
@@ -157,11 +122,11 @@ export default class EntityObjectLoader extends React.Component {
   };
 }
 
-export const entityObjectLoader = (eolProps: Props) =>
+export const entityObjectLoader = eolProps =>
   // eslint-disable-line react/display-name
-  (ComposedComponent: any) =>
+  ComposedComponent =>
     // eslint-disable-next-line react/display-name
-    (props: Props) => (
+    props => (
       <EntityObjectLoader {...props} {...eolProps}>
         {childProps => (
           <ComposedComponent

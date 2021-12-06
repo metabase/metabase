@@ -72,17 +72,13 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-type DashboardAppState = {
-  addCardOnLoad: number | null,
-};
-
 @connect(mapStateToProps, mapDispatchToProps)
 @fitViewport
 @title(({ dashboard }) => dashboard && dashboard.name)
 @titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
-  state: DashboardAppState = {
+  state = {
     addCardOnLoad: null,
   };
 

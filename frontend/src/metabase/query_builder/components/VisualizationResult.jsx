@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint "react/prop-types": "warn" */
 
 import React, { Component } from "react";
@@ -7,35 +8,12 @@ import cx from "classnames";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import type { Question } from "metabase-lib/lib/Question";
-
-type Props = {
-  className?: string,
-  question: Question,
-  isObjectDetail: boolean,
-  result: any,
-  results: any[],
-  isDirty: boolean,
-  lastRunDatasetQuery: DatasetQuery,
-  navigateToNewCardInsideQB: any => void,
-  rawSeries: any,
-
-  isVisualizationClickable: boolean,
-
-  onOpenChartSettings: () => void,
-  onUpdateWarnings: () => void,
-  onUpdateVisualizationSettings: (settings: any) => void,
-  query?: StructuredQuery,
-};
 
 export default class VisualizationResult extends Component {
-  props: Props;
+  props;
   state = {
     showCreateAlertModal: false,
   };

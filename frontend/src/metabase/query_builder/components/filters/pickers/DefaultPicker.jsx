@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
@@ -12,19 +13,6 @@ import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
 } from "metabase/lib/schema_metadata";
-
-import type Filter from "metabase-lib/lib/queries/structured/Filter";
-
-type Props = {
-  filter: Filter,
-  setValue: (index: number, value: any) => void,
-  setValues: (value: any[]) => void,
-  onCommit: () => void,
-  className?: string,
-  isSidebar?: boolean,
-  minWidth?: number,
-  maxWidth?: number,
-};
 
 const defaultPickerPropTypes = {
   filter: PropTypes.object,
@@ -51,7 +39,7 @@ export default function DefaultPicker({
   isSidebar,
   minWidth,
   maxWidth,
-}: Props) {
+}) {
   const operator = filter.operator();
   if (!operator) {
     return <div className={className} />;
@@ -81,7 +69,7 @@ export default function DefaultPicker({
           <SelectPicker
             key={index}
             options={operatorField.values}
-            values={(values: Array<string>)}
+            values={values}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
             multi={operator.multi}
@@ -98,7 +86,7 @@ export default function DefaultPicker({
         return (
           <FieldValuesWidget
             className="input"
-            value={(values: Array<string>)}
+            value={values}
             onChange={onValuesChange}
             multi={operator.multi}
             placeholder={placeholder}
@@ -117,7 +105,7 @@ export default function DefaultPicker({
         return (
           <TextPicker
             key={index}
-            values={(values: Array<string>)}
+            values={values}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
             multi={operator.multi}
@@ -128,7 +116,7 @@ export default function DefaultPicker({
         return (
           <NumberPicker
             key={index}
-            values={(values: Array<number | null>)}
+            values={values}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
             multi={operator.multi}

@@ -453,3 +453,16 @@
   :type       :json
   :setter     :none
   :getter     fetch-cloud-gateway-ips-fn)
+
+(defsetting enable-database-syncing-modal
+  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
+       " "
+       (deferred-tru "Defaults to false if any non-default database connections already exist for this instance."))
+  :visibility :admin
+  :type       :boolean
+  :getter     (fn []
+                (let [v (setting/get-boolean :enable-database-syncing-modal)]
+                  (if (nil? v)
+                    (not (db/exists? 'Database :is_sample false))
+                    ;; frontend should set this value to `true` after the modal has been shown once
+                    v))))
