@@ -17,9 +17,14 @@ driver:
       secret-kind: password
       placeholder: foo
       required: false
+    - name: ssl
+      display-name: SSL enabled?
+      type: boolean
     - name: use-keystore
       type: boolean
       display-name: Use Keystore?
+      visible-if:
+        ssl: true
     - name: keystore-password
       display-name: Keystore Password
       type: secret

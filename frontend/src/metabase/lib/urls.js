@@ -259,6 +259,10 @@ export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
 }
 
+export function newDatabase() {
+  return `/admin/databases/create`;
+}
+
 export function browseDatabase(database) {
   const name =
     database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID

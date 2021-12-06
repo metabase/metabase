@@ -309,6 +309,12 @@
   :default    true
   :visibility :authenticated)
 
+(defsetting show-homepage-pin-message
+  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"

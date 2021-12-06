@@ -11,7 +11,7 @@ import Activity from "../components/Activity";
 import RecentViews from "../components/RecentViews";
 import NextStep from "../components/NextStep";
 
-import * as homepageActions from "../actions";
+import * as activityActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
 import { Box, Flex } from "grid-styled";
@@ -23,12 +23,12 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  ...homepageActions,
+  ...activityActions,
   onChangeLocation: push,
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
-export default class HomepageApp extends Component {
+export default class ActivityApp extends Component {
   static propTypes = {
     onChangeLocation: PropTypes.func.isRequired,
     user: PropTypes.object.isRequired,

@@ -60,13 +60,6 @@
           (driver/normalize-db-details driver db*)
           db*))))
 
-(defn- conn-props->secret-props-by-name
-  "For the given `conn-props` (output of `driver/connection-properties`), return a map of all secret type properties,
-  keyed by property name."
-  [conn-props]
-  (->> (filter #(= "secret" (:type %)) conn-props)
-    (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
-
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
   simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
@@ -77,7 +70,7 @@
   [{:keys [id details] :as database}]
   (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
     (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
-          possible-secret-prop-names (keys (conn-props->secret-props-by-name conn-props))]
+          possible-secret-prop-names (keys (secret/conn-props->secret-props-by-name conn-props))]
       (doseq [secret-id (reduce (fn [acc prop-name]
                                   (if-let [secret-id (get details (keyword (str prop-name "-id")))]
                                     (conj acc secret-id)
@@ -141,7 +134,7 @@
 
           details ; we have details populated in this Database instance, so handle them
           (let [conn-props            (conn-props-fn (driver.u/database->driver database))
-                conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)
+                conn-secrets-by-name  (secret/conn-props->secret-props-by-name conn-props)
                 updated-details       (reduce-kv (partial handle-db-details-secret-prop! database)
                                                  details
                                                  conn-secrets-by-name)]

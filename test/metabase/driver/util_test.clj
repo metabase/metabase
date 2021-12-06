@@ -51,49 +51,55 @@
                                       :type        "password"
                                       :placeholder "foo"
                                       :required    false}
-                                     {:name "use-keystore"}
+                                     {:name "ssl"}
+                                     {:name "use-keystore"
+                                      :visible-if  {:ssl true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password",
                                       :type         "password",
                                       :required     false,
-                                      :visible-if   {:use-keystore true}}
-                                     {:name       "keystore-options"
-                                      :options    [{:name  "Local file path"
-                                                    :value "local"}
-                                                   {:name  "Uploaded file path"
-                                                    :value "uploaded"}]
-                                      :type       "select"
-                                      :default    "local"
-                                      :visible-if {:use-keystore true}}
+                                      :visible-if   {:use-keystore true
+                                                     ;; this should have been filled in as a transitive dependency
+                                                     :ssl          true}}
+                                     {:name         "keystore-options"
+                                      :display-name "Keystore"
+                                      :options      [{:name  "Local file path"
+                                                      :value "local"}
+                                                     {:name  "Uploaded file path"
+                                                      :value "uploaded"}]
+                                      :type         "select"
+                                      :default      "local"
+                                      :visible-if   {:use-keystore true
+                                                     :ssl          true}}
                                      {:name                 "keystore-value"
-                                      :display-name         "Keystore"
                                       :type                 "textFile"
-                                      :required             false
                                       :treat-before-posting "base64"
                                       :visible-if           {:keystore-options "uploaded"}}
                                      {:name        "keystore-path"
                                       :type        "string"
-                                      :visible-if  {:keystore-options "local"}}]
+                                      :visible-if  {:keystore-options "local"
+                                                    :use-keystore true
+                                                    :ssl          true}}]
                                     false]
                                    [[{:name "host"}
                                      {:name        "password-value"
                                       :type        "password"
                                       :placeholder "foo"
                                       :required    false}
-                                     {:name "use-keystore"}
+                                     {:name "ssl"}
+                                     {:name "use-keystore"
+                                      :visible-if  {:ssl true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password"
                                       :type         "password"
                                       :required     false
                                       :visible-if   {:use-keystore true}}
                                      {:name                 "keystore-value"
-                                      :display-name         "Keystore"
                                       :type                 "textFile"
-                                      :required             false
                                       :treat-before-posting "base64"
                                       :visible-if           {:use-keystore true}}]
                                     true]]]
-      (testing (str "with is-hosted? " is-hosted?)
+      (testing (str " with is-hosted? " is-hosted?)
         ;; TODO: create capability to temporarily override token-features for testing
         (with-redefs [premium-features/is-hosted? (constantly is-hosted?)]
           (let [client-conn-props (-> (driver.u/available-drivers-info) ; this calls connection-props-server->client
@@ -105,26 +111,40 @@
       (testing "info fields with placeholder defined are unmodified"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :placeholder "placeholder"}]))))
 
       (testing "info fields with getter defined invoke the getter to generate the placeholder"
         (is (= [{:name "test", :type :info, :placeholder "placeholder"}]
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly "placeholder")}]))))
 
       (testing "info fields are omitted if getter returns nil, a non-string value, or throws an exception"
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly nil)}])))
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter (constantly 0)}])))
         (is (= []
                (driver.u/connection-props-server->client
+                nil
                 [{:name "test", :type :info, :getter #(throw (Exception. "test error"))}])))
         (is (= []
                (driver.u/connection-props-server->client
-                [{:name "test", :type :info}])))))))
+                nil
+                [{:name "test", :type :info}]))))))
+  (testing "connection-props-server->client detects cycles in visible-if dependencies"
+    (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
+                      {:name "prop-b", :visible-if {:prop-a "something else"}}
+                      {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Cycle detected"
+            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest connection-details-client->server-test
   (testing "db-details-client->server works as expected"
