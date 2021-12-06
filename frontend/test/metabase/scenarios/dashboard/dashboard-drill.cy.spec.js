@@ -173,10 +173,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("My Param").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "num: {{my_number}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("num: {{my_number}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // wait to leave editing mode and set a param value
@@ -227,10 +226,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "text: {{my_string}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("text: {{my_string}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // click on table value

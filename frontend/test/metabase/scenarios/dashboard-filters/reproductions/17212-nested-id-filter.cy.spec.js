@@ -45,10 +45,7 @@ describe.skip("issue 17212", () => {
 
     cy.findByText("No valid fields").should("not.exist");
 
-    cy.findByText("Column to filter on")
-      .next("a")
-      .click();
-
+    cy.findByText("Select…").click();
     popover()
       .contains("ID")
       .click();
