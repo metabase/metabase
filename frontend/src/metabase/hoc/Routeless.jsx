@@ -43,8 +43,8 @@ export default (
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      _state: any;
-      _timeout: any;
+      _state;
+      _timeout;
 
       UNSAFE_componentWillMount() {
         const push = this.props._routeless_push;
