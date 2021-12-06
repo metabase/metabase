@@ -9,24 +9,28 @@ class ExpressionHighlight extends window.ace.acequire(
     this.$rules = {
       start: [
         {
-          token: "string",
-          regex: '".*?"',
-        },
-        {
           token: "constant.numeric",
           regex: "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b",
         },
         {
+          token: "string",
+          regex: '["](?:(?:\\\\.)|(?:[^"\\\\]))*?["]',
+        },
+        {
+          token: "string",
+          regex: "['](?:(?:\\\\.)|(?:[^'\\\\]))*?[']",
+        },
+        {
           token: "variable",
-          regex: "[[a-zA-Z0-9_s→]+\\]",
+          regex: "\\[.+\\]",
         },
         {
           token: "paren.lparen",
-          regex: "[[(]",
+          regex: "[(]",
         },
         {
           token: "paren.rparen",
-          regex: "[\\])]",
+          regex: "[)]",
         },
         {
           token: "keyword",
