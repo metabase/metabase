@@ -10,6 +10,7 @@ class EditBar extends Component {
     buttons: PropTypes.oneOfType([PropTypes.element, PropTypes.array])
       .isRequired,
     admin: PropTypes.bool,
+    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -17,7 +18,7 @@ class EditBar extends Component {
   };
 
   render() {
-    const { admin, buttons, subtitle, title, center } = this.props;
+    const { admin, buttons, subtitle, title, center, className } = this.props;
     return (
       <div
         className={cx(
@@ -25,6 +26,7 @@ class EditBar extends Component {
           {
             "EditHeader--admin": admin,
           },
+          className,
         )}
       >
         <div>
