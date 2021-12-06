@@ -40,8 +40,6 @@ import Question from "metabase-lib/lib/Question";
  * without the redux store.
  */
 export class SavedQuestionLoader extends React.Component {
-  props;
-
   state = {
     // this will store the loaded question
     question: null,

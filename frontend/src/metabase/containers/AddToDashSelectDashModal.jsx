@@ -24,8 +24,6 @@ export default class AddToDashSelectDashModal extends Component {
     shouldCreateDashboard: false,
   };
 
-  props;
-
   navigateToDashboard = dashboard => {
     const { card, onChangeLocation } = this.props;
 

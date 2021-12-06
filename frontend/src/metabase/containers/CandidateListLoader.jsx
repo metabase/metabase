@@ -10,16 +10,12 @@ const CANDIDATES_POLL_INTERVAL = 2000;
 const CANDIDATES_TIMEOUT = 11000;
 
 class CandidateListLoader extends React.Component {
-  props;
   state = {
     databaseId: null,
     isSample: null,
     candidates: null,
     sampleCandidates: null,
   };
-
-  _sampleTimeout;
-  _pollTimer;
 
   async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.

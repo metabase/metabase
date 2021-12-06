@@ -31,14 +31,11 @@ const propTypes = {
  *
  */
 export class QuestionResultLoader extends React.Component {
-  props;
   state = {
     results: null,
     loading: false,
     error: null,
   };
-
-  _cancelDeferred;
 
   UNSAFE_componentWillMount = () => {
     this._reload();

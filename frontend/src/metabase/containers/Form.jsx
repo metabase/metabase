@@ -56,19 +56,11 @@ const ReduxFormComponent = reduxForm()(
 
 @connect(makeMapStateToProps)
 export default class Form extends React.Component {
-  props;
-  state;
-
   _state = {
     submitting: false,
     failed: false,
     result: undefined,
   };
-
-  _getFormDefinition;
-  _getFormObject;
-  _getInitialValues;
-  _getFieldNames;
 
   constructor(props) {
     super(props);
