@@ -16,8 +16,6 @@ import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
-import type { SingleSeries } from "metabase-types/types/Visualization";
-
 // label offset (doesn't increase padding)
 const X_LABEL_PADDING = 10;
 const Y_LABEL_PADDING = 22;
@@ -91,10 +89,7 @@ export function applyChartTimeseriesXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
 
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
@@ -222,10 +217,7 @@ export function applyChartQuantitativeXAxis(
   { xValues, xDomain, xInterval },
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
   const dimensionColumn = firstSeries.data.cols[0];
 
   const waterfallTotalX =
@@ -294,10 +286,7 @@ export function applyChartOrdinalXAxis(
   { xValues, isHistogramBar },
 ) {
   // find the first nonempty single series
-  const firstSeries: SingleSeries = _.find(
-    series,
-    s => !datasetContainsNoResults(s.data),
-  );
+  const firstSeries = _.find(series, s => !datasetContainsNoResults(s.data));
 
   const dimensionColumn = firstSeries.data.cols[0];
 

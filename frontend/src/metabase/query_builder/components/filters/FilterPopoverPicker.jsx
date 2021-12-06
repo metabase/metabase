@@ -15,7 +15,7 @@ export default class FilterPopoverPicker extends React.Component {
     window.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  handleKeyDown = (event: KeyboardEvent) => {
+  handleKeyDown = event => {
     if (event.key === "Enter") {
       this.props.onCommit();
     }
@@ -32,11 +32,11 @@ export default class FilterPopoverPicker extends React.Component {
       maxWidth,
     } = this.props;
 
-    const setValue = (index: number, value: any) => {
+    const setValue = (index, value) => {
       onFilterChange(filter.setArgument(index, value));
     };
 
-    const setValues = (values: any[]) => {
+    const setValues = values => {
       onFilterChange(filter.setArguments(values));
     };
 

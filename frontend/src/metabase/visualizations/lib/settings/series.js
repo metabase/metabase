@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -6,25 +7,18 @@ import ChartNestedSettingSeries from "metabase/visualizations/components/setting
 import { nestedSettings } from "./nested";
 import { getColorsForValues } from "metabase/lib/colors";
 
-import type { SettingDef } from "../settings";
-import type { SingleSeries } from "metabase-types/types/Visualization";
-
-export function keyForSingleSeries(single: SingleSeries): string {
+export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries
   return single.card._seriesKey || String(single.card.name);
 }
 
 const LINE_DISPLAY_TYPES = new Set(["line", "area"]);
 
-type SeriesSettingDef = SettingDef & {
-  noPadding?: boolean,
-};
-
 export function seriesSetting({
   readDependencies = [],
   noPadding,
   ...def
-}: SeriesSettingDef = {}) {
+} = {}) {
   const settingId = "series_settings";
   const colorSettingId = `${settingId}.colors`;
 

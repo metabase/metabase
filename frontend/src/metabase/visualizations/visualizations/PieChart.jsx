@@ -39,10 +39,8 @@ const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
 const PERCENT_REGEX = /percent/i;
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
 export default class PieChart extends Component {
-  constructor(props: VisualizationProps) {
+  constructor(props) {
     super(props);
 
     this.chartDetail = React.createRef();
@@ -242,7 +240,7 @@ export default class PieChart extends Component {
         majorWidth: 0,
       });
 
-    const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
+    const total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&

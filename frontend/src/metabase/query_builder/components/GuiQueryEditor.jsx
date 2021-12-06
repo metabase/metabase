@@ -17,46 +17,15 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 
 import cx from "classnames";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { Aggregation, Breakout } from "metabase-types/types/Query";
-import type { Children } from "react";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-export type GuiQueryEditorFeatures = {
-  filter?: boolean,
-  aggregation?: boolean,
-  breakout?: boolean,
-  sort?: boolean,
-  limit?: boolean,
-};
-
-type Props = {
-  children?: Children,
-
-  features: GuiQueryEditorFeatures,
-
-  query: StructuredQuery,
-
-  supportMultipleAggregations?: boolean,
-
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-
-  isShowingDataReference?: boolean,
-};
-
-type State = {
-  expanded: boolean,
-};
-
 export default class GuiQueryEditor extends React.Component {
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.filterPopover = React.createRef();
     this.guiBuilder = React.createRef();
   }
 
-  state: State = {
+  state = {
     expanded: true,
   };
 
@@ -78,7 +47,7 @@ export default class GuiQueryEditor extends React.Component {
     supportMultipleAggregations: true,
   };
 
-  renderAdd(text: ?string, onClick: ?() => void, targetRefName?: string) {
+  renderAdd(text, onClick, targetRefName) {
     const className =
       "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
@@ -98,7 +67,7 @@ export default class GuiQueryEditor extends React.Component {
     }
   }
 
-  renderAddIcon(targetRefName?: string) {
+  renderAddIcon(targetRefName) {
     return (
       <IconBorder borderRadius="3px" ref={targetRefName}>
         <Icon name="add" size={14} />
@@ -193,7 +162,7 @@ export default class GuiQueryEditor extends React.Component {
 
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
-      const aggregations: (Aggregation | null)[] = query.aggregations();
+      const aggregations = query.aggregations();
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -255,7 +224,7 @@ export default class GuiQueryEditor extends React.Component {
 
     const breakoutList = [];
 
-    const breakouts: (Breakout | null)[] = query.breakouts();
+    const breakouts = query.breakouts();
 
     // Placeholder breakout for showing the add button
     if (query.canAddBreakout()) {
