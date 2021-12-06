@@ -16,7 +16,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 export default class TagEditorSidebar extends React.Component {
-  props;
   state = {
     section: "settings",
   };

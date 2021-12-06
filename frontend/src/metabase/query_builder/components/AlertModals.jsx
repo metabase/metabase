@@ -377,8 +377,6 @@ export class UpdateAlertModalContent extends Component {
 }
 
 export class DeleteAlertSection extends Component {
-  deleteModal;
-
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
     return this.props.alert.channels.map(c =>

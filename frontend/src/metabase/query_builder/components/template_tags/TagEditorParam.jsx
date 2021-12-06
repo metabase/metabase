@@ -19,8 +19,6 @@ import MetabaseSettings from "metabase/lib/settings";
 
 @connect(state => ({ metadata: getMetadata(state) }), { fetchField })
 export default class TagEditorParam extends Component {
-  props;
-
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
