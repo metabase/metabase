@@ -29,6 +29,17 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
+function getFieldSemanticTypes() {
+  return [
+    ...field_semantic_types,
+    {
+      id: null,
+      name: t`No semantic type`,
+      section: t`Other`,
+    },
+  ];
+}
+
 const FORM_FIELDS = [
   { name: "display_name", title: t`Display name` },
   {
@@ -40,7 +51,7 @@ const FORM_FIELDS = [
   {
     name: "semantic_type",
     type: "select",
-    options: field_semantic_types.map(type => ({
+    options: getFieldSemanticTypes().map(type => ({
       name: type.name,
       value: type.id,
     })),
