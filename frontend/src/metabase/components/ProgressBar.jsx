@@ -1,14 +1,15 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 import styled from "styled-components";
 
 import { color as c } from "metabase/lib/colors";
 
-type Props = {
-  percentage: number,
-  animated?: boolean,
-  color?: string,
-  height?: number | string,
-  className?: String,
+const propTypes = {
+  percentage: PropTypes.number.isRequired,
+  animated: PropTypes.bool,
+  color: PropTypes.string,
+  height: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  className: PropTypes.string,
 };
 
 const ProgressWrapper = styled.div`
@@ -44,8 +45,6 @@ const Progress = styled.div`
 
 // @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
-  props: Props;
-
   static defaultProps = {
     animated: false,
     height: 10,
@@ -71,3 +70,4 @@ export default class ProgressBar extends Component {
 }
 
 ProgressBar.Progress = Progress;
+ProgressBar.propTypes = propTypes;

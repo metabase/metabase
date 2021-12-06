@@ -1,9 +1,6 @@
 import React from "react";
 import { t } from "ttag";
 
-// eslint-disable-next-line import/namespace, import/default, import/no-named-as-default, import/no-named-as-default-member
-import Question from "metabase-lib/lib/Question";
-
 import Tooltip from "metabase/components/Tooltip";
 
 import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
@@ -41,7 +38,9 @@ function formatPercentage(percentage: number): string {
 }
 
 type Props = {
-  dataset: Question;
+  dataset: {
+    getResultMetadata: () => FieldMetadata[];
+  };
 };
 
 const TOOLTIP_DELAY: [number, null] = [700, null];
