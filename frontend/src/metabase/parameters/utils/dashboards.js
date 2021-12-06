@@ -23,7 +23,7 @@ export function createParameter(option, parameters = []) {
   return setParameterName(parameter, name);
 }
 
-export function setParameterName(parameter, name: string) {
+export function setParameterName(parameter, name) {
   if (!name) {
     name = "unnamed";
   }
@@ -35,7 +35,7 @@ export function setParameterName(parameter, name: string) {
   };
 }
 
-export function setParameterDefaultValue(parameter, value: string) {
+export function setParameterDefaultValue(parameter, value) {
   return {
     ...parameter,
     default: value,

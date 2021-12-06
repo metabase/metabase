@@ -11,27 +11,6 @@ import {
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 
-import type { ParameterId, Parameter } from "metabase-types/types/Parameter";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-
-type Props = {
-  className?: string,
-
-  parameters: Parameter[],
-  dashboard?: DashboardWithCards,
-  editingParameter?: ?Parameter,
-
-  isFullscreen?: boolean,
-  isNightMode?: boolean,
-  hideParameters?: ?string, // comma separated list of slugs
-  isEditing?: boolean,
-  vertical?: boolean,
-  commitImmediately?: boolean,
-
-  setParameterIndex?: (parameterId: ParameterId, index: number) => void,
-  setEditingParameter?: (parameterId: ParameterId) => void,
-};
-
 const StaticParameterWidgetList = ({
   children,
   onSortStart,
@@ -70,18 +49,12 @@ function ParametersList({
   setParameterIndex,
   removeParameter,
   setEditingParameter,
-}: Props) {
+}) {
   const handleSortStart = () => {
     document.body.classList.add("grabbing");
   };
 
-  const handleSortEnd = ({
-    oldIndex,
-    newIndex,
-  }: {
-    oldIndex: number,
-    newIndex: number,
-  }) => {
+  const handleSortEnd = ({ oldIndex, newIndex }) => {
     document.body.classList.remove("grabbing");
     if (setParameterIndex) {
       setParameterIndex(parameters[oldIndex].id, newIndex);
