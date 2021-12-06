@@ -1,14 +1,12 @@
-import type { OrderBy, OrderByClause } from "metabase-types/types/Query";
-
 import { add, update, remove, clear } from "./util";
 
 // returns canonical list of OrderBys, with nulls removed
-export function getOrderBys(breakout: ?OrderByClause): OrderBy[] {
+export function getOrderBys(breakout) {
   return (breakout || []).filter(b => b != null);
 }
 
 // turns a list of OrderBys into the canonical OrderByClause
-export function getOrderByClause(breakouts: OrderBy[]): ?OrderByClause {
+export function getOrderByClause(breakouts) {
   breakouts = getOrderBys(breakouts);
   if (breakouts.length === 0) {
     return undefined;
@@ -17,25 +15,15 @@ export function getOrderByClause(breakouts: OrderBy[]): ?OrderByClause {
   }
 }
 
-export function addOrderBy(
-  breakout: ?OrderByClause,
-  newOrderBy: OrderBy,
-): ?OrderByClause {
+export function addOrderBy(breakout, newOrderBy) {
   return getOrderByClause(add(getOrderBys(breakout), newOrderBy));
 }
-export function updateOrderBy(
-  breakout: ?OrderByClause,
-  index: number,
-  updatedOrderBy: OrderBy,
-): ?OrderByClause {
+export function updateOrderBy(breakout, index, updatedOrderBy) {
   return getOrderByClause(update(getOrderBys(breakout), index, updatedOrderBy));
 }
-export function removeOrderBy(
-  breakout: ?OrderByClause,
-  index: number,
-): ?OrderByClause {
+export function removeOrderBy(breakout, index) {
   return getOrderByClause(remove(getOrderBys(breakout), index));
 }
-export function clearOrderBy(breakout: ?OrderByClause): ?OrderByClause {
+export function clearOrderBy(breakout) {
   return getOrderByClause(clear());
 }
