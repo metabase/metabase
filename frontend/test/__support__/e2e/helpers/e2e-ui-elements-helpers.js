@@ -3,10 +3,6 @@ export function popover() {
   return cy.get(".popover[data-state~='visible']");
 }
 
-export function tippyPopover() {
-  return cy.get(".popover[data-state~='visible']");
-}
-
 export function modal() {
   return cy.get(".ModalContainer .ModalContent");
 }
