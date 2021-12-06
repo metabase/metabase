@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import ResizableNotebook from "./ResizableNotebook";
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
@@ -23,7 +24,10 @@ function DatasetQueryEditor({ question: dataset, isActive, height, ...props }) {
     // 2. Automatically when editor mode is changed between "query" and "metadata"
     // For the 2nd case, we're smoothing the resize effect by adding a `transition` style
     // For the 1st case, we need to make sure it's not included, so resizing doesn't lag
-    const style = isResizing ? undefined : SMOOTH_RESIZE_STYLE;
+    const style =
+      isResizing || isReducedMotionPreferred()
+        ? undefined
+        : SMOOTH_RESIZE_STYLE;
 
     const resizableBoxProps = {
       height,
