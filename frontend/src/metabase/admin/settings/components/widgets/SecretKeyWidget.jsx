@@ -8,8 +8,6 @@ import { t } from "ttag";
 import { UtilApi } from "metabase/services";
 
 export default class SecretKeyWidget extends Component {
-  props;
-
   _generateToken = async () => {
     const { onChange } = this.props;
     const result = await UtilApi.random_token();

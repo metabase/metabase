@@ -104,8 +104,6 @@ export default class Column extends Component {
 // FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
 
 export class FieldVisibilityPicker extends Component {
-  props;
-
   handleChangeVisibility = ({ target: { value: visibility_type } }) => {
     this.props.updateField({ visibility_type });
   };
@@ -127,8 +125,6 @@ export class FieldVisibilityPicker extends Component {
 }
 
 export class SemanticTypeAndTargetPicker extends Component {
-  props;
-
   handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 

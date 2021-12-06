@@ -13,9 +13,6 @@ import * as Urls from "metabase/lib/urls";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export default class PublicLinksListing extends Component {
-  props;
-  state;
-
   constructor(props) {
     super(props);
     this.state = {

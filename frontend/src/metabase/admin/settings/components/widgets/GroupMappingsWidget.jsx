@@ -18,9 +18,6 @@ import SettingToggle from "./SettingToggle";
 const groupIsMappable = group => !isSpecialGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
-  props;
-  state;
-
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -193,9 +190,6 @@ export default class GroupMappingsWidget extends React.Component {
 }
 
 class AddMappingRow extends React.Component {
-  props;
-  state;
-
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -252,8 +246,6 @@ class AddMappingRow extends React.Component {
 }
 
 class MappingGroupSelect extends React.Component {
-  props;
-
   render() {
     const { groups, selectedGroups, onGroupChange } = this.props;
 
@@ -273,8 +265,6 @@ class MappingGroupSelect extends React.Component {
 }
 
 class MappingRow extends React.Component {
-  props;
-
   render() {
     const { dn, groups, selectedGroups, onChange, onDelete } = this.props;
 

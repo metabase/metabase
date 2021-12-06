@@ -10,9 +10,6 @@ const NOT_CHECKED = "not_checked";
 const FAILED = "failed";
 
 export default class HttpsOnlyWidget extends Component {
-  props;
-  state;
-
   constructor(props) {
     super(props);
     this.state = {

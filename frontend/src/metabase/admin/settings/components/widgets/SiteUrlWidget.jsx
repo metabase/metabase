@@ -4,8 +4,6 @@ import React, { Component } from "react";
 import InputWithSelectPrefix from "metabase/components/InputWithSelectPrefix";
 
 export default class SiteUrlWidget extends Component {
-  props;
-
   render() {
     const { setting, onChange } = this.props;
     return (
