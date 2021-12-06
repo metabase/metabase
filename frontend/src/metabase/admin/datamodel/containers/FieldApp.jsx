@@ -49,10 +49,6 @@ import { has_field_values_options } from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
-import type { ColumnSettings as ColumnSettingsType } from "metabase-types/types/Dataset";
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { TableId } from "metabase-types/types/Table";
-import type { FieldId } from "metabase-types/types/Field";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
@@ -88,28 +84,7 @@ export default class FieldApp extends React.Component {
     tab: "general",
   };
 
-  props: {
-    databaseId: DatabaseId,
-    tableId: TableId,
-    fieldId: FieldId,
-    field: Object,
-    metadata: Metadata,
-    idfields: Object[],
-
-    fetchDatabaseMetadata: Object => Promise<void>,
-    fetchTableMetadata: Object => Promise<void>,
-    fetchFieldValues: Object => Promise<void>,
-    updateField: any => Promise<void>,
-    updateFieldValues: any => Promise<void>,
-    updateFieldDimension: (Object, any) => Promise<void>,
-    deleteFieldDimension: Object => Promise<void>,
-
-    rescanFieldValues: FieldId => Promise<void>,
-    discardFieldValues: FieldId => Promise<void>,
-
-    location: any,
-    params: any,
-  };
+  props;
 
   constructor(props) {
     super(props);
@@ -147,7 +122,7 @@ export default class FieldApp extends React.Component {
     ]);
   }
 
-  linkWithSaveStatus = (saveMethod: Function) => async (...args: any[]) => {
+  linkWithSaveStatus = saveMethod => async (...args) => {
     this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
     await saveMethod(...args);
     this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
@@ -177,7 +152,7 @@ export default class FieldApp extends React.Component {
     this.props.deleteFieldDimension,
   );
 
-  onUpdateFieldSettings = (settings: ColumnSettingsType): void => {
+  onUpdateFieldSettings = settings => {
     return this.onUpdateFieldProperties({ settings });
   };
 
@@ -410,13 +385,7 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({
-  databaseId,
-  tableId,
-}: {
-  databaseId: DatabaseId,
-  tableId: TableId,
-}) => (
+export const BackButton = ({ databaseId, tableId }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
@@ -426,10 +395,10 @@ export const BackButton = ({
 );
 
 export class FieldHeader extends React.Component {
-  onNameChange = (e: { target: HTMLInputElement }) => {
+  onNameChange = e => {
     this.updateNameDebounced(e.target.value);
   };
-  onDescriptionChange = (e: { target: HTMLInputElement }) => {
+  onDescriptionChange = e => {
     this.updateDescriptionDebounced(e.target.value);
   };
 
