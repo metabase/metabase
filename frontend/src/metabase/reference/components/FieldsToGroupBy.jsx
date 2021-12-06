@@ -12,7 +12,6 @@ import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 
 const mapDispatchToProps = {
   fetchTableMetadata,
