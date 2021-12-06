@@ -1,17 +1,32 @@
 import React from "react";
 import { t } from "ttag";
 
+import ProgressBar from "metabase/components/ProgressBar";
 import Tooltip from "metabase/components/Tooltip";
 
-import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
+import { color } from "metabase/lib/colors";
+import {
+  FieldMetadata,
+  getDatasetMetadataCompletenessPercentage,
+} from "metabase/lib/data-modeling/metadata";
+import { useHover } from "metabase/hooks/use-hover";
 
 import {
   Root,
   PercentageLabel,
-  MetadataProgressBar,
   TooltipContent,
   TooltipParagraph,
 } from "./DatasetMetadataStrengthIndicator.styled";
+
+function getIndicationColor(percentage: number, isHovered: boolean): string {
+  if (percentage <= 0.5) {
+    return color("danger");
+  }
+  if (!isHovered) {
+    return color("bg-medium");
+  }
+  return percentage >= 0.9 ? color("success") : color("warning");
+}
 
 function getTooltipMessage(percentage: number) {
   if (percentage === 1) {
@@ -46,6 +61,7 @@ type Props = {
 const TOOLTIP_DELAY: [number, null] = [700, null];
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
+  const [hoverRef, isHovered] = useHover();
   const resultMetadata = dataset.getResultMetadata();
 
   if (!Array.isArray(resultMetadata) || resultMetadata.length === 0) {
@@ -53,16 +69,23 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   }
 
   const percentage = getDatasetMetadataCompletenessPercentage(resultMetadata);
+  const indicationColor = getIndicationColor(percentage, isHovered);
 
   return (
-    <Root {...props} percentage={percentage}>
+    <Root {...props} ref={hoverRef}>
       <Tooltip
         tooltip={getTooltipMessage(percentage)}
         delay={TOOLTIP_DELAY}
         placement="bottom"
       >
-        <PercentageLabel>{formatPercentage(percentage)}</PercentageLabel>
-        <MetadataProgressBar percentage={percentage} height="8px" />
+        <PercentageLabel color={indicationColor}>
+          {formatPercentage(percentage)}
+        </PercentageLabel>
+        <ProgressBar
+          percentage={percentage}
+          color={indicationColor}
+          height="8px"
+        />
       </Tooltip>
     </Root>
   );

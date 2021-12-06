@@ -71,5 +71,4 @@ export default class ProgressBar extends Component {
   }
 }
 
-ProgressBar.Progress = Progress;
 ProgressBar.propTypes = propTypes;
