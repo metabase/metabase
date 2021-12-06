@@ -144,11 +144,12 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
 
+    const { editor } = this.input.current;
+
     if (suggestion) {
       const { tokens } = tokenize(source);
       const token = tokens.find(t => t.end >= suggestion.index);
 
-      const { editor } = this.input.current;
       const { row } = editor.getCursorPosition();
 
       if (token) {
@@ -167,11 +168,14 @@ export default class ExpressionEditorTextfield extends React.Component {
         this.onExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
 
-        editor.moveCursorTo(row, caretPos);
+        // setTimeout solves a race condition that happens only
+        // when a suggestion has been selected by
+        // clicking on the autocomplete
+        setTimeout(() => editor.moveCursorTo(row, caretPos));
       } else {
         const newExpression = source + suggestion.text;
         this.onExpressionChange(newExpression);
-        this.input.current.editor.moveCursorTo(row, newExpression.length);
+        editor.moveCursorTo(row, newExpression.length);
       }
     }
   };
@@ -441,7 +445,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           />
           <ExpressionEditorSuggestions
             suggestions={suggestions}
-            onSuggestionMouseDown={this.onSuggestionSelected}
+            onSuggestionMouseDown={this.handleEnter}
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>

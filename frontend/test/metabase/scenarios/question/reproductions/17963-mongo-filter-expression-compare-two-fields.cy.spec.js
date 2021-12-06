@@ -2,12 +2,12 @@ import { restore, popover, visualize } from "__support__/e2e/cypress";
 
 describe("issue 17963", () => {
   beforeEach(() => {
-    restore();
+    restore("mongo-4");
     cy.signInAsAdmin();
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
+    cy.findByText("QA Mongo4").click();
     cy.findByText("Orders").click();
   });
 
