@@ -48,6 +48,7 @@ function TippyPopover({
 
   return (
     <TippyComponent
+      className="popover"
       theme="popover"
       arrow={false}
       offset={OFFSET}
