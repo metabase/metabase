@@ -1,7 +1,7 @@
 /* flow */
 
 import type { Collection } from "metabase-types/types/Collection";
-import type { Label } from "metabase-types/types/Label.js";
+import type { Label } from "metabase-types/types/Label";
 
 export type Entity = {
   id: number,
