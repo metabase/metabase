@@ -11,6 +11,17 @@ Metabase supports two types of authentication with JWT:
 
 PKCE stands for Proof Key for Code Exchange, and it's a way to extend the Authorization Code Flow to incorporate random keys generated on demand.
 
+## Typical flow for a JWT-based SSO interaction with Metabase
+
+Assuming your site is localhost serving on port 3000:
+
+1. Person attempts to view a question, e.g., `http://localhost:3000/question/1-superb-question`.
+2. If the person isn't logged in Metabase redirects them to `http://localhost:3000/auth/sso`.
+3. Retaining the original `/question/1-superb-question` URI, Metabase redirects the person to the SSO provider (this application).
+4. Person logs in using the basic form.
+5. Person is redirected back to `http://localhost:3000/auth/sso` with their JSON Web Token and the original `/question/1-superb-question` URI.
+6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
+
 ## Enabling JWT authentication
 
 First, navigate to the Settings section of the Admin area, then click on the Authentication tab. Click the `Configure` button in the JWT section of this page, and you'll see this form:
@@ -49,9 +60,17 @@ Once you have configured your JWT authentication, you can choose to disable the 
 
 ![Password disable](images/password-disable.png)
 
+## Note about Azure
+
+If you're using Azure, you'll may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
+
+
 ## Example code using JWT
 
 You can find example code that uses JWT authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
+
+- [JWT example in a Clojure app](https://github.com/metabase/sso-examples/tree/master/clj-jwt-example)
+- [JWT example in JavaScript (Node)](https://github.com/metabase/sso-examples/tree/master/nodejs-jwt-example)
 
 ---
 
