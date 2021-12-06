@@ -22,7 +22,6 @@ export default ComposedComponent =>
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      props;
       state = {
         isFullscreen: false,
         isNightMode: false,
@@ -31,11 +30,6 @@ export default ComposedComponent =>
 
         hideParameters: null,
       };
-
-      _interval;
-
-      _refreshElapsed;
-      _refreshElapsedHook;
 
       UNSAFE_componentWillMount() {
         if (screenfull.enabled) {

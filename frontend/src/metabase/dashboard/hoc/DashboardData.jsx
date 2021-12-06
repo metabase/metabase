@@ -41,8 +41,6 @@ export default ComposedComponent =>
     mapDispatchToProps,
   )(
     class DashboardContainer extends Component {
-      props;
-
       async load(props) {
         const {
           initialize,

@@ -9,8 +9,6 @@ import DashboardGrid from "metabase/dashboard/components/DashboardGrid";
 import DashboardData from "metabase/dashboard/hoc/DashboardData";
 
 export class Dashboard extends Component {
-  props;
-
   render() {
     const { dashboard, className, style, ...props } = this.props;
 

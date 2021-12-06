@@ -13,9 +13,6 @@ const PopoverBody = styled.div`
 `;
 
 export default class ParametersPopover extends Component {
-  props;
-  state;
-
   constructor(props, context) {
     super(props, context);
     this.state = {};

@@ -42,8 +42,6 @@ const mapDispatchToProps = {
 
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class DashCardCardParameterMapper extends Component {
-  props;
-
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     card: PropTypes.object.isRequired,
