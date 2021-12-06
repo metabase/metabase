@@ -13,6 +13,7 @@
             [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
             [metabase.sync.sync-metadata.tables :as sync-tables]
             [metabase.sync.util :as sync-util]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -46,7 +47,10 @@
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-    (sync-util/run-sync-operation "sync" database sync-steps)))
+    (u/prog1 (sync-util/run-sync-operation "sync" database sync-steps)
+      (if (some sync-util/abandon-sync? (map second (:steps <>)))
+        (sync-util/set-initial-database-sync-aborted! database)
+        (sync-util/set-initial-database-sync-complete! database)))))
 
 (s/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."

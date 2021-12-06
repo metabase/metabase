@@ -37,8 +37,9 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (-> table :db_id Database :engine))}]
+  (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
+                  :field_order         (driver/default-field-order (-> table :db_id Database :engine))
+                  :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
