@@ -17,6 +17,7 @@ const ProgressWrapper = styled.div`
   border: 1px solid ${props => props.color};
   height: ${props => props.height};
   border-radius: 99px;
+  transition: border-color 0.3s;
 `;
 
 const Progress = styled.div`
@@ -30,6 +31,7 @@ const Progress = styled.div`
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
       width: ${props => props.width}%;
+      transition: background-color 0.3s;
       ":before": {
         display: ${props => (props.animated ? "block" : "none")};
         position: absolute;
