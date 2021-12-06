@@ -1,8 +1,8 @@
-import type { TableId } from "./Table";
-import type { FieldId, BaseType } from "./Field";
-import type { SegmentId } from "./Segment";
-import type { MetricId } from "./Metric";
-import type { ParameterType } from "./Parameter";
+import { TableId } from "./Table";
+import { FieldId, BaseType } from "./Field";
+import { SegmentId } from "./Segment";
+import { MetricId } from "./Metric";
+import { ParameterType } from "./Parameter";
 
 export type ExpressionName = string;
 
@@ -50,34 +50,34 @@ export type TemplateTagName = string;
 export type TemplateTagType = "text" | "number" | "date" | "dimension";
 
 export type TemplateTag = {
-  id: TemplateTagId,
-  name: TemplateTagName,
-  "display-name": string,
-  type: TemplateTagType,
-  dimension?: LocalFieldReference,
-  "widget-type"?: ParameterType,
-  required?: boolean,
-  default?: string,
+  id: TemplateTagId;
+  name: TemplateTagName;
+  "display-name": string;
+  type: TemplateTagType;
+  dimension?: LocalFieldReference;
+  "widget-type"?: ParameterType;
+  required?: boolean;
+  default?: string;
 };
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
 
 export type NativeQuery = {
-  query: string,
-  "template-tags": TemplateTags,
+  query: string;
+  "template-tags": TemplateTags;
 };
 
 export type StructuredQuery = {
-  "source-table"?: ?TableId,
-  "source-query"?: ?StructuredQuery,
-  aggregation?: AggregationClause,
-  breakout?: BreakoutClause,
-  filter?: FilterClause,
-  joins?: JoinClause,
-  "order-by"?: OrderByClause,
-  limit?: LimitClause,
-  expressions?: ExpressionClause,
-  fields?: FieldsClause,
+  "source-table"?: TableId;
+  "source-query"?: StructuredQuery;
+  aggregation?: AggregationClause;
+  breakout?: BreakoutClause;
+  filter?: FilterClause;
+  joins?: JoinClause;
+  "order-by"?: OrderByClause;
+  limit?: LimitClause;
+  expressions?: ExpressionClause;
+  fields?: FieldsClause;
 };
 
 export type AggregationClause =
@@ -106,7 +106,7 @@ export type AggregationWithOptions = [
 ];
 
 export type AggregationOptions = {
-  "display-name"?: string,
+  "display-name"?: string;
 };
 
 type CountAgg = ["count"];
@@ -173,7 +173,7 @@ export type StringFilter =
     ];
 
 export type StringFilterOptions = {
-  "case-sensitive"?: false,
+  "case-sensitive"?: false;
 };
 
 export type NullFilter = ["is-null", ConcreteField];
@@ -205,7 +205,7 @@ export type TimeIntervalFilter =
     ];
 
 export type TimeIntervalFilterOptions = {
-  "include-current"?: boolean,
+  "include-current"?: boolean;
 };
 
 export type FilterOptions = StringFilterOptions | TimeIntervalFilterOptions;
@@ -227,12 +227,12 @@ export type JoinFields = "all" | "none" | JoinedFieldReference[];
 
 export type JoinClause = Array<Join>;
 export type Join = {
-  "source-table"?: TableId,
-  "source-query"?: StructuredQuery,
-  condition: JoinCondition,
-  alias?: JoinAlias,
-  strategy?: JoinStrategy,
-  fields?: JoinFields,
+  "source-table"?: TableId;
+  "source-query"?: StructuredQuery;
+  condition: JoinCondition;
+  alias?: JoinAlias;
+  strategy?: JoinStrategy;
+  fields?: JoinFields;
 };
 
 export type LimitClause = number;
@@ -247,7 +247,11 @@ export type ConcreteField =
   | DatetimeField
   | BinnedField;
 
-export type LocalFieldReference = ["field", FieldId, {} | null];
+export type LocalFieldReference = [
+  "field",
+  FieldId,
+  Record<string, unknown> | null,
+];
 
 export type ForeignFieldReference = [
   "field",
@@ -277,16 +281,16 @@ export type BinnedField = [
   FieldId | string,
   {
     binning:
-      | { strategy: "num-bins", "num-bins": number }
-      | { strategy: "bin-width", "bin-width": number }
-      | { strategy: "default" },
+      | { strategy: "num-bins"; "num-bins": number }
+      | { strategy: "bin-width"; "bin-width": number }
+      | { strategy: "default" };
   },
 ];
 
 export type AggregateField = ["aggregation", number];
 
 export type ExpressionClause = {
-  [key: ExpressionName]: Expression,
+  [key: ExpressionName]: Expression;
 };
 
 export type Expression = [
