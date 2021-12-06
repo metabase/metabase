@@ -5,7 +5,6 @@ import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
 
-import Question from "metabase-lib/lib/Question";
 import { serializeCardForUrl } from "metabase/lib/card";
 
 /*
