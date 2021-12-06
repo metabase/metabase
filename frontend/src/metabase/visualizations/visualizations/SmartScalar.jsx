@@ -29,7 +29,7 @@ export default class Smart extends React.Component {
 
   static noHeader = true;
 
-  _scalar: ?HTMLElement;
+  _scalar;
 
   static settings = {
     ...columnSettings({
