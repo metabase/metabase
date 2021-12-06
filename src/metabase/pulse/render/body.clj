@@ -227,11 +227,11 @@
 
 (defmulti render
   "Render a Pulse as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
-  {:arglists '([chart-type render-type timezone-id card data])}
-  (fn [chart-type _ _ _ _] chart-type))
+  {:arglists '([chart-type render-type timezone-id card dashcard data])}
+  (fn [chart-type _ _ _ _ _] chart-type))
 
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
@@ -359,7 +359,7 @@
                (:display_name (second y-cols)))})
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
@@ -429,7 +429,7 @@
                                    (format-percentage (/ value total)))]))}))
 
 (s/defmethod render :categorical/donut :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [rows] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [rows] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
                                          (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
@@ -461,7 +461,7 @@
                 (percentages label)]]))]}))
 
 (s/defmethod render :progress :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [cols rows viz-settings] :as data}]
+  [_ render-type timezone-id card _ {:keys [cols rows viz-settings] :as data}]
   (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
         color        (or (:progress.color viz-settings) (first colors))
@@ -500,7 +500,7 @@
 
 
 (s/defmethod render :multiple
-  [_ render-type timezone-id card {:keys [viz-settings] :as data}]
+  [_ render-type timezone-id card dashcard {:keys [viz-settings] :as data}]
   (let [multi-res     (pu/execute-multi-card card)
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
@@ -536,7 +536,7 @@
            :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
         ;; Special y-axis-rowfn because we have more than 1 y-axis
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
@@ -582,7 +582,7 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card {:keys [cols rows viz-settings] :as data}]
+  [_ _ timezone-id _card _ {:keys [cols rows viz-settings] :as data}]
   (let [col             (first cols)
         value           (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
     {:attachments
@@ -594,7 +594,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card {:keys [cols _rows insights viz-settings]}]
+  [_ _ timezone-id _card _ {:keys [cols _rows insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -627,7 +627,7 @@
         @error-rendered-info))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [_rows cols viz-settings] :as data}]
+  [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
@@ -677,7 +677,7 @@
          (second labels)]]]]}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
+  [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
@@ -705,7 +705,7 @@
              :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :funnel :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [rows cols viz-settings] :as data}]
+  [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
   ;; x-axis-rowfn is always first, y-axis-rowfn is always second
   (let [rows          (common/non-nil-rows first second rows)
         [x-col y-col] cols
@@ -726,7 +726,7 @@
 
 
 (s/defmethod render :empty :- common/RenderedPulseCard
-  [_ render-type _ _ _]
+  [_ render-type _ _ _ _]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
@@ -742,7 +742,7 @@
        (trs "No results")]]}))
 
 (s/defmethod render :attached :- common/RenderedPulseCard
-  [_ render-type _ _ _]
+  [_ render-type _ _ _ _]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
     {:attachments
      (image-bundle/image-bundle->attachment image-bundle)
@@ -758,7 +758,7 @@
        (trs "This question has been included as a file attachment")]]}))
 
 (s/defmethod render :unknown :- common/RenderedPulseCard
-  [_ _ _ _ _]
+  [_ _ _ _ _ _]
   {:attachments
    nil
 
@@ -772,5 +772,5 @@
     (trs "Please view this card in Metabase.")]})
 
 (s/defmethod render :error :- common/RenderedPulseCard
-  [_ _ _ _ _]
+  [_ _ _ _ _ _]
   @error-rendered-info)

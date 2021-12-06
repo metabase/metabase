@@ -119,7 +119,7 @@
              (if (and card result)
                {:title           (or (-> dashcard :visualization_settings :card.title)
                                      card-name)
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id

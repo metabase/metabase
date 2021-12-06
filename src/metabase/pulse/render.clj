@@ -123,7 +123,7 @@
   ((some-fn :include_csv :include_xls) card))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
-  [render-type timezone-id :- (s/maybe s/Str) card {:keys [data error], :as results}]
+  [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) results)))
@@ -132,7 +132,7 @@
                            :attached)
                          :unknown)]
       (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
-      (body/render chart-type render-type timezone-id card data))
+      (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
       (body/render :error nil nil nil nil))))
@@ -153,7 +153,7 @@
         {description :content}                           (make-description-if-needed dashcard)
         {pulse-body       :content
          body-attachments :attachments
-         text             :render/text}                  (render-pulse-card-body render-type timezone-id card results)]
+         text             :render/text}                  (render-pulse-card-body render-type timezone-id card dashcard results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
@@ -193,7 +193,7 @@
 
 (s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
-  [timezone-id :- (s/maybe s/Str) pulse-card result width]
+  [timezone-id :- (s/maybe s/Str) pulse-card dashcard result width]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card nil result) width))
 
 (s/defn png-from-render-info :- bytes
