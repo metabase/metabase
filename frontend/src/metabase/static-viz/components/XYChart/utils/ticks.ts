@@ -1,5 +1,4 @@
 import { TickRendererProps } from "@visx/axis";
-import { getYTickWidth } from "metabase/static-viz/lib/axes";
 import { formatDate, DateFormatOptions } from "metabase/static-viz/lib/dates";
 import {
   formatNumber,
@@ -116,12 +115,11 @@ export const calculateYTickWidth = (
   settings: ChartSettings["y"]["format"],
   fontSize: number,
 ) => {
-  return getYTickWidth(
-    domain,
-    { y: (value: number) => value },
-    settings,
-    fontSize,
-  ) as number;
+  const domainValuesWidths = domain
+    .map(value => formatNumber(value, settings))
+    .map(formatted => measureText(formatted, fontSize));
+
+  return Math.max(...domainValuesWidths);
 };
 
 export const getYTickWidths = (
