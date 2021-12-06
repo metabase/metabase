@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import { color } from "metabase/lib/colors";
+import { alpha, darken, color } from "metabase/lib/colors";
 
 export const TabBar = styled.ul`
   display: flex;
@@ -7,6 +7,28 @@ export const TabBar = styled.ul`
   justify-content: center;
   align-items: center;
   gap: 16px;
+`;
+
+function getActiveTabColor() {
+  return darken("nav");
+}
+
+function getInactiveTabColor() {
+  const active = getActiveTabColor();
+  return alpha(active, 0.3);
+}
+
+const inactiveTabCSS = css`
+  border-color: ${getInactiveTabColor()};
+
+  :hover {
+    background-color: ${getInactiveTabColor()};
+  }
+`;
+
+const activeTabCSS = css`
+  background-color: ${getActiveTabColor()};
+  border-color: ${getActiveTabColor()};
 `;
 
 export const Tab = styled.label<{ selected: boolean }>`
@@ -19,24 +41,17 @@ export const Tab = styled.label<{ selected: boolean }>`
   color: ${color("text-white")};
   font-weight: bold;
 
-  border: 2px solid rgba(62, 138, 205, 0.5);
+  border: 2px solid;
   border-radius: 8px;
   cursor: pointer;
+
+  transition: all 0.3s;
 
   .Icon {
     margin-right: 10px;
   }
 
-  :hover {
-    border-color: #2877bc;
-  }
-
-  ${props =>
-    props.selected &&
-    css`
-      background-color: #2877bc;
-      border-color: #2877bc;
-    `}
+  ${props => (props.selected ? activeTabCSS : inactiveTabCSS)};
 `;
 
 export const RadioInput = styled.input.attrs({ type: "radio" })`
