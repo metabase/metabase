@@ -63,5 +63,5 @@ export function getDatasetMetadataCompletenessPercentage(
     .reduce((sum, fieldPoints) => sum + fieldPoints, 0);
 
   const percent = points / MAX_POINTS;
-  return Number(percent.toFixed(2));
+  return Math.round(percent * 100) / 100;
 }
