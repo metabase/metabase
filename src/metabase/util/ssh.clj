@@ -2,7 +2,8 @@
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n :refer [deferred-tru]])
   (:import java.io.ByteArrayInputStream
            java.util.concurrent.TimeUnit
            org.apache.sshd.client.future.ConnectFuture
@@ -73,47 +74,49 @@
   "Configuration parameters to include in the add driver page on drivers that
   support ssh tunnels"
   [{:name         "tunnel-enabled"
-    :display-name "Use SSH tunnel"
-    :placeholder  "Enable this ssh tunnel?"
+    :display-name (deferred-tru "Use an SSH tunnel")
+    :placeholder  (deferred-tru "Enable this ssh tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
-    :display-name "SSH tunnel host"
-    :placeholder  "What hostname do you use to connect to the SSH tunnel?"
+    :display-name (deferred-tru "SSH tunnel host")
+    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :placeholder  "hostname"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-port"
-    :display-name "SSH tunnel port"
+    :display-name (deferred-tru "SSH tunnel port")
     :type         :integer
     :default      22
     :required     false
     :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-user"
-    :display-name "SSH tunnel username"
-    :placeholder  "What username do you use to login to the SSH tunnel?"
+    :display-name (deferred-tru "SSH tunnel username")
+    :helper-text  (deferred-tru "The username you use to login to your SSH tunnel.")
+    :placeholder  "username"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
    ;; this is entirely a UI flag
    {:name         "tunnel-auth-option"
-    :display-name "SSH Authentication"
+    :display-name (deferred-tru "SSH Authentication")
     :type         :select
-    :options      [{:name "SSH Key" :value "ssh-key"}
-                   {:name "Password" :value "password"}]
+    :options      [{:name (deferred-tru "SSH Key") :value "ssh-key"}
+                   {:name (deferred-tru "Password") :value "password"}]
     :default      "ssh-key"
     :visible-if   {"tunnel-enabled" true}}
    {:name         "tunnel-pass"
-    :display-name "SSH tunnel password"
+    :display-name (deferred-tru "SSH tunnel password")
     :type         :password
     :placeholder  "******"
     :visible-if   {"tunnel-auth-option" "password"}}
    {:name         "tunnel-private-key"
-    :display-name "SSH private key to connect to the tunnel"
+    :display-name (deferred-tru "SSH private key to connect to the tunnel")
     :type         :string
-    :placeholder  "Paste the contents of an ssh private key here"
+    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
     :required     true
     :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"
-    :display-name "Passphrase for SSH private key"
+    :display-name (deferred-tru "Passphrase for SSH private key")
     :type         :password
     :placeholder  "******"
     :visible-if   {"tunnel-auth-option" "ssh-key"}}])
