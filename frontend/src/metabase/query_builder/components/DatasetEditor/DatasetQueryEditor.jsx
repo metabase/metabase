@@ -34,6 +34,8 @@ function DatasetQueryEditor({ question: dataset, isActive, height, ...props }) {
     };
 
     if (!isActive) {
+      // Overwrites native query editor's resizable area constraints,
+      // so the automatic "close" animation doesn't get stuck
       resizableBoxProps.minConstraints = [0, 0];
     }
 
