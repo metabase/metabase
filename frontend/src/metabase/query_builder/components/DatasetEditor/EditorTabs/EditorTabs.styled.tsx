@@ -14,7 +14,7 @@ export const Tab = styled.label<{ selected: boolean }>`
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  padding: 8px 12px;
+  padding: 6px 12px;
 
   color: ${color("text-white")};
   font-weight: bold;
