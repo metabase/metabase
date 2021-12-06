@@ -32,10 +32,12 @@
 (deftest detect-pulse-chart-type-test
   (is (= :scalar
          (render/detect-pulse-chart-type {:display :anything}
+                                         {}
                                          {:cols [{:base_type :type/Number}]
                                           :rows [[6]]})))
   (is (= :smartscalar
          (render/detect-pulse-chart-type {:display :smartscalar}
+                                         {}
                                          {:cols     [{:base_type :type/Temporal
                                                       :name      "month"}
                                                      {:base_type :type/Number
@@ -48,11 +50,13 @@
                                                       :last-change    50.0}]})))
   (is (= :bar
          (render/detect-pulse-chart-type {:display :bar}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["A" 2]]})))
   (is (= :combo
          (render/detect-pulse-chart-type {:display :combo}
+                                         {}
                                          {:cols [{:base_type :type/Temporal}
                                                  {:base_type :type/Number}]
                                           :rows [[#t "2020" 2]
@@ -63,6 +67,7 @@
   (is (= :multiple
          (render/detect-pulse-chart-type {:display :something
                                           :multi_cards [{:display :bar} {:display :line}]}
+                                         {}
                                          {:cols [{:base_type :type/Temporal}
                                                  {:base_type :type/Number}]
                                           :rows [[#t "2020" 2]
@@ -70,6 +75,7 @@
 
   (is (= :funnel
          (render/detect-pulse-chart-type {:display :funnel}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["A" 2]]})))
@@ -77,6 +83,7 @@
   ;; timeseries line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}
+                                         {}
                                          {:cols [{:base_type :type/Temporal}
                                                  {:base_type :type/Number}]
                                           :rows [[#t "2020" 2]
@@ -84,12 +91,14 @@
   ;; Category line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["Red" 2]
                                                  ["Blue" 3]]})))
   (is (= :categorical/donut
          (render/detect-pulse-chart-type {:display :pie}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["apple" 3]

@@ -63,7 +63,7 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} {:keys [cols rows insights], :as data}]
+  [{display-type :display, card-name :name, :as card} dashcard {:keys [cols rows insights], :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
         row-sample-count          (delay (count (take 2 rows)))
         [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
@@ -127,7 +127,7 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) results)))
-    (let [chart-type (or (detect-pulse-chart-type card data)
+    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
                          (when (is-attached? card)
                            :attached)
                          :unknown)]
