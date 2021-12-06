@@ -28,6 +28,8 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Setting up LDAP][ldap].
 
+- [Fixing permissions issues][permissions].
+
 - [Metabase isn't sending email][not-sending-email].
 
 - [Using or migrating from an H2 application database][appdb].
@@ -91,6 +93,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
 [not-sending-email]: ./cant-send-email.html
+[permissions]: ./permissions.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html
