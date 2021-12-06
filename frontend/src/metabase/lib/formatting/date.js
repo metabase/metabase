@@ -1,7 +1,5 @@
 import { parseTimestamp } from "metabase/lib/time";
 
-// moment.js format strings
-
 const DEFAULT_DATE_FORMATS = {
   year: "YYYY",
   quarter: "[Q]Q - YYYY",
