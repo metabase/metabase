@@ -43,13 +43,11 @@ const MIN_SNIPPETS_FOR_SEARCH = 15;
   }),
 })
 export default class SnippetSidebar extends React.Component {
-  props;
   state = {
     showSearch: false,
     searchString: "",
     showArchived: false,
   };
-  searchBox;
 
   static propTypes = {
     onClose: PropTypes.func.isRequired,

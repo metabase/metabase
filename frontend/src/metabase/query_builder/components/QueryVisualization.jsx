@@ -16,9 +16,6 @@ import cx from "classnames";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
 export default class QueryVisualization extends Component {
-  props;
-  state;
-
   constructor(props, context) {
     super(props, context);
     this.state = this._getStateFromProps(props);

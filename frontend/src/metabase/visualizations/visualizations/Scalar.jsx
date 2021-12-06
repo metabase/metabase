@@ -45,8 +45,6 @@ export default class Scalar extends Component {
 
   static minSize = { width: 3, height: 3 };
 
-  _scalar;
-
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
   }

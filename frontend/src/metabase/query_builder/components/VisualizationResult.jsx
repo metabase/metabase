@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
@@ -13,7 +11,6 @@ import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 export default class VisualizationResult extends Component {
-  props;
   state = {
     showCreateAlertModal: false,
   };

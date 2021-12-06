@@ -34,8 +34,6 @@ import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
 
 import "./NativeQueryEditor.css";
 
-// TODO;
-
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
