@@ -56,15 +56,14 @@ function DatasetManagementSection({
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
         <Row>
-          <Button icon="label">{t`Customize metadata`}</Button>
+          <Button
+            icon="label"
+            onClick={onCustomizeMetadataClick}
+          >{t`Customize Metadata`}</Button>
           <MetadataIndicatorContainer>
             <DatasetMetadataStrengthIndicator dataset={dataset} />
           </MetadataIndicatorContainer>
         </Row>
-        <Button
-          icon="label"
-          onClick={onCustomizeMetadataClick}
-        >{t`Customize Metadata`}</Button>
         <Button
           icon="dataset_framed"
           onClick={turnDatasetIntoQuestion}
