@@ -9,7 +9,6 @@ import { isDate, isNumber } from "metabase/lib/schema_metadata";
 
 import { parseTimestamp } from "metabase/lib/time";
 
-import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 

@@ -19,14 +19,11 @@ import cx from "classnames";
 import _ from "underscore";
 
 export default class TimeseriesFilterWidget extends Component {
-  props;
   state = {
     filter: null,
     filterIndex: -1,
     currentFilter: null,
   };
-
-  _popover;
 
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);

@@ -246,8 +246,6 @@ class BinWidthZoomTransform extends Transform {
  * we are currently "in" that progression -- the other ones apply a series of transformations to breakouts
  */
 class Step {
-  _transforms;
-
   constructor(transforms) {
     this._transforms = transforms;
   }
