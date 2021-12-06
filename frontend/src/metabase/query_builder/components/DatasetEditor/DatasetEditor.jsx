@@ -10,7 +10,6 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
 import Icon from "metabase/components/Icon";
 
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -22,8 +21,8 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
-import ResizableNotebook from "./ResizableNotebook";
 
 import {
   Root,
@@ -205,21 +204,13 @@ function DatasetEditor(props) {
       <Root>
         <MainContainer>
           <QueryEditorContainer isResizable={isEditingQuery}>
-            {dataset.isNative() ? (
-              <NativeQueryEditor
-                {...props}
-                isInitiallyOpen
-                viewHeight={height}
-                hasParametersList={false}
-              />
-            ) : (
-              <ResizableNotebook
-                {...props}
-                height={editorHeight}
-                isResizable={isEditingQuery}
-                onResizeStop={handleResize}
-              />
-            )}
+            <DatasetQueryEditor
+              {...props}
+              isActive={isEditingQuery}
+              height={editorHeight}
+              viewHeight={height}
+              onResizeStop={handleResize}
+            />
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
             <DebouncedFrame className="flex-full" enabled={false}>
