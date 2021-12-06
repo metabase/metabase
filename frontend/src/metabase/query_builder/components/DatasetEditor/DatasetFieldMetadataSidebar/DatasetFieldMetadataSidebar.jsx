@@ -19,6 +19,16 @@ const propTypes = {
   field: PropTypes.instanceOf(Field).isRequired,
 };
 
+function getVisibilityTypeName(visibilityType) {
+  if (visibilityType.id === "normal") {
+    return t`Table and details views`;
+  }
+  if (visibilityType.id === "details-only") {
+    return t`Detail views only`;
+  }
+  return visibilityType.name;
+}
+
 const FORM_FIELDS = [
   { name: "display_name", title: t`Display name` },
   {
@@ -42,7 +52,7 @@ const FORM_FIELDS = [
     options: field_visibility_types
       .filter(type => type.id !== "sensitive")
       .map(type => ({
-        name: type.name,
+        name: getVisibilityTypeName(type),
         value: type.id,
       })),
   },
