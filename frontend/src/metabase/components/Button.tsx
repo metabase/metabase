@@ -58,7 +58,6 @@ const BaseButton = forwardRef(function BaseButton(
     iconColor,
     iconVertical,
     labelBreakpoint,
-    color,
     children,
     ...props
   }: Props,
