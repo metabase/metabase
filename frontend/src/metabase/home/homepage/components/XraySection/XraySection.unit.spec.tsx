@@ -1,6 +1,14 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import React from "react";
+import {
+  Collection,
+  Dashboard,
+  Database,
+  DatabaseCandidate,
+  TableCandidate,
+  User,
+} from "../../types";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {
@@ -99,13 +107,12 @@ describe("XraySection", () => {
 
   it("should not be visible when there are no table candidates", () => {
     const user = getUser();
-    const dashboards = [];
     const databaseCandidates = [getDatabaseCandidate()];
 
     render(
       <XraySection
         user={user}
-        dashboards={dashboards}
+        dashboards={[]}
         databaseCandidates={databaseCandidates}
         showXrays
       />,
@@ -115,10 +122,40 @@ describe("XraySection", () => {
   });
 });
 
-const getUser = ({ is_superuser = false } = {}) => ({ is_superuser });
+const getUser = (opts?: Partial<User>): User => ({
+  first_name: "John",
+  is_superuser: false,
+  personal_collection_id: "personal",
+  ...opts,
+});
 
-const getDashboard = ({ id = 1 } = {}) => ({ id });
+const getDatabase = (opts?: Partial<Database>): Database => ({
+  id: 1,
+  name: "Our database",
+  is_sample: false,
+  ...opts,
+});
 
-const getTableCandidate = ({ title, url = "/" } = {}) => ({ title, url });
+const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
+  id: 1,
+  name: "Our dashboard",
+  ...opts,
+});
 
-const getDatabaseCandidate = ({ tables = [] } = {}) => ({ tables });
+const getCollection = (opts?: Partial<Collection>): Collection => ({
+  id: "root",
+  ...opts,
+});
+
+const getTableCandidate = (opts?: Partial<TableCandidate>): TableCandidate => ({
+  title: "Our table",
+  url: "/auto",
+  ...opts,
+});
+
+const getDatabaseCandidate = (
+  opts?: Partial<DatabaseCandidate>,
+): DatabaseCandidate => ({
+  tables: [],
+  ...opts,
+});

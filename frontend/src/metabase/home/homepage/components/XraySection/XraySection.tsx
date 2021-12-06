@@ -25,7 +25,7 @@ import {
 interface Props {
   user: User;
   dashboards: Dashboard[];
-  databaseCandidates: DatabaseCandidate[];
+  databaseCandidates?: DatabaseCandidate[];
   showXrays?: boolean;
   onHideXrays?: () => void;
 }

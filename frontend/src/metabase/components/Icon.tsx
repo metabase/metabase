@@ -51,6 +51,7 @@ const stringOrNumberPropType = PropTypes.oneOfType([
 
 export const iconPropTypes = {
   name: PropTypes.string.isRequired,
+  color: PropTypes.string,
   size: stringOrNumberPropType,
   width: stringOrNumberPropType,
   height: stringOrNumberPropType,

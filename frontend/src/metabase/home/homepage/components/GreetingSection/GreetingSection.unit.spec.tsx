@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import React from "react";
+import { User } from "../../types";
 import GreetingSection from "./GreetingSection";
 
 describe("GreetingSection", () => {
@@ -12,8 +13,9 @@ describe("GreetingSection", () => {
   });
 });
 
-const getUser = ({
-  first_name = "",
-  is_superuser = false,
-  personal_collection_id = "",
-} = {}) => ({ first_name, is_superuser, personal_collection_id });
+const getUser = (opts?: Partial<User>): User => ({
+  first_name: "John",
+  is_superuser: false,
+  personal_collection_id: "personal",
+  ...opts,
+});
