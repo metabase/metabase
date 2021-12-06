@@ -38,6 +38,8 @@ import {
   EditorEqualsSign,
 } from "./ExpressionEditorTextfield.styled";
 
+import ExpressionMode from "./ExpressionMode";
+
 const HelpText = ({ helpText, width }) =>
   helpText ? (
     <Popover
@@ -132,6 +134,9 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   componentDidMount() {
+    const { editor } = this.input.current;
+    editor.getSession().setMode(new ExpressionMode());
+
     this._setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,

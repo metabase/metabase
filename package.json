@@ -21,6 +21,7 @@
     "@visx/text": "1.7.0",
     "ace-builds": "^1.4.7",
     "arg": "^5.0.0",
+    "brace": "^0.11.1",
     "chevrotain": "^6.5.0",
     "classlist-polyfill": "^1.2.0",
     "classnames": "^2.1.3",
