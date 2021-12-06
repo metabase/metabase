@@ -455,6 +455,12 @@ export default function StaticVizPage() {
                 },
                 y: {
                   type: "linear",
+                  format: {
+                    number_style: "currency",
+                    currency: "USD",
+                    currency_style: "symbol",
+                    decimals: 2,
+                  },
                 },
                 labels: {
                   right: "Sum",
