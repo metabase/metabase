@@ -982,7 +982,7 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
-      MB_SNOWPLOW_ENABLED: << parameters.snowplow >>
+      MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
       - run-on-change:
