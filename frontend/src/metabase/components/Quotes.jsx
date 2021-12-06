@@ -1,20 +1,12 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-type Props = {
-  period: number,
-  quotes: string[],
-};
-type State = {
-  count: number,
-};
-
 export default class Quotes extends Component {
-  props: Props;
-  state: State = {
+  state = {
     count: 0,
   };
 
-  _timer: ?number = null;
+  _timer = null;
 
   static defaultProps = {
     quotes: [],

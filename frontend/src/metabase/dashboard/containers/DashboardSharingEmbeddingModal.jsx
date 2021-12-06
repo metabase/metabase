@@ -29,7 +29,7 @@ const mapDispatchToProps = {
 };
 
 class DashboardSharingEmbeddingModal extends Component {
-  _modal: ?ModalWithTrigger;
+  _modal;
 
   render() {
     const {
