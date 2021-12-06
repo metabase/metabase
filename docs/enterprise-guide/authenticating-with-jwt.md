@@ -1,8 +1,18 @@
-## JWT-based Authentication
+# JWT-based Authentication
 
 You can connect Metabase to your JWT-based identity provider to allow your Metabase users to authenticate through it.
 
-### Enabling JWT authentication
+## Types of authentication Metabase supports with JWT
+
+Metabase supports two types of authentication with JWT:
+
+- [Authorization Code Flow](https://developer.okta.com/docs/concepts/oauth-openid/#authorization-code-flow)
+- [Authorization Code Flow with PKCE](https://developer.okta.com/docs/concepts/oauth-openid/#authorization-code-flow-with-pkce)
+
+PKCE stands for Proof Key for Code Exchange, and it's a way to extend the Authorization Code Flow to incorporate random keys generated on demand.
+
+## Enabling JWT authentication
+
 First, navigate to the Settings section of the Admin area, then click on the Authentication tab. Click the `Configure` button in the JWT section of this page, and you'll see this form:
 
 ![SAML form](images/JWT-auth-form.png)
@@ -15,7 +25,8 @@ Here's a breakdown of each of the settings:
 
 **String Used by the JWT Signing Key:** This is a string used to seed the private key that is used to validate JWT messages.
 
-#### User attribute configuration (optional)
+## User attribute configuration (optional)
+
 These are additional settings you can fill in to pass user attributes to Metabase.
 
 **Email attribute:** the key to retrieve each JWT user's email address.
@@ -24,7 +35,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
-#### Group Schema
+## Group Schema
 
 You can use your JWT to assign Metabase users to custom groups by following these steps:
 
@@ -32,17 +43,18 @@ You can use your JWT to assign Metabase users to custom groups by following thes
 2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
 3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
 
-### Disabling Password Log-in
+## Disabling Password Log-in
 
 Once you have configured your JWT authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
 
 ![Password disable](images/password-disable.png)
 
-### Example code using JWT
+## Example code using JWT
 
 You can find example code that uses JWT authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
 ---
 
 ## Next: Creating data sandboxes for your user groups
+
 Data sandboxes automatically filter specific tables for your users based on who they are. We'll show you [how to set these up](data-sandboxes.md) next.
