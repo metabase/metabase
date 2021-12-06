@@ -65,8 +65,8 @@ describe("DatasetMetadataStrengthIndicator", () => {
     describe(name, () => {
       it("renders correctly", () => {
         setup({ resultMetadata });
-        expect(screen.queryByTestId("indicator")).toBeInTheDocument();
-        expect(screen.queryByText(completenessPercent)).toBeInTheDocument();
+        expect(screen.getByTestId("indicator")).toBeInTheDocument();
+        expect(screen.getByText(completenessPercent)).toBeInTheDocument();
       });
     });
   });
