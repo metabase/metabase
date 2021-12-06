@@ -48,11 +48,11 @@ const XraySection = ({
       <SectionHeader>
         <SectionTitle>{t`Try these x-rays based on your data`}</SectionTitle>
         {user.is_superuser && (
-          <XrayModal onSubmit={onHideXrays}>
+          <HideSectionModal onSubmit={onHideXrays}>
             <Tooltip tooltip={t`Remove these suggestions`}>
               <SectionCloseIcon name="close" />
             </Tooltip>
-          </XrayModal>
+          </HideSectionModal>
         )}
       </SectionHeader>
       <ListRoot>
@@ -81,12 +81,12 @@ const XrayCard = ({ option }: XrayCardProps) => {
   );
 };
 
-interface XrayModalProps {
+interface HideSectionModalProps {
   children?: ReactNode;
   onSubmit?: () => void;
 }
 
-const XrayModal = ({ children, onSubmit }: XrayModalProps) => {
+const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
   return (
     <ModalWithTrigger
       title={t`Remove these suggestions?`}

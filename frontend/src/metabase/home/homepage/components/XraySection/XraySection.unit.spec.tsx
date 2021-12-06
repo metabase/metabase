@@ -2,9 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import {
-  Collection,
   Dashboard,
-  Database,
   DatabaseCandidate,
   TableCandidate,
   User,
@@ -129,21 +127,9 @@ const getUser = (opts?: Partial<User>): User => ({
   ...opts,
 });
 
-const getDatabase = (opts?: Partial<Database>): Database => ({
-  id: 1,
-  name: "Our database",
-  is_sample: false,
-  ...opts,
-});
-
 const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
   name: "Our dashboard",
-  ...opts,
-});
-
-const getCollection = (opts?: Partial<Collection>): Collection => ({
-  id: "root",
   ...opts,
 });
 

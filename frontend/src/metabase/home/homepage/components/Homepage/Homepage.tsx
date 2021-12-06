@@ -1,25 +1,31 @@
 import React, { Fragment } from "react";
-import PropTypes from "prop-types";
-import GreetingSection from "../GreetingSection";
+import {
+  Collection,
+  Dashboard,
+  Database,
+  DatabaseCandidate,
+  User,
+} from "../../types";
 import CollectionSection from "../CollectionSection";
 import DatabaseSection from "../DatabaseSection";
+import GreetingSection from "../GreetingSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./Homepage.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  databases: PropTypes.array,
-  collections: PropTypes.array,
-  dashboards: PropTypes.array,
-  databaseCandidates: PropTypes.array,
-  showData: PropTypes.bool,
-  showXrays: PropTypes.bool,
-  showPinMessage: PropTypes.bool,
-  onHideData: PropTypes.func,
-  onHideXrays: PropTypes.func,
-  onHidePinMessage: PropTypes.func,
-};
+interface Props {
+  user: User;
+  databases?: Database[];
+  collections?: Collection[];
+  dashboards?: Dashboard[];
+  databaseCandidates?: DatabaseCandidate[];
+  showData?: boolean;
+  showXrays?: boolean;
+  showPinMessage?: boolean;
+  onHideData?: () => void;
+  onHideXrays?: () => void;
+  onHidePinMessage?: () => void;
+}
 
 const Homepage = ({
   user,
@@ -33,7 +39,7 @@ const Homepage = ({
   onHideData,
   onHideXrays,
   onHidePinMessage,
-}) => {
+}: Props) => {
   return (
     <LandingRoot>
       <GreetingSection user={user} />
@@ -65,7 +71,5 @@ const Homepage = ({
     </LandingRoot>
   );
 };
-
-Homepage.propTypes = propTypes;
 
 export default Homepage;

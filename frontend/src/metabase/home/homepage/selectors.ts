@@ -1,6 +1,6 @@
 import { createSelector } from "reselect";
 
-export const getSettings = createSelector(
+export const getSettings = createSelector<any, any, any>(
   state => state.settings,
   settings => settings.values,
 );
