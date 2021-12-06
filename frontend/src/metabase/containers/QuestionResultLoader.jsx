@@ -3,8 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { defer } from "metabase/lib/promise";
 
-import Question from "metabase-lib/lib/Question";
-
 const propTypes = {
   question: PropTypes.object,
   children: PropTypes.func,
