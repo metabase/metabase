@@ -1,17 +1,20 @@
 import cx from "classnames";
-import React, { ReactNode } from "react";
-import { Link as ReactRouterLink, LinkProps } from "react-router";
+import React, { CSSProperties, HTMLProps, ReactNode } from "react";
+import { Link as ReactRouterLink } from "react-router";
 import styled from "styled-components";
 import { color, display, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
 import { stripLayoutProps } from "metabase/lib/utils";
 
-interface Props extends LinkProps {
+interface Props extends HTMLProps<HTMLAnchorElement> {
   to: string;
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
   tooltip?: string;
+  activeClassName?: string;
+  activeStyle?: CSSProperties;
+  onlyActiveOnIndex?: boolean;
 }
 
 function BaseLink({
