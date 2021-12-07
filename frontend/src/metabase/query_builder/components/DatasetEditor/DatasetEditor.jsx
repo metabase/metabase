@@ -213,7 +213,7 @@ function DatasetEditor(props) {
             />
           </QueryEditorContainer>
           <TableContainer isSidebarOpen={!!sidebar}>
-            <DebouncedFrame className="flex-full" enabled={false}>
+            <DebouncedFrame className="flex-full" enabled>
               <QueryVisualization
                 {...props}
                 className="spread"
