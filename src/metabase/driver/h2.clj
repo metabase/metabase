@@ -36,8 +36,10 @@
   [_]
   [{:name         "db"
     :display-name (tru "Connection String")
+    :helper-text (deferred-tru "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension.")
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
-    :required     true}])
+    :required     true}
+   driver.common/cloud-ip-address-info])
 
 (defmethod driver/db-start-of-week :h2
   [_]

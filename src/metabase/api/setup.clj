@@ -1,5 +1,6 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.database :as database-api :refer [DBEngineString]]
             [metabase.config :as config]
@@ -57,14 +58,14 @@
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
-  [{:keys [name driver details schedules database]}]
+  [{:keys [name driver details schedules database creator-id]}]
   (when driver
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (db/insert! Database
       (merge
-       {:name name, :engine driver, :details details}
+       {:name name, :engine driver, :details details, :creator_id creator-id}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))
@@ -105,8 +106,12 @@
               (db/transaction
                 (let [user-info (setup-create-user!
                                  {:email email, :first-name first_name, :last-name last_name, :password password})
-                      db        (setup-create-database!
-                                 {:name name, :driver engine, :details details, :schedules schedules, :database database})]
+                      db        (setup-create-database! {:name name
+                                                         :driver engine
+                                                         :details details
+                                                         :schedules schedules
+                                                         :database database
+                                                         :creator-id (:user-id user-info)})]
                   (setup-set-settings!
                    request
                    {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
@@ -118,10 +123,15 @@
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
+                (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (snowplow/track-event! ::snowplow/new-user-created user-id)
+      (when database (snowplow/track-event! ::snowplow/database-connection-successful
+                                            user-id
+                                            {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookie request {:id session-id} session))))
 
@@ -134,7 +144,11 @@
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
                                                              {:message m})})]
-    (database-api/test-database-connection engine details :invalid-response-handler invalid-response)))
+    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+      (when error-or-nil (snowplow/track-event! ::snowplow/database-connection-failed
+                                                nil
+                                                {:database engine, :source :setup}))
+      error-or-nil)))
 
 
 ;;; Admin Checklist

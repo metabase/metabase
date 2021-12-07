@@ -34,9 +34,6 @@ import {
   setEmbedDashboardEndpoints,
 } from "metabase/services";
 
-import type { Dashboard } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
-
 import _ from "underscore";
 
 const mapStateToProps = (state, props) => {
@@ -59,41 +56,11 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-type Props = {
-  params: { uuid?: string, token?: string },
-  location: { query: { [key: string]: string } },
-  dashboardId: string,
-
-  dashboard?: Dashboard,
-  parameters: Parameter[],
-  parameterValues: { [key: string]: string },
-
-  initialize: () => void,
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  fetchDashboard: (
-    dashId: string,
-    query: { [key: string]: string },
-  ) => Promise<void>,
-  fetchDashboardCardData: (options: {
-    reload: boolean,
-    clear: boolean,
-  }) => Promise<void>,
-  cancelFetchDashboardCardData: () => Promise<void>,
-  setParameterValue: (id: string, value: string) => void,
-  setErrorPage: (error: { status: number }) => void,
-};
-
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ dashboard }) => dashboard && dashboard.name)
 @DashboardControls
 // NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {
-  props: Props;
-
   async UNSAFE_componentWillMount() {
     const {
       initialize,
@@ -124,7 +91,7 @@ export default class PublicDashboard extends Component {
     this.props.cancelFetchDashboardCardData();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }

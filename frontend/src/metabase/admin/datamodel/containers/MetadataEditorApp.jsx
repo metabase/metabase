@@ -53,10 +53,7 @@ const mapDispatchToProps = {
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @Databases.load({
   id: (state, props) => props.databaseId,
   loadingAndErrorWrapper: false,

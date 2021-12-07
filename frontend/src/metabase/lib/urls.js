@@ -49,6 +49,8 @@ export function question(card, hash = "", query = "") {
   }
 
   const { card_id, id, name } = card;
+  const basePath =
+    card?.dataset || card?.model === "dataset" ? "dataset" : "question";
 
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.
@@ -65,10 +67,10 @@ export function question(card, hash = "", query = "") {
    * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
    */
   if (!name) {
-    return `/question/${questionId}${query}${hash}`;
+    return `/${basePath}/${questionId}${query}${hash}`;
   }
 
-  const path = appendSlug(`/question/${questionId}`, slugg(name));
+  const path = appendSlug(`/${basePath}/${questionId}`, slugg(name));
 
   return `${path}${query}${hash}`;
 }
@@ -77,7 +79,7 @@ export function serializedQuestion(card) {
   return question(null, card);
 }
 
-export const extractQueryParams = (query: Object): Array => {
+export const extractQueryParams = query => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
 
@@ -89,13 +91,17 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function newQuestion({ mode, ...options } = {}) {
-  const url = Question.create(options).getUrl();
+export function newQuestion({ mode, creationType, ...options } = {}) {
+  const url = Question.create(options).getUrl({ creationType });
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
     return url;
   }
+}
+
+export function dataset(...args) {
+  return question(...args);
 }
 
 export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
@@ -125,6 +131,8 @@ export function modelToUrl(item) {
   switch (item.model) {
     case "card":
       return question(modelData);
+    case "dataset":
+      return dataset(modelData);
     case "dashboard":
       return dashboard(modelData);
     case "pulse":
@@ -249,6 +257,10 @@ export function deactivateUser(userId) {
 
 export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+export function newDatabase() {
+  return `/admin/databases/create`;
 }
 
 export function browseDatabase(database) {

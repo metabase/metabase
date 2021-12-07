@@ -18,9 +18,11 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models :refer [Field]]
+            [metabase.models.secret :as secret]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.i18n :refer [trs]]
             [metabase.util.ssh :as ssh]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
@@ -85,7 +87,50 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/cloud-ip-address-info
      driver.common/default-ssl-details
+     {:name         "ssl-mode"
+      :display-name (trs "SSL Mode")
+      :type         :select
+      :options [{:name  "allow"
+                 :value "allow"}
+                {:name  "prefer"
+                 :value "prefer"}
+                {:name  "require"
+                 :value "require"}
+                {:name  "verify-ca"
+                 :value "verify-ca"}
+                {:name  "verify-full"
+                 :value "verify-full"}]
+      :default "require"
+      :visible-if {"ssl" true}}
+     {:name         "ssl-root-cert"
+      :display-name (trs "SSL Root Certificate (PEM)")
+      :type         :secret
+      :secret-kind  :pem-cert
+      ;; only need to specify the root CA if we are doing one of the verify modes
+      :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+     {:name         "ssl-use-client-auth"
+      :display-name (trs "Authenticate client certificate?")
+      :type         :boolean
+      ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+      :visible-if   {"ssl" true}}
+     {:name         "ssl-client-cert"
+      :display-name (trs "SSL Client Certificate (PEM)")
+      :type         :secret
+      :secret-kind  :pem-cert
+      :visible-if   {"ssl-use-client-auth" true}}
+     {:name         "ssl-key"
+      :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+      :type         :secret
+      ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+      :secret-kind  :binary-blob
+      :visible-if   {"ssl-use-client-auth" true}}
+     {:name         "ssl-key-password"
+      :display-name (trs "SSL Client Key Password")
+      :type         :secret
+      :secret-kind  :password
+      :visible-if   {"ssl-use-client-auth" true}}
      (assoc driver.common/default-additional-options-details
             :placeholder "prepareThreshold=0")]))
 
@@ -297,10 +342,40 @@
     "inet"  :type/IPAddress
     nil))
 
-(def ^:private ssl-params
-  "Params to include in the JDBC connection spec for an SSL connection."
-  {:ssl        true
-   :sslmode    "require"})
+(defn- ssl-params
+  "Builds the params to include in the JDBC connection spec for an SSL connection."
+  [db-details]
+  (let [ssl-root-cert   (when (contains? #{"verify-ca" "verify-full"} (:ssl-mode db-details))
+                          (secret/db-details-prop->secret-map db-details "ssl-root-cert"))
+        ssl-client-key  (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-client-key"))
+        ssl-client-cert (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
+        ssl-key-pw      (when (:ssl-use-client-auth db-details)
+                          (secret/db-details-prop->secret-map db-details "ssl-key-password"))
+        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))]
+    (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
+      ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
+      (nil? (:ssl-mode db-details))
+      (assoc :sslmode "require")
+
+      ssl-root-cert
+      (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
+
+      ssl-client-key
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
+
+      ssl-client-cert
+      (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
+
+      ssl-key-pw
+      (assoc :sslpassword (secret/value->string ssl-key-pw))
+
+      true
+      (as-> params ;; from outer cond->
+        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                       :ssl-use-client-auth)
+        (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -309,22 +384,25 @@
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :as details-map}]
   (let [props (-> details-map
-                  (update :port (fn [port]
-                                  (if (string? port)
-                                    (Integer/parseInt port)
-                                    port)))
-                  ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-                  (dissoc :ssl))
-        ;; this happens via ->> so that the users props will override the ssl-params stuff.
-        ;; if the user has specified a sslmode, it must always take precedence over our default.
-        props (->> props
-                   (merge (if ssl?
-                            ssl-params
-                            disable-ssl-params)))
+                (update :port (fn [port]
+                                (if (string? port)
+                                  (Integer/parseInt port)
+                                  port)))
+                ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+                (dissoc :ssl))
+        props (if ssl?
+                (let [ssl-prms (ssl-params details-map)]
+                  ;; if the user happened to specify any of the SSL options directly, allow those to take
+                  ;; precedence, but only if they match a key from our own
+                  ;; our `ssl-params` function is also removing various internal properties, ex: for secret resolution,
+                  ;; so we can't just merge the entire `props` map back in here because it will bring all those
+                  ;; internal property values back; only merge in the ones the driver might recognize
+                  (merge ssl-prms (select-keys props (keys ssl-prms))))
+                (merge disable-ssl-params props))
         props (-> props
-                  (set/rename-keys {:dbname :db})
-                  db.spec/postgres
-                  (sql-jdbc.common/handle-additional-options details-map))]
+                (set/rename-keys {:dbname :db})
+                db.spec/postgres
+                (sql-jdbc.common/handle-additional-options details-map))]
     props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres

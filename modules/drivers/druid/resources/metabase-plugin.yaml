@@ -14,6 +14,7 @@ driver:
         - port
         - display-name: Broker node port
           default: 8082
+    - cloud-ip-address-info
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

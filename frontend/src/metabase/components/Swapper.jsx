@@ -3,11 +3,6 @@ import React from "react";
 import { Motion, spring } from "react-motion";
 
 class Swapper extends React.Component {
-  props: {
-    defaultElement: React.Element,
-    swappedElement: React.Element,
-  };
-
   state = {
     hovered: false,
   };

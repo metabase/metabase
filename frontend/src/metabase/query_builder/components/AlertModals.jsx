@@ -48,7 +48,6 @@ import MetabaseCookies from "metabase/lib/cookies";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
-import type { AlertType } from "metabase-lib/lib/Alert";
 import { alertIsValid } from "metabase/lib/alert";
 
 const getScheduleFromChannel = channel =>
@@ -76,11 +75,6 @@ const textStyle = {
   { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
 )
 export class CreateAlertModalContent extends Component {
-  props: {
-    onCancel: () => void,
-    onAlertCreated: () => void,
-  };
-
   constructor(props) {
     super();
 
@@ -208,10 +202,6 @@ export class CreateAlertModalContent extends Component {
 }
 
 export class AlertEducationalScreen extends Component {
-  props: {
-    onProceed: () => void,
-  };
-
   render() {
     const { onProceed } = this.props;
 
@@ -300,15 +290,6 @@ export class AlertEducationalScreen extends Component {
   { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
 )
 export class UpdateAlertModalContent extends Component {
-  props: {
-    alert: any,
-    onCancel: boolean,
-    onAlertUpdated: any => void,
-    updateAlert: any => void,
-    deleteAlert: any => void,
-    isAdmin: boolean,
-  };
-
   constructor(props) {
     super();
     this.state = {
@@ -396,8 +377,6 @@ export class UpdateAlertModalContent extends Component {
 }
 
 export class DeleteAlertSection extends Component {
-  deleteModal: any;
-
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
     return this.props.alert.channels.map(c =>
@@ -468,18 +447,8 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
-  null,
-)
+@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
 export class AlertEditForm extends Component {
-  props: {
-    alertType: AlertType,
-    alert: any,
-    onAlertChange: any => void,
-    isAdmin: boolean,
-  };
-
   onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
@@ -623,15 +592,6 @@ export class AlertEditSchedule extends Component {
   },
 )
 export class AlertEditChannels extends Component {
-  props: {
-    onChannelsChange: any => void,
-    user: any,
-    users: any[],
-    // this stupidly named property contains different channel options, nothing else
-    formInput: any,
-    fetchPulseFormInput: () => Promise<void>,
-  };
-
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }

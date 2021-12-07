@@ -4,18 +4,22 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.oracle :as oracle]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.util :as driver.u]
+            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
+            [metabase.sync :as sync]
             [metabase.test :as mt]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.oracle :as oracle.tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
@@ -23,6 +27,7 @@
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (deftest connection-details->spec-test
@@ -79,6 +84,60 @@
                                                                  :port 1521})
                 (catch Throwable e
                   (driver/humanize-connection-error-message :oracle (.getMessage e))))))))
+
+(deftest connection-properties-test
+  (testing "Connection properties should be returned properly (including transformation of secret types)"
+    (let [expected [{:name "host"}
+                    {:name "port"}
+                    {:name "sid"}
+                    {:name "service-name"}
+                    {:name "user"}
+                    {:name "password"}
+                    {:name "cloud-ip-address-info"}
+                    {:name "ssl"}
+                    {:name "ssl-use-keystore"}
+                    {:name       "ssl-keystore-options"
+                     :type       "select"
+                     :options    [{:name  "Local file path"
+                                   :value "local"}
+                                  {:name  "Uploaded file path"
+                                   :value "uploaded"}]
+                     :visible-if {:ssl-use-keystore true}}
+                    {:name       "ssl-keystore-value"
+                     :type       "textFile"
+                     :visible-if {:ssl-keystore-options "uploaded"}}
+                    {:name       "ssl-keystore-path"
+                     :type       "string"
+                     :visible-if {:ssl-keystore-options "local"}}
+                    {:name "ssl-keystore-password-value"
+                     :type "password"}
+                    {:name "ssl-use-truststore"}
+                    {:name       "ssl-truststore-options"
+                     :type       "select"
+                     :options    [{:name  "Local file path"
+                                   :value "local"}
+                                  {:name  "Uploaded file path"
+                                   :value "uploaded"}]
+                     :visible-if {:ssl-use-truststore true}}
+                    {:name       "ssl-truststore-value"
+                     :type       "textFile"
+                     :visible-if {:ssl-truststore-options "uploaded"}}
+                    {:name       "ssl-truststore-path"
+                     :type       "string"
+                     :visible-if {:ssl-truststore-options "local"}}
+                    {:name "ssl-truststore-password-value"
+                     :type "password"}
+                    {:name "tunnel-enabled"}
+                    {:name "tunnel-host"}
+                    {:name "tunnel-port"}
+                    {:name "tunnel-user"}
+                    {:name "tunnel-auth-option"}
+                    {:name "tunnel-pass"}
+                    {:name "tunnel-private-key"}
+                    {:name "tunnel-private-key-passphrase"}]
+          actual   (->> (driver/connection-properties :oracle)
+                        (driver.u/connection-props-server->client :oracle))]
+      (is (= expected (mt/select-keys-sequentially expected actual))))))
 
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -243,11 +302,39 @@
                                     :fields       :none}]})))))))))
 
 (deftest oracle-connect-with-ssl-test
+  ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
   (mt/test-driver :oracle
-    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL")
-      (testing "Oracle with SSL connectivity"
-        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
-          (qp-test.order-by-test/order-by-aggregate-fields-test)))
+    (if (System/getenv "MB_ORACLE_SSL_TEST_SSL") ; only even run this test if this env var is set
+      ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
+      (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
+        ;; need to get a fresh instance of details to pick up env key changes
+        (let [details      (->> (#'oracle.tx/connection-details)
+                                (driver.u/db-details-client->server :oracle))
+              orig-user-id api/*current-user-id*]
+          (testing "Oracle can-connect? with SSL connection"
+            (is (driver/can-connect? :oracle details)))
+          (testing "Sync works with SSL connection"
+            (binding [metabase.sync.util/*log-exceptions-and-continue?* false
+                      api/*current-user-id* (mt/user->id :crowberto)]
+              (mt/with-temp Database [database {:engine :oracle,
+                                                :name (format "SSL connection version of %d" (mt/id)),
+                                                :details details}]
+                (mt/with-db database
+                  (sync/sync-database! database {:scan :schema})
+                  ;; should be four tables from test-data
+                  (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                  (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                            ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
+                            ;; actually the name of the database, and not some variation on the :name specified
+                            ;; above, so that the table names resolve correctly in the generated query we can't
+                            ;; simply call this new temp database "test-data", because then it will no longer be
+                            ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
+                            ;; database, and the logic within metabase.test.data.interface/metabase-instance would
+                            ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
+                            ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
+                            tx/*database-name-override* "test-data"]
+                    (testing "Execute query with SSL connection"
+                      (qp-test.order-by-test/order-by-test)))))))))
       (println (u/format-color 'yellow
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"

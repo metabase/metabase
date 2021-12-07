@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -9,29 +10,8 @@ import { createMultiwordSearchRegex } from "metabase/lib/string";
 
 import cx from "classnames";
 
-type SelectOption = {
-  name: string,
-  key: string,
-};
-
-type Props = {
-  options: Array<SelectOption>,
-  values: Array<string>,
-  onValuesChange: (values: any[]) => void,
-  placeholder?: string,
-  multi?: boolean,
-};
-
-type State = {
-  searchText: string,
-  searchRegex: ?RegExp,
-};
-
 export default class SelectPicker extends Component {
-  state: State;
-  props: Props;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -48,7 +28,7 @@ export default class SelectPicker extends Component {
     multi: PropTypes.bool,
   };
 
-  updateSearchText = (value: string) => {
+  updateSearchText = value => {
     let regex = null;
 
     if (value) {
@@ -61,7 +41,7 @@ export default class SelectPicker extends Component {
     });
   };
 
-  selectValue(key: string, selected: boolean) {
+  selectValue(key, selected) {
     let values;
     if (this.props.multi) {
       values = this.props.values.slice().filter(v => v != null);
@@ -76,7 +56,7 @@ export default class SelectPicker extends Component {
     this.props.onValuesChange(values);
   }
 
-  nameForOption(option: SelectOption) {
+  nameForOption(option) {
     if (option.name === "") {
       return t`Empty`;
     } else if (

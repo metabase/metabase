@@ -1,53 +1,13 @@
+/* eslint-disable react/prop-types */
 import _ from "underscore";
 import { t } from "ttag";
-
-import * as React from "react";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 
 import chartSettingNestedSettings from "metabase/visualizations/components/settings/ChartSettingNestedSettings";
 
-import type {
-  SettingId,
-  SettingDef,
-  SettingDefs,
-  Settings,
-  WidgetDef,
-  ExtraProps,
-} from "metabase/visualizations/lib/settings";
-
-import type { Series } from "metabase-types/types/Visualization";
-
-export type NestedObject = any;
-export type NestedObjectKey = string;
-
-type NestedSettingDef = SettingDef & {
-  objectName: string,
-  getObjects: (series: Series, settings: Settings) => NestedObject[],
-  getObjectKey: (object: NestedObject) => string,
-  getSettingDefintionsForObject: (
-    series: Series,
-    object: NestedObject,
-  ) => SettingDefs,
-  getInheritedSettingsForObject?: (
-    object: NestedObject,
-  ) => { [key: string]: any },
-  component: React.ComponentClass,
-  id?: SettingId,
-};
-
-export type SettingsWidgetsForObjectGetter = (
-  series: Series,
-  object: NestedObject,
-  storedSettings: Settings,
-  onChangeSettings: (newSettings: Settings) => void,
-  extra: ExtraProps,
-) => WidgetDef[];
-
-export type NestedObjectKeyGetter = (object: NestedObject) => NestedObjectKey;
-
 export function nestedSettings(
-  id: SettingId,
+  id,
   {
     objectName = "object",
     getObjects,
@@ -56,7 +16,7 @@ export function nestedSettings(
     getInheritedSettingsForObject = () => ({}),
     component,
     ...def
-  }: NestedSettingDef = {},
+  } = {},
 ) {
   function getComputedSettingsForObject(series, object, storedSettings, extra) {
     const settingsDefs = getSettingDefintionsForObject(series, object);
@@ -125,7 +85,7 @@ export function nestedSettings(
     [id]: {
       section: t`Display`,
       default: {},
-      getProps: (series: Series, settings: Settings) => {
+      getProps: (series, settings) => {
         const objects = getObjects(series, settings);
         const allComputedSettings = getComputedSettingsForAllObjects(
           series,
@@ -145,9 +105,9 @@ export function nestedSettings(
       ...def,
     },
     [objectName]: {
-      getDefault(series: Series, settings: Settings) {
+      getDefault(series, settings) {
         const cache = new Map();
-        return (object: NestedObject) => {
+        return object => {
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);

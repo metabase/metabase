@@ -11,34 +11,14 @@ import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Database } from "metabase-types/types/Database";
 
-import Field from "metabase-lib/lib/metadata/Field";
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import MetabaseSettings from "metabase/lib/settings";
-import type { FieldId } from "metabase-types/types/Field";
 
-type Props = {
-  tag: TemplateTag,
-  setTemplateTag: (tag: TemplateTag) => void,
-  databaseFields: Field[],
-  database: Database,
-  databases: Database[],
-  metadata: Metadata,
-  fetchField: FieldId => void,
-};
-
-@connect(
-  state => ({ metadata: getMetadata(state) }),
-  { fetchField },
-)
+@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
 export default class TagEditorParam extends Component {
-  props: Props;
-
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -251,7 +231,8 @@ export default class TagEditorParam extends Component {
         </div>
 
         {((tag.type !== "dimension" && tag.required) ||
-          (tag.type === "dimension" || tag["widget-type"])) && (
+          tag.type === "dimension" ||
+          tag["widget-type"]) && (
           <div className="pb3">
             <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget

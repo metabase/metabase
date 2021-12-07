@@ -508,6 +508,22 @@ describe("scenarios > question > filter", () => {
       .and("not.eq", transparent);
   });
 
+  it("should highlight the correct matching for suggestions", () => {
+    openExpressionEditorFromFreshlyLoadedPage();
+
+    typeInExpressionEditor("[");
+
+    popover().findByText("Body");
+
+    typeInExpressionEditor("p");
+
+    // only "P" (of Products etc) should be highlighted, and not "Pr"
+    popover()
+      .get("span.text-dark")
+      .contains("Pr")
+      .should("not.exist");
+  });
+
   it("should provide accurate auto-complete custom-expression suggestions based on the aggregated column name (metabase#14776)", () => {
     cy.viewport(1400, 1000); // We need a bit taller window for this repro to see all custom filter options in the popover
     cy.createQuestion({
@@ -658,6 +674,29 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
     // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
     cy.get("[contenteditable='true']");
+  });
+
+  it("should be able to convert time interval filter to custom expression (metabase#12457)", () => {
+    openOrdersTable({ mode: "notebook" });
+
+    // Via the GUI, create a filter with "include-current" option
+    cy.findByText("Filter").click();
+    cy.findByText("Created At").click();
+    cy.get("input[type='text']").type("{selectall}{del}5");
+    cy.contains("Include today").click();
+    cy.findByText("Add filter").click();
+
+    // Switch to custom expression
+    cy.findByText("Created At Previous 5 Days").click();
+    popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.findByText("Custom Expression").click();
+    });
+    cy.findByText("Done").click();
+
+    // Back to GUI and "Include today" should be still checked
+    cy.findByText("Created At Previous 5 Days").click();
+    cy.findByLabelText("Include today").should("be.checked");
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
@@ -984,9 +1023,9 @@ describe("scenarios > question > filter", () => {
           // Not sure exactly what this popover will look like when this issue is fixed.
           // In one of the previous versions it said "Update filter" instead of "Add filter".
           // If that's the case after the fix, this part of the test might need to be updated accordingly.
-          cy.button(regexCondition)
-            .click()
-            .should("have.class", "bg-purple");
+          cy.findByLabelText(regexCondition)
+            .check({ force: true }) // the radio input is hidden
+            .should("be.checked");
           cy.button("Update filter").click();
         });
 
@@ -1023,9 +1062,9 @@ describe("scenarios > question > filter", () => {
 
       function addBooleanFilter() {
         // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
-        cy.button(regexCondition)
-          .click()
-          .should("have.class", "bg-purple");
+        cy.findByLabelText(regexCondition)
+          .check({ force: true })
+          .should("be.checked");
         cy.button("Add filter").click();
       }
 

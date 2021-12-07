@@ -10,7 +10,7 @@ const Card = styled.div`
     props.dark ? "transparent" : color("bg-medium")};
   ${props => props.dark && `color: white`};
   border-radius: 6px;
-  box-shadow: 0 7px 20px ${props => color("shadow")};
+  box-shadow: 0 7px 20px ${color("shadow")};
   line-height: 24px;
   ${props =>
     props.hoverable &&
@@ -18,6 +18,7 @@ const Card = styled.div`
     box-shadow: 0 10px 22px ${alpha(color("shadow"), 0.09)};
   }`};
   ${props => props.flat && `box-shadow: none;`};
+  ${props => props.compact && `box-shadow: 0 1px 2px ${color("shadow")};`};
 `;
 
 export default Card;

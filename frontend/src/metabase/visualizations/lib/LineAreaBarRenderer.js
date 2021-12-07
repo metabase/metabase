@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
@@ -68,8 +69,6 @@ import {
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";
 import { stack, stackOffsetDiverging } from "./graph/stack";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
@@ -331,7 +330,7 @@ function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
 }
 
 function getIsSplitYAxis(left, right) {
-  return right && right.series.length && (left && left.series.length > 0);
+  return right && right.series.length && left && left.series.length > 0;
 }
 
 function getYAxisProps(props, yExtents, datas) {
@@ -622,14 +621,19 @@ function addGoalChartAndGetOnGoalHover(
   }
 
   const goalValue = settings["graph.goal_value"];
-  const goalData = [[xDomain[0], goalValue], [xDomain[1], goalValue]];
+  const goalData = [
+    [xDomain[0], goalValue],
+    [xDomain[1], goalValue],
+  ];
   const goalDimension = crossfilter(goalData).dimension(d => d[0]);
 
   // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
   // has just a single row / datapoint
-  const goalGroup = goalDimension
-    .group()
-    .reduce((p, d) => d[1], (p, d) => p, () => 0);
+  const goalGroup = goalDimension.group().reduce(
+    (p, d) => d[1],
+    (p, d) => p,
+    () => 0,
+  );
   const goalIndex = charts.length;
 
   const goalChart = dc
@@ -691,9 +695,11 @@ function addTrendlineChart(
 
       // Take the last point rather than summing in case xDomain[0] === xDomain[1], e.x. when the chart
       // has just a single row / datapoint
-      const trendGroup = trendDimension
-        .group()
-        .reduce((p, d) => d[1], (p, d) => p, () => 0);
+      const trendGroup = trendDimension.group().reduce(
+        (p, d) => d[1],
+        (p, d) => p,
+        () => 0,
+      );
       const trendIndex = charts.length;
 
       const trendChart = dc
@@ -798,18 +804,7 @@ function doHistogramBarStuff(parent) {
 
 /************************************************************ PUTTING IT ALL TOGETHER ************************************************************/
 
-type LineAreaBarProps = VisualizationProps & {
-  chartType: "line" | "area" | "bar" | "waterfall" | "scatter",
-  isScalarSeries: boolean,
-  maxSeries: number,
-};
-
-type DeregisterFunction = () => void;
-
-export default function lineAreaBar(
-  element: Element,
-  props: LineAreaBarProps,
-): DeregisterFunction {
+export default function lineAreaBar(element, props) {
   const { onRender, isScalarSeries, settings, series } = props;
 
   const warnings = {};
@@ -930,7 +925,7 @@ export default function lineAreaBar(
   if (onRender) {
     onRender({
       yAxisSplit: yAxisProps.yAxisSplit,
-      warnings: (Object.values(warnings): string[]),
+      warnings: Object.values(warnings),
     });
   }
 

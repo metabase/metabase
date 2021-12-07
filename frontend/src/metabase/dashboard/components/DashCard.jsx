@@ -43,10 +43,7 @@ const HEADER_ACTION_STYLE = {
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
 const WrappedVisualization = WithVizSettingsData(
-  connect(
-    null,
-    dispatch => ({ dispatch }),
-  )(Visualization),
+  connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
 export default class DashCard extends Component {

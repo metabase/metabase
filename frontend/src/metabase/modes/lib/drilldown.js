@@ -31,11 +31,11 @@ class Transform {
    *  as the current breakout in question. This can be a simple check to make sure the underlying MBQL clause is the
    *  same, or something more sophisticated e.g. checking that options are in a range.
    */
-  matchesDimension(dimension: FieldDimension) {
+  matchesDimension(dimension) {
     return true;
   }
 
-  matchesDimensions(dimensions: FieldDimension[]) {
+  matchesDimensions(dimensions) {
     return _.some(dimensions, dimension => this.matchesDimension(dimension));
   }
 
@@ -43,14 +43,14 @@ class Transform {
    * Predicate function that detemines whether a given dimension can be used for this drill-thru step. Not used for the
    * first step in a progression. This dimension is not necessarily one used in the current breakout.
    */
-  canBeAppliedToDimension(dimension: FieldDimension) {
+  canBeAppliedToDimension(dimension) {
     return true;
   }
 
   /** Apply the drill-down step to the FieldDimension, returning an updated dimension. This is not used for the first
    *  step in a drill-down progression.
    */
-  applyToDimension(dimension: FieldDimension): FieldDimension {
+  applyToDimension(dimension) {
     return dimension;
   }
 }
@@ -60,7 +60,7 @@ class Transform {
  * This is really just a Condition but we're extending Transform instead because we can't do multipe
  */
 class IsCategoryCondition extends Transform {
-  _type: string;
+  _type;
 
   constructor(type) {
     super();
@@ -73,7 +73,7 @@ class IsCategoryCondition extends Transform {
 }
 
 class NextCategoryTransform extends IsCategoryCondition {
-  _previousType: string;
+  _previousType;
 
   constructor(previousType, currentType) {
     super(currentType);
@@ -89,7 +89,7 @@ class NextCategoryTransform extends IsCategoryCondition {
  * A drill-down transform that matches a datetime column bucketed by a temporal unit.
  */
 class TemporalBucketingTransform extends Transform {
-  _unit: string;
+  _unit;
 
   constructor(unit) {
     super();
@@ -110,7 +110,7 @@ class TemporalBucketingTransform extends Transform {
 }
 
 class IsLatLonCondition extends Transform {
-  _fieldPredicate: ({}) => boolean;
+  _fieldPredicate;
 
   constructor(fieldPredicate) {
     super();
@@ -143,7 +143,7 @@ class LatLonZoomTransform extends IsLatLonCondition {
 }
 
 class LatLonFixedZoomTransform extends LatLonZoomTransform {
-  _binWidth: number;
+  _binWidth;
 
   constructor(fieldPredicate, binWidth) {
     super(fieldPredicate);
@@ -165,7 +165,7 @@ class LatLonIsZoomedOutCondition extends IsLatLonCondition {
 }
 
 class LatLonZoomRatioTransform extends LatLonZoomTransform {
-  _zoomRatio: number;
+  _zoomRatio;
 
   constructor(fieldPredicate, zoomRatio = 10) {
     super(fieldPredicate);
@@ -192,7 +192,7 @@ class LatLonZoomRatioTransform extends LatLonZoomTransform {
  * progression.
  */
 class IsBinnedCondition extends Transform {
-  _strategy: string;
+  _strategy;
 
   constructor(strategy) {
     super();
@@ -246,8 +246,6 @@ class BinWidthZoomTransform extends Transform {
  * we are currently "in" that progression -- the other ones apply a series of transformations to breakouts
  */
 class Step {
-  _transforms: Transform[];
-
   constructor(transforms) {
     this._transforms = transforms;
   }
@@ -255,13 +253,13 @@ class Step {
    * True if the current breakouts should be considered as matching this step, which means we can use the next step as
    * a progression of this one.
    */
-  matchesDimensions(dimensions: FieldDimension[]) {
+  matchesDimensions(dimensions) {
     return _.every(this._transforms, transform =>
       transform.matchesDimensions(dimensions),
     );
   }
 
-  applyToDimensions(dimensions: FieldDimension[]): ?(FieldDimension[]) {
+  applyToDimensions(dimensions) {
     const newBreakouts = this._transforms.map(transform => {
       const matchingDimension = _.find(dimensions, d =>
         transform.canBeAppliedToDimension(d),
@@ -422,7 +420,7 @@ function nextBreakouts(dimensionMaps, metadata) {
 /**
  * Returns the next drill down for the current dimension objects
  */
-export function drillDownForDimensions(dimensions: any, metadata: any) {
+export function drillDownForDimensions(dimensions, metadata) {
   // const table = metadata && tableForDimensions(dimensions, metadata);
 
   const next = nextBreakouts(dimensions, metadata);

@@ -89,7 +89,9 @@
    :database_id         :integer
    :table_schema        :text
    :table_name          :text
-   :table_description   :text))
+   :table_description   :text
+   ;; returned for Database and Table
+   :initial_sync_status :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -317,7 +319,7 @@
            {:select (:select base-query)
             :from   [[(merge
                        base-query
-                       {:select [:id :schema :db_id :name :description :display_name :updated_at
+                       {:select [:id :schema :db_id :name :description :display_name :updated_at :initial_sync_status
                                  [(hx/concat (hx/literal "/db/")
                                              :db_id
                                              (hx/literal "/schema/")
@@ -341,7 +343,7 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status}))
+                               (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
         case-clauses      (as-> columns-to-search <>
                                 (map (fn [col] [:like (hsql/call :lower col) match]) <>)
                                 (interleave <> (repeat 0))
@@ -438,7 +440,7 @@
    models :-          (s/maybe models-schema)
    limit :-           (s/maybe su/IntGreaterThanZero)
    offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
-  (cond-> {:search-string     search-string
+  (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
     (some? table-db-id) (assoc :table-db-id table-db-id)

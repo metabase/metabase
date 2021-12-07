@@ -1,10 +1,10 @@
 (ns metabase.troubleshooting
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.java.jmx :as jmx]
+            [metabase.analytics.stats :as mus]
             [metabase.config :as mc]
             [metabase.db :as mdb]
             [metabase.driver :as driver]
-            [metabase.util.stats :as mus]
             [toucan.db :as db])
   (:import javax.management.ObjectName))
 

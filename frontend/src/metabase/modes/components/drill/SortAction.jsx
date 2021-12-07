@@ -1,13 +1,9 @@
+/* eslint-disable react/prop-types */
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
-
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked }) => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];

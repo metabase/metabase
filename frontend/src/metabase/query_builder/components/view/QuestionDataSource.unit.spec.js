@@ -302,7 +302,6 @@ describe("QuestionDataSource", () => {
 
   const ALL_TEST_CASES = [
     ...GUI_TEST_CASES,
-    ...Object.values(NESTED_TEST_CASES),
     {
       question: getNativeQuestion(),
       questionType: "not saved native question",
@@ -464,7 +463,8 @@ describe("QuestionDataSource", () => {
     });
   });
 
-  describe("Nested", () => {
+  // Enable when HTTP requests mocking is more reliable than xhr-mock
+  describe.skip("Nested", () => {
     Object.values(NESTED_TEST_CASES).forEach(testCase => {
       const { question, questionType } = testCase;
 

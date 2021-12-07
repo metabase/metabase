@@ -12,6 +12,7 @@ driver:
       display-name: Filename
       placeholder: /home/camsaul/toucan_sightings.sqlite
       required: true
+    - cloud-ip-address-info
 init:
   - step: load-namespace
     namespace: metabase.driver.sqlite

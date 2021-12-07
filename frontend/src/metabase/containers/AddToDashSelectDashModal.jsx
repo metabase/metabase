@@ -12,9 +12,6 @@ import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Dashboard as DashboardType } from "metabase-types/types/Dashboard";
-import type { Card } from "metabase-types/types/Card";
-
 function mapStateToProps(state) {
   return {
     dashboards: state.entities.dashboards,
@@ -25,13 +22,6 @@ function mapStateToProps(state) {
 export default class AddToDashSelectDashModal extends Component {
   state = {
     shouldCreateDashboard: false,
-  };
-
-  props: {
-    card: Card,
-    onClose: () => void,
-    onChangeLocation: string => void,
-    createDashboard: DashboardType => any,
   };
 
   navigateToDashboard = dashboard => {

@@ -3,14 +3,14 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import Input from "metabase/components/Input";
 import Radio from "metabase/components/Radio";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import { formatNumber } from "metabase/lib/formatting";
+import LimitInput from "metabase/query_builder/components/LimitInput";
 
 const CustomRowLimit = ({ limit, onChangeLimit, onClose }) => {
   return (
-    <Input
+    <LimitInput
       small
       defaultValue={limit}
       className={cx({ "text-brand border-brand": limit != null })}

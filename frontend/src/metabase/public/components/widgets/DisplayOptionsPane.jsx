@@ -1,15 +1,9 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
 import CheckBox from "metabase/components/CheckBox";
 import { t } from "ttag";
-import type { DisplayOptions } from "./EmbedModalContent";
-
-type Props = {
-  className?: string,
-  displayOptions: DisplayOptions,
-  onChangeDisplayOptions: (displayOptions: DisplayOptions) => void,
-};
 
 const THEME_OPTIONS = [
   { name: t`Light`, value: null, icon: "sun" },
@@ -20,7 +14,7 @@ const DisplayOptionsPane = ({
   className,
   displayOptions,
   onChangeDisplayOptions,
-}: Props) => (
+}) => (
   <div className={className}>
     <div className="flex align-center my1">
       <CheckBox

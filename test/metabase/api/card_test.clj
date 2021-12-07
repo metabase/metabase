@@ -139,7 +139,7 @@
                         {:database (u/the-id db)
                          :type     :native
                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                    :template-tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                    :template-tags {:category {:id           "_CATEGORY_ID_"
                                                                :name         "category"
                                                                :display_name "Category"
                                                                :type         "number"
@@ -148,6 +148,21 @@
 
 (defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
   `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
+
+(deftest run-query-with-parameters-test
+  (testing "POST /api/card/:id/query"
+    (testing "should respect `:parameters`"
+      (with-temp-native-card-with-params [{db-id :id} {card-id :id}]
+        (is (schema= {:database_id (s/eq db-id)
+                      :row_count   (s/eq 1)
+                      :data        {:rows     (s/eq [[8]])
+                                    s/Keyword s/Any}
+                      s/Keyword    s/Any}
+                     (mt/user-http-request
+                      :rasta :post 202 (format "card/%d/query" card-id)
+                      {:parameters [{:type   :category
+                                     :target [:variable [:template-tag :category]]
+                                     :value  2}]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1292,7 +1307,7 @@
                (str/split-lines
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
                                                                (u/the-id card)))))))))
-  (testing "with-paramters"
+  (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
@@ -1426,6 +1441,7 @@
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |

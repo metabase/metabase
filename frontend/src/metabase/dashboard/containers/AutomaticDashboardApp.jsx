@@ -44,10 +44,7 @@ const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)

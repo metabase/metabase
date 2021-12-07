@@ -145,7 +145,7 @@
 
 (defmethod columns-for-model "database"
   [_]
-  [:id :name :description :updated_at])
+  [:id :name :description :updated_at :initial_sync_status])
 
 (defmethod columns-for-model "pulse"
   [_]
@@ -171,6 +171,7 @@
    :display_name
    :description
    :updated_at
+   :initial_sync_status
    [:id :table_id]
    [:db_id :database_id]
    [:schema :table_schema]

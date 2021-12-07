@@ -1,14 +1,13 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
-import styled from "styled-components";
-import { color, space, hover } from "styled-system";
 import cx from "classnames";
-import { color as c } from "metabase/lib/colors";
-
+import PropTypes from "prop-types";
+import React, { Component, forwardRef } from "react";
+import styled from "styled-components";
+import { color, hover, space } from "styled-system";
+import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
+import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
-
-import Tooltipify from "metabase/hoc/Tooltipify";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -51,12 +50,15 @@ const stringOrNumberPropType = PropTypes.oneOfType([
 
 export const iconPropTypes = {
   name: PropTypes.string.isRequired,
+  color: PropTypes.string,
   size: stringOrNumberPropType,
   width: stringOrNumberPropType,
   height: stringOrNumberPropType,
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
+  innerRef: PropTypes.any,
+  onClick: PropTypes.func,
 };
 
 type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
@@ -65,12 +67,12 @@ class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
 
   render() {
-    const { name, className, ...rest } = this.props;
+    const { name, className, innerRef, ...rest } = this.props;
 
     const icon = loadIcon(name) || loadIcon(MISSING_ICON_NAME);
     if (!icon) {
       console.warn(`Icon "${name}" does not exist.`);
-      return <span />;
+      return <span ref={innerRef} />;
     }
 
     const props = {
@@ -99,6 +101,7 @@ class BaseIcon extends Component<IconProps> {
       const { _role, ...rest } = props;
       return (
         <img
+          ref={innerRef}
           src={icon.img}
           srcSet={`
           ${icon.img}    1x,
@@ -108,25 +111,46 @@ class BaseIcon extends Component<IconProps> {
         />
       );
     } else if (icon.svg) {
-      return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
+      return (
+        <svg
+          {...props}
+          dangerouslySetInnerHTML={{ __html: icon.svg }}
+          ref={innerRef}
+        />
+      );
     } else if (icon.path) {
       return (
-        <svg {...props}>
+        <svg {...props} ref={innerRef}>
           <path d={icon.path} />
         </svg>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
-      return <span />;
+      return <span ref={innerRef} />;
     }
   }
 }
 
-const Icon = styled(BaseIcon)`
+const BaseIconWithRef = forwardRefToInnerRef<IconProps>(BaseIcon);
+
+const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIconWithRef)`
   ${space}
   ${color}
   ${hover}
   flex-shrink: 0
-`;
+`);
 
-export default Tooltipify(Icon);
+const Icon = forwardRef(function Icon(
+  { tooltip, ...props }: IconProps,
+  ref?: React.Ref<any>,
+) {
+  return tooltip ? (
+    <Tooltip tooltip={tooltip}>
+      <StyledIcon {...props} />
+    </Tooltip>
+  ) : (
+    <StyledIcon ref={ref} {...props} />
+  );
+});
+
+export default Icon;

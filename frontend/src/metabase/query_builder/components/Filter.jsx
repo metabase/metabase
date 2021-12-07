@@ -11,29 +11,7 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterObject } from "metabase-types/types/Query";
-import type { Value as ValueType } from "metabase-types/types/Dataset";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
-
-export type FilterRenderer = ({
-  field?: React.Element,
-  operator: ?string,
-  values: (React.Element | string)[],
-}) => React.Element;
-
-type Props = {
-  filter: FilterObject | FilterWrapper,
-  metadata: Metadata,
-  maxDisplayValues?: number,
-  children?: FilterRenderer,
-};
-
-const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
-  field,
-  operator,
-  values,
-}) => {
+const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];
   // insert an "and" at the end if multiple values
   // NOTE: works for "between", not sure about others
@@ -59,9 +37,9 @@ export const OperatorFilter = ({
   metadata,
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
-}: Props) => {
+}) => {
   const [op, field] = filter;
-  const values: ValueType[] = hasFilterOptions(filter)
+  const values = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
 
@@ -107,7 +85,7 @@ export const SegmentFilter = ({
   metadata,
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
-}: Props) => {
+}) => {
   const segment = metadata.segment(filter[1]);
   return children({
     operator: t`Matches`,
@@ -115,7 +93,7 @@ export const SegmentFilter = ({
   });
 };
 
-const Filter = ({ filter, ...props }: Props) =>
+const Filter = ({ filter, ...props }) =>
   filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (

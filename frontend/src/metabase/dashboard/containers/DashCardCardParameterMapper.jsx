@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -21,17 +22,6 @@ import { setParameterMapping } from "../actions";
 
 import cx from "classnames";
 
-import type { Card } from "metabase-types/types/Card";
-import type { DashCard } from "metabase-types/types/Dashboard";
-import type {
-  Parameter,
-  ParameterId,
-  ParameterMappingUIOption,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
-import type { DatabaseId } from "metabase-types/types/Database";
-
-import type { MappingsByParameter } from "../selectors";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 const makeMapStateToProps = () => {
@@ -50,27 +40,8 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
 };
 
-@connect(
-  makeMapStateToProps,
-  mapDispatchToProps,
-)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class DashCardCardParameterMapper extends Component {
-  props: {
-    card: Card,
-    dashcard: DashCard,
-    parameter: Parameter,
-    target: ParameterTarget,
-    mappingOptions: Array<ParameterMappingUIOption>,
-    mappingsByParameter: MappingsByParameter,
-    fetchDatabaseMetadata: (id: ?DatabaseId) => void,
-    setParameterMapping: (
-      parameter_id: ParameterId,
-      dashcard_id: number,
-      card_id: number,
-      target: ?ParameterTarget,
-    ) => void,
-  };
-
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     card: PropTypes.object.isRequired,
@@ -85,7 +56,7 @@ export default class DashCardCardParameterMapper extends Component {
       this.props.fetchDatabaseMetadata(card.dataset_query.database);
   }
 
-  handleChangeTarget = (target: ?ParameterTarget) => {
+  handleChangeTarget = target => {
     const { setParameterMapping, parameter, dashcard, card } = this.props;
     setParameterMapping(parameter.id, dashcard.id, card.id, target);
   };

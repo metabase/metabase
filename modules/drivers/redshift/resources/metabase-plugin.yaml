@@ -17,9 +17,10 @@ driver:
     - merge:
         - dbname
         - name: db
-          placeholder: toucan_sightings
+          placeholder: birds_of_the_world
     - user
     - password
+    - cloud-ip-address-info
     - merge:
       - additional-options
       - placeholder: 'SocketTimeout=0'

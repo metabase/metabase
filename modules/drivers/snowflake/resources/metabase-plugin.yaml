@@ -9,8 +9,9 @@ driver:
   parent: sql-jdbc
   connection-properties:
     - name: account
-      display-name: Account
-      placeholder: Your snowflake account name.
+      display-name: Account name
+      helper-text: Enter your Account ID with the region that your Snowflake cluster is running on e.g. "xxxxxxxx.us-east-2.aws". Some regions don't have this suffix.
+      placeholder: xxxxxxxx.us-east-2.aws
       required: true
     - user
     - merge:
@@ -18,7 +19,8 @@ driver:
         - required: true
     - name: warehouse
       display-name: Warehouse
-      placeholder: my_warehouse
+      helper-text: If your user doesn't have a default warehouse, enter the warehouse to connect to.
+      placeholder: birds_main
       required: true
     - merge:
         - dbname
@@ -26,11 +28,14 @@ driver:
           required: true
           display-name: Database name (case sensitive)
     - name: schema
-      display-name: Schema
-      placeholder: my_schema
+      display-name: Schema (optional)
+      helper-text: Only add tables to Metabase that come from a specific schema.
+      placeholder: just_crows
     - name: role
-      display-name: Role
-      placeholder: my_role
+      display-name: Role (optional)
+      helper-text: Specify a role to override the database user’s default role.
+      placeholder: user
+    - cloud-ip-address-info
     - additional-options
   connection-properties-include-tunnel-config: true
 init:

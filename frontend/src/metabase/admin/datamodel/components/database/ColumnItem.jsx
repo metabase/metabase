@@ -17,7 +17,6 @@ import { currency } from "cljs/metabase.shared.util.currency";
 import _ from "underscore";
 import cx from "classnames";
 
-import type { Field } from "metabase-types/types/Field";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter
@@ -105,12 +104,6 @@ export default class Column extends Component {
 // FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
 
 export class FieldVisibilityPicker extends Component {
-  props: {
-    field: Field,
-    updateField: Field => void,
-    className?: string,
-  };
-
   handleChangeVisibility = ({ target: { value: visibility_type } }) => {
     this.props.updateField({ visibility_type });
   };
@@ -132,13 +125,6 @@ export class FieldVisibilityPicker extends Component {
 }
 
 export class SemanticTypeAndTargetPicker extends Component {
-  props: {
-    field: Field,
-    updateField: Field => void,
-    className?: string,
-    selectSeparator?: React.Element,
-  };
-
   handleChangeSemanticType = async ({ target: { value: semantic_type } }) => {
     const { field, updateField } = this.props;
 
