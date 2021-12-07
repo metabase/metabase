@@ -5,7 +5,7 @@ import SyncModal from "../SyncModal";
 
 interface Props {
   user?: User;
-  databases: Database[];
+  databases?: Database[];
   showModal?: boolean;
   showXrays?: boolean;
   onHideModal?: () => void;
@@ -18,7 +18,7 @@ const SyncProgress = ({
   showXrays,
   onHideModal,
 }: Props) => {
-  if (!user?.is_superuser) {
+  if (!user?.is_superuser || !databases) {
     return null;
   }
 

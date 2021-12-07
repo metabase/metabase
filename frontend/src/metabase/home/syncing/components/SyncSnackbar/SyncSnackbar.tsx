@@ -17,9 +17,9 @@ const SyncSnackbar = ({ user, databases }: Props) => {
   const userDatabases = realDatabases.filter(d => d.creator_id === user.id);
   const syncDatabases = userDatabases.filter(d => isSyncInProgress(d));
   const syncDatabaseIds = syncDatabases.map(d => d.id);
-  const delayedDatabaseIds = useListWithHideDelay(syncDatabaseIds, HIDE_DELAY);
-  const delayedDatabases = delayedDatabaseIds.map(id => databaseById[id]);
-  const shownDatabases = delayedDatabases.filter(d => d != null);
+  const delayDatabaseIds = useListWithHideDelay(syncDatabaseIds, HIDE_DELAY);
+  const delayDatabases = delayDatabaseIds.map(id => databaseById[id]);
+  const shownDatabases = delayDatabases.filter(d => d != null);
 
   if (shownDatabases.length) {
     return <SyncSnackbarContent databases={shownDatabases} />;
