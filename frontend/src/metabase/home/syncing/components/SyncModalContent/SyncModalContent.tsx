@@ -6,14 +6,12 @@ import ModalContent from "metabase/components/ModalContent";
 import { Database } from "../../types";
 
 interface Props {
-  databases: Database[];
+  sampleDatabase?: Database;
   showXrays?: boolean;
   onClose?: () => void;
 }
 
-const SyncModalContent = ({ databases, showXrays, onClose }: Props) => {
-  const sampleDatabase = databases.find(d => d.is_sample);
-
+const SyncModalContent = ({ sampleDatabase, showXrays, onClose }: Props) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}

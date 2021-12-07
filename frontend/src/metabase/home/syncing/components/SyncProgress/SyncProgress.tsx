@@ -1,36 +1,20 @@
 import React, { Fragment } from "react";
-import { User, Database } from "../../types";
-import SyncSnackbar from "../SyncSnackbar";
-import SyncModal from "../SyncModal";
+import SyncModalApp from "../../containers/SyncModalApp";
+import SyncSnackbarApp from "../../containers/SyncSnackbarApp";
 
 interface Props {
-  user?: User;
-  databases?: Database[];
-  showModal?: boolean;
-  showXrays?: boolean;
-  onHideModal?: () => void;
+  isAdmin?: boolean;
 }
 
-const SyncProgress = ({
-  user,
-  databases,
-  showModal,
-  showXrays,
-  onHideModal,
-}: Props) => {
-  if (!user?.is_superuser || !databases) {
+const SyncProgress = ({ isAdmin }: Props) => {
+  if (!isAdmin) {
     return null;
   }
 
   return (
     <Fragment>
-      <SyncSnackbar user={user} databases={databases} />
-      <SyncModal
-        databases={databases}
-        showModal={showModal}
-        showXrays={showXrays}
-        onHideModal={onHideModal}
-      />
+      <SyncModalApp />
+      <SyncSnackbarApp />
     </Fragment>
   );
 };

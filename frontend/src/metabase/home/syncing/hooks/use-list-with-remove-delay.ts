@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 
-const useListWithHideDelay = <T>(list: T[], delay: number) => {
+const useListWithRemoveDelay = <T>(list: T[], delay: number) => {
   const { current: map } = useRef(new Map());
   const [, rerender] = useState({});
 
@@ -28,4 +28,4 @@ const useListWithHideDelay = <T>(list: T[], delay: number) => {
   return Array.from(map.keys());
 };
 
-export default useListWithHideDelay;
+export default useListWithRemoveDelay;
