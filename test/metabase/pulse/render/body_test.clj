@@ -245,7 +245,7 @@
                                                (count test-columns))))))
 
 (defn- render-scalar-value [results]
-  (-> (body/render :scalar nil pacific-tz nil results)
+  (-> (body/render :scalar nil pacific-tz nil nil results)
       :content
       last))
 
@@ -286,13 +286,13 @@
                              :semantic_type nil}]
                      :rows [["foo"]]}]
         (is (= "foo"
-               (:render/text (body/render :scalar nil pacific-tz nil results))))
+               (:render/text (body/render :scalar nil pacific-tz nil nil results))))
         (is (schema= {:attachments (s/eq nil)
                       :content     [(s/one (s/eq :div) "div tag")
                                     (s/one {:style s/Str} "style map")
                                     (s/one (s/eq "foo") "content")]
                       :render/text (s/eq "foo")}
-                     (body/render :scalar nil pacific-tz nil results)))))
+                     (body/render :scalar nil pacific-tz nil nil results)))))
     (testing "for smartscalars"
       (let [results {:cols [{:name         "value",
                              :display_name "VALUE",
@@ -310,11 +310,11 @@
                                  :col "value"
                                  :last-value 40.0}]}]
         (is (= "40.00\nUp 133.33%. Was 30.00 last month"
-               (:render/text (body/render :smartscalar nil pacific-tz nil results))))
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
                       :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
-                     (body/render :smartscalar nil pacific-tz nil results)))))))
+                     (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]
@@ -379,7 +379,7 @@
   (tree-seq coll? seq html-data))
 
 (defn- render-bar-graph [results]
-  (body/render :bar :inline pacific-tz render.tu/test-card results))
+  (body/render :bar :inline pacific-tz render.tu/test-card nil results))
 
 (def ^:private default-columns
   [{:name         "Price",
@@ -414,7 +414,7 @@
 
 
 (defn- render-waterfall [results]
-  (body/render :waterfall :inline pacific-tz render.tu/test-card results))
+  (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-waterfall-test
   (testing "Render a waterfall graph with non-nil values for the x and y axis"
@@ -435,7 +435,7 @@
                             :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
 (defn- render-combo [results]
-  (body/render :combo :inline pacific-tz render.tu/test-card results))
+  (body/render :combo :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
@@ -454,7 +454,7 @@
 ;; attachment is included
 
 (defn- render-sparkline [results]
-  (body/render :sparkline :inline pacific-tz render.tu/test-card results))
+  (body/render :sparkline :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-sparkline-test
   (testing "Test that we can render a sparkline with all valid values"
@@ -484,7 +484,7 @@
            :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
 
 (defn- render-funnel [results]
-  (body/render :funnel :inline pacific-tz render.tu/test-card results))
+  (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-funnel-test
   (testing "Test that we can render a funnel with all valid values"
@@ -510,6 +510,7 @@
         render  (fn [rows]
                   (body/render :categorical/donut :inline pacific-tz
                                render.tu/test-card
+                               nil
                                {:cols columns :rows rows}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
@@ -536,6 +537,7 @@
         render  (fn [rows]
                   (body/render :progress :inline pacific-tz
                                render.tu/test-card
+                               nil
                                {:cols col :rows rows}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
