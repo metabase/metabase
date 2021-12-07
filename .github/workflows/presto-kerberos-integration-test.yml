@@ -38,7 +38,7 @@ jobs:
         with:
           repository: metabase/presto-kerberos-docker
           # use a custom branch if/until upstream (mik-laj/presto-kerberos-docker) can be fixed with PRs 23 and 24
-          ref: fixed-dec-2021
+          ref: hacked-dec-2021
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
