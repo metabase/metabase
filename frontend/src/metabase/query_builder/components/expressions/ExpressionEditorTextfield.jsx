@@ -449,7 +449,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           />
           <ExpressionEditorSuggestions
             suggestions={suggestions}
-            onSuggestionMouseDown={this.handleEnter}
+            onSuggestionMouseDown={this.onSuggestionSelected}
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
