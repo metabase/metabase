@@ -8,8 +8,6 @@ import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-op
 
 @QuestionLoaderHOC
 export default class QuestionParameterTargetWidget extends React.Component {
-  props;
-
   render() {
     const { question, ...props } = this.props;
     const mappingOptions = question

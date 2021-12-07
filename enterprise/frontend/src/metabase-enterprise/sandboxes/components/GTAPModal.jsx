@@ -38,7 +38,6 @@ const mapDispatchToProps = {
 @withRouter
 @connect(mapStateToProps, mapDispatchToProps)
 export default class GTAPModal extends React.Component {
-  props;
   state = {
     gtap: null,
     attributesOptions: null,
