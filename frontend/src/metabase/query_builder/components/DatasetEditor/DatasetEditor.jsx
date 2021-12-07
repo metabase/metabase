@@ -229,6 +229,7 @@ function DatasetEditor(props) {
                 {...props}
                 className="spread"
                 noHeader
+                queryBuilderMode="dataset"
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}

@@ -95,6 +95,7 @@ export default class VisualizationResult extends Component {
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
           isQueryBuilder={true}
+          queryBuilderMode={queryBuilderMode}
           showTitle={false}
           metadata={question.metadata()}
           handleVisualizationClick={this.props.handleVisualizationClick}
