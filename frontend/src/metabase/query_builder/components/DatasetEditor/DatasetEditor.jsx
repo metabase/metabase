@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -112,6 +112,7 @@ function DatasetEditor(props) {
     setQueryBuilderMode,
     setDatasetEditorTab,
     onCancelDatasetChanges,
+    onSave,
     handleResize,
   } = props;
 
@@ -131,48 +132,61 @@ function DatasetEditor(props) {
     }
   }, [dataset, focusedField]);
 
-  const onChangeEditorTab = tab => {
-    setDatasetEditorTab(tab);
-    setEditorHeight(tab === "query" ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0);
-  };
+  const onChangeEditorTab = useCallback(
+    tab => {
+      setDatasetEditorTab(tab);
+      setEditorHeight(tab === "query" ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0);
+    },
+    [setDatasetEditorTab],
+  );
 
-  const onCancel = () => {
+  const handleCancel = useCallback(() => {
     onCancelDatasetChanges();
     setQueryBuilderMode("view");
-  };
+  }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
-  const onSave = async () => {
-    await props.onSave(dataset.card());
+  const handleSave = useCallback(async () => {
+    await onSave(dataset.card());
     setQueryBuilderMode("view");
-  };
+  }, [dataset, onSave, setQueryBuilderMode]);
 
   const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
 
-  const handleTableElementClick = ({ element, ...clickedObject }) => {
-    const isColumnClick =
-      clickedObject?.column && Object.keys(clickedObject)?.length === 1;
+  const handleTableElementClick = useCallback(
+    ({ element, ...clickedObject }) => {
+      const isColumnClick =
+        clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
-    if (isColumnClick) {
-      const field = dataset
-        .getResultMetadata()
-        .find(f => isSameField(clickedObject.column, f));
-      setFocusedField(field);
-    }
-  };
-
-  const renderSelectableTableColumnHeader = (element, column) => (
-    <TableHeaderColumnName
-      isSelected={isSameField(column, focusedField)}
-      onClick={() => handleTableElementClick({ column })}
-    >
-      <Icon name="three_dots" size={14} />
-      <span>{column.display_name}</span>
-    </TableHeaderColumnName>
+      if (isColumnClick) {
+        const field = dataset
+          .getResultMetadata()
+          .find(f => isSameField(clickedObject.column, f));
+        setFocusedField(field);
+      }
+    },
+    [dataset],
   );
 
-  const renderTableHeaderWrapper = isEditingMetadata
-    ? renderSelectableTableColumnHeader
-    : undefined;
+  const renderSelectableTableColumnHeader = useCallback(
+    (element, column) => (
+      <TableHeaderColumnName
+        isSelected={isSameField(column, focusedField)}
+        onClick={() => handleTableElementClick({ column })}
+      >
+        <Icon name="three_dots" size={14} />
+        <span>{column.display_name}</span>
+      </TableHeaderColumnName>
+    ),
+    [focusedField, handleTableElementClick],
+  );
+
+  const renderTableHeaderWrapper = useMemo(
+    () =>
+      datasetEditorTab === "metadata"
+        ? renderSelectableTableColumnHeader
+        : undefined,
+    [datasetEditorTab, renderSelectableTableColumnHeader],
+  );
 
   return (
     <React.Fragment>
@@ -189,10 +203,14 @@ function DatasetEditor(props) {
           />
         }
         buttons={[
-          <Button key="cancel" onClick={onCancel} small>{t`Cancel`}</Button>,
+          <Button
+            key="cancel"
+            onClick={handleCancel}
+            small
+          >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
-            actionFn={onSave}
+            actionFn={handleSave}
             normalText={t`Save changes`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}
