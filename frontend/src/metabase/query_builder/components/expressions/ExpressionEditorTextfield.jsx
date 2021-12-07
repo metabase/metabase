@@ -434,6 +434,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             onFocus={this.handleFocus}
             role="ace-editor"
             setOptions={{
+              behavioursEnabled: false,
               indentedSoftWrap: false,
               minLines: 1,
               maxLines: 9,
