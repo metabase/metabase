@@ -1,4 +1,4 @@
-# JWT-based Authentication
+# JWT-based authentication
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to allow your Metabasers to authenticate through it.
 
@@ -6,20 +6,22 @@ You can connect Metabase to your identity provider using JSON Web Tokens (JWT) t
 
 Metabase supports two types of authentication with JWT:
 
-- [Authorization Code Flow](https://developer.okta.com/docs/concepts/oauth-openid/#authorization-code-flow)
-- [Authorization Code Flow with PKCE](https://developer.okta.com/docs/concepts/oauth-openid/#authorization-code-flow-with-pkce)
+- Authorization Code Flow
+- Authorization Code Flow with PKCE
 
-PKCE stands for Proof Key for Code Exchange, and it's a way to extend the Authorization Code Flow to incorporate random keys generated on demand.
+PKCE stands for Proof-Key for Code Exchange, and it's a way to extend the Authorization Code Flow to incorporate random keys generated on demand. For more on these flows, see the [Wikipedia entry on OAuth](https://en.wikipedia.org/wiki/OAuth).
+
+Currently, the only algorithm Metabase supports is [HS256](https://en.wikipedia.org/wiki/JSON_Web_Token) ([HMAC](https://en.wikipedia.org/wiki/HMAC) + [SHA-256](https://en.wikipedia.org/wiki/SHA-2).
 
 ## Typical flow for a JWT-based SSO interaction with Metabase
 
 Assuming your site is localhost serving on port 3000:
 
 1. Person attempts to view a question, e.g., `http://localhost:3000/question/1-superb-question`.
-2. If the person isn't logged in Metabase redirects them to `http://localhost:3000/auth/sso`.
+2. If the person isn't logged in, Metabase redirects them to `http://localhost:3000/auth/sso`.
 3. Retaining the original `/question/1-superb-question` URI, Metabase redirects the person to the SSO provider (the authentication app).
 4. Person logs in using the basic form.
-5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token, and the return to URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
+5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
 ## Enabling JWT authentication
@@ -32,9 +34,9 @@ Click the toggle at the top of the form to enable JWT-based authentication, then
 
 Here's a breakdown of each of the settings:
 
-**Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identify provider.
+**Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
 
-**String Used by the JWT Signing Key:** This is a string used to seed the private key that is used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
+**String Used by the JWT Signing Key:** The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
 ## User attribute configuration (optional)
 
