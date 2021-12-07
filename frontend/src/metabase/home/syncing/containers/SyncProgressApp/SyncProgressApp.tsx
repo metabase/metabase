@@ -6,6 +6,7 @@ import SyncProgress from "../../components/SyncProgress";
 import { getDatabases, showXrays, showModal } from "../../selectors";
 
 const databasesProps = {
+  query: { include: "tables" },
   loadingAndErrorWrapper: false,
 };
 
