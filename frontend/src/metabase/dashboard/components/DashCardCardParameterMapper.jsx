@@ -91,7 +91,6 @@ function DashCardCardParameterMapper({
 
   const hasPermissionsToMap = useMemo(() => {
     const question = new Question(card, metadata);
-    console.log(question, question.query().isEditable());
     return question.query().isEditable();
   }, [card, metadata]);
 
