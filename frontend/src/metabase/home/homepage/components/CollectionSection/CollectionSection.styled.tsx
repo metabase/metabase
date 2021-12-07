@@ -1,6 +1,6 @@
-import { color } from "metabase/lib/colors";
 import { Link } from "react-router";
 import styled from "styled-components";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const CollectionContent = styled.div`
