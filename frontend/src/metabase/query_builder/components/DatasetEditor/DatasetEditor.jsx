@@ -19,6 +19,8 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
+import { isSameField } from "metabase/lib/query/field_ref";
+
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
@@ -53,16 +55,6 @@ const propTypes = {
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
 const TABLE_HEADER_HEIGHT = 45;
-
-const isSameField = (f1, f2) => {
-  if (!f1 || !f2) {
-    return false;
-  }
-  const canCompareIDs = f1.id != null && f2.id != null;
-  return canCompareIDs
-    ? f1.id === f2.id
-    : _.isEqual(f1.field_ref, f2.field_ref);
-};
 
 function mapStateToProps(state) {
   return {
@@ -160,7 +152,9 @@ function DatasetEditor(props) {
       if (isColumnClick) {
         const field = dataset
           .getResultMetadata()
-          .find(f => isSameField(clickedObject.column, f));
+          .find(f =>
+            isSameField(clickedObject.column?.field_ref, f?.field_ref),
+          );
         setFocusedField(field);
       }
     },
@@ -170,8 +164,8 @@ function DatasetEditor(props) {
   const renderSelectableTableColumnHeader = useCallback(
     (element, column) => (
       <TableHeaderColumnName
-        isSelected={isSameField(column, focusedField)}
         onClick={() => handleTableElementClick({ column })}
+        isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>
