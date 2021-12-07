@@ -34,7 +34,7 @@ export default class VisualizationResult extends Component {
     const {
       question,
       isDirty,
-      isVisualizationClickable,
+      queryBuilderMode,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
@@ -96,7 +96,6 @@ export default class VisualizationResult extends Component {
           isEditing={true}
           isQueryBuilder={true}
           showTitle={false}
-          isClickable={isVisualizationClickable}
           metadata={question.metadata()}
           handleVisualizationClick={this.props.handleVisualizationClick}
           onOpenChartSettings={this.props.onOpenChartSettings}

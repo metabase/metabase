@@ -65,7 +65,6 @@ export default class Visualization extends React.PureComponent {
     isEditing: false,
     isSettings: false,
     isQueryBuilder: false,
-    isClickable: true,
     onUpdateVisualizationSettings: () => {},
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: location => {
@@ -214,8 +213,8 @@ export default class Visualization extends React.PureComponent {
   }
 
   visualizationIsClickable = clicked => {
-    const { onChangeCardAndRun, isClickable } = this.props;
-    if (!onChangeCardAndRun || !isClickable) {
+    const { onChangeCardAndRun } = this.props;
+    if (!onChangeCardAndRun) {
       return false;
     }
     try {
