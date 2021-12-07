@@ -26,15 +26,15 @@ Assuming your site is localhost serving on port 3000:
 
 ## Enabling JWT authentication
 
-First, navigate to the Settings section of the Admin area, then click on the Authentication tab. Click the `Configure` button in the JWT section of this page, and you'll see this form:
+Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication** tab. Click the **Configure** button in the JWT section of this page, and you'll see this form:
 
 ![SAML form](images/JWT-auth-form.png)
 
-Click the toggle at the top of the form to enable JWT-based authentication, then fill in the form with the information about your identity provider. **Make sure to turn this on**, otherwise JWT authentication won't work, even if all of your settings are right.
+Click the toggle at the top of the form to enable JWT-based authentication. **Make sure to set the toggle to Enabled**, otherwise JWT authentication won't work, even if all of your other settings are correct.
 
 Here's a breakdown of each of the settings:
 
-**Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
+**JWT Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identity provider.
 
 **String Used by the JWT Signing Key:** The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
@@ -58,7 +58,7 @@ You can use your JWT to assign Metabase users to custom groups by following thes
 
 ## Disabling password login
 
-Once you have configured your JWT authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
+Once you have set up your JWT authentication and confirmed that it's working, if you want to disable the option for users to log in via username and password, return to **Admin** > **Settings** > **Authentication**  and scroll to the bottom. A toggle should now be visible that allows you disable password authentication. 
 
 ![Password disable](images/password-disable.png)
 
@@ -66,7 +66,7 @@ Once you have configured your JWT authentication, you can choose to disable the 
 
 If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
 
-## Example code using JWT
+## Example code using JWT-based authentication
 
 You can find example code that uses JWT authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
