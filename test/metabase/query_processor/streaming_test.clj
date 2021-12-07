@@ -1,117 +1,22 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
+            [clojure.string :as str]
             [clojure.test :refer :all]
-            [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
             [metabase.api.embed-test :as embed-test]
             [metabase.models.card :as card :refer [Card]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.query-processor.streaming.test-util :as streaming.test-util]
             [metabase.query-processor.streaming.xlsx-test :as xlsx-test]
+            [metabase.server.protocols :as server.protocols]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]
-           java.util.UUID))
-
-(defmulti ^:private parse-result*
-  {:arglists '([export-format ^InputStream input-stream column-names])}
-  (fn [export-format _ _] (keyword export-format)))
-
-(defmethod parse-result* :api
-  [_ ^InputStream is _]
-  (with-open [reader (InputStreamReader. is)]
-    (let [response (json/parse-stream reader true)]
-      (cond-> response
-        (map? response) (dissoc :database_id :started_at :json_query :average_execution_time :context :running_time)))))
-
-(defmethod parse-result* :json
-  [export-format is column-names]
-  ((get-method parse-result* :api) export-format is column-names))
-
-(defmethod parse-result* :csv
-  [_ ^InputStream is _]
-  (with-open [reader (InputStreamReader. is)]
-    (doall (csv/read-csv reader))))
-
-(defmethod parse-result* :xlsx
-  [_ ^InputStream is column-names]
-  (->> (spreadsheet/load-workbook-from-stream is)
-       (spreadsheet/select-sheet "Query result")
-       (spreadsheet/select-columns (zipmap (map (comp keyword str char)
-                                                (range (int \A) (inc (int \Z))))
-                                           column-names))
-       rest))
-
-(defn parse-result
-  ([export-format input-stream]
-   (parse-result export-format input-stream ["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]))
-
-  ([export-format input-stream column-names]
-   (parse-result* export-format input-stream column-names)))
-
-(defn process-query-basic-streaming
-  "Process `query` and export it as `export-format` (in-memory), then parse the results."
-  {:arglists '([export-format query] [export-format query column-names])}
-  [export-format query & args]
-  (with-open [bos (ByteArrayOutputStream.)
-              os  (BufferedOutputStream. bos)]
-    (is (= :completed
-           (:status (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
-                                                   :timeout 15000)))))
-    (.flush os)
-    (let [bytea (.toByteArray bos)]
-      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-        (apply parse-result export-format is args)))))
-
-(defn process-query-api-response-streaming
-  "Process `query` as an API request, exporting it as `export-format` (in-memory), then parse the results."
-  {:arglists '([export-format query] [export-format query column-names])}
-  [export-format query & args]
-  (let [byytes (if (= export-format :api)
-                 (mt/user-http-request :crowberto :post "dataset"
-                                       {:request-options {:as :byte-array}}
-                                       (assoc-in query [:middleware :js-int-to-string?] false))
-                 (mt/user-http-request :crowberto :post (format "dataset/%s" (name export-format))
-                                       {:request-options {:as :byte-array}}
-                                       :query (json/generate-string query)))]
-    (with-open [is (ByteArrayInputStream. byytes)]
-      (apply parse-result export-format is args))))
-
-(defmulti ^:private expected-results
-  {:arglists '([export-format normal-results])}
-  (fn [export-format _] (keyword export-format)))
-
-(defmethod expected-results :api
-  [_ normal-results]
-  (mt/obj->json->obj normal-results))
-
-(defmethod expected-results :json
-  [_ normal-results]
-  (let [{{:keys [cols rows]} :data} (mt/obj->json->obj normal-results)]
-    (for [row rows]
-      (zipmap (map (comp keyword :display_name) cols)
-              row))))
-
-(defmethod expected-results :csv
-  [_ normal-results]
-  (let [{{:keys [cols rows]} :data} normal-results]
-    (cons (map :display_name cols)
-          (for [row rows]
-            (for [v row]
-              (str v))))))
-
-(defmethod expected-results :xlsx
-  [_ normal-results]
-  (let [{{:keys [cols rows]} :data} normal-results]
-    (for [row rows]
-      (zipmap (map :display_name cols)
-              (for [v row]
-                (if (number? v)
-                  (double v)
-                  v))))))
+  (:import java.util.UUID))
 
 (defn- maybe-remove-checksum
   "remove metadata checksum if present because it can change between runs if encryption is in play"
@@ -120,10 +25,10 @@
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
 (defn- expected-results* [export-format query]
-  (maybe-remove-checksum (expected-results export-format (qp/process-query query))))
+  (maybe-remove-checksum (streaming.test-util/expected-results export-format (qp/process-query query))))
 
 (defn- basic-actual-results* [export-format query]
-  (maybe-remove-checksum (process-query-basic-streaming export-format query)))
+  (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
 
 (deftest basic-streaming-test
   (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
@@ -136,7 +41,7 @@
                  (basic-actual-results* export-format query))))))))
 
 (defn- actual-results* [export-format query]
-  (maybe-remove-checksum (process-query-api-response-streaming export-format query)))
+  (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))
 
 (defn- compare-results [export-format query]
   (is (= (expected-results* export-format query)
@@ -162,6 +67,40 @@
           (let [[sql & args] (db/honeysql->sql {:select [["Cam 𝌆 Saul 💩" :cam]]})]
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
+
+(def ^:private ^:dynamic *number-of-cans* nil)
+
+(deftest preserve-thread-bindings-test
+  (testing "Bindings established outside the `streaming-response` should be preserved inside the body"
+    (with-open [os (java.io.ByteArrayOutputStream.)]
+      (let [streaming-response (binding [*number-of-cans* 2]
+                                 (qp.streaming/streaming-response [context :json]
+                                   (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
+                                         rows     [[*number-of-cans*]]]
+                                     (qp.context/reducef (qp.context/rff context) context metadata rows))))
+            complete-promise   (promise)]
+        (server.protocols/respond streaming-response
+                                  {:response      (reify javax.servlet.http.HttpServletResponse
+                                                    (setStatus [_ _])
+                                                    (setHeader [_ _ _])
+                                                    (setContentType [_ _])
+                                                    (getOutputStream [_]
+                                                      (proxy [javax.servlet.ServletOutputStream] []
+                                                        (write
+                                                          ([byytes]
+                                                           (.write os ^bytes byytes))
+                                                          ([byytes offset length]
+                                                           (.write os ^bytes byytes offset length))))))
+                                   :async-context (reify javax.servlet.AsyncContext
+                                                    (complete [_]
+                                                      (deliver complete-promise true)))})
+        (is (= true
+               (deref complete-promise 1000 ::timed-out)))
+        (let [response-str (String. (.toByteArray os) "UTF-8")]
+          (is (= "[{\"num_cans\":2}]"
+                 (str/replace response-str #"\n+" "")))
+          (is (= [{:num_cans 2}]
+                 (json/parse-string response-str true))))))))
 
 (defmulti ^:private first-row-map
   "Return the first row in `results` as a map with `col-names` as the keys."
@@ -204,7 +143,7 @@
           (letfn [(test-results [expected]
                     (testing (u/colorize :yellow export-format)
                       (is (= expected
-                             (as-> (process-query-api-response-streaming export-format query col-names) results
+                             (as-> (streaming.test-util/process-query-api-response-streaming export-format query col-names) results
                                (first-row-map export-format results col-names))))))]
             (testing "UTC results"
               (test-results
@@ -300,32 +239,33 @@
                                      card-defaults)]
             (doseq [export-format (keys assertions)
                     endpoint      (or endpoints [:dataset :card :public :embed])]
-              (case endpoint
-                :dataset
-                (let [results (mt/user-http-request :rasta :post 200
-                                                    (format "dataset/%s" (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
-                                                    :query query-json
-                                                    :visualization_settings viz-settings-json)]
-                  ((-> assertions export-format) results))
+              (testing endpoint
+                (case endpoint
+                  :dataset
+                  (let [results (mt/user-http-request :rasta :post 200
+                                                      (format "dataset/%s" (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}}
+                                                      :query query-json
+                                                      :visualization_settings viz-settings-json)]
+                    ((-> assertions export-format) results))
 
-                :card
-                (let [results (mt/user-http-request :rasta :post 200
-                                                    (format "card/%d/query/%s" (:id card) (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))
+                  :card
+                  (let [results (mt/user-http-request :rasta :post 200
+                                                      (format "card/%d/query/%s" (:id card) (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                :public
-                (let [results (mt/user-http-request :rasta :get 200
-                                                    (format "public/card/%s/query/%s" public-uuid (name export-format))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))
+                  :public
+                  (let [results (mt/user-http-request :rasta :get 200
+                                                      (format "public/card/%s/query/%s" public-uuid (name export-format))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results))
 
-                :embed
-                (let [results (mt/user-http-request :rasta :get 200
-                                                    (embed-test/card-query-url card (str "/" (name export-format)))
-                                                    {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
-                  ((-> assertions export-format) results))))))))))
+                  :embed
+                  (let [results (mt/user-http-request :rasta :get 200
+                                                      (embed-test/card-query-url card (str "/" (name export-format)))
+                                                      {:request-options {:as (if (= export-format :xlsx) :byte-array :string)}})]
+                    ((-> assertions export-format) results)))))))))))
 
 (defn- parse-json-results
   "Convert JSON results into a convenient format for test assertions. Results are transformed into a nested list,

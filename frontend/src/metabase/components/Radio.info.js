@@ -8,7 +8,10 @@ export const description = `
 A standard radio button group.
 `;
 
-const OPTIONS = [{ name: "Gadget", value: 0 }, { name: "Gizmo", value: 1 }];
+const OPTIONS = [
+  { name: "Gadget", value: 0 },
+  { name: "Gizmo", value: 1 },
+];
 
 function RadioDemo(props) {
   const [value, setValue] = useState(0);

@@ -64,6 +64,7 @@ export default class AccordionList extends Component {
 
     // section getters/render props
     renderSectionIcon: PropTypes.func,
+    renderSectionExtra: PropTypes.func,
 
     // item getters/render props
     itemIsSelected: PropTypes.func,
@@ -102,6 +103,7 @@ export default class AccordionList extends Component {
     // section getters/render props
     renderSectionIcon: section =>
       section.icon && <Icon name={section.icon} size={18} />,
+    renderSectionExtra: () => null,
 
     // item getters/render props
     itemIsClickable: item => true,
@@ -467,6 +469,7 @@ const AccordionListCell = ({
   alwaysExpanded,
   toggleSection,
   renderSectionIcon,
+  renderSectionExtra,
   renderItemName,
   renderItemDescription,
   renderItemIcon,
@@ -492,6 +495,7 @@ const AccordionListCell = ({
       );
     } else {
       const icon = renderSectionIcon(section, sectionIndex);
+      const extra = renderSectionExtra(section, sectionIndex);
       const name = section.name;
       content = (
         <div
@@ -512,9 +516,12 @@ const AccordionListCell = ({
               {icon}
             </span>
           )}
-          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
+          {name && (
+            <h3 className="List-section-title flex-full text-wrap">{name}</h3>
+          )}
+          {extra}
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className="flex-align-right hover-child">
+            <span className="flex-align-right ml1 hover-child">
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"

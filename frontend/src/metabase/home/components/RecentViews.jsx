@@ -29,6 +29,10 @@ export default class RecentViews extends Component {
       return model_object.display;
     } else if (model === "dashboard") {
       return "dashboard";
+    } else if (model === "dataset") {
+      return "dataset";
+    } else if (model === "table") {
+      return "database";
     } else {
       return null;
     }

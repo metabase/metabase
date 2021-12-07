@@ -11,16 +11,20 @@ driver:
   connection-properties:
     - name: project-id
       display-name: Project ID (override)
+      helper-text: Project ID to be used for authentication. You can omit this field if you are only querying datasets owned by your organization.
       required: false
       placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
     - name: service-account-json
       display-name: Service account JSON file
+      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.
       required: true
       type: textFile
     - name: dataset-id
       display-name: Dataset ID
+      helper-text: Make sure to leave out the Project ID prefix in "project_name:dataset_id" and only enter “dataset_id”.
       required: true
-      placeholder: toucanSightings
+      placeholder: dataset_id
+    - cloud-ip-address-info
     - name: use-jvm-timezone
       display-name: Use JVM Time Zone
       default: false

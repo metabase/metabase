@@ -581,7 +581,7 @@
                          (mt/user-http-request :rasta :get 200)
                          :data)]
           (is (= #{"card" "dash" "subcollection" "dataset"}
-                 (doto (into #{} (map :name) items) tap>))))))))
+                 (into #{} (map :name) items))))))))
 
 (deftest children-sort-clause-test
   (testing "Default sort"

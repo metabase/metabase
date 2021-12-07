@@ -17,11 +17,14 @@ driver:
     - merge:
         - dbname
         - name: catalog
-          placeholder: hive
+          placeholder: european_birds
           display-name: Catalog
+          helper-text: Presto Catalogs contain schemas and reference data sources via a connector.
           required: false
     - name: schema
       display-name: Schema (optional)
+      helper-text: Only add tables to Metabase that come from a specific schema.
+      placeholder: jest_crows
       required: false
     - merge:
         - user
@@ -29,10 +32,11 @@ driver:
     - merge:
         - password
         - required: false
+    - cloud-ip-address-info
     - ssl
     - name: kerberos
       type: boolean
-      display-name: Authenticate with Kerberos?
+      display-name: Authenticate with Kerberos
       default: false
     - name: kerberos-principal
       display-name: Kerberos principal
@@ -88,4 +92,3 @@ init:
     namespace: metabase.driver.presto-jdbc
   - step: register-jdbc-driver
     class: com.facebook.presto.jdbc.PrestoDriver
-

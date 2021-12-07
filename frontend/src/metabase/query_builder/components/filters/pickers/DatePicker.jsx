@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -12,16 +13,6 @@ import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-
-import type {
-  FieldFilter,
-  TimeIntervalFilter,
-  DatetimeUnit,
-  ConcreteField,
-  LocalFieldReference,
-  ForeignFieldReference,
-  ExpressionReference,
-} from "metabase-types/types/Query";
 
 const singleDatePickerPropTypes = {
   className: PropTypes.string,
@@ -102,20 +93,7 @@ const NextPicker = props => <RelativeDatePicker {...props} />;
 
 NextPicker.horizontalLayout = true;
 
-type CurrentPickerProps = {
-  filter: TimeIntervalFilter,
-  onFilterChange: (filter: TimeIntervalFilter) => void,
-  className?: string,
-};
-
-type CurrentPickerState = {
-  showUnits: boolean,
-};
-
 class CurrentPicker extends Component {
-  props: CurrentPickerProps;
-  state: CurrentPickerState;
-
   state = {
     showUnits: false,
   };
@@ -166,10 +144,7 @@ const hasTime = value =>
  * Returns MBQL :field clause with temporal bucketing applied.
  * @deprecated -- just use FieldDimension to do this stuff.
  */
-function getDateTimeField(
-  field: ConcreteField,
-  bucketing: ?DatetimeUnit,
-): ConcreteField {
+function getDateTimeField(field, bucketing) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
   if (dimension) {
     if (bucketing) {
@@ -181,9 +156,7 @@ function getDateTimeField(
   return field;
 }
 
-export function getDateTimeFieldTarget(
-  field: ConcreteField,
-): LocalFieldReference | ForeignFieldReference | ExpressionReference {
+export function getDateTimeFieldTarget(field) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
   if (dimension && dimension.temporalUnit()) {
     return dimension.withoutTemporalBucketing().mbql();
@@ -193,10 +166,7 @@ export function getDateTimeFieldTarget(
 }
 
 // add temporal-unit to fields if any of them have a time component
-function getDateTimeFieldAndValues(
-  filter: FieldFilter,
-  count: number,
-): [ConcreteField, any] {
+function getDateTimeFieldAndValues(filter, count) {
   const values = filter
     .slice(2, 2 + count)
     .map(value => value && getDate(value));
@@ -205,27 +175,6 @@ function getDateTimeFieldAndValues(
   return [field, ...values];
 }
 
-export type OperatorName =
-  | "all"
-  | "previous"
-  | "next"
-  | "current"
-  | "before"
-  | "after"
-  | "on"
-  | "between"
-  | "empty"
-  | "not-empty";
-
-export type Operator = {
-  name: OperatorName,
-  displayName: string,
-  widget?: any,
-  init: (filter: FieldFilter) => any,
-  test: (filter: FieldFilter) => boolean,
-  options?: { [key: string]: any },
-};
-
 const ALL_TIME_OPERATOR = {
   name: "all",
   displayName: t`All Time`,
@@ -233,7 +182,7 @@ const ALL_TIME_OPERATOR = {
   test: op => op === null,
 };
 
-export const DATE_OPERATORS: Operator[] = [
+export const DATE_OPERATORS = [
   {
     name: "previous",
     displayName: t`Previous`,
@@ -305,7 +254,7 @@ export const DATE_OPERATORS: Operator[] = [
   },
 ];
 
-export const EMPTINESS_OPERATORS: Operator[] = [
+export const EMPTINESS_OPERATORS = [
   {
     name: "empty",
     displayName: t`Is Empty`,
@@ -320,34 +269,14 @@ export const EMPTINESS_OPERATORS: Operator[] = [
   },
 ];
 
-export const ALL_OPERATORS: Operator[] = DATE_OPERATORS.concat(
-  EMPTINESS_OPERATORS,
-);
+export const ALL_OPERATORS = DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
 
-export function getOperator(
-  filter: FieldFilter,
-  operators?: Operator[] = ALL_OPERATORS,
-) {
+export function getOperator(filter, operators = ALL_OPERATORS) {
   return _.find(operators, o => o.test(filter));
 }
 
-type Props = {
-  className?: string,
-  filter: FieldFilter,
-  onFilterChange: (filter: FieldFilter) => void,
-  hideEmptinessOperators?: boolean, // Don't show is empty / not empty dialog
-  hideTimeSelectors?: boolean,
-  includeAllTime?: boolean,
-  operators?: Operator[],
-};
-
-type State = {
-  operators: Operator[],
-};
-
 export default class DatePicker extends Component {
-  props: Props;
-  state: State = {
+  state = {
     operators: [],
   };
 

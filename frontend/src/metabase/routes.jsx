@@ -13,7 +13,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import HomepageApp from "metabase/home/containers/HomepageApp";
+import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
 import AuthApp from "metabase/auth/AuthApp";
@@ -84,7 +84,7 @@ import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetail
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import Overworld from "metabase/containers/Overworld";
+import HomepageApp from "metabase/home/homepage/containers/HomepageApp";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -186,7 +186,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={Overworld}
+          component={HomepageApp}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
@@ -213,7 +213,7 @@ export const getRoutes = store => (
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
         </Route>
 
-        <Route path="activity" component={HomepageApp} />
+        <Route path="activity" component={ActivityApp} />
 
         <Route
           path="dashboard/:slug"
@@ -238,6 +238,14 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
+        </Route>
+
+        <Route path="/dataset">
+          <IndexRoute component={QueryBuilder} />
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/query" component={QueryBuilder} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />

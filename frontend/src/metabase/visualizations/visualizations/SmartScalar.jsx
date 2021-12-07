@@ -29,8 +29,6 @@ export default class Smart extends React.Component {
 
   static noHeader = true;
 
-  _scalar: ?HTMLElement;
-
   static settings = {
     ...columnSettings({
       getColumns: (
@@ -82,7 +80,6 @@ export default class Smart extends React.Component {
       onChangeCardAndRun,
       onVisualizationClick,
       isDashboard,
-      isFullscreen,
       settings,
       visualizationIsClickable,
       series: [
@@ -215,11 +212,10 @@ export default class Smart extends React.Component {
                   color: color("text-medium"),
                 }}
               >
-                {!isFullscreen &&
-                  jt`${separator} was ${formatValue(
-                    previousValue,
-                    settings.column(column),
-                  )} ${granularityDisplay}`}
+                {jt`${separator} was ${formatValue(
+                  previousValue,
+                  settings.column(column),
+                )} ${granularityDisplay}`}
               </h4>
             </Flex>
           )}

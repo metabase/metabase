@@ -49,6 +49,11 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - name: Get node_modules cache
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
       - name: Get M2 cache
         uses: actions/cache@v2
         with:
@@ -100,6 +105,13 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - name: Get node_modules and Cypress cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            node_modules
+            ~/..cache/Cypress
+          key: ${{ runner.os }}-node-modules-cypress-${{ hashFiles('**/yarn.lock') }}
       - run: yarn install --frozen-lockfile --prefer-offline
 
       - uses: actions/download-artifact@v2

@@ -24,6 +24,7 @@
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
+    ::mb.viz/number-separators
     ::mb.viz/currency
     ::mb.viz/currency-style
     ::mb.viz/currency-in-header
@@ -95,6 +96,7 @@
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
+                     ::mb.viz/number-separators
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
@@ -111,10 +113,15 @@
               merged-settings (if is-currency?
                                 (merge-global-settings format-settings :type/Currency)
                                 format-settings)
+              base-string     (if (= (::mb.viz/number-separators format-settings) ".")
+                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; number separator settings, since custom separators are not supported in XLSX.
+                                "###0"
+                                "#,##0")
               base-strings    (if (default-number-format? merged-settings)
                                 ;; [int-format, float-format]
-                                ["#,##0", "#,##0.##"]
-                                (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+                                [base-string (str base-string ".##")]
+                                (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = (::mb.viz/number-style merged-settings)
             "percent"
             (map #(str % "%") base-strings)

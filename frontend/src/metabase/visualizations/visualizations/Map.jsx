@@ -322,7 +322,7 @@ export default class Map extends Component {
     }
   }
 
-  shouldComponentUpdate(nextProps: any, nextState: any) {
+  shouldComponentUpdate(nextProps, nextState) {
     const sameSize =
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;

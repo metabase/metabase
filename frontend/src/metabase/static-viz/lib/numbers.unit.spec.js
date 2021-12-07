@@ -1,4 +1,4 @@
-import { formatNumber } from "./numbers";
+import { formatNumber, formatPercent } from "./numbers";
 
 describe("formatNumber", () => {
   it("should format a number with default options", () => {
@@ -88,5 +88,22 @@ describe("formatNumber", () => {
     });
 
     expect(text).toEqual("prefix15suffix");
+  });
+
+  it("should format a number without grouping separator", () => {
+    const number = 10000.11;
+
+    const text = formatNumber(number, {
+      number_separators: ".",
+    });
+
+    expect(text).toEqual("10000.11");
+  });
+});
+
+describe("formatPercent", () => {
+  it("formats percent with two decimals", () => {
+    expect(formatPercent(0.12245)).toBe("12.25 %");
+    expect(formatPercent(0)).toBe("0.00 %");
   });
 });

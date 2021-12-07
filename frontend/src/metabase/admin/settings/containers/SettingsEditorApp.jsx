@@ -45,10 +45,7 @@ const mapDispatchToProps = {
   reloadSettings,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout

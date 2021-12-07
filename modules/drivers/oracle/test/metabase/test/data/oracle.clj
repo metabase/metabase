@@ -3,15 +3,20 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [honeysql.format :as hformat]
+            [medley.core :as m]
+            [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.models :refer [Database Table]]
+            [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -30,16 +35,21 @@
 (defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
 ;; Session password is only used when creating session user, not anywhere else
 
-(def ^:private connection-details
-  (delay
-   {:host     (tx/db-test-env-var-or-throw :oracle :host)
-    :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
-    :user     (tx/db-test-env-var-or-throw :oracle :user)
-    :password (tx/db-test-env-var-or-throw :oracle :password)
-    :sid      (tx/db-test-env-var-or-throw :oracle :sid)
-    :ssl      (tx/db-test-env-var :oracle :ssl false)}))
+(defn- connection-details []
+  (let [details* {:host     (tx/db-test-env-var-or-throw :oracle :host)
+                  :port     (Integer/parseInt (tx/db-test-env-var-or-throw :oracle :port "1521"))
+                  :user     (tx/db-test-env-var-or-throw :oracle :user)
+                  :password (tx/db-test-env-var-or-throw :oracle :password)
+                  :sid      (tx/db-test-env-var-or-throw :oracle :sid)
+                  :ssl      (tx/db-test-env-var :oracle :ssl false)}
+        ssl-keys [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
+                  :ssl-use-keystore :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value]]
+    (merge details*
+           (m/filter-vals some?
+                          (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
 
-(defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
+(defmethod tx/dbdef->connection-details :oracle [& _]
+  (connection-details))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
@@ -76,6 +86,52 @@
            END⅋"
           session-schema
           (tx/db-qualified-table-name database-name table-name)))
+
+(defonce ^:private oracle-test-dbs-created-by-this-instance (atom #{}))
+
+(defn- destroy-test-database-if-created-in-different-session
+  "For Oracle, we have a randomly selected `session-schema`, in order to allow different test runs to proceed
+  independently. This is basically `PREFIX_N` where `PREFIX` is a fixed prefix, and `N` is a random number.
+
+  Within any given schema, the same `test-data` tables are created, synced, queried in an identical manner, etc.
+  However, if we happen to have a `test-data` `DatabaseInstance` already in our app DB, that was created under a
+  different session, then we should just destroy it so that it can be recreated. That is because the `session-schema`
+  that was in play, when it was created, in all likelihood, does NOT match the current `session-schema` (from this
+  REPL/Metabase instance).
+
+  We won't reliably be able to resync it into the current session, since we didn't control its creation and lifecycle
+  (in fact, some other process may be cleaning it up at the same instant that our tests are running in this instance).
+  Because of this, we should just delete any existing `test-data` instance we find so that our current session can
+  recreate it in a sane and predictable manner.
+
+  Note this does problem not (currently) come into play in the CI environment, since the H2 app DB is created fresh on
+  every driver test run. In that situation, there is no existing `test-data` `DatabaseInstance` in the app DB, because
+  there are NO rows in the app DB at all. So this logic is only to make local REPL testing work properly."
+  [database-name]
+  (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
+    (locking oracle-test-dbs-created-by-this-instance
+      (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
+        (mdb/setup-db!)                 ; if not already setup
+        (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
+          (let [existing-db-id (u/the-id existing-db)
+                all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
+            (when-not (= all-schemas #{session-schema})
+              (println (u/format-color 'yellow
+                                       (str "[oracle] At least one table's schema for the existing '%s' Database"
+                                            " (id %d), which include all of [%s], does not match current session-schema"
+                                            " of %s; deleting this DB so it can be recreated")
+                                       database-name
+                                       existing-db-id
+                                       (str/join "," all-schemas)
+                                       session-schema))
+              (db/delete! Database :id existing-db-id))))
+        (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
+
+(defmethod data.impl/get-or-create-database! :oracle
+  [driver dbdef]
+  (let [{:keys [database-name], :as dbdef} (tx/get-dataset-definition dbdef)]
+    (destroy-test-database-if-created-in-different-session database-name)
+    ((get-method data.impl/get-or-create-database! :sql-jdbc) driver dbdef)))
 
 (defmethod sql.tx/create-db-sql :oracle [& _] nil)
 
@@ -123,7 +179,7 @@
            "INTO")))))))
 
 (defn- dbspec [& _]
-  (sql-jdbc.conn/connection-details->spec :oracle @connection-details))
+  (sql-jdbc.conn/connection-details->spec :oracle (connection-details)))
 
 (defn- non-session-schemas
   "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should

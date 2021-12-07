@@ -94,14 +94,14 @@ export default class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType: originalCard ? "overwrite" : "create",
+      saveType: originalCard && !originalCard.dataset ? "overwrite" : "create",
     };
 
     const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 
-    const showSaveType = !card.id && !!originalCard;
+    const showSaveType = !card.id && !!originalCard && !originalCard.dataset;
 
     return (
       <ModalContent

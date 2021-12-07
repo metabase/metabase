@@ -10,26 +10,14 @@ import FilterOptions from "metabase/query_builder/components/filters/FilterOptio
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 
-import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker";
-import type {
-  FieldFilter,
-  LocalFieldReference,
-} from "metabase-types/types/Query";
-
-type UrlEncoded = string;
-
 // Use a placeholder value as field references are not used in dashboard filters
-const noopRef: LocalFieldReference = null;
+const noopRef = null;
 
-function getFilterValueSerializer(
-  func: (val1: string, val2: string) => UrlEncoded,
-) {
+function getFilterValueSerializer(func) {
   return filter => func(filter[2], filter[3], filter[4] || {});
 }
 
-const serializersByOperatorName: {
-  [id: OperatorName]: (FieldFilter) => UrlEncoded,
-} = {
+const serializersByOperatorName = {
   previous: getFilterValueSerializer(
     (value, unit, options = {}) =>
       `past${-value}${unit}s${options["include-current"] ? "~" : ""}`,
@@ -48,7 +36,7 @@ const serializersByOperatorName: {
 function getFilterOperator(filter) {
   return DATE_OPERATORS.find(op => op.test(filter));
 }
-function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
+function filterToUrlEncoded(filter) {
   const operator = getFilterOperator(filter);
 
   if (operator) {
@@ -58,7 +46,7 @@ function filterToUrlEncoded(filter: FieldFilter): ?UrlEncoded {
   }
 }
 
-const prefixedOperators: Set<OperatorName> = new Set([
+const prefixedOperators = new Set([
   "before",
   "after",
   "on",
@@ -73,18 +61,11 @@ function getFilterTitle(filter) {
   return prefix + desc;
 }
 
-type Props = {
-  setValue: (value: ?string) => void,
-  onClose: () => void,
-};
-
-type State = { filter: FieldFilter };
-
 export default class DateAllOptionsWidget extends Component {
-  props: Props;
-  state: State;
+  props;
+  state;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -98,7 +79,7 @@ export default class DateAllOptionsWidget extends Component {
   static propTypes = {};
   static defaultProps = {};
 
-  static format = (urlEncoded: ?string) => {
+  static format = urlEncoded => {
     if (urlEncoded == null) {
       return null;
     }
@@ -112,7 +93,7 @@ export default class DateAllOptionsWidget extends Component {
     this.props.onClose();
   };
 
-  setFilter = (filter: FieldFilter) => {
+  setFilter = filter => {
     this.setState({ filter });
   };
 

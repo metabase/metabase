@@ -183,6 +183,7 @@
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
+  select-keys-sequentially
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
@@ -204,6 +205,8 @@
   with-open-channels]
 
  [tu.log
+  ns-log-level
+  set-ns-log-level!
   suppress-output
   with-log-messages
   with-log-messages-for-level

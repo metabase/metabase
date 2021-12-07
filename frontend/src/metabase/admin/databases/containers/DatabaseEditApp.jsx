@@ -80,10 +80,7 @@ const TABS = [
   },
 ];
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   constructor(props, context) {
@@ -240,7 +237,6 @@ export default class DatabaseEditApp extends Component {
                               onChangeEngine={engine => {
                                 onChangeField("engine", engine);
                               }}
-                              data-testid="database-setup-driver-warning"
                             />
                           </Box>
                         </Flex>

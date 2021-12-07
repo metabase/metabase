@@ -30,7 +30,8 @@
     "frontend/test/**/*.ts",
     "frontend/test/**/*.tsx",
     "enterprise/frontend/test/**/*.ts",
-    "enterprise/frontend/test/**/*.tsx"
+    "enterprise/frontend/test/**/*.tsx",
+    "frontend/src/metabase/static-viz/lib/numbers.ts"
   ],
   "exclude": ["node_modules"]
 }

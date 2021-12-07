@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import { getEngineLogo } from "metabase/lib/engine";
+import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/components/ExternalLink";
 import {
@@ -19,6 +20,8 @@ import {
   EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
+
+const DEFAULT_OPTIONS_COUNT = 6;
 
 const EngineWidget = ({ field, options, isHosted }) => {
   if (field.value) {
@@ -63,6 +66,7 @@ const EngineSearch = ({ field, options, isHosted }) => {
   const [searchText, setSearchText] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
+  const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
     return getSortedOptions(options);
@@ -85,7 +89,7 @@ const EngineSearch = ({ field, options, isHosted }) => {
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
-      {!isSearching && (
+      {!isSearching && hasMoreOptions && (
         <EngineToggle
           isExpanded={isExpanded}
           onExpandedChange={setIsExpanded}
@@ -148,7 +152,7 @@ const EngineEmptyState = ({ isHosted }) => {
         <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-          <ExternalLink href="https://www.metabase.com/docs/latest/developers-guide-drivers.html">
+          <ExternalLink href={Settings.docsUrl("developers-guide-drivers")}>
             {t`Community Drivers`}
           </ExternalLink>
         )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
@@ -188,6 +192,8 @@ const getSortedOptions = options => {
       return a.index - b.index;
     } else if (a.index >= 0) {
       return -1;
+    } else if (b.index >= 0) {
+      return 1;
     } else {
       return a.name.localeCompare(b.name);
     }
@@ -200,7 +206,7 @@ const getVisibleOptions = (options, isExpanded, isSearching, searchText) => {
   } else if (isExpanded) {
     return options;
   } else {
-    return options.filter(e => e.index >= 0);
+    return options.slice(0, DEFAULT_OPTIONS_COUNT);
   }
 };
 

@@ -1,6 +1,6 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-declare var ace: any;
+/*global ace*/
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
@@ -12,7 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
-import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { loadMetadataForQueries } from "metabase/redux/metadata";
 import { addUndo } from "metabase/redux/undo";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -29,6 +29,7 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
@@ -41,6 +42,7 @@ import {
   getCard,
   getQuestion,
   getOriginalQuestion,
+  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -55,7 +57,9 @@ import {
   getNativeEditorSelectedText,
   getSnippetCollectionId,
   getQueryResults,
+  isBasedOnExistingQuestion,
 } from "./selectors";
+import { trackNewQuestionSaved } from "./tracking";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -75,19 +79,15 @@ import Snippets from "metabase/entities/snippets";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase-types/types/Card";
-
-type UiControls = {
-  isEditing?: boolean,
-  isShowingTemplateTagsEditor?: boolean,
-  isShowingNewbModal?: boolean,
-  queryBuilderMode?: "view" | "notebook",
-  isShowingSummarySidebar?: boolean,
-};
+import {
+  getQueryBuilderModeFromLocation,
+  getPathNameFromQueryBuilderMode,
+  isAdHocDatasetQuestion,
+} from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagWithoutSnippetsCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = question => {
   const query = question.query();
   return query instanceof NativeQuery
     ? query.templateTagsWithoutSnippets().length
@@ -148,10 +148,6 @@ export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
 
-function getQueryBuilderModeFromLocation(location) {
-  return location.pathname.endsWith("/notebook") ? "notebook" : "view";
-}
-
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
@@ -160,17 +156,16 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
-        await dispatch(setCardAndRun(location.state.card, false));
+        const shouldRefreshUrl = location.state.card.dataset;
+        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
         await dispatch(setCurrentState(location.state));
       }
     }
-    if (
-      getQueryBuilderMode(getState()) !==
-      getQueryBuilderModeFromLocation(location)
-    ) {
+    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
-        setQueryBuilderMode(getQueryBuilderModeFromLocation(location), {
-          shouldUpdateUrl: false,
+        setQueryBuilderMode(queryBuilderModeFromURL, {
+          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
     }
@@ -270,9 +265,10 @@ export const updateUrl = createThunkAction(
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
-      pathname:
-        (urlParsed.pathname || "") +
-        (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
+      pathname: getPathNameFromQueryBuilderMode({
+        pathname: urlParsed.pathname || "",
+        queryBuilderMode,
+      }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
       state: newState,
@@ -329,7 +325,7 @@ export const initializeQB = (location, params, queryParams) => {
 
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
-    const uiControls: UiControls = {
+    const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
@@ -433,6 +429,18 @@ export const initializeQB = (location, params, queryParams) => {
             setErrorPage({
               data: {
                 error_code: "archived",
+              },
+              context: "query-builder",
+            }),
+          );
+          card = null;
+        }
+
+        if (!card.dataset && location.pathname.startsWith("/dataset")) {
+          dispatch(
+            setErrorPage({
+              data: {
+                error_code: "not-found",
               },
               context: "query-builder",
             }),
@@ -664,10 +672,15 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   };
 });
 
-export const loadMetadataForCard = card => (dispatch, getState) =>
-  dispatch(
-    loadMetadataForQuery(new Question(card, getMetadata(getState())).query()),
-  );
+export const loadMetadataForCard = card => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+  const question = new Question(card, metadata);
+  const queries = [question.query()];
+  if (question.isDataset()) {
+    queries.push(question.composeDataset().query());
+  }
+  return dispatch(loadMetadataForQueries(queries));
+};
 
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
@@ -718,7 +731,11 @@ export const setTemplateTag = createThunkAction(
       const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (!uiControls.isEditing && updatedCard.id) {
+      if (
+        !uiControls.isEditing &&
+        uiControls.queryBuilderMode !== "dataset" &&
+        updatedCard.id
+      ) {
         delete updatedCard.id;
         delete updatedCard.name;
         delete updatedCard.description;
@@ -845,7 +862,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.question(null, card);
-        if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
+        if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           open(url);
         } else {
           dispatch(onCloseSidebars());
@@ -853,7 +870,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          dispatch(setCardAndRun(card));
+          // When the dataset query changes, we should loose the dataset flag,
+          // to start building a new ad-hoc question based on a dataset
+          dispatch(setCardAndRun({ ...card, dataset: false }));
         }
       }
     };
@@ -874,15 +893,23 @@ export const updateQuestion = (
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
+    const mode = getQueryBuilderMode(getState());
 
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
       !doNotClearNameAndId &&
       !getIsEditing(getState()) &&
-      newQuestion.isSaved()
+      newQuestion.isSaved() &&
+      mode !== "dataset"
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+
+      // When the dataset query changes, we should loose the dataset flag,
+      // to start building a new ad-hoc question based on a dataset
+      if (newQuestion.isDataset()) {
+        newQuestion = newQuestion.setDataset(false);
+      }
     }
 
     const queryResult = getFirstQueryResult(getState());
@@ -939,7 +966,10 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+    if (
+      getQueryBuilderMode(getState()) === "notebook" &&
+      newQuestion.isNative()
+    ) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
@@ -973,7 +1003,7 @@ export const updateQuestion = (
           newQuestion.query().dependentMetadata(),
         )
       ) {
-        await dispatch(loadMetadataForQuery(newQuestion.query()));
+        await dispatch(loadMetadataForCard(newQuestion.card()));
       }
 
       // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
@@ -1031,6 +1061,11 @@ export const apiCreateQuestion = question => {
       "Create Card",
       createdQuestion.query().datasetQuery().type,
     );
+    trackNewQuestionSaved(
+      question,
+      createdQuestion,
+      isBasedOnExistingQuestion(getState()),
+    );
 
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
@@ -1041,8 +1076,9 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = question => {
+export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
+    const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
@@ -1055,7 +1091,12 @@ export const apiUpdateQuestion = question => {
     const updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .reduxUpdate(dispatch);
+      // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+      // (it's necessary for datasets to behave like tables opened in simple mode)
+      // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
+      .reduxUpdate(dispatch, {
+        excludeDatasetQuery: isAdHocDatasetQuestion(question, originalQuestion),
+      });
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -1073,6 +1114,11 @@ export const apiUpdateQuestion = question => {
     );
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+
+    if (rerunQuery) {
+      await dispatch(loadMetadataForCard(question.card()));
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -1080,25 +1126,29 @@ export const apiUpdateQuestion = question => {
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
-export type RunQueryParams = {
-  shouldUpdateUrl?: boolean,
-  ignoreCache?: boolean, // currently only implemented for saved cards
-  overrideWithCard?: Card, // override the current question with the provided card
-};
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithCard,
-}: RunQueryParams = {}) => {
+} = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (card: Card): Question =>
+    const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
-    let question: Question = overrideWithCard
+    let question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
-    const originalQuestion: ?Question = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestion(getState());
+
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // This ensures we still run the underlying query instead of a nested one if there are not extra clauses
+    // Otherwise, when turning a dataset into a saved question, some things can go wrong
+    // (like "join-aliases" will appear in field refs and some QB parts will behave as if we're running a completely different question)
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (isAdHocDatasetQuestion(question, originalQuestion)) {
+      question = originalQuestion;
+    }
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion)
@@ -1411,23 +1461,24 @@ export const revertToRevision = createThunkAction(
   },
 );
 
+export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
+export const onCancelDatasetChanges = () => (dispatch, getState) => {
+  const cardBeforeChanges = getOriginalCard(getState());
+  dispatch.action(CANCEL_DATASET_CHANGES, {
+    card: cardBeforeChanges,
+  });
+  dispatch(runQuestionQuery());
+};
+
 export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   const question = getQuestion(getState());
   const dataset = question.setDataset(true);
-  await dispatch(apiUpdateQuestion(dataset));
-
-  // When a question is turned into a dataset,
-  // its visualization is changed to a table
-  // In order for that transition not to look like something just broke,
-  // we rerun the query
-  if (question.display() !== "table") {
-    dispatch(runQuestionQuery());
-  }
+  await dispatch(apiUpdateQuestion(dataset, { rerunQuery: true }));
 
   dispatch(
     addUndo({
       message: t`This is a dataset now.`,
-      actions: [apiUpdateQuestion(question)],
+      actions: [apiUpdateQuestion(question, { rerunQuery: true })],
     }),
   );
 };
@@ -1435,12 +1486,12 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
 export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
   const dataset = getQuestion(getState());
   const question = dataset.setDataset(false);
-  await dispatch(apiUpdateQuestion(question));
+  await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset)],
+      actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
     }),
   );
 };

@@ -101,9 +101,6 @@ function UndoListing({ undos, performUndo, dismissUndo }) {
 }
 
 export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
   BodyComponent,
 )(UndoListing);

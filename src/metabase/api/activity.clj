@@ -96,7 +96,7 @@
                  "card"      [Card      :id :name :collection_id :description :display
                                         :dataset_query :dataset]
                  "dashboard" [Dashboard :id :name :collection_id :description]
-                 "table"     [Table     :id :name :db_id :display_name])
+                 "table"     [Table     :id :name :db_id :display_name :initial_sync_status])
                {:where [:in :id ids]})))
           (by-id [models] (m/index-by :id models))]
     (into {} (map (fn [[model models]]
