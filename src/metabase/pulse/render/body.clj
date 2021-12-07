@@ -501,7 +501,7 @@
 
 (s/defmethod render :multiple
   [_ render-type timezone-id card dashcard {:keys [viz-settings] :as data}]
-  (let [multi-res     (pu/execute-multi-card card)
+  (let [multi-res     (pu/execute-multi-card card dashcard)
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
         cards         (cons card (map :card multi-res))
@@ -536,7 +536,7 @@
            :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card dashcard {:keys [cols rows viz-settings] :as data}]
+  [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
   (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
         ;; Special y-axis-rowfn because we have more than 1 y-axis
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
