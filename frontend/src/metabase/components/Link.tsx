@@ -1,22 +1,27 @@
-import React from "react";
 import cx from "classnames";
-import PropTypes from "prop-types";
-import { Link as ReactRouterLink } from "react-router";
-import styled from "styled-components";
-import { display, color, hover, space } from "styled-system";
-
-import { stripLayoutProps } from "metabase/lib/utils";
 import Tooltip from "metabase/components/Tooltip";
+import { stripLayoutProps } from "metabase/lib/utils";
+import React, { ReactNode } from "react";
+import { Link as ReactRouterLink, LinkProps } from "react-router";
+import styled from "styled-components";
+import { color, display, hover, space } from "styled-system";
 
-BaseLink.propTypes = {
-  to: PropTypes.string.isRequired,
-  disabled: PropTypes.bool,
-  className: PropTypes.string,
-  children: PropTypes.node,
-  tooltip: PropTypes.string,
-};
+interface Props extends LinkProps {
+  to: string;
+  disabled?: boolean;
+  className?: string;
+  children?: ReactNode;
+  tooltip?: string;
+}
 
-function BaseLink({ to, className, children, disabled, tooltip, ...props }) {
+function BaseLink({
+  to,
+  className,
+  children,
+  disabled,
+  tooltip,
+  ...props
+}: Props) {
   const link = (
     <ReactRouterLink
       to={to}

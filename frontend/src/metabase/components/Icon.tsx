@@ -1,14 +1,13 @@
+import cx from "classnames";
+import Tooltip from "metabase/components/Tooltip";
+import { loadIcon } from "metabase/icon_paths";
+import { color as c } from "metabase/lib/colors";
+import { stripLayoutProps } from "metabase/lib/utils";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import PropTypes from "prop-types";
 import React, { Component, forwardRef } from "react";
 import styled from "styled-components";
-import { color, space, hover } from "styled-system";
-import cx from "classnames";
-
-import { color as c } from "metabase/lib/colors";
-import { loadIcon } from "metabase/icon_paths";
-import { stripLayoutProps } from "metabase/lib/utils";
-import Tooltip from "metabase/components/Tooltip";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import { color, hover, space } from "styled-system";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -51,13 +50,15 @@ const stringOrNumberPropType = PropTypes.oneOfType([
 
 export const iconPropTypes = {
   name: PropTypes.string.isRequired,
+  color: PropTypes.string,
   size: stringOrNumberPropType,
   width: stringOrNumberPropType,
   height: stringOrNumberPropType,
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
-  innerRef: PropTypes.func.isRequired,
+  innerRef: PropTypes.any,
+  onClick: PropTypes.func,
 };
 
 type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
