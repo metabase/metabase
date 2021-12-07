@@ -63,7 +63,7 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} dashcard {:keys [cols rows insights], :as data}]
+  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows insights], :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
         row-sample-count          (delay (count (take 2 rows)))
         [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
@@ -95,7 +95,8 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
-        (and (> (count (card-model/card->multi-cards card dashcard)) 0)
+        (and (some? maybe-dashcard)
+             (> (count (card-model/card->multi-cards card maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
