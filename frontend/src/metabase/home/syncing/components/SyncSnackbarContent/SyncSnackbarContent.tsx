@@ -96,6 +96,7 @@ const getTitleMessage = (databases: Database[], isOpened: boolean) => {
 };
 
 const getDescriptionMessage = (database: Database) => {
+  const isDone = isSyncCompleted(database);
   const isError = isSyncAborted(database);
   const doneCount = database.tables.filter(t => isSyncCompleted(t)).length;
   const totalCount = database.tables.length;
@@ -104,6 +105,8 @@ const getDescriptionMessage = (database: Database) => {
     return t`Sync failed`;
   } else if (totalCount) {
     return t`${doneCount} of ${totalCount} done`;
+  } else if (!isDone) {
+    return t`Syncing tables…`;
   }
 };
 
