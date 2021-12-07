@@ -1,1 +1,1 @@
-export { default } from "./SyncModal";
+export { default } from "./SyncModalContent";
