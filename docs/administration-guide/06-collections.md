@@ -34,7 +34,7 @@ Collection permissions are similar to [data access permissions](05-setting-permi
 
 ![Permissions](images/collections/collection-permissions.png)
 
-If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says `See all collection permissions`, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
+If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
 
 ![Collection Permissions](images/collections/admin-panel-collections.png)
 
@@ -44,7 +44,7 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 One nuance with how collections permissions work has to do with sub-collections. A user group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. E.g., if a user group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does _not_ have access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
-To learn more, check out our Learn article on [working with collection permissions][collection-permissisons].
+To learn more, check out our Learn article on [working with collection permissions][collection-permissions].
 
 ### Personal collections
 
@@ -87,7 +87,7 @@ Pulses act a bit differently with regard to permissions. When a user creates a n
 Want to share certain dashboards or questions with the world? You can do that with [public links](12-public-links.md).
 
 [collections]: 06-collections.md
-[collection-permissisons]: /learn/permissions/collection-permissions.html
+[collection-permissions]: /learn/permissions/collection-permissions.html
 [dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
 [data-permissions]: data-permissions.md
 [pulses]: ../users-guide/10-pulses.md
