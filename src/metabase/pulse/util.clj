@@ -1,13 +1,13 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require [clojure.tools.logging :as log]
-            [metabase.models.card :refer [Card]]
+            [metabase.models :refer [Card DashboardCard]]
+            [metabase.models.card :as card-model]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [toucan.hydrate :refer [hydrate]]))
+            [metabase.util.i18n :refer [trs]]))
 
 ;; TODO - this should be done async
 (defn execute-card
@@ -43,9 +43,11 @@
 
   This is as opposed to combo cards and cards with visualizations with multiple series,
   which are viz settings."
-  [card-or-id]
+  [card-or-id dashcard-or-id]
   (let [card-id      (u/the-id card-or-id)
+        dashcard-id  (u/the-id dashcard-or-id)
         card         (Card :id card-id, :archived false)
-        multi-cards  (:multi_cards (hydrate card :multi_cards))]
+        dashcard     (DashboardCard :id dashcard-id)
+        multi-cards  (card-model/card->multi-cards card dashcard)]
     (for [multi-card multi-cards]
       (execute-card {:creator_id (:creator_id card)} (:id multi-card)))))

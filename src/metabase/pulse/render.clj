@@ -1,6 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
+            [metabase.models.card :as card-model]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -8,8 +9,7 @@
             [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
-            [schema.core :as s]
-            [toucan.hydrate :refer [hydrate]]))
+            [schema.core :as s]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
@@ -95,8 +95,8 @@
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
 
-        (and (> (count (:multi_cards (hydrate card :multi_cards))) 0)
-             (not (#{:combo } display-type)))
+        (and (> (count (card-model/card->multi-cards card dashcard)) 0)
+             (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (and (= @col-sample-count 2)
