@@ -136,7 +136,7 @@
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      (body/render :error nil nil nil nil))))
+      (body/render :error nil nil nil nil nil))))
 
 (defn- card-href
   [card]
