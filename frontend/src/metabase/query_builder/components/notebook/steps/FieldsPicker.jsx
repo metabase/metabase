@@ -32,7 +32,7 @@ export default function FieldsPicker({
         {(onSelectAll || onSelectNone) && (
           <li className="px1 pb1 flex align-center border-bottom mb1">
             <StackedCheckBox
-              label={isAll && onSelectNone ? t`Select None` : t`Select All`}
+              label={isAll && onSelectNone ? t`Select none` : t`Select all`}
               checked={isAll}
               indeterminate={!isAll && !isNone}
               disabled={isAll && !onSelectNone}
