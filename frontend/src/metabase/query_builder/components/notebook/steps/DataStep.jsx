@@ -99,7 +99,7 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
       )
       .update(updateQuery);
 
-  const hasOneColumnSelected = selected.size === 1;
+  const hasOneColumnSelected = fields.length === 1;
 
   return (
     <FieldsPicker
