@@ -115,9 +115,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     placeholder: "write some math!",
   };
 
-  state = {
-    isFocused: false,
-  };
+  state = null;
 
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
