@@ -469,13 +469,30 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(declare mbql-cols)
+(def preserved-keys
+  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
+  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
+  can be merged on top."
+  [:description :display_name :semantic_type])
+
+(defn- combine-metadata
+  "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
+  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
+  the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
+  ensure survives."
+  [computed from-db]
+  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
+    (for [{:keys [field_ref] :as col} computed]
+      (if-let [existing (get by-key (u/field-ref->key field_ref))]
+        (merge col (select-keys existing preserved-keys))
+        col))))
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
    source-metadata-col
    col
+   (select-keys source-metadata-col preserved-keys)
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
@@ -500,23 +517,7 @@
         (merge-source-metadata-col source-metadata-for-field col)
         col))))
 
-(def preserved-keys
-  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
-  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  [:description :display_name :semantic_type])
-
-(defn- combine-metadata
-  "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
-  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
-  ensure survives."
-  [computed from-db]
-  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
-    (for [{:keys [field_ref] :as col} computed]
-      (if-let [existing (get by-key (u/field-ref->key field_ref))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
+(declare mbql-cols)
 
 (defn- cols-for-source-query
   [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]

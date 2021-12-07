@@ -1866,9 +1866,56 @@
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
-    (mt/with-temp Card [card {:display :bar
+    (mt/with-temp Card [card {:display       :bar
                               :dataset_query (mbql-count-query)}]
       (is (= {:display "table" :dataset true}
              (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
                                        (assoc card :dataset true))
-                 (select-keys [:display :dataset])))))))
+                 (select-keys [:display :dataset]))))))
+  (testing "Cards preserve their edited metadata"
+    (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+            (choose [col] (select-keys col [:name :description :display_name :semantic_type]))
+            (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                       :type/Integer :type/Quantity
+                                       :type/Float :type/Cost
+                                       :type/Text :type/Name
+                                       base-type))
+            (add-preserved [cols] (map merge
+                                       cols
+                                       (repeat {:description "user description"
+                                                :display_name "user display name"})
+                                       (map (comp
+                                             (fn [x] {:semantic_type x})
+                                             refine-type
+                                             :base_type)
+                                            cols)))]
+      (mt/with-temp* [Card [{card-id :id :as card} {:dataset_query
+                                                    {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :venues)}}
+                                                    :dataset true}]
+                      Card [{nested-card-id :id
+                             :as nested-card}      {:dataset_query
+                             {:database (mt/id)
+                              :type    :query
+                              :query   {:source-table (str "card__" card-id)}}}]]
+        (query! card-id) ;; populate metadata
+        (let [metadata (db/select-one-field :result_metadata Card :id card-id)
+              user-edited (add-preserved metadata)]
+          (db/update! Card card-id :result_metadata user-edited)
+          (let [api-response (query! card-id)]
+            (testing "Saved metadata preserves user edits"
+              (is (= (map choose user-edited)
+                     (map choose (db/select-one-field :result_metadata Card :id card-id)))))
+            (testing "API response includes user edits"
+              (is (= (map choose user-edited)
+                     (->> api-response
+                          :data :results_metadata :columns
+                          (map choose)
+                          (map #(update % :semantic_type keyword))))))
+            (testing "Nested queries have metadata"
+              (is (= (map choose user-edited)
+                     (->> (query! nested-card-id)
+                          :data :results_metadata :columns
+                          (map choose)
+                          (map #(update % :semantic_type keyword))))))))))))
