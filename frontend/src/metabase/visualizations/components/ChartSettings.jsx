@@ -99,8 +99,6 @@ class ChartSettings extends Component {
   };
 
   handleChangeSettings = changedSettings => {
-    console.log(changedSettings);
-    console.log(this._getSettings());
     this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
