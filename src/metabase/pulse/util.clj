@@ -1,8 +1,8 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require [clojure.tools.logging :as log]
-            [metabase.models :refer [Card DashboardCard]]
-            [metabase.models.card :as card-model]
+            [metabase.models.card :refer [Card DashboardCard] :as card-model]
+            [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.server.middleware.session :as session]

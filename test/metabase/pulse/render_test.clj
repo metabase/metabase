@@ -1,11 +1,12 @@
 (ns metabase.pulse.render-test
   (:require [clojure.test :refer :all]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
+            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -62,16 +63,18 @@
                                           :rows [[#t "2020" 2]
                                                  [#t "2021" 3]]})))
 
-  ;; multiple actually depends upon hydration behavior of whole card
-  ;; :multi_cards should be a seq of cards
   (is (= :multiple
-         (render/detect-pulse-chart-type {:display :something
-                                          :multi_cards [{:display :bar} {:display :line}]}
-                                         {}
-                                         {:cols [{:base_type :type/Temporal}
-                                                 {:base_type :type/Number}]
-                                          :rows [[#t "2020" 2]
-                                                 [#t "2021" 3]]})))
+         (mt/with-temp* [Card                [card1 {:display :something}]
+                         Card                [card2 {:display :whatever}]
+                         Dashboard           [dashboard]
+                         DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
+                         DashboardCardSeries [dcs1 {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+           (render/detect-pulse-chart-type card1
+                                           dc1
+                                           {:cols [{:base_type :type/Temporal}
+                                                   {:base_type :type/Number}]
+                                            :rows [[#t "2020" 2]
+                                                   [#t "2021" 3]]}))))
 
   (is (= :funnel
          (render/detect-pulse-chart-type {:display :funnel}
