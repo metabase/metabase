@@ -5,9 +5,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 export const RELOAD_INTERVAL = 2000;
 
-export const getAllDatabases = createSelector(
-  [getMetadata],
-  metadata => metadata.databasesList(),
+export const getAllDatabases = createSelector([getMetadata], metadata =>
+  metadata.databasesList(),
 );
 
 export const getSampleDatabase = createSelector([getAllDatabases], databases =>
