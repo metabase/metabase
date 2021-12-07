@@ -33,7 +33,7 @@ function makeMongoQuery(query, templateTags) {
   );
 }
 
-const query: NativeQuery = makeQuery("");
+const query = makeQuery("");
 
 describe("NativeQuery", () => {
   describe("You can access the metadata for the database a query has been written against", () => {
