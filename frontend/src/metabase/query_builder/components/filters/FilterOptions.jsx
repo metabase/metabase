@@ -7,8 +7,6 @@ import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 import CheckBox from "metabase/components/CheckBox";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { FieldFilter } from "metabase-types/types/Query";
-
 const OPTION_NAMES = {
   "include-current": filter => {
     const period = (
@@ -30,7 +28,7 @@ const CURRENT_INTERVAL_NAME = {
   hour: t`this hour`,
 };
 
-function getCurrentIntervalName(filter: FieldFilter): ?string {
+function getCurrentIntervalName(filter) {
   if (filter[0] === "time-interval") {
     return CURRENT_INTERVAL_NAME[filter[3]];
   }

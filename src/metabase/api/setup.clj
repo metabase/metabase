@@ -58,14 +58,14 @@
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
-  [{:keys [name driver details schedules database]}]
+  [{:keys [name driver details schedules database creator-id]}]
   (when driver
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (db/insert! Database
       (merge
-       {:name name, :engine driver, :details details}
+       {:name name, :engine driver, :details details, :creator_id creator-id}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))
@@ -106,8 +106,12 @@
               (db/transaction
                 (let [user-info (setup-create-user!
                                  {:email email, :first-name first_name, :last-name last_name, :password password})
-                      db        (setup-create-database!
-                                 {:name name, :driver engine, :details details, :schedules schedules, :database database})]
+                      db        (setup-create-database! {:name name
+                                                         :driver engine
+                                                         :details details
+                                                         :schedules schedules
+                                                         :database database
+                                                         :creator-id (:user-id user-info)})]
                   (setup-set-settings!
                    request
                    {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})

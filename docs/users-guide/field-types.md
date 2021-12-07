@@ -81,7 +81,7 @@ When you [X-ray](14-x-rays.md) a table, Metabase considers both the data type an
 
 ### Field Filters
 
-Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](./13-sql-parameters.md/#field-filter-compatible-types).
+Knowing what field types are and how they work is helpful when using [field filters](/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](./13-sql-parameters.md#field-filter-compatible-types).
 
 ### Editing types in the Data Model page
 

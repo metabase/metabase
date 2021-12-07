@@ -1,13 +1,12 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import React, { Component, forwardRef } from "react";
 import styled from "styled-components";
-import { color, space, hover } from "styled-system";
-import cx from "classnames";
-
-import { color as c } from "metabase/lib/colors";
-import { loadIcon } from "metabase/icon_paths";
-import { stripLayoutProps } from "metabase/lib/utils";
+import { color, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
+import { loadIcon } from "metabase/icon_paths";
+import { color as c } from "metabase/lib/colors";
+import { stripLayoutProps } from "metabase/lib/utils";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const MISSING_ICON_NAME = "unknown";
@@ -58,7 +57,7 @@ export const iconPropTypes = {
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
-  innerRef: PropTypes.func,
+  innerRef: PropTypes.any,
   onClick: PropTypes.func,
 };
 

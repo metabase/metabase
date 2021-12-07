@@ -1,11 +1,10 @@
-import React, { ReactNode } from "react";
 import cx from "classnames";
+import React, { ReactNode } from "react";
 import { Link as ReactRouterLink, LinkProps } from "react-router";
 import styled from "styled-components";
-import { display, color, hover, space } from "styled-system";
-
-import { stripLayoutProps } from "metabase/lib/utils";
+import { color, display, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
+import { stripLayoutProps } from "metabase/lib/utils";
 
 interface Props extends LinkProps {
   to: string;

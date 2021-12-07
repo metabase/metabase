@@ -176,7 +176,9 @@
              :cache_field_values_schedule new-fieldvalues-schedule)))))))
 
 (defn- pre-insert [database]
-  (handle-secrets-changes database))
+  (-> database
+   handle-secrets-changes
+   (assoc :initial_sync_status "incomplete")))
 
 (defn- perms-objects-set [database _]
   #{(perms/data-perms-path (u/the-id database))})

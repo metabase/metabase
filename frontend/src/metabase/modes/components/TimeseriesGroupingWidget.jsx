@@ -22,7 +22,7 @@ export default class TimeseriesGroupingWidget extends Component {
     query: PropTypes.object.isRequired,
   };
 
-  _popover: ?any;
+  _popover;
 
   render() {
     const { query } = this.props;

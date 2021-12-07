@@ -1,21 +1,14 @@
 import _ from "underscore";
 
-import type {
-  Field as FieldReference,
-  FieldsClause,
-} from "metabase-types/types/Query";
-import type { Field, FieldValues } from "metabase-types/types/Field";
-import type { Value } from "metabase-types/types/Dataset";
-
 import { add, update, remove, clear } from "./util";
 
 // returns canonical list of Fields, with nulls removed
-export function getFields(fields: ?FieldsClause): FieldReference[] {
+export function getFields(fields) {
   return (fields || []).filter(b => b != null);
 }
 
 // turns a list of Fields into the canonical FieldClause
-export function getFieldClause(fields: FieldReference[]): ?FieldsClause {
+export function getFieldClause(fields) {
   fields = getFields(fields);
   if (fields.length === 0) {
     return undefined;
@@ -24,32 +17,22 @@ export function getFieldClause(fields: FieldReference[]): ?FieldsClause {
   }
 }
 
-export function addField(
-  fields: ?FieldsClause,
-  newField: FieldReference,
-): ?FieldsClause {
+export function addField(fields, newField) {
   return getFieldClause(add(getFields(fields), newField));
 }
-export function updateField(
-  fields: ?FieldsClause,
-  index: number,
-  updatedField: FieldReference,
-): ?FieldsClause {
+export function updateField(fields, index, updatedField) {
   return getFieldClause(update(getFields(fields), index, updatedField));
 }
-export function removeField(
-  fields: ?FieldsClause,
-  index: number,
-): ?FieldsClause {
+export function removeField(fields, index) {
   return getFieldClause(remove(getFields(fields), index));
 }
-export function clearFields(fields: ?FieldsClause): ?FieldsClause {
+export function clearFields(fields) {
   return getFieldClause(clear());
 }
 
 // Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417
-export function getFieldValues(field: ?Field): FieldValues {
+export function getFieldValues(field) {
   const values = field && field.values;
   if (Array.isArray(values)) {
     if (values.length === 0 || Array.isArray(values[0])) {
@@ -77,16 +60,13 @@ export function getFieldValues(field: ?Field): FieldValues {
 }
 
 // merge field values and remappings
-export function getRemappings(field: ?Field) {
+export function getRemappings(field) {
   const remappings = (field && field.remappings) || [];
   const fieldValues = getFieldValues(field);
   return [...fieldValues, ...remappings];
 }
 
-export function getHumanReadableValue(
-  value: Value,
-  fieldValues?: FieldValues = [],
-) {
+export function getHumanReadableValue(value, fieldValues = []) {
   const fieldValue = _.findWhere(fieldValues, { [0]: value });
   return fieldValue && fieldValue.length === 2 ? fieldValue[1] : String(value);
 }

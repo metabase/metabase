@@ -37,6 +37,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.tokenizer.unit.spec.js
       env:
@@ -62,6 +67,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.parser.unit.spec.js
       env:

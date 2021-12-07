@@ -13,49 +13,9 @@ import Utils from "metabase/lib/utils";
 
 import cx from "classnames";
 
-import Question from "metabase-lib/lib/Question";
-import type Database from "metabase-lib/lib/metadata/Database";
-import type Table from "metabase-lib/lib/metadata/Table";
-import type { DatasetQuery } from "metabase-types/types/Card";
-
-import type { ParameterValues } from "metabase-types/types/Parameter";
-
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
 
-type Props = {
-  question: Question,
-  originalQuestion: Question,
-  result?: Object,
-  databases?: Database[],
-  tableMetadata?: Table,
-  tableForeignKeys?: [],
-  tableForeignKeyReferences?: {},
-  onUpdateVisualizationSettings: any => void,
-  onReplaceAllVisualizationSettings: any => void,
-  onOpenChartSettings: any => void,
-  cellIsClickableFn?: any => void,
-  cellClickedFn?: any => void,
-  isRunning: boolean,
-  isRunnable: boolean,
-  isAdmin: boolean,
-  isResultDirty: boolean,
-  isObjectDetail: boolean,
-  isNativeEditorOpen: boolean,
-  runQuestionQuery: any => void,
-  cancelQuery?: any => void,
-  className: string,
-};
-
-type State = {
-  lastRunDatasetQuery: DatasetQuery,
-  lastRunParameterValues: ParameterValues,
-  warnings: string[],
-};
-
 export default class QueryVisualization extends Component {
-  props: Props;
-  state: State;
-
   constructor(props, context) {
     super(props, context);
     this.state = this._getStateFromProps(props);

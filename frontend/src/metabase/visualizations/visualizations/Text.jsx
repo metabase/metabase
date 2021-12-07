@@ -7,13 +7,6 @@ import styles from "./Text.css";
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-type State = {
-  isShowingRenderedOutput: boolean,
-  text: string,
-};
-
 const getSettingsStyle = settings => ({
   "align-center": settings["text.align_horizontal"] === "center",
   "align-end": settings["text.align_horizontal"] === "right",
@@ -24,10 +17,7 @@ const getSettingsStyle = settings => ({
 const REMARK_PLUGINS = [remarkGfm];
 
 export default class Text extends Component {
-  props: VisualizationProps;
-  state: State;
-
-  constructor(props: VisualizationProps) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -97,7 +87,7 @@ export default class Text extends Component {
     },
   };
 
-  handleTextChange(text: string) {
+  handleTextChange(text) {
     this.props.onUpdateVisualizationSettings({ text: text });
   }
 

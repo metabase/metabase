@@ -501,7 +501,8 @@
                                    :details      details-or-error
                                    :is_full_sync is-full-sync?
                                    :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl}
+                                   :cache_ttl    cache_ttl
+                                   :creator_id   api/*current-user-id*}
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)

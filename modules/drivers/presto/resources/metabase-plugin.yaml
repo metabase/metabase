@@ -17,7 +17,9 @@ driver:
     - merge:
         - dbname
         - name: catalog
-          placeholder: hive
+          display-name: Catalog
+          helper-text: Presto Catalogs contain schemas and reference data sources via a connector.
+          placeholder: european_birds
     - user
     - password
     - cloud-ip-address-info
