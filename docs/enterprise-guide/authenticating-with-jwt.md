@@ -1,6 +1,6 @@
 # JWT-based Authentication
 
-You can connect Metabase to your JWT-based identity provider to allow your Metabase users to authenticate through it.
+You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to allow your Metabasers to authenticate through it.
 
 ## Types of authentication Metabase supports with JWT
 
@@ -17,9 +17,9 @@ Assuming your site is localhost serving on port 3000:
 
 1. Person attempts to view a question, e.g., `http://localhost:3000/question/1-superb-question`.
 2. If the person isn't logged in Metabase redirects them to `http://localhost:3000/auth/sso`.
-3. Retaining the original `/question/1-superb-question` URI, Metabase redirects the person to the SSO provider (this application).
+3. Retaining the original `/question/1-superb-question` URI, Metabase redirects the person to the SSO provider (the authentication app).
 4. Person logs in using the basic form.
-5. Person is redirected back to `http://localhost:3000/auth/sso` with their JSON Web Token and the original `/question/1-superb-question` URI.
+5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token, and the return to URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
 ## Enabling JWT authentication
@@ -34,7 +34,7 @@ Here's a breakdown of each of the settings:
 
 **Identity Provider URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in through your identify provider.
 
-**String Used by the JWT Signing Key:** This is a string used to seed the private key that is used to validate JWT messages.
+**String Used by the JWT Signing Key:** This is a string used to seed the private key that is used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
 
 ## User attribute configuration (optional)
 
@@ -46,7 +46,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
-## Group Schema
+## Group schema
 
 You can use your JWT to assign Metabase users to custom groups by following these steps:
 
@@ -54,7 +54,7 @@ You can use your JWT to assign Metabase users to custom groups by following thes
 2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
 3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
 
-## Disabling Password Log-in
+## Disabling password login
 
 Once you have configured your JWT authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
 
@@ -62,8 +62,7 @@ Once you have configured your JWT authentication, you can choose to disable the 
 
 ## Note about Azure
 
-If you're using Azure, you'll may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
-
+If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens overview](https://docs.microsoft.com/en-us/azure/active-directory-b2c/tokens-overview).
 
 ## Example code using JWT
 
