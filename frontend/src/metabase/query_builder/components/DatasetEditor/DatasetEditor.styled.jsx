@@ -1,7 +1,7 @@
 import styled, { css } from "styled-components";
 import EditBar from "metabase/components/EditBar";
 import { color } from "metabase/lib/colors";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 export const DatasetEditBar = styled(EditBar)`
   background-color: ${color("nav")};
@@ -11,9 +11,14 @@ export const TableHeaderColumnName = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
+  min-width: 35px;
 
-  margin: 24px 0;
-  padding: 4px 8px;
+  margin: 24px 0.75em;
+  padding: ${space(0)} ${space(1)};
+
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
 
   color: ${color("brand")};
   background-color: transparent;
