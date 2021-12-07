@@ -102,7 +102,7 @@ const getDescriptionMessage = (database: Database) => {
 
   if (isError) {
     return t`Sync failed`;
-  } else {
+  } else if (totalCount) {
     return t`${doneCount} of ${totalCount} done`;
   }
 };

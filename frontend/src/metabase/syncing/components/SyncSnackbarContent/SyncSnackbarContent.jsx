@@ -4,11 +4,6 @@ import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import {
-  isSyncAborted,
-  isSyncCompleted,
-  isSyncInProgress,
-} from "metabase/lib/syncing";
-import {
   DatabaseCard,
   DatabaseContent,
   DatabaseDescription,
@@ -54,18 +49,12 @@ const SyncSnackbarContent = ({ databases }) => {
                   {getDescriptionMessage(database)}
                 </DatabaseDescription>
               </DatabaseContent>
-              {isSyncInProgress(database) && (
-                <DatabaseSpinner size={24} borderWidth={3} />
-              )}
-              {isSyncCompleted(database) && (
+              {database.initial_sync ? (
                 <DatabaseIconContainer>
                   <Icon name="check" size={12} />
                 </DatabaseIconContainer>
-              )}
-              {isSyncAborted(database) && (
-                <DatabaseIconContainer isError={true}>
-                  <Icon name="warning" size={12} />
-                </DatabaseIconContainer>
+              ) : (
+                <DatabaseSpinner size={24} borderWidth={3} />
               )}
             </DatabaseCard>
           ))}
@@ -78,35 +67,25 @@ const SyncSnackbarContent = ({ databases }) => {
 SyncSnackbarContent.propTypes = propTypes;
 
 const getTitleMessage = (databases, isOpened) => {
-  const isDone = databases.every(d => isSyncCompleted(d));
-  const isError = databases.some(d => isSyncAborted(d));
-
-  const tables = databases.flatMap(d => d.tables);
+  const tables = databases.filter(d => !d.initial_sync).flatMap(d => d.tables);
   const totalCount = tables.length;
-  const doneCount = tables.filter(t => isSyncCompleted(t)).length;
+
+  const done = databases.every(d => d.initial_sync);
+  const doneCount = tables.filter(t => t.initial_sync).length;
   const donePercentage = Math.floor((doneCount / totalCount) * 100);
 
-  if (isError) {
-    return t`Error syncing`;
-  } else if (isDone) {
-    return t`Done!`;
-  } else if (!isOpened && totalCount) {
-    return t`Syncing… (${donePercentage}%)`;
-  } else {
-    return t`Syncing…`;
-  }
+  return done
+    ? t`Done!`
+    : !isOpened && totalCount
+    ? t`Syncing… (${donePercentage}%)`
+    : t`Syncing…`;
 };
 
 const getDescriptionMessage = database => {
-  const isError = isSyncAborted(database);
-  const doneCount = database.tables.filter(t => isSyncCompleted(t)).length;
+  const doneCount = database.tables.filter(t => t.initial_sync).length;
   const totalCount = database.tables.length;
 
-  if (isError) {
-    return t`Sync failed`;
-  } else {
-    return t`${doneCount} of ${totalCount} done`;
-  }
+  return t`${doneCount} of ${totalCount} done`;
 };
 
 export default SyncSnackbarContent;
