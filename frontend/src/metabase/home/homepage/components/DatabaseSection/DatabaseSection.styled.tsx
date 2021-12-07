@@ -1,7 +1,7 @@
-import styled from "styled-components";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+import styled from "styled-components";
 import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,

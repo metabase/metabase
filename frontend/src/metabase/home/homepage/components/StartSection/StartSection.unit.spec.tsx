@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Dashboard, Database, User } from "../../types";
 import StartSection from "./StartSection";
 
 describe("StartSection", () => {
@@ -46,13 +47,12 @@ describe("StartSection", () => {
 
   it("should not show a banner for regular users when there are no user databases", () => {
     const user = getUser();
-    const databases = [];
     const dashboards = [getDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
         user={user}
-        databases={databases}
+        databases={[]}
         dashboards={dashboards}
         showPinMessage={true}
       />,
@@ -66,14 +66,12 @@ describe("StartSection", () => {
 
   it("should show a banner for admins when there are no pinned dashboards", () => {
     const user = getUser({ is_superuser: true });
-    const databases = [];
-    const dashboards = [];
 
     render(
       <StartSection
         user={user}
-        databases={databases}
-        dashboards={dashboards}
+        databases={[]}
+        dashboards={[]}
         showPinMessage={true}
       />,
     );
@@ -85,14 +83,12 @@ describe("StartSection", () => {
 
   it("should show a banner for regular users when there are no pinned dashboards", () => {
     const user = getUser();
-    const databases = [];
-    const dashboards = [];
 
     render(
       <StartSection
         user={user}
-        databases={databases}
-        dashboards={dashboards}
+        databases={[]}
+        dashboards={[]}
         showPinMessage={true}
       />,
     );
@@ -104,14 +100,12 @@ describe("StartSection", () => {
 
   it("should not hide the section for admins when there is no content", () => {
     const user = getUser({ is_superuser: true });
-    const databases = [];
-    const dashboards = [];
 
     render(
       <StartSection
         user={user}
-        databases={databases}
-        dashboards={dashboards}
+        databases={[]}
+        dashboards={[]}
         showPinMessage={false}
       />,
     );
@@ -122,14 +116,12 @@ describe("StartSection", () => {
 
   it("should hide the section for regular users when there is no content", () => {
     const user = getUser();
-    const databases = [];
-    const dashboards = [];
 
     render(
       <StartSection
         user={user}
-        databases={databases}
-        dashboards={dashboards}
+        databases={[]}
+        dashboards={[]}
         showPinMessage={false}
       />,
     );
@@ -140,14 +132,13 @@ describe("StartSection", () => {
   it("should allow admins to hide the dashboard banner", () => {
     const user = getUser({ is_superuser: true });
     const databases = [getDatabase()];
-    const dashboards = [];
     const onHidePinMessage = jest.fn();
 
     render(
       <StartSection
         user={user}
         databases={databases}
-        dashboards={dashboards}
+        dashboards={[]}
         showPinMessage={true}
         onHidePinMessage={onHidePinMessage}
       />,
@@ -160,14 +151,13 @@ describe("StartSection", () => {
   it("should not allow regular users to hide the dashboard banner", () => {
     const user = getUser();
     const databases = [getDatabase()];
-    const dashboards = [];
     const onHidePinMessage = jest.fn();
 
     render(
       <StartSection
         user={user}
         databases={databases}
-        dashboards={dashboards}
+        dashboards={[]}
         showPinMessage={true}
         onHidePinMessage={onHidePinMessage}
       />,
@@ -177,8 +167,22 @@ describe("StartSection", () => {
   });
 });
 
-const getUser = ({ is_superuser = false } = {}) => ({ is_superuser });
+const getUser = (opts?: Partial<User>): User => ({
+  first_name: "John",
+  is_superuser: false,
+  personal_collection_id: "personal",
+  ...opts,
+});
 
-const getDatabase = ({ id = 1, is_sample = false } = {}) => ({ id, is_sample });
+const getDatabase = (opts?: Partial<Database>): Database => ({
+  id: 1,
+  name: "Our database",
+  is_sample: false,
+  ...opts,
+});
 
-const getDashboard = ({ id = 1, name } = {}) => ({ id, name });
+const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
+  id: 1,
+  name: "Our dashboard",
+  ...opts,
+});

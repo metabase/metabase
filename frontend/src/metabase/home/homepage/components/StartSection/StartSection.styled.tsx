@@ -1,13 +1,17 @@
-import styled from "styled-components";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
+import styled from "styled-components";
 import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
-export const ListRoot = styled.div`
+interface ListRootProps {
+  hasMargin?: boolean;
+}
+
+export const ListRoot = styled.div<ListRootProps>`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;

@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { Collection, User } from "../../types";
 import CollectionSection from "./CollectionSection";
 
 const CollectionListMock = () => <div>CollectionList</div>;
@@ -35,12 +36,14 @@ describe("CollectionSection", () => {
   });
 });
 
-const getUser = ({
-  is_superuser = false,
-  personal_collection_id = "personal",
-} = {}) => ({
-  is_superuser,
-  personal_collection_id,
+const getUser = (opts?: Partial<User>): User => ({
+  first_name: "John",
+  is_superuser: false,
+  personal_collection_id: "personal",
+  ...opts,
 });
 
-const getCollection = ({ id = "root" } = {}) => ({ id });
+const getCollection = (opts?: Partial<Collection>): Collection => ({
+  id: "root",
+  ...opts,
+});

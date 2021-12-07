@@ -1,10 +1,10 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React, { ReactNode } from "react";
 import { t } from "ttag";
-import * as Urls from "metabase/lib/urls";
 import Button from "metabase/components/Button";
-import Tooltip from "metabase/components/Tooltip";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+import * as Urls from "metabase/lib/urls";
+import { Database, User } from "../../types";
 import Section, {
   SectionCloseIcon,
   SectionHeader,
@@ -19,14 +19,14 @@ import {
   ListRoot,
 } from "./DatabaseSection.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-  databases: PropTypes.array.isRequired,
-  showData: PropTypes.bool,
-  onHideData: PropTypes.func,
-};
+interface Props {
+  user: User;
+  databases: Database[];
+  showData?: boolean;
+  onHideData?: () => void;
+}
 
-const DatabaseSection = ({ user, databases, showData, onHideData }) => {
+const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -39,11 +39,11 @@ const DatabaseSection = ({ user, databases, showData, onHideData }) => {
       <SectionHeader>
         <SectionTitle>{t`Our data`}</SectionTitle>
         {hasAddLink && (
-          <SectionRemoveModal onSubmit={onHideData}>
+          <HideSectionModal onSubmit={onHideData}>
             <Tooltip tooltip={t`Hide this section`}>
               <SectionCloseIcon name="close" />
             </Tooltip>
-          </SectionRemoveModal>
+          </HideSectionModal>
         )}
         {hasAddLink && hasUserDatabase && (
           <ActionLink to={Urls.newDatabase()}>{t`Add a database`}</ActionLink>
@@ -70,14 +70,12 @@ const DatabaseSection = ({ user, databases, showData, onHideData }) => {
   );
 };
 
-DatabaseSection.propTypes = propTypes;
+interface HideSectionModalProps {
+  children?: ReactNode;
+  onSubmit?: () => void;
+}
 
-const modalPropTypes = {
-  children: PropTypes.node,
-  onSubmit: PropTypes.func,
-};
-
-const SectionRemoveModal = ({ children, onSubmit }) => {
+const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
   return (
     <ModalWithTrigger
       title={t`Remove this section?`}
@@ -90,7 +88,5 @@ const SectionRemoveModal = ({ children, onSubmit }) => {
     </ModalWithTrigger>
   );
 };
-
-SectionRemoveModal.propTypes = modalPropTypes;
 
 export default DatabaseSection;
