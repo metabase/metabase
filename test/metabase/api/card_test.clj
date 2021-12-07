@@ -1874,7 +1874,7 @@
                  (select-keys [:display :dataset]))))))
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
-            (choose [col] (select-keys col [:name :description :display_name :semantic_type]))
+            (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
             (refine-type [base-type] (condp #(isa? %2 %1) base-type
                                        :type/Integer :type/Quantity
                                        :type/Float :type/Cost
@@ -1889,33 +1889,50 @@
                                              refine-type
                                              :base_type)
                                             cols)))]
-      (mt/with-temp* [Card [{card-id :id :as card} {:dataset_query
-                                                    {:database (mt/id)
-                                                     :type     :query
-                                                     :query    {:source-table (mt/id :venues)}}
-                                                    :dataset true}]
-                      Card [{nested-card-id :id
-                             :as nested-card}      {:dataset_query
-                             {:database (mt/id)
-                              :type    :query
-                              :query   {:source-table (str "card__" card-id)}}}]]
-        (query! card-id) ;; populate metadata
-        (let [metadata (db/select-one-field :result_metadata Card :id card-id)
-              user-edited (add-preserved metadata)]
-          (db/update! Card card-id :result_metadata user-edited)
-          (let [api-response (query! card-id)]
+      (mt/with-temp* [Card [mbql-ds {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :venues)}}
+                                     :dataset true}]
+                      Card [mbql-nested {:dataset_query
+                                         {:database (mt/id)
+                                          :type     :query
+                                          :query    {:source-table
+                                                     (str "card__" (u/the-id mbql-ds))}}}]
+                      Card [native-ds {:dataset true
+                                       :dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native
+                                        {:query
+                                         "select * from venues"
+                                         :template-tags {}}}}]
+                      Card [native-nested {:dataset_query
+                                           {:database (mt/id)
+                                            :type :query
+                                            :query {:source-table
+                                                    (str "card__" (u/the-id native-ds))}}}]]
+        (doseq [[query-type card-id nested-id] [[:mbql
+                                                 (u/the-id mbql-ds) (u/the-id mbql-nested)]
+                                                [:native
+                                                 (u/the-id native-ds) (u/the-id native-nested)]]]
+          (query! card-id) ;; populate metadata
+          (let [metadata (db/select-one-field :result_metadata Card :id card-id)
+                ;; simulate updating metadat with user changed stuff
+                user-edited (add-preserved metadata)]
+            (db/update! Card card-id :result_metadata user-edited)
             (testing "Saved metadata preserves user edits"
-              (is (= (map choose user-edited)
-                     (map choose (db/select-one-field :result_metadata Card :id card-id)))))
+              (is (= (map only-user-edits user-edited)
+                     (map only-user-edits (db/select-one-field :result_metadata Card :id card-id)))))
             (testing "API response includes user edits"
-              (is (= (map choose user-edited)
-                     (->> api-response
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! card-id)
                           :data :results_metadata :columns
-                          (map choose)
+                          (map only-user-edits)
                           (map #(update % :semantic_type keyword))))))
             (testing "Nested queries have metadata"
-              (is (= (map choose user-edited)
-                     (->> (query! nested-card-id)
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! nested-id)
                           :data :results_metadata :columns
-                          (map choose)
+                          (map only-user-edits)
                           (map #(update % :semantic_type keyword))))))))))))
