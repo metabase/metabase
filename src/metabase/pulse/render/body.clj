@@ -488,6 +488,11 @@
   (conj (repeat "right")
         "left"))
 
+(def default-combo-chart-types
+  "Default chart type seq of combo graphs (not multiple graphs)."
+  (conj (repeat "bar")
+        "line"))
+
 (defn- join-series
   [names colors types row-seqs y-axis-positions]
   (let [joined (map vector names colors types row-seqs y-axis-positions)]
@@ -559,8 +564,9 @@
         colors           (fill-vector-maybe
                            (map (partial get-in-series :color) metrics)
                            colors)
-        types            (replace {nil "line"}
-                                  (map (partial get-in-series :display) metrics))
+        types            (fill-vector-maybe
+                           (map (partial get-in-series :display) metrics)
+                           (take (count names) default-combo-chart-types))
         y-pos            (fill-vector-maybe
                            (map (partial get-in-series :axis) metrics)
                            (take (count names) default-y-pos))
