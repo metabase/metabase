@@ -4,9 +4,9 @@ import SyncModalContent from "./SyncModalContent";
 import { Database } from "../../types";
 
 describe("SyncModalContent", () => {
-  const database = getDatabase();
-
   it("should render with sample dataset and xrays enabled", () => {
+    const database = getDatabase();
+
     render(<SyncModalContent sampleDatabase={database} showXrays />);
 
     expect(screen.getByText("Explore sample data")).toBeInTheDocument();
