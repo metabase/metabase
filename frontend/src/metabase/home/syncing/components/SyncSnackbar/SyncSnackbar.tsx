@@ -1,31 +1,31 @@
 import React from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import SyncSnackbarContent from "../SyncSnackbarContent";
-import useListWithRemoveDelay from "../../hooks/use-list-with-remove-delay";
-import { Database } from "../../types";
+import useListWithHideDelay from "../../hooks/use-list-with-hide-delay";
+import { Database, User } from "../../types";
 
-const REMOVE_DELAY = 6000;
+const HIDE_DELAY = 6000;
 
 export interface Props {
+  user: User;
   databases: Database[];
 }
 
-const SyncSnackbar = ({ databases }: Props) => {
-  const visibleDatabases = useVisibleDatabases(databases);
+const SyncSnackbar = ({ user, databases }: Props) => {
+  const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
+  const realDatabases = databases.filter(d => !d.is_sample);
+  const userDatabases = realDatabases.filter(d => d.creator_id === user.id);
+  const syncDatabases = userDatabases.filter(d => isSyncInProgress(d));
+  const syncDatabaseIds = syncDatabases.map(d => d.id);
+  const delayedDatabaseIds = useListWithHideDelay(syncDatabaseIds, HIDE_DELAY);
+  const delayedDatabases = delayedDatabaseIds.map(id => databaseById[id]);
+  const shownDatabases = delayedDatabases.filter(d => d != null);
 
-  if (visibleDatabases.length) {
-    return <SyncSnackbarContent databases={visibleDatabases} />;
+  if (shownDatabases.length) {
+    return <SyncSnackbarContent databases={shownDatabases} />;
   } else {
     return null;
   }
-};
-
-const useVisibleDatabases = (databases: Database[]) => {
-  const syncingIds = databases.filter(d => isSyncInProgress(d)).map(d => d.id);
-  const visibleIds = useListWithRemoveDelay(syncingIds, REMOVE_DELAY);
-  const databaseById = Object.fromEntries(databases.map(d => [d.id, d]));
-
-  return visibleIds.map(id => databaseById[id]).filter(d => d != null);
 };
 
 export default SyncSnackbar;

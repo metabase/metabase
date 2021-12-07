@@ -4,13 +4,13 @@ import SyncModalContent from "../SyncModalContent";
 import { Database } from "../../types";
 
 interface Props {
+  databases: Database[];
   showModal?: boolean;
   showXrays?: boolean;
-  sampleDatabase?: Database;
-  onOpen?: () => void;
+  onHideModal?: () => void;
 }
 
-const SyncModal = ({ showModal, showXrays, sampleDatabase, onOpen }: Props) => {
+const SyncModal = ({ databases, showModal, showXrays, onHideModal }: Props) => {
   const [isOpened, setIsOpened] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -20,15 +20,15 @@ const SyncModal = ({ showModal, showXrays, sampleDatabase, onOpen }: Props) => {
   useEffect(() => {
     if (showModal) {
       setIsOpened(true);
-      onOpen && onOpen();
+      onHideModal && onHideModal();
     }
-  }, [showModal, onOpen]);
+  }, [showModal, onHideModal]);
 
   return (
     <Modal isOpen={isOpened} full={false} onClose={handleClose}>
       <SyncModalContent
+        databases={databases}
         showXrays={showXrays}
-        sampleDatabase={sampleDatabase}
         onClose={handleClose}
       />
     </Modal>
