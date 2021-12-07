@@ -13,7 +13,12 @@ export const SpinnerRoot = styled.div`
   font-size: 0;
 `;
 
-export const SpinnerIcon = styled.div`
+interface SpinnerIconProps {
+  iconSize: number;
+  borderWidth: number;
+}
+
+export const SpinnerIcon = styled.div<SpinnerIconProps>`
   display: inline-block;
   box-sizing: border-box;
   width: ${props => `${props.iconSize}px`};

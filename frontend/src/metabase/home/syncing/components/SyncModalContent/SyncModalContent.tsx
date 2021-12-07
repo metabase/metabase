@@ -1,54 +1,17 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React from "react";
 import { t, jt } from "ttag";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import { Database } from "../../types";
 
 interface Props {
-  showModal?: boolean;
-  showXrays?: boolean;
-  sampleDatabase?: Database;
-  onOpen?: () => void;
-}
-
-const SyncModal = ({ showModal, showXrays, sampleDatabase, onOpen }: Props) => {
-  const [isOpened, setIsOpened] = useState(false);
-
-  const handleClose = useCallback(() => {
-    setIsOpened(false);
-  }, []);
-
-  useEffect(() => {
-    if (showModal) {
-      setIsOpened(true);
-      onOpen && onOpen();
-    }
-  }, [showModal, onOpen]);
-
-  return (
-    <Modal isOpen={isOpened} full={false} onClose={handleClose}>
-      <SyncModalContent
-        sampleDatabase={sampleDatabase}
-        showXrays={showXrays}
-        onClose={handleClose}
-      />
-    </Modal>
-  );
-};
-
-interface SyncModalContentProps {
   showXrays?: boolean;
   sampleDatabase?: Database;
   onClose?: () => void;
 }
 
-export const SyncModalContent = ({
-  sampleDatabase,
-  showXrays,
-  onClose,
-}: SyncModalContentProps) => {
+const SyncModalContent = ({ sampleDatabase, showXrays, onClose }: Props) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
@@ -85,4 +48,4 @@ export const SyncModalContent = ({
   );
 };
 
-export default SyncModal;
+export default SyncModalContent;
