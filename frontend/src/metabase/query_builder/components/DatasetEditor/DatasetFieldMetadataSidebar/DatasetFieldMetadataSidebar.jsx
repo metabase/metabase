@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -86,39 +86,40 @@ const FORM_FIELDS = [
 ];
 
 function DatasetFieldMetadataSidebar({ field }) {
-  if (!field) {
-    return null;
-  }
-
-  const initialValues = {
-    display_name: field.display_name,
-    description: field.description,
-    semantic_type: field.semantic_type,
-    visibility_type: "normal",
-    display_as: "text",
-    has_field_values: "search",
-  };
+  const initialValues = useMemo(
+    () => ({
+      display_name: field?.display_name,
+      description: field?.description,
+      semantic_type: field?.semantic_type,
+      visibility_type: "normal",
+      display_as: "text",
+      has_field_values: "search",
+    }),
+    [field],
+  );
 
   return (
     <SidebarContent>
       <PaddedContent>
-        <RootForm
-          fields={FORM_FIELDS}
-          initialValues={initialValues}
-          overwriteOnInitialValuesChange
-        >
-          {({ Form, FormField }) => (
-            <Form>
-              <FormField name="display_name" />
-              <FormField name="description" />
-              <FormField name="semantic_type" />
-              <Divider />
-              <FormField name="visibility_type" />
-              <FormField name="display_as" />
-              <FormField name="has_field_values" />
-            </Form>
-          )}
-        </RootForm>
+        {field && (
+          <RootForm
+            fields={FORM_FIELDS}
+            initialValues={initialValues}
+            overwriteOnInitialValuesChange
+          >
+            {({ Form, FormField }) => (
+              <Form>
+                <FormField name="display_name" />
+                <FormField name="description" />
+                <FormField name="semantic_type" />
+                <Divider />
+                <FormField name="visibility_type" />
+                <FormField name="display_as" />
+                <FormField name="has_field_values" />
+              </Form>
+            )}
+          </RootForm>
+        )}
       </PaddedContent>
     </SidebarContent>
   );
