@@ -1267,7 +1267,7 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
-    active: isSyncCompleted(database),
+    active: database.is_saved_questions || isSyncCompleted(database),
   }));
 
   if (hasBackButton) {
