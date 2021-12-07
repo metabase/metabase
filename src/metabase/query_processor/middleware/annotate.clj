@@ -119,6 +119,11 @@
 
 (declare col-info-for-field-clause)
 
+(def type-info-columns
+  "Columns to select from a field to get its type information without getting information that is specific to that
+  column."
+  [:base_type :effective_type :coercion_strategy :semantic_type])
+
 (defn infer-expression-type
   "Infer base-type/semantic-type information about an `expression` clause."
   [expression]
@@ -133,7 +138,7 @@
     (col-info-for-field-clause {} expression)
 
     (mbql.u/is-clause? :coalesce expression)
-    (infer-expression-type (second expression))
+    (select-keys (infer-expression-type (second expression)) type-info-columns)
 
     (mbql.u/is-clause? :length expression)
     {:base_type :type/BigInteger}
@@ -147,7 +152,7 @@
                     (or (not (mbql.u/is-clause? :value expression))
                         (let [[_ value] expression]
                           (not= value nil))))
-           (infer-expression-type expression)))
+           (select-keys (infer-expression-type expression) type-info-columns)))
        clauses))
 
     (mbql.u/datetime-arithmetics? expression)
