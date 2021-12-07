@@ -1,18 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import QuestionLoader from "metabase/containers/QuestionLoader";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
-
-import type { ChildProps as QuestionLoaderChildProps } from "./QuestionLoader";
-import type { ChildProps as QuestionResultLoaderChildProps } from "./QuestionResultLoader";
-
-type ChildProps = QuestionLoaderChildProps & QuestionResultLoaderChildProps;
-
-type Props = {
-  questionId?: ?number,
-  questionHash?: ?string,
-  children?: (props: ChildProps) => React.Element,
-};
 
 /*
  * QuestionAndResultLoader
@@ -32,11 +22,7 @@ type Props = {
  * </QuestionAndResultLoader>
  *
  */
-const QuestionAndResultLoader = ({
-  questionId,
-  questionHash,
-  children,
-}: Props) => (
+const QuestionAndResultLoader = ({ questionId, questionHash, children }) => (
   <QuestionLoader questionId={questionId} questionHash={questionHash}>
     {({ loading: questionLoading, error: questionError, ...questionProps }) => (
       <QuestionResultLoader question={questionProps.question}>

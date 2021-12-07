@@ -67,7 +67,8 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :placeholder  "localhost"})
+   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :placeholder  "name.database.com"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
@@ -80,7 +81,7 @@
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
    :display-name (deferred-tru "Username")
-   :placeholder  (deferred-tru "What username do you use to login to the database?")
+   :placeholder  (deferred-tru "username")
    :required     true})
 
 (def default-password-details
@@ -100,7 +101,7 @@
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)")
    :type         :boolean
    :default      false})
 

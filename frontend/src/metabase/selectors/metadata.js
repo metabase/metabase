@@ -83,7 +83,7 @@ export const getMetadata = createSelector(
     getNormalizedSegments,
     getNormalizedMetrics,
   ],
-  (databases, schemas, tables, fields, segments, metrics): Metadata => {
+  (databases, schemas, tables, fields, segments, metrics) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);

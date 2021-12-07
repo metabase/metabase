@@ -14,31 +14,9 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { TableId } from "metabase-types/types/Table";
-import type { Database } from "metabase-types/types/Database";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Field as FieldObject } from "metabase-types/types/Field";
-
-type Props = {
-  query: NativeQuery,
-
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  setTemplateTag: (tag: TemplateTag) => void,
-
-  databaseFields: FieldObject[],
-  databases: Database[],
-  sampleDatasetId: TableId,
-
-  onClose: () => void,
-};
-type State = {
-  section: "help" | "settings",
-};
 
 export default class TagEditorSidebar extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     section: "settings",
   };
 

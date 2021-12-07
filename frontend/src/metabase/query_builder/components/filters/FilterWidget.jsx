@@ -8,27 +8,7 @@ import Filter from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { FilterRenderer } from "metabase/query_builder/components/Filter";
-import type FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
-
-type Props = {
-  query: StructuredQuery,
-  filter: FilterWrapper,
-  index: number,
-  updateFilter?: (index: number, filter: FilterWrapper) => void,
-  removeFilter?: (index: number) => void,
-  maxDisplayValues?: number,
-};
-type State = {
-  isOpen: boolean,
-};
-
-export const filterWidgetFilterRenderer: FilterRenderer = ({
-  field,
-  operator,
-  values,
-}) => (
+export const filterWidgetFilterRenderer = ({ field, operator, values }) => (
   <div className="flex flex-column justify-center">
     <div
       className="flex align-center"
@@ -64,10 +44,7 @@ export const filterWidgetFilterRenderer: FilterRenderer = ({
 );
 
 export default class FilterWidget extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {

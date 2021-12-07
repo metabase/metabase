@@ -60,7 +60,7 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
-(defn- uuid-nonce
+(defn uuid-nonce
   "Getter for settings that should be set to a UUID the first time they are fetched."
   [setting]
   (or (setting/get-string setting)
@@ -76,34 +76,6 @@
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :getter     #(uuid-nonce :site-uuid))
-
-(defsetting analytics-uuid
-  (str (deferred-tru "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase.")
-       " "
-       (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
-  :visibility :public
-  :setter     :none
-  :getter     #(uuid-nonce :analytics-uuid))
-
-(defn- first-user-creation
-  "Returns the timestamp at which the first user was created."
-  []
-  (:min (db/select-one ['User [:%min.date_joined :min]])))
-
-(defsetting instance-creation
-  (deferred-tru "The approximate timestamp at which this instance of Metabase was created, for inclusion in analytics.")
-  :visibility :public
-  :type       :timestamp
-  :setter     :none
-  :getter     (fn []
-                (if-let [value (setting/get-timestamp :instance-creation)]
-                  value
-                  ;; For instances that were started before this setting was added (in 0.41.3), use the creation
-                  ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
-                  ;; is first read.
-                  (do (setting/set-timestamp! :instance-creation (or (first-user-creation)
-                                                                     (java-time/offset-date-time)))
-                      (setting/get-timestamp :instance-creation)))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -341,6 +313,12 @@
   :default    true
   :visibility :authenticated)
 
+(defsetting show-homepage-pin-message
+  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"
@@ -480,28 +458,15 @@
   :setter     :none
   :getter     fetch-cloud-gateway-ips-fn)
 
-(defsetting snowplow-available
-  (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
+(defsetting enable-database-syncing-modal
+  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
        " "
-       (deferred-tru "Should be set via environment variable in Cypress tests or during local development."))
+       (deferred-tru "Defaults to false if any non-default database connections already exist for this instance."))
+  :visibility :admin
   :type       :boolean
-  :visibility :internal
-  :default    config/is-prod?)
-
-(defsetting snowplow-enabled
-  (str (deferred-tru "Boolean indicating whether analytics events are being sent to Snowplow. True if anonymous tracking")
-       " "
-       (deferred-tru "is enabled for this instance, and a Snowplow collector is available."))
-  :type   :boolean
-  :setter :none
-  :getter (fn [] (and (snowplow-available)
-                      (anon-tracking-enabled)))
-  :visibility :public)
-
-(defsetting snowplow-url
-  (deferred-tru "The URL of the Snowplow collector to send analytics events to.")
-  :default    (if config/is-prod?
-                "https://sp.metabase.com"
-                ;; Run `docker compose up` from the `snowplow/` subdirectory to start a local Snowplow collector
-                "http://localhost:9090")
-  :visibility :public)
+  :getter     (fn []
+                (let [v (setting/get-boolean :enable-database-syncing-modal)]
+                  (if (nil? v)
+                    (not (db/exists? 'Database :is_sample false))
+                    ;; frontend should set this value to `true` after the modal has been shown once
+                    v))))

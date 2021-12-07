@@ -1,13 +1,10 @@
+/* eslint-disable react/prop-types */
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const AGGREGATIONS = {
@@ -28,10 +25,7 @@ const AGGREGATIONS = {
   },
 };
 
-export default ({
-  question,
-  clicked = {},
-}: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
   if (!column || column.source !== "fields" || value !== undefined) {
     // TODO Atte Keinänen 7/21/17: Does it slow down the drill-through option calculations remarkably
@@ -52,7 +46,7 @@ export default ({
     .filter(([aggregator]) =>
       isCompatibleAggregationOperatorForField(aggregator, column),
     )
-    .map(([aggregator, action]: [any, { section: string, title: string }]) => ({
+    .map(([aggregator, action]) => ({
       name: action.title.toLowerCase(),
       ...action,
       question: () =>

@@ -27,33 +27,9 @@ import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
-import type {
-  ClickObject,
-  VisualizationProps,
-} from "metabase-types/types/Visualization";
-
-type Props = VisualizationProps & {
-  height: number,
-  className?: string,
-  isPivoted: boolean,
-  getColumnTitle: number => string,
-  getExtraDataForClick?: Function,
-  limit?: number,
-};
-
-type State = {
-  page: number,
-  pageSize: number,
-  sortColumn: ?number,
-  sortDescending: boolean,
-};
-
 @ExplicitSize()
 export default class TableSimple extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -76,7 +52,7 @@ export default class TableSimple extends Component {
     className: "",
   };
 
-  setSort(colIndex: number) {
+  setSort(colIndex) {
     if (this.state.sortColumn === colIndex) {
       this.setState({ sortDescending: !this.state.sortDescending });
     } else {
@@ -100,7 +76,7 @@ export default class TableSimple extends Component {
     }
   }
 
-  visualizationIsClickable(clicked: ?ClickObject) {
+  visualizationIsClickable(clicked) {
     const { onVisualizationClick, visualizationIsClickable } = this.props;
     return (
       onVisualizationClick &&

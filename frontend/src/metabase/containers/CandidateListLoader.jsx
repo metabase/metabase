@@ -1,27 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import _ from "underscore";
 
 import { MetabaseApi, AutoApi } from "metabase/services";
-
-import type { DatabaseCandidates } from "metabase-types/types/Auto";
-
-type Props = {
-  databaseId: number,
-  children: (props: RenderProps) => ?React.Element,
-};
-
-type RenderProps = {
-  candidates: ?DatabaseCandidates,
-  sampleCandidates: ?DatabaseCandidates,
-  isSample: ?boolean,
-};
-
-type State = {
-  databaseId: ?number,
-  isSample: ?boolean,
-  candidates: ?DatabaseCandidates,
-  sampleCandidates: ?DatabaseCandidates,
-};
 
 const CANDIDATES_POLL_INTERVAL = 2000;
 // ensure this is 1 second offset from CANDIDATES_POLL_INTERVAL due to
@@ -29,16 +10,12 @@ const CANDIDATES_POLL_INTERVAL = 2000;
 const CANDIDATES_TIMEOUT = 11000;
 
 class CandidateListLoader extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     databaseId: null,
     isSample: null,
     candidates: null,
     sampleCandidates: null,
   };
-
-  _sampleTimeout: ?number;
-  _pollTimer: ?number;
 
   async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.

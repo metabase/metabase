@@ -1,7 +1,6 @@
 {
   "plugins": [
     "babel-plugin-styled-components",
-    "@babel/plugin-transform-flow-strip-types",
     "@babel/plugin-proposal-export-default-from",
     ["@babel/plugin-proposal-decorators", { "legacy": true }]
   ],

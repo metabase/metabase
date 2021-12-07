@@ -79,7 +79,7 @@ export function serializedQuestion(card) {
   return question(null, card);
 }
 
-export const extractQueryParams = (query: Object): Array => {
+export const extractQueryParams = query => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
 
@@ -257,6 +257,10 @@ export function deactivateUser(userId) {
 
 export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+export function newDatabase() {
+  return `/admin/databases/create`;
 }
 
 export function editDatabase(databaseId) {

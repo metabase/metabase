@@ -86,7 +86,7 @@ export const reset = createAction(RESET);
 // selectEngine (uiControl)
 export const selectEngine = createAction(SELECT_ENGINE);
 
-// Migrates old "Enable in-depth database analysis" option to new "Let me choose when Metabase syncs and scans" option
+// Migrates old "Enable in-depth database analysis" option to new "Choose when syncs and scans happen" option
 // Migration is run as a separate action because that makes it easy to track in tests
 const migrateDatabaseToNewSchedulingSettings = database => {
   return async function(dispatch, getState) {

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import ExternalLink from "metabase/components/ExternalLink";
@@ -17,30 +18,7 @@ import "ace/mode-ruby";
 import "ace/mode-html";
 import "ace/mode-jsx";
 
-import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-type Props = {
-  className: string,
-  embedType: EmbedType,
-  iframeUrl: string,
-  token: string,
-  siteUrl: string,
-  secretKey: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  params: EmbeddingParams,
-  displayOptions: DisplayOptions,
-};
-
 export default class EmbedCodePane extends Component {
-  props: Props;
-
-  _embedSample: ?CodeSample;
-
   render() {
     const {
       className,

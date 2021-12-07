@@ -109,6 +109,7 @@ For obvious reasons, regular users can't reactivate deactivated accounts. If you
 [ads]: https://directory.apache.org/studio/
 [auth]: ../faq/setup/how-do-i-integrate-with-sso.html
 [reset-password]: ../faq/using-metabase/how-do-i-reset-my-password.html
-[saml]: ..//enterprise-guide/authenticating-with-saml.html
+[saml]: ../enterprise-guide/authenticating-with-saml.html
+[sandboxing]: ./sandboxing.html
 [setting-up-email]: ../administration-guide/02-setting-up-email.html
 [troubleshooting-ldap]: ./ldap.html

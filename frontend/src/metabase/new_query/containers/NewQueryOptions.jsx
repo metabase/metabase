@@ -23,15 +23,6 @@ import {
 
 import Database from "metabase/entities/databases";
 
-import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
-
-type Props = {
-  hasDataAccess: Boolean,
-  hasNativeWrite: Boolean,
-  prefetchDatabases: Function,
-  initialKey?: NestedObjectKey,
-};
-
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
@@ -47,8 +38,6 @@ const PAGE_PADDING = [1, 4];
 @fitViewport
 @connect(mapStateToProps, mapDispatchToProps)
 export default class NewQueryOptions extends Component {
-  props: Props;
-
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also

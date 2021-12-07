@@ -92,9 +92,7 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
-      cy.findByText("Connecting to your own database", {
-        exact: false,
-      });
+      cy.findByText("Add your data");
 
       // test database setup help card is NOT displayed before DB is selected
       cy.findByTestId("database-setup-help-card").should("not.be.visible");
@@ -127,30 +125,18 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Remove database").click();
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
-      cy.findByLabelText("Name").type("Metabase H2");
-      cy.findByText("Next")
+      cy.findByLabelText("Display name").type("Metabase H2");
+      cy.findByText("Connect database")
         .closest("button")
         .should("be.disabled");
 
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next")
+      cy.findByText("Connect database")
         .closest("button")
         .should("not.be.disabled")
         .click();
-
-      // return to db settings and turn on manual scheduling
-      cy.findByText("Connecting to Metabase H2").click();
-      cy.findByLabelText(
-        "This is a large database, so let me choose when Metabase syncs and scans",
-      ).click();
-      cy.findByText("Next").click();
-
-      // now, we should see the sync scheduling form
-      cy.findByText("Scanning for Filter Values");
-      cy.findByText("Never, I'll do this manually if I need to").click();
-      cy.findByText("Next").click();
 
       // test database setup help card is hidden on the next step
       cy.findByTestId("database-setup-help-card").should("not.be.visible");
@@ -223,7 +209,8 @@ describeWithSnowplow("scenarios > setup", () => {
     // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(3);
+    // One backend event should be recorded (on new instance initialization)
+    expectGoodSnowplowEvents(4);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
@@ -234,6 +221,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.findByText("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
-    expectGoodSnowplowEvents(0);
+    // One backend event should be recorded (on new instance initialization)
+    expectGoodSnowplowEvents(1);
   });
 });
