@@ -1,13 +1,10 @@
-/* eslint-disable react/prop-types */
-import React, { forwardRef } from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
-import _ from "underscore";
+import React, { ButtonHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
 import styled from "styled-components";
 import { color, space } from "styled-system";
-
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import _ from "underscore";
 import Icon from "metabase/components/Icon";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -23,7 +20,34 @@ const BUTTON_VARIANTS = [
   "white",
   "borderless",
   "onlyIcon",
-];
+] as const;
+
+interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+  className?: string;
+  icon?: string;
+  iconSize?: number;
+  iconColor?: string;
+  iconRight?: string;
+  iconVertical?: boolean;
+  labelBreakpoint?: string;
+  children?: ReactNode;
+
+  small?: boolean;
+  medium?: boolean;
+  large?: boolean;
+
+  primary?: boolean;
+  success?: boolean;
+  danger?: boolean;
+  warning?: boolean;
+  cancel?: boolean;
+  white?: boolean;
+  purple?: boolean;
+
+  round?: boolean;
+  borderless?: boolean;
+  onlyIcon?: boolean;
+}
 
 const BaseButton = forwardRef(function BaseButton(
   {
@@ -34,11 +58,10 @@ const BaseButton = forwardRef(function BaseButton(
     iconColor,
     iconVertical,
     labelBreakpoint,
-    color,
     children,
     ...props
-  },
-  ref,
+  }: Props,
+  ref: Ref<HTMLButtonElement>,
 ) {
   const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
@@ -54,7 +77,7 @@ const BaseButton = forwardRef(function BaseButton(
     >
       <div
         className={cx("flex layout-centered", { "flex-column": iconVertical })}
-        style={iconVertical ? { minWidth: 60 } : null}
+        style={iconVertical ? { minWidth: 60 } : undefined}
       >
         {icon && (
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
@@ -81,24 +104,6 @@ const BaseButton = forwardRef(function BaseButton(
     </button>
   );
 });
-
-BaseButton.propTypes = {
-  className: PropTypes.string,
-  icon: PropTypes.string,
-  iconSize: PropTypes.number,
-  children: PropTypes.any,
-
-  small: PropTypes.bool,
-  medium: PropTypes.bool,
-  large: PropTypes.bool,
-
-  primary: PropTypes.bool,
-  warning: PropTypes.bool,
-  cancel: PropTypes.bool,
-  purple: PropTypes.bool,
-
-  borderless: PropTypes.bool,
-};
 
 const Button = forwardRefToInnerRef(styled(BaseButton)`
   ${color};

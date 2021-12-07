@@ -1,11 +1,16 @@
-/* eslint-disable react/prop-types */
-import React, { forwardRef } from "react";
-
+import React, { AnchorHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
 import { getUrlTarget } from "metabase/lib/dom";
 
+interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  href?: string;
+  target?: string;
+  className?: string;
+  children?: ReactNode;
+}
+
 const ExternalLink = forwardRef(function ExternalLink(
-  { href, target = getUrlTarget(href), className, children, ...props },
-  ref,
+  { href, target = getUrlTarget(href), className, children, ...props }: Props,
+  ref: Ref<HTMLAnchorElement>,
 ) {
   return (
     <a
