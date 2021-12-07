@@ -13,10 +13,11 @@
 (def ^:private site-url*
   (or (u/ignore-exceptions
         (classloader/require 'metabase-enterprise.advanced-config.util.urls)
-        (resolve 'metabase-enterprise.advanced-config.util.urls/site-url))
+        (resolve 'metabase-enterprise.advanced-config.util.urls/pulse-url))
       (constantly nil)))
 
-(defn site-url
+(defn- site-url
+  "Return the Pulse URL if set by enterprise env var, or Site URL."
   []
   (or (site-url*) (public-settings/site-url)))
 
