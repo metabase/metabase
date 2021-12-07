@@ -907,6 +907,30 @@ function joinTwoSavedQuestions() {
       cy.url().should("contain", "/notebook");
     });
   });
+
+  // intentional simplification of "Select none" to quickly
+  // fix users' pain caused by the inability to unselect all columns
+  it("select no columns select the first one", () => {
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+    cy.findByTestId("fields-picker").click();
+
+    cy.findByText("Select None").click();
+    cy.findByTestId("field-ID").should("be.disabled");
+
+    cy.findByTestId("field-Tax").click();
+
+    cy.findByTestId("field-ID")
+      .should("be.enabled")
+      .click();
+
+    visualize();
+
+    cy.findByText("Tax");
+    cy.findByText("ID").should("not.exist");
+  });
 }
 
 function addSimpleCustomColumn(name) {

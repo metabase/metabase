@@ -17,6 +17,7 @@ export default function FieldsPicker({
   onSelectNone,
   onToggleDimension,
   triggerElement = t`Columns`,
+  disableSelected,
   ...props
 }) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
@@ -49,6 +50,8 @@ export default function FieldsPicker({
         {dimensions.map(dimension => (
           <li key={dimension.key()} className="px1 pb1 flex align-center">
             <CheckBox
+              data-testid={`field-${dimension.displayName()}`}
+              disabled={disableSelected && selected.has(dimension.key())}
               checked={selected.has(dimension.key())}
               label={dimension.displayName()}
               onChange={() => {
