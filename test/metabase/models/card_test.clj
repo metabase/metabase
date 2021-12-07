@@ -1,7 +1,7 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries]]
             [metabase.models.card :as card]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -60,6 +60,17 @@
             {:dataset_query {:type  :query
                              :query {:aggregation nil
                                      :filter      nil}}})))))
+
+(deftest card->multi-card-test
+  (testing "Check that the multi-cards are returned"
+    (tt/with-temp* [Card                [card1]
+                    Card                [card2]
+                    Dashboard           [dashboard]
+                    DashboardCard       [dc-1 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card1)}]
+                    DashboardCard       [dc-2 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
+                    DashboardCardSeries [dcs-1 {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
+      (testing "get multi-cards"
+        (is (= 1 (count (card/card->multi-cards card1 dc-1))))))))
 
 (deftest remove-from-dashboards-when-archiving-test
   (testing "Test that when somebody archives a Card, it is removed from any Dashboards it belongs to"
