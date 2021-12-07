@@ -1,5 +1,5 @@
-import Subhead from "metabase/components/type/Subhead";
 import styled from "styled-components";
+import Subhead from "metabase/components/type/Subhead";
 
 export const GreetingTitle = styled(Subhead)`
   margin-left: 1rem;

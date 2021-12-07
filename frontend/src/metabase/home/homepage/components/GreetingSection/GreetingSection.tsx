@@ -1,8 +1,8 @@
+import React, { useMemo } from "react";
+import { t } from "ttag";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
 import Greeting from "metabase/lib/greeting";
-import React, { useMemo } from "react";
-import { t } from "ttag";
 import { User } from "../../types";
 import Section from "../Section";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";

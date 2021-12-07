@@ -1,11 +1,11 @@
+import { Link } from "react-router";
+import styled from "styled-components";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import { Link } from "react-router";
-import styled from "styled-components";
 
 export const ListRoot = styled.div`
   display: grid;

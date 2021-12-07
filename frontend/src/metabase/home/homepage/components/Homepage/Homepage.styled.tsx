@@ -1,8 +1,8 @@
+import styled from "styled-components";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
-import styled from "styled-components";
 
 export const LandingRoot = styled.div`
   padding: 0 1rem;

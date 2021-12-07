@@ -1,8 +1,8 @@
+import React, { ReactNode } from "react";
+import { t } from "ttag";
 import Button from "metabase/components/Button";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
-import React, { ReactNode } from "react";
-import { t } from "ttag";
 import {
   Dashboard,
   DatabaseCandidate,

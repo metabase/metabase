@@ -1,10 +1,10 @@
+import React from "react";
+import { jt, t } from "ttag";
 import ExternalLink from "metabase/components/ExternalLink";
 import Link from "metabase/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import React from "react";
-import { jt, t } from "ttag";
 import { Dashboard, Database, User } from "../../types";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
