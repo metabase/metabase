@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -13,6 +14,12 @@ interface TippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
+
+const propTypes = {
+  ...TippyComponent.propTypes,
+  disableContentSandbox: PropTypes.bool,
+  lazy: PropTypes.bool,
+};
 
 function TippyPopover({
   disableContentSandbox,
@@ -59,5 +66,7 @@ function TippyPopover({
     />
   );
 }
+
+TippyPopover.propTypes = propTypes;
 
 export default TippyPopover;

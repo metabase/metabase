@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import AccordionList from "metabase/components/AccordionList";
 
@@ -79,6 +80,19 @@ describe("AccordionList", () => {
 
     fireEvent.change(SEARCH_FIELD, { target: { value: "Something Else" } });
     assertAbsence(["Foo", "Bar", "Baz"]);
+  });
+
+  describe("with the `itemPopover` prop", () => {
+    it("should render a popover upon hover of an item in the list", async () => {
+      const itemPopover = {
+        content: <div>popover</div>,
+      };
+
+      render(<AccordionList sections={SECTIONS} itemPopover={itemPopover} />);
+
+      userEvent.hover(screen.getByText("Foo"));
+      expect(await screen.findByText("popover")).toBeVisible();
+    });
   });
 });
 

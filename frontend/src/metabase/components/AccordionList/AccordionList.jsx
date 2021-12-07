@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export default class AccordionList extends Component {
   constructor(props, context) {
@@ -87,6 +88,11 @@ export default class AccordionList extends Component {
     searchPlaceholder: PropTypes.string,
 
     itemTestId: PropTypes.string,
+
+    itemPopover: PropTypes.shape({
+      ...TippyPopover.propTypes,
+      renderItemPopover: PropTypes.func,
+    }),
   };
 
   static defaultProps = {
@@ -441,6 +447,7 @@ export default class AccordionList extends Component {
                   sectionIsExpanded={sectionIsExpanded}
                   sectionIsTogglable={sectionIsTogglable}
                   toggleSection={this.toggleSection}
+                  itemPopover={this.props.itemPopover}
                 />
               )}
             </CellMeasurer>
@@ -480,6 +487,7 @@ const AccordionListCell = ({
   showItemArrows,
   itemTestId,
   getItemClassName,
+  itemPopover,
 }) => {
   const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
   let content;
@@ -601,6 +609,19 @@ const AccordionListCell = ({
         )}
       </div>
     );
+
+    if (itemPopover) {
+      const { renderContent, ...popoverProps } = itemPopover;
+      const popoverContent = renderContent
+        ? renderContent(item)
+        : itemPopover.content;
+
+      content = (
+        <TippyPopover {...popoverProps} content={popoverContent}>
+          {content}
+        </TippyPopover>
+      );
+    }
   }
 
   return (
