@@ -32,7 +32,7 @@ const SyncSnackbarContent = ({ databases }: Props) => {
   const handleToggle = useCallback(() => setIsOpened(state => !state), []);
 
   return (
-    <SnackbarRoot>
+    <SnackbarRoot aria-role="status">
       <SnackbarHeader>
         <SnackbarTitle>{getTitleMessage(databases, isOpened)}</SnackbarTitle>
         <SnackbarToggle onClick={handleToggle}>

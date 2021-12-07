@@ -1,5 +1,7 @@
 import { restore, typeAndBlurUsingLabel } from "__support__/e2e/cypress";
 
+const STATUS_TIMEOUT = 10000;
+
 describe("admin > database > add > external databases", () => {
   beforeEach(() => {
     restore();
@@ -32,9 +34,16 @@ describe("admin > database > add > external databases", () => {
 
     cy.url().should("match", /\/admin\/databases$/);
 
-    cy.getByRole("table").within(() => {
+    cy.findByRole("table").within(() => {
       cy.findByText("QA Postgres12");
     });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("QA Postgres12");
+      cy.findByText("Done!", { timeout: STATUS_TIMEOUT });
+    });
+
+    cy.findByRole("status", { timeout: STATUS_TIMEOUT }).should("not.exist");
   });
 
   it("should add Mongo database and redirect to listing", () => {
@@ -62,9 +71,16 @@ describe("admin > database > add > external databases", () => {
 
     cy.url().should("match", /\/admin\/databases$/);
 
-    cy.getByRole("table").within(() => {
+    cy.findByRole("table").within(() => {
       cy.findByText("QA Mongo4");
     });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("QA Mongo4");
+      cy.findByText("Done!", { timeout: STATUS_TIMEOUT });
+    });
+
+    cy.findByRole("status", { timeout: STATUS_TIMEOUT }).should("not.exist");
   });
 
   it("should add MySQL database and redirect to listing", () => {
@@ -98,8 +114,15 @@ describe("admin > database > add > external databases", () => {
 
     cy.url().should("match", /\/admin\/databases$/);
 
-    cy.getByRole("table").within(() => {
+    cy.findByRole("table").within(() => {
       cy.findByText("QA MySQL8");
     });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("QA MySQL8");
+      cy.findByText("Done!", { timeout: STATUS_TIMEOUT });
+    });
+
+    cy.findByRole("status", { timeout: STATUS_TIMEOUT }).should("not.exist");
   });
 });
