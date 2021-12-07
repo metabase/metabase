@@ -27,3 +27,5 @@ const useVisibleDatabases = (databases: Database[]) => {
 
   return visibleIds.map(id => databaseById[id]).filter(d => d != null);
 };
+
+export default SyncSnackbar;
