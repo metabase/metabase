@@ -164,14 +164,13 @@ function DatasetEditor(props) {
   const renderSelectableTableColumnHeader = useCallback(
     (element, column) => (
       <TableHeaderColumnName
-        onClick={() => handleTableElementClick({ column })}
         isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>
       </TableHeaderColumnName>
     ),
-    [focusedField, handleTableElementClick],
+    [focusedField],
   );
 
   const renderTableHeaderWrapper = useMemo(
