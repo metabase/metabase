@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Database, User } from "../../types";
 import DatabaseSection from "./DatabaseSection";
 
 describe("DatabaseSection", () => {
@@ -41,18 +42,16 @@ describe("DatabaseSection", () => {
 
   it("should not be visible for regular users when there are no databases", () => {
     const user = getUser();
-    const databases = [];
 
-    render(<DatabaseSection user={user} databases={databases} showData />);
+    render(<DatabaseSection user={user} databases={[]} showData />);
 
     expect(screen.queryByText("Our data")).not.toBeInTheDocument();
   });
 
   it("should be visible for admin users when there are no databases", () => {
     const user = getUser({ is_superuser: true });
-    const databases = [];
 
-    render(<DatabaseSection user={user} databases={databases} showData />);
+    render(<DatabaseSection user={user} databases={[]} showData />);
 
     expect(screen.getByText("Our data")).toBeInTheDocument();
     expect(screen.getByText("Add a database")).toBeInTheDocument();
@@ -60,13 +59,12 @@ describe("DatabaseSection", () => {
 
   it("should allow admins to hide the section", () => {
     const user = getUser({ is_superuser: true });
-    const databases = [];
     const onHideData = jest.fn();
 
     render(
       <DatabaseSection
         user={user}
-        databases={databases}
+        databases={[]}
         showData
         onHideData={onHideData}
       />,
@@ -80,13 +78,12 @@ describe("DatabaseSection", () => {
 
   it("should not allow regular users to hide the section", () => {
     const user = getUser({ is_superuser: false });
-    const databases = [];
     const onHideData = jest.fn();
 
     render(
       <DatabaseSection
         user={user}
-        databases={databases}
+        databases={[]}
         showData
         onHideData={onHideData}
       />,
@@ -96,6 +93,16 @@ describe("DatabaseSection", () => {
   });
 });
 
-const getUser = ({ is_superuser = false } = {}) => ({ is_superuser });
+const getUser = (opts?: Partial<User>): User => ({
+  first_name: "John",
+  is_superuser: false,
+  personal_collection_id: "personal",
+  ...opts,
+});
 
-const getDatabase = ({ id = 1, name } = {}) => ({ id, name });
+const getDatabase = (opts?: Partial<Database>): Database => ({
+  id: 1,
+  name: "Our database",
+  is_sample: false,
+  ...opts,
+});

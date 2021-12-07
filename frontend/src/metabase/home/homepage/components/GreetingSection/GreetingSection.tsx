@@ -1,17 +1,17 @@
 import React, { useMemo } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
-import Greeting from "metabase/lib/greeting";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
+import Greeting from "metabase/lib/greeting";
+import { User } from "../../types";
 import Section from "../Section";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
-const propTypes = {
-  user: PropTypes.object.isRequired,
-};
+interface Props {
+  user: User;
+}
 
-const GreetingSection = ({ user: { first_name } }) => {
+const GreetingSection = ({ user: { first_name } }: Props) => {
   const greeting = useMemo(() => Greeting.sayHello(first_name), [first_name]);
 
   return (
@@ -28,7 +28,5 @@ const GreetingSection = ({ user: { first_name } }) => {
     </Section>
   );
 };
-
-GreetingSection.propTypes = propTypes;
 
 export default GreetingSection;

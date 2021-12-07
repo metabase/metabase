@@ -1,5 +1,5 @@
-import styled from "styled-components";
 import { Link } from "react-router";
+import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 

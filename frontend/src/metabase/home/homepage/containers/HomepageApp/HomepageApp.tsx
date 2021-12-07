@@ -8,6 +8,7 @@ import { getUser } from "metabase/selectors/user";
 import Homepage from "../../components/Homepage";
 import { hideData, hidePinMessage, hideXrays } from "../../actions";
 import { getShowData, getShowPinMessage, getShowXrays } from "../../selectors";
+import { Database } from "../../types";
 
 const databasesProps = {
   loadingAndErrorWrapper: false,
@@ -38,7 +39,7 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state, { databases = [] }) => {
+  query: (state: any, { databases = [] }: { databases: Database[] }) => {
     const [sampleDatabases, userDatabases] = _.partition(
       databases,
       d => d.is_sample,
@@ -53,7 +54,7 @@ const databaseCandidatesProps = {
   loadingAndErrorWrapper: false,
 };
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state: any) => ({
   user: getUser(state),
   showData: getShowData(state),
   showXrays: getShowXrays(state),
