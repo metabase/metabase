@@ -1,6 +1,7 @@
 import React from "react";
-import { render, act, screen } from "@testing-library/react";
+import { render, screen, act } from "@testing-library/react";
 import SyncSnackbar from "./SyncSnackbar";
+import { Database } from "../../types";
 
 describe("SyncSnackbar", () => {
   beforeEach(() => {
@@ -46,7 +47,9 @@ describe("SyncSnackbar", () => {
     expect(screen.getByText("DB2")).toBeInTheDocument();
     expect(screen.getByLabelText("check icon")).toBeInTheDocument();
 
-    act(() => jest.advanceTimersByTime(6000));
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
     expect(screen.queryByText("DB2")).not.toBeInTheDocument();
   });
 
@@ -67,14 +70,18 @@ describe("SyncSnackbar", () => {
     expect(screen.getByText("DB1")).toBeInTheDocument();
     expect(screen.getByLabelText("warning icon")).toBeInTheDocument();
 
-    act(() => jest.advanceTimersByTime(6000));
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
     expect(screen.queryByText("DB1")).not.toBeInTheDocument();
   });
 });
 
-const getDatabase = ({ id, name, initial_sync_status, tables = [] }) => ({
-  id,
-  name,
-  initial_sync_status,
-  tables,
+const getDatabase = (opts?: Partial<Database>): Database => ({
+  id: 1,
+  name: "Our database",
+  is_sample: false,
+  initial_sync_status: "complete",
+  tables: [],
+  ...opts,
 });

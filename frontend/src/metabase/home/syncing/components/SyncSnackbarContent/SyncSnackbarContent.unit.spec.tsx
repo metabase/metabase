@@ -1,6 +1,7 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import SyncSnackbarContent from "./SyncSnackbarContent";
+import { Table, Database } from "../../types";
 
 describe("SyncSnackbarContent", () => {
   it("should render a syncing database", () => {
@@ -97,19 +98,17 @@ describe("SyncSnackbarContent", () => {
   });
 });
 
-const getDatabase = ({
-  id = 1,
-  name = "Database",
-  initial_sync_status,
-  tables = [],
-}) => ({
-  id,
-  name,
-  initial_sync_status,
-  tables,
+const getDatabase = (opts?: Partial<Database>): Database => ({
+  id: 1,
+  name: "Our database",
+  is_sample: false,
+  initial_sync_status: "complete",
+  tables: [],
+  ...opts,
 });
 
-const getTable = ({ id = 1, initial_sync_status }) => ({
-  id,
-  initial_sync_status,
+const getTable = (opts?: Partial<Table>): Table => ({
+  id: 1,
+  initial_sync_status: "complete",
+  ...opts,
 });
