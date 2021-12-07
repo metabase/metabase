@@ -60,7 +60,7 @@
 
   This number should be a balance of:
 
-  * Not being too low, which would definitly result in GitHub issues along the lines of 'My 500-distinct-value Field
+  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
     that I marked as List is not showing all values in the List Widget'
   * Not being too high, which would result in Metabase running out of memory dealing with too many values"
   (int 5000))

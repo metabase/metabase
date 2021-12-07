@@ -91,7 +91,7 @@
     {:initJS (load-inline-js "init")}))
 
 (defn- entrypoint
-  "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
+  "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
     (-> (resp/response (if (init-status/complete?)
