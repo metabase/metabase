@@ -699,10 +699,31 @@
 
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
+(defn- remove-parent-fields
+  "Removes any and all entries in `fields` that are parents of another field in `fields`. This is necessary because as
+  of MongoDB 4.4, including both will result in an error (see:
+  `https://docs.mongodb.com/manual/release-notes/4.4-compatibility/#path-collision-restrictions`).
+
+  To preserve the previous behavior, we will include only the child fields (since the parent field always appears first
+  in the projection/field order list, and that is the stated behavior according to the link above)."
+  [fields]
+  (let [parent->child-id (reduce (fn [acc [_ field-id & _]]
+                                   (if (integer? field-id)
+                                     (let [field (qp.store/field field-id)]
+                                       (if-let [parent-id (:parent_id field)]
+                                         (update acc parent-id conj (u/the-id field))
+                                         acc))
+                                     acc))
+                                 {}
+                                 fields)]
+    (remove (fn [[_ field-id & _]]
+              (and (integer? field-id) (contains? parent->child-id field-id)))
+            fields)))
+
 (defn- handle-fields [{:keys [fields]} pipeline-ctx]
   (if-not (seq fields)
     pipeline-ctx
-    (let [new-projections (for [field fields]
+    (let [new-projections (for [field (remove-parent-fields fields)]
                             [(->lvalue field) (->rvalue field)])]
       (-> pipeline-ctx
           (assoc :projections (map first new-projections))
