@@ -5,11 +5,13 @@
   com.github.seancorfield/depstar {:mvn/version "2.1.278"}
   cheshire/cheshire               {:mvn/version "5.8.1"}
   commons-codec/commons-codec     {:mvn/version "1.14"}
+  expound/expound                 {:mvn/version "0.7.0"} ; better output of spec validation errors
   hiccup/hiccup                   {:mvn/version "1.0.5"}
   io.forward/yaml                 {:mvn/version "1.0.9"} ; Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
   io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
   org.clojure/tools.deps.alpha    {:mvn/version "0.12.985"}
   org.flatland/ordered            {:mvn/version "1.5.9"} ; used by io.forward/yaml -- need the newer version
+  com.bhauman/spell-spec          {:mvn/version "0.1.1"} ; used to find misspellings in YAML files
   stencil/stencil                 {:mvn/version "0.5.0"}
   ;; local source
   metabase/metabase-core          {:local/root "../.."}

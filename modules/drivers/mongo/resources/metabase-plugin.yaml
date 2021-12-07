@@ -35,8 +35,7 @@ driver:
     - name: use-srv
       type: boolean
       default: false
-    - merge:
-        - ssl
+    - ssl
     - name: ssl-cert
       type: string
       display-name: Server SSL certificate chain
