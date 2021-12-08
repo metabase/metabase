@@ -6,7 +6,6 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.analytics.snowplow :as snowplow]
-            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.dataset :as api.dataset]
             [metabase.automagic-dashboards.populate :as magic.populate]

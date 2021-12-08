@@ -1345,7 +1345,7 @@
   tag-name helpers/NonBlankString)
 
 (defclause dimension
-  target (one-of template-tag Field))
+  target (s/cond-pre Field template-tag))
 
 (defclause variable
   target template-tag)
@@ -1354,7 +1354,9 @@
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  (one-of Field dimension variable))
+  (s/cond-pre
+   Field
+   (one-of dimension variable)))
 
 (def Parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
