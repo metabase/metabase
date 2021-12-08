@@ -217,7 +217,15 @@ if (WEBPACK_BUNDLE === "hot") {
 
   config.module.rules.unshift({
     test: /\.jsx$/,
-    use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+    // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
+    exclude: /node_modules|cljs|DragLayer\.jsx$/,
+    use: [
+      // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
+      // because newer versions would require us to upgrade to react-router v4 and possibly deal with
+      // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
+      { loader: "react-hot-loader/webpack" },
+      { loader: "babel-loader", options: BABEL_CONFIG },
+    ],
   });
 
   config.devServer = {

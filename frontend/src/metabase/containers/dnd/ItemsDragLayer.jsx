@@ -6,6 +6,9 @@ import _ from "underscore";
 import BodyComponent from "metabase/components/BodyComponent";
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 
+// NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
+// so we exclude files named `*DragLayer.jsx` in webpack.config.js
+
 @DragLayer((monitor, props) => ({
   item: monitor.getItem(),
   // itemType: monitor.getItemType(),
