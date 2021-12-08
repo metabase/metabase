@@ -4,6 +4,8 @@ import _ from "underscore";
 
 import { FieldSelector } from "metabase/query_builder/components/DataSelector";
 
+import Question from "metabase-lib/lib/Question";
+
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
 type Field = {
@@ -30,9 +32,7 @@ function MappedFieldPickerTrigger({ selectedField }: CollapsedPickerProps) {
 }
 
 type MappedFieldPickerProps = {
-  dataset: {
-    databaseId: () => number;
-  };
+  dataset: Question;
 };
 
 function MappedFieldPicker({ dataset }: MappedFieldPickerProps) {
