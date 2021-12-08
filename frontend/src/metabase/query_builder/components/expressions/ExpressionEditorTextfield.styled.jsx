@@ -31,8 +31,9 @@ export const EditorContainer = styled.div`
 `;
 
 export const EditorEqualsSign = styled.div`
-  font-family: Monaco, monospace;
-  font-size: 12px;
+  font: 12px / normal "Monaco", "Menlo", "Ubuntu Mono", "Consolas",
+    "source-code-pro", monospace;
+  height: 12px;
   font-weight: 700;
   margin: 0 ${space(0)}};
 `;
