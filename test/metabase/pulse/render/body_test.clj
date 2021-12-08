@@ -391,6 +391,20 @@
     :base_type    :type/BigInteger
     :semantic_type nil}])
 
+(def ^:private default-combo-columns
+  [{:name         "Price",
+    :display_name "Price",
+    :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "NumPurchased",
+    :display_name "NumPurchased",
+    :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "NumKazoos",
+    :display_name "NumKazoos",
+    :base_type    :type/BigInteger
+    :semantic_type nil}])
+
 (defn has-inline-image? [rendered]
   (some #{:img} (flatten-html-data rendered)))
 
@@ -435,12 +449,12 @@
                             :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
 (defn- render-combo [results]
-  (body/render :combo :inline pacific-tz render.tu/test-card nil results))
+  (body/render :combo :inline pacific-tz render.tu/test-combo-card nil results))
 
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-          (render-combo {:cols default-columns
+          (render-combo {:cols default-combo-columns
                          :rows [[10.0 1 123] [5.0 10 12] [2.50 20 1337] [1.25 30 -22]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
