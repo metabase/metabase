@@ -12,8 +12,8 @@
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private site-url*
   (or (u/ignore-exceptions
-        (classloader/require 'metabase-enterprise.advanced-config.util.urls)
-        (resolve 'metabase-enterprise.advanced-config.util.urls/pulse-url))
+        (classloader/require 'metabase-enterprise.embedding.utils)
+        (resolve 'metabase-enterprise.embedding.utils/pulse-url))
       (constantly nil)))
 
 (defn- site-url
