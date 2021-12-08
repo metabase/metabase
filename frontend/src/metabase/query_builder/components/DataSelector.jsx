@@ -300,6 +300,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleDatabase: false,
     hasTableSearch: false,
     canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -777,6 +778,7 @@ export class UnconnectedDataSelector extends Component {
       triggerIconSize,
       triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
 
     if (triggerElement) {
@@ -795,7 +797,7 @@ export class UnconnectedDataSelector extends Component {
           selectedTable,
           selectedField,
         })}
-        {!this.props.readOnly && (
+        {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
             className="ml1"
             name="chevrondown"
