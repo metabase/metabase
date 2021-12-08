@@ -200,7 +200,7 @@ export default class Setup extends Component {
 
               {/* Have the ref for scrolling in UNSAFE_componentWillReceiveProps */}
               <div ref={this.databaseSchedulingStepContainer}>
-                {/* Show db scheduling step only if the user has explicitly set the "Let me choose when Metabase syncs and scans" toggle to true */}
+                {/* Show db scheduling step only if the user has explicitly set the "Choose when syncs and scans happen" toggle to true */}
                 {databaseDetails &&
                   databaseDetails.details &&
                   databaseDetails.details["let-user-control-scheduling"] && (

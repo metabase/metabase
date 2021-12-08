@@ -12,7 +12,10 @@ const FormTextFileWidget = ({ field, treatBeforePosting }) => {
   return (
     <input
       type="file"
-      className={cx({ "Form-file-input--has-value": value }, "Form-file-input")}
+      className={cx(
+        { "Form-file-input--has-value": value },
+        "Form-file-input full",
+      )}
       aria-labelledby={`${field.name}-label`}
       {...otherProps}
       onChange={wrapHandler(field.onChange, treatBeforePosting)}

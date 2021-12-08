@@ -273,7 +273,7 @@ More on [Dashboard filters][dashboard-filters].
 Learn how to [refer to a saved question in a SQL query](referencing-saved-questions-in-queries.md).
 
 [sql-editor]: ./writing-sql.html
-[column-types]: ../administration-guide/03-metadata-editing.html#types
+[column-types]: ../administration-guide/03-metadata-editing.html#field-type
 [dashboard-filters]: 08-dashboard-filters.html
 [field-filter]: /learn/sql-questions/field-filters.html
 [filtering-on-this-field]: ../administration-guide/03-metadata-editing.html#picking-the-filter-user-interface-for-a-column

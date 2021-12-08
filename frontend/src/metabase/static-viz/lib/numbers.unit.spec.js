@@ -89,6 +89,16 @@ describe("formatNumber", () => {
 
     expect(text).toEqual("prefix15suffix");
   });
+
+  it("should format a number without grouping separator", () => {
+    const number = 10000.11;
+
+    const text = formatNumber(number, {
+      number_separators: ".",
+    });
+
+    expect(text).toEqual("10000.11");
+  });
 });
 
 describe("formatPercent", () => {

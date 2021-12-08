@@ -3,7 +3,7 @@ export function popover() {
   return cy.get(".PopoverContainer.PopoverContainer--open");
 }
 
-export function tooltip() {
+export function tippyPopover() {
   return cy.get(".tippy-box[data-state~='visible']");
 }
 

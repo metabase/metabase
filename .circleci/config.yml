@@ -969,6 +969,9 @@ jobs:
       qa-db:
         type: boolean
         default: false
+      snowplow:
+        type: boolean
+        default: false
       before-steps:
         type: steps
         default: []
@@ -979,6 +982,7 @@ jobs:
       CYPRESS_GROUP:  << parameters.cypress-group >>
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
+      MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
     steps:
       - attach-workspace
       - run-on-change:
@@ -1223,6 +1227,10 @@ workflows:
             - be-tests-ee
           e: postgres-latest
           driver: postgres
+          extra-env: >-
+            MB_POSTGRES_SSL_TEST_SSL=true
+            MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
+            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
 
       - test-driver:
           name: be-tests-presto-ee
@@ -1377,6 +1385,7 @@ workflows:
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
           qa-db: true
+          snowplow: true
           before-steps:
             - run-snowplow-micro
             - wait-for-databases

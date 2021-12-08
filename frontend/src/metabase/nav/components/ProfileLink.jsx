@@ -146,7 +146,7 @@ export default class ProfileLink extends Component {
                   <span className="text-bold">Metabase</span>{" "}
                   {t`is a Trademark of`} Metabase, Inc
                 </span>
-                <span>{t`and is built with care in San Francisco, CA`}</span>
+                <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
               </div>
             )}
           </Modal>

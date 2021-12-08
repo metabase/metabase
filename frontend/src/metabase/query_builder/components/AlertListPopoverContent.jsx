@@ -25,12 +25,6 @@ import {
   null,
 )
 export default class AlertListPopoverContent extends Component {
-  props: {
-    questionAlerts: any[],
-    setMenuFreeze: boolean => void,
-    closeMenu: () => void,
-  };
-
   state = {
     adding: false,
     hasJustUnsubscribedFromOwnAlert: false,
@@ -121,14 +115,6 @@ export default class AlertListPopoverContent extends Component {
   deleteAlert,
 })
 export class AlertListItem extends Component {
-  props: {
-    alert: any,
-    user: any,
-    setMenuFreeze: boolean => void,
-    closeMenu: () => void,
-    onUnsubscribe: () => void,
-  };
-
   state = {
     unsubscribingProgress: null,
     hasJustUnsubscribed: false,

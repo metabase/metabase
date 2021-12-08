@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { ModalFooter } from "metabase/components/ModalContent";
@@ -14,31 +15,10 @@ import _ from "underscore";
 
 import SettingToggle from "./SettingToggle";
 
-type Props = {
-  setting: any,
-  onChange: (value: any) => void,
-  settingValues: { [key: string]: any },
-  onChangeSetting: (key: string, value: any) => void,
-  mappingSetting: string,
-  groupHeading: string,
-  groupPlaceholder: string,
-};
-
-type State = {
-  showEditModal: boolean,
-  showAddRow: boolean,
-  groups: ?(Object[]),
-  mappings: { [string]: number[] },
-  saveError: ?Object,
-};
-
 const groupIsMappable = group => !isSpecialGroup(group);
 
 export default class GroupMappingsWidget extends React.Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props, context: any) {
+  constructor(props, context) {
     super(props, context);
     this.state = {
       showEditModal: false,
@@ -49,7 +29,7 @@ export default class GroupMappingsWidget extends React.Component {
     };
   }
 
-  _showEditModal = async (e: Event) => {
+  _showEditModal = async e => {
     e.preventDefault();
     // just load the setting again to make sure it's up to date
     const setting = _.findWhere(await SettingsApi.list(), {
@@ -64,7 +44,7 @@ export default class GroupMappingsWidget extends React.Component {
     );
   };
 
-  _showAddRow = (e: Event) => {
+  _showAddRow = e => {
     e.preventDefault();
     this.setState({ showAddRow: true });
   };
@@ -73,26 +53,23 @@ export default class GroupMappingsWidget extends React.Component {
     this.setState({ showAddRow: false });
   };
 
-  _addMapping = (dn: string) => {
-    this.setState((prevState: State) => ({
+  _addMapping = dn => {
+    this.setState(prevState => ({
       mappings: { ...prevState.mappings, [dn]: [] },
       showAddRow: false,
     }));
   };
 
-  _changeMapping = (dn: string) => (
-    group: { id: number },
-    selected: boolean,
-  ) => {
+  _changeMapping = dn => (group, selected) => {
     if (selected) {
-      this.setState((prevState: State) => ({
+      this.setState(prevState => ({
         mappings: {
           ...prevState.mappings,
           [dn]: [...prevState.mappings[dn], group.id],
         },
       }));
     } else {
-      this.setState((prevState: State) => ({
+      this.setState(prevState => ({
         mappings: {
           ...prevState.mappings,
           [dn]: prevState.mappings[dn].filter(id => id !== group.id),
@@ -101,19 +78,19 @@ export default class GroupMappingsWidget extends React.Component {
     }
   };
 
-  _deleteMapping = (dn: string) => (e: Event) => {
+  _deleteMapping = dn => e => {
     e.preventDefault();
-    this.setState((prevState: State) => ({
+    this.setState(prevState => ({
       mappings: _.omit(prevState.mappings, dn),
     }));
   };
 
-  _cancelClick = (e: Event) => {
+  _cancelClick = e => {
     e.preventDefault();
     this.setState({ showEditModal: false, showAddRow: false });
   };
 
-  _saveClick = (e: Event) => {
+  _saveClick = e => {
     e.preventDefault();
     const {
       state: { mappings },
@@ -180,9 +157,7 @@ export default class GroupMappingsWidget extends React.Component {
                       placeholder={this.props.groupPlaceholder}
                     />
                   ) : null}
-                  {((Object.entries(mappings): any): Array<
-                    [string, number[]],
-                  >).map(([dn, ids]) => (
+                  {Object.entries(mappings).map(([dn, ids]) => (
                     <MappingRow
                       key={dn}
                       dn={dn}
@@ -214,36 +189,22 @@ export default class GroupMappingsWidget extends React.Component {
   }
 }
 
-type AddMappingRowProps = {
-  mappings: { [string]: number[] },
-  onAdd?: (dn: string) => void,
-  onCancel?: () => void,
-  placeholder?: string,
-};
-
-type AddMappingRowState = {
-  value: "",
-};
-
 class AddMappingRow extends React.Component {
-  props: AddMappingRowProps;
-  state: AddMappingRowState;
-
-  constructor(props: AddMappingRowProps, context: any) {
+  constructor(props, context) {
     super(props, context);
     this.state = {
       value: "",
     };
   }
 
-  _handleCancelClick = (e: Event) => {
+  _handleCancelClick = e => {
     e.preventDefault();
     const { onCancel } = this.props;
     onCancel && onCancel();
     this.setState({ value: "" });
   };
 
-  _handleAddClick = (e: Event) => {
+  _handleAddClick = e => {
     e.preventDefault();
     const { onAdd } = this.props;
     onAdd && onAdd(this.state.value);
@@ -285,12 +246,6 @@ class AddMappingRow extends React.Component {
 }
 
 class MappingGroupSelect extends React.Component {
-  props: {
-    groups: Array<{ id: number }>,
-    selectedGroups: number[],
-    onGroupChange?: (group: { id: number }, selected: boolean) => void,
-  };
-
   render() {
     const { groups, selectedGroups, onGroupChange } = this.props;
 
@@ -310,14 +265,6 @@ class MappingGroupSelect extends React.Component {
 }
 
 class MappingRow extends React.Component {
-  props: {
-    dn: string,
-    groups: Array<{ id: number }>,
-    selectedGroups: number[],
-    onChange?: (group: { id: number }, selected: boolean) => void,
-    onDelete?: (e: Event) => void,
-  };
-
   render() {
     const { dn, groups, selectedGroups, onChange, onDelete } = this.props;
 

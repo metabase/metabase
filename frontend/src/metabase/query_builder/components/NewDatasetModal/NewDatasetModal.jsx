@@ -1,16 +1,19 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import Button from "metabase/components/Button";
+import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import {
-  DatasetFeatureOverview,
-  DatasetFeaturesContainer,
+  FeatureOverviewContainer,
+  DatasetImg,
+  DatasetTitle,
+  DatasetValueProp,
 } from "./NewDatasetModal.styled";
 
 const propTypes = {
@@ -30,9 +33,12 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
 
   return (
     <ModalContent
-      title={t`Create datasets to make it easier for everyone to explore.`}
       footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
+        <Link
+          className="text-brand"
+          key="cancel"
+          onClick={onClose}
+        >{t`Cancel`}</Link>,
         <Button
           key="action"
           primary
@@ -40,23 +46,24 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
         >{t`Turn this into a dataset`}</Button>,
       ]}
     >
-      <DatasetFeaturesContainer>
-        <DatasetFeatureOverview icon="dataset">
-          {jt`You’ll see them in the ${(
-            <strong>{t`Datasets section`}</strong>
-          )} when creating a new question.`}
-        </DatasetFeatureOverview>
-        <DatasetFeatureOverview icon="folder">
-          {jt`Easily ${(
-            <strong>{t`open a dataset from its collection`}</strong>
-          )} or via Search to start a new question.`}
-        </DatasetFeatureOverview>
-        <DatasetFeatureOverview icon="label">
-          {jt`You can ${(
-            <strong>{t`customize a dataset’s metadata`}</strong>
-          )} to make it even easier to explore the data.`}
-        </DatasetFeatureOverview>
-      </DatasetFeaturesContainer>
+      <FeatureOverviewContainer>
+        <DatasetImg src="app/img/dataset-illustration.svg" />
+        <DatasetTitle>{t`Datasets`}</DatasetTitle>
+        <ul>
+          <DatasetValueProp>
+            {t`Let you update column descriptions and customize metadata to create
+            great starting points for exploration.`}
+          </DatasetValueProp>
+          <DatasetValueProp>
+            {t`Show up higher in search results and get highlighted when other
+            users start new questions to promote reuse.`}
+          </DatasetValueProp>
+          <DatasetValueProp>
+            {t`Live in collections to keep them separate from messy database
+            schemas.`}
+          </DatasetValueProp>
+        </ul>
+      </FeatureOverviewContainer>
     </ModalContent>
   );
 }

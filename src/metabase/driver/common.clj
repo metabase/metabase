@@ -3,10 +3,12 @@
   (:require [clj-time.coerce :as tcoerce]
             [clj-time.core :as time]
             [clj-time.format :as tformat]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -65,7 +67,8 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :placeholder  "localhost"})
+   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :placeholder  "name.database.com"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
@@ -78,7 +81,7 @@
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
    :display-name (deferred-tru "Username")
-   :placeholder  (deferred-tru "What username do you use to login to the database?")
+   :placeholder  (deferred-tru "username")
    :required     true})
 
 (def default-password-details
@@ -98,7 +101,7 @@
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)")
    :type         :boolean
    :default      false})
 
@@ -125,6 +128,22 @@
    :port               default-port-details
    :ssl                default-ssl-details
    :user               default-user-details})
+
+(def cloud-ip-address-info
+  "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior
+  to being returned to the client, in [[metabase.driver.util/connection-props-server->client]]."
+  {:name   "cloud-ip-address-info"
+   :type   :info
+   :getter (fn []
+             (when-let [ips (public-settings/cloud-gateway-ips)]
+               (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
+                    "\n"
+                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
+
+(def default-connection-info-fields
+  "Default definitions for informational banners that can be included in a database connection form. These keys can be
+  added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
+  {:cloud-ip-address-info cloud-ip-address-info})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

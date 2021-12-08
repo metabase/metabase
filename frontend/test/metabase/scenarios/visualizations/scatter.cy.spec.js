@@ -1,4 +1,8 @@
-import { restore, visitQuestionAdhoc, tooltip } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestionAdhoc,
+  tippyPopover,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
@@ -38,7 +42,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    tooltip().within(() => {
+    tippyPopover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
       cy.findByText(/Distinct values of Products? → ID:/);
@@ -64,7 +68,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    tooltip().within(() => {
+    tippyPopover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Orders count:");
       cy.findByText("Products count:");

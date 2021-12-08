@@ -74,15 +74,9 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { normal } from "metabase/lib/colors";
 
 export default class LineAreaBarChart extends Component {
-  props: VisualizationProps;
-
-  static identifier: string;
-  static renderer: (element: Element, props: VisualizationProps) => any;
-
   static noHeader = true;
   static supportsSeries = true;
 

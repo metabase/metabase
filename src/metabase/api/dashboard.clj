@@ -5,6 +5,8 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
+            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.api.dataset :as api.dataset]
             [metabase.automagic-dashboards.populate :as magic.populate]
@@ -103,6 +105,7 @@
                 (db/insert! Dashboard dashboard-data))]
       ;; publish event after the txn so that lookup can succeed
       (events/publish-event! :dashboard-create dash)
+      (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
       (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 
@@ -249,6 +252,7 @@
                            ;; Get cards from existing dashboard and associate to copied dashboard
                            (doseq [card (:ordered_cards existing-dashboard)]
                              (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+    (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     (events/publish-event! :dashboard-create dashboard)))
 
 
@@ -383,7 +387,10 @@
   (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
                                                                  (assoc :creator_id api/*current-user*)
                                                                  (dissoc :cardId))))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
+    (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                           api/*current-user-id*
+                           {:dashboard-id id, :question-id cardId})))
 
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form

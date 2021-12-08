@@ -159,10 +159,6 @@ const mapDispatchToProps = {
 @titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
-  timeout: any;
-
-  forceUpdateDebounced: () => void;
-
   constructor(props, context) {
     super(props, context);
 

@@ -1,4 +1,4 @@
-export const table = (userId: number) => ({
+export const table = userId => ({
   card: {
     name: "Most-viewed Dashboards",
     display: "table",
@@ -10,7 +10,7 @@ export const table = (userId: number) => ({
   },
 });
 
-export const mostViewedDashboards = (userId: number) => ({
+export const mostViewedDashboards = userId => ({
   card: {
     name: "Most-viewed Dashboards",
     display: "row",
@@ -27,7 +27,7 @@ export const mostViewedDashboards = (userId: number) => ({
   },
 });
 
-export const mostViewedQuestions = (userId: number) => ({
+export const mostViewedQuestions = userId => ({
   card: {
     name: "Most-viewed Queries",
     display: "row",
@@ -44,7 +44,7 @@ export const mostViewedQuestions = (userId: number) => ({
   },
 });
 
-export const objectViewsByTime = (userId: number) => ({
+export const objectViewsByTime = userId => ({
   card: {
     name: "Query views",
     display: "line",
@@ -69,7 +69,7 @@ export const objectViewsByTime = (userId: number) => ({
   ],
 });
 
-export const queryViews = (userId: number) => ({
+export const queryViews = userId => ({
   card: {
     name: "Query views",
     display: "table",
@@ -91,7 +91,7 @@ export const queryViews = (userId: number) => ({
   },
 });
 
-export const dashboardViews = (userId: number) => ({
+export const dashboardViews = userId => ({
   card: {
     name: "Dashboard views",
     display: "table",
@@ -110,7 +110,7 @@ export const dashboardViews = (userId: number) => ({
   },
 });
 
-export const createdDashboards = (userId: number) => ({
+export const createdDashboards = userId => ({
   card: {
     name: "Created dashboards",
     display: "table",
@@ -122,7 +122,7 @@ export const createdDashboards = (userId: number) => ({
   },
 });
 
-export const createdQuestions = (userId: number) => ({
+export const createdQuestions = userId => ({
   card: {
     name: "Created questions",
     display: "table",
@@ -134,7 +134,7 @@ export const createdQuestions = (userId: number) => ({
   },
 });
 
-export const downloads = (userId: number) => ({
+export const downloads = userId => ({
   card: {
     name: "Downloads",
     display: "table",

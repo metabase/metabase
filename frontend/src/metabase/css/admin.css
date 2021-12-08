@@ -336,11 +336,6 @@
   box-shadow: 0 7px 20px var(--color-shadow);
 }
 
-#formField-details-port .Form-input,
-#formField-details-tunnel-port .Form-input {
-  max-width: 200px !important;
-}
-
 #formField-details-password .Form-input {
   margin-bottom: 2em;
 }

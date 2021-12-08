@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
@@ -9,34 +10,10 @@ import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import cx from "classnames";
 
-import type { EmbedType } from "./EmbedModalContent";
-import type { EmbeddableResource } from "metabase/public/lib/types";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-type Props = {
-  resourceType: string,
-  resource: EmbeddableResource,
-  extensions?: string[],
-
-  isAdmin: boolean,
-
-  isPublicSharingEnabled: boolean,
-  isApplicationEmbeddingEnabled: boolean,
-
-  onCreatePublicLink: () => Promise<void>,
-  onDisablePublicLink: () => Promise<void>,
-  getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
-  onChangeEmbedType: (embedType: EmbedType) => void,
-};
-
-type State = {
-  extension: ?string,
-};
-
 export default class SharingPane extends Component {
-  props: Props;
-  state: State = {
+  state = {
     extension: null,
   };
 

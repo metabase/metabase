@@ -20,8 +20,8 @@
 
 (defn- db-details []
   (merge
-   (select-keys (mt/db) [:id :timezone])
-   (dissoc (mt/object-defaults Database) :details)
+   (select-keys (mt/db) [:id :timezone :initial_sync_status])
+   (dissoc (mt/object-defaults Database) :details :initial_sync_status)
    {:engine        "h2"
     :name          "test-data"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -36,7 +36,7 @@
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :users))
+                                    (db/select-one [Table :created_at :updated_at :initial_sync_status] :id (mt/id :users))
                                     {:description             nil
                                      :entity_type             "entity/UserTable"
                                      :visibility_type         nil
@@ -527,7 +527,7 @@
                 :fk_target_field_id false}
                (mt/boolean-ids-and-timestamps (simple-field-details (Field field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
-                                                                             :fk_target_field_id field-id-1})
+                                                                                :fk_target_field_id field-id-1})
       (testing "after change"
         (is (= {:name               "Field Test 2"
                 :display_name       "Field Test 2"

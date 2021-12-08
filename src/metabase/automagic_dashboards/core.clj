@@ -455,7 +455,7 @@
                   (hash-map (name identifier))))))
 
 (def ^:private ^{:arglists '([definitions])} most-specific-definition
-  "Return the most specific defintion among `definitions`.
+  "Return the most specific definition among `definitions`.
    Specificity is determined based on:
    1) how many ancestors `field_type` has (if field_type has a table prefix,
       ancestors for both table and field are counted);
@@ -474,7 +474,7 @@
   "Bind fields to dimensions and resolve overloading.
    Each field will be bound to only one dimension. If multiple dimension definitions
    match a single field, the field is bound to the most specific definition used
-   (see `most-specific-defintion` for details)."
+   (see `most-specific-definition` for details)."
   [context dimensions]
   (->> dimensions
        (mapcat (comp (partial make-binding context) first))
@@ -1327,7 +1327,8 @@
                  (let [tables (->> tables
                                    (sort-by :score >)
                                    (take max-candidate-tables))]
-                   {:tables tables
+                   {:id     (u/the-id database)
+                    :tables tables
                     :schema schema
                     :score  (+ (math/sq (transduce (m/distinct-by :rule)
                                                    stats/count

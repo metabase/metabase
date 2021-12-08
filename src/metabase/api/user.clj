@@ -3,6 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
@@ -182,6 +183,7 @@
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id})
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 
