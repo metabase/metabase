@@ -9,7 +9,6 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
 
@@ -255,7 +254,6 @@ if (WEBPACK_BUNDLE === "hot") {
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.HotModuleReplacementPlugin(),
-    new ReactRefreshWebpackPlugin(),
   );
 }
 
