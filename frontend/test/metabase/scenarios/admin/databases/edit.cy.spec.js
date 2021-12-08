@@ -48,6 +48,7 @@ describe("scenarios > admin > databases > edit", () => {
     it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATASET`", () => {
       cy.visit("/admin/databases/1");
 
+      cy.findByText("Show advanced options").click();
       cy.findByLabelText("Rerun queries for simple explorations").should(
         "have.attr",
         "aria-checked",
@@ -64,6 +65,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
 
       cy.log("Reported failing on v0.36.4");
+      cy.findByText("Show advanced options").click();
       cy.findByLabelText("Rerun queries for simple explorations").should(
         "have.attr",
         "aria-checked",
