@@ -11,20 +11,8 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models
-             :refer
-             [Card
-              CardFavorite
-              Collection
-              Dashboard
-              Database
-              ModerationReview
-              Pulse
-              PulseCard
-              PulseChannel
-              PulseChannelRecipient
-              Table
-              ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
+                                     PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]

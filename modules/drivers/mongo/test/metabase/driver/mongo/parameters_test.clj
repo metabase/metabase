@@ -243,6 +243,7 @@
                                  :template-tags {"date" {:name         "date"
                                                          :display-name "Date"
                                                          :type         :dimension
+                                                         :widget-type  :date/all-options
                                                          :dimension    $date}}}
                     :parameters [{:type   :date/range
                                   :target [:dimension [:template-tag "date"]]
