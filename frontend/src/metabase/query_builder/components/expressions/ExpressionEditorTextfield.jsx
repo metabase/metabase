@@ -40,6 +40,8 @@ import {
 
 import ExpressionMode from "./ExpressionMode";
 
+import "./expressions.css";
+
 const HelpText = ({ helpText, width }) =>
   helpText ? (
     <Popover
@@ -47,7 +49,7 @@ const HelpText = ({ helpText, width }) =>
         attachment: "top left",
         targetAttachment: "bottom left",
       }}
-      style={{ width: width }}
+      style={{ width }}
       isOpen
     >
       {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
