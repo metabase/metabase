@@ -30,7 +30,6 @@ function dependencies() {
     try {
       const file = babel.transformSync(contents, {
         filename,
-        plugins: ["@babel/plugin-transform-flow-strip-types"],
         presets: ["@babel/preset-typescript"],
         ast: true,
         code: false,
