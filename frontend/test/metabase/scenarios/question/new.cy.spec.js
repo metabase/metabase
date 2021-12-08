@@ -1,11 +1,12 @@
 import {
   browse,
-  restore,
-  popover,
-  visualize,
+  enterCustomColumnDetails,
+  getBinningButtonForDimension,
   openOrdersTable,
   openReviewsTable,
-  getBinningButtonForDimension,
+  popover,
+  restore,
+  visualize,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -436,7 +437,7 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
       popover().within(() => {
-        cy.get("[contentEditable=true]").type("2 * Max([Total])");
+        enterCustomColumnDetails({ formula: "2 * Max([Total])" });
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
@@ -456,13 +457,13 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
       popover().within(() => {
-        cy.get("[contentEditable=true]")
+        cy.get(".ace_text-input")
           .type(FORMULA)
           .blur();
 
         cy.log("Fails after blur in v0.36.6");
         // Implicit assertion
-        cy.get("[contentEditable=true]").contains(FORMULA);
+        cy.contains(FORMULA);
       });
     });
 
@@ -473,9 +474,7 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
 
-      cy.get("[contentEditable=true]")
-        .click()
-        .type("Distinct([R");
+      enterCustomColumnDetails({ formula: "Distinct([R" });
 
       cy.log(
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",
