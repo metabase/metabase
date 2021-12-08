@@ -393,9 +393,8 @@
   only some of which actually are colors or names and the rest are nil.
   Fills those nil bits in with the default given seq"
   [maybe-vector defaults]
-  (let [pairs (map vector maybe-vector defaults)]
+  (let [pairs (map (fn [v default] (or v default)) maybe-vector (cycle defaults))]
     (map #(first (filter some? %)) pairs)))
-
 
 (defn format-percentage
   "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
