@@ -17,10 +17,13 @@ type CollapsedPickerProps = {
   selectedField?: Field;
 };
 
+function formatFieldLabel(field: Field) {
+  const tableName = field.table.display_name;
+  return `${tableName} → ${field.display_name}`;
+}
+
 function MappedFieldPickerTrigger({ selectedField }: CollapsedPickerProps) {
-  const label = selectedField
-    ? `${selectedField.table.display_name} → ${selectedField.display_name}`
-    : t`None`;
+  const label = selectedField ? formatFieldLabel(selectedField) : t`None`;
   return (
     <StyledSelectButton hasValue={!!selectedField}>{label}</StyledSelectButton>
   );
