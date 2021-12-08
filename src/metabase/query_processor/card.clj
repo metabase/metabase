@@ -18,6 +18,8 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- query-magic-ttl
@@ -112,15 +114,16 @@
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
-(defn- validate-card-parameters
+(s/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
-  [card-id parameters]
+  [card-id :- su/IntGreaterThanZero parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
       (doseq [request-parameter parameters]
         (let [matching-template-tag-type (or (get template-tags (:name request-parameter))
-                                             (throw (ex-info (tru "Invalid parameter: Card does not have a template tag named {0}."
+                                             (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
+                                                                  card-id
                                                                   (pr-str (:name request-parameter)))
                                                              {:type               qp.error-type/invalid-parameter
                                                               :invalid-parameter  request-parameter

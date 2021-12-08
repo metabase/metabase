@@ -176,16 +176,16 @@
                                        {:field (Field (mt/id :venues :price))
                                         :value {:type  :number/>=
                                                 :value [3]}})})
-                 (catch Exception e (:type (ex-data e))))))))))
+                 (catch Exception e (:type (ex-data e)))))))))
 
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
-(deftest substitute-referenced-card-query-test
-  (testing "Referenced card query substitution"
-    (let [query ["SELECT * FROM " (param "#123")]]
-      (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
+  (deftest substitute-referenced-card-query-test
+    (testing "Referenced card query substitution"
+      (let [query ["SELECT * FROM " (param "#123")]]
+        (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
+               (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
@@ -424,6 +424,7 @@
                        :template-tags {"date" {:name         "date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
+                                               :widget-type  :date/all-options
                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
@@ -555,6 +556,7 @@
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
+                                                              :widget-type  :date/range
                                                               :dimension    [:field-id (mt/id :checkins :date)]}}}
                  :parameters [{:type   :date/range
                                :target [:dimension [:template-tag "checkin_date"]]
@@ -571,6 +573,7 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
+                                                                :widget-type  :date/all-options
                                                                 :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters []))))))))
 
@@ -588,6 +591,7 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
+                                                                :widget-type  :date/relative
                                                                 :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/relative
                                  :target [:dimension [:template-tag "checkin_date"]]
@@ -605,6 +609,7 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
+                                                                :widget-type  :date/all-options
                                                                 :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/range
                                  :target [:dimension [:template-tag "checkin_date"]]
@@ -652,6 +657,7 @@
                                 :template-tags {"created_at" {:name         "created_at"
                                                               :display-name "Created At"
                                                               :type         :dimension
+                                                              :widget-type  :date/all-options
                                                               :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
@@ -717,6 +723,7 @@
                                     :template-tags {"checkin_date" {:name         "checkin_date"
                                                                     :display-name "Checkin Date"
                                                                     :type         :dimension
+                                                                    :widget-type  :date/all-options
                                                                     :dimension    [:field-id (mt/id :checkins :date)]}}}
                        :parameters [{:type   :date/range
                                      :target [:dimension [:template-tag "checkin_date"]]
@@ -798,7 +805,7 @@
                                                         :type         :text}}}
              :parameters [{:type   "category"
                            :target [:variable [:template-tag "names_list"]]
-                           :value  ["BBQ", "Bakery", "Bar"]}]}))))
+                           :value  ["BBQ" "Bakery" "Bar"]}]}))))
   (testing "Make sure arrays of values also work for 'field filter' params"
     (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",
             :params ["BBQ" "Bakery" "Bar"]}
@@ -807,10 +814,11 @@
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (mt/id :categories :name)]}}}
+                                                        :dimension    [:field-id (mt/id :categories :name)]
+                                                        :widget-type  :text}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
-                           :value  ["BBQ", "Bakery", "Bar"]}]})))))
+                           :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
 (deftest include-card-parameters-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"

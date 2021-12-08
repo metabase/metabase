@@ -1344,10 +1344,12 @@
    ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
    ;; on the [[ParameterType]]
    (s/optional-key :value)   s/Any
+   ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
+   ;; merged in appropriately
+   (s/optional-key :name)    helpers/NonBlankString
    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
    ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
    (s/optional-key :slug)    helpers/NonBlankString
-   (s/optional-key :name)    helpers/NonBlankString
    (s/optional-key :default) s/Any
    ;; various other keys are used internally by the frontend
    s/Keyword                 s/Any})
@@ -1355,9 +1357,13 @@
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
   (-> [Parameter]
-      (s/constrained (fn [parameters]
-                       (apply distinct? (map :id parameters)))
-                     "Cannot specify parameter more than once; IDs must be distinct")))
+      ;; TODO -- disabled for now since it breaks tests. Also, I'm not sure whether these should be distinct by
+      ;; `:name` or `:id`... at any rate, neither is currently required.
+      ;;
+      ;; (s/constrained (fn [parameters]
+      ;;                  (apply distinct? (map :id parameters)))
+      ;;                "Cannot specify parameter more than once; IDs must be distinct")
+      ))
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 

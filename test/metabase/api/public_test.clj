@@ -1081,7 +1081,7 @@
           (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
                                                            :name    "State"
                                                            :slug    "state"
-                                                           :type    "string"
+                                                           :type    "text"
                                                            :target  [:dimension (mt/$ids $orders.user_id->people.state)]
                                                            :default nil}]}]
             (with-temp-public-card [card (pivots/pivot-card)]

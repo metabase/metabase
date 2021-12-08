@@ -68,5 +68,54 @@
     (mt/with-temp Card [{card-id :id} {:dataset_query (non-field-filter-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id)))))
-  ;; TODO -- make sure it ignores native query snippets and source Card IDs
-  )
+  (testing "Should ignore native query snippets and source card IDs"
+    (mt/with-temp Card [{card-id :id} {:dataset_query (assoc (non-field-filter-query)
+                                                             "abcdef"
+                                                             {:id           "abcdef"
+                                                              :name         "#1234"
+                                                              :display-name "#1234"
+                                                              :type         :card
+                                                              :card-id      1234}
+
+                                                             "xyz"
+                                                             {:id           "xyz"
+                                                              :name         "snippet: My Snippet"
+                                                              :display-name "Snippet: My Snippet"
+                                                              :type         :snippet
+                                                              :snippet-name "My Snippet"
+                                                              :snippet-id   1})}]
+      (is (= {"id" :number}
+             (#'qp.card/card-template-tag-parameters card-id))))))
+
+(deftest validate-card-parameters-test
+  (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
+    (testing "Should disallow parameters that aren't actually part of the Card")
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\""
+         (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
+                                                       :name  "fake"
+                                                       :type  :date/single
+                                                       :value "2016-01-01"}])))
+    (testing "Should disallow parameters with types not allowed for the widget type"
+      (letfn [(validate [param-type]
+                (#'qp.card/validate-card-parameters card-id [{:id    "_DATE_"
+                                                              :name "date"
+                                                              :type  param-type
+                                                              :value "2016-01-01"}]))]
+        (testing "allowed types"
+          (doseq [allowed-type #{:date/all-options :date :date/single :date/range}]
+            (testing allowed-type
+              (is (= nil
+                     (validate allowed-type))))))
+        (testing "disallowed types"
+          (doseq [disallowed-type #{:number/= :category :id :string/does-not-contain}]
+            (testing disallowed-type
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Invalid parameter type :[^\s]+ for template tag \"date\".*/"
+                   (validate disallowed-type)))
+              (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
+                (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+                  (is (= nil
+                         (validate disallowed-type))))))))))))

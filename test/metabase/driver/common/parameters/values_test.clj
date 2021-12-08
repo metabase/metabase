@@ -69,7 +69,8 @@
               {:name         "checkin_date"
                :display-name "Checkin Date"
                :type         :dimension
-               :dimension    [:field-id (mt/id :checkins :date)]}
+               :dimension    [:field (mt/id :checkins :date) nil]
+               :widget-type  :date/all-options}
               [{:type   :date/range
                 :target [:dimension [:template-tag "checkin_date"]]
                 :value  "2015-04-01~2015-05-01"}]))))
@@ -87,14 +88,14 @@
                   :value {:type  :date/range
                           :value "2020-02-01~2020-02-29"}}
                  (value-for-tag
-                   {:name         "timestamp"
-                    :display-name "Sighting Timestamp"
-                    :type         :dimension
-                    :dimension    $timestamp
-                    :widget-type  :date/range}
-                   [{:type   :date/range
-                     :target [:dimension [:template-tag "timestamp"]]
-                     :value  "2020-02-01~2020-02-29"}])))))))
+                  {:name         "timestamp"
+                   :display-name "Sighting Timestamp"
+                   :type         :dimension
+                   :dimension    $timestamp
+                   :widget-type  :date/range}
+                  [{:type   :date/range
+                    :target [:dimension [:template-tag "timestamp"]]
+                    :value  "2020-02-01~2020-02-29"}])))))))
 
   (testing "unspecified"
     (is (= {:field (extra-field-info
@@ -105,10 +106,11 @@
                      :semantic_type nil})
             :value i/no-value}
            (value-for-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :dimension    [:field-id (mt/id :checkins :date)]}
+            {:name         "checkin_date"
+             :display-name "Checkin Date"
+             :type         :dimension
+             :widget-type  :date/all-options
+             :dimension    [:field (mt/id :checkins :date) nil]}
              nil))))
 
   (testing "id requiring casting"
@@ -121,14 +123,22 @@
             :value {:type  :id
                     :value 5}}
            (value-for-tag
-             {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
-             [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}]))))
+            {:name         "id"
+             :display-name "ID"
+             :type         :dimension
+             :widget-type  :number
+             :dimension    [:field (mt/id :checkins :id) nil]}
+            [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}]))))
 
   (testing "required but unspecified"
     (is (thrown? Exception
                  (value-for-tag
-                   {:name      "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                    :dimension [:field (mt/id :checkins :date) nil]}
+                  {:name         "checkin_date"
+                   :display-name "Checkin Date"
+                   :type         :dimension
+                   :widget-type  :date/all-options
+                   :required     true
+                   :dimension    [:field (mt/id :checkins :date) nil]}
                    nil))))
 
   (testing "required and default specified"
@@ -138,15 +148,16 @@
                      :table_id      (mt/id :checkins)
                      :base_type     :type/Date
                      :semantic_type nil})
-            :value {:type  :dimension
+            :value {:type  :date/range
                     :value "2015-04-01~2015-05-01"}}
            (value-for-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :required     true
-              :default      "2015-04-01~2015-05-01",
-              :dimension    [:field-id (mt/id :checkins :date)]}
+            {:name         "checkin_date"
+             :display-name "Checkin Date"
+             :type         :dimension
+             :widget-type  :date/range
+             :required     true
+             :default      "2015-04-01~2015-05-01"
+             :dimension    [:field (mt/id :checkins :date) nil]}
              nil))))
 
 
@@ -162,9 +173,17 @@
                     {:type  :date/single
                      :value "2015-07-01"}]}
            (value-for-tag
-             {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
-             [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
-              {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}]))))
+            {:name         "checkin_date"
+             :display-name "Checkin Date"
+             :type         :dimension
+             :widget-type  :date/all-options
+             :dimension    [:field (mt/id :checkins :date) nil]}
+            [{:type   :date/range
+              :target [:dimension [:template-tag "checkin_date"]]
+              :value  "2015-01-01~2016-09-01"}
+             {:type   :date/single
+              :target [:dimension [:template-tag "checkin_date"]]
+              :value  "2015-07-01"}]))))
 
   (testing "Make sure defaults values get picked up for field filter clauses"
     (is (= {:field (extra-field-info
@@ -176,12 +195,12 @@
             :value {:type  :date/all-options
                     :value "past5days"}}
            (parse-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :dimension    [:field-id (mt/id :checkins :date)]
-              :default      "past5days"
-              :widget-type  :date/all-options}
+            {:name         "checkin_date"
+             :display-name "Checkin Date"
+             :type         :dimension
+             :dimension    [:field (mt/id :checkins :date) nil]
+             :default      "past5days"
+             :widget-type  :date/all-options}
              nil))))
   (testing "Make sure nil values result in no value"
     (is (= {:field (extra-field-info
@@ -192,12 +211,12 @@
                      :effective_type :type/Date})
             :value i/no-value}
            (parse-tag
-             {:name         "checkin_date"
-              :display-name "Checkin Date"
-              :type         :dimension
-              :dimension    [:field-id (mt/id :checkins :date)]
-              :widget-type  :date/all-options}
-                     nil)))))
+            {:name         "checkin_date"
+             :display-name "Checkin Date"
+             :type         :dimension
+             :dimension    [:field (mt/id :checkins :date) nil]
+             :widget-type  :date/all-options}
+            nil)))))
 
 (deftest field-filter-errors-test
   (testing "error conditions for field filter (:dimension) parameters"
@@ -206,7 +225,7 @@
                          :template-tags {"x" {:name         "x"
                                               :display-name "X"
                                               :type         :dimension
-                                              :dimension    [:field-id Integer/MAX_VALUE]}})]
+                                              :dimension    [:field Integer/MAX_VALUE nil]}})]
         (is (thrown?
              clojure.lang.ExceptionInfo
              (values/query->params-map query)))))))
@@ -230,7 +249,7 @@
       (driver/with-driver :h2
         (let [mbql-query   (mt/mbql-query venues
                              {:database (mt/id)
-                              :filter   [:< [:field-id $price] 3]})
+                              :filter   [:< [:field $price nil] 3]})
               expected-sql (str "SELECT "
                                 "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
                                 "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
