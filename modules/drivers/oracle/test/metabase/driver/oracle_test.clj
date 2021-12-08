@@ -134,7 +134,11 @@
                     {:name "tunnel-auth-option"}
                     {:name "tunnel-pass"}
                     {:name "tunnel-private-key"}
-                    {:name "tunnel-private-key-passphrase"}]
+                    {:name "tunnel-private-key-passphrase"}
+                    {:name "advanced-options"}
+                    {:name "auto_run_queries"}
+                    {:name "let-user-control-scheduling"}
+                    {:name "refingerprint"}]
           actual   (->> (driver/connection-properties :oracle)
                         (driver.u/connection-props-server->client :oracle))]
       (is (= expected (mt/select-keys-sequentially expected actual))))))
