@@ -13,6 +13,8 @@ import {
 import RootForm from "metabase/containers/Form";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import FormFieldDivider from "./FormFieldDivider";
 import MappedFieldPicker from "./MappedFieldPicker";
@@ -154,6 +156,12 @@ function DatasetFieldMetadataSidebar({ dataset, field }) {
                 {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
                 <FormFieldDivider />
+                <ColumnSettings
+                  column={field}
+                  value={field?.settings || {}}
+                  onChange={() => {}}
+                  inheritedSettings={getGlobalSettingsForColumn(field)}
+                />
                 <FormField name="visibility_type" />
                 <FormField name="display_as" />
                 <FormField name="has_field_values" />
