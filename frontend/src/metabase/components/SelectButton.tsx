@@ -1,12 +1,20 @@
-/* eslint "react/prop-types": "warn" */
 import React from "react";
-import PropTypes from "prop-types";
-
+import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
+type Props = {
+  className?: string;
+  style?: React.CSSProperties;
+  hasValue?: boolean;
+  children: React.ReactNode;
+};
 
-const SelectButton = ({ className, style, children, hasValue = true }) => (
+const SelectButton = ({
+  className,
+  style,
+  children,
+  hasValue = true,
+}: Props) => (
   <div
     style={style}
     className={cx(className, "AdminSelect flex align-center", {
@@ -21,12 +29,5 @@ const SelectButton = ({ className, style, children, hasValue = true }) => (
     />
   </div>
 );
-
-SelectButton.propTypes = {
-  className: PropTypes.string,
-  style: PropTypes.object,
-  children: PropTypes.any,
-  hasValue: PropTypes.any,
-};
 
 export default SelectButton;
