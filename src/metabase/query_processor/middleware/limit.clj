@@ -1,6 +1,9 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
-  (:require [metabase.mbql.util :as mbql.u]
+  (:require [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.util :as qputil]))
 
@@ -27,13 +30,26 @@
            (ensure-reduced result')
            result'))))))
 
+(defn determine-query-max-rows
+  "Given a `query`, return the max rows that should be returned.  This is the first non-nil value from (in decreasing
+  priority order):
+
+  1. the output of `metabase.driver/row-limit-override` when called on the given query's driver and database
+  2. the output of `metabase.mbql.util/query->max-rows-limit` when called on the given query
+  3. `metabase.query-processor.interface/absolute-max-results` (a constant, non-nil backstop value)"
+  [query]
+  (or (when-let [db-id (:database query)]
+        (let [database (Database db-id)]
+          (driver/row-limit-override (driver.u/database->driver database) database)))
+      (mbql.u/query->max-rows-limit query)
+      i/absolute-max-results))
+
 (defn limit
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that
   can be returned in post-processing."
   [qp]
   (fn [query rff context]
-    (let [max-rows (or (mbql.u/query->max-rows-limit query)
-                       i/absolute-max-results)]
+    (let [max-rows (determine-query-max-rows query)]
       (qp
        (add-limit max-rows query)
        (fn [metadata]

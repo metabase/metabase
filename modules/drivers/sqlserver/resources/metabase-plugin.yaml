@@ -23,6 +23,10 @@ driver:
     - password
     - cloud-ip-address-info
     - ssl
+    - name: rowcount-override
+      display-name: ROWCOUNT Override
+      placeholder: 0
+      required: false
     - merge:
         - additional-options
         - placeholder: "trustServerCertificate=false"

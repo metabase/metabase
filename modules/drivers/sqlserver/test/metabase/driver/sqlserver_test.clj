@@ -11,7 +11,9 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models :refer [Database]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]))
 
@@ -256,3 +258,41 @@
                                (mt/run-mbql-query checkins
                                  {:aggregation [[:count]]
                                   :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
+
+(deftest row-limit-override-test
+  (mt/test-driver :sqlserver
+    (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
+      (mt/with-temp Database [db {:name    "SQL Server with ROWCOUNT override"
+                                  :engine  "sqlserver"
+                                  :details (-> (:details (mt/db))
+                                               ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
+                                               (assoc :rowcount-override 0))}]
+        (mt/with-db db
+          (is (= 3000 (-> {:query (str "DECLARE @DATA AS TABLE(\n"
+                                       "    IDX INT IDENTITY(1,1),\n"
+                                       "    V INT\n"
+                                       ")\n"
+                                       "DECLARE @STEP INT \n"
+                                       "SET @STEP = 1\n"
+                                       "WHILE @STEP <=3000\n"
+                                       "BEGIN\n"
+                                       "    INSERT INTO @DATA(V)\n"
+                                       "    SELECT 1\n"
+                                       "    SET @STEP = @STEP + 1\n"
+                                       "END \n"
+                                       "\n"
+                                       "DECLARE @TEMP AS TABLE(\n"
+                                       "    IDX INT IDENTITY(1,1),\n"
+                                       "    V INT\n"
+                                       ")\n"
+                                       "INSERT INTO @TEMP(V)\n"
+                                       "SELECT V FROM @DATA\n"
+                                       "\n"
+                                       "SELECT COUNT(1) FROM @TEMP\n")}
+                         mt/native-query
+                         ;; add default query constraints to ensure the default limit of 2000 is overridden by the
+                         ;; `:rowcount-override` connection property we defined in the details above
+                         (assoc :constraints constraints/default-query-constraints)
+                         qp/process-query
+                         mt/rows
+                         ffirst))))))))

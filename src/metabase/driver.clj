@@ -664,3 +664,16 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+(defmulti row-limit-override
+  "Provides a mechanism to override the row-limit that will be applied to queries executed for this `database`. If this
+  method returns a non-null integer, then that value will be used to set the row-limit on the query (ex: via JDBC
+  `.setMaxRows` on the statement/prepared statement, and/or by the limit middleware). The default behavior is to return
+  nil (meaning, no defined row-limit override)."
+  {:added "0.42.0" :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod row-limit-override :default
+  [_ _]
+  nil)

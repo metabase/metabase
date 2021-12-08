@@ -395,6 +395,11 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
+;; In order to support certain native queries that might return results at the end, we have to use only prepared
+;; statements (see #9940)
+(defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
+  false)
+
 ;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
 ;; the same as the default
 (defmethod sql-jdbc.execute/prepared-statement :sqlserver
@@ -507,3 +512,9 @@
       (catch Throwable e
         (.close stmt)
         (throw e)))))
+
+;; override the driver/row-limit-override method by returning the value from the database details (if defined)
+;; if not, then the default behavior takes effect (meaning, no override)
+(defmethod driver/row-limit-override :sqlserver
+  [_ database]
+  (get-in database [:details :rowcount-override]))
