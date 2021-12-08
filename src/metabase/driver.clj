@@ -399,7 +399,11 @@
     :advanced-math-expressions
 
     ;; Does the driver support percentile calculations (including median)
-    :percentile-aggregations})
+    :percentile-aggregations
+
+    ;; Does the driver support date, time, and timezone manipulation functions?
+    ;; DEFAULTS TO TRUE
+    :date-functions})
 
 (defmulti ^:deprecated supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -445,6 +449,9 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
+
+(defmethod database-supports? [::driver :date-functions] [_ _ _]
+  true)
 
 (defmulti ^:deprecated format-custom-field-name
   "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
