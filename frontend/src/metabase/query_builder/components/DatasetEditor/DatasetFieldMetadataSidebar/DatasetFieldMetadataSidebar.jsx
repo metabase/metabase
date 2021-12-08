@@ -42,52 +42,54 @@ function getFieldSemanticTypes() {
   ];
 }
 
-const FORM_FIELDS = [
-  { name: "display_name", title: t`Display name` },
-  {
-    name: "description",
-    title: t`Description`,
-    placeholder: t`It’s optional, but oh, so helpful`,
-    type: "text",
-  },
-  {
-    name: "semantic_type",
-    type: "select",
-    options: getFieldSemanticTypes().map(type => ({
-      name: type.name,
-      value: type.id,
-    })),
-  },
-  {
-    name: "visibility_type",
-    title: t`This column should appear in…`,
-    type: "radio",
-    options: field_visibility_types
-      .filter(type => type.id !== "sensitive")
-      .map(type => ({
-        name: getVisibilityTypeName(type),
+function getFormFields({ dataset }) {
+  return [
+    { name: "display_name", title: t`Display name` },
+    {
+      name: "description",
+      title: t`Description`,
+      placeholder: t`It’s optional, but oh, so helpful`,
+      type: "text",
+    },
+    {
+      name: "semantic_type",
+      type: "select",
+      options: getFieldSemanticTypes().map(type => ({
+        name: type.name,
         value: type.id,
       })),
-  },
-  {
-    name: "display_as",
-    title: t`Display as`,
-    type: "radio",
-    options: [
-      { name: t`Text`, value: "text" },
-      { name: t`Link`, value: "link" },
-    ],
-  },
-  {
-    name: "has_field_values",
-    title: t`Filtering on this field`,
-    info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
-    type: "select",
-    options: has_field_values_options,
-  },
-];
+    },
+    {
+      name: "visibility_type",
+      title: t`This column should appear in…`,
+      type: "radio",
+      options: field_visibility_types
+        .filter(type => type.id !== "sensitive")
+        .map(type => ({
+          name: getVisibilityTypeName(type),
+          value: type.id,
+        })),
+    },
+    {
+      name: "display_as",
+      title: t`Display as`,
+      type: "radio",
+      options: [
+        { name: t`Text`, value: "text" },
+        { name: t`Link`, value: "link" },
+      ],
+    },
+    {
+      name: "has_field_values",
+      title: t`Filtering on this field`,
+      info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
+      type: "select",
+      options: has_field_values_options,
+    },
+  ];
+}
 
-function DatasetFieldMetadataSidebar({ field }) {
+function DatasetFieldMetadataSidebar({ dataset, field }) {
   const initialValues = useMemo(
     () => ({
       display_name: field?.display_name,
@@ -105,7 +107,7 @@ function DatasetFieldMetadataSidebar({ field }) {
       <PaddedContent>
         {field && (
           <RootForm
-            fields={FORM_FIELDS}
+            fields={getFormFields({ dataset })}
             initialValues={initialValues}
             overwriteOnInitialValuesChange
           >
