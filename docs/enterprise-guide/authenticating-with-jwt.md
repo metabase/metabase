@@ -1,10 +1,12 @@
 # JWT-based authentication
 
-You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to allow your Metabasers to authenticate through it.
+{% include plans-blockquote.html %}
+
+You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
 
 ## Types of authentication Metabase supports with JWT
 
-Metabase supports two types of authentication with JWT:
+Metabase supports two types of OAuth 2 authentication with JWT:
 
 - Authorization Code Flow
 - Authorization Code Flow with PKCE
@@ -42,11 +44,9 @@ Here's a breakdown of each of the settings:
 
 These are additional settings you can fill in to pass user attributes to Metabase.
 
-**Email attribute:** the key to retrieve each JWT user's email address.
-
-**First Name attribute:** the key to retrieve each JWT user's first name.
-
-**Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
+- **Email attribute:** the key to retrieve each JWT user's email address.
+- **First Name attribute:** the key to retrieve each JWT user's first name.
+- **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
 ## Group schema
 
@@ -71,7 +71,7 @@ If you're using Azure, you may need to use Azure AD B2C. Check out their [tokens
 You can find example code that uses JWT authentication in the [SSO examples repository](https://github.com/metabase/sso-examples).
 
 - [JWT example in a Clojure app](https://github.com/metabase/sso-examples/tree/master/clj-jwt-example)
-- [JWT example in JavaScript (Node)](https://github.com/metabase/sso-examples/tree/master/nodejs-jwt-example)
+- [JWT example in JavaScript (Node) app](https://github.com/metabase/sso-examples/tree/master/nodejs-jwt-example)
 
 ---
 
