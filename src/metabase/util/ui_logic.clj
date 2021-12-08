@@ -93,7 +93,7 @@
     (when (seq? col-indices)
       (fn [row]
         (vec (for [idx col-indices]
-               (nth row idx)))))))
+               (get row idx)))))))
 
 (defn mult-x-axis-rowfn
   "This is used as the X-axis column in the UI
@@ -105,7 +105,7 @@
     (when (seq? col-indices)
       (fn [row]
         (vec (for [idx col-indices]
-               (nth row idx)))))))
+               (get row idx)))))))
 
 (defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come
