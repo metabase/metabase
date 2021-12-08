@@ -68,6 +68,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
   snippetCollectionId: null,
+  datasetEditorTab: "query", // "query" / "metadata"
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
