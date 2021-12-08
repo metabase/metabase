@@ -30,6 +30,7 @@ const devMode = WEBPACK_BUNDLE !== "production";
 
 // Babel:
 const BABEL_CONFIG = {
+  plugins: devMode ? ["react-hot-loader/babel"] : [],
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
 
@@ -212,6 +213,8 @@ if (WEBPACK_BUNDLE === "hot") {
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     "http://localhost:8080/" + config.output.publicPath;
+
+  config.resolve.alias["react-dom"] = "@hot-loader/react-dom";
 
   config.module.rules.unshift({
     test: /\.jsx$/,

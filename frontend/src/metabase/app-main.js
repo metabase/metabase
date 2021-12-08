@@ -1,3 +1,4 @@
+import "react-hot-loader";
 import { push } from "react-router-redux";
 import _ from "underscore";
 

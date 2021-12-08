@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { hot } from "react-hot-loader/root";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
 import SyncProgress from "metabase/syncing/containers/SyncProgress";
@@ -47,7 +48,7 @@ const getErrorComponent = ({ status, data, context }) => {
 const PATHS_WITHOUT_NAVBAR = [/\/dataset\/.*\/query/];
 
 @connect(mapStateToProps)
-export default class App extends Component {
+class App extends Component {
   state = {
     errorInfo: undefined,
   };
@@ -89,3 +90,5 @@ export default class App extends Component {
     );
   }
 }
+
+export default hot(App);
