@@ -541,16 +541,23 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]}))
 
-(defn- single-x-axis-combo-rows [x-rows y-rows]
-  "This amounts to a transposition, and then sticking the x-rows back on again"
+(defn- single-x-axis-combo-series [x-rows y-rows boop beep boopo]
+  "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
+  for a single x-axis with multiple y-axis."
   (println "fuck single")
   (println x-rows)
   (println y-rows)
-  (for [series-rowseq (apply mapv vector y-rows)]
-    (sort-by first (map vector x-rows series-rowseq))))
+  (let [rowseqs (for [series-rowseq (apply mapv vector y-rows)]
+          (sort-by first (map vector x-rows series-rowseq)))]
+    nil
+    ))
 
-(defn- double-x-axis-combo-rows [x-rows y-rows]
-  "This mimics default behavior in JS viz, which is to group by the second dimension"
+(defn- double-x-axis-combo-series [x-rows y-rows boop beep boopo]
+  "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
+  for a double x-axis, which has pretty materially different semantics for that second dimension, with single or multiple y-axis.
+
+  This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
+  This can have really high cardinality of series but the JS viz will complain about more than 100 already"
   (let [joined-rows  (map vector x-rows y-rows)
         grouped-rows (group-by #(second (first %)) joined-rows)
         rows         (for [group-key (keys grouped-rows)]
@@ -558,6 +565,9 @@
     (println joined-rows)
     (println rows)
     nil))
+
+(defn- series-setting [viz-settings inner-key metric]
+  (get-in viz-settings [:series_settings (keyword metric) inner-key]))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
@@ -570,6 +580,8 @@
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
         dimensions       (:graph.dimensions viz-settings)
         metrics          (:graph.metrics viz-settings)
+        printo           (println (count x-cols))
+        printo           (println viz-settings)
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
@@ -594,7 +606,6 @@
         labels           (combo-label-info x-cols y-cols viz-settings)
         settings         (->ts-viz x-cols y-cols labels viz-settings)
 
-        series           (join-series names colors types series-rowseqs y-pos)
         image-bundle     (image-bundle/make-image-bundle
                            render-type
                            (js-svg/combo-chart series settings))]
