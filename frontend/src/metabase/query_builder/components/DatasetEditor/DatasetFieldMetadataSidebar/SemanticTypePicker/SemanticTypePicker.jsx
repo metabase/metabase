@@ -30,11 +30,6 @@ const propTypes = {
     onChange: PropTypes.func.isRequired,
   }).isRequired,
   sections: PropTypes.arrayOf(sectionShape).isRequired,
-
-  // AccordionListProps
-  searchable: PropTypes.bool,
-  searchProp: PropTypes.string,
-  searchPlaceholder: PropTypes.string,
 };
 
 function SemanticTypePicker({ field, sections }) {
