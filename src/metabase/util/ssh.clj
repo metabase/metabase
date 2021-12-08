@@ -2,8 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]])
+            [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
            java.util.concurrent.TimeUnit
            org.apache.sshd.client.future.ConnectFuture
