@@ -32,9 +32,6 @@ driver:
         - display-name: Additional connection string options (optional)
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
     - cloud-ip-address-info
-    - name: use-srv
-      type: boolean
-      default: false
     - merge:
         - ssl
     - name: ssl-cert
@@ -42,8 +39,14 @@ driver:
       display-name: Server SSL certificate chain
       visible-if:
         ssl: true
-
-  connection-properties-include-tunnel-config: true
+    - ssh-tunnel
+    - advanced-options-start
+    - name: use-srv
+      type: boolean
+      default: false
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.mongo

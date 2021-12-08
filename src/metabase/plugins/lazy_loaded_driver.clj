@@ -35,12 +35,8 @@
   "Parse the connection properties included in the plugin manifest. These can be one of several things -- a key
   referring to one of the default maps in `driver.common`, a entire custom map, or a list of maps to `merge:` (e.g.
   for overriding part, but not all, of a default option)."
-  [{:keys [connection-properties connection-properties-include-tunnel-config]}]
-  (cond-> (for [prop connection-properties]
-            (parse-connection-property prop))
-
-    connection-properties-include-tunnel-config
-    ssh/with-tunnel-config))
+  [{:keys [connection-properties]}]
+  (flatten (map parse-connection-property connection-properties)))
 
 (defn- make-initialize! [driver add-to-classpath! init-steps]
   (fn [_]

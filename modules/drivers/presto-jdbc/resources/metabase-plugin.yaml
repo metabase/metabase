@@ -34,10 +34,19 @@ driver:
         - required: false
     - cloud-ip-address-info
     - ssl
+    - advanced-options-start
+    - name: additional-options
+      display-name: Additional JDBC options
+      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=whatever
+      required: false
+      visible-if:
+        advanced-options: true
     - name: kerberos
       type: boolean
       display-name: Authenticate with Kerberos
       default: false
+      visible-if:
+        advanced-options: true
     - name: kerberos-principal
       display-name: Kerberos principal
       placeholder: service/instance@REALM
@@ -81,10 +90,7 @@ driver:
       required: false
       visible-if:
         kerberos: true
-    - name: additional-options
-      display-name: Additional JDBC options
-      placeholder: SSLKeyStorePath=/path/to/keystore.jks&SSLKeyStorePassword=whatever
-      required: false
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.presto-common

@@ -81,7 +81,7 @@
 
 (defmethod driver/connection-properties :postgres
   [_]
-  (ssh/with-tunnel-config
+  (flatten
     [driver.common/default-host-details
      (assoc driver.common/default-port-details :placeholder 5432)
      driver.common/default-dbname-details
@@ -131,8 +131,11 @@
       :type         :secret
       :secret-kind  :password
       :visible-if   {"ssl-use-client-auth" true}}
-     (assoc driver.common/default-additional-options-details
-            :placeholder "prepareThreshold=0")]))
+     driver.common/ssh-tunnel-preferences
+     driver.common/advanced-options-start
+     (assoc driver.common/additional-options
+            :placeholder "prepareThreshold=0")
+     driver.common/default-advanced-options]))
 
 (defmethod driver/db-start-of-week :postgres
   [_]
