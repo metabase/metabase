@@ -7,7 +7,10 @@ import {
   getParameterTargetField,
   getTemplateTagFromTarget,
 } from "metabase/parameters/utils/targets";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
+import {
+  getValuePopulatedParameters,
+  hasParameterValue,
+} from "metabase/parameters/utils/parameter-values";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags) {
@@ -112,8 +115,11 @@ export function remapParameterValuesToTemplateTags(
 
     if (templateTagParametersByName[tag]) {
       const templateTagParameter = templateTagParametersByName[tag];
-      parameterValues[templateTagParameter.name] =
+      const parameterValue =
         parameterValuesByDashboardParameterId[dashboardParameter.id];
+      if (hasParameterValue(parameterValue)) {
+        parameterValues[templateTagParameter.name] = parameterValue;
+      }
     }
   });
 

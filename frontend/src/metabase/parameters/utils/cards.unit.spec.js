@@ -179,7 +179,8 @@ describe("parameters/utils/cards", () => {
       const parameterValues = {
         "dashboard-parameter-1": "aaa",
         "dashboard-parameter-2": "bbb",
-        "dashboard-parameter-3": "ccc",
+        "dashboard-parameter-3": null,
+        "dashboard-parameter-4": "ddd",
       };
 
       const dashboardParameters = [
@@ -193,10 +194,14 @@ describe("parameters/utils/cards", () => {
         },
         {
           id: "dashboard-parameter-3",
-          target: ["dimension", ["field", 1, null]],
+          target: ["dimension", ["template-tag", "template-tag-3"]],
         },
         {
           id: "dashboard-parameter-4",
+          target: ["dimension", ["field", 1, null]],
+        },
+        {
+          id: "dashboard-parameter-5",
         },
       ];
 
