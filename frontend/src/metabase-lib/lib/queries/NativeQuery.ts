@@ -277,7 +277,7 @@ export default class NativeQuery extends AtomicQuery {
 
   allTemplateTagsAreValid() {
     return this.templateTags().every(t => {
-      if (["text", "number", "date"].includes(t.type)) {
+      if (["text", "number", "date", "card", "snippet"].includes(t.type)) {
         return true;
       }
 
