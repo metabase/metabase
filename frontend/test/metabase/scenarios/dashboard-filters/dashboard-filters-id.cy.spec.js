@@ -23,11 +23,8 @@ describe("scenarios > dashboard > filters > ID", () => {
     editDashboard();
     setFilter("ID");
 
-    cy.findByText("Column to filter on")
-      .next("a")
-      .click();
+    cy.findByText("Select…").click();
   });
-
   describe("should work for the primary key", () => {
     beforeEach(() => {
       popover()

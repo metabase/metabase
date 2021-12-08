@@ -294,8 +294,12 @@ export default class Popover extends Component {
     if (popoverElement) {
       if (isOpen) {
         popoverElement.classList.add("PopoverContainer--open");
+        popoverElement.classList.add("popover");
+        popoverElement.dataset.state = "visible";
       } else {
         popoverElement.classList.remove("PopoverContainer--open");
+        popoverElement.classList.remove("popover");
+        popoverElement.dataset.state = "hidden";
       }
     }
 

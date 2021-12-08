@@ -1,4 +1,8 @@
-import { getParameterTargetField } from "./targets";
+import {
+  getParameterTargetField,
+  isDimensionTarget,
+  isVariableTarget,
+} from "./targets";
 import {
   metadata,
   PRODUCTS,
@@ -6,6 +10,22 @@ import {
 } from "__support__/sample_dataset_fixture";
 
 describe("parameters/utils/targets", () => {
+  describe("isDimensionTarget", () => {
+    it('should return true for a target that contanis a "dimension" string in the first entry', () => {
+      expect(isDimensionTarget(["foo"])).toBe(false);
+      expect(isDimensionTarget()).toBe(false);
+      expect(isDimensionTarget(["dimension"])).toBe(true);
+    });
+  });
+
+  describe("isVariableTarget", () => {
+    it('should return true for a target that contanis a "dimension" string in the first entry', () => {
+      expect(isVariableTarget(["foo"])).toBe(false);
+      expect(isVariableTarget()).toBe(false);
+      expect(isVariableTarget(["variable"])).toBe(true);
+    });
+  });
+
   describe("getParameterTargetField", () => {
     it("should return null when the target is not a dimension", () => {
       expect(getParameterTargetField(["variable", "foo"], metadata)).toBe(null);

@@ -41,10 +41,7 @@ Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
         editDashboard();
         setFilter("Number", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();

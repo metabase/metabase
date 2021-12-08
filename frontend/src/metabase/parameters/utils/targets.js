@@ -4,6 +4,10 @@ export function isDimensionTarget(target) {
   return target?.[0] === "dimension";
 }
 
+export function isVariableTarget(target) {
+  return target?.[0] === "variable";
+}
+
 export function getParameterTargetField(target, metadata, question) {
   if (isDimensionTarget(target)) {
     const dimension = Dimension.parseMBQL(

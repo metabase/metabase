@@ -75,6 +75,7 @@ function Tooltip({
     return (
       <TippyComponent
         theme="tooltip"
+        className="popover"
         appendTo={() => document.body}
         content={tooltip}
         visible={visible}
