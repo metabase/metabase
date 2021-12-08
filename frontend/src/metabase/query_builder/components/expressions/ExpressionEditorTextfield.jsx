@@ -137,6 +137,11 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { editor } = this.input.current;
     editor.getSession().setMode(new ExpressionMode());
 
+    editor.setOptions({
+      fontFamily: "Monaco, monospace",
+      fontSize: "12px",
+    });
+
     this._setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
