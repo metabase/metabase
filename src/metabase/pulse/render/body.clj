@@ -477,8 +477,7 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (conj (repeat "right")
-        "left"))
+  (repeat "left"))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
