@@ -388,14 +388,6 @@
    "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
    "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
 
-(defn- fill-vector-maybe
-  "You have a sequence of colors or names or whatever,
-  only some of which actually are colors or names and the rest are nil.
-  Fills those nil bits in with the default given seq"
-  [maybe-vector defaults]
-  (let [pairs (map (fn [v default] (or v default)) maybe-vector (cycle defaults))]
-    (map #(first (filter some? %)) pairs)))
-
 (defn format-percentage
   "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
@@ -544,30 +536,69 @@
 (defn- series-setting [viz-settings inner-key outer-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
+(defn- y-col->series-def
+  "This is series def without the data itself, for combos only"
+  [y-col viz-settings y-col-idx]
+  (let [y-col-key  (keyword (:name y-col))
+        card-name  (or (series-setting viz-settings y-col-key :name)
+                       (:display_name y-col))
+        card-color (or (series-setting viz-settings y-col-key :color)
+                       (nth colors y-col-idx))
+        card-type  (or (series-setting viz-settings y-col-key :display)
+                       (nth default-combo-chart-types y-col-idx))
+        y-axis-pos (or (series-setting viz-settings y-col-key :axis)
+                       (nth default-y-pos y-col-idx))]
+    {:name          card-name
+     :color         card-color
+     :type          card-type
+     :yAxisPosition y-axis-pos}))
+
 (defn- single-x-axis-combo-series
-  [joined-rows x-cols y-cols viz-settings]
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  (println "fuck single")
-  (println joined-rows)
-  (for [y-col y-cols]
-    (make this whole shebang)))
+  [joined-rows x-cols y-cols viz-settings]
+  (for [[idx y-col] (map-indexed vector y-cols)]
+    (let [y-col-key     (keyword (:name y-col))
+          card-name     (or (series-setting viz-settings y-col-key :name)
+                            (:display_name y-col))
+          card-color    (or (series-setting viz-settings y-col-key :color)
+                            (nth colors y-col-idx))
+          card-type     (or (series-setting viz-settings y-col-key :display)
+                            (nth default-combo-chart-types y-col-idx))
+          selected-rows (map #(vector (first %) (nth (second %) idx)) joined-rows)
+          y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
+                            (nth default-y-pos y-col-idx))]
+    {:name          card-name
+     :color         card-color
+     :type          card-type
+     :data          selected-rows
+     :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
-  [joined-rows x-cols y-cols viz-settings]
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
-  for a double x-axis, which has pretty materially different semantics for that second dimension, with single or multiple y-axis.
+  for a double x-axis, which has pretty materially different semantics for that second dimension, with single y-axis only.
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  (println "fuck double")
-  ;;; fuck number of y's can still be multiple here
+  [joined-rows x-cols y-cols viz-settings]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)]
     (for [group (keys grouped-rows)]
-      (let [rows (for [group-key (keys grouped-rows)]
-                   (get grouped-rows group-key))]
-        (for [y-col y-cols]
-          (make this whole shebang))))))
+      (let [row-group          (for [group-key (keys grouped-rows)]
+                                 (get grouped-rows group-key))
+            selected-row-group (map #(vector (ffirst %) (nth (second %) idx)) rows)
+            card-name  (or (series-setting viz-settings y-col-key :name)
+                           (:display_name y-col))
+            card-color (or (series-setting viz-settings y-col-key :color)
+                           (nth colors y-col-idx))
+            card-type  (or (series-setting viz-settings y-col-key :display)
+                           (nth default-combo-chart-types y-col-idx))
+            y-axis-pos (or (series-setting viz-settings y-col-key :axis)
+                           (nth default-y-pos y-col-idx))]
+        {:name          card-name
+         :color         card-color
+         :type          card-type
+         :data          selected-row-group
+         :yAxisPosition y-axis-pos}))))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
@@ -579,26 +610,12 @@
         y-rows           (map y-axis-rowfn rows)
         joined-rows      (map vector x-rows y-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        metrics          (:graph.metrics viz-settings)
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
                            (single-x-axis-combo-series joined-rows x-cols y-cols viz-settings)
                            (double-x-axis-combo-series joined-rows x-cols y-cols viz-settings))
-
-        metric-cols      (filterv #((set metrics) (:name %)) cols)
-        get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
-        names            (fill-vector-maybe
-                           (map (partial get-in-series :title) metrics)
-                           (map :display_name metric-cols))
-        colors           (fill-vector-maybe
-                           (map (partial get-in-series :color) metrics)
-                           colors)
-        types            (fill-vector-maybe
-                           (map (partial get-in-series :display) metrics)
-                           (take (count names) default-combo-chart-types))
-        y-pos            (fill-vector-maybe
-                           (map (partial get-in-series :axis) metrics)
-                           (take (count names) default-y-pos))
 
         labels           (combo-label-info x-cols y-cols viz-settings)
         settings         (->ts-viz x-cols y-cols labels viz-settings)
