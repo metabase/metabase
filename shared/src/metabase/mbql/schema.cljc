@@ -951,7 +951,7 @@
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
-  #{:number :text :date})
+  #{:number :text :date :boolean})
 
 (def TemplateTag:RawValue:Type
   "Valid values of `:type` for raw value template tags."
@@ -1319,11 +1319,33 @@
   "Schema for valid values of `:type` for a [[Parameter]]."
   (apply s/enum (keys parameter-types)))
 
+;; the next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
+;; native query or Field for MBQL queries.
+;;
+;; examples:
+;;
+;;    {:target [:dimension [:template-tag "my_tag"]]}
+;;    {:target [:variable [:template-tag "another_tag"]]}
+;;    {:target [:dimension [:field 100 nil]]}
+;;    {:target [:field 100 nil]}
+;;
+;; I'm not 100% clear on which situations we'll get which version. But I think the following is generally true:
+;;
+;; * Things are wrapped in `:dimension` when we're dealing with Field filter template tags
+;; * Raw value template tags wrap things in `:variable` instead
+;; * Dashboard parameters are passed in with plain Field clause targets.
+;;
+;; One more thing to note: apparently `:expression`... is allowed below as well. I'm not sure how this is actually
+;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
+;; allowed.
+
+;; this is the reference like [:template-tag "whatever"], not the [[TemplateTag]] schema for when it's declared in
+;; `:template-tags`
 (defclause template-tag
   tag-name helpers/NonBlankString)
 
 (defclause dimension
-  target (one-of template-tag field))
+  target (one-of template-tag Field))
 
 (defclause variable
   target template-tag)
@@ -1332,7 +1354,7 @@
   "Schema for the value of `:target` in a [[Parameter]]."
   ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
   ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  (one-of field dimension variable))
+  (one-of Field dimension variable))
 
 (def Parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as

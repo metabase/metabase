@@ -171,7 +171,7 @@
                       s/Keyword    s/Any}
                      (mt/user-http-request
                       :rasta :post 202 (format "card/%d/query" card-id)
-                      {:parameters [{:type   :category
+                      {:parameters [{:type   :number
                                      :target [:variable [:template-tag :category]]
                                      :value  2}]})))))))
 
@@ -1305,7 +1305,7 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :category
+  (json/generate-string [{:type   :number
                           :target [:variable [:template-tag :category]]
                           :value  2}]))
 

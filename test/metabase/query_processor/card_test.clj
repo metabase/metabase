@@ -88,6 +88,14 @@
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
+(deftest infer-parameter-name-test
+  (is (= "my_param"
+         (#'qp.card/infer-parameter-name {:name "my_param", :target [:variable [:template-tag :category]]})))
+  (is (= "category"
+         (#'qp.card/infer-parameter-name {:target [:variable [:template-tag :category]]})))
+  (is (= nil
+         (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
+
 (deftest validate-card-parameters-test
   (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"

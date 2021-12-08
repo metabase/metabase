@@ -6,6 +6,7 @@
             [metabase.api.common :as api]
             [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
@@ -115,31 +116,42 @@
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
+(defn- infer-parameter-name
+  "Attempt to infer the name of a parameter. Uses `:name` if explicitly specified, otherwise attempts to infer this by
+  parsing `:target`. Parameters are matched up by name for validation purposes."
+  [{parameter-name :name, :keys [target]}]
+  (or
+   parameter-name
+   (mbql.u/match-one target
+     [:template-tag tag-name]
+     (name tag-name))))
+
 (s/defn ^:private validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
     (let [template-tags (card-template-tag-parameters card-id)]
-      (doseq [request-parameter parameters]
-        (let [matching-template-tag-type (or (get template-tags (:name request-parameter))
-                                             (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
-                                                                  card-id
-                                                                  (pr-str (:name request-parameter)))
-                                                             {:type               qp.error-type/invalid-parameter
-                                                              :invalid-parameter  request-parameter
-                                                              :allowed-parameters (keys template-tags)})))]
+      (doseq [request-parameter parameters
+              :let              [parameter-name (infer-parameter-name request-parameter)]]
+        (let [matching-widget-type (or (get template-tags parameter-name)
+                                       (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag named {1}."
+                                                            card-id
+                                                            (pr-str parameter-name))
+                                                       {:type               qp.error-type/invalid-parameter
+                                                        :invalid-parameter  request-parameter
+                                                        :allowed-parameters (keys template-tags)})))]
           ;; now make sure the type agrees as well
-          (when-not (allowed-parameter-type-for-template-tag-widget-type? (:type request-parameter) matching-template-tag-type)
-            (throw (ex-info (tru "Invalid parameter type {0} for template tag {1}. Parameter type must be one of: {2}"
-                                 (:type request-parameter)
-                                 (pr-str (:name request-parameter))
-                                 (str/join ", " (sort (allowed-parameter-types-for-template-tag-widget-type
-                                                       matching-template-tag-type))))
-                            {:type              qp.error-type/invalid-parameter
-                             :invalid-parameter request-parameter
-                             :template-tag-type matching-template-tag-type
-                             :allowed-types     (allowed-parameter-types-for-template-tag-widget-type :id)}))))))))
+          (when-not (allowed-parameter-type-for-template-tag-widget-type? (:type request-parameter) matching-widget-type)
+            (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type matching-widget-type)]
+              (throw (ex-info (tru "Invalid parameter type {0} for template tag {1}. Parameter type must be one of: {2}"
+                                   (:type request-parameter)
+                                   (pr-str parameter-name)
+                                   (str/join ", " (sort allowed-types)))
+                              {:type              qp.error-type/invalid-parameter
+                               :invalid-parameter request-parameter
+                               :template-tag-type matching-widget-type
+                               :allowed-types     allowed-types})))))))))
 
 (defn run-query-for-card-async
   "Run the query for Card with `parameters` and `constraints`, and return results in a
