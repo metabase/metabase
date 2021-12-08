@@ -80,6 +80,7 @@ function SemanticTypePicker({ field, sections }) {
           searchFuzzy={false}
           searchProp="name"
           searchPlaceholder={t`Search for a special type`}
+          hideEmptySectionsInSearch
           renderSearchSection={renderSearchSection}
         />
       </React.Fragment>
