@@ -51,6 +51,7 @@ import {
   getIsPreviewing,
   getTableForeignKeys,
   getQueryBuilderMode,
+  getDatasetEditorTab,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
   getNativeEditorCursorOffset,
@@ -102,16 +103,17 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
 export const setQueryBuilderMode = (
   queryBuilderMode,
-  { shouldUpdateUrl = true } = {},
+  { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
 ) => async dispatch => {
   await dispatch(
     setUIControls({
       queryBuilderMode,
+      datasetEditorTab,
       isShowingChartSettingsSidebar: false,
     }),
   );
   if (shouldUpdateUrl) {
-    await dispatch(updateUrl(null, { queryBuilderMode }));
+    await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
   }
   if (queryBuilderMode === "notebook") {
     dispatch(cancelQuery());
@@ -161,10 +163,16 @@ export const popState = createThunkAction(
         await dispatch(setCurrentState(location.state));
       }
     }
-    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+
+    const {
+      mode: queryBuilderModeFromURL,
+      ...uiControls
+    } = getQueryBuilderModeFromLocation(location);
+
     if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
         setQueryBuilderMode(queryBuilderModeFromURL, {
+          ...uiControls,
           shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
@@ -232,7 +240,13 @@ export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
     card,
-    { dirty, replaceState, preserveParameters = true, queryBuilderMode } = {},
+    {
+      dirty,
+      replaceState,
+      preserveParameters = true,
+      queryBuilderMode,
+      datasetEditorTab,
+    } = {},
   ) => (dispatch, getState) => {
     let question;
     if (!card) {
@@ -258,6 +272,9 @@ export const updateUrl = createThunkAction(
     if (!queryBuilderMode) {
       queryBuilderMode = getQueryBuilderMode(getState());
     }
+    if (!datasetEditorTab) {
+      datasetEditorTab = getDatasetEditorTab(getState());
+    }
 
     const copy = cleanCopyCard(card);
 
@@ -275,6 +292,7 @@ export const updateUrl = createThunkAction(
       pathname: getPathNameFromQueryBuilderMode({
         pathname: urlParsed.pathname || "",
         queryBuilderMode,
+        datasetEditorTab,
       }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
@@ -288,8 +306,8 @@ export const updateUrl = createThunkAction(
     const isSameCard =
       currentState && currentState.serializedCard === newState.serializedCard;
     const isSameMode =
-      getQueryBuilderModeFromLocation(locationDescriptor) ===
-      getQueryBuilderModeFromLocation(window.location);
+      getQueryBuilderModeFromLocation(locationDescriptor).mode ===
+      getQueryBuilderModeFromLocation(window.location).mode;
 
     if (isSameCard && isSameURL) {
       return;
@@ -332,10 +350,16 @@ export const initializeQB = (location, params, queryParams) => {
 
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
+
+    const {
+      mode: queryBuilderMode,
+      ...otherUiControls
+    } = getQueryBuilderModeFromLocation(location);
     const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
-      queryBuilderMode: getQueryBuilderModeFromLocation(location),
+      queryBuilderMode,
+      ...otherUiControls,
     };
 
     // load up or initialize the card we'll be working on
@@ -1468,6 +1492,10 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const setDatasetEditorTab = datasetEditorTab => dispatch => {
+  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+};
 
 export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
 export const onCancelDatasetChanges = () => (dispatch, getState) => {
