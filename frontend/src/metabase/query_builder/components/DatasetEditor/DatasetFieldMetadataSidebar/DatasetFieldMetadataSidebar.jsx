@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import {
@@ -14,6 +15,7 @@ import RootForm from "metabase/containers/Form";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import FormFieldDivider from "./FormFieldDivider";
+import SemanticTypePicker from "./SemanticTypePicker";
 import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
 
 const propTypes = {
@@ -31,8 +33,8 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
-function getFieldSemanticTypes() {
-  return [
+function getFieldSemanticTypeSections() {
+  const types = [
     ...field_semantic_types,
     {
       id: null,
@@ -40,6 +42,29 @@ function getFieldSemanticTypes() {
       section: t`Other`,
     },
   ];
+
+  const groupedBySection = _.groupBy(types, "section");
+
+  return Object.entries(groupedBySection).map(entry => {
+    const [name, items] = entry;
+    return {
+      name,
+      items: items.map(item => ({
+        value: item.id,
+        name: item.name,
+        description: item.description,
+      })),
+    };
+  });
+}
+
+function SemanticTypeWidget(formFieldProps) {
+  return (
+    <SemanticTypePicker
+      {...formFieldProps}
+      sections={getFieldSemanticTypeSections()}
+    />
+  );
 }
 
 function getFormFields({ dataset }) {
@@ -60,11 +85,7 @@ function getFormFields({ dataset }) {
     },
     {
       name: "semantic_type",
-      type: "select",
-      options: getFieldSemanticTypes().map(type => ({
-        name: type.name,
-        value: type.id,
-      })),
+      widget: SemanticTypeWidget,
     },
     {
       name: "visibility_type",
