@@ -17,6 +17,7 @@ import FormFieldDivider from "./FormFieldDivider";
 import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
 
 const propTypes = {
+  dataset: PropTypes.object.isRequired,
   field: PropTypes.instanceOf(Field).isRequired,
 };
 
