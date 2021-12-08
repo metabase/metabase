@@ -368,7 +368,6 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   onCursorChange(selection) {
-    const range = selection.getRange();
     const cursor = selection.getCursor();
 
     const { query, startRule } = this.props;
@@ -381,7 +380,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
 
     this.setState({
-      suggestions: range.isEmpty() ? suggestions : [],
+      suggestions: suggestions || [],
       helpText,
     });
   }
