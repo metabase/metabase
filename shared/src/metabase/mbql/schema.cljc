@@ -569,6 +569,41 @@
   "Schema for the definition of an string expression."
   (s/recursive #'StringExpression*))
 
+(def date+time+timezone-functions
+  "Date, time, and timezone related functions."
+  #{;; extraction functions (get some component of a given temporal value/column)
+    :get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second})
+
+(defclause ^{:requires-features #{:date-functions}} get-year
+  date StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-quarter
+  date StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-month
+  date StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-day
+  date StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-day-of-week
+  date StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-hour
+  datetime StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-minute
+  datetime StringExpressionArg)
+
+(defclause ^{:requires-features #{:date-functions}} get-second
+  datetime StringExpressionArg)
+
+(def ^:private DateFunctionExpression*
+  (one-of get-year get-quarter get-month get-day get-day-of-week get-hour get-minute get-second))
+
+(def ^:private DateFunctionExpression
+  "Schema for the definition of a date function expression."
+  (s/recursive #'DateFunctionExpression*))
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
@@ -735,10 +770,11 @@
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a `:field` clause."
   (s/conditional
-   (partial is-clause? arithmetic-expressions) ArithmeticExpression
-   (partial is-clause? string-expressions)     StringExpression
-   (partial is-clause? :case)                  case
-   :else                                       Field))
+   (partial is-clause? arithmetic-expressions)       ArithmeticExpression
+   (partial is-clause? string-expressions)           StringExpression
+   (partial is-clause? date+time+timezone-functions) DateFunctionExpression
+   (partial is-clause? :case)                        case
+   :else                                             Field))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------

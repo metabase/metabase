@@ -545,6 +545,38 @@
                       (current-datetime-honeysql-form driver)
                       (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
+;; date extraction functions
+(defmethod ->honeysql [:sql :get-year]
+  [driver [_ arg]]
+  (hx/year (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-quarter]
+  [driver [_ arg]]
+  (hx/quarter (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-month]
+  [driver [_ arg]]
+  (hx/month (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-day]
+  [driver [_ arg]]
+  (hx/day (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-day-of-week]
+  [driver [_ arg]]
+  (date driver :day-of-week (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-hour]
+  [driver [_ arg]]
+  (hx/hour (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-minute]
+  [driver [_ arg]]
+  (hx/minute (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :get-second]
+  [driver [_ arg]]
+  (hsql/call :second (->honeysql driver arg)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |

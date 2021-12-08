@@ -157,6 +157,15 @@
   [driver]
   (test-runner.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
+  ;; without this check, people will see an error like the following
+  ;;   Caused by: java.io.FileNotFoundException: Could not locate metabase/driver/all__init.class,
+  ;;   metabase/driver/all.clj or metabase/driver/all.cljc on classpath.
+  ;; add a more explicit check to make it clear what the problem is
+  (when (= :all driver)
+    (throw (ex-info (str "DRIVERS was set to \"all\" in the environment. To run certain tests, you need to set a"
+                         " specific driver by calling, for instance, `(mt/set-test-drivers! #{:h2})`, or by restarting"
+                         " with DRIVERS set to a specific name (ex: `DRIVERS=postgres`)")
+                    {})))
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
     driver))
@@ -551,7 +560,7 @@
          (update (table tabledef) :rows rows)
          tabledef)))))
 
-
+load
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      Flattening Dataset Definitions (i.e. for timeseries DBs like Druid)                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
