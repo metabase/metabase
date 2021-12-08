@@ -7,6 +7,7 @@ type Props = {
   style?: React.CSSProperties;
   hasValue?: boolean;
   children: React.ReactNode;
+  onClick?: () => void;
 };
 
 const SelectButton = ({
@@ -14,8 +15,10 @@ const SelectButton = ({
   style,
   children,
   hasValue = true,
+  onClick,
 }: Props) => (
   <div
+    onClick={onClick}
     style={style}
     className={cx(className, "AdminSelect flex align-center", {
       "text-medium": !hasValue,
