@@ -6,39 +6,48 @@ This page collects resources for getting you unstuck.
 
 Problems, their causes, how to detect them, and how to fix them.
 
-### Using Metabase
-
-- [People can't log in to Metabase][login].
-
-- [Saving questions or dashboards][proxies].
-
-- [My dashboard is slow][slow-dashboard].
-
-- [My dashboard filters don't work][filters].
-
-- [My dashboard's linked filters don't work][linked-filters].
-
-### Setup and administration
+### Installation
 
 - [Running the Metabase JAR][running].
 
 - [Running Metabase on Docker][docker].
 
-- [Connecting to data warehouses with Metabase][datawarehouse].
+- [Using or migrating from an H2 application database][appdb].
+
+### Authentication
 
 - [Setting up LDAP][ldap].
 
-- [Metabase isn't sending email][not-sending-email].
+- [People can't log in to Metabase][login].
 
-- [Using or migrating from an H2 application database][appdb].
-
-- [The dates and times in my questions and charts are wrong][incorrect-times].
-
-- [I can't see my tables][cant-see-tables].
+### Permissions
+- [Fixing permissions issues][permissions].
 
 - [Managing data sandboxing][sandbox].
 
+### Data Sources
+
+- [Connecting to data warehouses with Metabase][datawarehouse].
+
+- [I can't see my tables][cant-see-tables].
+
 - [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
+
+### Questions and dashboards
+
+- [Saving questions or dashboards][proxies].
+
+- [My dashboard is slow][slow-dashboard].
+
+- [The dates and times in my questions and charts are wrong][incorrect-times].
+
+- [My dashboard filters don't work][filters].
+
+- [My dashboard's linked filters don't work][linked-filters].
+
+### Email and alerts
+
+- [Metabase isn't sending email][not-sending-email].
 
 ## Think you found a bug?
 
@@ -91,6 +100,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [linked-filters]: ./linked-filters.html
 [login]: ./cant-log-in.html
 [not-sending-email]: ./cant-send-email.html
+[permissions]: ./permissions.html
 [proxies]: ./proxies.html
 [releases]: https://github.com/metabase/metabase/releases
 [running]: ./running.html

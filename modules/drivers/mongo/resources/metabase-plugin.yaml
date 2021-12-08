@@ -32,8 +32,7 @@ driver:
         - display-name: Additional connection string options (optional)
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
     - cloud-ip-address-info
-    - merge:
-        - ssl
+    - ssl
     - name: ssl-cert
       type: string
       display-name: Server SSL certificate chain
