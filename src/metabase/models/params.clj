@@ -42,11 +42,6 @@
     (throw (ex-info (trs "Don''t know how to wrap Field ID.")
                     {:form field-id-or-form}))))
 
-(defn- field-ids->param-field-values-ignoring-current-user
-  [param-field-ids]
-  (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
-                        :field_id [:in param-field-ids])))
-
 (defn- field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
   returned by various endpoints as `:param_values`."
