@@ -15,6 +15,7 @@ import RootForm from "metabase/containers/Form";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import FormFieldDivider from "./FormFieldDivider";
+import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker from "./SemanticTypePicker";
 import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
 
@@ -75,6 +76,10 @@ function getFormFields({ dataset }) {
       value: type.id,
     }));
 
+  function MappedFieldWidget(formFieldProps) {
+    return <MappedFieldPicker {...formFieldProps} dataset={dataset} />;
+  }
+
   return [
     { name: "display_name", title: t`Display name` },
     {
@@ -82,6 +87,11 @@ function getFormFields({ dataset }) {
       title: t`Description`,
       placeholder: t`It’s optional, but oh, so helpful`,
       type: "text",
+    },
+    dataset.isNative() && {
+      name: "id",
+      title: t`Database column this maps to`,
+      widget: MappedFieldWidget,
     },
     {
       name: "semantic_type",
@@ -109,21 +119,24 @@ function getFormFields({ dataset }) {
       type: "select",
       options: has_field_values_options,
     },
-  ];
+  ].filter(Boolean);
 }
 
 function DatasetFieldMetadataSidebar({ dataset, field }) {
-  const initialValues = useMemo(
-    () => ({
+  const initialValues = useMemo(() => {
+    const values = {
       display_name: field?.display_name,
       description: field?.description,
       semantic_type: field?.semantic_type,
       visibility_type: "normal",
       display_as: "text",
       has_field_values: "search",
-    }),
-    [field],
-  );
+    };
+    if (dataset.isNative()) {
+      values.id = field?.id;
+    }
+    return values;
+  }, [field, dataset]);
 
   return (
     <SidebarContent>
@@ -138,6 +151,7 @@ function DatasetFieldMetadataSidebar({ dataset, field }) {
               <Form>
                 <FormField name="display_name" />
                 <FormField name="description" />
+                {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
                 <FormFieldDivider />
                 <FormField name="visibility_type" />
