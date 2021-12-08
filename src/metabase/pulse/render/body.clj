@@ -322,16 +322,19 @@
                         :currency_style "symbol"}
         x-col-settings (or (settings-from-column x-col column-settings) {})
         y-col-settings (or (settings-from-column y-col column-settings) {})
-        x-format (merge
-                   (if (isa? (:effective_type x-col) :type/Temporal)
-                     {:date_style "MMMM D, YYYY"}
-                     default-format)
-                   x-col-settings)
-        y-format (merge
-                   default-format
-                   y-col-settings)]
+        x-format       (merge
+                         (if (isa? (:effective_type x-col) :type/Temporal)
+                           {:date_style "MMMM D, YYYY"}
+                           default-format)
+                         x-col-settings)
+        y-format       (merge
+                         default-format
+                         y-col-settings)
+        default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
+                         "timeseries"
+                         "ordinal")]
     {:colors (public-settings/application-colors)
-     :x      {:type (or (:graph.x_axis.scale _viz-settings) "timeseries")
+     :x      {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
               :format x-format}
      :y      {:type (or (:graph.y_axis.scale _viz-settings) "linear")
               :format y-format }
@@ -535,23 +538,6 @@
 (defn- series-setting [viz-settings inner-key outer-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
-(defn- y-col->series-def
-  "This is series def without the data itself, for combos only"
-  [y-col viz-settings y-col-idx]
-  (let [y-col-key  (keyword (:name y-col))
-        card-name  (or (series-setting viz-settings y-col-key :name)
-                       (:display_name y-col))
-        card-color (or (series-setting viz-settings y-col-key :color)
-                       (nth colors y-col-idx))
-        card-type  (or (series-setting viz-settings y-col-key :display)
-                       (nth default-combo-chart-types y-col-idx))
-        y-axis-pos (or (series-setting viz-settings y-col-key :axis)
-                       (nth default-y-pos y-col-idx))]
-    {:name          card-name
-     :color         card-color
-     :type          card-type
-     :yAxisPosition y-axis-pos}))
-
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
@@ -561,12 +547,12 @@
           card-name     (or (series-setting viz-settings y-col-key :name)
                             (:display_name y-col))
           card-color    (or (series-setting viz-settings y-col-key :color)
-                            (nth colors y-col-idx))
+                            (nth colors idx))
           card-type     (or (series-setting viz-settings y-col-key :display)
-                            (nth default-combo-chart-types y-col-idx))
-          selected-rows (map #(vector (first %) (nth (second %) idx)) joined-rows)
+                            (nth default-combo-chart-types idx))
+          selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth default-y-pos y-col-idx))]
+                            (nth default-y-pos idx))]
     {:name          card-name
      :color         card-color
      :type          card-type
@@ -580,19 +566,19 @@
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
   [joined-rows x-cols y-cols viz-settings]
-  (let [grouped-rows (group-by #(second (first %)) joined-rows)]
-    (for [group (keys grouped-rows)]
-      (let [row-group          (for [group-key (keys grouped-rows)]
-                                 (get grouped-rows group-key))
-            selected-row-group (map #(vector (ffirst %) (nth (second %) idx)) rows)
-            card-name  (or (series-setting viz-settings y-col-key :name)
-                           (:display_name y-col))
-            card-color (or (series-setting viz-settings y-col-key :color)
-                           (nth colors y-col-idx))
-            card-type  (or (series-setting viz-settings y-col-key :display)
-                           (nth default-combo-chart-types y-col-idx))
-            y-axis-pos (or (series-setting viz-settings y-col-key :axis)
-                           (nth default-y-pos y-col-idx))]
+  (let [grouped-rows (group-by #(second (first %)) joined-rows)
+        groups       (keys grouped-rows)]
+    (for [[idx group-key] (map-indexed vector groups)]
+      (let [row-group          (get grouped-rows group-key)
+            selected-row-group (sort-by first (map #(vector (ffirst %) (first (second %))) row-group))
+            card-name          (or (series-setting viz-settings group-key :name)
+                                   group-key)
+            card-color         (or (series-setting viz-settings group-key :color)
+                                   (nth colors idx))
+            card-type          (or (series-setting viz-settings group-key :display)
+                                   (nth default-combo-chart-types idx))
+            y-axis-pos         (or (series-setting viz-settings group-key :axis)
+                                   (nth default-y-pos idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
@@ -609,7 +595,6 @@
         y-rows           (map y-axis-rowfn rows)
         joined-rows      (map vector x-rows y-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        metrics          (:graph.metrics viz-settings)
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
@@ -617,7 +602,7 @@
                            (double-x-axis-combo-series joined-rows x-cols y-cols viz-settings))
 
         labels           (combo-label-info x-cols y-cols viz-settings)
-        settings         (->ts-viz x-cols y-cols labels viz-settings)
+        settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings)
 
         image-bundle     (image-bundle/make-image-bundle
                            render-type
