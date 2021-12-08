@@ -350,13 +350,14 @@
 (defn- combo-label-info
   "X and Y axis labels passed into the `labels` argument needs to be different
   for combos specifically (as opposed to multiples)"
-  [x-col y-cols viz-settings]
+  [x-cols y-cols viz-settings]
   {:bottom (or (:graph.x_axis.title_text viz-settings)
-               (:display_name x-col))
+               (:display_name (first x-cols)))
    :left   (or (:graph.y_axis.title_text viz-settings)
                (:display_name (first y-cols)))
    :right  (or (:graph.y_axis.title_text viz-settings)
-               (:display_name (second y-cols)))})
+               (:display_name (second y-cols))
+               "")})
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
@@ -495,6 +496,7 @@
 
 (defn- join-series
   [names colors types row-seqs y-axis-positions]
+  ;;; gotta flatten i guess
   (let [joined (map vector names colors types row-seqs y-axis-positions)]
     (vec (for [[card-name card-color card-type rows y-axis-position] joined]
            {:name          card-name
@@ -540,22 +542,41 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]}))
 
+(defn- single-x-axis-combo-rows [x-rows y-rows]
+  "This amounts to a transposition, and then sticking the x-rows back on again"
+  (println "fuck single")
+  (println x-rows)
+  (println y-rows)
+  (for [series-rowseq (apply mapv vector y-rows)]
+    (sort-by first (map vector x-rows series-rowseq))))
+
+(defn- double-x-axis-combo-rows [x-rows y-rows]
+  "This mimics default behavior in JS viz, which is to group by the second dimension"
+  (let [joined-rows  (map vector x-rows y-rows)
+        grouped-rows (group-by #(second (first %)) joined-rows)
+        rows         (for [group-key (keys grouped-rows)]
+                       (get grouped-rows group-key))]
+    (println joined-rows)
+    (println rows)
+    nil))
+
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
-  (let [[x-axis-rowfn _] (common/graphing-column-row-fns card data)
-        ;; Special y-axis-rowfn because we have more than 1 y-axis
+  ;; Special axis-rowfns because we have more than 1 axis
+  (let [x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
         rows             (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
         x-rows           (map x-axis-rowfn rows)
         y-rows           (map y-axis-rowfn rows)
-
-        ;; This amounts to a transposition, and then sticking the x-rows back on again
-        series-rowseqs   (apply mapv vector y-rows)
-        series-rowseqs   (for [series-rowseq series-rowseqs]
-                           (sort-by first (map vector x-rows series-rowseq)))
-        [x-col y-cols]   ((juxt x-axis-rowfn y-axis-rowfn) cols)
-
+        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        dimensions       (:graph.dimensions viz-settings)
         metrics          (:graph.metrics viz-settings)
+
+        ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
+        series           (if (= (count x-cols) 1)
+                           (single-x-axis-combo-series x-rows y-rows x-cols y-cols viz-settings)
+                           (double-x-axis-combo-series x-rows y-rows x-cols y-cols viz-settings))
+
         metric-cols      (filterv #((set metrics) (:name %)) cols)
         get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
         names            (fill-vector-maybe
@@ -571,8 +592,8 @@
                            (map (partial get-in-series :axis) metrics)
                            (take (count names) default-y-pos))
 
-        labels           (combo-label-info x-col y-cols viz-settings)
-        settings         (->ts-viz x-col y-cols labels viz-settings)
+        labels           (combo-label-info x-cols y-cols viz-settings)
+        settings         (->ts-viz x-cols y-cols labels viz-settings)
 
         series           (join-series names colors types series-rowseqs y-pos)
         image-bundle     (image-bundle/make-image-bundle
