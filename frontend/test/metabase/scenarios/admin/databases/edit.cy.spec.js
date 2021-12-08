@@ -27,6 +27,7 @@ describe("scenarios > admin > databases > edit", () => {
     it("lets you modify the connection settings", () => {
       cy.visit("/admin/databases/1");
 
+      cy.findByText("Show advanced options").click();
       cy.findByLabelText("Choose when syncs and scans happen").click();
 
       cy.findByText("Save changes").click();

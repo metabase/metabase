@@ -50,6 +50,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
       "aria-checked",
@@ -103,6 +104,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.wait("@createDatabase");
 
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Next")
@@ -126,6 +128,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").should("not.be.disabled");
 
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Next")
@@ -213,6 +216,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Display name", databaseName);
     typeField("Connection String", H2_CONNECTION_STRING);
 
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Choose when syncs and scans happen")
       .click()
       .should("have.attr", "aria-checked", "true");
