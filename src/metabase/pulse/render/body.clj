@@ -541,33 +541,33 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]}))
 
-(defn- single-x-axis-combo-series [x-rows y-rows boop beep boopo]
+(defn- series-setting [viz-settings inner-key outer-key]
+  (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
+
+(defn- single-x-axis-combo-series
+  [joined-rows x-cols y-cols viz-settings]
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
   (println "fuck single")
-  (println x-rows)
-  (println y-rows)
-  (let [rowseqs (for [series-rowseq (apply mapv vector y-rows)]
-          (sort-by first (map vector x-rows series-rowseq)))]
-    nil
-    ))
+  (println joined-rows)
+  (for [y-col y-cols]
+    (make this whole shebang)))
 
-(defn- double-x-axis-combo-series [x-rows y-rows boop beep boopo]
+(defn- double-x-axis-combo-series
+  [joined-rows x-cols y-cols viz-settings]
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a double x-axis, which has pretty materially different semantics for that second dimension, with single or multiple y-axis.
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  (let [joined-rows  (map vector x-rows y-rows)
-        grouped-rows (group-by #(second (first %)) joined-rows)
-        rows         (for [group-key (keys grouped-rows)]
-                       (get grouped-rows group-key))]
-    (println joined-rows)
-    (println rows)
-    nil))
-
-(defn- series-setting [viz-settings inner-key metric]
-  (get-in viz-settings [:series_settings (keyword metric) inner-key]))
+  (println "fuck double")
+  ;;; fuck number of y's can still be multiple here
+  (let [grouped-rows (group-by #(second (first %)) joined-rows)]
+    (for [group (keys grouped-rows)]
+      (let [rows (for [group-key (keys grouped-rows)]
+                   (get grouped-rows group-key))]
+        (for [y-col y-cols]
+          (make this whole shebang))))))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
@@ -577,16 +577,13 @@
         rows             (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
         x-rows           (map x-axis-rowfn rows)
         y-rows           (map y-axis-rowfn rows)
+        joined-rows      (map vector x-rows y-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        dimensions       (:graph.dimensions viz-settings)
-        metrics          (:graph.metrics viz-settings)
-        printo           (println (count x-cols))
-        printo           (println viz-settings)
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
-                           (single-x-axis-combo-series x-rows y-rows x-cols y-cols viz-settings)
-                           (double-x-axis-combo-series x-rows y-rows x-cols y-cols viz-settings))
+                           (single-x-axis-combo-series joined-rows x-cols y-cols viz-settings)
+                           (double-x-axis-combo-series joined-rows x-cols y-cols viz-settings))
 
         metric-cols      (filterv #((set metrics) (:name %)) cols)
         get-in-series    (fn [inner-key metric] (get-in viz-settings [:series_settings (keyword metric) inner-key]))
