@@ -9,6 +9,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
 
@@ -214,15 +215,7 @@ if (WEBPACK_BUNDLE === "hot") {
 
   config.module.rules.unshift({
     test: /\.jsx$/,
-    // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
-    exclude: /node_modules|cljs|DragLayer\.jsx$/,
-    use: [
-      // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
-      // because newer versions would require us to upgrade to react-router v4 and possibly deal with
-      // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
-      { loader: "react-hot-loader/webpack" },
-      { loader: "babel-loader", options: BABEL_CONFIG },
-    ],
+    use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
   });
 
   config.devServer = {
@@ -259,6 +252,7 @@ if (WEBPACK_BUNDLE === "hot") {
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.HotModuleReplacementPlugin(),
+    new ReactRefreshWebpackPlugin(),
   );
 }
 

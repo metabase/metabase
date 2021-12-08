@@ -11,7 +11,9 @@
   ],
   "env": {
     "development": {
-      "presets": []
+      "plugins": [
+        "react-refresh/babel"
+      ]
     },
     "extract": {
       "plugins": [
