@@ -1,7 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.models.card :as card-model]
+            [metabase.models.dashboard-card :as dc-model]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -96,7 +96,7 @@
         (chart-type :smartscalar "result has two columns and insights")
 
         (and (some? maybe-dashcard)
-             (> (count (card-model/card->multi-cards card maybe-dashcard)) 0)
+             (> (count (dc-model/dashcard->multi-cards maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 

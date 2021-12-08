@@ -81,28 +81,7 @@
      {:Metric  (extract-ids :metric inner-query)
       :Segment (extract-ids :segment inner-query)})))
 
-(defn card->multi-cards
-  "Return the cards which are other cards with respect to this card
-  in multiple series display for dashboard, for a specified dashboard-card.
 
-  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
-
-  This is actually completely different from the combo display,
-  which is a visualization type in visualization option.
-
-  This is also actually completely different from having multiple series display
-  from the visualization with same type (line bar or whatever),
-  which is a separate option in line area or bar visualization"
-  [{:keys [id]} dashcard]
-  (db/query {:select [:newcard.*]
-             :from [[:report_dashboardcard :dashcard]]
-             :left-join [[:dashboardcard_series :dashcardseries]
-                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
-                         [:report_card :newcard]
-                         [:= :dashcardseries.card_id :newcard.id]]
-             :where [:and
-                     [:= :newcard.archived false]
-                     [:= :dashcard.id (:id dashcard)]]}))
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

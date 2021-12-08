@@ -1,8 +1,8 @@
 (ns metabase.pulse.util
   "Utils for pulses."
   (:require [clojure.tools.logging :as log]
-            [metabase.models.card :as card-model :refer [Card]]
-            [metabase.models.dashboard-card :refer [DashboardCard]]
+            [metabase.models.card :refer [Card]]
+            [metabase.models.dashboard-card :as dc-model :refer [DashboardCard]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.server.middleware.session :as session]
@@ -48,6 +48,6 @@
         dashcard-id  (u/the-id dashcard-or-id)
         card         (Card :id card-id, :archived false)
         dashcard     (DashboardCard :id dashcard-id)
-        multi-cards  (card-model/card->multi-cards card dashcard)]
+        multi-cards  (dc-model/dashcard->multi-cards dashcard)]
     (for [multi-card multi-cards]
       (execute-card {:creator_id (:creator_id card)} (:id multi-card)))))
