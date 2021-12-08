@@ -988,13 +988,14 @@
 (def TemplateTagMap
   "Schema for the `:template-tags` map passed in as part of a native query."
   ;; map of template tag name -> template tag definition
-  (-> {helpers/NonBlankString TemplateTag}
-      ;; TODO -- temporarily disabled because it breaks a few tests :cry:
-      #_(s/constrained (fn [m]
-                         (every? (fn [[tag-name tag-definition]]
-                                   (= tag-name (:name tag-definition)))
-                                 m))
-                       "keys in template tag map must match the :name of their values")))
+  {helpers/NonBlankString TemplateTag}
+  #_(->
+     ;; TODO -- temporarily disabled because it breaks a few tests :cry:
+     (s/constrained (fn [m]
+                      (every? (fn [[tag-name tag-definition]]
+                                (= tag-name (:name tag-definition)))
+                              m))
+                    "keys in template tag map must match the :name of their values")))
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
@@ -1356,14 +1357,14 @@
 
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  (-> [Parameter]
-      ;; TODO -- disabled for now since it breaks tests. Also, I'm not sure whether these should be distinct by
-      ;; `:name` or `:id`... at any rate, neither is currently required.
-      ;;
-      ;; (s/constrained (fn [parameters]
-      ;;                  (apply distinct? (map :id parameters)))
-      ;;                "Cannot specify parameter more than once; IDs must be distinct")
-      ))
+  [Parameter]
+  #_(->
+     ;; TODO -- disabled for now since it breaks tests. Also, I'm not sure whether these should be distinct by
+     ;; `:name` or `:id`... at any rate, neither is currently required.
+     ;;
+     (s/constrained (fn [parameters]
+                      (apply distinct? (map :id parameters)))
+                    "Cannot specify parameter more than once; IDs must be distinct")))
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 

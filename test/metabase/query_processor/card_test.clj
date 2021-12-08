@@ -5,7 +5,8 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.card :as qp.card]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [schema.core :as s]))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -89,18 +90,29 @@
 
 (deftest validate-card-parameters-test
   (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
-    (testing "Should disallow parameters that aren't actually part of the Card")
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\""
-         (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
-                                                       :name  "fake"
-                                                       :type  :date/single
-                                                       :value "2016-01-01"}])))
+    (testing "Should disallow parameters that aren't actually part of the Card"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\""
+           (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
+                                                         :name  "fake"
+                                                         :type  :date/single
+                                                         :value "2016-01-01"}])))
+      (testing "As an API request"
+        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
+                      :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
+                      :allowed-parameters (s/eq ["date"])
+                      s/Keyword           s/Any}
+                     (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                           {:parameters [{:id    "_FAKE_"
+                                                          :name  "fake"
+                                                          :type  :date/single
+                                                          :value "2016-01-01"}]})))))
+
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
                 (#'qp.card/validate-card-parameters card-id [{:id    "_DATE_"
-                                                              :name "date"
+                                                              :name  "date"
                                                               :type  param-type
                                                               :value "2016-01-01"}]))]
         (testing "allowed types"
@@ -118,4 +130,12 @@
               (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
                 (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
                   (is (= nil
-                         (validate disallowed-type))))))))))))
+                         (validate disallowed-type))))))))))
+
+    (testing "Happy path -- API request should succeed if parameter is valid"
+      (is (= [1000]
+             (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                 {:parameters [{:id    "_DATE_"
+                                                                :name  "date"
+                                                                :type  :date/single
+                                                                :value "2016-01-01"}]})))))))

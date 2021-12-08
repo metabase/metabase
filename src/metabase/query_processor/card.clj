@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -174,4 +175,6 @@
                :card-name    (:name card)
                :dashboard-id dashboard-id}]
     (api/check-not-archived card)
+    (when (seq parameters)
+      (validate-card-parameters card-id (normalize/normalize-fragment [:parameters] parameters)))
     (run query info)))
