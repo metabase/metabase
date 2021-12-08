@@ -5,12 +5,16 @@ import { t } from "ttag";
 import AccordionList from "metabase/components/AccordionList";
 import SelectButton from "metabase/components/SelectButton";
 
+import { isCurrency, isFK } from "metabase/lib/schema_metadata";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import FormFieldDivider from "../FormFieldDivider";
+import CurrencyPicker from "./CurrencyPicker";
+import FKTargetPicker from "./FKTargetPicker";
 import {
   CloseButton,
   SearchSectionContainer,
+  ExtraSelectContainer,
 } from "./SemanticTypePicker.styled";
 
 const sectionItemShape = PropTypes.shape({
@@ -30,9 +34,10 @@ const propTypes = {
     onChange: PropTypes.func.isRequired,
   }).isRequired,
   sections: PropTypes.arrayOf(sectionShape).isRequired,
+  IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
 };
 
-function SemanticTypePicker({ field, sections }) {
+function SemanticTypePicker({ field, sections, IDFields }) {
   const [
     isPickerOpen,
     { turnOn: openPicker, turnOff: closePicker },
@@ -66,6 +71,32 @@ function SemanticTypePicker({ field, sections }) {
     [closePicker],
   );
 
+  const renderExtraSelect = useCallback(() => {
+    const pseudoField = { semantic_type: field.value };
+
+    if (isFK(pseudoField)) {
+      return (
+        <ExtraSelectContainer>
+          <FKTargetPicker
+            field={field}
+            onChange={() => {}}
+            IDFields={IDFields}
+          />
+        </ExtraSelectContainer>
+      );
+    }
+
+    if (isCurrency(pseudoField)) {
+      return (
+        <ExtraSelectContainer>
+          <CurrencyPicker field={field} onChange={() => {}} />
+        </ExtraSelectContainer>
+      );
+    }
+
+    return null;
+  }, [field, IDFields]);
+
   if (isPickerOpen) {
     return (
       <React.Fragment>
@@ -83,18 +114,22 @@ function SemanticTypePicker({ field, sections }) {
           hideEmptySectionsInSearch
           renderSearchSection={renderSearchSection}
         />
+        {renderExtraSelect()}
       </React.Fragment>
     );
   }
 
   return (
-    <SelectButton
-      className="cursor-pointer"
-      hasValue={!!field.value}
-      onClick={openPicker}
-    >
-      {pickerLabel}
-    </SelectButton>
+    <React.Fragment>
+      <SelectButton
+        className="cursor-pointer"
+        hasValue={!!field.value}
+        onClick={openPicker}
+      >
+        {pickerLabel}
+      </SelectButton>
+      {renderExtraSelect()}
+    </React.Fragment>
   );
 }
 

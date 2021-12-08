@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Databases from "metabase/entities/databases";
 import Field from "metabase-lib/lib/metadata/Field";
 import {
   field_visibility_types,
@@ -24,7 +26,15 @@ import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
 const propTypes = {
   dataset: PropTypes.object.isRequired,
   field: PropTypes.instanceOf(Field).isRequired,
+  IDFields: PropTypes.array.isRequired,
 };
+
+function mapStateToProps(state, { dataset }) {
+  const databaseId = dataset.databaseId();
+  return {
+    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+  };
+}
 
 function getVisibilityTypeName(visibilityType) {
   if (visibilityType.id === "normal") {
@@ -61,16 +71,7 @@ function getFieldSemanticTypeSections() {
   });
 }
 
-function SemanticTypeWidget(formFieldProps) {
-  return (
-    <SemanticTypePicker
-      {...formFieldProps}
-      sections={getFieldSemanticTypeSections()}
-    />
-  );
-}
-
-function getFormFields({ dataset }) {
+function getFormFields({ dataset, IDFields }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
     .map(type => ({
@@ -80,6 +81,16 @@ function getFormFields({ dataset }) {
 
   function MappedFieldWidget(formFieldProps) {
     return <MappedFieldPicker {...formFieldProps} dataset={dataset} />;
+  }
+
+  function SemanticTypeWidget(formFieldProps) {
+    return (
+      <SemanticTypePicker
+        {...formFieldProps}
+        sections={getFieldSemanticTypeSections()}
+        IDFields={IDFields}
+      />
+    );
   }
 
   return [
@@ -124,7 +135,7 @@ function getFormFields({ dataset }) {
   ].filter(Boolean);
 }
 
-function DatasetFieldMetadataSidebar({ dataset, field }) {
+function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
   const initialValues = useMemo(() => {
     const values = {
       display_name: field?.display_name,
@@ -140,12 +151,17 @@ function DatasetFieldMetadataSidebar({ dataset, field }) {
     return values;
   }, [field, dataset]);
 
+  const formFields = useMemo(() => getFormFields({ dataset, IDFields }), [
+    dataset,
+    IDFields,
+  ]);
+
   return (
     <SidebarContent>
       <PaddedContent>
         {field && (
           <RootForm
-            fields={getFormFields({ dataset })}
+            fields={formFields}
             initialValues={initialValues}
             overwriteOnInitialValuesChange
           >
@@ -176,4 +192,4 @@ function DatasetFieldMetadataSidebar({ dataset, field }) {
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default DatasetFieldMetadataSidebar;
+export default connect(mapStateToProps)(DatasetFieldMetadataSidebar);

@@ -17,3 +17,7 @@ export const CloseButton = styled(Button).attrs({
 })`
   margin-left: ${space(1)};
 `;
+
+export const ExtraSelectContainer = styled.div`
+  margin-top: 1em;
+`;
