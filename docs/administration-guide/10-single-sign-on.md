@@ -1,14 +1,12 @@
-## Authenticating with Google Sign-In or LDAP
+# Authenticating with Google Sign-In or LDAP
 
-Enabling Google Sign-In or LDAP lets your team log in with a click instead of using email and password, and can optionally let them sign up for Metabase accounts without an admin having to create them first. You can find these options in the Settings section of the Admin Panel, under Authentication.
+Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) lets your team log in with a click instead of using email and password, and can optionally let them sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
 
-![Authentication](./images/authentication.png)
-
-If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](../enterprise-guide/authenticating-with-saml.md)
+If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](../enterprise-guide/authenticating-with-saml.md).
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
-### Enabling Google Sign-In
+## Enabling Google Sign-In
 
 To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector2/apis/library).
 
@@ -20,34 +18,47 @@ Now existing Metabase users signed into a Google account that matches their Meta
 
 ###  Enabling account creation with Google Sign-In
 
-If you’ve added your Google client ID to your Metabase settings you can also let users sign up on their own without creating accounts for them.
+If you’ve added your Google client ID to your Metabase settings, you can also let users sign up on their own without creating accounts for them.
 
 To enable this, go to the Google Sign-In configuration page, and specify the email domain you want to allow. For example, if you work at WidgetCo you could enter `widgetco.com` in the field to let anyone with a company email sign up on their own.
 
-Note: Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
+Note that Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
 
+## Enabling LDAP authentication
 
-### Enabling LDAP authentication
+If your organization uses LDAP, enabling it in Metabase will allow your users to log in via their LDAP credentials.
 
-If your organization uses LDAP, and you want to allow your users to log in via their LDAP credentials, you can do so as follows.
+To get started, click the **Configure** button in the LDAP section of the Admin Panel's Authentication page, where you'll fill out the form with the information about your LDAP server — hostname, port, security settings, and the LDAP admin username and password — and save your changes.
 
-Click the `Configure` button in the LDAP section of the Authentication page, and you'll see this form:
-
-![Authentication](./images/ldap-form.png)
-
-Click the toggle at the top of the form to enable LDAP, then fill in the form with the information about your LDAP server.
-
-Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute) and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
+Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute), and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
 ![Attributes](./images/ldap-attributes.png)
 
-Your LDAP directory must have the email field populated or Metabase won't be able to create or log in the user. If
-either name field is missing, Metabase will use a default of "Unknown", and the name can be changed manually in the
-user's account settings.
+Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the name can be changed manually in the person's account settings.
 
-If you have user groups in Metabase you are using to control access, it is often tedious to have to manually assign a user to a group after they're logged in via SSO. You can take advantage of the groups your LDAP directory uses by enabling Group Mappings, and specifying which LDAP group corresponds to which user group on your Metabase server.
+### LDAP user schema
 
-If you run into an issue, check out our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
+The **User Schema** section on this same page is where you can adjust settings related to where and how Metabase looks at your LDAP server to authenticate users.
+
+Let's stick with our WidgetCo example from above. If  entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to set the **User search base** field to `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
+
+While the grayed-out default **User filter** value works for most LDAP servers, this is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
+
+If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can utilize existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
+
+### Group mapping
+
+Manually assigning people to [groups](05-setting-permissions.html#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management). 
+
+Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which user group in your Metabase instance.
+
+As you can see below, if you have an **Accounting** group in both your LDAP server and Metabase instance, you'll just need to supply the Distinguished Name from your LDAP server (in the example, it's `cn=Accounting,ou=Groups,dc=widgetco,dc=com`) and select its match from the dropdown of your existing Metabase groups.
+
+![Group Mapping](images/ldap-group-mapping.png)
+
+Note that updates to group membership based on LDAP mappings will only take effect once a person has logged into Metabase again after the update.
+
+For a tutorial on setting up LDAP in Metabase, check out this [Learn lesson](/learn/permissions/ldap-auth-access-control.html). If you run into an issue, our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md) can help.
 
 ---
 
