@@ -931,15 +931,6 @@
 
 (declare ParameterType)
 
-(def TemplateTag:FieldFilter:WidgetType
-  "Schema for allowed values of `:widget-type` for Field filter template tags. `:widget-type` is only used for Field
-  filter parameters."
-  (s/cond-pre
-   ;; `:widget-type` can be any of the concrete parameter types, or it can also be `:category` (for connecting to a category Field) or `:id` (for connecting to an ID Field) -- whatever that means
-   ;; `:id` or `:category`
-   (s/enum :id :category)
-   (s/recursive #'ParameterType)))
-
 ;; Example:
 ;;
 ;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
@@ -956,7 +947,7 @@
     :dimension   field
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type TemplateTag:FieldFilter:WidgetType}))
+    :widget-type (s/recursive #'ParameterType)}))
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -1207,12 +1198,34 @@
 ;; `:parameters` specify the *values* of parameters previously definied for a Dashboard or Card (native query template
 ;; tag parameters.) See [[TemplateTag]] above for more information on the later.
 
+;; There are three things called 'type' in play when we talk about parameters and template tags.
+;;
+;; Two are used when the parameters are specified/declared, in a [[TemplateTag]] or in a Dashboard parameter:
+;;
+;; 1. Dashboard parameter/template tag `:type` -- `:dimension` (for a Field filter parameter),
+;;    otherwise `:text`, `:number`, `:boolean`, or `:date`
+;;
+;; 2. `:widget-type` -- only specified for Field filter parameters (where type is `:dimension`). This tells the FE
+;;    what type of widget to display, and also tells us what types of parameters we should allow. Examples:
+;;    `:date/all-options`, `:category`, etc.
+;;
+;; One type is used in the [[Parameter]] list (`:parameters`):
+;;
+;; 3. Parameter `:type` -- specifies the type of the value being passed in. e.g. `:text` or `:string/!=`
+;;
+;; Note that some types that makes sense as widget types (e.g. `:date/all-options`) but not as actual value types are
+;; currently still allowed for backwards-compatibility purposes -- currently the FE client will just parrot back the
+;; `:widget-type` in some cases. In these cases, the backend is just supposed to infer the actual type of the
+;; parameter value.
+
 (def parameter-types
   "Map of parameter-type -> info. Info is a map with the following keys:
 
   ### `:type`
 
-  The general type of this parameter. `:numeric`, `:string`, or `:date`.
+  The general type of this parameter. `:numeric`, `:string`, `:boolean`, or `:date`, if applicable. Some parameter
+  types like `:id` and `:category` don't have a particular `:type`. This is offered mostly so we can group stuff
+  together or determine things like whether a given parameter is a date parameter.
 
   ### `:operator`
 
@@ -1233,32 +1246,68 @@
   ;; `:type` -- the gener
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
-   :number            {:type :numeric, :allowed-for #{:number :number/= :id :category}}
-   :text              {:type :string,  :allowed-for #{:text :string/= :id :category}}
-   :date              {:type :date,    :allowed-for #{:date :date/all-options :id :category}}
+   :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
+   :text    {:type :string, :allowed-for #{:text :string/= :id :category
+                                           :location/city :location/state :location/zip_code :location/country}}
+   :date    {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
+   ;; I don't think `:boolean` is actually used on the FE at all.
+   :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
+
+   ;; as far as I can tell this is basically just an alias for `:date`... I'm not sure what the difference is TBH
+   :date/single {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
 
    ;; everything else can't be used with raw value template tags -- they can only be used with Dashboard parameters
    ;; for MBQL queries or Field filters in native queries
+
+   ;; `:id` and `:category` conceptually aren't types in a "the parameter value is of this type" sense, but they are
+   ;; widget types. They have something to do with telling the frontend to show FieldValues list/search widgets or
+   ;; something like that.
+   ;;
+   ;; Apparently the frontend might still pass in parameters with these types, in which case we're supposed to infer
+   ;; the actual type of the parameter based on the Field we're filtering on. Or something like that. Parameters with
+   ;; these types are only allowed if the widget type matches exactly, but you can also pass in something like a
+   ;; `:number/=` for a parameter with widget type `:category`.
+   :id       {:allowed-for #{:id}}
+   :category {:allowed-for #{:category}}
+
+   ;; Like `:id` and `:category`, the `:location/*` types are primarily widget types. They don't really have a meaning
+   ;; as a parameter type, so in an ideal world they wouldn't be allowed; however it seems like the FE still passed
+   ;; these in as parameter type on occasion anyway. In this case the backend is just supposed to infer the actual
+   ;; type -- which should be `:text` and, in the case of ZIP code, possibly `:number`.
+   ;;
+   ;; As with `:id` and `:category`, it would be preferable to just pass in a parameter with type `:text` or `:number`
+   ;; for these widget types, but for compatibility we'll allow them to continue to be used as parameter types for the
+   ;; time being. We'll only allow that if the widget type matches exactly, however.
+   :location/city     {:allowed-for #{:location/city}}
+   :location/state    {:allowed-for #{:location/state}}
+   :location/zip_code {:allowed-for #{:location/zip_code}}
+   :location/country  {:allowed-for #{:location/country}}
 
    ;; date range types -- these match a range of dates
    :date/range        {:type :date, :allowed-for #{:date/range :date/all-options}}
    :date/month-year   {:type :date, :allowed-for #{:date/month-year :date/all-options}}
    :date/quarter-year {:type :date, :allowed-for #{:date/quarter-year :date/all-options}}
    :date/relative     {:type :date, :allowed-for #{:date/relative :date/all-options}}
-   :date/all-options  {:type :date, :allowed-for #{:date/all-options}}
+
+   ;; Like `:id` and `:category` above, `:date/all-options` is primarily a widget type. It means that we should allow
+   ;; any date option above.
+   :date/all-options {:type :date, :allowed-for #{:date/all-options}}
 
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=} }
-   :number/<=               {:type :numeric, :operator :unary,    :allowed-for #{:number/<=}}
-   :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category}}
-   :number/>=               {:type :numeric, :operator :unary,    :allowed-for #{:number/>=}}
-   :number/between          {:type :numeric, :operator :binary,   :allowed-for #{:number/between}}
-   :string/!=               {:type :string,  :operator :variadic, :allowed-for #{:string/!=}}
-   :string/=                {:type :string,  :operator :variadic, :allowed-for #{:string/= :text :id :category}}
-   :string/contains         {:type :string,  :operator :unary,    :allowed-for #{:string/contains}}
-   :string/does-not-contain {:type :string,  :operator :unary,    :allowed-for #{:string/does-not-contain}}
-   :string/ends-with        {:type :string,  :operator :unary,    :allowed-for #{:string/ends-with}}
-   :string/starts-with      {:type :string,  :operator :unary,    :allowed-for #{:string/starts-with}}})
+   :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
+   :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
+                                                                                 :location/zip_code}}
+   :number/>=               {:type :numeric, :operator :unary, :allowed-for #{:number/>=}}
+   :number/between          {:type :numeric, :operator :binary, :allowed-for #{:number/between}}
+   :string/!=               {:type :string, :operator :variadic, :allowed-for #{:string/!=}}
+   :string/=                {:type :string, :operator :variadic, :allowed-for #{:string/= :text :id :category
+                                                                                 :location/city :location/state
+                                                                                 :location/zip_code :location/country}}
+   :string/contains         {:type :string, :operator :unary, :allowed-for #{:string/contains}}
+   :string/does-not-contain {:type :string, :operator :unary, :allowed-for #{:string/does-not-contain}}
+   :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
+   :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
 
 (defn valid-parameter-type?
   "Whether `param-type` is a valid non-abstract parameter type."
@@ -1280,7 +1329,9 @@
 
 (def ParameterTarget
   "Schema for the value of `:target` in a [[Parameter]]."
-  (one-of dimension variable))
+  ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
+  ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
+  (one-of field dimension variable))
 
 (def Parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
