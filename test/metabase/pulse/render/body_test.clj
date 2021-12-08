@@ -7,6 +7,12 @@
             [metabase.pulse.render.test-util :as render.tu]
             [schema.core :as s]))
 
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+      (thunk))))
+
 (def ^:private pacific-tz "America/Los_Angeles")
 
 (def ^:private test-columns
