@@ -77,6 +77,7 @@ function SemanticTypePicker({ field, sections }) {
           itemIsSelected={checkIsItemSelected}
           onChange={onChange}
           searchable
+          searchFuzzy={false}
           searchProp="name"
           searchPlaceholder={t`Search for a special type`}
           renderSearchSection={renderSearchSection}
