@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import { ResizableBox } from "react-resizable";
 
@@ -7,24 +7,25 @@ import Notebook from "metabase/query_builder/components/notebook/Notebook";
 import { NotebookContainer, Handle } from "./ResizableNotebook.styled";
 
 const propTypes = {
-  height: PropTypes.number.isRequired,
+  isResizing: PropTypes.bool.isRequired,
+  resizableBoxProps: PropTypes.object.isRequired,
   onResizeStop: PropTypes.func.isRequired,
 };
 
-function ResizableNotebook({ height, onResizeStop, ...notebookProps }) {
-  const [isResizing, setResizing] = useState(false);
+function ResizableNotebook({
+  isResizing,
+  onResizeStop,
+  resizableBoxProps,
+  ...notebookProps
+}) {
   return (
     <ResizableBox
       className="border-top flex"
       axis="y"
-      resizeHandles={["s"]}
-      height={height}
       handle={<Handle />}
-      onResizeStart={() => {
-        setResizing(true);
-      }}
+      {...resizableBoxProps}
       onResizeStop={(...args) => {
-        setResizing(false);
+        resizableBoxProps.onResizeStop(...args);
         onResizeStop(...args);
       }}
     >
