@@ -43,6 +43,13 @@ function getFieldSemanticTypes() {
 }
 
 function getFormFields({ dataset }) {
+  const visibilityTypeOptions = field_visibility_types
+    .filter(type => type.id !== "sensitive")
+    .map(type => ({
+      name: getVisibilityTypeName(type),
+      value: type.id,
+    }));
+
   return [
     { name: "display_name", title: t`Display name` },
     {
@@ -63,12 +70,7 @@ function getFormFields({ dataset }) {
       name: "visibility_type",
       title: t`This column should appear in…`,
       type: "radio",
-      options: field_visibility_types
-        .filter(type => type.id !== "sensitive")
-        .map(type => ({
-          name: getVisibilityTypeName(type),
-          value: type.id,
-        })),
+      options: visibilityTypeOptions,
     },
     {
       name: "display_as",
