@@ -588,11 +588,11 @@
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
   ;; Special axis-rowfns because we have more than 1 axis
-  (let [x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
-        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
-        rows             (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
-        x-rows           (map x-axis-rowfn rows)
-        y-rows           (map y-axis-rowfn rows)
+  (let [clean-rows       (common/non-nil-combo-rows rows)
+        x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card (assoc data :rows clean-rows))
+        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card (assoc data :rows clean-rows))
+        x-rows           (map x-axis-rowfn clean-rows)
+        y-rows           (map y-axis-rowfn clean-rows)
         joined-rows      (map vector x-rows y-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
 

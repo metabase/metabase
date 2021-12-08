@@ -451,14 +451,21 @@
 (defn- render-combo [results]
   (body/render :combo :inline pacific-tz render.tu/test-combo-card nil results))
 
+(defn- render-combo-multi-x [results]
+  (body/render :combo :inline pacific-tz render.tu/test-combo-card-multi-x nil results))
+
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
           (render-combo {:cols default-combo-columns
                          :rows [[10.0 1 123] [5.0 10 12] [2.50 20 1337] [1.25 30 -22]]}))))
+  (testing "Render a combo graph with multiple x axes"
+    (is (has-inline-image?
+          (render-combo-multi-x {:cols default-combo-columns
+                                 :rows [[10.0 "Bob" 123] [5.0 "Dobbs" 12] [2.50 "Robbs" 1337] [1.25 "Mobbs" -22]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
-          (render-combo {:cols default-columns
+          (render-combo {:cols default-combo-columns
                          :rows [[nil 1 1] [10.0 1 nil] [5.0 10 22] [2.50 nil 22] [1.25 nil nil]]})))))
 
 ;; Test rendering a sparkline
