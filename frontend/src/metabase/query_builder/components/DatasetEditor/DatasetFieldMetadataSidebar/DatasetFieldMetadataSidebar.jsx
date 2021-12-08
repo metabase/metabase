@@ -13,7 +13,8 @@ import RootForm from "metabase/containers/Form";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import { PaddedContent, Divider } from "./DatasetFieldMetadataSidebar.styled";
+import FormFieldDivider from "./FormFieldDivider";
+import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
 
 const propTypes = {
   field: PropTypes.instanceOf(Field).isRequired,
@@ -112,7 +113,7 @@ function DatasetFieldMetadataSidebar({ field }) {
                 <FormField name="display_name" />
                 <FormField name="description" />
                 <FormField name="semantic_type" />
-                <Divider />
+                <FormFieldDivider />
                 <FormField name="visibility_type" />
                 <FormField name="display_as" />
                 <FormField name="has_field_values" />
