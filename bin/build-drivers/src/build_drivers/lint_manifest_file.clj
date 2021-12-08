@@ -28,7 +28,7 @@
 (s/def ::parent (s/or :single-parent string? :multiple-parent (s/coll-of string?)))
 
 (s/def ::required boolean?)
-(s/def ::placeholder string?)
+(s/def ::placeholder any?)
 (s/def ::type #(contains? property-types %))
 (s/def ::visible-if (s/map-of keyword? any?))
 

@@ -16,7 +16,6 @@
             [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
