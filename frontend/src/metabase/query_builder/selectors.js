@@ -171,6 +171,11 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
+export const getDatasetEditorTab = createSelector(
+  [getUiControls],
+  uiControls => uiControls.datasetEditorTab,
+);
+
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
   (metadata, card) => metadata && card && new Question(card, metadata),

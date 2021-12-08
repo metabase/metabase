@@ -131,7 +131,14 @@ export default class TableInteractive extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const PROP_KEYS = ["width", "height", "settings", "data", "clicked"];
+    const PROP_KEYS = [
+      "width",
+      "height",
+      "settings",
+      "data",
+      "clicked",
+      "renderTableHeaderWrapper",
+    ];
     // compare specific props and state to determine if we should re-render
     return (
       !_.isEqual(
