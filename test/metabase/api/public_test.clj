@@ -96,7 +96,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings}
                  (set (keys (http/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
@@ -108,29 +108,6 @@
           (mt/with-temp-vals-in-db Card card-id {:archived true}
             (is (= "An error occurred."
                    (http/client :get 400 (str "public/card/" uuid))))))))))
-
-(deftest make-sure--param-values-get-returned-as-expected
-  (mt/with-temp Card [card {:dataset_query
-                            {:database (mt/id)
-                             :type     :native
-                             :native   {:query         (str "SELECT COUNT(*) "
-                                                            "FROM venues "
-                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                            "WHERE {{category}}")
-                                        :collection    "CATEGORIES"
-                                        :template-tags {:category {:name         "category"
-                                                                   :display-name "Category"
-                                                                   :type         "dimension"
-                                                                   :dimension    ["field" (mt/id :categories :name) nil]
-                                                                   :widget-type  "category"
-                                                                   :required     true}}}}}]
-    (is (= {(mt/id :categories :name) {:values                75
-                                       :human_readable_values []
-                                       :field_id              (mt/id :categories :name)}}
-           (-> (:param_values (#'public-api/public-card :id (u/the-id card)))
-               (update-in [(mt/id :categories :name) :values] count)
-               (update (mt/id :categories :name) #(into {} %)))))))
-
 
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
@@ -577,38 +554,6 @@
 (defn- add-dimension-param-mapping-to-dashcard! [dashcard card dimension]
   (db/update! DashboardCard (u/the-id dashcard) :parameter_mappings [{:card_id (u/the-id card)
                                                                       :target  ["dimension" dimension]}]))
-
-(defn- GET-param-values [dashboard]
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (:param_values (http/client :get 200 (str "public/dashboard/" (:public_uuid dashboard))))))
-
-(deftest check-that-param-info-comes-back-for-sql-cards
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (db/update! Card (u/the-id card)
-      :dataset_query {:database (mt/id)
-                      :type     :native
-                      :native   {:template-tags {:price {:name         "price"
-                                                         :display-name "Price"
-                                                         :type         "dimension"
-                                                         :dimension    ["field" (mt/id :venues :price) nil]}}}})
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["template-tag" "price"])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--field-id-
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
-
-(deftest check-that-param-info-comes-back-for-mbql-cards--fk---
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card [:field (mt/id :venues :price) {:source-field (mt/id :checkins :venue_id)}])
-    (is (= (price-param-values)
-           (GET-param-values dash)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
