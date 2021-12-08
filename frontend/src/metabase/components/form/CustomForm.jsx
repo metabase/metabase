@@ -159,9 +159,14 @@ export class CustomFormField extends React.Component {
       formField,
     };
 
+    const hasCustomWidget =
+      !formField.type && typeof formField.widget === "function";
+
+    const Widget = hasCustomWidget ? formField.widget : FormWidget;
+
     return (
       <FormField {...props}>
-        <FormWidget {...props} />
+        <Widget {...props} />
       </FormField>
     );
   }
