@@ -10,7 +10,7 @@ export const EditorContainer = styled.div`
   display: flex;
   position: relative;
   margin: ${space(1)} 0;
-  padding: ${space(1)};
+  padding: 12px ${space(1)};
   transition: border 0.3s linear;
 
   ${({ isFocused }) =>
@@ -35,5 +35,5 @@ export const EditorEqualsSign = styled.div`
     "source-code-pro", monospace;
   height: 12px;
   font-weight: 700;
-  margin: 0 ${space(0)}};
+  margin: 0 3px 0 ${space(0)};
 `;
