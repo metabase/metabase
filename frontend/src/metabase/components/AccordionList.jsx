@@ -86,6 +86,7 @@ export default class AccordionList extends Component {
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
+    hideEmptySectionsInSearch: PropTypes.bool,
 
     itemTestId: PropTypes.string,
   };
@@ -100,6 +101,7 @@ export default class AccordionList extends Component {
     alwaysTogglable: false,
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
+    hideEmptySectionsInSearch: false,
 
     // section getters/render props
     renderSectionIcon: section =>
@@ -245,6 +247,10 @@ export default class AccordionList extends Component {
     }
   };
 
+  checkSectionHasItemsMatchingSearch = (section, searchFilter) => {
+    return section.items.filter(searchFilter).length > 0;
+  };
+
   render() {
     const {
       id,
@@ -256,6 +262,7 @@ export default class AccordionList extends Component {
       alwaysTogglable,
       alwaysExpanded,
       hideSingleSectionTitle,
+      hideEmptySectionsInSearch,
     } = this.props;
 
     const openSection = this.getOpenSection();
@@ -292,7 +299,13 @@ export default class AccordionList extends Component {
         section.name &&
         (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
       ) {
-        rows.push({ type: "header", section, sectionIndex, isLastSection });
+        if (
+          !searchable ||
+          !hideEmptySectionsInSearch ||
+          this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+        ) {
+          rows.push({ type: "header", section, sectionIndex, isLastSection });
+        }
       } else {
         rows.push({
           type: "header-hidden",
