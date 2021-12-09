@@ -1,17 +1,10 @@
 import _ from "underscore";
-import { assoc, updateIn } from "icepick";
+import { updateIn } from "icepick";
 
-import { getParametersFromCard } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
 
-import * as Query from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
-
-// TODO Atte Keinänen 6/5/17 Should these be moved to corresponding metabase-lib classes?
-// Is there any reason behind keeping them in a central place?
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   type: "query",
@@ -147,70 +140,4 @@ export function applyParameters(
 
 export function isTransientId(id) {
   return id != null && typeof id === "string" && isNaN(parseInt(id));
-}
-
-/** returns a question URL with parameters added to query string or MBQL filters */
-export function questionUrlWithParameters(
-  card,
-  metadata,
-  parameters,
-  parameterValues = {},
-  parameterMappings = [],
-  cardIsDirty = true,
-) {
-  if (!card.dataset_query) {
-    return Urls.question(card);
-  }
-
-  card = Utils.copy(card);
-
-  const cardParameters = getParametersFromCard(card);
-  const datasetQuery = applyParameters(
-    card,
-    parameters,
-    parameterValues,
-    parameterMappings,
-  );
-
-  // If we have a clean question without parameters applied, don't add the dataset query hash
-  if (
-    !cardIsDirty &&
-    !isTransientId(card.id) &&
-    datasetQuery.parameters &&
-    datasetQuery.parameters.length === 0
-  ) {
-    return Urls.question(card);
-  }
-
-  const query = {};
-  for (const datasetParameter of datasetQuery.parameters || []) {
-    const cardParameter = _.find(cardParameters, p =>
-      Utils.equals(p.target, datasetParameter.target),
-    );
-    if (cardParameter) {
-      // if the card has a real parameter we can use, use that
-      query[cardParameter.slug] = datasetParameter.value;
-    } else if (isStructured(card)) {
-      // if the card is structured, try converting the parameter to an MBQL filter clause
-      const filter = parameterToMBQLFilter(datasetParameter, metadata);
-      if (filter) {
-        card = updateIn(card, ["dataset_query", "query"], query =>
-          Query.addFilter(query, filter),
-        );
-      } else {
-        console.warn("UNHANDLED PARAMETER", datasetParameter);
-      }
-    } else {
-      console.warn("UNHANDLED PARAMETER", datasetParameter);
-    }
-  }
-
-  if (isTransientId(card.id)) {
-    card = assoc(card, "id", null);
-  }
-  if (isTransientId(card.original_card_id)) {
-    card = assoc(card, "original_card_id", null);
-  }
-
-  return Urls.question(null, card.dataset_query ? card : undefined, query);
 }

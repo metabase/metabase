@@ -79,6 +79,28 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
   const selectedDimensions = query.columnDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
   const fields = query.fields();
+
+  const handleSelectNone = () => {
+    query.setFields([dimensions[0].mbql()]).update(updateQuery);
+  };
+
+  const handleToggleDimension = dimension =>
+    query
+      .setFields(
+        dimensions
+          .filter(d => {
+            if (d === dimension) {
+              return !selected.has(d.key());
+            } else {
+              return selected.has(d.key());
+            }
+          })
+          .map(d => d.mbql()),
+      )
+      .update(updateQuery);
+
+  const hasOneColumnSelected = fields.length === 1;
+
   return (
     <FieldsPicker
       {...props}
@@ -86,21 +108,9 @@ const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
       selectedDimensions={selectedDimensions}
       isAll={!fields || fields.length === 0}
       onSelectAll={() => query.clearFields().update(updateQuery)}
-      onToggleDimension={(dimension, enable) => {
-        query
-          .setFields(
-            dimensions
-              .filter(d => {
-                if (d === dimension) {
-                  return !selected.has(d.key());
-                } else {
-                  return selected.has(d.key());
-                }
-              })
-              .map(d => d.mbql()),
-          )
-          .update(updateQuery);
-      }}
+      onSelectNone={handleSelectNone}
+      disableSelected={hasOneColumnSelected}
+      onToggleDimension={handleToggleDimension}
     />
   );
 };

@@ -14,9 +14,9 @@
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor :as qp]
             [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
@@ -28,36 +28,6 @@
   (:import metabase.models.card.CardInstance))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
-
-;; TODO - this is probably something that could live somewhere else and just be reused
-;; TODO - this should be done async
-(defn execute-card
-  "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
-  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
-  {:pre [(or (integer? pulse-creator-id)
-             (= (:context options) :metabot))]}
-  (let [card-id (u/the-id card-or-id)]
-    (try
-      (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
-        (let [query         (assoc query :async? false)
-              process-query (fn []
-                              (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false})
-                                 (merge {:executed-by pulse-creator-id
-                                         :context     :pulse
-                                         :card-id     card-id}
-                                        options))))
-              result        (if pulse-creator-id
-                              (session/with-current-user pulse-creator-id
-                                (process-query))
-                              (process-query))]
-          {:card   card
-           :result result}))
-      (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
@@ -148,7 +118,7 @@
              (if (and card result)
                {:title           (or (-> dashcard :visualization_settings :card.title)
                                      card-name)
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id
@@ -373,7 +343,7 @@
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [result (execute-card pulse (u/the-id card), :pulse-id pulse-id)]
+                                  :let  [result (pu/execute-card pulse (u/the-id card), :pulse-id pulse-id)]
                                   ;; some cards may return empty results, e.g. if the card has been archived
                                   :when result]
                               result))))

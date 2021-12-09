@@ -87,6 +87,29 @@
   (-> (DashboardCard id)
       (hydrate :series)))
 
+(defn dashcard->multi-cards
+  "Return the cards which are other cards with respect to this dashboard card
+  in multiple series display for dashboard
+
+  Dashboard (and dashboard only) has this thing where you're displaying multiple cards entirely.
+
+  This is actually completely different from the combo display,
+  which is a visualization type in visualization option.
+
+  This is also actually completely different from having multiple series display
+  from the visualization with same type (line bar or whatever),
+  which is a separate option in line area or bar visualization"
+  [dashcard]
+  (db/query {:select [:newcard.*]
+             :from [[:report_dashboardcard :dashcard]]
+             :left-join [[:dashboardcard_series :dashcardseries]
+                         [:= :dashcard.id :dashcardseries.dashboardcard_id]
+                         [:report_card :newcard]
+                         [:= :dashcardseries.card_id :newcard.id]]
+             :where [:and
+                     [:= :newcard.archived false]
+                     [:= :dashcard.id (:id dashcard)]]}))
+
 (s/defn update-dashboard-card-series!
   "Update the DashboardCardSeries for a given DashboardCard.
    `card-ids` should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.

@@ -25,10 +25,7 @@ Object.entries(DASHBOARD_LOCATION_FILTERS).forEach(
         editDashboard();
         setFilter("Location", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("City")
           .click();

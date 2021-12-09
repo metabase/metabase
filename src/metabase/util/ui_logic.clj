@@ -83,6 +83,30 @@
   [card results]
   (graph-column-index :graph.dimensions card results))
 
+(defn mult-y-axis-rowfn
+  "This is used as the Y-axis column in the UI
+  when we have comboes, which have more than one y axis."
+  [card results]
+  (let [metrics     (some-> card
+                            (get-in [:visualization_settings :graph.metrics]))
+        col-indices (map #(column-name->index % results) metrics)]
+    (when (seq? col-indices)
+      (fn [row]
+        (vec (for [idx col-indices]
+               (get row idx)))))))
+
+(defn mult-x-axis-rowfn
+  "This is used as the X-axis column in the UI
+  when we have comboes, which have more than one x axis."
+  [card results]
+  (let [metrics     (some-> card
+                            (get-in [:visualization_settings :graph.dimensions]))
+        col-indices (map #(column-name->index % results) metrics)]
+    (when (seq? col-indices)
+      (fn [row]
+        (vec (for [idx col-indices]
+               (get row idx)))))))
+
 (defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come
   from the visualization settings if the column is specified, or from our default column logic"
