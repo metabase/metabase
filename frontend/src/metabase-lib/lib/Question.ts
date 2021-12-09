@@ -31,9 +31,15 @@ import {
   syncTableColumnsToQuery,
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import {
+  getValueAndFieldIdPopulatedParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase/parameters/utils/cards";
 import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
-import { normalizeParameterValue } from "metabase/parameters/utils/parameter-values";
+import {
+  normalizeParameterValue,
+  getParameterValuesBySlug,
+} from "metabase/parameters/utils/parameter-values";
 import {
   aggregate,
   breakout,
@@ -43,7 +49,12 @@ import {
   pivot,
   toUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-import { CardApi, maybeUsePivotEndpoint, MetabaseApi } from "metabase/services";
+import {
+  DashboardApi,
+  CardApi,
+  maybeUsePivotEndpoint,
+  MetabaseApi,
+} from "metabase/services";
 import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
@@ -834,6 +845,10 @@ export default class Question {
     );
   }
 
+  setDashboardId(dashboardId: number): Question {
+    return this.setCard(assoc(this.card(), "dashboardId", dashboardId));
+  }
+
   description(): string | null | undefined {
     return this._card && this._card.description;
   }
@@ -1000,8 +1015,10 @@ export default class Question {
   } = {}): Promise<[Dataset]> {
     // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
     const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = this.parametersList() // include only parameters that have a value applied
-      .filter(param => _.has(param, "value")) // only the superset of parameters object that API expects
+    const parameters = this.parameters()
+      // include only parameters that have a value applied
+      .filter(param => _.has(param, "value"))
+      // only the superset of parameters object that API expects
       .map(param => _.pick(param, "type", "target", "value", "id"))
       .map(({ type, value, target, id }) => {
         return {
@@ -1013,14 +1030,17 @@ export default class Question {
       });
 
     if (canUseCardApiEndpoint) {
+      const dashboardId = this._card.dashboardId;
+
       const queryParams = {
         cardId: this.id(),
+        dashboardId,
         ignore_cache: ignoreCache,
         parameters,
       };
       return [
         await maybeUsePivotEndpoint(
-          CardApi.query,
+          dashboardId ? DashboardApi.cardQuery : CardApi.query,
           this.card(),
           this.metadata(),
         )(queryParams, {
@@ -1088,6 +1108,12 @@ export default class Question {
     return this.setCard(assoc(this.card(), "parameters", parameters));
   }
 
+  setParameterValues(parameterValues) {
+    const question = this.clone();
+    question._parameterValues = parameterValues;
+    return question;
+  }
+
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
     return getValueAndFieldIdPopulatedParametersFromCard(
@@ -1095,10 +1121,6 @@ export default class Question {
       this.metadata(),
       this._parameterValues,
     );
-  }
-
-  parametersList(): ParameterObject[] {
-    return Object.values(this.parameters()) as ParameterObject[];
   }
 
   // predicate function that dermines if the question is "dirty" compared to the given question
@@ -1124,7 +1146,12 @@ export default class Question {
 
   isDirtyComparedToWithoutParameters(originalQuestion: Question) {
     const [a, b] = [this, originalQuestion].map(q => {
-      return q && new Question(q.card(), this.metadata()).setParameters([]);
+      return (
+        q &&
+        new Question(q.card(), this.metadata())
+          .setParameters([])
+          .setDashboardId(undefined)
+      );
     });
     return a.isDirtyComparedTo(b);
   }
@@ -1161,11 +1188,9 @@ export default class Question {
             displayIsLocked: this._card.displayIsLocked,
           }
         : {}),
-      ...(creationType
-        ? {
-            creationType,
-          }
-        : {}),
+
+      ...(creationType ? { creationType } : {}),
+      dashboardId: this._card.dashboardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
@@ -1175,24 +1200,53 @@ export default class Question {
       return this;
     }
 
-    return this.parametersList()
-      .reduce(
-        (query, parameter) =>
-          query.filter(parameterToMBQLFilter(parameter, this.metadata())),
-        this.query(),
-      )
+    const [query, isAltered] = this.parameters().reduce(
+      ([query, isAltered], parameter) => {
+        const filter = parameterToMBQLFilter(parameter, this.metadata());
+        return filter ? [query.filter(filter), true] : [query, isAltered];
+      },
+      [this.query(), false],
+    );
+
+    const question = query
       .question()
-      .setParameters([]);
+      .setParameters(undefined)
+      .setParameterValues(undefined);
+
+    return isAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters() {
-    const question = this.convertParametersToFilters().markDirty();
-    const query = this.isNative() ? this._parameterValues : undefined;
-    return question.getUrl({
-      originalQuestion: this,
-      query,
-      includeDisplayIsLocked: true,
-    });
+  getUrlWithParameters(parameters, parameterValues) {
+    const includeDisplayIsLocked = true;
+
+    if (this.isStructured()) {
+      const questionWithParameters = this.setParameters(parameters);
+
+      if (this.query().isEditable()) {
+        return questionWithParameters
+          .setParameterValues(parameterValues)
+          .convertParametersToFilters()
+          .getUrl({
+            originalQuestion: this,
+            includeDisplayIsLocked,
+          });
+      } else {
+        const query = getParameterValuesBySlug(parameters, parameterValues);
+        return questionWithParameters.markDirty().getUrl({
+          query,
+          includeDisplayIsLocked,
+        });
+      }
+    } else {
+      return this.getUrl({
+        query: remapParameterValuesToTemplateTags(
+          this.query().templateTags(),
+          parameters,
+          parameterValues,
+        ),
+        includeDisplayIsLocked,
+      });
+    }
   }
 
   getModerationReviews() {

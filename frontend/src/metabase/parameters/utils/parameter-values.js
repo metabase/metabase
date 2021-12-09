@@ -30,7 +30,7 @@ export function getParameterValueFromQueryParams(
   queryParams = queryParams || {};
 
   const fields = getFields(parameter, metadata);
-  const maybeParameterValue = queryParams[parameter.slug];
+  const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
   if (hasParameterValue(maybeParameterValue)) {
     const parsedValue = parseParameterValueForFields(
