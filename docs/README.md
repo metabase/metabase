@@ -60,22 +60,22 @@
 - [Editing your account settings](./users-guide/account-settings.html)
 - [Managing people and groups](./administration-guide/04-managing-users.html)
 - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
-- [SAML](./administration-guide/authenticating-with-saml.html)
-- [JWT](./administration-guide/authenticating-with-jwt.html)
-- [Password complexity](./administration-guide/changing-password-complexity.html)
-- [Session expiration](./administration-guide/changing-session-expiration.html)
+- [SAML](./enterprise-guide/authenticating-with-saml.html)
+- [JWT](./enterprise-guide/authenticating-with-jwt.html)
+- [Password complexity](./operations-guide/changing-password-complexity.html)
+- [Session expiration](./operations-guide/changing-session-expiration.html)
 
 ## Permissions
 
 - [Data permissions](./administration-guide/05-setting-permissions.html)
 - [Collection permissions](./administration-guide/06-collections.html)
-- [Sandboxing data based on user attributes](./administration-guide/data-sandboxes.html)
-- [Organizing SQL snippets with folders and permissions](./administration-guide/sql-snippets.html)
+- [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.html)
+- [SQL snippets folder permissions](./enterprise-guide/sql-snippets.html)
 
 ## Embedding questions and dashboards
 
-- [Sharing dashboards and questions with public links](./administration-guide/12-public-links.html)
-- [Embedding Metabase in other Applications](./administration-guide/13-embedding.html)
+- [Public links for dashboards and questions](./administration-guide/12-public-links.html)
+- [Embedding Metabase in other applications](./administration-guide/13-embedding.html)
 - [Embedding the entire Metabase app in your own web app](./administration-guide/full-app-embedding.html)
 - [Embedding example apps][embedding-ref-apps]
 - [White labeling charts (branding)](./enterprise-guide/whitelabeling.html)
@@ -86,23 +86,23 @@
 - [Encrypting your database connection](./operations-guide/encrypting-database-details-at-rest.html)
 - [Editing your database metadata](./administration-guide/03-metadata-editing.html)
 - [Creating segments and metrics](./administration-guide/07-segments-and-metrics.html)
-- [SSH tunneling](./operations-guide/ssh-tunnel-for-database-connections.html)
-- [SSL certificate](./operations-guide/secure-database-connections-with-ssl-certificates.html)
+- [SSH tunneling](./administration-guide/ssh-tunnel-for-database-connections.html)
+- [SSL certificate](./administration-guide/secure-database-connections-with-ssl-certificates.html)
 
 ## Configuring Metabase
 
 - [Settings](./administration-guide/08-configuration-settings.html)
 - [Email](./administration-guide/02-setting-up-email.html)
 - [Slack](./administration-guide/09-setting-up-slack.html)
-- [Environment variables](./administration-guide/environment-variables.html)
-- [Handling Timezones](./administration-guide/handling-timezones.html)
-- [Customizing the Metabase Jetty Webserver](./administration-guide/customizing-jetty-webserver.html)
+- [Environment variables](./operations-guide/environment-variables.html)
+- [Handling Timezones](./operations-guide/handling-timezones.html)
+- [Customizing the Metabase Jetty Webserver](./operations-guide/customizing-jetty-webserver.html)
 - [Default formatting](./administration-guide/19-formatting-settings.html)
 - [Localization](./administration-guide/localization.html)
 - [Caching query results](./administration-guide/14-caching.html)
 - [Custom map settings](./administration-guide/20-custom-maps.html)
 
-## Analyzing Metabase
+## Usage and performance tools
 
 - [Auditing tools](./enterprise-guide/audit.html)
 - [Tracking query errors](./enterprise-guide/tools.html)
@@ -118,9 +118,9 @@
 - [Metabase forum][forum].
 - [Configuring Logging](./operations-guide/log-configuration.html)
 
-## Pro and Enterprise
+## Enterprise and Pro editions
 
-- [Getting and activating the Enterprise edition](activating-the-enterprise-edition.html)
+- [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.html)
 - [List of premium features][enterprise]
 
 ## Metabase community
