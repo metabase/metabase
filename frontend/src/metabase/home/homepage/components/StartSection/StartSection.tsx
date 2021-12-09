@@ -1,5 +1,6 @@
 import React from "react";
 import { jt, t } from "ttag";
+import Ellipsified from "metabase/components/Ellipsified";
 import ExternalLink from "metabase/components/ExternalLink";
 import Link from "metabase/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -76,7 +77,9 @@ const DashboardCard = ({ dashboard }: DashboardCardProps) => {
   return (
     <CardRoot to={dashboardUrl}>
       <CardIcon name="dashboard" />
-      <CardTitle>{dashboard.name}</CardTitle>
+      <CardTitle>
+        <Ellipsified>{dashboard.name}</Ellipsified>
+      </CardTitle>
     </CardRoot>
   );
 };

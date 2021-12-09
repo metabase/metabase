@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
+import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import {
@@ -75,7 +76,9 @@ const XrayCard = ({ option }: XrayCardProps) => {
         <CardIcon name="bolt" />
       </CardIconContainer>
       <CardTitle>
-        {t`A look at your`} <strong>{option.title}</strong>
+        <Ellipsified>
+          {t`A look at your`} <strong>{option.title}</strong>
+        </Ellipsified>
       </CardTitle>
     </CardRoot>
   );
