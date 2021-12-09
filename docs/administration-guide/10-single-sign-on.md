@@ -2,7 +2,7 @@
 
 Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) lets your team log in with a click instead of using email and password, and can optionally let them sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
 
-If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](../enterprise-guide/authenticating-with-saml.md).
+If you'd like to have your users authenticate with SAML or JWT, Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. Learn more about authenticating with [SAML](../enterprise-guide/authenticating-with-saml.md) or [JWT](../enterprise-guide/authenticating-with-jwt.md).
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
@@ -26,7 +26,6 @@ Note that Metabase accounts created with Google Sign-In do not have passwords an
 
 ## Enabling LDAP authentication
 
-
 In the **Admin** > **Authentication** tab, go the the LDAP section and click **Configure**. Fill out the form with the information about your LDAP server:
 
 - hostname
@@ -37,7 +36,13 @@ In the **Admin** > **Authentication** tab, go the the LDAP section and click **C
 
 Then save your changes.
 
-Metabase will pull out three main attributes from your LDAP directory - email (defaulting to the `mail` attribute), first name (defaulting to the `givenName` attribute), and last name (defaulting to the `sn` attribute). If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
+Metabase will pull out three main attributes from your LDAP directory:
+
+- email (defaulting to the `mail` attribute)
+- first name (defaulting to the `givenName` attribute)
+- last name (defaulting to the `sn` attribute). 
+  
+If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
 
 ![Attributes](./images/ldap-attributes.png)
 
@@ -47,9 +52,21 @@ Your LDAP directory must have the email field populated for each entry that will
 
 The **User Schema** section on this same page is where you can adjust settings related to where and how Metabase connects to your LDAP server to authenticate users.
 
-Let's stick with our WidgetCo example from above. If  entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to set the **User search base** field to `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
+The **User search base** field should be completed with the *distinguished name* (DN) of the entry in your LDAP server that is the starting point when searching for users.
 
-While the grayed-out default **User filter** value works for most LDAP servers, this is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
+For example, let's say you're configuring LDAP for your company, WidgetCo, where your base DN is `dc=widgetco,dc=com`. If entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to supply the user search base field with the DN `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
+
+You'll see the following grayed-out default value in the **User filter** field:
+
+`(&(objectClass=inetOrgPerson)(|uid={login})(mail={login})` 
+
+When a person logs into Metabase, this command confirms that the login they supplied matches either a UID *or* email field in your LDAP server, *and* that the matching entry has an objectClass of `inetOrgPerson`.
+
+This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
+
+### Syncing user attributes
+
+{% include plans-blockquote.html %}
 
 If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can utilize existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
 
@@ -63,7 +80,7 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 
 ![Group Mapping](images/ldap-group-mapping.png)
 
-Note that updates to group membership based on LDAP mappings will only take effect once a person has logged into Metabase again after the update.
+Note that updates to a person's group membership based on LDAP mappings will only take effect once they have logged into Metabase again after the update.
 
 For a tutorial on setting up LDAP in Metabase, check out this [Learn lesson](/learn/permissions/ldap-auth-access-control.html). If you run into an issue, our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md) can help.
 
