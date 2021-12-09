@@ -73,11 +73,11 @@
   This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
   [driver, database :- i/DatabaseInstance, metabase-metadata-table :- i/DatabaseMetadataTable]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
-    (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
-      (or (set-property! database (parse-keypath keypath) value)
-          (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
-
+  (when-let [table-rows-seq (get-method driver/table-rows-seq driver)]
+    (doseq [{:keys [keypath value]} (table-rows-seq driver database metabase-metadata-table)]
+      (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
+        (or (set-property! database (parse-keypath keypath) value)
+            (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))))))
 
 (s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
