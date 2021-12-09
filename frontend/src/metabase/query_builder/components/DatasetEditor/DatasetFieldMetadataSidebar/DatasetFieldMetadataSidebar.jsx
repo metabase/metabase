@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -11,12 +11,15 @@ import {
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
+import { keyForColumn } from "metabase/lib/dataset";
 
 import RootForm from "metabase/containers/Form";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+
+import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 
 import FormFieldDivider from "./FormFieldDivider";
 import MappedFieldPicker from "./MappedFieldPicker";
@@ -27,6 +30,7 @@ const propTypes = {
   dataset: PropTypes.object.isRequired,
   field: PropTypes.instanceOf(Field).isRequired,
   IDFields: PropTypes.array.isRequired,
+  updateCardVisualizationSettings: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state, { dataset }) {
@@ -35,6 +39,8 @@ function mapStateToProps(state, { dataset }) {
     IDFields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 }
+
+const mapDispatchToProps = { updateCardVisualizationSettings };
 
 function getVisibilityTypeName(visibilityType) {
   if (visibilityType.id === "normal") {
@@ -137,7 +143,12 @@ function getFormFields({ dataset, IDFields }) {
 
 const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set(["column_title"]);
 
-function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
+function DatasetFieldMetadataSidebar({
+  dataset,
+  field,
+  IDFields,
+  updateCardVisualizationSettings,
+}) {
   const initialValues = useMemo(() => {
     const values = {
       display_name: field?.display_name,
@@ -158,6 +169,32 @@ function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
     IDFields,
   ]);
 
+  const fieldFormattingSettings = useMemo(() => {
+    if (!field) {
+      return {};
+    }
+    const fieldKey = keyForColumn(field);
+    const columnSettings = dataset.setting("column_settings", {});
+    return columnSettings[fieldKey] || {};
+  }, [dataset, field]);
+
+  const handleFormattingSettingsChange = useCallback(
+    settings => {
+      const fieldKey = keyForColumn(field);
+      const nextFieldSettings = {
+        ...fieldFormattingSettings,
+        ...settings,
+      };
+      updateCardVisualizationSettings({
+        column_settings: {
+          ...dataset.setting("column_settings"),
+          [fieldKey]: nextFieldSettings,
+        },
+      });
+    },
+    [dataset, field, fieldFormattingSettings, updateCardVisualizationSettings],
+  );
+
   return (
     <SidebarContent>
       <PaddedContent>
@@ -176,8 +213,8 @@ function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
                 <FormFieldDivider />
                 <ColumnSettings
                   column={field}
-                  value={field?.settings || {}}
-                  onChange={() => {}}
+                  value={fieldFormattingSettings}
+                  onChange={handleFormattingSettingsChange}
                   inheritedSettings={getGlobalSettingsForColumn(field)}
                   denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
                 />
@@ -195,4 +232,7 @@ function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default connect(mapStateToProps)(DatasetFieldMetadataSidebar);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(DatasetFieldMetadataSidebar);
