@@ -68,7 +68,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
       const [firstOperand] = operands;
-      if (typeof firstOperand !== "undefined" && !Array.isArray(firstOperand)) {
+      if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
         throw new Error(t`Expecting field but found ${firstOperand}`);
       }
     } else if (op === "concat") {
