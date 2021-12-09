@@ -37,7 +37,4 @@ export function FieldValuesList({ field, fieldValues = [], fetchFieldValues }) {
 
 FieldValuesList.propTypes = propTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldValuesList);
+export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesList);
