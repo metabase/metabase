@@ -217,6 +217,7 @@ function DatasetFieldMetadataSidebar({
                   onChange={handleFormattingSettingsChange}
                   inheritedSettings={getGlobalSettingsForColumn(field)}
                   denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                  variant="form-field"
                 />
                 <FormField name="visibility_type" />
                 <FormField name="display_as" />
