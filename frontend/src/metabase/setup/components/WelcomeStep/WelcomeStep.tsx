@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
+import StepFooter from "../StepFooter";
 import {
   StepRoot,
   StepMain,
@@ -20,6 +21,7 @@ const WelcomeStep = () => {
         </StepBody>
         <StepButton primary>{t`Let's get started`}</StepButton>
       </StepMain>
+      <StepFooter />
     </StepRoot>
   );
 };

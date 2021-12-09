@@ -15,6 +15,7 @@ export const StepMain = styled.main`
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin: 7rem 0 2rem;
   max-width: 34.4rem;
 `;
 
