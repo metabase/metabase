@@ -25,11 +25,11 @@ This guide contains detailed information about how to install and configure Meta
 -  [Customizing the Metabase Jetty Webserver](customizing-jetty-webserver.html)
 -  [Changing password complexity](changing-password-complexity.html)
 -  [Changing session expiration](changing-session-expiration.html)
--  [Handling Timezones](handling-timezones.html)
--  [Configuring Logging](log-configuration.html)
+-  [Handling timezones](handling-timezones.html)
+-  [Configuring logging](log-configuration.html)
 -  [How to setup monitoring via JMX](jmx-monitoring.html)
 -  [A word on Java versions](java-versions.html)
 
 ## Scaling Metabase
 
-- [Metabase at Scale](https://www.metabase.com/blog/scaling-metabase/index.html)
+- [Metabase at scale](https://www.metabase.com/blog/scaling-metabase/index.html)

@@ -34,7 +34,7 @@
 
 - [The native SQL editor](./users-guide/writing-sql.html)
 - [Viewing metadata](./users-guide/12-data-model-reference.html)
-- [SQL Templates](./users-guide/13-sql-parameters.html)
+- [SQL templates](./users-guide/13-sql-parameters.html)
 - [SQL snippets](./users-guide/sql-snippets.html)
 
 ### Alerts and Metabot
@@ -95,7 +95,7 @@
 - [Email](./administration-guide/02-setting-up-email.html)
 - [Slack](./administration-guide/09-setting-up-slack.html)
 - [Environment variables](./operations-guide/environment-variables.html)
-- [Handling Timezones](./operations-guide/handling-timezones.html)
+- [Handling timezones](./operations-guide/handling-timezones.html)
 - [Customizing the Metabase Jetty Webserver](./operations-guide/customizing-jetty-webserver.html)
 - [Default formatting](./administration-guide/19-formatting-settings.html)
 - [Localization](./administration-guide/localization.html)
@@ -114,9 +114,9 @@
 
 ## Troubleshooting and getting help
 
-- [Troubleshooting Guide][troubleshooting]. 
-- [Metabase forum][forum].
-- [Configuring Logging](./operations-guide/log-configuration.html)
+- [Troubleshooting guide][troubleshooting] 
+- [Metabase forum][forum]
+- [Configuring logging](./operations-guide/log-configuration.html)
 
 ## Enterprise and Pro editions
 
@@ -143,6 +143,7 @@
 
 - [Anonymous Information Collection Reference][info-collection]
 - [FAQs][faq]
+- [Glossary][glossary]
 
 [api-documentation]: ./api-documentation.html
 [api-tutorial]: /learn/administration/metabase-api.html
@@ -158,6 +159,7 @@
 [faq]: faq/start.html
 [forum]: https://discourse.metabase.com/
 [getting-started]: /learn/getting-started/getting-started.html
+[glossary]: /glossary.html
 [info-collection]: information-collection.html
 [learn]: /learn
 [operations-guide]: operations-guide/start.html
