@@ -65,6 +65,17 @@
                                         :visualization_settings {}}]}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
+(deftest dashcard->multi-card-test
+  (testing "Check that the multi-cards are returned"
+    (mt/with-temp* [Card                [card1]
+                    Card                [card2]
+                    Dashboard           [dashboard]
+                    DashboardCard       [dc-1 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card1)}]
+                    DashboardCard       [dc-2 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
+                    DashboardCardSeries [dcs-1 {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
+      (testing "get multi-cards"
+        (is (= 1 (count (dashboard-card/dashcard->multi-cards dc-1))))))))
+
 (deftest update-dashboard-card-series!-test
   (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
                                                      :creator_id (mt/user->id :rasta)}]
