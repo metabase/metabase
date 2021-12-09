@@ -87,17 +87,6 @@ export default class DatabaseEditApp extends Component {
     await this.props.initializeDatabase(this.props.params.databaseId);
   }
 
-  componentDidUpdate() {
-    const { database, databaseCreationStep } = this.props;
-    const { currentTab } = this.state;
-    const isNew = !database || !database.id;
-    const isCreationTab = currentTab === databaseCreationStep;
-
-    if (isNew && !isCreationTab) {
-      this.setState({ currentTab: databaseCreationStep });
-    }
-  }
-
   render() {
     const {
       database,
@@ -108,7 +97,6 @@ export default class DatabaseEditApp extends Component {
       rescanDatabaseFields,
       syncDatabaseSchema,
     } = this.props;
-    const { currentTab } = this.state;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
@@ -131,7 +119,7 @@ export default class DatabaseEditApp extends Component {
                 {() => (
                   <Databases.Form
                     database={database}
-                    form={Databases.forms[currentTab]}
+                    form={Databases.forms.connection}
                     formName={DATABASE_FORM_NAME}
                     onSubmit={this.props.saveDatabase}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
