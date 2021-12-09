@@ -1,7 +1,13 @@
 import React from "react";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
+
+import {
+  Root,
+  Title,
+  Description,
+  InfoIconContainer,
+} from "./ChartSettingsWidget.styled";
 
 type Props = {
   title?: string;
@@ -30,27 +36,20 @@ const ChartSettingsWidget = ({
   ...extraWidgetProps
 }: Props) => {
   return (
-    <div
-      className={cx({
-        mb3: !hidden,
-        mx4: !noPadding,
-        hide: hidden,
-        disable: disabled,
-      })}
-    >
+    <Root hidden={hidden} noPadding={noPadding} disabled={disabled}>
       {title && (
-        <h4 className="mb1 flex align-center">
+        <Title>
           {title}
           {hint && (
-            <span className="flex ml1">
+            <InfoIconContainer>
               <Icon name="info" size={14} tooltip={hint} />
-            </span>
+            </InfoIconContainer>
           )}
-        </h4>
+        </Title>
       )}
-      {description && <div className="mb1">{description}</div>}
+      {description && <Description>{description}</Description>}
       {Widget && <Widget {...extraWidgetProps} {...props} />}
-    </div>
+    </Root>
   );
 };
 
