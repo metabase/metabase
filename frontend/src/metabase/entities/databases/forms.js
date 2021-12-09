@@ -78,6 +78,12 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "schedules.metadata_sync": () => ({
+    type: MetadataSyncScheduleWidget,
+  }),
+  "schedules.cache_field_values": () => ({
+    type: CacheFieldValuesScheduleWidget,
+  }),
 };
 
 function getEngineName(engine) {
