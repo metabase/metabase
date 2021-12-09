@@ -1,13 +1,13 @@
-.ace_hidpi .ace_content {
+.expression-editor-textfield .ace_hidpi .ace_content {
   color: #4c5773;
   font-weight: 700;
 }
 
-.ace-tm .ace_keyword,
-.ace-tm .ace_constant.ace_numeric {
+.expression-editor-textfield .ace-tm .ace_keyword,
+.expression-editor-textfield .ace-tm .ace_constant.ace_numeric {
   color: #4c5773;
 }
 
-.ace-tm .ace_variable {
+.expression-editor-textfield .ace-tm .ace_variable {
   color: var(--color-brand);
 }
