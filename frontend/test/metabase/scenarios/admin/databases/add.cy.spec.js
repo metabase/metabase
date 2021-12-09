@@ -90,19 +90,16 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.route("POST", "/api/database").as("createDatabase");
-
     cy.visit("/admin/databases/create");
 
+    chooseDatabase("H2");
     typeField("Display name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
-
+    typeField("Connection String", "invalid");
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Save").click();
     cy.wait("@createDatabase");
-
-    cy.findByText(/Connection to :5432 refused/);
+    cy.findByText(/Hmm, we couldn't connect to the database/);
   });
 
   it("should show scheduling settings if you enable the toggle", () => {
