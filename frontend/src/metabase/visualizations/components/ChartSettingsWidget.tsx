@@ -1,8 +1,18 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
 import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
+
+type Props = {
+  title?: string;
+  description?: string;
+  hint?: string;
+  hidden?: boolean;
+  disabled?: boolean;
+  widget?: React.ComponentType;
+  props?: Record<string, unknown>;
+  noPadding?: boolean;
+};
 
 const ChartSettingsWidget = ({
   title,
@@ -11,16 +21,14 @@ const ChartSettingsWidget = ({
   hidden,
   disabled,
   widget: Widget,
-  value,
-  onChange,
   props,
   // disables X padding for certain widgets so divider line extends to edge
   noPadding,
   // NOTE: pass along special props to support:
   // * adding additional fields
   // * substituting widgets
-  ...additionalProps
-}) => {
+  ...extraWidgetProps
+}: Props) => {
   return (
     <div
       className={cx({
@@ -41,14 +49,7 @@ const ChartSettingsWidget = ({
         </h4>
       )}
       {description && <div className="mb1">{description}</div>}
-      {Widget && (
-        <Widget
-          value={value}
-          onChange={onChange}
-          {...additionalProps}
-          {...props}
-        />
-      )}
+      {Widget && <Widget {...extraWidgetProps} {...props} />}
     </div>
   );
 };
