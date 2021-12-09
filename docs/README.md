@@ -76,7 +76,7 @@
 
 - [Public links for dashboards and questions](./administration-guide/12-public-links.html)
 - [Embedding Metabase in other applications](./administration-guide/13-embedding.html)
-- [Embedding the entire Metabase app in your own web app](./administration-guide/full-app-embedding.html)
+- [Embedding the entire Metabase app in your own web app](./enterprise-guide/full-app-embedding.html)
 - [Embedding example apps][embedding-ref-apps]
 - [White labeling charts (branding)](./enterprise-guide/whitelabeling.html)
 
