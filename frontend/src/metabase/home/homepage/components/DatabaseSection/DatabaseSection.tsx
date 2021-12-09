@@ -1,6 +1,7 @@
 import React, { ReactNode } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
+import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
@@ -56,7 +57,9 @@ const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
             to={Urls.browseDatabase(database)}
           >
             <CardIcon name="database" />
-            <CardTitle>{database.name}</CardTitle>
+            <CardTitle>
+              <Ellipsified>{database.name}</Ellipsified>
+            </CardTitle>
           </DatabaseCardRoot>
         ))}
         {hasAddLink && !hasUserDatabase && (

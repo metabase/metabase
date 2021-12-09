@@ -25,6 +25,7 @@ export const CardTitle = styled.span`
   display: block;
   font-size: 1.17em;
   font-weight: 700;
+  overflow: hidden;
 `;
 
 export const CardIcon = styled(Icon)`
@@ -39,6 +40,7 @@ export const CardRoot = styled(Link)`
   padding: 1.875rem;
   border: 0.125rem solid ${color("bg-medium")};
   border-radius: 0.375rem;
+  overflow: hidden;
 `;
 
 export const DatabaseCardRoot = styled(CardRoot)`
