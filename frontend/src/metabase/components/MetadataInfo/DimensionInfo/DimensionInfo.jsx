@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionLabel from "metabase/components/MetadataInfo/DimensionLabel";
+import FieldFingerprintInfo from "metabase/components/MetadataInfo/FieldFingerprintInfo";
 
 import {
   InfoContainer,
@@ -27,6 +28,7 @@ function DimensionInfo({ className, dimension }) {
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <DimensionLabel dimension={dimension} />
+      <FieldFingerprintInfo field={dimension.field()} />
     </InfoContainer>
   );
 }
