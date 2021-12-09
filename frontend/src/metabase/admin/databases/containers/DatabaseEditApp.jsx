@@ -14,7 +14,6 @@ import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import DriverWarning from "metabase/components/DriverWarning";
-import Radio from "metabase/components/Radio";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 
 import Databases from "metabase/entities/databases";
@@ -61,26 +60,11 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
-const TABS = [
-  {
-    name: t`Connection`,
-    value: "connection",
-  },
-  {
-    name: t`Scheduling`,
-    value: "scheduling",
-  },
-];
-
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   constructor(props, context) {
     super(props, context);
-
-    this.state = {
-      currentTab: TABS[0].value,
-    };
   }
 
   static propTypes = {
@@ -128,8 +112,6 @@ export default class DatabaseEditApp extends Component {
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
-    const showTabs = editingExistingDatabase;
-
     const crumbs = [
       [t`Databases`, "/admin/databases"],
       [addingNewDatabase ? t`Add Database` : database.name],
@@ -142,16 +124,6 @@ export default class DatabaseEditApp extends Component {
         <Flex pb={2}>
           <Box>
             <div className="pt0">
-              {showTabs && (
-                <div className="border-bottom mb2">
-                  <Radio
-                    value={currentTab}
-                    options={TABS}
-                    onChange={currentTab => this.setState({ currentTab })}
-                    variant="underlined"
-                  />
-                </div>
-              )}
               <LoadingAndErrorWrapper
                 loading={!database}
                 error={initializeError}
