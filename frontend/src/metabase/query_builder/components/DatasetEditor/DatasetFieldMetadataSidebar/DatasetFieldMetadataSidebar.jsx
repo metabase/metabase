@@ -135,6 +135,8 @@ function getFormFields({ dataset, IDFields }) {
   ].filter(Boolean);
 }
 
+const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set(["column_title"]);
+
 function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
   const initialValues = useMemo(() => {
     const values = {
@@ -177,6 +179,7 @@ function DatasetFieldMetadataSidebar({ dataset, field, IDFields }) {
                   value={field?.settings || {}}
                   onChange={() => {}}
                   inheritedSettings={getGlobalSettingsForColumn(field)}
+                  denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
                 />
                 <FormField name="visibility_type" />
                 <FormField name="display_as" />
