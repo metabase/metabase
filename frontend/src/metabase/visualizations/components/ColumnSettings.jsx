@@ -64,8 +64,6 @@ const ColumnSettings = ({
           <ChartSettingsWidget
             key={widget.id}
             {...widget}
-            // FIXME: this is to force all settings to be visible but causes irrelevant settings to be shown
-            hidden={false}
             unset={storedSettings[widget.id] === undefined}
             noPadding
             variant={variant}
