@@ -36,22 +36,16 @@ import {
   selectEngine,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { getIn } from "icepick";
 
 const DATABASE_FORM_NAME = "database";
 
-const getLetUserControlScheduling = database =>
-  getIn(database, ["details", "let-user-control-scheduling"]);
-
-const mapStateToProps = (state, props) => {
+const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
   return {
     database,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
-    letUserControlSchedulingSaved: getLetUserControlScheduling(database),
-    letUserControlSchedulingForm: getLetUserControlScheduling(formValues),
     initializeError: getInitializeError(state),
   };
 };
@@ -126,8 +120,6 @@ export default class DatabaseEditApp extends Component {
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
-      letUserControlSchedulingSaved,
-      letUserControlSchedulingForm,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
@@ -136,7 +128,7 @@ export default class DatabaseEditApp extends Component {
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
-    const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
+    const showTabs = editingExistingDatabase;
 
     const crumbs = [
       [t`Databases`, "/admin/databases"],
@@ -171,22 +163,6 @@ export default class DatabaseEditApp extends Component {
                     formName={DATABASE_FORM_NAME}
                     onSubmit={this.props.saveDatabase}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
-                    renderSubmit={
-                      // override use of ActionButton for the `Next` button, for adding a new database in which
-                      // scheduling is being overridden
-                      addingNewDatabase &&
-                      currentTab === "connection" &&
-                      letUserControlSchedulingForm &&
-                      (({ handleSubmit, canSubmit }) => (
-                        <Button
-                          primary={canSubmit}
-                          disabled={!canSubmit}
-                          onClick={handleSubmit}
-                        >
-                          {t`Next`}
-                        </Button>
-                      ))
-                    }
                     submitButtonComponent={Button}
                   >
                     {({
