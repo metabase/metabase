@@ -1,7 +1,7 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries]]
+            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.models.card :as card]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
