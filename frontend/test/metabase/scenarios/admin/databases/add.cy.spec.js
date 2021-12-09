@@ -114,7 +114,7 @@ describe("scenarios > admin > databases > add", () => {
     );
   });
 
-  it("should direct you to scheduling settings if you enable the toggle", () => {
+  it("should show scheduling settings if you enable the toggle", () => {
     cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
     cy.route("POST", "/api/database/validate", { valid: true });
 
