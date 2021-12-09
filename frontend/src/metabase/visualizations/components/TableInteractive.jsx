@@ -524,13 +524,17 @@ export default class TableInteractive extends Component {
   }
 
   @memoize
-  getDimension(column) {
-    const { query } = this.props;
+  getDimension(column, query) {
+    if (!query) {
+      return undefined;
+    }
+
     const dimension = Dimension.parseMBQL(
       column.field_ref,
       query.metadata(),
       query,
     );
+
     return dimension;
   }
 
@@ -645,7 +649,7 @@ export default class TableInteractive extends Component {
         >
           <DimensionInfoPopover
             placement="bottom-start"
-            dimension={this.getDimension(column)}
+            dimension={this.getDimension(column, this.props.query)}
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
