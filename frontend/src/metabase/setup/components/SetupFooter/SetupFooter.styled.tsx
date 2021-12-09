@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
-export const SetupHelpRoot = styled.footer`
+export const SetupFooterRoot = styled.footer`
   color: ${color("text-medium")};
   padding: 1rem;
   margin-bottom: 2rem;

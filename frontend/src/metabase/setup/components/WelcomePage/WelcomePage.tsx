@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
-import SetupHelp from "../SetupHelp";
+import SetupFooter from "../SetupFooter";
 import {
   PageRoot,
   PageMain,
@@ -21,7 +21,7 @@ const WelcomePage = () => {
         </PageBody>
         <PageButton primary>{t`Let's get started`}</PageButton>
       </PageMain>
-      <SetupHelp />
+      <SetupFooter />
     </PageRoot>
   );
 };
