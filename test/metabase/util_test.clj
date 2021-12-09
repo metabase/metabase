@@ -58,7 +58,7 @@
     "http://_under_score.ca/"                                                                true
     "http://__under_score.ca/"                                                               true
     "http://hy-phen.ca/"                                                                     true
-    "http://hy--phen.ca/"                                                                     true
+    "http://hy--phen.ca/"                                                                    true
     "http://two..dots.ca"                                                                    false
     ;; missing protocol
     "google.com"                                                                             false
