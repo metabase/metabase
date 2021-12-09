@@ -34,6 +34,7 @@ import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
@@ -61,7 +62,7 @@ import {
 } from "./selectors";
 import { trackNewQuestionSaved } from "./tracking";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -321,6 +322,23 @@ export const redirectToNewQuestionFlow = createThunkAction(
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
+async function verifyMatchingDashcardAndParameters({
+  dispatch,
+  dashboardId,
+  cardId,
+  parameters,
+  metadata,
+}) {
+  try {
+    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+      dispatch(setErrorPage({ status: 403 }));
+    }
+  } catch (error) {
+    dispatch(setErrorPage(error));
+  }
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params, queryParams) => {
   return async (dispatch, getState) => {
@@ -380,8 +398,18 @@ export const initializeQB = (location, params, queryParams) => {
 
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard) {
-            card.parameters = deserializedCard.parameters;
-            card.dashboardId = deserializedCard.dashboardId;
+            const metadata = getMetadata(getState());
+            const { dashboardId, parameters } = deserializedCard;
+            verifyMatchingDashcardAndParameters({
+              dispatch,
+              dashboardId,
+              cardId,
+              parameters,
+              metadata,
+            });
+
+            card.parameters = parameters;
+            card.dashboardId = dashboardId;
           }
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
