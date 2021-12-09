@@ -1,12 +1,12 @@
 import React from "react";
-
-import Icon from "metabase/components/Icon";
+import cx from "classnames";
 
 import {
   Root,
   Title,
   Description,
   InfoIconContainer,
+  InfoIcon,
 } from "./ChartSettingsWidget.styled";
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
   widget?: React.ComponentType;
   props?: Record<string, unknown>;
   noPadding?: boolean;
+  variant?: "default" | "form-field";
 };
 
 const ChartSettingsWidget = ({
@@ -26,6 +27,7 @@ const ChartSettingsWidget = ({
   hint,
   hidden,
   disabled,
+  variant = "default",
   widget: Widget,
   props,
   // disables X padding for certain widgets so divider line extends to edge
@@ -35,14 +37,25 @@ const ChartSettingsWidget = ({
   // * substituting widgets
   ...extraWidgetProps
 }: Props) => {
+  const isFormField = variant === "form-field";
   return (
-    <Root hidden={hidden} noPadding={noPadding} disabled={disabled}>
+    <Root
+      hidden={hidden}
+      noPadding={noPadding}
+      disabled={disabled}
+      className={cx({ "Form-field": isFormField })}
+    >
       {title && (
-        <Title>
+        <Title variant={variant} className={cx({ "Form-label": isFormField })}>
           {title}
           {hint && (
             <InfoIconContainer>
-              <Icon name="info" size={14} tooltip={hint} />
+              <InfoIcon
+                name="info"
+                variant={variant}
+                size={isFormField ? 12 : 14}
+                tooltip={hint}
+              />
             </InfoIconContainer>
           )}
         </Title>

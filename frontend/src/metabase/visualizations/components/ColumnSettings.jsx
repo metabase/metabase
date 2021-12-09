@@ -21,6 +21,7 @@ const ColumnSettings = ({
   allowlist,
   denylist,
   inheritedSettings = {},
+  variant = "default",
 }) => {
   const storedSettings = value || {};
 
@@ -67,6 +68,7 @@ const ColumnSettings = ({
             hidden={false}
             unset={storedSettings[widget.id] === undefined}
             noPadding
+            variant={variant}
           />
         ))
       ) : (
