@@ -102,9 +102,13 @@ describe("metabase/lib/expressions/resolve", () => {
     });
 
     // backward-compatibility
-    it("should reject a literal on the left-hand side of a comparison", () => {
+    it("should reject a number literal on the left-hand side of a comparison", () => {
       // 0 < [A]
       expect(() => filter(["<", 0, A])).toThrow();
+    });
+    it("should still allow a string literal on the left-hand side of a comparison", () => {
+      // "XYZ" < [B]
+      expect(() => filter(["<", "XYZ", B])).not.toThrow();
     });
 
     it("should work on functions with optional flag", () => {
