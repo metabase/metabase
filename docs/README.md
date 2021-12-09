@@ -37,7 +37,7 @@
 - [SQL Templates](./users-guide/13-sql-parameters.html)
 - [SQL snippets](./users-guide/sql-snippets.html)
 
-### Alerts
+### Alerts and Metabot
 
 - [Setting and getting alerts](./users-guide/15-alerts.html)
 - [Get answers in Slack with Metabot](./users-guide/11-metabot.html)
@@ -112,7 +112,7 @@
 - [API reference][api-documentation]
 - [API tutorial][api-tutorial]
 
-## Troubleshooting getting help
+## Troubleshooting and getting help
 
 - [Troubleshooting Guide][troubleshooting]. 
 - [Metabase forum][forum].
@@ -133,10 +133,11 @@
 
 ## Documentation guides
 
-- [Users Guide](users-guide/start.html)
-- [Admin Guide](administration-guide/start.html)
-- [Operations Guide](operations-guide/start.html)
-- [Developers Guide][developers]
+- [Users guide](users-guide/start.html)
+- [Admin guide](administration-guide/start.html)
+- [Operations guide](operations-guide/start.html)
+- [Troubleshooting guide][troubleshooting] 
+- [Developers guide][developers]
 
 ## Reference
 
