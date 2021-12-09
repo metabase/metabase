@@ -112,7 +112,7 @@
 - [API reference][api-documentation]
 - [API tutorial][api-tutorial]
 
-## Troubleshooting & getting help
+## Troubleshooting getting help
 
 - [Troubleshooting Guide][troubleshooting]. 
 - [Metabase forum][forum].
@@ -131,14 +131,17 @@
 - [Blog][blog]
 - [Source code repository on GitHub][source-code]
 
-## Developers guide
+## Documentation guides
 
+- [Users Guide](users-guide/start.html)
+- [Admin Guide](administration-guide/start.html)
+- [Operations Guide](operations-guide/start.html)
 - [Developers Guide][developers]
 
 ## Reference
 
 - [Anonymous Information Collection Reference][info-collection]
-- [FAQs][faq]: Frequently asked questions about Metabase.
+- [FAQs][faq]
 
 [api-documentation]: ./api-documentation.html
 [api-tutorial]: /learn/administration/metabase-api.html
