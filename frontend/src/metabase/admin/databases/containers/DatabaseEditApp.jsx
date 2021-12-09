@@ -28,7 +28,6 @@ import {
 import {
   reset,
   initializeDatabase,
-  proceedWithDbCreation,
   saveDatabase,
   syncDatabaseSchema,
   rescanDatabaseFields,
@@ -60,7 +59,6 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   reset,
   initializeDatabase,
-  proceedWithDbCreation,
   saveDatabase,
   syncDatabaseSchema,
   rescanDatabaseFields,
@@ -100,7 +98,6 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
-    proceedWithDbCreation: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
@@ -172,11 +169,7 @@ export default class DatabaseEditApp extends Component {
                     database={database}
                     form={Databases.forms[currentTab]}
                     formName={DATABASE_FORM_NAME}
-                    onSubmit={
-                      addingNewDatabase && currentTab === "connection"
-                        ? this.props.proceedWithDbCreation
-                        : this.props.saveDatabase
-                    }
+                    onSubmit={this.props.saveDatabase}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     renderSubmit={
                       // override use of ActionButton for the `Next` button, for adding a new database in which
