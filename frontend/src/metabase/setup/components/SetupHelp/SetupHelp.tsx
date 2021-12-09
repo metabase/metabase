@@ -2,11 +2,11 @@ import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
-import { StepFooterRoot } from "./StepFooter.styled";
+import { SetupHelpRoot } from "./SetupHelp.styled";
 
-const StepFooter = () => {
+const SetupHelp = () => {
   return (
-    <StepFooterRoot>
+    <SetupHelpRoot>
       {t`If you feel stuck`},{" "}
       <ExternalLink
         className="link"
@@ -14,8 +14,8 @@ const StepFooter = () => {
         target="_blank"
       >{t`our getting started guide`}</ExternalLink>{" "}
       {t`is just a click away.`}
-    </StepFooterRoot>
+    </SetupHelpRoot>
   );
 };
 
-export default StepFooter;
+export default SetupHelp;

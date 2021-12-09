@@ -1,6 +1,6 @@
 import React from "react";
-import WelcomeStep from "../WelcomeStep/WelcomeStep";
+import WelcomePage from "../WelcomePage/WelcomePage";
 
-const Setup = () => <WelcomeStep />;
+const Setup = () => <WelcomePage />;
 
 export default Setup;
