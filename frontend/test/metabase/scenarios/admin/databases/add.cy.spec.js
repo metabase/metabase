@@ -97,21 +97,12 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
-
-    cy.wait("@createDatabase");
-
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Save").click();
+    cy.wait("@createDatabase");
 
-    cy.findByText(
-      "Couldn't connect to the database. Please check the connection details.",
-    );
+    cy.findByText(/Connection to :5432 refused/);
   });
 
   it("should show scheduling settings if you enable the toggle", () => {
@@ -124,13 +115,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save").should("not.be.disabled");
-
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
-
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
 
     cy.findByText("Never, I'll do this manually if I need to").click();
 
@@ -217,14 +202,11 @@ describe("scenarios > admin > databases > add", () => {
       .click()
       .should("have.attr", "aria-checked", "true");
 
-    cy.button("Next").click();
-
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
 
     cy.findByText(databaseName).click();
-    cy.findByText("Scheduling").click();
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
   });
