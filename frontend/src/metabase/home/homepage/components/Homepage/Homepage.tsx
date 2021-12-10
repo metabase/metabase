@@ -74,6 +74,7 @@ const Homepage = ({
           <ExploreSection
             user={user}
             databases={databases}
+            showXrays={showXrays}
             showExploreModal={showExploreModal}
             onHideExploreModal={onHideExploreModal}
           />
