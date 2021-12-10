@@ -988,12 +988,11 @@
 (def TemplateTagMap
   "Schema for the `:template-tags` map passed in as part of a native query."
   ;; map of template tag name -> template tag definition
-  {helpers/NonBlankString TemplateTag}
-  #_(->
-     ;; TODO -- temporarily disabled because it breaks a few tests :cry:
-     (s/constrained (fn [m]
+  (-> {helpers/NonBlankString TemplateTag}
+      ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+      (s/constrained (fn [m]
                       (every? (fn [[tag-name tag-definition]]
-                                (= tag-name (:name tag-definition)))
+                                (core/= tag-name (:name tag-definition)))
                               m))
                     "keys in template tag map must match the :name of their values")))
 

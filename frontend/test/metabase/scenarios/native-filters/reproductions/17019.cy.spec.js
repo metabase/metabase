@@ -7,7 +7,7 @@ const question = {
     "template-tags": {
       foo: {
         id: "08edf340-3d89-cfb1-b7f0-073b9eca6a32",
-        name: "filter",
+        name: "foo",
         "display-name": "Filter",
         type: "text",
       },
@@ -48,4 +48,5 @@ describe("issue 17019", () => {
     // But let's also check that the filter widget has that same value still displayed
     cy.findByDisplayValue("456");
   });
+
 });
