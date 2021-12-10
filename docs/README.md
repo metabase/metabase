@@ -5,7 +5,7 @@
 
 ## Tutorials and guides
 
-- [Learn Metabase][learn]
+- [Learn Metabase][learn] has a ton of articles on how to use Metabase and level up as a data analyst.
 
 ## Installation and operation
 
