@@ -2,11 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import Table from "metabase-lib/lib/metadata/Table";
-import {
-  LabelContainer,
-  Label,
-  RelativeSizeIcon,
-} from "../MetadataInfo.styled";
+import { LabelContainer, Label } from "../MetadataInfo.styled";
+import { TableIcon } from "./TableLabel.styled";
 
 const propTypes = {
   className: PropTypes.string,
@@ -16,7 +13,7 @@ const propTypes = {
 function TableLabel({ className, table }) {
   return (
     <LabelContainer className={className}>
-      <RelativeSizeIcon name="table" />
+      <TableIcon />
       <Label>{table.displayName()}</Label>
     </LabelContainer>
   );

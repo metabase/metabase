@@ -3,11 +3,12 @@ import styled from "styled-components";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 export const InfoContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${space(2)};
+  gap: ${space(1)};
   padding: ${space(2)};
   overflow: auto;
 `;
@@ -33,7 +34,7 @@ export const LabelContainer = styled.div`
 `;
 
 export const Label = styled.span`
-  font-weight: 900;
+  font-weight: bold;
   font-size: 1em;
 `;
 
