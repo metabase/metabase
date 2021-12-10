@@ -7,14 +7,13 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
-import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
+import ExploreDatabaseModal from "../containers/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
-import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -25,12 +24,6 @@ import {
   getAddSampleDatasetError,
 } from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
-
-const RELOAD_INTERVAL = 2000;
-
-const getReloadInterval = (state, props, databases = []) => {
-  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
-};
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
@@ -51,14 +44,13 @@ const mapDispatchToProps = {
   addSampleDataset: addSampleDataset,
 };
 
-@Database.loadList({
-  reloadInterval: getReloadInterval,
-})
+@Database.loadList()
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
+    this.createdDatabaseModal = React.createRef();
     props.databases.map(database => {
       this["deleteDatabaseModal_" + database.id] = React.createRef();
     });
@@ -72,12 +64,19 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
+  componentDidUpdate(oldProps) {
+    if (!oldProps.created && this.props.created) {
+      this.createdDatabaseModal.current.open();
+    }
+  }
+
   render() {
     const {
       databases,
       hasSampleDataset,
       isAddingSampleDataset,
       addSampleDatasetError,
+      created,
       engines,
       deletionError,
     } = this.props;
@@ -119,17 +118,12 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <TableCellContent>
-                            {!isSyncCompleted(database) && (
-                              <TableCellSpinner size={16} borderWidth={2} />
-                            )}
-                            <Link
-                              to={"/admin/databases/" + database.id}
-                              className="text-bold link"
-                            >
-                              {database.name}
-                            </Link>
-                          </TableCellContent>
+                          <Link
+                            to={"/admin/databases/" + database.id}
+                            className="text-bold link"
+                          >
+                            {database.name}
+                          </Link>
                         </td>
                         <td>
                           {engines && engines[database.engine]
@@ -196,6 +190,14 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
+        <ModalWithTrigger
+          ref={this.createdDatabaseModal}
+          isInitiallyOpen={created}
+        >
+          <ExploreDatabaseModal
+            onClose={() => this.createdDatabaseModal.current.toggle()}
+          />
+        </ModalWithTrigger>
       </div>
     );
   }
