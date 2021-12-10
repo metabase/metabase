@@ -7,6 +7,7 @@ import Recents from "metabase/entities/recents";
 import Card from "metabase/components/Card";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import {
   ResultLink,
   ResultSpinner,
@@ -120,7 +121,7 @@ const getItemName = ({ model_object }) => {
 const isItemActive = ({ model, model_object }) => {
   switch (model) {
     case "table":
-      return model_object.initial_sync;
+      return isSyncCompleted(model_object);
     default:
       return true;
   }
@@ -130,7 +131,7 @@ const isItemLoading = ({ model, model_object }) => {
   switch (model) {
     case "database":
     case "table":
-      return !model_object.initial_sync;
+      return !isSyncCompleted(model_object);
     default:
       return false;
   }
