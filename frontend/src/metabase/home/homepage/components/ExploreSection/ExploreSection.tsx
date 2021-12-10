@@ -1,6 +1,7 @@
-import React from "react";
+import React, { Fragment, useState, useEffect, useCallback } from "react";
 import { t, jt } from "ttag";
 import * as Urls from "metabase/lib/urls";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import Modal from "metabase/components/Modal";
@@ -12,6 +13,7 @@ interface Props {
   databases: Database[];
   showXrays?: boolean;
   showExploreModal?: boolean;
+  onHideExploreModal?: () => void;
 }
 
 const ExploreSection = ({
@@ -19,7 +21,36 @@ const ExploreSection = ({
   databases,
   showXrays,
   showExploreModal,
-}: Props) => {};
+  onHideExploreModal,
+}: Props) => {
+  const [isOpened, setIsOpened] = useState(false);
+  const isAdmin = user.is_superuser;
+  const isSyncing = databases.some(d => isUserSyncingDatabase(d, user));
+  const sampleDatabase = databases.find(d => d.is_sample);
+
+  const handleClose = useCallback(() => {
+    setIsOpened(false);
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin && isSyncing && showExploreModal) {
+      setIsOpened(true);
+      onHideExploreModal && onHideExploreModal();
+    }
+  }, [isAdmin, isSyncing, showExploreModal, onHideExploreModal]);
+
+  return (
+    <Fragment>
+      {isOpened && (
+        <ExploreModal
+          sampleDatabase={sampleDatabase}
+          showXrays={showXrays}
+          onClose={handleClose}
+        />
+      )}
+    </Fragment>
+  );
+};
 
 interface ExploreModalProps {
   sampleDatabase?: Database;
@@ -27,7 +58,7 @@ interface ExploreModalProps {
   onClose?: () => void;
 }
 
-const ExploreModalProps = ({
+const ExploreModal = ({
   sampleDatabase,
   showXrays,
   onClose,
@@ -69,3 +100,9 @@ const ExploreModalProps = ({
     </Modal>
   );
 };
+
+const isUserSyncingDatabase = (database: Database, user: User): boolean => {
+  return database.creator_id === user.id && isSyncInProgress(database);
+};
+
+export default ExploreSection;

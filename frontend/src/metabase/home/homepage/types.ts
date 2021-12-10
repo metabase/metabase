@@ -1,4 +1,5 @@
 export interface User {
+  id: string;
   first_name: string;
   is_superuser: boolean;
   personal_collection_id: string;
@@ -8,6 +9,7 @@ export interface Database {
   id: number;
   name: string;
   is_sample: boolean;
+  creator_id?: string;
 }
 
 export interface Collection {

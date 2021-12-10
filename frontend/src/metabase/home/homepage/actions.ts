@@ -24,3 +24,14 @@ export const hidePinMessage = createThunkAction(HIDE_PIN_MESSAGE, function() {
     await dispatch(updateSetting(setting));
   };
 });
+
+export const HIDE_EXPLORE_MODAL = "metabase/home/homepage/HIDE_EXPLORE_MODAL";
+export const hideExploreModal = createThunkAction(
+  HIDE_EXPLORE_MODAL,
+  function() {
+    return async function(dispatch: any) {
+      const setting = { key: "show-database-syncing-modal", value: false };
+      await dispatch(updateSetting(setting));
+    };
+  },
+);

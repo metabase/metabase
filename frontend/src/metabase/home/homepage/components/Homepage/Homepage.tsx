@@ -12,6 +12,7 @@ import GreetingSection from "../GreetingSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./Homepage.styled";
+import ExploreSection from "../ExploreSection/ExploreSection";
 
 interface Props {
   user: User;
@@ -22,9 +23,11 @@ interface Props {
   showData?: boolean;
   showXrays?: boolean;
   showPinMessage?: boolean;
+  showExploreModal?: boolean;
   onHideData?: () => void;
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
+  onHideExploreModal?: () => void;
 }
 
 const Homepage = ({
@@ -36,9 +39,11 @@ const Homepage = ({
   showData,
   showXrays,
   showPinMessage,
+  showExploreModal,
   onHideData,
   onHideXrays,
   onHidePinMessage,
+  onHideExploreModal,
 }: Props) => {
   return (
     <LandingRoot>
@@ -65,6 +70,12 @@ const Homepage = ({
             databases={databases}
             showData={showData}
             onHideData={onHideData}
+          />
+          <ExploreSection
+            user={user}
+            databases={databases}
+            showExploreModal={showExploreModal}
+            onHideExploreModal={onHideExploreModal}
           />
         </Fragment>
       )}
