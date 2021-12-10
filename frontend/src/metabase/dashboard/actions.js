@@ -18,8 +18,9 @@ import {
   setParameterDefaultValue as setParamDefaultValue,
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
+  getParametersMappedToDashcard,
 } from "metabase/parameters/utils/dashboards";
-import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
+import { applyParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
@@ -683,7 +684,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      dispatch(loadMetadataForDashboard(result.ordered_cards));
+      await dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -959,37 +960,32 @@ export const navigateToNewCardFromDashboard = createThunkAction(
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
-    const cardIsDirty = !_.isEqual(
-      previousCard.dataset_query,
-      nextCard.dataset_query,
-    );
     const cardAfterClick = getCardAfterVisualizationClick(
       nextCard,
       previousCard,
     );
 
-    const question = new Question(cardAfterClick, metadata);
-
-    const cardWithVizSettings = question
+    const questionWithVizSettings = new Question(cardAfterClick, metadata)
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(
         cardAfterClick.visualization_settings ||
           previousCard.visualization_settings,
       )
       .lockDisplay()
-      .card();
+      .setDashboardId(dashboard.id);
+
+    const parametersMappedToCard = getParametersMappedToDashcard(
+      dashboard,
+      dashcard,
+    );
 
     // when the query is for a specific object it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
-    const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(cardWithVizSettings)
-      : questionUrlWithParameters(
-          cardWithVizSettings,
-          metadata,
-          dashboard.parameters,
+    const url = questionWithVizSettings.isObjectDetail()
+      ? Urls.serializedQuestion(questionWithVizSettings.card())
+      : questionWithVizSettings.getUrlWithParameters(
+          parametersMappedToCard,
           parameterValues,
-          dashcard && dashcard.parameter_mappings,
-          cardIsDirty,
         );
 
     open(url, {

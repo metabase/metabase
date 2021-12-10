@@ -91,32 +91,21 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.route("POST", "/api/database").as("createDatabase");
-
     cy.visit("/admin/databases/create");
 
+    chooseDatabase("H2");
     typeField("Display name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
-
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
-
-    cy.wait("@createDatabase");
+    typeField("Connection String", "invalid");
 
     cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
-
-    cy.findByText(
-      "Couldn't connect to the database. Please check the connection details.",
-    );
+    cy.button("Save").click();
+    cy.wait("@createDatabase");
+    cy.findByText(/Hmm, we couldn't connect to the database/);
   });
 
-  it("should direct you to scheduling settings if you enable the toggle", () => {
+  it("should show scheduling settings if you enable the toggle", () => {
     cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
     cy.route("POST", "/api/database/validate", { valid: true });
 
@@ -126,14 +115,8 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save").should("not.be.disabled");
-
     cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
-
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
 
     cy.findByText("Never, I'll do this manually if I need to").click();
 
@@ -221,14 +204,11 @@ describe("scenarios > admin > databases > add", () => {
       .click()
       .should("have.attr", "aria-checked", "true");
 
-    cy.button("Next").click();
-
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
 
     cy.findByText(databaseName).click();
-    cy.findByText("Scheduling").click();
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
   });

@@ -5,6 +5,7 @@ import {
   hasMapping,
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
+  getParametersMappedToDashcard,
 } from "metabase/parameters/utils/dashboards";
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 
@@ -374,6 +375,65 @@ describe("meta/Dashboard", () => {
           name: "boolean",
         }),
       );
+    });
+  });
+
+  describe("getParametersMappedToDashcard", () => {
+    const dashboard = {
+      parameters: [
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+        {
+          id: "baz",
+        },
+      ],
+    };
+
+    const dashboardWithNoParameters = {};
+
+    const dashcard = {
+      parameter_mappings: [
+        {
+          parameter_id: "foo",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          parameter_id: "bar",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ],
+    };
+
+    const dashcardWithNoMappings = {};
+
+    it("should return the subset of the dashboard's parameters that are found in a given dashcard's parameter_mappings", () => {
+      expect(
+        getParametersMappedToDashcard(dashboardWithNoParameters, dashcard),
+      ).toEqual([]);
+      expect(
+        getParametersMappedToDashcard(dashboard, dashcardWithNoMappings),
+      ).toEqual([]);
+
+      expect(getParametersMappedToDashcard(dashboard, dashcard)).toEqual([
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ]);
     });
   });
 });

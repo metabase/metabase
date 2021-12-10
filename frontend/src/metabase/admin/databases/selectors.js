@@ -15,3 +15,8 @@ export const getAddSampleDatasetError = state =>
 
 export const getInitializeError = state =>
   state.admin.databases.initializeError;
+
+// Deprecation notice
+
+export const isDeprecationNoticeEnabled = state =>
+  state.admin.databases.isDeprecationNoticeEnabled;

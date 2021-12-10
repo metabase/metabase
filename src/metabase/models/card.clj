@@ -82,6 +82,8 @@
       :Segment (extract-ids :segment inner-query)})))
 
 
+
+
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-instance

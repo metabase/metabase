@@ -108,7 +108,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();

@@ -3,7 +3,6 @@ import {
   openProductsTable,
   openOrdersTable,
   popover,
-  tippyPopover,
   sidebar,
   visitQuestionAdhoc,
   visualize,
@@ -398,13 +397,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       clickLineDot({ index: 0 });
-      tippyPopover().within(() => {
+      popover().within(() => {
         cy.findByText("January 1, 2020");
         cy.findByText("10");
       });
 
       clickLineDot({ index: 1 });
-      tippyPopover().within(() => {
+      popover().within(() => {
         cy.findByText("January 2, 2020");
         cy.findByText("5");
       });
@@ -431,7 +430,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".bar")
       .last()
       .trigger("mousemove");
-    tippyPopover().findByText("12");
+    popover().findByText("12");
   });
 
   it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
@@ -614,7 +613,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .first()
       .as("doohickeyChart")
       .trigger("mousemove");
-    tippyPopover().within(() => {
+    popover().within(() => {
       cy.findByText("Doohickey");
       cy.findByText("42");
     });

@@ -346,7 +346,7 @@
       (some (complement render.body/show-in-table?) cols)
       (yes "some columns are not included in rendered results")
 
-      (not= :table (render/detect-pulse-chart-type card result-data))
+      (not= :table (render/detect-pulse-chart-type card nil result-data))
       (no "we've determined it should not be rendered as a table")
 
       (= (count (take render.body/cols-limit cols)) render.body/cols-limit)

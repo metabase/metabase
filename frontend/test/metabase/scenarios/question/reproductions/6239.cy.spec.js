@@ -1,7 +1,7 @@
 import {
-  restore,
-  popover,
   openOrdersTable,
+  popover,
+  restore,
   visualize,
 } from "__support__/e2e/cypress";
 
@@ -15,9 +15,10 @@ describe("issue 6239", () => {
     cy.findByText("Summarize").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_text-input")
       .type("CountIf([Total] > 0)")
       .blur();
+
     cy.findByPlaceholderText("Name (required)").type("CE");
     cy.button("Done").click();
 

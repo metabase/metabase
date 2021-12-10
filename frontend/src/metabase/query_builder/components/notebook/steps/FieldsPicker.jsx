@@ -17,6 +17,7 @@ export default function FieldsPicker({
   onSelectNone,
   onToggleDimension,
   triggerElement = t`Columns`,
+  disableSelected,
   ...props
 }) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
@@ -31,7 +32,7 @@ export default function FieldsPicker({
         {(onSelectAll || onSelectNone) && (
           <li className="px1 pb1 flex align-center border-bottom mb1">
             <StackedCheckBox
-              label={isAll && onSelectNone ? t`Select None` : t`Select All`}
+              label={isAll && onSelectNone ? t`Select none` : t`Select all`}
               checked={isAll}
               indeterminate={!isAll && !isNone}
               disabled={isAll && !onSelectNone}
@@ -49,6 +50,8 @@ export default function FieldsPicker({
         {dimensions.map(dimension => (
           <li key={dimension.key()} className="px1 pb1 flex align-center">
             <CheckBox
+              data-testid={`field-${dimension.displayName()}`}
+              disabled={disableSelected && selected.has(dimension.key())}
               checked={selected.has(dimension.key())}
               label={dimension.displayName()}
               onChange={() => {
