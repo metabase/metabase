@@ -40,7 +40,7 @@ const ExploreDatabaseModal = ({
         {sampleDatabase ? (
           <span>
             {jt`You can also explore our ${(
-              <strong>{sampleDatabase.name}</strong>
+              <strong key="name">{sampleDatabase.name}</strong>
             )} in the meantime if you want to get a head start.`}
           </span>
         ) : (

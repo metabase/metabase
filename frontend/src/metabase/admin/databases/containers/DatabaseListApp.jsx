@@ -13,7 +13,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
+import ExploreDatabaseModal from "../components/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 

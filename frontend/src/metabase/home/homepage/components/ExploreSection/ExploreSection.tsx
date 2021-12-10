@@ -45,7 +45,9 @@ const ExploreSection = ({
 };
 
 const isUserSyncingDatabase = (user: User, databases: Database[]): boolean => {
-  return databases.some(d => d.creator_id === user.id && isSyncInProgress(d));
+  return databases.some(
+    d => !d.is_sample && d.creator_id === user.id && isSyncInProgress(d),
+  );
 };
 
 export default ExploreSection;
