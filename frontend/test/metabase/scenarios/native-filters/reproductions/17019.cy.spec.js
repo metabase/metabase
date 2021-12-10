@@ -48,5 +48,4 @@ describe("issue 17019", () => {
     // But let's also check that the filter widget has that same value still displayed
     cy.findByDisplayValue("456");
   });
-
 });
