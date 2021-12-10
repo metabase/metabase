@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import Table from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getXraysEnabled } from "metabase/selectors/settings";
@@ -22,7 +23,7 @@ const getSchemaName = props => {
 };
 
 const getReloadInterval = (state, props, tables = []) => {
-  return tables.some(t => !t.initial_sync) ? RELOAD_INTERVAL : 0;
+  return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
 };
 
 const getTableUrl = (table, metadata) => {
