@@ -1,4 +1,4 @@
-name: Build and push head branch container images
+name: Build and push to Dockerhub
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Create multi-arch image
+      - name: Create container image
         run: docker buildx build . -t metabase/metabase-head:latest --push --compress --no-cache
 
   build-and-push-ee-image:
@@ -39,5 +39,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Create multi-arch image
+      - name: Create container image
         run: docker buildx build . --build-arg MB_EDITION=ee -t metabase/metabase-enteprise-head:latest --push --compress --no-cache
