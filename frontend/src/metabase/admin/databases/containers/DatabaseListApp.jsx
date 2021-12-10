@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -14,6 +15,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -28,6 +30,12 @@ import {
   addSampleDataset,
   hideExploreModal,
 } from "../database";
+
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, databases = []) => {
+  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
+};
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
@@ -46,12 +54,14 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
-  deleteDatabase: deleteDatabase,
-  addSampleDataset: addSampleDataset,
+  deleteDatabase,
+  addSampleDataset,
   hideExploreModal,
 };
 
-@Database.loadList()
+@Database.loadList({
+  reloadInterval: getReloadInterval,
+})
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
   constructor(props) {
@@ -137,12 +147,17 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <Link
-                            to={"/admin/databases/" + database.id}
-                            className="text-bold link"
-                          >
-                            {database.name}
-                          </Link>
+                          <TableCellContent>
+                            {!isSyncCompleted(database) && (
+                              <TableCellSpinner size={16} borderWidth={2} />
+                            )}
+                            <Link
+                              to={"/admin/databases/" + database.id}
+                              className="text-bold link"
+                            >
+                              {database.name}
+                            </Link>
+                          </TableCellContent>
                         </td>
                         <td>
                           {engines && engines[database.engine]
