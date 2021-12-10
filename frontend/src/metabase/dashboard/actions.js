@@ -965,14 +965,18 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       previousCard,
     );
 
-    const questionWithVizSettings = new Question(cardAfterClick, metadata)
-      .setDisplay(cardAfterClick.display || previousCard.display)
-      .setSettings(
-        cardAfterClick.visualization_settings ||
-          previousCard.visualization_settings,
-      )
-      .lockDisplay()
-      .setDashboardId(dashboard.id);
+    // dashcards with altered viz settings get sent to the QB as ad hoc questions
+    // so users without self service data permissions need to use the unaltered card
+    const questionAfterClick = new Question(cardAfterClick, metadata);
+    const question = questionAfterClick.query().isEditable()
+      ? questionAfterClick
+          .setDisplay(cardAfterClick.display || previousCard.display)
+          .setSettings(
+            cardAfterClick.visualization_settings ||
+              previousCard.visualization_settings,
+          )
+          .lockDisplay()
+      : new Question(dashcard.card, metadata).setDashboardId(dashboard.id);
 
     const parametersMappedToCard = getParametersMappedToDashcard(
       dashboard,
@@ -981,12 +985,9 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 
     // when the query is for a specific object it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
-    const url = questionWithVizSettings.isObjectDetail()
-      ? Urls.serializedQuestion(questionWithVizSettings.card())
-      : questionWithVizSettings.getUrlWithParameters(
-          parametersMappedToCard,
-          parameterValues,
-        );
+    const url = question.isObjectDetail()
+      ? Urls.serializedQuestion(question.card())
+      : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
 
     open(url, {
       blankOnMetaOrCtrlKey: true,
