@@ -425,7 +425,7 @@
                                                :display-name "Checkin Date"
                                                :type         :dimension
                                                :widget-type  :date/all-options
-                                               :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
                                 field-filter-param)])}
@@ -557,7 +557,7 @@
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
                                                               :widget-type  :date/range
-                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
                  :parameters [{:type   :date/range
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-04-01~2015-05-01"}])))))))
@@ -574,7 +574,7 @@
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
                                                                 :widget-type  :date/all-options
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters []))))))))
 
 (deftest e2e-relative-dates-test
@@ -592,7 +592,7 @@
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
                                                                 :widget-type  :date/relative
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/relative
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
@@ -610,7 +610,7 @@
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
                                                                 :widget-type  :date/all-options
-                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/range
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "2015-01-01~2016-09-01"}
@@ -658,7 +658,7 @@
                                                               :display-name "Created At"
                                                               :type         :dimension
                                                               :widget-type  :date/all-options
-                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
                                  :value  "2017-03"}]})))
@@ -724,7 +724,7 @@
                                                                     :display-name "Checkin Date"
                                                                     :type         :dimension
                                                                     :widget-type  :date/all-options
-                                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
+                                                                    :dimension    [:field (mt/id :checkins :date) nil]}}}
                        :parameters [{:type   :date/range
                                      :target [:dimension [:template-tag "checkin_date"]]
                                      :value  "past5days"}]}))))))
@@ -746,7 +746,7 @@
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (mt/id :checkins :date)]
+                                                                :dimension    [:field (mt/id :checkins :date) nil]
                                                                 :default      "past5days"
                                                                 :widget-type  :date/all-options}}}})))))
   (testing "Check that it works with absolute dates as well"
@@ -762,7 +762,7 @@
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (mt/id :checkins :date)]
+                                                              :dimension    [:field (mt/id :checkins :date) nil]
                                                               :default      "2017-11-14"
                                                               :widget-type  :date/all-options}}}})))))
 
@@ -814,7 +814,7 @@
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (mt/id :categories :name)]
+                                                        :dimension    [:field (mt/id :categories :name) nil]
                                                         :widget-type  :text}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]

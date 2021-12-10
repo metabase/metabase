@@ -4,6 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models :refer [Card Dashboard DashboardCard]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.card-test :as qp.card-test]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.test :as mt]
             [schema.core :as s]))

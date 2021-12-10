@@ -456,3 +456,21 @@
                                       :id      "abc123"
                                       :default ["Widget"]
                                       :target  [:dimension [:template-tag "filter"]]}]}))))))
+
+(deftest field-filter-multiple-values-test
+  (testing "Make sure multiple values get returned the way we'd expect"
+    (is (schema= {(s/eq "checkin_date") {:value    (s/eq [{:type :date/range, :value "2015-01-01~2016-09-01"}
+                                                          {:type :date/single, :value "2015-07-01"}])
+                                         s/Keyword s/Any}}
+           (values/query->params-map
+            {:template-tags {"checkin_date" {:name         "checkin_date"
+                                             :display-name "Checkin Date"
+                                             :type         :dimension
+                                             :widget-type  :date/all-options
+                                             :dimension    [:field (mt/id :checkins :date) nil]}}
+             :parameters    [{:type   :date/range
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-01-01~2016-09-01"}
+                             {:type   :date/single
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-07-01"}]})))))
