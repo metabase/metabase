@@ -65,7 +65,7 @@ describe("scenarios > home > homepage", () => {
     });
 
     it("should show a modal when there is a newly created database", () => {
-      mockSyncingDatabase({ hasSampleDatabase: true });
+      mockSyncingDatabase();
       cy.visit("/");
 
       cy.findByText("Great, we're taking a look at your database!");
