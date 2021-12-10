@@ -262,6 +262,7 @@
                                  :template-tags {"id" {:name         "id"
                                                        :display-name "ID"
                                                        :type         :dimension
+                                                       :widget-type  :number
                                                        :dimension    $id}}}
                     :parameters [{:type   :number
                                   :target [:dimension [:template-tag "id"]]
@@ -280,6 +281,7 @@
                              :template-tags {"date" {:name         "date"
                                                      :display-name "Date"
                                                      :type         :dimension
+                                                     :widget-type  :date/all-options
                                                      :dimension    $date}}}}))))))
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
@@ -298,6 +300,7 @@
                                      :template-tags {"username" {:name         "username"
                                                                  :display-name "Username"
                                                                  :type         :dimension
+                                                                 :widget-type  :text
                                                                  :dimension    $tips.source.username}}}
                         :parameters [{:type   :text
                                       :target [:dimension [:template-tag "username"]]
@@ -323,6 +326,7 @@
                                          :template-tags {"username" {:name         "username"
                                                                      :display-name "Username"
                                                                      :type         :dimension
+                                                                     :widget-type  :text
                                                                      :dimension    $tips.source.username}}}
                             :parameters [{:type   operator
                                           :target [:dimension [:template-tag "username"]]
@@ -347,6 +351,7 @@
                                             :template-tags {"price" {:name "price"
                                                                      :display-name "Price"
                                                                      :type         :dimension
+                                                                     :widget-type  :number
                                                                      :dimension    $price}}}
                                :parameters [{:type   operator
                                              :target [:dimension [:template-tag "price"]]
@@ -367,6 +372,7 @@
                                                    :template-tags {"username" {:name         "username"
                                                                                :display-name "Username"
                                                                                :type         :dimension
+                                                                               :widget-type  :text
                                                                                :dimension    $tips.source.username}}}
                                       :parameters [{:type   operator
                                                     :target [:dimension [:template-tag "username"]]
