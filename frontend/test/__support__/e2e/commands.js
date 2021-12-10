@@ -21,7 +21,6 @@ import "./commands/permissions/updatePermissions";
 import "./commands/permissions/sandboxTable";
 
 import "./commands/database/addH2SampleDataset";
-import "./commands/database/addSQLiteSampleDataset";
 
 import "./commands/visibility/isVisibleInPopover";
 import "./commands/visibility/isRenderedWithinViewport";
