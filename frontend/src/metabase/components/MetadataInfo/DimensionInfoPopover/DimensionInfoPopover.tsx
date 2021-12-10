@@ -2,10 +2,12 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import Dimension from "metabase-lib/lib/Dimension";
-import TippyPopver from "metabase/components/Popover/TippyPopover";
+import TippyPopver, {
+  ITippyPopoverProps,
+} from "metabase/components/Popover/TippyPopover";
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 
-export const POPOVER_DELAY = [1000, 300];
+export const POPOVER_DELAY: [number, number] = [1000, 300];
 
 const propTypes = {
   dimension: PropTypes.instanceOf(Dimension),
@@ -13,7 +15,12 @@ const propTypes = {
   placement: PropTypes.string,
 };
 
-function DimensionInfoPopover({ dimension, children, placement }) {
+type Props = { dimension: Dimension } & Pick<
+  ITippyPopoverProps,
+  "children" | "placement"
+>;
+
+function DimensionInfoPopover({ dimension, children, placement }: Props) {
   return dimension ? (
     <TippyPopver
       delay={POPOVER_DELAY}
