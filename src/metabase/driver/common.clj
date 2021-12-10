@@ -189,6 +189,26 @@
    :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
    :visible-if   {"advanced-options" true}})
 
+(def metadata-sync-schedule
+  "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.metadata_sync"
+   :display-name (deferred-tru "Database syncing")
+   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
+                      " "
+                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def cache-field-values-schedule
+  "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.cache_field_values"
+   :display-name (deferred-tru "Scanning for Filter Values")
+   :description  (str (deferred-tru "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.")
+                      " "
+                      (deferred-tru "When should Metabase automatically scan and cache field values?"))
+   :visible-if   {"let-user-control-scheduling" true}})
+
 (def refingerprint
   "Map representing the `refingerprint` option in a DB connection form."
   {:name         "refingerprint"
@@ -199,7 +219,7 @@
 
 (def default-advanced-options
   "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [auto-run-queries let-user-control-scheduling refingerprint])
+  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection

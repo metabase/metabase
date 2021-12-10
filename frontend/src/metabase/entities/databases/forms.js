@@ -366,9 +366,9 @@ const forms = {
           helperText: t`Choose what this data will be called in Metabase.`,
         },
         ...(getEngineFormFields(engine, details, id) || []),
+        getDatabaseCachingField(),
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
-        getDatabaseCachingField(),
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
