@@ -712,7 +712,7 @@
          (second labels)]]]]}))
 
 (s/defmethod render :area :- common/RenderedPulseCard
-  [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
+  [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
