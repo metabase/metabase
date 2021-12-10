@@ -1264,6 +1264,9 @@ workflows:
                 name: Convert Presto CA from PEM to DER
                 command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
             - run:
+                name: Check permissions on cacerts file
+                command: ls -latr /tmp/cacerts-with-presto-ssl.jks
+            - run:
                 name: Import Presto CA into temp cacerts file
                 command: |
                   keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
