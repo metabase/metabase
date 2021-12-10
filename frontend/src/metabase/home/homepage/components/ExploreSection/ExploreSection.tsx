@@ -31,7 +31,7 @@ const ExploreSection = ({
     if (isOpened) {
       onHideExploreModal && onHideExploreModal();
     }
-  }, [isOpened]);
+  }, [isOpened, onHideExploreModal]);
 
   return (
     <Modal isOpen={isOpened} full={false} onClose={handleClose}>
