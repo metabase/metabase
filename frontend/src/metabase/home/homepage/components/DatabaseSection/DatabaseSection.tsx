@@ -1,7 +1,9 @@
 import React, { ReactNode } from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import Button from "metabase/components/Button";
 import Ellipsified from "metabase/components/Ellipsified";
+import Link from "metabase/components/Link";
+import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
@@ -89,6 +91,56 @@ const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
         {t`"Our Data" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
       </span>
     </ModalWithTrigger>
+  );
+};
+
+interface ExploreDataModalProps {
+  databases: Database[];
+  showXrays?: boolean;
+  showExploreModal?: boolean;
+  onClose?: () => void;
+}
+
+const ExploreDataModal = ({
+  databases,
+  showXrays,
+  onClose,
+}: ExploreDataModalProps) => {
+  const sampleDatabase = databases.find(d => d.is_sample);
+
+  return (
+    <ModalContent
+      title={t`Great, we're taking a look at your database!`}
+      footer={
+        sampleDatabase ? (
+          <Link to={showXrays ? Urls.exploreDatabase(sampleDatabase) : "/"}>
+            <Button primary>{t`Explore sample data`}</Button>
+          </Link>
+        ) : (
+          <Link to="/">
+            <Button primary>{t`Explore your Metabase`}</Button>
+          </Link>
+        )
+      }
+      onClose={onClose}
+    >
+      <div>
+        <span>
+          {t`You’ll be able to use individual tables as they finish syncing. `}
+        </span>
+        {sampleDatabase ? (
+          <span>
+            {jt`You can also explore our ${(
+              <strong>{sampleDatabase.name}</strong>
+            )} in the meantime if you want to get a head start.`}
+          </span>
+        ) : (
+          <span>
+            {t`Have a look around your Metabase in the meantime if you want to get a head start.`}
+          </span>
+        )}
+      </div>
+    </ModalContent>
   );
 };
 
