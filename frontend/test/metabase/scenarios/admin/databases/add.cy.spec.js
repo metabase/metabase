@@ -223,10 +223,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").click();
 
-    cy.findByText("Great, we're taking a look at your database!");
-    cy.findByLabelText("close icon").click();
-
-    cy.findByRole("table").within(() => cy.findByText(databaseName).click());
+    cy.findByText(databaseName).click();
     cy.findByText("Scheduling").click();
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");

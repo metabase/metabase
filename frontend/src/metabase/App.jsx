@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
-import SyncProgressApp from "metabase/home/syncing/containers/SyncProgressApp";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
@@ -82,7 +81,6 @@ export default class App extends Component {
           {this.hasNavbar() && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
-          <SyncProgressApp />
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
