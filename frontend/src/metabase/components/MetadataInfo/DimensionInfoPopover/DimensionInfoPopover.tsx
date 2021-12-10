@@ -1,19 +1,23 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopver from "metabase/components/Popover/TippyPopover";
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
+import { Placement } from "tippy.js";
 
-export const POPOVER_DELAY = [1000, 300];
+export const POPOVER_DELAY: [number, number] = [1000, 300];
 
-const propTypes = {
-  dimension: PropTypes.instanceOf(Dimension),
-  children: PropTypes.node,
-  placement: PropTypes.string,
+type Props = {
+  dimension: Dimension;
+  placement?: Placement;
+  children: React.ReactElement;
 };
 
-function DimensionInfoPopover({ dimension, children, placement }) {
+const DimensionInfoPopover: React.FC<Props> = ({
+  dimension,
+  children,
+  placement,
+}) => {
   return dimension ? (
     <TippyPopver
       delay={POPOVER_DELAY}
@@ -26,8 +30,6 @@ function DimensionInfoPopover({ dimension, children, placement }) {
   ) : (
     children
   );
-}
-
-DimensionInfoPopover.propTypes = propTypes;
+};
 
 export default DimensionInfoPopover;
