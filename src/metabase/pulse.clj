@@ -16,7 +16,7 @@
             [metabase.pulse.render :as render]
             [metabase.pulse.util :as pu]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.card :as qp.card]
+            [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
@@ -32,30 +32,26 @@
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
-    (let [card-id         (u/the-id card-or-id)
-          card            (Card :id card-id)
-          param-id->param (u/key-by :id parameters)
-          params          (for [mapping (:parameter_mappings dashcard)
-                                :when   (= (:card_id mapping) card-id)
-                                :let    [param (get param-id->param (:parameter_id mapping))]
-                                :when   param]
-                            (assoc param :target (:target mapping)))
-          result (session/with-current-user owner-id
-                   (qp.card/run-query-for-card-async
-                    card-id :api
-                    :dashboard-id  (:id dashboard)
-                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                    :export-format :api
-                    :parameters    params
-                    :middleware    {:process-viz-settings? true
-                                    :js-int-to-string?     false}
-                    :run (fn [query info]
-                           (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
-      {:card card
+    (let [card-id (u/the-id card-or-id)
+          card    (Card :id card-id)
+          result  (session/with-current-user owner-id
+                    (qp.dashboard/run-query-for-dashcard-async
+                     :dashboard-id  (u/the-id dashboard)
+                     :card-id       card-id
+                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                     :export-format :api
+                     :parameters    parameters
+                     :middleware    {:process-viz-settings? true
+                                     :js-int-to-string?     false}
+                     :run           (fn [query info]
+                                      (qp/process-query-and-save-with-max-results-constraints!
+                                       (assoc query :async? false)
+                                       info))))]
+      {:card     card
        :dashcard dashcard
-       :result result})
+       :result   result})
     (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
+      (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
 (defn- dashcard-comparator
   "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
