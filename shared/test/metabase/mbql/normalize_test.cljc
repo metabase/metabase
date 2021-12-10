@@ -374,7 +374,17 @@
                         :type         :dimension
                         :widget-type  :string/=
                         :dimension    [:field 1 nil]
-                        :default      ["a" "b"]}})})))
+                        :default      ["a" "b"]}})}
+
+     "Don't keywordize keys that aren't present in template tag maps"
+     {{:database 1
+       :type     :native
+       :native   {:template-tags {"x" {}}}}
+
+      ;; `:name` still gets copied over from the map key.
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name "x"}}}}})))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
@@ -404,16 +414,7 @@
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
      {:database 4,
       :type     :query
-      :query    {:source-query {:source-table 1, :aggregation :rows}}}}
-
-    "Don't keywordize keys that aren't present in template tag maps"
-    {{:database 1
-      :type     :native
-      :native   {:template-tags {"x" {}}}}
-
-     {:database 1
-      :type     :native
-      :native   {:template-tags {"x" {}}}}}))
+      :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
 
 
 
