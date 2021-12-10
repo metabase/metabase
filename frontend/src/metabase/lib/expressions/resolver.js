@@ -72,7 +72,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
         throw new Error(t`Expecting field but found ${firstOperand}`);
       }
     } else if (op === "concat") {
-      operandType = "string";
+      operandType = "expression";
     } else if (op === "coalesce") {
       operandType = type;
     } else if (op === "case") {

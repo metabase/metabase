@@ -150,6 +150,10 @@ describe("metabase/lib/expressions/resolve", () => {
     it("should accept COALESCE for string", () => {
       expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
     });
+
+    it("should honor CONCAT's implicit casting", () => {
+      expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+    });
   });
 
   describe("for aggregations", () => {
