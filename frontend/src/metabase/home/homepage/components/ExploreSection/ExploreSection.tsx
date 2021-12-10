@@ -1,11 +1,7 @@
-import React, { Fragment, useState, useEffect, useCallback } from "react";
-import { t, jt } from "ttag";
-import * as Urls from "metabase/lib/urls";
+import React, { useState, useEffect, useCallback } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import Button from "metabase/components/Button";
-import Link from "metabase/components/Link";
 import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
+import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
 import { Database, User } from "../../types";
 
 interface Props {
@@ -23,9 +19,8 @@ const ExploreSection = ({
   showExploreModal,
   onHideExploreModal,
 }: Props) => {
-  const [isOpened, setIsOpened] = useState(false);
-  const isAdmin = user.is_superuser;
-  const isSyncing = databases.some(d => isUserSyncingDatabase(d, user));
+  const isSyncing = hasUserSyncingDatabase(user, databases);
+  const [isOpened, setIsOpened] = useState(isSyncing && showExploreModal);
   const sampleDatabase = databases.find(d => d.is_sample);
 
   const handleClose = useCallback(() => {
@@ -33,76 +28,24 @@ const ExploreSection = ({
   }, []);
 
   useEffect(() => {
-    if (isAdmin && isSyncing && showExploreModal) {
-      setIsOpened(true);
+    if (isOpened) {
       onHideExploreModal && onHideExploreModal();
     }
-  }, [isAdmin, isSyncing, showExploreModal, onHideExploreModal]);
+  }, [isOpened]);
 
   return (
-    <Fragment>
-      {isOpened && (
-        <ExploreModal
-          sampleDatabase={sampleDatabase}
-          showXrays={showXrays}
-          onClose={handleClose}
-        />
-      )}
-    </Fragment>
-  );
-};
-
-interface ExploreModalProps {
-  sampleDatabase?: Database;
-  showXrays?: boolean;
-  onClose?: () => void;
-}
-
-const ExploreModal = ({
-  sampleDatabase,
-  showXrays,
-  onClose,
-}: ExploreModalProps) => {
-  return (
-    <Modal full={false} onClose={onClose}>
-      <ModalContent
-        title={t`Great, we're taking a look at your database!`}
-        footer={
-          sampleDatabase ? (
-            <Link to={showXrays ? Urls.exploreDatabase(sampleDatabase) : "/"}>
-              <Button primary>{t`Explore sample data`}</Button>
-            </Link>
-          ) : (
-            <Link to="/">
-              <Button primary>{t`Explore your Metabase`}</Button>
-            </Link>
-          )
-        }
-        onClose={onClose}
-      >
-        <div>
-          <span>
-            {t`You’ll be able to use individual tables as they finish syncing. `}
-          </span>
-          {sampleDatabase ? (
-            <span>
-              {jt`You can also explore our ${(
-                <strong>{sampleDatabase.name}</strong>
-              )} in the meantime if you want to get a head start.`}
-            </span>
-          ) : (
-            <span>
-              {t`Have a look around your Metabase in the meantime if you want to get a head start.`}
-            </span>
-          )}
-        </div>
-      </ModalContent>
+    <Modal isOpen={isOpened} full={false} onClose={handleClose}>
+      <ExploreDatabaseModal
+        sampleDatabase={sampleDatabase}
+        showXrays={showXrays}
+        onClose={handleClose}
+      />
     </Modal>
   );
 };
 
-const isUserSyncingDatabase = (database: Database, user: User): boolean => {
-  return database.creator_id === user.id && isSyncInProgress(database);
+const hasUserSyncingDatabase = (user: User, databases: Database[]): boolean => {
+  return databases.some(d => d.creator_id === user.id && isSyncInProgress(d));
 };
 
 export default ExploreSection;
