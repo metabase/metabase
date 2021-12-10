@@ -13,6 +13,7 @@ import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
+import { updateSetting } from "metabase/admin/settings/settings";
 
 // Default schedules for db sync and deep analysis
 export const DEFAULT_SCHEDULES = {
@@ -80,6 +81,7 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
 
 export const CLOSE_DEPRECATION_NOTICE =
   "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
+export const HIDE_EXPLORE_MODAL = "metabase/admin/databases/HIDE_EXPLORE_MODAL";
 
 export const reset = createAction(RESET);
 
@@ -340,6 +342,17 @@ export const closeDeprecationNotice = createThunkAction(
       } catch (error) {
         console.log("error saving deprecation notice version", error);
       }
+    };
+  },
+);
+
+export const hideExploreModal = createThunkAction(
+  HIDE_EXPLORE_MODAL,
+  function() {
+    return async function(dispatch) {
+      dispatch(
+        updateSetting({ key: "show-database-explore-modal", value: false }),
+      );
     };
   },
 );

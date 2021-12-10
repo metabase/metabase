@@ -12,7 +12,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import ExploreDatabaseModal from "../containers/ExploreDatabaseModal";
+import ExploreDatabaseModal from "metabase/components/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
@@ -23,7 +23,11 @@ import {
   getIsAddingSampleDataset,
   getAddSampleDatasetError,
 } from "../selectors";
-import { deleteDatabase, addSampleDataset } from "../database";
+import {
+  deleteDatabase,
+  addSampleDataset,
+  hideExploreModal,
+} from "../database";
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
@@ -32,6 +36,8 @@ const mapStateToProps = (state, props) => ({
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
+  showXrays: MetabaseSettings.get("enable-xrays"),
+  showExploreModal: MetabaseSettings.get("show-database-explore-modal"),
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
@@ -42,6 +48,7 @@ const mapDispatchToProps = {
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
   addSampleDataset: addSampleDataset,
+  hideExploreModal,
 };
 
 @Database.loadList()
@@ -65,10 +72,19 @@ export default class DatabaseList extends Component {
   };
 
   componentDidUpdate(oldProps) {
-    if (!oldProps.created && this.props.created) {
+    if (
+      !oldProps.created &&
+      this.props.created &&
+      this.props.showExploreModal
+    ) {
       this.createdDatabaseModal.current.open();
     }
   }
+
+  handleExploreModalClose = () => {
+    this.createdDatabaseModal.current.close();
+    this.hideExploreModal();
+  };
 
   render() {
     const {
@@ -77,11 +93,14 @@ export default class DatabaseList extends Component {
       isAddingSampleDataset,
       addSampleDatasetError,
       created,
+      showXrays,
+      showExploreModal,
       engines,
       deletionError,
     } = this.props;
 
     const error = deletionError || addSampleDatasetError;
+    const sampleDatabase = databases.find(d => d.is_sample);
 
     return (
       <div className="wrapper">
@@ -192,10 +211,13 @@ export default class DatabaseList extends Component {
         </section>
         <ModalWithTrigger
           ref={this.createdDatabaseModal}
-          isInitiallyOpen={created}
+          isInitiallyOpen={created && showExploreModal}
+          onClose={this.handleExploreModalClose}
         >
           <ExploreDatabaseModal
-            onClose={() => this.createdDatabaseModal.current.toggle()}
+            sampleDatabase={sampleDatabase}
+            showXrays={showXrays}
+            onClose={this.handleExploreModalClose}
           />
         </ModalWithTrigger>
       </div>
