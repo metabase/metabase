@@ -14,8 +14,12 @@ interface Props {
   showExploreModal?: boolean;
 }
 
-const ExploreSection = ({ user, databases, showXrays,showExploreModal  }: Props) => {
-}
+const ExploreSection = ({
+  user,
+  databases,
+  showXrays,
+  showExploreModal,
+}: Props) => {};
 
 interface ExploreModalProps {
   sampleDatabase?: Database;
