@@ -17,11 +17,13 @@ describe("qa databases snapshots", () => {
 
     restoreAndAuthenticate();
 
+    cy.wait(1000);
     addMySQLDatabase();
     snapshot("mysql-8");
 
     restoreAndAuthenticate();
 
+    cy.wait(1000);
     addMongoDatabase();
     snapshot("mongo-4");
 
