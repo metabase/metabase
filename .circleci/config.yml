@@ -1266,7 +1266,7 @@ workflows:
             - run:
                 name: Import Presto CA into temp cacerts file
                 command: |
-                  sudo keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+                  keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
                    -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
           after-steps:
             - run:
