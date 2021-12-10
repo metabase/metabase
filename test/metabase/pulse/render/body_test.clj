@@ -378,9 +378,6 @@
   [html-data]
   (tree-seq coll? seq html-data))
 
-(defn- render-bar-graph [results]
-  (body/render :bar :inline pacific-tz render.tu/test-card nil results))
-
 (def ^:private default-columns
   [{:name         "Price",
     :display_name "Price",
@@ -408,6 +405,9 @@
 (defn has-inline-image? [rendered]
   (some #{:img} (flatten-html-data rendered)))
 
+(defn- render-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-card nil results))
+
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
     (is (has-inline-image?
@@ -426,6 +426,26 @@
          (render-bar-graph {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
+(defn- render-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-card nil results))
+
+(deftest render-area-graph-tet
+  (testing "Render an area graph with non-nil values for the x and y axis"
+    (is (has-inline-image?
+         (render-area-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+         (render-area-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+         (render-area-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+  (testing "Check to make sure we allow nil values for both x and y on different rows"
+    (is (has-inline-image?
+         (render-area-graph {:cols default-columns
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
