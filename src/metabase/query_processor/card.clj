@@ -167,7 +167,7 @@
       :or   {constraints constraints/default-query-constraints
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
-  {:pre [(u/maybe? sequential? parameters)]}
+  {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [run   (or run
                   ;; param `run` can be used to control how the query is ran, e.g. if you need to
                   ;; customize the `context` passed to the QP

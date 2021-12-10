@@ -1,12 +1,25 @@
 (ns metabase.query-processor.card-test
   (:require [clojure.test :refer :all]
+            [metabase.api.common :as api]
             [metabase.models :refer [Card Dashboard Database]]
             [metabase.models.query :as query]
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.card :as qp.card]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]))
+
+(defn run-query-for-card
+  "Run query for Card synchronously."
+  [card-id]
+  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
+  ;; stuff doesn't belong in the Dashboard QP namespace
+  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (qp.card/run-query-for-card-async
+     card-id :api
+     :run (fn [query info]
+            (qp/process-query (assoc query :async? false) info)))))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]

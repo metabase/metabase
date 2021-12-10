@@ -41,14 +41,16 @@
                            (throw (ex-info (tru "Dashboard does not have a parameter with ID {0}." (pr-str param-id))
                                            {:type        qp.error-type/invalid-parameter
                                             :status-code 400})))]
-    (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str matching-param))
+    (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str (update matching-param :mappings (fn [mappings]
+                                                                                                             (into #{} (map #(dissoc % :dashcard)) mappings)))))
     ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
     (when-let [matching-mapping (or (some (fn [mapping]
                                             (when (= (:card_id mapping) card-id)
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str matching-mapping))
+      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str (dissoc matching-mapping :dashcard)))
+      ;; We need to merge in
       (merge
        {:type (:type matching-param)}
        request-param
@@ -94,7 +96,13 @@
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
-    (log/tracef "Dashboard parameters:\n%s" (u/pprint-to-str dashboard-param-id->param))
+    (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
+                (u/pprint-to-str (->> dashboard-param-id->param
+                                      (m/map-vals (fn [param]
+                                                    (update param :mappings (fn [mappings]
+                                                                              (into #{} (map #(dissoc % :dashcard)) mappings)))))))
+                (u/pprint-to-str request-param-id->param)
+                (u/pprint-to-str merged-parameters))
     (u/prog1
       (into [] (comp (map (partial resolve-param-for-card card-id dashboard-param-id->param))
                      (filter some?))

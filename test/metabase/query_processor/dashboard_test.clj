@@ -8,6 +8,17 @@
             [metabase.test :as mt]
             [schema.core :as s]))
 
+(defn- run-query-for-dashcard [dashboard-id card-id & options]
+  ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
+  ;; stuff doesn't belong in the Dashboard QP namespace
+  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+    (apply qp.dashboard/run-query-for-dashcard-async
+     :dashboard-id dashboard-id
+     :card-id      card-id
+     :run          (fn [query info]
+                     (qp/process-query (assoc query :async? false) info))
+     options)))
+
 (deftest merge-defaults-from-mappings-test
   (testing "DashboardCard parameter mappings can specify default values, and we should respect those"
     (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
@@ -39,13 +50,50 @@
                        "parameter")]
                      (#'qp.dashboard/resolve-params-for-query dashboard-id card-id nil))))
       (testing "make sure it works end-to-end"
-        (binding [api/*current-user-permissions-set* (atom #{"/"})]
-          (is (schema= {:status   (s/eq :completed)
-                        :data     {:rows     (s/eq [[3]])
-                                   s/Keyword s/Any}
-                        s/Keyword s/Any}
-                       (qp.dashboard/run-query-for-dashcard-async
-                        :dashboard-id dashboard-id
-                        :card-id      card-id
-                        :run          (fn [query info]
-                                        (qp/process-query (assoc query :async? false) info))))))))))
+        (is (schema= {:status   (s/eq :completed)
+                      :data     {:rows     (s/eq [[3]])
+                                 s/Keyword s/Any}
+                      s/Keyword s/Any}
+                     (run-query-for-dashcard dashboard-id card-id)))))))
+
+(deftest default-value-precedence-test
+  (testing "If both a Dashboard and Card have default values for a parameter, the Card defaults should take precedence\n"
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query (str "SELECT distinct category "
+                                                                                  "FROM products "
+                                                                                  "WHERE {{filter}} "
+                                                                                  "ORDER BY category ASC")
+                                                                      :template-tags
+                                                                      {"filter"
+                                                                       {:id           "xyz456"
+                                                                        :name         "filter"
+                                                                        :display-name "Filter"
+                                                                        :type         :dimension
+                                                                        :dimension    [:field (mt/id :products :category) nil]
+                                                                        :widget-type  :category
+                                                                        :default      ["Gizmo" "Gadget"]
+                                                                        :required     true}}}}}]
+                      Dashboard [{dashboard-id :id} {:parameters [{:name    "category"
+                                                                   :slug    "category"
+                                                                   :id      "abc123"
+                                                                   :type    :string/=
+                                                                   :default ["Widget"]}]}]
+                      DashboardCard [_ {:dashboard_id       dashboard-id
+                                        :card_id            card-id
+                                        :parameter_mappings [{:parameter_id "abc123"
+                                                              :card_id      card-id
+                                                              :target       [:dimension [:template-tag "filter"]]}]}]]
+        (testing "Sanity check: running Card query should use Card defaults"
+          (is (= [["Gadget"] ["Gizmo"]]
+                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+        (testing "No value specified: should prefer Card defaults"
+          (is (= [["Gadget"] ["Gizmo"]]
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id)))))
+        (testing "Specifying a value should override both defaults."
+          (is (= [["Doohickey"]]
+                 (mt/rows (run-query-for-dashcard
+                           dashboard-id card-id
+                           :parameters [{:id    "abc123"
+                                         :value ["Doohickey"]}])))))))))

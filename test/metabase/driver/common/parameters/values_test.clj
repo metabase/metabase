@@ -432,3 +432,27 @@
                          :type         :card
                          :card-id      (u/the-id card)}
                         nil))))))))
+
+(deftest prefer-template-tag-default-test
+  (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
+    ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
+    ;; request parameter. If the template tag also specifies a default, we should prefer that.
+    (mt/dataset sample-dataset
+      (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
+                                                :value    (s/eq ["Gizmo" "Gadget"])
+                                                s/Keyword s/Any}
+                                     s/Keyword s/Any}}
+                   (values/query->params-map
+                    {:template-tags {"filter"
+                                     {:id           "xyz456"
+                                      :name         "filter"
+                                      :display-name "Filter"
+                                      :type         :dimension
+                                      :dimension    [:field (mt/id :products :category) nil]
+                                      :widget-type  :category
+                                      :default      ["Gizmo" "Gadget"]
+                                      :required     true}}
+                     :parameters    [{:type    :string/=
+                                      :id      "abc123"
+                                      :default ["Widget"]
+                                      :target  [:dimension [:template-tag "filter"]]}]}))))))
