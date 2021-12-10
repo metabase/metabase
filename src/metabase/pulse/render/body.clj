@@ -716,11 +716,8 @@
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        ;; clean works differentlike...
-        rows           (sparkline/cleaned-rows timezone-id card data)
+        rows           (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
         last-rows      (reverse (take-last 2 rows))
-        values         (for [row last-rows]
-                         (some-> row y-axis-rowfn common/format-number))
         labels         (datetime/format-temporal-string-pair timezone-id
                                                              (map x-axis-rowfn last-rows)
                                                              (x-axis-rowfn cols))
