@@ -6,6 +6,9 @@ import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/components/ExternalLink";
 import Link from "metabase/components/Link";
 
+import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
+import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+
 const SERVICE_ACCOUNT_DOCS_URL =
   "https://developers.google.com/identity/protocols/OAuth2ServiceAccount";
 function BigQueryServiceAccountToggle({
@@ -141,11 +144,28 @@ export default function getFieldsForBigQuery(details) {
         "visible-if": { "advanced-options": true },
       },
       {
-        name: "details.let-user-control-scheduling",
+        name: "let-user-control-scheduling",
         type: "boolean",
         "display-name": t`Choose when syncs and scans happen`,
         description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
         "visible-if": { "advanced-options": true },
+      },
+      {
+        name: "schedules.metadata_sync",
+        "display-name": t`Database syncing`,
+        type: MetadataSyncScheduleWidget,
+        description: t`This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.`,
+        "visible-if": { "let-user-control-scheduling": true },
+      },
+      {
+        name: "schedules.cache_field_values",
+        "display-name": t`Scanning for Filter Values`,
+        type: CacheFieldValuesScheduleWidget,
+        description:
+          t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
+          " " +
+          t`When should Metabase automatically scan and cache field values?`,
+        "visible-if": { "let-user-control-scheduling": true },
       },
       {
         name: "refingerprint",
