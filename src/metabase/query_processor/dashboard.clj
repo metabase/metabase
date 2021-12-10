@@ -30,6 +30,10 @@
 
 (defn- resolve-param-for-card
   [card-id param-id->param {param-id :id, :as request-param}]
+  (when-not param-id
+    (throw (ex-info (tru "Unable to resolve invalid query parameter: parameter is missing :id")
+                    {:type              qp.error-type/invalid-parameter
+                     :invalid-parameter request-param})))
   (log/tracef "Resolving parameter %s\n%s" (pr-str param-id) (u/pprint-to-str request-param))
   ;; find information about this dashboard parameter by its parameter `:id`. If no parameter with this ID
   ;; exists, it is an error.
@@ -51,20 +55,51 @@
        {:id     param-id
         :target (:target matching-mapping)}))))
 
-(s/defn ^:private resolve-params-for-query :- (s/maybe [{s/Keyword s/Any}])
+;; DashboardCard parameter mappings can specify default values, and we need to make sure the parameters map returned
+;; by [[resolve-params-for-query]] includes entries for any default values. So we'll do this by creating a entries for
+;; all the parameters with defaults, and then merge together a map of param-id->default-entry with a map of
+;; param-id->request-entry (so the value from the request takes precedence over the default value)
+
+(defn- dashboard-param-defaults
+  "Construct parameter entries for any parameters with default values in `dashboard-param-id->param` as returned
+  by [[dashboard/dashboard->resolved-params]]."
+  [dashboard-param-id->param card-id]
+  (into
+   {}
+   (comp (filter (fn [[_ {:keys [default]}]]
+                   default))
+         (map (fn [[param-id {:keys [default mappings]}]]
+                [param-id {:id      param-id
+                           :default default
+                           ;; make sure we include target info so we can actually map this back to a template
+                           ;; tag/param declaration
+                           :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
+                                            (when (= mapping-card-id card-id)
+                                              target))
+                                          mappings)}]))
+         (filter (fn [[_ {:keys [target]}]]
+                   target)))
+   dashboard-param-id->param))
+
+(s/defn ^:private resolve-params-for-query :- (s/maybe [su/Map])
+  "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
+  that those parameters exist and have allowed types, and merge in default values and other info from the parameter
+  mappings."
   [dashboard-id   :- su/IntGreaterThanZero
    card-id        :- su/IntGreaterThanZero
-   request-params :- (s/maybe [{s/Keyword s/Any}])]
-  (when (seq request-params)
-    (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-    (let [dashboard       (api/check-404 (db/select-one Dashboard :id dashboard-id))
-          param-id->param (dashboard/dashboard->resolved-params dashboard)]
-      (log/tracef "Dashboard parameters:\n%s" (u/pprint-to-str param-id->param))
-      (u/prog1
-        (into [] (comp (map (partial resolve-param-for-card card-id param-id->param))
-                       (filter some?))
-              request-params)
-        (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>))))))
+   request-params :- (s/maybe [su/Map])]
+  (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
+  (let [dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
+        dashboard-param-id->param (dashboard/dashboard->resolved-params dashboard)
+        request-param-id->param   (into {} (map (juxt :id identity)) request-params)
+        merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
+                                               request-param-id->param))]
+    (log/tracef "Dashboard parameters:\n%s" (u/pprint-to-str dashboard-param-id->param))
+    (u/prog1
+      (into [] (comp (map (partial resolve-param-for-card card-id dashboard-param-id->param))
+                     (filter some?))
+            merged-parameters)
+      (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>)))))
 
 (defn run-query-for-dashcard-async
   "Like [[metabase.query-processor.card/run-query-for-card-async]], but runs the query for a `DashboardCard` with
@@ -73,7 +108,7 @@
   met before returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/run-query-for-card-async]] for more information about the various parameters."
-  {:arglists '([& {:keys [export-format parameters ignore_cache constraints parameters middleware]}])}
+  {:arglists '([& {:keys [dashboard-id card-id export-format parameters ignore_cache constraints parameters middleware]}])}
   [& {:keys [dashboard-id card-id parameters export-format]
       :or   {export-format :api}
       :as   options}]
@@ -81,14 +116,14 @@
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
   (check-card-is-in-dashboard card-id dashboard-id)
-  (let [params  (resolve-params-for-query dashboard-id card-id parameters)
-        options (merge
-                 {:ignore_cache false
-                  :constraints  constraints/default-query-constraints
-                  :context      :dashboard}
-                 options
-                 {:parameters   params
-                  :dashboard-id dashboard-id})]
+  (let [resolved-params (resolve-params-for-query dashboard-id card-id parameters)
+        options         (merge
+                         {:ignore_cache false
+                          :constraints  constraints/default-query-constraints
+                          :context      :dashboard}
+                         options
+                         {:parameters   resolved-params
+                          :dashboard-id dashboard-id})]
     ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
     (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
       (m/mapply qp.card/run-query-for-card-async card-id export-format options))))
