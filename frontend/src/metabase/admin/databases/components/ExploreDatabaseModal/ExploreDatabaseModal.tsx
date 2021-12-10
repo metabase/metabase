@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { Database } from "./types";
+import { Database } from "../../types";
 
 interface Props {
   sampleDatabase?: Database;
