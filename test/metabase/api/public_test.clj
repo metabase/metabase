@@ -202,17 +202,48 @@
                  (mt/rows
                   (mt/user-http-request :rasta :get 202 (str "public/card/" uuid "/query"))))))))))
 
-(deftest check-that-we-can-exec-a-publiccard-with---parameters-
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
-      (is (= [{:id "_VENUE_ID_", :name "venue_id", :slug "venue_id", :type "number", :value 2}]
-             (get-in (http/client :get 202 (str "public/card/" uuid "/query")
+(deftest execute-public-card-with-parameters-test
+  (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
+        (is (schema= {:status     (s/eq "completed")
+                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
+                                                       :name  "venue_id"
+                                                       :slug  "venue_id"
+                                                       :type  "number"
+                                                       :value 2}])
+                                   s/Keyword   s/Any}
+                      s/Keyword   s/Any}
+                     (http/client :get 202 (str "public/card/" uuid "/query")
                                   :parameters (json/encode [{:id    "_VENUE_ID_"
                                                              :name  "venue_id"
                                                              :slug  "venue_id"
                                                              :type  "number"
-                                                             :value 2}]))
-                     [:json_query :parameters]))))))
+                                                             :value 2}])))))
+
+      ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
+      (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
+                                                                     :type     :native
+                                                                     :native   {:query "SELECT {{foo}}"
+                                                                                :template-tags
+                                                                                {"foo"
+                                                                                 {:id           "abc123"
+                                                                                  :name         "foo"
+                                                                                  :display-name "Filter"
+                                                                                  :type         :text}}}}}]
+          (is (schema= {:status   (s/eq "completed")
+                        :data     {:rows     (s/eq [["456"]])
+                                   s/Keyword s/Any}
+                        s/Keyword s/Any}
+                       (http/client :get 202 (format "public/card/%s/query?parameters=%s"
+                                                     uuid
+                                                     (json/encode [{:type   "category"
+                                                                    :value  "456"
+                                                                    :target ["variable" ["template-tag" "foo"]]
+                                                                    :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}]))))))))))
+
+
 
 ;; Cards with required params
 (defn- do-with-required-param-card [f]

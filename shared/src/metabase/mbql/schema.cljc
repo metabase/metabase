@@ -1247,9 +1247,9 @@
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
-   :text    {:type :string, :allowed-for #{:text :string/= :id :category
-                                           :location/city :location/state :location/zip_code :location/country}}
-   :date    {:type :date, :allowed-for #{:date :date/single :date/all-options :id :category}}
+   :text    {:type :string,  :allowed-for #{:text :string/= :id :category
+                                            :location/city :location/state :location/zip_code :location/country}}
+   :date    {:type :date,    :allowed-for #{:date :date/single :date/all-options :id :category}}
    ;; I don't think `:boolean` is actually used on the FE at all.
    :boolean {:type :boolean, :allowed-for #{:boolean :id :category}}
 
@@ -1267,8 +1267,12 @@
    ;; the actual type of the parameter based on the Field we're filtering on. Or something like that. Parameters with
    ;; these types are only allowed if the widget type matches exactly, but you can also pass in something like a
    ;; `:number/=` for a parameter with widget type `:category`.
+   ;;
+   ;; TODO FIXME -- actually, it turns out the the FE client passes parameter type `:category` for parameters in
+   ;; public Cards. Who knows why! For now, we'll continue allowing it. But we should fix it soon. See
+   ;; [[metabase.api.public-test/execute-public-card-with-parameters-test]]
    :id       {:allowed-for #{:id}}
-   :category {:allowed-for #{:category}}
+   :category {:allowed-for #{:category #_FIXME :number :text :date :boolean}}
 
    ;; Like `:id` and `:category`, the `:location/*` types are primarily widget types. They don't really have a meaning
    ;; as a parameter type, so in an ideal world they wouldn't be allowed; however it seems like the FE still passed
