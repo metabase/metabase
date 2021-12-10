@@ -9,7 +9,7 @@ import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { MetabaseApi } from "metabase/services";
+import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
@@ -77,6 +77,9 @@ export const INITIALIZE_DATABASE_ERROR =
 export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
+
+export const CLOSE_DEPRECATION_NOTICE =
+  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
 
 export const reset = createAction(RESET);
 
@@ -325,6 +328,22 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
+export const closeDeprecationNotice = createThunkAction(
+  CLOSE_DEPRECATION_NOTICE,
+  function() {
+    return async function() {
+      try {
+        await SettingsApi.put({
+          key: "engine-deprecation-notice-version",
+          value: MetabaseSettings.currentVersion(),
+        });
+      } catch (error) {
+        console.log("error saving deprecation notice version", error);
+      }
+    };
+  },
+);
+
 // reducers
 
 const editingDatabase = handleActions(
@@ -385,6 +404,13 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
+const isDeprecationNoticeEnabled = handleActions(
+  {
+    [CLOSE_DEPRECATION_NOTICE]: () => false,
+  },
+  MetabaseSettings.engineDeprecationNoticeEnabled(),
+);
+
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -392,4 +418,5 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
+  isDeprecationNoticeEnabled,
 });

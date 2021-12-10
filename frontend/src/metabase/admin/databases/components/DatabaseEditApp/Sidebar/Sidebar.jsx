@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 
+import { isSyncCompleted } from "metabase/lib/syncing";
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModal.jsx";
 import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -33,12 +34,12 @@ const DatabaseEditAppSidebar = ({
         <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
           <ol>
-            {!database.initial_sync && (
+            {!isSyncCompleted(database) && (
               <li>
                 <Button disabled>{t`Syncing database…`}</Button>
               </li>
             )}
-            {database.initial_sync && (
+            {isSyncCompleted(database) && (
               <li>
                 <ActionButton
                   actionFn={() => syncDatabaseSchema(database.id)}
@@ -50,7 +51,7 @@ const DatabaseEditAppSidebar = ({
                 />
               </li>
             )}
-            {database.initial_sync && (
+            {isSyncCompleted(database) && (
               <li className="mt2">
                 <ActionButton
                   actionFn={() => rescanDatabaseFields(database.id)}
@@ -68,7 +69,7 @@ const DatabaseEditAppSidebar = ({
         <div className="Actions-group">
           <label className="Actions-groupLabel block text-bold">{t`Danger Zone`}</label>
           <ol>
-            {database.initial_sync && (
+            {isSyncCompleted(database) && (
               <li>
                 <ModalWithTrigger
                   ref={discardSavedFieldValuesModal}

@@ -1,18 +1,17 @@
 import React from "react";
-import PropTypes from "prop-types";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
 import { SpinnerIcon, SpinnerRoot } from "./LoadingSpinner.styled";
 
-const propTypes = {
-  className: PropTypes.string,
-  size: PropTypes.number,
-  borderWidth: PropTypes.number,
-};
+interface Props {
+  className?: string;
+  size?: number;
+  borderWidth?: number;
+}
 
-const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }) => (
+const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
   <SpinnerRoot className={className} data-testid="loading-spinner">
     {isReducedMotionPreferred() ? (
       <Icon name="hourglass" size="24" />
@@ -21,7 +20,5 @@ const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }) => (
     )}
   </SpinnerRoot>
 );
-
-LoadingSpinner.propTypes = propTypes;
 
 export default LoadingSpinner;
