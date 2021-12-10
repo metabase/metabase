@@ -12,7 +12,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import ExploreDatabaseModal from "metabase/components/ExploreDatabaseModal";
+import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";

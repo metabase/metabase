@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
-import ExploreDatabaseModal from "metabase/components/ExploreDatabaseModal";
+import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
 import { Database, User } from "../../types";
 
 interface Props {
