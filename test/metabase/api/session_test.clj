@@ -68,7 +68,8 @@
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-full-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-  (testing "failure should log an error(#14317)"
+  ;; disabled due to CVE-2021-44228
+  #_(testing "failure should log an error(#14317)"
     (mt/with-temp User [user]
       (is (schema= [(s/one (s/eq :error)
                            "log type")
@@ -111,7 +112,8 @@
       (testing "throttling should now be triggered"
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
-      (testing "Error should be logged (#14317)"
+      ;; disabled due to CVE-2021-44228
+      #_(testing "Error should be logged (#14317)"
         (is (schema= [(s/one (s/eq :error)
                              "log type")
                       (s/one clojure.lang.ExceptionInfo
