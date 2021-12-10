@@ -22,5 +22,5 @@ export const getShowPinMessage = createSelector(
 
 export const getShowExploreModal = createSelector(
   [getSettings],
-  settings => settings["show-database-syncing-modal"],
+  settings => settings["show-database-explore-modal"],
 );

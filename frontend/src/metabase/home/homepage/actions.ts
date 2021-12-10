@@ -30,7 +30,7 @@ export const hideExploreModal = createThunkAction(
   HIDE_EXPLORE_MODAL,
   function() {
     return async function(dispatch: any) {
-      const setting = { key: "show-database-syncing-modal", value: false };
+      const setting = { key: "show-database-explore-modal", value: false };
       await dispatch(updateSetting(setting));
     };
   },
