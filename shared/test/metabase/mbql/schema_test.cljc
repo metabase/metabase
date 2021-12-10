@@ -37,11 +37,11 @@
                                                            :display-name "foo"
                                                            :type         :text}}}}
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
-      (t/testing (format "correct-query %s" (pr-str correct-query))
+      (t/testing (str "correct-query " (pr-str correct-query))
         (t/is (= correct-query
                  (mbql.s/validate-query correct-query))))
-      (t/testing (format "bad-query %s" (pr-str bad-query))
+      (t/testing (str "bad-query " (pr-str bad-query))
         (t/is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
+               #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                #"keys in template tag map must match the :name of their values"
                (mbql.s/validate-query bad-query)))))))
