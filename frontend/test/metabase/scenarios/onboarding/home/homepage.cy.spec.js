@@ -63,6 +63,18 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Remove").click();
       cy.findByText("Try these x-rays based on your data").should("not.exist");
     });
+
+    it("should show a modal when there is a newly created database", () => {
+      mockSyncingDatabase({ hasSampleDatabase: true });
+      cy.visit("/");
+
+      cy.findByText("Great, we're taking a look at your database!");
+      cy.findByText("Explore sample data").click();
+      cy.findByText("I'm done exploring for now").click();
+
+      cy.findByText("Start here");
+      cy.findByText("Explore sample data").should("not.exist");
+    });
   });
 
   describe("as normal user", () => {
@@ -116,4 +128,24 @@ const clickOnCloseIconInSection = name => {
     .parent()
     .realHover()
     .within(() => cy.findByLabelText("close icon").click());
+};
+
+const mockSyncingDatabase = () => {
+  cy.request("GET", "/api/user/current").then(({ body: user }) => {
+    cy.intercept("GET", /api\/database$/, req => {
+      req.reply(({ body }) => {
+        const [sampleDatabase] = body.data;
+
+        const userDatabase = {
+          ...sampleDatabase,
+          id: sampleDatabase.id + 1,
+          creator_id: user.id,
+          is_sample: false,
+          initial_sync_status: "incomplete",
+        };
+
+        body.data = [sampleDatabase, userDatabase];
+      });
+    });
+  });
 };

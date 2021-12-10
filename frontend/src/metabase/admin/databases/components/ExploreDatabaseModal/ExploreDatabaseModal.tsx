@@ -23,11 +23,14 @@ const ExploreDatabaseModal = ({
       footer={
         sampleDatabase ? (
           <Link to={showXrays ? Urls.exploreDatabase(sampleDatabase) : "/"}>
-            <Button primary>{t`Explore sample data`}</Button>
+            <Button primary onClick={onClose}>{t`Explore sample data`}</Button>
           </Link>
         ) : (
           <Link to="/">
-            <Button primary>{t`Explore your Metabase`}</Button>
+            <Button
+              primary
+              onClick={onClose}
+            >{t`Explore your Metabase`}</Button>
           </Link>
         )
       }
