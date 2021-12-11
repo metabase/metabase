@@ -3,7 +3,9 @@ import styled, { css } from "styled-components";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-export const EditorContainer = styled.div`
+export const EditorContainer = styled.div.attrs({
+  className: "expression-editor-textfield",
+})`
   border: 1px solid;
   border-color: ${color("border")};
   border-radius: ${space(0)};

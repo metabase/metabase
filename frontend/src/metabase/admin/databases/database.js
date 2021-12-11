@@ -5,7 +5,6 @@ import {
   createThunkAction,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -15,27 +14,10 @@ import Databases from "metabase/entities/databases";
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
 // Default schedules for db sync and deep analysis
-export const DEFAULT_SCHEDULES = {
-  cache_field_values: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: 0,
-    schedule_type: "daily",
-  },
-  metadata_sync: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_type: "hourly",
-  },
-};
-
 export const DB_EDIT_FORM_CONNECTION_TAB = "connection";
-export const DB_EDIT_FORM_SCHEDULING_TAB = "scheduling";
 
 export const RESET = "metabase/admin/databases/RESET";
 export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
-export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
@@ -164,37 +146,6 @@ export const addSampleDataset = createThunkAction(
     };
   },
 );
-
-export const proceedWithDbCreation = function(database) {
-  return async function(dispatch, getState) {
-    if (database.details["let-user-control-scheduling"]) {
-      try {
-        dispatch.action(VALIDATE_DATABASE_STARTED);
-
-        const { valid } = await MetabaseApi.db_validate({ details: database });
-
-        if (valid) {
-          dispatch.action(SET_DATABASE_CREATION_STEP, {
-            database,
-            step: DB_EDIT_FORM_SCHEDULING_TAB,
-          });
-        } else {
-          throw {
-            data: {
-              message: t`Couldn't connect to the database. Please check the connection details.`,
-            },
-          };
-        }
-      } catch (error) {
-        dispatch.action(VALIDATE_DATABASE_FAILED, { error });
-        throw error;
-      }
-    } else {
-      // Skip the scheduling step if user doesn't need precise control over sync and scan
-      await dispatch(createDatabase(database));
-    }
-  };
-};
 
 export const createDatabase = function(database) {
   editParamsForUserControlledScheduling(database);

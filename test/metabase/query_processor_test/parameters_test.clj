@@ -80,7 +80,8 @@
                       :template-tags {(name field) {:name         (name field)
                                                     :display-name (name field)
                                                     :type         :dimension
-                                                    :dimension    [:field-id (mt/id table field)]}})
+                                                    :widget-type  value-type
+                                                    :dimension    [:field (mt/id table field) nil]}})
    :parameters [{:type   value-type
                  :name   (name field)
                  :target [:dimension [:template-tag (name field)]]
@@ -179,7 +180,7 @@
                                               {:name         "country"
                                                :display-name "Country"
                                                :type         :dimension
-                                               :dimension    [:field-id (mt/id :country :name)]
+                                               :dimension    [:field (mt/id :country :name) nil]
                                                :widget-type  :category}}}
                  :database   (mt/id)
                  :parameters [{:type   :location/country
@@ -196,7 +197,7 @@
                                             {:name         "price"
                                              :display-name "Price"
                                              :type         :dimension
-                                             :dimension    [:field-id (mt/id :venues :price)]
+                                             :dimension    [:field (mt/id :venues :price) nil]
                                              :widget-type  :category}}}
                :database   (mt/id)
                :parameters [{:type   :category

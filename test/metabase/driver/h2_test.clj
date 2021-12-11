@@ -127,6 +127,7 @@
                             :template-tags {"date" {:name         "date"
                                                     :display-name "date"
                                                     :type         :dimension
+                                                    :widget-type  :date/all-options
                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]

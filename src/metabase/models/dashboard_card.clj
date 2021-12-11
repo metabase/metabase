@@ -159,10 +159,18 @@
        (update-dashboard-card-series! dashboard-card series)))
     (retrieve-dashboard-card id)))
 
+(def ParamMapping
+  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
+  {:parameter_id su/NonBlankString
+   ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed
+   #_:target       #_s/Any
+   s/Keyword     s/Any})
+
 (def ^:private NewDashboardCard
   {:dashboard_id                            su/IntGreaterThanZero
    (s/optional-key :card_id)                (s/maybe su/IntGreaterThanZero)
-   (s/optional-key :parameter_mappings)     (s/maybe [su/Map])
+   ;; TODO - use ParamMapping. Breaks too many tests right now tho
+   (s/optional-key :parameter_mappings)     (s/maybe [#_ParamMapping su/Map])
    (s/optional-key :visualization_settings) (s/maybe su/Map)
    ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys
    s/Keyword                                s/Any})

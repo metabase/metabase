@@ -9,7 +9,6 @@ import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
 import { trackStructEvent } from "metabase/lib/analytics";
-import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
 import Databases from "metabase/entities/databases";
 import {
   trackAddDataLaterClicked,
@@ -61,27 +60,14 @@ export default class DatabaseConnectionStep extends Component {
       }
     }
 
-    if (database.details["let-user-control-scheduling"]) {
-      // Show the scheduling step if user has chosen to control scheduling manually
-      // Add the default schedules because DatabaseSchedulingForm requires them and update the db state
-      this.props.setDatabaseDetails({
-        nextStep: this.props.stepNumber + 1,
-        details: {
-          ...database,
-          is_full_sync: true,
-          schedules: DEFAULT_SCHEDULES,
-        },
-      });
-    } else {
-      // now that they are good, store them
-      this.props.setDatabaseDetails({
-        // skip the scheduling step
-        nextStep: this.props.stepNumber + 2,
-        details: database,
-      });
+    // now that they are good, store them
+    this.props.setDatabaseDetails({
+      // skip the scheduling step
+      nextStep: this.props.stepNumber + 2,
+      details: database,
+    });
 
-      trackStructEvent("Setup", "Database Step", database.engine);
-    }
+    trackStructEvent("Setup", "Database Step", database.engine);
   };
 
   skipDatabase = () => {
@@ -156,7 +142,7 @@ export default class DatabaseConnectionStep extends Component {
             database={databaseDetails}
             onSubmit={this.handleSubmit}
           >
-            {({ values, formFields, Form, FormField, FormFooter }) => (
+            {({ formFields, Form, FormField, FormFooter }) => (
               <Form>
                 {formFields.map(({ name }) => (
                   <FormField key={name} name={name} />

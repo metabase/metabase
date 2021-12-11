@@ -1,103 +1,170 @@
-# Metabase documentation and resources
+## Getting started
 
-## Tutorials
+- [Getting started][getting-started]
+- [A tour of Metabase][tour]
 
-### [Learn Metabase][learn]
+## Tutorials and guides
 
-Learn how to set Metabase up, build out your analytics, organize things and set permissions, and how to do data ops right.
+- [Learn Metabase][learn] has a ton of articles on how to use Metabase and level up as a data analyst.
 
-## Getting help
+## Installation and operation
 
-### [Troubleshooting Guide][troubleshooting]
+- [Installing Metabase](./operations-guide/installing-metabase.html)
+- [How to upgrade Metabase](./operations-guide/upgrading-metabase.html)
+- [Application database](./operations-guide/configuring-application-database.html)
+- [Backing up Metabase](./operations-guide/backing-up-metabase-application-data.html)
+- [Migrating to a production application database](./operations-guide/migrating-from-h2.html)
+- [Running database migrations manually](./operations-guide/running-migrations-manually.html)
+- [A word on Java versions](./operations-guide/java-versions.html)
+- [How to setup monitoring via JMX](./operations-guide/jmx-monitoring.html)
+- [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.html)
 
-Problems, their causes, how to detect them, and how to fix them.
+## Asking questions
 
-### [Metabase forum][forum]
+### Query builder
 
-A place to get help on installation, setting up as well as sharing tips and tricks.
+- [Simple questions](./users-guide/04-asking-questions.html)
+- [Custom questions](./users-guide/custom-questions.html)
+- [Custom expressions](./users-guide/expressions.html)
+- [List of expressions: aggregations and functions](./users-guide/expressions-list.html)
+- [Visualizing data](./users-guide/05-visualizing-results.html)
+- [Using results to ask new questions](./users-guide/referencing-saved-questions-in-queries.html)
 
-### [FAQs][faq]
+### SQL and native queries
 
-Frequently asked questions about Metabase.
+- [The native SQL editor](./users-guide/writing-sql.html)
+- [Viewing metadata](./users-guide/12-data-model-reference.html)
+- [SQL templates](./users-guide/13-sql-parameters.html)
+- [SQL snippets](./users-guide/sql-snippets.html)
 
-## Metabase reference guides
+### Alerts and Metabot
 
-Documentation guides for the Metabase application.
+- [Setting and getting alerts](./users-guide/15-alerts.html)
+- [Get answers in Slack with Metabot](./users-guide/11-metabot.html)
 
-### [Users Guide][users-guide]
+## Dashboards
 
-How to ask questions, how to visualize answers, as well as how to share questions and create dashboards.
+- [Creating dashboards](./users-guide/07-dashboards.html)
+- [Dashboard filters](./users-guide/08-dashboard-filters.html)
+- [Interactive dashboards](./users-guide/interactive-dashboards.html)
+- [Dashboard charts with multiple series](./users-guide/09-multi-series-charting.html)
+- [Setting up dashboard subscriptions](./users-guide/dashboard-subscriptions.html)
 
-### [Admin Guide][admin-guide]
+## Collections
 
-How to set up Metabase, configure common settings, manage accounts and permissions, and add databases.
+- [Sharing and organizing your saved questions](./users-guide/06-sharing-answers.html)
+- [Collections](./users-guide/collections.html)
 
-### [Operations Guide][operations-guide]
+## People and groups
 
-Learn how to install Metabase for production use. The guide covers topics like SSL termination, deploying via Docker Containers vs. JAR files, as well as the tradeoffs involved.
+- [Editing your account settings](./users-guide/account-settings.html)
+- [Managing people and groups](./administration-guide/04-managing-users.html)
+- [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
+- [SAML](./enterprise-guide/authenticating-with-saml.html)
+- [JWT](./enterprise-guide/authenticating-with-jwt.html)
+- [Password complexity](./operations-guide/changing-password-complexity.html)
+- [Session expiration](./operations-guide/changing-session-expiration.html)
 
-### [Enterprise Guide][enterprise]
+## Permissions
 
-Here’s where to go for help using the features included in [Metabase Enterprise Edition][enterprise-landing].
+- [Data permissions](./administration-guide/05-setting-permissions.html)
+- [Collection permissions](./administration-guide/06-collections.html)
+- [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.html)
+- [SQL snippets folder permissions](./enterprise-guide/sql-snippets.html)
 
-## Metabase for developers
+## Embedding questions and dashboards
 
-### [Developers Guide][developers]
+- [Public links for dashboards and questions](./administration-guide/12-public-links.html)
+- [Embedding Metabase in other applications](./administration-guide/13-embedding.html)
+- [Embedding the entire Metabase app in your own web app](./enterprise-guide/full-app-embedding.html)
+- [Embedding example apps][embedding-ref-apps]
+- [White labeling charts (branding)](./enterprise-guide/whitelabeling.html)
 
-Learn how to contribute to the Metabase open source project.
+## Databases
 
-### [Driver Development][drivers]
+- [Adding data sources](./administration-guide/01-managing-databases.html)
+- [Encrypting your database connection](./operations-guide/encrypting-database-details-at-rest.html)
+- [Editing your database metadata](./administration-guide/03-metadata-editing.html)
+- [Creating segments and metrics](./administration-guide/07-segments-and-metrics.html)
+- [SSH tunneling](./administration-guide/ssh-tunnel-for-database-connections.html)
+- [SSL certificate](./administration-guide/secure-database-connections-with-ssl-certificates.html)
 
-This guide lists existing community drivers, and shows how to get started with driver development.
+## Configuring Metabase
 
-### [Embedding reference apps][embedding-ref-apps]
+- [Settings](./administration-guide/08-configuration-settings.html)
+- [Email](./administration-guide/02-setting-up-email.html)
+- [Slack](./administration-guide/09-setting-up-slack.html)
+- [Environment variables](./operations-guide/environment-variables.html)
+- [Handling timezones](./operations-guide/handling-timezones.html)
+- [Customizing the Metabase Jetty Webserver](./operations-guide/customizing-jetty-webserver.html)
+- [Default formatting](./administration-guide/19-formatting-settings.html)
+- [Localization](./administration-guide/localization.html)
+- [Caching query results](./administration-guide/14-caching.html)
+- [Custom map settings](./administration-guide/20-custom-maps.html)
 
-Code examples for embedding Metabase in applications.
+## Usage and performance tools
+
+- [Auditing tools](./enterprise-guide/audit.html)
+- [Tracking query errors](./enterprise-guide/tools.html)
+
+## Metabase API
+
+- [API reference][api-documentation]
+- [API tutorial][api-tutorial]
+
+## Troubleshooting and getting help
+
+- [Troubleshooting guide][troubleshooting] 
+- [Metabase forum][forum]
+- [Configuring logging](./operations-guide/log-configuration.html)
+
+## Enterprise and Pro editions
+
+- [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.html)
+- [List of premium features][enterprise]
 
 ## Metabase community
 
-Connect with others using Metabase and catch up on the latest news.
+- [Metabase forum][forum]
+- [Data Bytes][data-bytes]
+- [Case studies][case-studies]
+- [Blog][blog]
+- [Source code repository on GitHub][source-code]
 
-### [Metabase forum][forum]
+## Documentation guides
 
-A place to get help on installation, setting up as well as sharing tips and tricks.
-
-### [Data Bytes][data-bytes]
-
-Real stories about teams working and learning with data. You can also share your own stories.
-
-### [Case studies][case-studies]
-
-See how other organizations, big and small, have leveled up using Metabase.
-
-### [Blog][blog]
-
-Stay up to date on the latest from Metabase.
-
-### [Source code repository on GitHub][source-code]
-
-Metabase is open source: come on over and check out the code.
+- [Users guide](users-guide/start.html)
+- [Admin guide](administration-guide/start.html)
+- [Operations guide](operations-guide/start.html)
+- [Troubleshooting guide][troubleshooting] 
+- [Developers guide][developers]
 
 ## Reference
 
-### [Anonymous Information Collection Reference][info-collection]
+- [Anonymous Information Collection Reference][info-collection]
+- [FAQs][faq]
+- [Glossary][glossary]
 
-This page describes the anonymous usage information we collect (only if you opt-in), why we collect it, and how we use it to improve Metabase.
-
-[admin-guide]: administration-guide/start.md
+[api-documentation]: ./api-documentation.html
+[api-tutorial]: /learn/administration/metabase-api.html
+[admin-guide]: administration-guide/start.html
 [blog]: /blog
 [case-studies]: https://www.metabase.com/case_studies/
 [embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
-[enterprise]: enterprise-guide/start.md
+[enterprise]: enterprise-guide/start.html
 [enterprise-landing]: /enterprise
 [data-bytes]: /community
-[developers]: developers-guide/start.md
-[drivers]: developers-guide-drivers.md
-[faq]: faq/start.md
+[developers]: developers-guide/start.html
+[drivers]: developers-guide-drivers.html
+[faq]: faq/start.html
 [forum]: https://discourse.metabase.com/
-[info-collection]: information-collection.md
+[getting-started]: /learn/getting-started/getting-started.html
+[glossary]: /glossary.html
+[info-collection]: information-collection.html
 [learn]: /learn
-[operations-guide]: operations-guide/start.md
+[operations-guide]: operations-guide/start.html
 [source-code]: https://github.com/metabase/metabase
-[troubleshooting]: troubleshooting-guide/index.md
-[users-guide]: users-guide/start.md
+[tour]: /learn/getting-started/tour-of-metabase.html
+[troubleshooting]: troubleshooting-guide/index.html
+[users-guide]: users-guide/start.html
+
