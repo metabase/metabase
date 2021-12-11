@@ -13,7 +13,6 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import ExploreDatabaseModal from "../components/ExploreDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
@@ -25,11 +24,7 @@ import {
   getIsAddingSampleDataset,
   getAddSampleDatasetError,
 } from "../selectors";
-import {
-  deleteDatabase,
-  addSampleDataset,
-  hideExploreModal,
-} from "../database";
+import { deleteDatabase, addSampleDataset } from "../database";
 
 const RELOAD_INTERVAL = 2000;
 
@@ -44,8 +39,6 @@ const mapStateToProps = (state, props) => ({
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
-  showXrays: MetabaseSettings.get("enable-xrays"),
-  showExploreModal: MetabaseSettings.get("show-database-explore-modal"),
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
@@ -54,9 +47,8 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
-  deleteDatabase,
-  addSampleDataset,
-  hideExploreModal,
+  deleteDatabase: deleteDatabase,
+  addSampleDataset: addSampleDataset,
 };
 
 @Database.loadList({
@@ -67,7 +59,6 @@ export default class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
-    this.createdDatabaseModal = React.createRef();
     props.databases.map(database => {
       this["deleteDatabaseModal_" + database.id] = React.createRef();
     });
@@ -81,36 +72,17 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentDidUpdate(oldProps) {
-    if (
-      !oldProps.created &&
-      this.props.created &&
-      this.props.showExploreModal
-    ) {
-      this.createdDatabaseModal.current.open();
-    }
-  }
-
-  handleExploreModalClose = () => {
-    this.createdDatabaseModal.current.close();
-    this.hideExploreModal();
-  };
-
   render() {
     const {
       databases,
       hasSampleDataset,
       isAddingSampleDataset,
       addSampleDatasetError,
-      created,
-      showXrays,
-      showExploreModal,
       engines,
       deletionError,
     } = this.props;
 
     const error = deletionError || addSampleDatasetError;
-    const sampleDatabase = databases.find(d => d.is_sample);
 
     return (
       <div className="wrapper">
@@ -224,17 +196,6 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
-        <ModalWithTrigger
-          ref={this.createdDatabaseModal}
-          isInitiallyOpen={created && showExploreModal}
-          onClose={this.handleExploreModalClose}
-        >
-          <ExploreDatabaseModal
-            sampleDatabase={sampleDatabase}
-            showXrays={showXrays}
-            onClose={this.handleExploreModalClose}
-          />
-        </ModalWithTrigger>
       </div>
     );
   }
