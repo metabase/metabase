@@ -1,11 +1,22 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import { InitialSyncStatus } from "../../types";
+import { InitialSyncStatus, Database } from "../../types";
 
 interface StatusRootProps {
   status: InitialSyncStatus;
 }
+
+export const getIconName = (database: Database) => {
+  switch (database.initial_sync_status) {
+    case "incomplete":
+      return "database";
+    case "complete":
+      return "check";
+    case "aborted":
+      return "warning";
+  }
+};
 
 const getIconColor = ({ status }: StatusRootProps) => {
   switch (status) {
@@ -13,6 +24,15 @@ const getIconColor = ({ status }: StatusRootProps) => {
       return color("brand");
     default:
       return color("white");
+  }
+};
+
+const getIconSize = ({ status }: StatusRootProps) => {
+  switch (status) {
+    case "incomplete":
+      return "0.875rem";
+    default:
+      return "0.75rem";
   }
 };
 
@@ -28,7 +48,7 @@ const getBorderColor = ({ status }: StatusRootProps) => {
 const getBackgroundColor = ({ status }: StatusRootProps) => {
   switch (status) {
     case "incomplete":
-      return lighten("brand", 0.3);
+      return "transparent";
     case "complete":
       return color("accent1");
     case "aborted":
@@ -60,6 +80,6 @@ export const StatusIconContainer = styled.div`
 `;
 
 export const StatusIcon = styled(Icon)`
-  width: 0.75rem;
-  height: 0.75rem;
+  width: ${getIconSize};
+  height: ${getIconSize};
 `;

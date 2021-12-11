@@ -5,6 +5,7 @@ import {
   StatusRoot,
   StatusIconContainer,
   StatusIcon,
+  getIconName,
 } from "./DatabaseStatus.styled";
 
 interface Props {
@@ -22,21 +23,13 @@ const DatabaseStatus = ({ database }: Props) => {
   return (
     <StatusRoot status={database.initial_sync_status}>
       <StatusIconContainer status={database.initial_sync_status}>
-        <StatusIcon name={getIconName(database)} />
+        <StatusIcon
+          status={database.initial_sync_status}
+          name={getIconName(database)}
+        />
       </StatusIconContainer>
     </StatusRoot>
   );
-};
-
-const getIconName = (database: Database) => {
-  switch (database.initial_sync_status) {
-    case "incomplete":
-      return "database";
-    case "complete":
-      return "check";
-    case "aborted":
-      return "warning";
-  }
 };
 
 export default DatabaseStatus;
