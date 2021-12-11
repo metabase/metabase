@@ -126,7 +126,7 @@
                                                     "      now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')"
                                                     "   ),"
                                                     "   '%H:%i'"
-                                                    " ) AS offset;")
+                                                    " ) AS 'offset';")
         [{:keys [global_tz system_tz offset]}] (jdbc/query spec sql)
         the-valid-id                           (fn [zone-id]
                                                  (when zone-id
