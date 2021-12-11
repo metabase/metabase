@@ -16,7 +16,7 @@ import {
   getShowData,
   getShowPinMessage,
   getShowXrays,
-  getshowSyncingModal,
+  getShowSyncingModal,
 } from "../../selectors";
 import { Database } from "../../types";
 
@@ -69,7 +69,7 @@ const mapStateToProps = (state: any) => ({
   showData: getShowData(state),
   showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
-  showSyncingModal: getshowSyncingModal(state),
+  showSyncingModal: getShowSyncingModal(state),
 });
 
 const mapDispatchToProps = {
