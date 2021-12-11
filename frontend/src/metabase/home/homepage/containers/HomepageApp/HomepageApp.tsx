@@ -10,13 +10,13 @@ import {
   hideData,
   hidePinMessage,
   hideXrays,
-  hideExploreModal,
+  hideSyncingModal,
 } from "../../actions";
 import {
   getShowData,
   getShowPinMessage,
   getShowXrays,
-  getShowExploreModal,
+  getshowSyncingModal,
 } from "../../selectors";
 import { Database } from "../../types";
 
@@ -69,14 +69,14 @@ const mapStateToProps = (state: any) => ({
   showData: getShowData(state),
   showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
-  showExploreModal: getShowExploreModal(state),
+  showSyncingModal: getshowSyncingModal(state),
 });
 
 const mapDispatchToProps = {
   onHideData: hideData,
   onHideXrays: hideXrays,
   onHidePinMessage: hidePinMessage,
-  onHideExploreModal: hideExploreModal,
+  onHideSyncingModal: hideSyncingModal,
 };
 
 export default _.compose(

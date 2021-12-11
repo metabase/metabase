@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
-import ExploreDatabaseModal from "metabase/admin/databases/components/ExploreDatabaseModal";
+import SyncDatabaseModal from "metabase/admin/databases/components/SyncDatabaseModal";
 import { Database, User } from "../../types";
 
 interface Props {
   user: User;
   databases: Database[];
   showXrays?: boolean;
-  showExploreModal?: boolean;
-  onHideExploreModal?: () => void;
+  showSyncingModal?: boolean;
+  onHideSyncingModal?: () => void;
 }
 
-const ExploreSection = ({
+const SyncingSection = ({
   user,
   databases,
   showXrays,
-  showExploreModal,
-  onHideExploreModal,
+  showSyncingModal,
+  onHideSyncingModal,
 }: Props) => {
   const isSyncing = isUserSyncingDatabase(user, databases);
-  const [isOpened, setIsOpened] = useState(isSyncing && showExploreModal);
+  const [isOpened, setIsOpened] = useState(isSyncing && showSyncingModal);
   const sampleDatabase = databases.find(d => d.is_sample);
 
   const handleClose = useCallback(() => {
@@ -29,13 +29,13 @@ const ExploreSection = ({
 
   useEffect(() => {
     if (isOpened) {
-      onHideExploreModal && onHideExploreModal();
+      onHideSyncingModal && onHideSyncingModal();
     }
-  }, [isOpened, onHideExploreModal]);
+  }, [isOpened, onHideSyncingModal]);
 
   return (
     <Modal isOpen={isOpened} full={false} onClose={handleClose}>
-      <ExploreDatabaseModal
+      <SyncDatabaseModal
         sampleDatabase={sampleDatabase}
         showXrays={showXrays}
         onClose={handleClose}
@@ -50,4 +50,4 @@ const isUserSyncingDatabase = (user: User, databases: Database[]): boolean => {
   );
 };
 
-export default ExploreSection;
+export default SyncingSection;

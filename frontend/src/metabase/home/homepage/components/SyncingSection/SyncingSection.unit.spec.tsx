@@ -1,73 +1,73 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import ExploreSection from "./ExploreSection";
+import SyncingSection from "./SyncingSection";
 import { User, Database } from "../../types";
 
-describe("ExploreSection", () => {
-  it("should display a modal for a newly created database", () => {
+describe("SyncingSection", () => {
+  it("should display a modal for a syncing database", () => {
     const user = getUser({ id: 1 });
     const databases = [
       getDatabase({ is_sample: true }),
       getDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
     ];
-    const onHideExploreModal = jest.fn();
+    const onHideSyncingModal = jest.fn();
 
     render(
-      <ExploreSection
+      <SyncingSection
         user={user}
         databases={databases}
         showXrays={true}
-        showExploreModal={true}
-        onHideExploreModal={onHideExploreModal}
+        showSyncingModal={true}
+        onHideSyncingModal={onHideSyncingModal}
       />,
     );
 
     expect(screen.getByText("Explore sample data")).toBeInTheDocument();
-    expect(onHideExploreModal).toHaveBeenCalled();
+    expect(onHideSyncingModal).toHaveBeenCalled();
   });
 
-  it("should not display a modal when it was already shown", () => {
+  it("should not display the modal when it was already shown", () => {
     const user = getUser({ id: 1 });
     const databases = [
       getDatabase({ is_sample: true }),
       getDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
     ];
-    const onHideExploreModal = jest.fn();
+    const onHideSyncingModal = jest.fn();
 
     render(
-      <ExploreSection
+      <SyncingSection
         user={user}
         databases={databases}
         showXrays={true}
-        showExploreModal={false}
-        onHideExploreModal={onHideExploreModal}
+        showSyncingModal={false}
+        onHideSyncingModal={onHideSyncingModal}
       />,
     );
 
     expect(screen.queryByText("Explore sample data")).not.toBeInTheDocument();
-    expect(onHideExploreModal).not.toHaveBeenCalled();
+    expect(onHideSyncingModal).not.toHaveBeenCalled();
   });
 
-  it("should not display a modal when the user is not the database creator", () => {
+  it("should not display the modal when the user is not the database creator", () => {
     const user = getUser({ id: 1 });
     const databases = [
       getDatabase({ is_sample: true }),
       getDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
     ];
-    const onHideExploreModal = jest.fn();
+    const onHideSyncingModal = jest.fn();
 
     render(
-      <ExploreSection
+      <SyncingSection
         user={user}
         databases={databases}
         showXrays={true}
-        showExploreModal={true}
-        onHideExploreModal={onHideExploreModal}
+        showSyncingModal={true}
+        onHideSyncingModal={onHideSyncingModal}
       />,
     );
 
     expect(screen.queryByText("Explore sample data")).not.toBeInTheDocument();
-    expect(onHideExploreModal).not.toHaveBeenCalled();
+    expect(onHideSyncingModal).not.toHaveBeenCalled();
   });
 });
 

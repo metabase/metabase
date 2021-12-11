@@ -1,15 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import ExploreDatabaseModal from "./ExploreDatabaseModal";
+import SyncDatabaseModal from "./SyncDatabaseModal";
 import { Database } from "../../types";
 
-describe("ExploreDatabaseModal", () => {
+describe("SyncDatabaseModal", () => {
   it("should render with sample dataset and xrays enabled", () => {
     const database = getDatabase();
     const onClose = jest.fn();
 
     render(
-      <ExploreDatabaseModal
+      <SyncDatabaseModal
         sampleDatabase={database}
         showXrays
         onClose={onClose}
@@ -22,7 +22,7 @@ describe("ExploreDatabaseModal", () => {
   it("should render with no sample dataset but with xrays enabled", () => {
     const onClose = jest.fn();
 
-    render(<ExploreDatabaseModal showXrays onClose={onClose} />);
+    render(<SyncDatabaseModal showXrays onClose={onClose} />);
 
     expect(screen.getByText("Explore your Metabase")).toBeInTheDocument();
   });

@@ -12,11 +12,7 @@ interface Props {
   onClose?: () => void;
 }
 
-const ExploreDatabaseModal = ({
-  sampleDatabase,
-  showXrays,
-  onClose,
-}: Props) => {
+const SyncDatabaseModal = ({ sampleDatabase, showXrays, onClose }: Props) => {
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
@@ -56,4 +52,4 @@ const ExploreDatabaseModal = ({
   );
 };
 
-export default ExploreDatabaseModal;
+export default SyncDatabaseModal;

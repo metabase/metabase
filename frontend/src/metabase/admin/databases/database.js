@@ -351,7 +351,7 @@ export const hideExploreModal = createThunkAction(
   function() {
     return async function(dispatch) {
       dispatch(
-        updateSetting({ key: "show-database-explore-modal", value: false }),
+        updateSetting({ key: "show-database-syncing-modal", value: false }),
       );
     };
   },

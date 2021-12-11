@@ -1,1 +1,1 @@
-export { default } from "./ExploreDatabaseModal";
+export { default } from "./SyncDatabaseModal";
