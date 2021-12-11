@@ -31,7 +31,5 @@ describe("SyncDatabaseModal", () => {
 const getDatabase = (opts?: Partial<Database>): Database => ({
   id: 1,
   name: "Our database",
-  is_sample: false,
-  initial_sync_status: "complete",
   ...opts,
 });
