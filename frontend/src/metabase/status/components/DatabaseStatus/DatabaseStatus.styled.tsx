@@ -1,22 +1,11 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import { InitialSyncStatus, Database } from "../../types";
+import { InitialSyncStatus } from "../../types";
 
 interface StatusRootProps {
   status: InitialSyncStatus;
 }
-
-export const getIconName = (database: Database) => {
-  switch (database.initial_sync_status) {
-    case "incomplete":
-      return "database";
-    case "complete":
-      return "check";
-    case "aborted":
-      return "warning";
-  }
-};
 
 const getIconColor = ({ status }: StatusRootProps) => {
   switch (status) {
