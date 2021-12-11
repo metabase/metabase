@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.dashboard-card :as dashboard-card]
             [toucan.models :as t.models]))
 
 ;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`

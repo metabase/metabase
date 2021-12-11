@@ -67,7 +67,7 @@
                                                             :target       [:variable [:template-tag "x"]]}]}]]
       (testing "param resolution code should include default values"
         (is (schema= [(s/one
-                       {:type     (s/eq "category")
+                       {:type     (s/eq :category)
                         :id       (s/eq "__X__")
                         :default  (s/eq 3)
                         :target   (s/eq [:variable [:template-tag "x"]])
