@@ -25,9 +25,9 @@ export const hidePinMessage = createThunkAction(HIDE_PIN_MESSAGE, function() {
   };
 });
 
-export const HIDE_EXPLORE_MODAL = "metabase/home/homepage/HIDE_EXPLORE_MODAL";
+export const HIDE_SYNCING_MODAL = "metabase/home/homepage/HIDE_SYNCING_MODAL";
 export const hideSyncingModal = createThunkAction(
-  HIDE_EXPLORE_MODAL,
+  HIDE_SYNCING_MODAL,
   function() {
     return async function(dispatch: any) {
       const setting = { key: "show-database-syncing-modal", value: false };
