@@ -17,7 +17,7 @@ const filter = {
   "display-name": "Category",
   type: "dimension",
   dimension: ["field", PRODUCTS.CATEGORY, null],
-  "widget-type": "category/=",
+  "widget-type": "category",
   default: null,
 };
 

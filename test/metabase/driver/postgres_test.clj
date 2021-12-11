@@ -324,6 +324,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  "number"
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -340,6 +341,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  :number
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"

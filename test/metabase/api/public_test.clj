@@ -24,6 +24,16 @@
   {:public_uuid       (str (UUID/randomUUID))
    :made_public_by_id (mt/user->id :crowberto)})
 
+(defn- native-query-with-template-tag []
+  {:database (mt/id)
+   :type     :native
+   :native   {:query         (format "SELECT count(*) AS %s FROM venues [[WHERE id = {{venue_id}}]]"
+                                     ((db/quote-fn) "Count"))
+              :template-tags {"venue_id" {:name         "venue_id"
+                                          :display-name "Venue ID"
+                                          :type         :number
+                                          :required     false}}}})
+
 (defn- do-with-temp-public-card [m f]
   (let [m (merge (when-not (:dataset_query m)
                    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})})
@@ -192,17 +202,48 @@
                  (mt/rows
                   (mt/user-http-request :rasta :get 202 (str "public/card/" uuid "/query"))))))))))
 
-(deftest check-that-we-can-exec-a-publiccard-with---parameters-
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid}]
-      (is (= [{:id "_VENUE_ID_", :name "Venue ID", :slug "venue_id", :type "id", :value 2}]
-             (get-in (http/client :get 202 (str "public/card/" uuid "/query")
+(deftest execute-public-card-with-parameters-test
+  (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
+        (is (schema= {:status     (s/eq "completed")
+                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
+                                                       :name  "venue_id"
+                                                       :slug  "venue_id"
+                                                       :type  "number"
+                                                       :value 2}])
+                                   s/Keyword   s/Any}
+                      s/Keyword   s/Any}
+                     (http/client :get 202 (str "public/card/" uuid "/query")
                                   :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                             :name  "Venue ID"
+                                                             :name  "venue_id"
                                                              :slug  "venue_id"
-                                                             :type  "id"
-                                                             :value 2}]))
-                     [:json_query :parameters]))))))
+                                                             :type  "number"
+                                                             :value 2}])))))
+
+      ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
+      (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
+                                                                     :type     :native
+                                                                     :native   {:query "SELECT {{foo}}"
+                                                                                :template-tags
+                                                                                {"foo"
+                                                                                 {:id           "abc123"
+                                                                                  :name         "foo"
+                                                                                  :display-name "Filter"
+                                                                                  :type         :text}}}}}]
+          (is (schema= {:status   (s/eq "completed")
+                        :data     {:rows     (s/eq [["456"]])
+                                   s/Keyword s/Any}
+                        s/Keyword s/Any}
+                       (http/client :get 202 (format "public/card/%s/query?parameters=%s"
+                                                     uuid
+                                                     (json/encode [{:type   "category"
+                                                                    :value  "456"
+                                                                    :target ["variable" ["template-tag" "foo"]]
+                                                                    :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}]))))))))))
+
+
 
 ;; Cards with required params
 (defn- do-with-required-param-card [f]
@@ -226,7 +267,7 @@
     (is (= [[22]]
            (mt/rows
              (http/client :get 202 (str "public/card/" uuid "/query")
-                          :parameters (json/encode [{:type   "category"
+                          :parameters (json/encode [{:type   :number
                                                      :target [:variable [:template-tag "price"]]
                                                      :value  1}])))))))
 
@@ -237,8 +278,7 @@
       (is (= {:status     "failed"
               :error      "You'll need to pick a value for 'Price' before this query can run."
               :error_type "missing-required-parameter"}
-             (mt/suppress-output
-               (http/client :get 202 (str "public/card/" uuid "/query"))))))))
+             (http/client :get 202 (str "public/card/" uuid "/query")))))))
 
 (defn- card-with-date-field-filter []
   (assoc (shared-obj)
@@ -478,7 +518,7 @@
                                                       :type     :query
                                                       :query    {:source-table (mt/id :venues)
                                                                  :aggregation  [:count]}}}]
-              (with-temp-public-dashboard [dash {:parameters [{:name "Venue ID"
+              (with-temp-public-dashboard [dash {:parameters [{:name "venue_id"
                                                                :slug "venue_id"
                                                                :id   "_VENUE_ID_"
                                                                :type "id"}]}]
@@ -1081,7 +1121,7 @@
           (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
                                                            :name    "State"
                                                            :slug    "state"
-                                                           :type    "string"
+                                                           :type    "text"
                                                            :target  [:dimension (mt/$ids $orders.user_id->people.state)]
                                                            :default nil}]}]
             (with-temp-public-card [card (pivots/pivot-card)]

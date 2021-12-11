@@ -235,7 +235,7 @@
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value :as params} :value field :field :as _field-filter}]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
   (let [prepend-field
         (fn [x]
           (update x :replacement-snippet
@@ -275,7 +275,7 @@
     ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
     ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
     ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (vector? value)
+    (sequential? value)
     (combine-replacement-snippet-maps (for [v value]
                                         (->replacement-snippet-info driver (assoc field-filter :value v))))
     ;; otherwise convert single value to SQL.
