@@ -57,8 +57,8 @@
                       s/Keyword s/Any}
                      (run-query-for-dashcard dashboard-id card-id)))))))
 
-(deftest default-value-precedence-test
-  (testing "If both a Dashboard and Card have default values for a parameter, the Card defaults should take precedence\n"
+(deftest default-value-precedence-test-field-filters
+  (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset sample-dataset
       (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                            :type     :native
@@ -98,3 +98,40 @@
                            dashboard-id card-id
                            :parameters [{:id    "abc123"
                                          :value ["Doohickey"]}])))))))))
+
+(deftest default-value-precedence-test-raw-values
+  (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
+    (mt/dataset sample-dataset
+      (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
+                                                           :type     :native
+                                                           :native   {:query "SELECT {{filter}}"
+                                                                      :template-tags
+                                                                      {"filter"
+                                                                       {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                                                        :name         "filter"
+                                                                        :display-name "Filter"
+                                                                        :type         :text
+                                                                        :required     true
+                                                                        :default      "Foo"}}}}}]
+                      Dashboard [{dashboard-id :id} {:parameters [{:name    "Text"
+                                                                   :slug    "text"
+                                                                   :id      "5791ff38"
+                                                                   :type    :string/=
+                                                                   :default "Bar"}]}]
+                      DashboardCard [_ {:dashboard_id       dashboard-id
+                                        :card_id            card-id
+                                        :parameter_mappings [{:parameter_id "5791ff38"
+                                                              :card_id      card-id
+                                                              :target       [:variable [:template-tag "filter"]]}]}]]
+        (testing "Sanity check: running Card query should use Card defaults"
+          (is (= [["Foo"]]
+                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+        (testing "No value specified: should prefer Card defaults"
+          (is (= [["Foo"]]
+                 (mt/rows (run-query-for-dashcard dashboard-id card-id)))))
+        (testing "Specifying a value should override both defaults."
+          (is (= [["Something Else"]]
+                 (mt/rows (run-query-for-dashcard
+                           dashboard-id card-id
+                           :parameters [{:id    "5791ff38"
+                                         :value ["Something Else"]}])))))))))

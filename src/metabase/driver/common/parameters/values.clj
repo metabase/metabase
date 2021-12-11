@@ -71,15 +71,6 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(s/defn ^:private default-value-for-field-filter
-  "Return the default value for a FieldFilter (`:type` = `:dimension`) param defined by the map `tag`, if one is set."
-  [tag :- mbql.s/TemplateTag]
-  (when (and (:required tag) (not (:default tag)))
-    (throw (missing-required-param-exception (:display-name tag))))
-  (when-let [default (:default tag)]
-    {:type  (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-     :value default}))
-
 (s/defn ^:private field-filter->field-id :- su/IntGreaterThanZero
   [field-filter]
   (second field-filter))
@@ -100,20 +91,21 @@
      (when (and (seq matching-params)
                 (every? :value matching-params))
        (normalize-params matching-params))
-
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
-     (when-let [tag-default (default-value-for-field-filter tag)]
-       tag-default)
-
+     (when-let [tag-default (:default tag)]
+       {:type  (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+        :value tag-default})
      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
      ;; the defaults specified in the template tag to take precedence if both are specified
      (when (and (seq matching-params)
                 (every? :default matching-params))
        (normalize-params matching-params))
-
-     ;; otherwise there is no value for this Field filter ("dimension"), return [[i/no-value]] to signify that
-     i/no-value)))
+     ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
+     ;; otherwise return [[i/no-value]] to signify that
+     (if (:required tag)
+       (throw (missing-required-param-exception (:display-name tag)))
+       i/no-value))))
 
 (s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
@@ -167,39 +159,37 @@
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
-(s/defn ^:private default-value-for-tag
-  "Return the `:default` value for a param if no explicit values were passsed. This only applies to non-FieldFilter
-  params. Default values for FieldFilter (Field Filter) params are handled above in [[default-value-for-field-filter]]."
-  [{:keys [default display-name required]} :- mbql.s/TemplateTag]
-  (or default
-      (when required
-        (throw (missing-required-param-exception display-name)))))
-
-(s/defn ^:private param-value-for-tag
+(s/defn ^:private param-value-for-raw-value-tag
+  "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
   [{tag-name :name, :as tag} :- mbql.s/TemplateTag
    params                    :- (s/maybe [mbql.s/Parameter])]
-  (or (when-let [matching-params (not-empty (params-with-target params [:variable [:template-tag tag-name]]))]
-        ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
-        (when (> (count matching-params) 1)
-          (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
-                          {:type                qp.error-type/invalid-parameter
-                           :template-tag        tag
-                           :matching-parameters params})))
-        ((some-fn :value :default) (first matching-params)))
-      (default-value-for-tag tag)
-      i/no-value))
+  (let [matching-param (when-let [matching-params (not-empty (params-with-target params [:variable [:template-tag tag-name]]))]
+                         ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
+                         (when (> (count matching-params) 1)
+                           (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
+                                           {:type                qp.error-type/invalid-parameter
+                                            :template-tag        tag
+                                            :matching-parameters params})))
+                         (first matching-params))]
+    ;; if both the tag and the Dashboard parameter specify a default value, prefer the default value from the tag.
+    (or (:value matching-param)
+        (:default tag)
+        (:default matching-param)
+        (if (:required tag)
+          (throw (missing-required-param-exception (:display-name tag)))
+          i/no-value))))
 
 (defmethod parse-tag :number
   [tag params]
-  (param-value-for-tag tag params))
+  (param-value-for-raw-value-tag tag params))
 
 (defmethod parse-tag :text
   [tag params]
-  (param-value-for-tag tag params))
+  (param-value-for-raw-value-tag tag params))
 
 (defmethod parse-tag :date
   [tag params]
-  (param-value-for-tag tag params))
+  (param-value-for-raw-value-tag tag params))
 
 
 ;;; Parsing Values

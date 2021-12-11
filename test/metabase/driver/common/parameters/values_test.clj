@@ -438,24 +438,40 @@
     ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
     ;; request parameter. If the template tag also specifies a default, we should prefer that.
     (mt/dataset sample-dataset
-      (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
-                                                :value    (s/eq ["Gizmo" "Gadget"])
-                                                s/Keyword s/Any}
-                                     s/Keyword s/Any}}
-                   (values/query->params-map
-                    {:template-tags {"filter"
-                                     {:id           "xyz456"
-                                      :name         "filter"
-                                      :display-name "Filter"
-                                      :type         :dimension
-                                      :dimension    [:field (mt/id :products :category) nil]
-                                      :widget-type  :category
-                                      :default      ["Gizmo" "Gadget"]
-                                      :required     true}}
-                     :parameters    [{:type    :string/=
-                                      :id      "abc123"
-                                      :default ["Widget"]
-                                      :target  [:dimension [:template-tag "filter"]]}]}))))))
+      (testing "Field filters"
+        (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
+                                                  :value    (s/eq ["Gizmo" "Gadget"])
+                                                  s/Keyword s/Any}
+                                       s/Keyword s/Any}}
+                     (values/query->params-map
+                      {:template-tags {"filter"
+                                       {:id           "xyz456"
+                                        :name         "filter"
+                                        :display-name "Filter"
+                                        :type         :dimension
+                                        :dimension    [:field (mt/id :products :category) nil]
+                                        :widget-type  :category
+                                        :default      ["Gizmo" "Gadget"]
+                                        :required     true}}
+                       :parameters    [{:type    :string/=
+                                        :id      "abc123"
+                                        :default ["Widget"]
+                                        :target  [:dimension [:template-tag "filter"]]}]}))))
+
+      (testing "Raw value template tags"
+        (is (= {"filter" "Foo"}
+               (values/query->params-map
+                {:template-tags {"filter"
+                                 {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                  :name         "filter"
+                                  :display-name "Filter"
+                                  :type         :text
+                                  :required     true
+                                  :default      "Foo"}}
+                 :parameters    [{:type    :string/=
+                                  :id      "5791ff38"
+                                  :default "Bar"
+                                  :target  [:variable [:template-tag "filter"]]}]})))))))
 
 (deftest field-filter-multiple-values-test
   (testing "Make sure multiple values get returned the way we'd expect"
@@ -474,3 +490,39 @@
                              {:type   :date/single
                               :target [:dimension [:template-tag "checkin_date"]]
                               :value  "2015-07-01"}]})))))
+
+(deftest use-parameter-defaults-test
+  (testing "If parameter specifies a default value (but tag does not), use the parameter's default"
+    (mt/dataset sample-dataset
+      (testing "Field filters"
+        (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :string/=)
+                                                  :default  (s/eq ["Widget"])
+                                                  s/Keyword s/Any}
+                                       s/Keyword s/Any}}
+                     (values/query->params-map
+                      {:template-tags {"filter"
+                                       {:id           "xyz456"
+                                        :name         "filter"
+                                        :display-name "Filter"
+                                        :type         :dimension
+                                        :dimension    [:field (mt/id :products :category) nil]
+                                        :widget-type  :category
+                                        :required     true}}
+                       :parameters    [{:type    :string/=
+                                        :id      "abc123"
+                                        :default ["Widget"]
+                                        :target  [:dimension [:template-tag "filter"]]}]}))))
+
+      (testing "Raw value template tags"
+        (is (= {"filter" "Bar"}
+               (values/query->params-map
+                {:template-tags {"filter"
+                                 {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                  :name         "filter"
+                                  :display-name "Filter"
+                                  :type         :text
+                                  :required     true}}
+                 :parameters    [{:type    :string/=
+                                  :id      "5791ff38"
+                                  :default "Bar"
+                                  :target  [:variable [:template-tag "filter"]]}]})))))))
