@@ -38,7 +38,7 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
       updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
   }),
   null,
-  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+  { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )
 export default class SettingsBatchForm extends Component {
   constructor(props, context) {
