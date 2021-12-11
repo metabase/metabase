@@ -74,7 +74,8 @@
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-full-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-    (testing "failure should log an error(#14317)"
+    ;; disabled due to CVE-2021-44228
+  #_(testing "failure should log an error(#14317)"
       (mt/with-temp User [user]
         (is (schema= [(s/one (s/eq :error)
                              "log type")
@@ -117,15 +118,16 @@
       (testing "throttling should now be triggered"
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
-      (testing "Error should be logged (#14317)"
-        (is (schema= [(s/one (s/eq :error)
-                             "log type")
-                      (s/one clojure.lang.ExceptionInfo
-                             "exception")
-                      (s/one (s/eq "Authentication endpoint error")
-                             "log message")]
-                     (first (mt/with-log-messages-for-level :error
-                              (login))))))
+      ;; disabled due to CVE-2021-44228
+      #_(testing "Error should be logged (#14317)"
+          (is (schema= [(s/one (s/eq :error)
+                               "log type")
+                        (s/one clojure.lang.ExceptionInfo
+                               "exception")
+                        (s/one (s/eq "Authentication endpoint error")
+                               "log message")]
+                       (first (mt/with-log-messages-for-level :error
+                                (login))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
@@ -284,7 +286,7 @@
                 (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
                               :success    (s/eq true)}
                              (mt/client :post 200 "session/reset_password" {:token    token
-                                                                         :password (:new password)}))))
+                                                                            :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
                        (mt/client :post 401 "session" (:old creds)))))
@@ -307,19 +309,19 @@
     (testing "Test that malformed token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
              (mt/client :post 400 "session/reset_password" {:token    "not-found"
-                                                         :password "whateverUP12!!"}))))
+                                                            :password "whateverUP12!!"}))))
 
     (testing "Test that invalid token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
              (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
-                                                         :password "whateverUP12!!"}))))
+                                                            :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
         (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
-                                                           :password "whateverUP12!!"})))))))
+                                                              :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
   (testing "GET /session/password_reset_token_valid"
