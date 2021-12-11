@@ -49,7 +49,7 @@ describe("scenarios > question > custom column > expression editor", () => {
       .type("{movetoend}{backspace}", { force: true })
       .blur();
 
-    cy.findByText("Expected expression");
+    cy.findByText("Unexpected end of input");
     cy.button("Done").should("be.disabled");
   });
 
