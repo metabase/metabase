@@ -143,6 +143,13 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(() => expr(["concat", "1", "2"])).not.toThrow();
       expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
     });
+
+    it("should accept COALESCE for number", () => {
+      expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
+    });
+    it("should accept COALESCE for string", () => {
+      expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
+    });
   });
 
   describe("for aggregations", () => {
