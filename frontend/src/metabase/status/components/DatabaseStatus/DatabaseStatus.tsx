@@ -1,8 +1,11 @@
 import React from "react";
-import Icon from "metabase/components/Icon";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import { Database } from "../../types";
-import { StatusRoot } from "./DatabaseStatus.styled";
+import {
+  StatusRoot,
+  StatusIconContainer,
+  StatusIcon,
+} from "./DatabaseStatus.styled";
 
 interface Props {
   database: Database;
@@ -18,7 +21,9 @@ const DatabaseStatus = ({ database }: Props) => {
 
   return (
     <StatusRoot status={database.initial_sync_status}>
-      <Icon name={getIconName(database)} />
+      <StatusIconContainer status={database.initial_sync_status}>
+        <StatusIcon name={getIconName(database)} />
+      </StatusIconContainer>
     </StatusRoot>
   );
 };
