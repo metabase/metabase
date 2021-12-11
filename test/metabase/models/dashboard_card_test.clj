@@ -242,13 +242,13 @@
 (deftest normalize-parameter-mappings-test
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
-           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+           ((i.test/type-fn :parameters-list :out)
             (json/generate-string
              [{:target [:dimension [:fk-> 23 30]]}]))))
 
     (testing "...but parameter mappings we should not normalize things like :target"
       (is (= [{:card-id 123, :hash "abc", :target "foo"}]
-             ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+             ((i.test/type-fn :parameters-list :out)
               (json/generate-string
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
 
@@ -256,5 +256,5 @@
   (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
                 "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
     (is (= []
-           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+           ((i.test/type-fn :parameters-list :out)
             (json/generate-string []))))))

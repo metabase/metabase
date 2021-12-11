@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
@@ -49,8 +50,16 @@
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
-      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str (dissoc matching-mapping :dashcard)))
-      ;; We need to merge in
+      (log/tracef "Found matching mapping for Card %d:\n%s" card-id (u/pprint-to-str matching-mapping))
+      ;; if `request-param` specifies type, then validate that the type is allowed
+      (when (:type request-param)
+        (qp.card/check-allowed-parameter-value-type
+         param-id
+         (or (when (= (:type matching-param) :dimension)
+               (:widget-type matching-param))
+             (:type matching-param))
+         (:type request-param)))
+      ;; ok, now return the merged parameter info map.
       (merge
        {:type (:type matching-param)}
        request-param
@@ -91,7 +100,8 @@
    card-id        :- su/IntGreaterThanZero
    request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
+  (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
+        dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
         dashboard-param-id->param (dashboard/dashboard->resolved-params dashboard)
         request-param-id->param   (into {} (map (juxt :id identity)) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
