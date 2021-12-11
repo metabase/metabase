@@ -22,8 +22,12 @@ const DatabaseStatus = ({ database }: Props) => {
   }
 
   return (
-    <Tooltip tooltip={getTooltip(database)}>
-      <StatusRoot status={database.initial_sync_status}>
+    <Tooltip tooltip={getLabel(database)}>
+      <StatusRoot
+        role="status"
+        status={database.initial_sync_status}
+        aria-label={getLabel(database)}
+      >
         <StatusIconContainer status={database.initial_sync_status}>
           <StatusIcon
             status={database.initial_sync_status}
@@ -35,10 +39,10 @@ const DatabaseStatus = ({ database }: Props) => {
   );
 };
 
-const getTooltip = (database: Database) => {
+const getLabel = (database: Database) => {
   switch (database.initial_sync_status) {
     case "incomplete":
-      return t`Syncing ${database.name} …`;
+      return t`Syncing ${database.name}…`;
     case "complete":
       return t`Done!`;
     case "aborted":

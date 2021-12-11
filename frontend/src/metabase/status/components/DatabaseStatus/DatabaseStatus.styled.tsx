@@ -51,6 +51,7 @@ export const StatusRoot = styled.div<StatusRootProps>`
   align-items: center;
   width: 3rem;
   height: 3rem;
+  margin: 1rem 0 0 0;
   color: ${getIconColor};
   border: 0.3125rem solid ${getBorderColor};
   border-radius: 50%;
