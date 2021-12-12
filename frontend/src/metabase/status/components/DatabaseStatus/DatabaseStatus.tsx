@@ -88,7 +88,7 @@ const getIconName = (database: Database) => {
 const getCircleDasharray = (progress: number) => {
   return progress < 1
     ? `${progress * CIRCLE_PERIMETER} ${CIRCLE_PERIMETER}`
-    : "";
+    : undefined;
 };
 
 export default DatabaseStatus;
