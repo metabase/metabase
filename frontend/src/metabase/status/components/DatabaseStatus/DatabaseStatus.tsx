@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import Tooltip from "metabase/components/Tooltip";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import { Database } from "../../types";
@@ -12,8 +13,8 @@ import {
   StatusCircle,
 } from "./DatabaseStatus.styled";
 
-const STROKE_WIDTH = 4;
 const CIRCLE_WIDTH = 48;
+const STROKE_WIDTH = 4;
 const CIRCLE_CENTER = CIRCLE_WIDTH / 2;
 const CIRCLE_RADIUS = (CIRCLE_WIDTH - STROKE_WIDTH) / 2;
 const CIRCLE_PERIMETER = 2 * Math.PI * CIRCLE_RADIUS;
@@ -24,10 +25,9 @@ interface Props {
 
 const DatabaseStatus = ({ database }: Props) => {
   const status = database.initial_sync_status;
-  const isActive = status === "incomplete";
-  const isVisible = useStatusVisibility(isActive);
   const progress = getProgress(database);
   const progressLabel = getProgressLabel(database, progress);
+  const isVisible = useStatusVisibility(isSyncInProgress(database));
 
   if (!isVisible) {
     return null;
@@ -56,7 +56,7 @@ const DatabaseStatus = ({ database }: Props) => {
 };
 
 const getProgress = ({ tables = [] }: Database) => {
-  const done = tables.filter(t => t.initial_sync_status === "complete").length;
+  const done = tables.filter(isSyncCompleted).length;
   const total = tables.length;
   return total != 0 ? done / total : 0;
 };

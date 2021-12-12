@@ -84,5 +84,4 @@ export const StatusCircle = styled.circle`
   stroke: ${color("brand")};
   transform: rotate(-90deg);
   transform-origin: center;
-  transition: stroke-dasharray 0.2s;
 `;
