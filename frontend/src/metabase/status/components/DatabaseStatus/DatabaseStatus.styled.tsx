@@ -25,15 +25,6 @@ const getIconSize = ({ status }: Props) => {
   }
 };
 
-const getBorderColor = ({ status }: Props) => {
-  switch (status) {
-    case "complete":
-      return color("brand");
-    default:
-      return lighten("brand", 0.5);
-  }
-};
-
 const getBackgroundColor = ({ status }: Props) => {
   switch (status) {
     case "incomplete":
@@ -59,7 +50,7 @@ export const StatusContainer = styled.div<Props>`
   width: 100%;
   height: 100%;
   color: ${getIconColor};
-  border: 0.3125rem solid ${getBorderColor};
+  border: 0.25rem solid ${lighten("brand", 0.5)};
   border-radius: 50%;
   background-color: ${lighten("brand", 0.6)};
   box-shadow: 0 1px 12px ${color("shadow")};
@@ -78,4 +69,20 @@ export const StatusIconContainer = styled.div`
 export const StatusIcon = styled(Icon)`
   width: ${getIconSize};
   height: ${getIconSize};
+`;
+
+export const StatusImage = styled.svg`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+`;
+
+export const StatusCircle = styled.circle`
+  fill: none;
+  stroke: ${color("brand")};
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dasharray 0.2s;
 `;
