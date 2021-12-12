@@ -7,6 +7,7 @@ import {
   StatusRoot,
   StatusIconContainer,
   StatusIcon,
+  StatusContainer,
 } from "./DatabaseStatus.styled";
 
 interface Props {
@@ -14,7 +15,8 @@ interface Props {
 }
 
 const DatabaseStatus = ({ database }: Props) => {
-  const isActive = database.initial_sync_status === "incomplete";
+  const status = database.initial_sync_status;
+  const isActive = status === "incomplete";
   const isVisible = useStatusVisibility(isActive);
 
   if (!isVisible) {
@@ -23,17 +25,12 @@ const DatabaseStatus = ({ database }: Props) => {
 
   return (
     <Tooltip tooltip={getLabel(database)}>
-      <StatusRoot
-        role="status"
-        status={database.initial_sync_status}
-        aria-label={getLabel(database)}
-      >
-        <StatusIconContainer status={database.initial_sync_status}>
-          <StatusIcon
-            status={database.initial_sync_status}
-            name={getIconName(database)}
-          />
-        </StatusIconContainer>
+      <StatusRoot role="status" aria-label={getLabel(database)}>
+        <StatusContainer status={status}>
+          <StatusIconContainer status={status}>
+            <StatusIcon status={status} name={getIconName(database)} />
+          </StatusIconContainer>
+        </StatusContainer>
       </StatusRoot>
     </Tooltip>
   );

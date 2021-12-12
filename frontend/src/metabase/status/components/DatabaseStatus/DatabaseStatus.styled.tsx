@@ -3,11 +3,11 @@ import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { InitialSyncStatus } from "../../types";
 
-interface StatusRootProps {
+interface Props {
   status: InitialSyncStatus;
 }
 
-const getIconColor = ({ status }: StatusRootProps) => {
+const getIconColor = ({ status }: Props) => {
   switch (status) {
     case "incomplete":
       return color("brand");
@@ -16,7 +16,7 @@ const getIconColor = ({ status }: StatusRootProps) => {
   }
 };
 
-const getIconSize = ({ status }: StatusRootProps) => {
+const getIconSize = ({ status }: Props) => {
   switch (status) {
     case "incomplete":
       return "0.875rem";
@@ -25,7 +25,7 @@ const getIconSize = ({ status }: StatusRootProps) => {
   }
 };
 
-const getBorderColor = ({ status }: StatusRootProps) => {
+const getBorderColor = ({ status }: Props) => {
   switch (status) {
     case "complete":
       return color("brand");
@@ -34,7 +34,7 @@ const getBorderColor = ({ status }: StatusRootProps) => {
   }
 };
 
-const getBackgroundColor = ({ status }: StatusRootProps) => {
+const getBackgroundColor = ({ status }: Props) => {
   switch (status) {
     case "incomplete":
       return "transparent";
@@ -45,13 +45,19 @@ const getBackgroundColor = ({ status }: StatusRootProps) => {
   }
 };
 
-export const StatusRoot = styled.div<StatusRootProps>`
-  display: flex;
-  justify-content: center;
-  align-items: center;
+export const StatusRoot = styled.div`
+  position: relative;
   width: 3rem;
   height: 3rem;
   margin: 1rem 0 0 0;
+`;
+
+export const StatusContainer = styled.div<Props>`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
   color: ${getIconColor};
   border: 0.3125rem solid ${getBorderColor};
   border-radius: 50%;
