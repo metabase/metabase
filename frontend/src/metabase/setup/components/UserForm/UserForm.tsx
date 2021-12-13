@@ -19,7 +19,21 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
       asyncBlurFields={["password"]}
       onSubmit={onSubmit}
     >
-      {getFormFields}
+      {({ Form, FormField, FormFooter }: FormOpts) => {
+        return (
+          <Form>
+            <FormGroup>
+              <FormField name="first_name" />
+              <FormField name="last_name" />
+            </FormGroup>
+            <FormField name="email" />
+            <FormField name="site_name" />
+            <FormField name="password" />
+            <FormField name="password_confirm" />
+            <FormFooter submitTitle={t`Next`} />
+          </Form>
+        );
+      }}
     </UserFormRoot>
   );
 };
@@ -29,21 +43,5 @@ interface FormOpts {
   FormField: ComponentType<{ name: string }>;
   FormFooter: ComponentType<{ submitTitle?: string }>;
 }
-
-const getFormFields = ({ Form, FormField, FormFooter }: FormOpts) => {
-  return (
-    <Form>
-      <FormGroup>
-        <FormField name="first_name" />
-        <FormField name="last_name" />
-      </FormGroup>
-      <FormField name="email" />
-      <FormField name="site_name" />
-      <FormField name="password" />
-      <FormField name="password_confirm" />
-      <FormFooter submitTitle={t`Next`} />
-    </Form>
-  );
-};
 
 export default UserForm;

@@ -26,3 +26,6 @@ export const validatePassword = createThunkAction(
     return await UtilApi.password_check({ password: user.password });
   },
 );
+
+export const SET_DATABASE = "metabase/setup/SET_DATABASE";
+export const setDatabase = createAction(SET_DATABASE);

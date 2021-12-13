@@ -3,19 +3,27 @@ import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../components/UserStep";
+import DatabaseStep from "../DatabaseStep";
 import SetupFooter from "../SetupFooter";
-import { Locale, UserInfo, LocaleData } from "../../types";
-import { LANGUAGE_STEP, USER_STEP, DATABASE_STEP } from "../../constants";
+import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
+import {
+  LANGUAGE_STEP,
+  USER_STEP,
+  DATABASE_STEP,
+  PREFERENCES_STEP,
+} from "../../constants";
 
 interface Props {
   step: number;
   locale?: Locale;
   localeData: LocaleData[];
   user?: UserInfo;
+  database?: DatabaseInfo;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
+  onChangeDatabase: (database: DatabaseInfo) => void;
 }
 
 const SettingsPage = ({
@@ -23,10 +31,12 @@ const SettingsPage = ({
   locale,
   localeData,
   user,
+  database,
   onChangeStep,
   onChangeLocale,
   onChangeUser,
   onValidatePassword,
+  onChangeDatabase,
 }: Props) => (
   <div>
     <PageHeader>
@@ -50,6 +60,14 @@ const SettingsPage = ({
         onValidatePassword={onValidatePassword}
         onSelectThisStep={() => onChangeStep(USER_STEP)}
         onSelectNextStep={() => onChangeStep(DATABASE_STEP)}
+      />
+      <DatabaseStep
+        database={database}
+        isActive={step === DATABASE_STEP}
+        isCompleted={step > DATABASE_STEP}
+        onChangeDatabase={onChangeDatabase}
+        onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
+        onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
       />
       <SetupFooter />
     </PageBody>

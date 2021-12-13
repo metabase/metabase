@@ -9,4 +9,9 @@ export interface UserInfo {
   password: string;
 }
 
+export interface DatabaseInfo {
+  name: string;
+  engine: string;
+}
+
 export type LocaleData = [string, string];
