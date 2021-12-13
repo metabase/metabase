@@ -5,9 +5,6 @@ describe("metabase/lib/expressions/parser", () => {
     let result = null;
     try {
       result = parse({ source, tokenVector: null, startRule });
-      if (result.typeErrors.length > 0) {
-        throw new Error(result.typeErrors);
-      }
     } catch (e) {
       let err = e;
       if (err.length && err.length > 0) {
@@ -73,12 +70,6 @@ describe("metabase/lib/expressions/parser", () => {
       expect(() =>
         parseExpression("case(isempty([Discount]),[P])"),
       ).not.toThrow();
-    });
-    it("should reject CASE with only one argument", () => {
-      expect(() => parseExpression("case([Deal])")).toThrow();
-    });
-    it("should accept CASE with two arguments", () => {
-      expect(() => parseExpression("case([Deal],x)")).not.toThrow();
     });
   });
 
@@ -148,12 +139,6 @@ describe("metabase/lib/expressions/parser", () => {
     });
     it("should accept a function", () => {
       expect(() => parseFilter("between([Subtotal], 1, 2)")).not.toThrow();
-    });
-    it("should reject CASE with only one argument", () => {
-      expect(() => parseFilter("case([Deal])")).toThrow();
-    });
-    it("should reject a number on the left-hand side", () => {
-      expect(() => parseFilter("10 < [DiscountPercent]")).toThrow();
     });
   });
 });

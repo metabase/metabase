@@ -21,6 +21,7 @@ driver:
           - placeholder: default
       - user
       - password
+      - cloud-ip-address-info
       - merge:
           - additional-options
           - name: jdbc-flags

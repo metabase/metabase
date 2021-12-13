@@ -15,3 +15,13 @@
                                 :max_type      "custom"
                                 :max_value     9
                                 :colors        ["#00ff00" "#0000ff"]}]}})
+
+(def test-combo-card
+  {:visualization_settings
+   {:graph.metrics ["NumPurchased", "NumKazoos"]
+    :graph.dimensions ["Price"]}})
+
+(def test-combo-card-multi-x
+  {:visualization_settings
+   {:graph.metrics ["NumKazoos"]
+    :graph.dimensions ["Price" "NumPurchased"]}})

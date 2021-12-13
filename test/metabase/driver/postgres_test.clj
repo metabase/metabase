@@ -324,6 +324,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  "number"
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -340,6 +341,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  :number
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -662,3 +664,14 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/query->native query) :query pretty-sql))))))))
+
+(deftest postgres-ssl-connectivity-test
+  (mt/test-driver :postgres
+    (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")
+      (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
+          (id-field-parameter-test)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "postgres-ssl-connectivity-test"
+                               "MB_POSTGRES_SSL_TEST_SSL")))))

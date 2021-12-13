@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
@@ -8,30 +9,12 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 
 import screenfull from "screenfull";
 
-import type { LocationDescriptor } from "metabase-types/types";
-
-type Props = {
-  dashboardId: string,
-  fetchDashboard: (dashboardId: string) => Promise<any>,
-  fetchDashboardCardData: () => void,
-
-  location: LocationDescriptor,
-  replace: (location: LocationDescriptor) => void,
-};
-
-type State = {
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  refreshPeriod: ?number,
-  hideParameters: ?string,
-};
-
 const TICK_PERIOD = 1; // seconds
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
  */
-export default (ComposedComponent: React.Class) =>
+export default ComposedComponent =>
   connect(null, { replace })(
     class extends Component {
       static displayName =
@@ -39,8 +22,7 @@ export default (ComposedComponent: React.Class) =>
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
-      props: Props;
-      state: State = {
+      state = {
         isFullscreen: false,
         isNightMode: false,
 
@@ -48,11 +30,6 @@ export default (ComposedComponent: React.Class) =>
 
         hideParameters: null,
       };
-
-      _interval: ?number;
-
-      _refreshElapsed: ?number;
-      _refreshElapsedHook: ?Function;
 
       UNSAFE_componentWillMount() {
         if (screenfull.enabled) {

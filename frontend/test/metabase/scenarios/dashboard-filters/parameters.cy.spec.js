@@ -451,6 +451,23 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.findByText("Baker").should("not.exist");
   });
+
+  describe("when the user does not have self service data permissions", () => {
+    beforeEach(() => {
+      cy.visit("/dashboard/1");
+      addCityFilterWithDefault();
+
+      cy.signIn("nodata");
+      cy.reload();
+    });
+
+    it("should not see mapping options", () => {
+      cy.icon("pencil").click();
+      cy.findByText("Location").click({ force: true });
+
+      cy.icon("key");
+    });
+  });
 });
 
 function selectFilter(selection, filterName) {

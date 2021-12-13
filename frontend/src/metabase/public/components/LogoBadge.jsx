@@ -1,14 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import ExternalLink from "metabase/components/ExternalLink";
 
 import { t, jt } from "ttag";
 
-type Props = {
-  dark: boolean,
-};
-
-const LogoBadge = ({ dark }: Props) => (
+const LogoBadge = ({ dark }) => (
   <ExternalLink
     href="https://metabase.com/"
     target="_blank"

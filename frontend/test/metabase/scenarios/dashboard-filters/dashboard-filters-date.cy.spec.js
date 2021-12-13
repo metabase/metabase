@@ -27,10 +27,7 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
         editDashboard();
         setFilter("Time", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Created At")
           .first()

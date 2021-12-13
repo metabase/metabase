@@ -93,6 +93,7 @@
                     {:name "service-name"}
                     {:name "user"}
                     {:name "password"}
+                    {:name "cloud-ip-address-info"}
                     {:name "ssl"}
                     {:name "ssl-use-keystore"}
                     {:name       "ssl-keystore-options"
@@ -134,8 +135,8 @@
                     {:name "tunnel-pass"}
                     {:name "tunnel-private-key"}
                     {:name "tunnel-private-key-passphrase"}]
-          actual   (-> (driver/connection-properties :oracle)
-                       driver.u/connection-props-server->client)]
+          actual   (->> (driver/connection-properties :oracle)
+                        (driver.u/connection-props-server->client :oracle))]
       (is (= expected (mt/select-keys-sequentially expected actual))))))
 
 (deftest test-ssh-connection

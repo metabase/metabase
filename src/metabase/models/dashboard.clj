@@ -291,8 +291,11 @@
         dashcard-ids        (db/select-ids DashboardCard, :dashboard_id (u/the-id dashboard-or-id))]
     (doseq [{dashcard-id :id, :as dashboard-card} dashcards]
       ;; ensure the dashcard we are updating is part of the given dashboard
-      (when (contains? dashcard-ids dashcard-id)
-        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))))
+      (if (contains? dashcard-ids dashcard-id)
+        (dashboard-card/update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %))))
+        (throw (ex-info (tru "Dashboard {0} does not have a DashboardCard with ID {1}"
+                             (u/the-id dashboard-or-id) dashcard-id)
+                        {:status-code 404}))))
     (let [new-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)]
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
@@ -372,3 +375,42 @@
                          (assoc :series series))]
         (add-dashcard! dashboard card dashcard)))
     dashboard))
+
+(def ^:private ParamWithMapping
+  {:name     su/NonBlankString
+   :id       su/NonBlankString
+   :mappings (s/maybe #{dashboard-card/ParamMapping})
+   s/Keyword s/Any})
+
+(s/defn ^{:hydrate :resolved-params} dashboard->resolved-params :- (let [param-id su/NonBlankString]
+                                                                     {param-id ParamWithMapping})
+  "Return map of Dashboard parameter key -> param with resolved `:mappings`.
+
+    (dashboard->resolved-params (Dashboard 62))
+    ;; ->
+    {\"ee876336\" {:name     \"Category Name\"
+                   :slug     \"category_name\"
+                   :id       \"ee876336\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"ee876336\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:fk-> [:field-id 263] [:field-id 276]]]}}},
+     \"6f10a41f\" {:name     \"Price\"
+                   :slug     \"price\"
+                   :id       \"6f10a41f\"
+                   :type     \"category\"
+                   :mappings #{{:parameter_id \"6f10a41f\"
+                                :card_id      66
+                                :dashcard     ...
+                                :target       [:dimension [:field-id 264]]}}}}"
+  [dashboard :- {(s/optional-key :parameters) (s/maybe [su/Map])
+                 s/Keyword                    s/Any}]
+  (let [dashboard           (hydrate dashboard [:ordered_cards :card])
+        param-key->mappings (apply
+                             merge-with set/union
+                             (for [dashcard (:ordered_cards dashboard)
+                                   param    (:parameter_mappings dashcard)]
+                               {(:parameter_id param) #{(assoc param :dashcard dashcard)}}))]
+    (into {} (for [{param-key :id, :as param} (:parameters dashboard)]
+               [(u/qualified-name param-key) (assoc param :mappings (get param-key->mappings param-key))]))))

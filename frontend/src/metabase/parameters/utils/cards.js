@@ -1,8 +1,16 @@
+import _ from "underscore";
+
 import Question from "metabase-lib/lib/Question";
 
 import { areFieldFilterOperatorsEnabled } from "./feature-flag";
-import { getParameterTargetField } from "metabase/parameters/utils/targets";
-import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
+import {
+  getParameterTargetField,
+  getTemplateTagFromTarget,
+} from "metabase/parameters/utils/targets";
+import {
+  getValuePopulatedParameters,
+  hasParameterValue,
+} from "metabase/parameters/utils/parameter-values";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags) {
@@ -67,6 +75,10 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   metadata,
   parameterValues,
 ) {
+  if (!card) {
+    return [];
+  }
+
   const parameters = getParametersFromCard(card);
   const valuePopulatedParameters = getValuePopulatedParameters(
     parameters,
@@ -83,4 +95,33 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
       hasOnlyFieldTargets: field != null,
     };
   });
+}
+
+// when navigating from dashboard --> saved native question,
+// we are given dashboard parameters and a map of dashboard parameter ids to parameter values
+// we need to transform this into a map of template tag ids to parameter values
+// so that we popoulate the template tags in the native editor
+export function remapParameterValuesToTemplateTags(
+  templateTags,
+  dashboardParameters,
+  parameterValuesByDashboardParameterId,
+) {
+  const parameterValues = {};
+  const templateTagParametersByName = _.indexBy(templateTags, "name");
+
+  dashboardParameters.forEach(dashboardParameter => {
+    const { target } = dashboardParameter;
+    const tag = getTemplateTagFromTarget(target);
+
+    if (templateTagParametersByName[tag]) {
+      const templateTagParameter = templateTagParametersByName[tag];
+      const parameterValue =
+        parameterValuesByDashboardParameterId[dashboardParameter.id];
+      if (hasParameterValue(parameterValue)) {
+        parameterValues[templateTagParameter.name] = parameterValue;
+      }
+    }
+  });
+
+  return parameterValues;
 }

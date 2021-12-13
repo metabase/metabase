@@ -9795,6 +9795,73 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v42.00-066
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Indicates whether a database has succesfully synced
+        at least one time.
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: initial_sync_status
+                  type: varchar(32)
+                  remarks: "String indicating whether a database has completed its initial sync and is ready to use"
+                  defaultValue: "complete"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-067
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Indicates whether a table has succesfully synced
+        at least one time.
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: initial_sync_status
+                  type: varchar(32)
+                  remarks: "String indicating whether a table has completed its initial sync and is ready to use"
+                  defaultValue: "complete"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-068
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Records the ID of the admin who added a database.
+        May be null for the sample dataset, or for databases added prior to 0.42.0.
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: "ID of the admin who added the database"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v42.00-069
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - adds FK constraint for creator_id column, containing the ID of the admin who added a database.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_database_creator_id
+            onDelete: SET NULL
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

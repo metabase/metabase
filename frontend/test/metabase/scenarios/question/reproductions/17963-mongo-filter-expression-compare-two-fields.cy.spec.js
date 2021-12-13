@@ -38,7 +38,7 @@ describe("issue 17963", () => {
 
 function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
-    cy.get("[contenteditable=true]").type(string);
+    cy.get(".ace_text-input").type(string);
 
     popover()
       .contains(field)

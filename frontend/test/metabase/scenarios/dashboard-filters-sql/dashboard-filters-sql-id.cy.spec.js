@@ -117,10 +117,7 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
   editDashboard();
   setFilter("ID");
 
-  cy.findByText("Column to filter on")
-    .next("a")
-    .click();
-
+  cy.findByText("Select…").click();
   popover()
     .contains("Filter")
     .click();

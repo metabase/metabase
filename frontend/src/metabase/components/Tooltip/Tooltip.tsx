@@ -14,12 +14,13 @@ Tooltip.propTypes = {
   placement: PropTypes.string,
   isEnabled: PropTypes.bool,
   isOpen: PropTypes.bool,
+  offset: PropTypes.oneOfType([PropTypes.array, PropTypes.func]),
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
 interface TooltipProps
   extends Partial<
-    Pick<Tippy.TippyProps, "reference" | "placement" | "maxWidth">
+    Pick<Tippy.TippyProps, "reference" | "placement" | "maxWidth" | "offset">
   > {
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
@@ -60,6 +61,7 @@ function Tooltip({
   children,
   reference,
   placement,
+  offset,
   isEnabled,
   isOpen,
   maxWidth = 200,
@@ -73,6 +75,7 @@ function Tooltip({
     return (
       <TippyComponent
         theme="tooltip"
+        className="popover"
         appendTo={() => document.body}
         content={tooltip}
         visible={visible}
@@ -81,6 +84,7 @@ function Tooltip({
         reference={reference}
         duration={animationDuration}
         placement={placement}
+        offset={offset}
         {...targetProps}
       />
     );

@@ -1,5 +1,4 @@
-/* eslint "react/prop-types": "warn" */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t, jt } from "ttag";
 import cx from "classnames";
@@ -7,33 +6,11 @@ import cx from "classnames";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
-import { DatasetQuery } from "metabase-types/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import type { Question } from "metabase-lib/lib/Question";
-
-type Props = {
-  className?: string,
-  question: Question,
-  isObjectDetail: boolean,
-  result: any,
-  results: any[],
-  isDirty: boolean,
-  lastRunDatasetQuery: DatasetQuery,
-  navigateToNewCardInsideQB: any => void,
-  rawSeries: any,
-
-  onOpenChartSettings: () => void,
-  onUpdateWarnings: () => void,
-  onUpdateVisualizationSettings: (settings: any) => void,
-  query?: StructuredQuery,
-};
 
 export default class VisualizationResult extends Component {
-  props: Props;
   state = {
     showCreateAlertModal: false,
   };
@@ -50,6 +27,7 @@ export default class VisualizationResult extends Component {
     const {
       question,
       isDirty,
+      isVisualizationClickable,
       navigateToNewCardInsideQB,
       result,
       rawSeries,
@@ -107,6 +85,7 @@ export default class VisualizationResult extends Component {
           isEditing={true}
           isQueryBuilder={true}
           showTitle={false}
+          isClickable={isVisualizationClickable}
           metadata={question.metadata()}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}

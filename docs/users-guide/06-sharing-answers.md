@@ -75,8 +75,8 @@ You can set up questions to run periodically and notify you if the results are i
 Next, we'll learn about how to organize our questions in [collections][collections].
 
 [alerts]: 15-alerts.md
-[archiving-items]: collections.md#archiving-items
+[archiving-items]: collections.html#archiving-items
 [caching]: ../administration-guide/14-caching.md
-[collections]: collections.md
+[collections]: collections.html
 [collection-permissions]: collections.md#collection-permissions
 [dashboards]: 07-dashboards.md

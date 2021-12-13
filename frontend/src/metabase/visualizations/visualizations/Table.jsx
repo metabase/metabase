@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
@@ -33,24 +34,7 @@ import cx from "classnames";
 
 import { getIn } from "icepick";
 
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { Series } from "metabase-types/types/Visualization";
-import type { SettingDefs } from "metabase/visualizations/lib/settings";
-
-type Props = {
-  series: Series,
-  settings: VisualizationSettings,
-  isDashboard: boolean,
-};
-type State = {
-  data: ?DatasetData,
-};
-
 export default class Table extends Component {
-  props: Props;
-  state: State;
-
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -96,7 +80,7 @@ export default class Table extends Component {
     return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
   }
 
-  static settings: SettingDefs = {
+  static settings = {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
@@ -247,7 +231,7 @@ export default class Table extends Component {
   };
 
   static columnSettings = column => {
-    const settings: SettingDefs = {
+    const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -317,7 +301,7 @@ export default class Table extends Component {
     return settings;
   };
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -329,7 +313,7 @@ export default class Table extends Component {
     this._updateData(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
@@ -338,13 +322,7 @@ export default class Table extends Component {
     }
   }
 
-  _updateData({
-    series,
-    settings,
-  }: {
-    series: Series,
-    settings: VisualizationSettings,
-  }) {
+  _updateData({ series, settings }) {
     const [{ data }] = series;
 
     if (Table.isPivoted(series, settings)) {
@@ -390,7 +368,7 @@ export default class Table extends Component {
 
   // shared helpers for table implementations
 
-  getColumnTitle = (columnIndex: number): ?string => {
+  getColumnTitle = columnIndex => {
     const cols = this.state.data && this.state.data.cols;
     if (!cols) {
       return null;

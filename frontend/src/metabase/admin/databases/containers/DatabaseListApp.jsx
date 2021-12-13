@@ -7,6 +7,7 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -28,7 +29,7 @@ import { deleteDatabase, addSampleDataset } from "../database";
 const RELOAD_INTERVAL = 2000;
 
 const getReloadInterval = (state, props, databases = []) => {
-  return databases.some(d => !d.initial_sync) ? RELOAD_INTERVAL : 0;
+  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
 };
 
 const mapStateToProps = (state, props) => ({
@@ -119,7 +120,7 @@ export default class DatabaseList extends Component {
                       >
                         <td>
                           <TableCellContent>
-                            {!database.initial_sync && (
+                            {!isSyncCompleted(database) && (
                               <TableCellSpinner size={16} borderWidth={2} />
                             )}
                             <Link

@@ -1,116 +1,318 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
 
 describe("scenarios > dashboard > title drill", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
+  describe("on a native question without connected dashboard parameters", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      const questionDetails = {
+        name: "Q1",
+        native: { query: 'SELECT 1 as "foo", 2 as "bar"' },
+        display: "bar",
+        visualization_settings: {
+          "graph.dimensions": ["foo"],
+          "graph.metrics": ["bar"],
+        },
+      };
+
+      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          cy.visit(`/dashboard/${dashboard_id}`);
+        },
+      );
+    });
+
+    describe("as a user with access to underlying data", () => {
+      it("should let you click through the title to the query builder (metabase#13042)", () => {
+        // wait for qustion to load
+        cy.findByText("foo");
+
+        // drill through title
+        cy.findByText("Q1").click();
+
+        // check that we're in the QB now
+        cy.findByText("This question is written in SQL.");
+
+        cy.findByText("foo");
+        cy.findByText("bar");
+      });
+    });
+
+    describe("as a user without access to the underlying data", () => {
+      beforeEach(() => {
+        cy.signIn("nodata");
+        cy.reload();
+      });
+
+      it("should let you click through the title to the query builder (metabase#13042)", () => {
+        // wait for qustion to load
+        cy.findByText("foo");
+
+        // drill through title
+        cy.findByText("Q1").click();
+
+        // check that we're in the QB now
+        cy.findByText("This question is written in SQL.");
+
+        cy.findByText("foo");
+        cy.findByText("bar");
+      });
+    });
   });
 
-  it("should let you click through the title to the query builder (metabase#13042)", () => {
-    const questionDetails = {
-      name: "Q1",
-      native: { query: 'SELECT 1 as "foo", 2 as "bar"' },
-      display: "bar",
-      visualization_settings: {
-        "graph.dimensions": ["foo"],
-        "graph.metrics": ["bar"],
-      },
-    };
+  describe("on a native question with a connected dashboard parameter", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { dashboard_id } }) => {
-        cy.visit(`/dashboard/${dashboard_id}`);
-      },
-    );
+      const filter = {
+        name: "Text contains",
+        slug: "text_contains",
+        id: "98289b9b",
+        type: "string/contains",
+        sectionId: "string",
+      };
 
-    // wait for qustion to load
-    cy.findByText("foo");
-
-    // drill through title
-    cy.findByText("Q1").click();
-
-    // check that we're in the QB now
-    cy.findByText("This question is written in SQL.");
-
-    cy.findByText("foo");
-    cy.findByText("bar");
-  });
-
-  it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
-    const filter = {
-      name: "Text contains",
-      slug: "text_contains",
-      id: "98289b9b",
-      type: "string/contains",
-      sectionId: "string",
-    };
-
-    const questionDetails = {
-      name: "16181",
-      native: {
-        query: "select count(*) from products where {{filter}}",
-        "template-tags": {
-          filter: {
-            id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
-            name: "filter",
-            "display-name": "Filter",
-            type: "dimension",
-            dimension: ["field", PRODUCTS.TITLE, null],
-            "widget-type": "string/contains",
-            default: null,
+      const questionDetails = {
+        name: "16181",
+        native: {
+          query: "select count(*) from products where {{filter}}",
+          "template-tags": {
+            filter: {
+              id: "0b004110-d64a-a413-5aa2-5a5314fc8fec",
+              name: "filter",
+              "display-name": "Filter",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.TITLE, null],
+              "widget-type": "string/contains",
+              default: null,
+            },
           },
         },
+        display: "scalar",
+      };
+
+      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.addFilterToDashboard({ filter, dashboard_id });
+
+          // Connect filter to the card
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+            cards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                sizeX: 8,
+                sizeY: 6,
+                parameter_mappings: [
+                  {
+                    parameter_id: filter.id,
+                    card_id,
+                    target: ["dimension", ["template-tag", "filter"]],
+                  },
+                ],
+              },
+            ],
+          });
+
+          cy.visit(`/dashboard/${dashboard_id}`);
+          checkScalarResult("200");
+        },
+      );
+    });
+
+    describe("as a user with access to underlying data", () => {
+      it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
+        checkScalarResult("200");
+
+        cy.findByText("Text contains").click();
+        cy.findByPlaceholderText("Enter some text")
+          .type("bb")
+          .blur();
+        cy.button("Add filter").click();
+
+        checkFilterLabelAndValue("Text contains", "bb");
+        checkScalarResult("12");
+
+        // Drill through on the quesiton's title
+        cy.findByText("16181").click();
+
+        checkFilterLabelAndValue("Filter", "bb");
+        checkScalarResult("12");
+      });
+    });
+
+    describe("as a user without access to underlying data", () => {
+      beforeEach(() => {
+        cy.signIn("nodata");
+        cy.reload();
+      });
+
+      it("'contains' filter should still work after title drill through IF the native question field filter's type matches exactly (metabase#16181)", () => {
+        checkScalarResult("200");
+
+        cy.findByText("Text contains").click();
+        cy.findByPlaceholderText("Enter some text")
+          .type("bb")
+          .blur();
+        cy.button("Add filter").click();
+
+        checkFilterLabelAndValue("Text contains", "bb");
+        checkScalarResult("12");
+
+        // Drill through on the quesiton's title
+        cy.findByText("16181").click();
+
+        checkFilterLabelAndValue("Filter", "bb");
+        checkScalarResult("12");
+      });
+    });
+  });
+
+  describe("on a simple question with a connected dashboard parameter", () => {
+    const questionDetails = {
+      name: "GUI Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
       },
-      display: "scalar",
+      display: "pie",
     };
 
-    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.addFilterToDashboard({ filter, dashboard_id });
+    const filterWithDefaultValue = {
+      name: "Category",
+      slug: "category",
+      id: "c32a49e1",
+      type: "category",
+      default: ["Doohickey"],
+    };
 
-        // Connect filter to the card
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              sizeX: 8,
-              sizeY: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: filter.id,
-                  card_id,
-                  target: ["dimension", ["template-tag", "filter"]],
-                },
-              ],
-            },
-          ],
+    const filter = { name: "ID", slug: "id", id: "f2bf003c", type: "id" };
+
+    const dashboardDetails = {
+      parameters: [filterWithDefaultValue, filter],
+    };
+
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: dashboardCard }) => {
+          const { card_id, dashboard_id } = dashboardCard;
+
+          const mapFiltersToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: filterWithDefaultValue.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+              },
+              {
+                parameter_id: filter.id,
+                card_id,
+                target: ["dimension", ["field", PRODUCTS.ID, null]],
+              },
+            ],
+          };
+
+          cy.editDashboardCard(dashboardCard, mapFiltersToCard);
+
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          ).as("cardQuery");
+
+          cy.visit(`/dashboard/${dashboard_id}`);
+        },
+      );
+    });
+
+    describe("as a user with access to underlying data", () => {
+      it("should let you click through the title to the query builder with the parameter applied as a filter on the question", () => {
+        cy.wait("@cardQuery");
+
+        // make sure query results are correct
+        cy.findByText("42");
+
+        // drill through title
+        cy.findByText("GUI Question").click();
+
+        // make sure the query builder filter is present
+        cy.findByText("Category is Doohickey");
+
+        // make sure the results match
+        cy.findByText("42");
+      });
+    });
+
+    describe("as a user without access to underlying data", () => {
+      beforeEach(() => {
+        cy.signIn("nodata");
+        cy.reload();
+      });
+
+      it("should let you click through the title to the query builder with the parameter filter showing in the query builder", () => {
+        cy.wait("@cardQuery");
+
+        // make sure query results are correct
+        cy.findByText("42");
+
+        // drill through title
+        cy.findByText("GUI Question").click();
+
+        // make sure the results match
+        cy.findByText("42");
+
+        // update the parameter filter to a new value
+        filterWidget()
+          .contains("Doohickey")
+          .click();
+        popover().within(() => {
+          cy.get("input").type("{backspace}Gadget{enter}");
+          cy.findByText("Update filter").click();
         });
 
-        cy.visit(`/dashboard/${dashboard_id}`);
-        checkScalarResult("200");
-      },
-    );
+        // rerun the query with the newly set filter
+        cy.get(".RunButton")
+          .first()
+          .click();
+        cy.wait("@cardQuery");
 
-    cy.findByText("Text contains").click();
-    cy.findByPlaceholderText("Enter some text")
-      .type("bb")
-      .blur();
-    cy.button("Add filter").click();
+        // make sure the results reflect the new filter
+        cy.findByText("53");
 
-    checkFilterLabelAndValue("Text contains", "bb");
-    checkScalarResult("12");
+        // make sure the set parameter filter persists after a page refresh
+        cy.reload();
+        cy.wait("@cardQuery");
 
-    // Drill through on the quesiton's title
-    cy.findByText("16181").click();
+        cy.findByText("53");
 
-    checkFilterLabelAndValue("Filter", "bb");
-    checkScalarResult("12");
+        // make sure the unset id parameter works
+        filterWidget()
+          .last()
+          .click();
+        popover().within(() => {
+          cy.get("input").type("5{enter}");
+          cy.findByText("Add filter").click();
+        });
+
+        // rerun the query with the newly set filter
+        cy.get(".RunButton")
+          .first()
+          .click();
+        cy.wait("@cardQuery");
+
+        cy.findByText("1");
+      });
+    });
   });
 });
 

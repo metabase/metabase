@@ -41,12 +41,12 @@
   for [[metabase.models.collection]] for more details.
 
   Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
-  in [[metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions]] if EE code is
+  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
                (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.enhancements.models.permissions.block-permissions)
-                 (resolve 'metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions)))]
+                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
+                 (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
     (fn [query]
       (when-let [f @dlay]
         (f query)))))

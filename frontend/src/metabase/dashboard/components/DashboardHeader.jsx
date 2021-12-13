@@ -17,71 +17,16 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import cx from "classnames";
 
-import type { LocationDescriptor, QueryParams } from "metabase-types/types";
-import type { CardId } from "metabase-types/types/Card";
-import type {
-  Parameter,
-  ParameterId,
-  ParameterOption,
-} from "metabase-types/types/Parameter";
-import type {
-  DashboardWithCards,
-  DashboardId,
-  DashCardId,
-} from "metabase-types/types/Dashboard";
 import { Link } from "react-router";
 
-type Props = {
-  location: LocationDescriptor,
-
-  dashboard: DashboardWithCards,
-  dashboardBeforeEditing: ?DashboardWithCards,
-
-  isAdmin: boolean,
-  isEditable: boolean,
-  isEditing: boolean,
-  isFullscreen: boolean,
-  isNightMode: boolean,
-
-  refreshPeriod: ?number,
-  setRefreshElapsedHook: Function,
-
-  parametersWidget: React.Element,
-
-  addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
-  addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
-  fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  saveDashboardAndCards: () => Promise<void>,
-  setDashboardAttribute: (attribute: string, value: any) => void,
-
-  addParameter: (option: ParameterOption) => Promise<Parameter>,
-  setEditingParameter: (parameterId: ?ParameterId) => void,
-  isAddParameterPopoverOpen: boolean,
-  showAddParameterPopover: () => void,
-  hideAddParameterPopover: () => void,
-
-  onEditingChange: (isEditing: false | DashboardWithCards) => void,
-  onRefreshPeriodChange: (?number) => void,
-  onNightModeChange: boolean => void,
-  onFullscreenChange: boolean => void,
-
-  onChangeLocation: string => void,
-
-  onSharingClick: void => void,
-};
-
-type State = {
-  modal: null | "parameters",
-};
-
 export default class DashboardHeader extends Component {
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.addQuestionModal = React.createRef();
   }
 
-  state: State = {
+  state = {
     modal: null,
   };
 
@@ -110,7 +55,7 @@ export default class DashboardHeader extends Component {
     onSharingClick: PropTypes.func.isRequired,
   };
 
-  handleEdit(dashboard: DashboardWithCards) {
+  handleEdit(dashboard) {
     this.props.onEditingChange(dashboard);
   }
 
@@ -140,7 +85,7 @@ export default class DashboardHeader extends Component {
     this.onDoneEditing();
   }
 
-  getEditWarning(dashboard: DashboardWithCards) {
+  getEditWarning(dashboard) {
     if (dashboard.embedding_params) {
       const currentSlugs = Object.keys(dashboard.embedding_params);
       // are all of the original embedding params keys in the current

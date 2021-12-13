@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import Navbar from "metabase/nav/containers/Navbar";
-import SyncProgress from "metabase/syncing/containers/SyncProgress";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
@@ -44,6 +43,8 @@ const getErrorComponent = ({ status, data, context }) => {
   }
 };
 
+const PATHS_WITHOUT_NAVBAR = [/\/dataset\/.*\/query/];
+
 @connect(mapStateToProps)
 export default class App extends Component {
   state = {
@@ -59,17 +60,27 @@ export default class App extends Component {
     this.setState({ errorInfo });
   }
 
+  hasNavbar = () => {
+    const {
+      currentUser,
+      location: { pathname },
+    } = this.props;
+    if (!currentUser || IFRAMED) {
+      return false;
+    }
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
+  };
+
   render() {
-    const { children, currentUser, location, errorPage } = this.props;
+    const { children, location, errorPage } = this.props;
     const { errorInfo } = this.state;
 
     return (
       <ScrollToTop>
         <div className="relative">
-          {currentUser && !IFRAMED && <Navbar location={location} />}
+          {this.hasNavbar() && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
-          <SyncProgress />
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>

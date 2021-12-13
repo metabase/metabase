@@ -14,11 +14,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { performAction } from "metabase/visualizations/lib/action";
 
-import type {
-  ClickObject,
-  ClickAction,
-} from "metabase-types/types/Visualization";
-
 import cx from "classnames";
 import _ from "underscore";
 
@@ -76,21 +71,9 @@ Object.values(SECTIONS).map((section, index) => {
 const getGALabelForAction = action =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-type Props = {
-  clicked: ?ClickObject,
-  clickActions: ?(ClickAction[]),
-  onChangeCardAndRun: Object => void,
-  onClose: () => void,
-};
-
-type State = {
-  popoverAction: ?ClickAction,
-};
-
 @connect()
 export default class ChartClickActions extends Component {
-  props: Props;
-  state: State = {
+  state = {
     popoverAction: null,
   };
 
@@ -101,7 +84,7 @@ export default class ChartClickActions extends Component {
     }
   };
 
-  handleClickAction = (action: ClickAction) => {
+  handleClickAction = action => {
     const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
       MetabaseAnalytics.trackStructEvent(
@@ -271,15 +254,7 @@ export default class ChartClickActions extends Component {
   }
 }
 
-export const ChartClickAction = ({
-  action,
-  isLastItem,
-  handleClickAction,
-}: {
-  action: any,
-  isLastItem: any,
-  handleClickAction: any,
-}) => {
+export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // This is where all the different action button styles get applied.
   // Some of them have bespoke classes defined in ChartClickActions.css,
   // like for cases when we needed to really dial in the spacing.

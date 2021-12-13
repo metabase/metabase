@@ -27,68 +27,12 @@ import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
-import Question from "metabase-lib/lib/Question";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSidebar";
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
 
 import "./NativeQueryEditor.css";
-
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { TableId } from "metabase-types/types/Table";
-import type { ParameterId } from "metabase-types/types/Parameter";
-import type { LocationDescriptor } from "metabase-types/types";
-import type { RunQueryParams } from "metabase/query_builder/actions";
-
-type AutoCompleteResult = [string, string, string];
-type AceEditor = any; // TODO;
-
-type Props = {
-  readOnly?: boolean,
-
-  location: LocationDescriptor,
-
-  question: Question,
-  query: NativeQuery,
-
-  handleResize: () => void,
-
-  runQuestionQuery: (options?: RunQueryParams) => void,
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  cancelQuery: () => void,
-
-  setParameterValue: (parameterId: ParameterId, value: string) => void,
-
-  autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
-
-  isNativeEditorOpen: boolean,
-  setIsNativeEditorOpen: (isOpen: boolean) => void,
-  nativeEditorSelectedText: string,
-  setNativeEditorSelectedRange: any => void,
-
-  isRunnable: boolean,
-  isRunning: boolean,
-  isResultDirty: boolean,
-  isPreviewing: boolean,
-  isNativeEditorOpen: boolean,
-
-  viewHeight: number,
-  width: number,
-
-  openSnippetModalWithSelectedText: () => void,
-  insertSnippet: () => void,
-  closeSnippetModal: () => void,
-  snippets: { name: string }[],
-  snippetCollections: { can_write: boolean }[],
-};
-
-type State = {
-  initialHeight: number,
-  isSelectedTextPopoverOpen: boolean,
-};
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
@@ -102,13 +46,9 @@ const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 @Snippets.loadList({ loadingAndErrorWrapper: false })
 @SnippetCollections.loadList({ loadingAndErrorWrapper: false })
 export default class NativeQueryEditor extends Component {
-  props: Props;
-  state: State;
+  _localUpdate = false;
 
-  _editor: AceEditor;
-  _localUpdate: boolean = false;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     const lines = Math.max(
@@ -147,8 +87,8 @@ export default class NativeQueryEditor extends Component {
   };
 
   UNSAFE_componentWillMount() {
-    const { question, setIsNativeEditorOpen } = this.props;
-    setIsNativeEditorOpen(!question || !question.isSaved());
+    const { question, setIsNativeEditorOpen, isInitiallyOpen } = this.props;
+    setIsNativeEditorOpen(!question || !question.isSaved() || isInitiallyOpen);
   }
 
   componentDidMount() {
@@ -172,7 +112,7 @@ export default class NativeQueryEditor extends Component {
     }
   };
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
@@ -250,7 +190,7 @@ export default class NativeQueryEditor extends Component {
     this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
   }, 100);
 
-  handleKeyDown = (e: KeyboardEvent) => {
+  handleKeyDown = e => {
     const ENTER_KEY = 13;
     if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
       this.runQuery();
@@ -430,7 +370,7 @@ export default class NativeQueryEditor extends Component {
   };
 
   /// Change the Database we're currently editing a query for.
-  setDatabaseId = (databaseId: DatabaseId) => {
+  setDatabaseId = databaseId => {
     const { query } = this.props;
     if (query.databaseId() !== databaseId) {
       query
@@ -444,7 +384,7 @@ export default class NativeQueryEditor extends Component {
     }
   };
 
-  setTableId = (tableId: TableId) => {
+  setTableId = tableId => {
     // TODO: push more of this into metabase-lib?
     const { query } = this.props;
     const table = query.metadata().table(tableId);
@@ -453,7 +393,7 @@ export default class NativeQueryEditor extends Component {
     }
   };
 
-  setParameterIndex = (parameterId: ParameterId, parameterIndex: number) => {
+  setParameterIndex = (parameterId, parameterIndex) => {
     const { query, setDatasetQuery } = this.props;
     query
       .setParameterIndex(parameterId, parameterIndex)
@@ -467,6 +407,7 @@ export default class NativeQueryEditor extends Component {
       readOnly,
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
+      hasParametersList = true,
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -487,14 +428,16 @@ export default class NativeQueryEditor extends Component {
             setDatabaseId={this.setDatabaseId}
             setTableId={this.setTableId}
           />
-          <SyncedParametersList
-            className="mt1"
-            parameters={parameters}
-            setParameterValue={setParameterValue}
-            setParameterIndex={this.setParameterIndex}
-            isEditing
-            commitImmediately
-          />
+          {hasParametersList && (
+            <SyncedParametersList
+              className="mt1"
+              parameters={parameters}
+              setParameterValue={setParameterValue}
+              setParameterIndex={this.setParameterIndex}
+              isEditing
+              commitImmediately
+            />
+          )}
           {query.hasWritePermission() && (
             <VisibilityToggler
               isOpen={isNativeEditorOpen}

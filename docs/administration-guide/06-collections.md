@@ -22,11 +22,11 @@ By default, new collections will have the same permissions settings as the colle
 
 One great feature in Metabase is that you can pin the most important couple of items in each of your collections to the top. Pinning an item in a collection turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important.
 
-Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, you can either click and drag it to the top of the page, or click on its menu and choose the pin action. (Note that collections themselves can't be pinned.)
+Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, you can either click and drag it to the top of the page, or click on its menu and choose the pin action. Note that collections themselves can't be pinned, but if you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
 
 ### Setting permissions for collections
 
-Collection permissions are similar to [data access permissions](05-setting-permissions.md). Rather than going to the Admin Panel, you set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on `Edit permissions`. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:
+Collection permissions are similar to [data access permissions](05-setting-permissions.md). You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on `Edit permissions`. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:
 
 - **Curate access:** the user can edit, move, and archive items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
 - **View access:** the user can see all the questions, dashboards, and pulses in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard or pulse then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
@@ -34,9 +34,9 @@ Collection permissions are similar to [data access permissions](05-setting-permi
 
 ![Permissions](images/collections/collection-permissions.png)
 
-If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says `See all collection permissions`. You'll see a table with your user groups along the top and all your collections down along the left. Click the `View collections` link under any collection that contains more collections to zoom in and see its contents:
+If you want to see the bigger picture of what permissions your user groups have for all your collections, just click the link that says **See all collection permissions**, which takes you to the Admin Panel. You'll see a list of your collections down along the left, and clicking on any of those will bring up a list of each group's permission settings for that collection.
 
-![Full permissions grid](images/collections/permission-grid.png)
+![Collection Permissions](images/collections/admin-panel-collections.png)
 
 Just like with data access permissions, collection permissions are _additive_, meaning that if a user belongs to more than one group, if one of their groups has a more restrictive setting for a collection than another one of their groups, they'll be given the _more permissive_ setting. This is especially important to remember when dealing with the All Users group: since all users are members of this group, if you give the All Users group Curate access to a collection, then _all_ users will be given Curate access for that collection, even if they also belong to a group with _less_ access than that.
 
@@ -44,7 +44,7 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 One nuance with how collections permissions work has to do with sub-collections. A user group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. E.g., if a user group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does _not_ have access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
-To learn more, check out our Learn article on [working with collection permissions][working-with-collection-permissions].
+To learn more, check out our Learn article on [working with collection permissions][collection-permissions].
 
 ### Personal collections
 
@@ -86,5 +86,16 @@ Pulses act a bit differently with regard to permissions. When a user creates a n
 
 Want to share certain dashboards or questions with the world? You can do that with [public links](12-public-links.md).
 
-
-[working-with-collection-permissisons]: /learn/permissions/collection-permissions.html
+[collections]: 06-collections.md
+[collection-permissions]: /learn/permissions/collection-permissions.html
+[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
+[data-permissions]: data-permissions.md
+[pulses]: ../users-guide/10-pulses.md
+[data-sandboxing]: ../enterprise-guide/data-sandboxes.md
+[offical-collections]: ../users-guide/collections.html#official-collections
+[permissions]: /learn/permissions/
+[sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
+[sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
+[slack-integration]: 09-setting-up-slack.md
+[sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
+[table-permissions]: data-permissions.md#table-permissions

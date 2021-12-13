@@ -40,7 +40,7 @@ export const mostCommonQuestions = () => ({
   },
 });
 
-export const table = (searchString?: string) => ({
+export const table = searchString => ({
   card: {
     name: "Dashboards",
     display: "table",

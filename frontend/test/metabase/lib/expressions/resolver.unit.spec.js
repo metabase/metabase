@@ -32,6 +32,8 @@ describe("metabase/lib/expressions/resolve", () => {
   const Q = ["dimension", "Q"];
   const R = ["dimension", "R"];
   const S = ["dimension", "S"];
+  const X = ["segment", "X"];
+  const Y = ["dimension", "Y"];
 
   describe("for filters", () => {
     const filter = e => collect(e, "boolean");
@@ -44,8 +46,8 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(filter(["and", ["<", Q, 1], R]).segments).toEqual(["R"]);
       expect(filter(["is-null", S]).segments).toEqual([]);
       expect(filter(["not-empty", S]).segments).toEqual([]);
-      expect(filter(["lower", A]).segments).toEqual([]);
-      expect(filter(["sqrt", B]).segments).toEqual([]);
+      expect(filter([">", ["lower", A], "X"]).segments).toEqual([]);
+      expect(filter(["<", ["sqrt", B], 1]).segments).toEqual([]);
       expect(filter(["contains", C, "SomeString"]).segments).toEqual([]);
       expect(filter(["or", P, [">", Q, 3]]).segments).toEqual(["P"]);
     });
@@ -58,10 +60,60 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(filter(["and", ["<", Q, 1], R]).dimensions).toEqual(["Q"]);
       expect(filter(["is-null", Q]).dimensions).toEqual(["Q"]);
       expect(filter(["not-empty", S]).dimensions).toEqual(["S"]);
-      expect(filter(["lower", A]).dimensions).toEqual(["A"]);
-      expect(filter(["sqrt", B]).dimensions).toEqual(["B"]);
+      expect(filter([">", ["lower", A], "X"]).dimensions).toEqual(["A"]);
+      expect(filter(["<", ["sqrt", B], 1]).dimensions).toEqual(["B"]);
       expect(filter(["contains", C, "SomeString"]).dimensions).toEqual(["C"]);
       expect(filter(["or", P, [">", Q, 3]]).dimensions).toEqual(["Q"]);
+    });
+
+    it("should reject a number literal", () => {
+      expect(() => filter("3.14159")).toThrow();
+    });
+
+    it("should reject a string literal", () => {
+      expect(() => filter('"TheAnswer"')).toThrow();
+    });
+
+    it("should catch mismatched number of function parameters", () => {
+      expect(() => filter(["contains"])).toThrow();
+      expect(() => filter(["contains", Y])).toThrow();
+      expect(() => filter(["contains", Y, "A", "B", "C"])).toThrow();
+      expect(() => filter(["starts-with"])).toThrow();
+      expect(() => filter(["starts-with", A])).toThrow();
+      expect(() => filter(["starts-with", A, "P", "Q", "R"])).toThrow();
+      expect(() => filter(["ends-with"])).toThrow();
+      expect(() => filter(["ends-with", B])).toThrow();
+      expect(() => filter(["ends-with", B, "P", "Q", "R"])).toThrow();
+    });
+
+    it("should allow a comparison (lexicographically) on strings", () => {
+      // P <= "abc"
+      expect(() => filter(["<=", P, "abc"])).not.toThrow();
+    });
+
+    it("should allow a comparison (lexicographically) on functions returning string", () => {
+      // Lower([A]) <= "P"
+      expect(() => filter(["<=", ["lower", A], "P"])).not.toThrow();
+    });
+
+    it("should reject a less/greater comparison on functions returning boolean", () => {
+      // IsEmpty([A]) < 0
+      expect(() => filter(["<", ["is-empty", A], 0])).toThrow();
+    });
+
+    // backward-compatibility
+    it("should reject a number literal on the left-hand side of a comparison", () => {
+      // 0 < [A]
+      expect(() => filter(["<", 0, A])).toThrow();
+    });
+    it("should still allow a string literal on the left-hand side of a comparison", () => {
+      // "XYZ" < [B]
+      expect(() => filter(["<", "XYZ", B])).not.toThrow();
+    });
+
+    it("should work on functions with optional flag", () => {
+      const flag = { "include-current": true };
+      expect(() => filter(["time-interval", A, 3, "day", flag])).not.toThrow();
     });
   });
 
@@ -85,6 +137,23 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(expr(["coalesce", P]).dimensions).toEqual(["P"]);
       expect(expr(["coalesce", P, Q, R]).dimensions).toEqual(["P", "Q", "R"]);
     });
+
+    it("should allow any number of arguments in a variadic function", () => {
+      expect(() => expr(["concat", "1"])).not.toThrow();
+      expect(() => expr(["concat", "1", "2"])).not.toThrow();
+      expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
+    });
+
+    it("should accept COALESCE for number", () => {
+      expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
+    });
+    it("should accept COALESCE for string", () => {
+      expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
+    });
+
+    it("should honor CONCAT's implicit casting", () => {
+      expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+    });
   });
 
   describe("for aggregations", () => {
@@ -106,6 +175,11 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(aggregation(["share", [">", P, 3]]).metrics).toEqual([]);
       expect(aggregation(["max", ["*", 4, Q]]).metrics).toEqual([]);
       expect(aggregation(["+", R, ["median", S]]).metrics).toEqual(["R"]);
+    });
+
+    it("should accept PERCENTILE with two arguments", () => {
+      // PERCENTILE(A, 0.5)
+      expect(() => aggregation(["percentile", A, 0.5])).not.toThrow();
     });
   });
 
@@ -153,16 +227,39 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(expr(["coalesce", ["case", [[A, B]]]]).segments).toEqual(["A"]);
       expect(expr(["coalesce", ["case", [[A, B]]]]).dimensions).toEqual(["B"]);
     });
-  });
 
-  it("should handle unknown MBQL gracefully", () => {
-    expect(() => collect(["abc-xyz", B])).not.toThrow();
+    it("should reject a CASE expression with only one argument", () => {
+      // CASE(X)
+      expect(() => expr(["case", [], { default: Y }])).toThrow();
+    });
+    it("should reject a CASE expression with incorrect argument type", () => {
+      // CASE(X, 1, 2, 3)
+      expect(() =>
+        expr([
+          "case",
+          [
+            [X, 1],
+            [2, 3],
+          ],
+        ]),
+      ).toThrow();
+    });
+
+    it("should accept a CASE expression with complex arguments", () => {
+      // CASE(X, 0.5*Y, A-B)
+      const def = { default: ["-", A, B] };
+      expect(() => expr(["case", [[X, ["*", 0.5, Y]]], def])).not.toThrow();
+    });
   });
 
   it("should not fail on literal 0", () => {
     const opt = { default: 0 };
-    expect(resolve(["case", [[1, 0]]])).toEqual(["case", [[1, 0]]]);
-    expect(resolve(["case", [[1, 0]], opt])).toEqual(["case", [[1, 0]], opt]);
-    expect(resolve(["case", [[1, 2]], opt])).toEqual(["case", [[1, 2]], opt]);
+    expect(resolve(["case", [[X, 0]]])).toEqual(["case", [[X, 0]]]);
+    expect(resolve(["case", [[X, 0]], opt])).toEqual(["case", [[X, 0]], opt]);
+    expect(resolve(["case", [[X, 2]], opt])).toEqual(["case", [[X, 2]], opt]);
+  });
+
+  it("should reject unknown function", () => {
+    expect(() => resolve(["foobar", 42])).toThrow();
   });
 });

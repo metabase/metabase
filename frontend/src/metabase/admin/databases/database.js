@@ -5,37 +5,19 @@ import {
   createThunkAction,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { MetabaseApi } from "metabase/services";
+import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
 // Default schedules for db sync and deep analysis
-export const DEFAULT_SCHEDULES = {
-  cache_field_values: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: 0,
-    schedule_type: "daily",
-  },
-  metadata_sync: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_type: "hourly",
-  },
-};
-
 export const DB_EDIT_FORM_CONNECTION_TAB = "connection";
-export const DB_EDIT_FORM_SCHEDULING_TAB = "scheduling";
 
 export const RESET = "metabase/admin/databases/RESET";
 export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
-export const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
 export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
@@ -78,12 +60,15 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
+export const CLOSE_DEPRECATION_NOTICE =
+  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
+
 export const reset = createAction(RESET);
 
 // selectEngine (uiControl)
 export const selectEngine = createAction(SELECT_ENGINE);
 
-// Migrates old "Enable in-depth database analysis" option to new "Let me choose when Metabase syncs and scans" option
+// Migrates old "Enable in-depth database analysis" option to new "Choose when syncs and scans happen" option
 // Migration is run as a separate action because that makes it easy to track in tests
 const migrateDatabaseToNewSchedulingSettings = database => {
   return async function(dispatch, getState) {
@@ -161,37 +146,6 @@ export const addSampleDataset = createThunkAction(
     };
   },
 );
-
-export const proceedWithDbCreation = function(database) {
-  return async function(dispatch, getState) {
-    if (database.details["let-user-control-scheduling"]) {
-      try {
-        dispatch.action(VALIDATE_DATABASE_STARTED);
-
-        const { valid } = await MetabaseApi.db_validate({ details: database });
-
-        if (valid) {
-          dispatch.action(SET_DATABASE_CREATION_STEP, {
-            database,
-            step: DB_EDIT_FORM_SCHEDULING_TAB,
-          });
-        } else {
-          throw {
-            data: {
-              message: t`Couldn't connect to the database. Please check the connection details.`,
-            },
-          };
-        }
-      } catch (error) {
-        dispatch.action(VALIDATE_DATABASE_FAILED, { error });
-        throw error;
-      }
-    } else {
-      // Skip the scheduling step if user doesn't need precise control over sync and scan
-      await dispatch(createDatabase(database));
-    }
-  };
-};
 
 export const createDatabase = function(database) {
   editParamsForUserControlledScheduling(database);
@@ -325,6 +279,22 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
+export const closeDeprecationNotice = createThunkAction(
+  CLOSE_DEPRECATION_NOTICE,
+  function() {
+    return async function() {
+      try {
+        await SettingsApi.put({
+          key: "engine-deprecation-notice-version",
+          value: MetabaseSettings.currentVersion(),
+        });
+      } catch (error) {
+        console.log("error saving deprecation notice version", error);
+      }
+    };
+  },
+);
+
 // reducers
 
 const editingDatabase = handleActions(
@@ -385,6 +355,13 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
+const isDeprecationNoticeEnabled = handleActions(
+  {
+    [CLOSE_DEPRECATION_NOTICE]: () => false,
+  },
+  MetabaseSettings.engineDeprecationNoticeEnabled(),
+);
+
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -392,4 +369,5 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
+  isDeprecationNoticeEnabled,
 });

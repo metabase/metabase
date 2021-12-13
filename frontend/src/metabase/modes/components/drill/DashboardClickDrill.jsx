@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 import _ from "underscore";
 
@@ -10,12 +11,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
-
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
   const columnSettings =
     (clicked &&
@@ -68,26 +64,33 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
 
       behavior = { url: () => url.toString() };
     } else if (linkType === "question" && extraData && extraData.questions) {
-      let targetQuestion = new Question(
+      const queryParams = getQueryParams(parameterMapping, {
+        data,
+        extraData,
+        clickBehavior,
+      });
+
+      const targetQuestion = new Question(
         extraData.questions[targetId],
         question.metadata(),
-        getQueryParams(parameterMapping, { data, extraData, clickBehavior }),
       ).lockDisplay();
 
-      if (targetQuestion.isStructured()) {
-        targetQuestion = targetQuestion.setParameters(
-          _.chain(parameterMapping)
-            .values()
-            .map(({ target, id, source }) => ({
-              target: target.dimension,
-              id,
-              type: getTypeForSource(source, extraData),
-            }))
-            .value(),
-        );
-      }
+      const parameters = _.chain(parameterMapping)
+        .values()
+        .map(({ target, id, source }) => ({
+          target: target.dimension,
+          id,
+          slug: id,
+          type: getTypeForSource(source, extraData),
+        }))
+        .value();
 
-      const url = targetQuestion.getUrlWithParameters();
+      const url = targetQuestion.isStructured()
+        ? targetQuestion.getUrlWithParameters(parameters, queryParams)
+        : `${targetQuestion.getUrl()}?${new URLSearchParams(
+            queryParams,
+          ).toString()}`;
+
       behavior = { url: () => url };
     }
   }

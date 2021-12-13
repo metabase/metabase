@@ -3,7 +3,6 @@
   (:require [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]))
@@ -120,21 +119,6 @@
               s/Num
               s/Str
               s/Bool))
-
-(def ParamValue
-  "Schema for a parameter *value* during parsing by the `values` namespace, and also (confusingly) for the `:value` part
-  of a `FieldFilter`, which gets passed along to `substitution`. TODO - this is horribly confusing"
-  {:type                     s/Keyword ; TODO - what types are allowed? :text, ...?
-   (s/optional-key :target)  s/Any
-   ;; not specified if the param has no value. TODO - make this stricter
-   (s/optional-key :value)   s/Any
-   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
-   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   (s/optional-key :slug)    su/NonBlankString
-   (s/optional-key :name)    su/NonBlankString
-   (s/optional-key :default) s/Any
-   ;; various other keys are used internally by the frontend
-   s/Keyword                 s/Any})
 
 ;; Sequence of multiple values for generating a SQL IN() clause. vales
 ;; `values` are a sequence of `[SingleValue]`

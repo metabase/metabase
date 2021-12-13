@@ -276,6 +276,9 @@
     ;; Human-readable name that should be displayed to the User in UI for editing this field.
     :display-name su/NonBlankString
 
+    ;; Human-readable text that gives context about a field's input.
+    (s/optional-key :helper-text) s/Str
+
     ;; Type of this property. Defaults to `:string` if unspecified.
     ;; `:select` is a `String` in the backend.
     (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)

@@ -31,13 +31,13 @@ The default way to connect to MongoDB is to fill out your connection details in 
 - Username
 - Password
 - Authentication Database (optional database to use when authenticating)
-- Additional Mongo connection string options
+- Additional connection string options (optional)
 
 Additional settings:
 
 - **Use DNS SRV when connecting** Using this option requires that provided host is a FQDN. If connecting to an Atlas cluster, you might need to enable this option. If you don't know what this means, leave this disabled.
 
-- **Use a secure connection (SSL)?** Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
+- **Use a secure connection (SSL)** Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
 
 ### Using a connection string
 

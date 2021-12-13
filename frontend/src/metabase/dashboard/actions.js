@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { assoc, assocIn, dissocIn, getIn } from "icepick";
 import _ from "underscore";
 
@@ -17,21 +18,15 @@ import {
   setParameterDefaultValue as setParamDefaultValue,
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
+  getParametersMappedToDashcard,
 } from "metabase/parameters/utils/dashboards";
-import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
+import { applyParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
 import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import type {
-  DashboardWithCards,
-  DashCard,
-  DashCardId,
-} from "metabase-types/types/Dashboard";
-import type { CardId } from "metabase-types/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -211,23 +206,20 @@ function isNewDashcard(dashcard) {
   return dashcard.id < 1 && dashcard.id >= 0;
 }
 
-export const addCardToDashboard = ({
-  dashId,
-  cardId,
-}: {
-  dashId: DashCardId,
-  cardId: CardId,
-}) => async (dispatch, getState) => {
+export const addCardToDashboard = ({ dashId, cardId }) => async (
+  dispatch,
+  getState,
+) => {
   await dispatch(Questions.actions.fetch({ id: cardId }));
   const card = Questions.selectors.getObject(getState(), {
     entityId: cardId,
   });
   const { dashboards, dashcards } = getState().dashboard;
-  const dashboard: DashboardWithCards = dashboards[dashId];
-  const existingCards: Array<DashCard> = dashboard.ordered_cards
+  const dashboard = dashboards[dashId];
+  const existingCards = dashboard.ordered_cards
     .map(id => dashcards[id])
     .filter(dc => !dc.isRemoved);
-  const dashcard: DashCard = {
+  const dashcard = {
     id: generateTemporaryDashcardId(),
     dashboard_id: dashId,
     card_id: card.id,
@@ -243,20 +235,14 @@ export const addCardToDashboard = ({
   dispatch(loadMetadataForDashboard([dashcard]));
 };
 
-export const addDashCardToDashboard = function({
-  dashId,
-  dashcardOverrides,
-}: {
-  dashId: DashCardId,
-  dashcardOverrides: {},
-}) {
+export const addDashCardToDashboard = function({ dashId, dashcardOverrides }) {
   return function(dispatch, getState) {
     const { dashboards, dashcards } = getState().dashboard;
-    const dashboard: DashboardWithCards = dashboards[dashId];
-    const existingCards: Array<DashCard> = dashboard.ordered_cards
+    const dashboard = dashboards[dashId];
+    const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
-    const dashcard: DashCard = {
+    const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
       card: null,
@@ -271,11 +257,7 @@ export const addDashCardToDashboard = function({
   };
 };
 
-export const addTextDashCardToDashboard = function({
-  dashId,
-}: {
-  dashId: DashCardId,
-}) {
+export const addTextDashCardToDashboard = function({ dashId }) {
   const virtualTextCard = createCard();
   virtualTextCard.display = "text";
   virtualTextCard.archived = false;
@@ -702,7 +684,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      dispatch(loadMetadataForDashboard(result.ordered_cards));
+      await dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -978,37 +960,32 @@ export const navigateToNewCardFromDashboard = createThunkAction(
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
-    const cardIsDirty = !_.isEqual(
-      previousCard.dataset_query,
-      nextCard.dataset_query,
-    );
     const cardAfterClick = getCardAfterVisualizationClick(
       nextCard,
       previousCard,
     );
 
-    const question = new Question(cardAfterClick, metadata);
-
-    const cardWithVizSettings = question
+    const questionWithVizSettings = new Question(cardAfterClick, metadata)
       .setDisplay(cardAfterClick.display || previousCard.display)
       .setSettings(
         cardAfterClick.visualization_settings ||
           previousCard.visualization_settings,
       )
       .lockDisplay()
-      .card();
+      .setDashboardId(dashboard.id);
+
+    const parametersMappedToCard = getParametersMappedToDashcard(
+      dashboard,
+      dashcard,
+    );
 
     // when the query is for a specific object it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
-    const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(cardWithVizSettings)
-      : questionUrlWithParameters(
-          cardWithVizSettings,
-          metadata,
-          dashboard.parameters,
+    const url = questionWithVizSettings.isObjectDetail()
+      ? Urls.serializedQuestion(questionWithVizSettings.card())
+      : questionWithVizSettings.getUrlWithParameters(
+          parametersMappedToCard,
           parameterValues,
-          dashcard && dashcard.parameter_mappings,
-          cardIsDirty,
         );
 
     open(url, {

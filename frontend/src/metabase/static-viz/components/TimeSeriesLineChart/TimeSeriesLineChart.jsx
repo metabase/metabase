@@ -12,6 +12,7 @@ import {
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { sortTimeSeries } from "../../lib/sort";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -56,6 +57,7 @@ const layout = {
 };
 
 const TimeSeriesLineChart = ({ data, accessors, settings, labels }) => {
+  data = sortTimeSeries(data);
   const colors = settings?.colors;
   const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;

@@ -47,11 +47,27 @@ function timeseries_bar(data, labels, settings) {
   });
 }
 
+function combo_chart(series, settings, colors) {
+  // Thinking of combo as similar to multiple, although they're different in BE
+  return StaticViz.RenderChart("combo-chart", {
+    series: JSON.parse(series),
+    settings: JSON.parse(settings),
+    colors: JSON.parse(colors),
+  });
+}
+
 function timeseries_waterfall(data, labels, settings) {
   return StaticViz.RenderChart("timeseries/waterfall", {
     data: toJSArray(data),
     labels: toJSMap(labels),
     accessors: date_accessors,
+    settings: JSON.parse(settings),
+  });
+}
+
+function funnel(data, settings) {
+  return StaticViz.RenderChart("funnel", {
+    data: JSON.parse(data),
     settings: JSON.parse(settings),
   });
 }

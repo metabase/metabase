@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
@@ -11,31 +12,8 @@ import * as Urls from "metabase/lib/urls";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-type PublicLink = {
-  id: string,
-  name: string,
-  public_uuid: string,
-};
-
-type Props = {
-  load: () => Promise<PublicLink[]>,
-  revoke?: (link: PublicLink) => Promise<void>,
-  getUrl: (link: PublicLink) => string,
-  getPublicUrl?: (link: PublicLink) => string,
-  noLinksMessage: string,
-  type: string,
-};
-
-type State = {
-  list: ?(PublicLink[]),
-  error: ?any,
-};
-
 export default class PublicLinksListing extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       list: null,
@@ -56,7 +34,7 @@ export default class PublicLinksListing extends Component {
     }
   }
 
-  async revoke(link: PublicLink) {
+  async revoke(link) {
     if (!this.props.revoke) {
       return;
     }
@@ -68,7 +46,7 @@ export default class PublicLinksListing extends Component {
     }
   }
 
-  trackEvent(label: string) {
+  trackEvent(label) {
     MetabaseAnalytics.trackStructEvent(`Admin ${this.props.type}`, label);
   }
 

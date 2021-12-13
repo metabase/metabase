@@ -44,9 +44,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Add database").click();
 
-      cy.findByText(
-        "Automatically run queries when doing simple filtering and summarizing",
-      );
+      cy.findByText("Rerun queries for simple explorations");
 
       // Add new database
 
@@ -599,7 +597,7 @@ describe("smoketest > admin_setup", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText("Try these x-rays based on your data.");
+      cy.wait(2000).findByText("Try these x-rays based on your data");
       cy.contains("A look at your Test Table table");
       cy.contains("A look at your Review table").should("not.exist");
 

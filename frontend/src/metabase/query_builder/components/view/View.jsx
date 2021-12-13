@@ -37,6 +37,9 @@ import { Motion, spring } from "react-motion";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+
+import DatasetEditor from "../DatasetEditor";
 
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
@@ -144,6 +147,10 @@ export default class View extends React.Component {
       );
     }
 
+    if (card.dataset && queryBuilderMode === "dataset") {
+      return <DatasetEditor {...this.props} />;
+    }
+
     const topQuery = isStructured && query.topLevelQuery();
 
     // only allow editing of series for structured queries
@@ -241,7 +248,7 @@ export default class View extends React.Component {
                 "hide sm-show": isSidebarOpen,
               })}
             >
-              {isNative && (
+              {isNative ? (
                 <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor
                     {...this.props}
@@ -250,6 +257,13 @@ export default class View extends React.Component {
                     datasetQuery={card && card.dataset_query}
                   />
                 </div>
+              ) : (
+                <SyncedParametersList
+                  className="mt2 ml3"
+                  parameters={this.props.parameters}
+                  setParameterValue={this.props.setParameterValue}
+                  commitImmediately
+                />
               )}
 
               <ViewSubHeader {...this.props} />

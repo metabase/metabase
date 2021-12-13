@@ -19,7 +19,7 @@ All you need to do is create the directory, move the JAR you just downloaded int
 
 ### Connecting with SSL
 
-To connect to Oracle via SSL and enable encryption, check the `Use a secure connection (SSL)?` option on the connection
+To connect to Oracle via SSL and enable encryption, check the `Use a secure connection (SSL)` option on the connection
 setup page.  You can add other SSL features (including client and/or server authentication) as explained below. You can
 use both client and server authentication (known as mutual authentication).
 
