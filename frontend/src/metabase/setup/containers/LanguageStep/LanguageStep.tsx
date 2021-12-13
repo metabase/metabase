@@ -1,9 +1,15 @@
 import { connect } from "react-redux";
-import { getLocales } from "../../selectors";
 import LanguageStep from "../../components/LanguageStep";
+import { setLocale } from "../../actions";
+import { getLocales, getLocale } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   locales: getLocales(state),
+  selectedLocale: getLocale(state),
 });
 
-export default connect(mapStateToProps)(LanguageStep);
+const mapDispatchToProps = {
+  onLocaleChange: setLocale,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(LanguageStep);

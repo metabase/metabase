@@ -1,10 +1,11 @@
 import { createSelector } from "reselect";
 import { LocaleData } from "./types";
 
-export const getSettings = createSelector(
-  (state: any) => state.settings,
-  settings => settings.values,
-);
+export const getState = (state: any) => state.setup;
+
+export const getLocale = (state: any) => getState(state).locale;
+
+export const getSettings = (state: any) => state.settings.values;
 
 export const getLocales = createSelector([getSettings], settings => {
   const data = settings["available-locales"] ?? [["en", "English"]];
