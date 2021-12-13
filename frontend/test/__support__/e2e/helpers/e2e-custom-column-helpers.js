@@ -3,7 +3,8 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .first()
     .as("formula")
     .focus()
-    .type(formula);
+    .type(formula, { delay: 50 })
+    .blur();
 
   if (name) {
     cy.findByPlaceholderText("Something nice and descriptive").type(name);
