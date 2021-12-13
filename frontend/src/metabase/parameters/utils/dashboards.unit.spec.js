@@ -504,7 +504,7 @@ describe("meta/Dashboard", () => {
       ).toBe(false);
     });
 
-    it("should return when all given parameters are found mapped to the dashcard", () => {
+    it("should return true when all given parameters are found mapped to the dashcard", () => {
       const dashboard = {
         ordered_cards: [
           {
