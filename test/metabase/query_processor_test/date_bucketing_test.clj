@@ -1126,6 +1126,7 @@
                                                     {:name         "date_range"
                                                      :display-name "Date Range"
                                                      :type         :dimension
+                                                     :widget-type  :date/all-options
                                                      :dimension    (mt/$ids $checkins.timestamp)}}
                                     :parameters    [{:type   :date/range
                                                      :name   "created_at"

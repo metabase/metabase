@@ -100,7 +100,7 @@ describe("parameters/utils/mbql", () => {
       it("should flatten the array parameter values", () => {
         expect(
           stringParameterValueToMBQL(
-            { type: "category/=", value: ["1", "2"] },
+            { type: "number/=", value: ["1", "2"] },
             null,
           ),
         ).toEqual(["=", null, "1", "2"]);
@@ -111,7 +111,7 @@ describe("parameters/utils/mbql", () => {
       it("should return the correct MBQL", () => {
         expect(
           stringParameterValueToMBQL(
-            { type: "category/starts-with", value: "1" },
+            { type: "string/starts-with", value: "1" },
             null,
           ),
         ).toEqual(["starts-with", null, "1"]);
