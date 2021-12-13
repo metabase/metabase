@@ -1,8 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+
+import Radio from "metabase/components/Radio";
 
 import Databases from "metabase/entities/databases";
 import Field from "metabase-lib/lib/metadata/Field";
@@ -24,11 +26,16 @@ import { updateCardVisualizationSettings } from "metabase/query_builder/actions"
 import FormFieldDivider from "./FormFieldDivider";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker from "./SemanticTypePicker";
-import { PaddedContent } from "./DatasetFieldMetadataSidebar.styled";
+import {
+  MainFormContainer,
+  SecondaryFormContainer,
+  FormTabsContainer,
+  ViewAsFieldContainer,
+} from "./DatasetFieldMetadataSidebar.styled";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
-  field: PropTypes.instanceOf(Field).isRequired,
+  field: PropTypes.instanceOf(Field),
   IDFields: PropTypes.array.isRequired,
   updateCardVisualizationSettings: PropTypes.func.isRequired,
 };
@@ -124,15 +131,6 @@ function getFormFields({ dataset, IDFields }) {
       options: visibilityTypeOptions,
     },
     {
-      name: "display_as",
-      title: t`Display as`,
-      type: "radio",
-      options: [
-        { name: t`Text`, value: "text" },
-        { name: t`Link`, value: "link" },
-      ],
-    },
-    {
       name: "has_field_values",
       title: t`Filtering on this field`,
       info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
@@ -142,7 +140,24 @@ function getFormFields({ dataset, IDFields }) {
   ].filter(Boolean);
 }
 
-const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set(["column_title"]);
+const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
+
+const HIDDEN_COLUMN_FORMATTING_OPTIONS = new Set([
+  "column_title",
+  ...VIEW_AS_FIELDS,
+]);
+
+const VIEW_AS_RELATED_FORMATTING_OPTIONS = new Set(VIEW_AS_FIELDS);
+
+const TAB = {
+  SETTINGS: "settings",
+  FORMATTING: "formatting",
+};
+
+const TAB_OPTIONS = [
+  { name: t`Settings`, value: TAB.SETTINGS },
+  { name: t`Formatting`, value: TAB.FORMATTING },
+];
 
 function DatasetFieldMetadataSidebar({
   dataset,
@@ -170,6 +185,8 @@ function DatasetFieldMetadataSidebar({
     IDFields,
   ]);
 
+  const [tab, setTab] = useState(TAB.SETTINGS);
+
   const fieldFormattingSettings = useMemo(() => {
     if (!field) {
       return {};
@@ -196,38 +213,66 @@ function DatasetFieldMetadataSidebar({
     [dataset, field, fieldFormattingSettings, updateCardVisualizationSettings],
   );
 
+  const columnSettingsProps = useMemo(
+    () => ({
+      column: field,
+      value: fieldFormattingSettings,
+      onChange: handleFormattingSettingsChange,
+      inheritedSettings: getGlobalSettingsForColumn(field),
+      variant: "form-field",
+    }),
+    [field, fieldFormattingSettings, handleFormattingSettingsChange],
+  );
+
   return (
     <SidebarContent>
-      <PaddedContent>
-        {field && (
-          <RootForm
-            fields={formFields}
-            initialValues={initialValues}
-            overwriteOnInitialValuesChange
-          >
-            {({ Form, FormField }) => (
-              <Form>
+      {field && (
+        <RootForm
+          fields={formFields}
+          initialValues={initialValues}
+          overwriteOnInitialValuesChange
+        >
+          {({ Form, FormField }) => (
+            <Form>
+              <MainFormContainer>
                 <FormField name="display_name" />
                 <FormField name="description" />
                 {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
-                <FormFieldDivider />
-                <ColumnSettings
-                  column={field}
-                  value={fieldFormattingSettings}
-                  onChange={handleFormattingSettingsChange}
-                  inheritedSettings={getGlobalSettingsForColumn(field)}
-                  denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
-                  variant="form-field"
+              </MainFormContainer>
+              <FormTabsContainer>
+                <Radio
+                  value={tab}
+                  options={TAB_OPTIONS}
+                  onChange={setTab}
+                  variant="underlined"
+                  py={1}
                 />
-                <FormField name="visibility_type" />
-                <FormField name="display_as" />
-                <FormField name="has_field_values" />
-              </Form>
-            )}
-          </RootForm>
-        )}
-      </PaddedContent>
+              </FormTabsContainer>
+              <FormFieldDivider />
+              <SecondaryFormContainer>
+                {tab === TAB.SETTINGS ? (
+                  <React.Fragment>
+                    <FormField name="visibility_type" />
+                    <ViewAsFieldContainer>
+                      <ColumnSettings
+                        {...columnSettingsProps}
+                        allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
+                      />
+                    </ViewAsFieldContainer>
+                    <FormField name="has_field_values" />
+                  </React.Fragment>
+                ) : (
+                  <ColumnSettings
+                    {...columnSettingsProps}
+                    denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                  />
+                )}
+              </SecondaryFormContainer>
+            </Form>
+          )}
+        </RootForm>
+      )}
     </SidebarContent>
   );
 }
