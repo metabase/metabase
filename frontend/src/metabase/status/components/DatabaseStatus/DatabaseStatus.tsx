@@ -55,10 +55,16 @@ const DatabaseStatus = ({ database }: Props) => {
   );
 };
 
-const getProgress = ({ tables = [] }: Database) => {
-  const done = tables.filter(isSyncCompleted).length;
-  const total = tables.length;
-  return total > 0 ? done / total : 0;
+const getProgress = (database: Database) => {
+  if (isSyncCompleted(database)) {
+    return 1;
+  } else if (database.tables) {
+    const done = database.tables.filter(isSyncCompleted).length;
+    const total = database.tables.length;
+    return total > 0 ? done / total : 0;
+  } else {
+    return 0;
+  }
 };
 
 const getProgressLabel = (database: Database, progress: number) => {
@@ -68,9 +74,9 @@ const getProgressLabel = (database: Database, progress: number) => {
     case "incomplete":
       return t`Syncing ${database.name} (${percent}%)`;
     case "complete":
-      return t`Done!`;
+      return t`${database.name} is ready!`;
     case "aborted":
-      return t`Error syncing`;
+      return t`Error syncing ${database.name}`;
   }
 };
 
