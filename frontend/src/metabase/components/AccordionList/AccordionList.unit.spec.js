@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import AccordionList from "metabase/components/AccordionList";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 const SECTIONS = [
   {
@@ -79,6 +81,28 @@ describe("AccordionList", () => {
 
     fireEvent.change(SEARCH_FIELD, { target: { value: "Something Else" } });
     assertAbsence(["Foo", "Bar", "Baz"]);
+  });
+
+  describe("with the `renderItemWrapper` prop", () => {
+    it("should be able to wrap the list items in components like popovers", async () => {
+      const renderItemWrapper = (itemContent, item) => {
+        return (
+          <TippyPopover content={<div>popover</div>}>
+            {itemContent}
+          </TippyPopover>
+        );
+      };
+
+      render(
+        <AccordionList
+          sections={SECTIONS}
+          renderItemWrapper={renderItemWrapper}
+        />,
+      );
+
+      userEvent.hover(screen.getByText("Foo"));
+      expect(await screen.findByText("popover")).toBeVisible();
+    });
   });
 });
 
