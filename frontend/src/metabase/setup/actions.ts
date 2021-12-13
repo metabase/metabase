@@ -13,3 +13,6 @@ export const setLocale = createThunkAction(SET_LOCALE, (locale: Locale) => {
     return locale;
   };
 });
+
+export const SET_USER = "metabase/setup/SET_USER";
+export const setUser = createAction(SET_USER);

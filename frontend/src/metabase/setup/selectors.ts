@@ -22,6 +22,10 @@ export const getLocale = (state: any) => {
   return getState(state).locale;
 };
 
+export const getUser = (state: any) => {
+  return getState(state).user;
+};
+
 export const getSettings = (state: any) => {
   return state.settings.values;
 };

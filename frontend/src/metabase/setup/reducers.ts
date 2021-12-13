@@ -1,5 +1,5 @@
 import { handleActions } from "redux-actions";
-import { SET_LOCALE, SET_STEP } from "./actions";
+import { SET_LOCALE, SET_STEP, SET_USER } from "./actions";
 import { WELCOME_STEP } from "./constants";
 
 export const step = handleActions(
@@ -16,7 +16,15 @@ export const locale = handleActions(
   null,
 );
 
+export const user = handleActions(
+  {
+    [SET_USER]: { next: (state, { payload }) => payload },
+  },
+  {},
+);
+
 export default {
   step,
   locale,
+  user,
 };
