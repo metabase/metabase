@@ -4,7 +4,7 @@ import {
   StepTitle,
   StepLabel,
   StepDescription,
-} from "./SetupStep.styled";
+} from "./ActiveStep.styled";
 
 interface Props {
   title: string;
@@ -15,7 +15,7 @@ interface Props {
   children?: ReactNode;
 }
 
-const SetupStep = ({ title, label, description, children }: Props) => (
+const ActiveStep = ({ title, label, description, children }: Props) => (
   <StepRoot>
     <StepTitle>{title}</StepTitle>
     <StepLabel>{label}</StepLabel>
@@ -24,4 +24,4 @@ const SetupStep = ({ title, label, description, children }: Props) => (
   </StepRoot>
 );
 
-export default SetupStep;
+export default ActiveStep;

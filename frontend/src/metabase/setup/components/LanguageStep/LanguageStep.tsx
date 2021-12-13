@@ -2,7 +2,7 @@ import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/components/Button";
-import SetupStep from "../SetupStep";
+import ActiveStep from "../ActiveStep";
 import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
 import { Locale } from "../../types";
 
@@ -18,7 +18,7 @@ const LanguageStep = ({ locales, selectedLocale, onLocaleChange }: Props) => {
   }, [locales]);
 
   return (
-    <SetupStep
+    <ActiveStep
       title={t`What's your preferred language?`}
       label={t`1`}
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
@@ -34,7 +34,7 @@ const LanguageStep = ({ locales, selectedLocale, onLocaleChange }: Props) => {
         ))}
       </LanguageList>
       <Button primary>{t`Next`}</Button>
-    </SetupStep>
+    </ActiveStep>
   );
 };
 
