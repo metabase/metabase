@@ -3,4 +3,9 @@ export interface Locale {
   code: string;
 }
 
+export interface UserInfo {
+  first_name: string;
+  last_name: string;
+}
+
 export type LocaleData = [string, string];

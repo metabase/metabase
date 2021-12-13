@@ -2,6 +2,7 @@ import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../containers/LanguageStep";
+import UserStep from "../../containers/UserStep";
 import SetupFooter from "../SetupFooter";
 
 const SettingsPage = () => (
@@ -11,6 +12,7 @@ const SettingsPage = () => (
     </PageHeader>
     <PageBody>
       <LanguageStep />
+      <UserStep />
       <SetupFooter />
     </PageBody>
   </div>
