@@ -10,7 +10,9 @@ describe("postgres > question > custom columns", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
     cy.findByText(PG_DB_NAME).click();
-    cy.findByText("Orders").click();
+    cy.findByText("Orders")
+      .should("exist")
+      .click();
   });
 
   it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {

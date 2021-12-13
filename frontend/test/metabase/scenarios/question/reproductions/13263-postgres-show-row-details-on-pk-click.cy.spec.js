@@ -9,8 +9,12 @@ describe("postgres > user > query", () => {
 
     cy.visit("/question/new");
     cy.findByText("Simple question").click();
-    cy.findByText(PG_DB_NAME).click();
-    cy.findByText("Orders").click();
+    cy.findByText(PG_DB_NAME)
+      .should("exist")
+      .click();
+    cy.findByText("Orders")
+      .should("exist")
+      .click();
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {
