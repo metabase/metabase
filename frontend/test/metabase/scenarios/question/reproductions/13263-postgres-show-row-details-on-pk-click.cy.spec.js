@@ -10,10 +10,10 @@ describe("postgres > user > query", () => {
     cy.visit("/question/new");
     cy.findByText("Simple question").click();
     cy.findByText(PG_DB_NAME)
-      .should("exist")
+      .should("be.visible")
       .click();
     cy.findByText("Orders")
-      .should("exist")
+      .should("be.visible")
       .click();
   });
 

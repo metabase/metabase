@@ -9,9 +9,11 @@ describe("postgres > question > custom columns", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME).click();
+    cy.findByText(PG_DB_NAME)
+      .should("be.visible")
+      .click();
     cy.findByText("Orders")
-      .should("exist")
+      .should("be.visible")
       .click();
   });
 
