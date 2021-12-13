@@ -269,7 +269,7 @@ export default class Table extends Component {
     if (options.length > 1) {
       settings["view_as"] = {
         title: t`View as link or image`,
-        widget: "select",
+        widget: "radio",
         default: defaultValue,
         props: {
           options,
