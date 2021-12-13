@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import { color, darken } from "metabase/lib/colors";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const InputRoot = styled.div`
@@ -9,7 +10,7 @@ export const InputRoot = styled.div`
   width: ${props => (props.fullWidth ? "100%" : "")};
 `;
 
-export const InputField = styled.input`
+export const InputField = forwardRefToInnerRef(styled.input`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
@@ -42,7 +43,7 @@ export const InputField = styled.input`
     css`
       width: 100%;
     `}
-`;
+`);
 
 export const InputHelpButton = styled(IconButtonWrapper)`
   position: absolute;

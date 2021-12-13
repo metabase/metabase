@@ -10,7 +10,10 @@ const propTypes = {
   helperText: PropTypes.node,
 };
 
-const Input = ({ error, fullWidth, helperText, ...rest }) => {
+const Input = forwardRef(function Input(
+  { error, fullWidth, helperText, ...rest },
+  ref,
+) {
   return (
     <InputRoot fullWidth={fullWidth}>
       <InputField
@@ -18,6 +21,7 @@ const Input = ({ error, fullWidth, helperText, ...rest }) => {
         hasError={error}
         hasTooltip={helperText}
         fullWidth={fullWidth}
+        ref={ref}
       />
       {helperText && (
         <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
@@ -26,7 +30,7 @@ const Input = ({ error, fullWidth, helperText, ...rest }) => {
       )}
     </InputRoot>
   );
-};
+});
 
 const InputHelpContent = forwardRef(function InputHelpContent(props, ref) {
   return (
