@@ -1159,7 +1159,8 @@ export const runQuestionQuery = ({
     }
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
+        question.card().id == null
       : true;
 
     if (shouldUpdateUrl) {
