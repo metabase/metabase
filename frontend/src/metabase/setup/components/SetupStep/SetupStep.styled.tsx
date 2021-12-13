@@ -33,3 +33,8 @@ export const StepLabel = styled.div`
   font-weight: 700;
   line-height: 1;
 `;
+
+export const StepDescription = styled.div`
+  color: ${color("text-dark")};
+  margin: 0.875rem 0;
+`;
