@@ -8,6 +8,7 @@ import { Locale } from "../../types";
 import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
 
 interface Props {
+  step: number;
   locales: Locale[];
   selectedLocale?: Locale;
   isActive?: boolean;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 const LanguageStep = ({
+  step,
   locales,
   selectedLocale,
   isActive,
@@ -29,8 +31,8 @@ const LanguageStep = ({
   if (!isActive) {
     return (
       <InactiveStep
+        step={step}
         title={t`Your language is set to ${selectedLocale?.name}`}
-        label={1}
         isCompleted={isCompleted}
       />
     );
@@ -38,8 +40,8 @@ const LanguageStep = ({
 
   return (
     <ActiveStep
+      step={step}
       title={t`What's your preferred language?`}
-      label={1}
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
     >
       <LanguageList>

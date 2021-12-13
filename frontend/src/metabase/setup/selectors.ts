@@ -3,6 +3,8 @@ import { LocaleData } from "./types";
 
 export const getState = (state: any) => state.setup;
 
+export const getStep = (state: any) => getState(state).step;
+
 export const getLocale = (state: any) => getState(state).locale;
 
 export const getSettings = (state: any) => state.settings.values;

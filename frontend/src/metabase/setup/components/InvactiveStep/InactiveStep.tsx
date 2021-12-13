@@ -8,12 +8,12 @@ import {
 } from "./InactiveStep.styled";
 
 interface Props {
+  step: number;
   title: string;
-  label: number;
   isCompleted?: boolean;
 }
 
-const InactiveStep = ({ title, label, isCompleted }: Props) => {
+const InactiveStep = ({ step, title, isCompleted }: Props) => {
   return (
     <StepRoot isCompleted={isCompleted}>
       <StepTitle isCompleted={isCompleted}>{title}</StepTitle>
@@ -21,7 +21,7 @@ const InactiveStep = ({ title, label, isCompleted }: Props) => {
         {isCompleted ? (
           <StepLabelIcon name="check" />
         ) : (
-          <StepLabelText>{label}</StepLabelText>
+          <StepLabelText>{step}</StepLabelText>
         )}
       </StepLabel>
     </StepRoot>

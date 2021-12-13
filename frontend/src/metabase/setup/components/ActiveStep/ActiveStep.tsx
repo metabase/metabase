@@ -8,20 +8,20 @@ import {
 } from "./ActiveStep.styled";
 
 interface Props {
+  step: number;
   title: string;
-  label: number;
   description?: string;
   isOpened?: boolean;
   isCompleted?: boolean;
   children?: ReactNode;
 }
 
-const ActiveStep = ({ title, label, description, children }: Props) => {
+const ActiveStep = ({ step, title, description, children }: Props) => {
   return (
     <StepRoot>
       <StepTitle>{title}</StepTitle>
       <StepLabel>
-        <StepLabelText>{label}</StepLabelText>
+        <StepLabelText>{step}</StepLabelText>
       </StepLabel>
       {description && <StepDescription>{description}</StepDescription>}
       {children}
