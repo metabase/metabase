@@ -16,6 +16,10 @@
   color: var(--color-accent1);
 }
 
+.expression-editor-textfield .ace-tm .ace_boolean {
+  color: var(--color-accent2);
+}
+
 .ace_cursor {
   border-left-width: 1px;
 }

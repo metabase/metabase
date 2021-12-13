@@ -14,6 +14,11 @@ class ExpressionHighlight extends window.ace.acequire(
             "Average|CountIf|CumulativeCount|CumulativeSum|Median|Min|Max|Percentile|Share|StandardDeviation|SumIf|Variance",
         },
         {
+          token: "boolean",
+          regex:
+            "between|contains|endsWith|interval|isempty|isnull||startsWith",
+        },
+        {
           token: "constant.numeric",
           regex: "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b",
         },
