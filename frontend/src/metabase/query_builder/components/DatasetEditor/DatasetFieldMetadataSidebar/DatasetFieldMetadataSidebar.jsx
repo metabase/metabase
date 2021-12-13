@@ -114,6 +114,7 @@ function getFormFields({ dataset, IDFields }) {
     },
     {
       name: "semantic_type",
+      title: t`Column type`,
       widget: SemanticTypeWidget,
     },
     {
