@@ -9,9 +9,10 @@ import FieldValuesList from "./FieldValuesList";
 
 const propTypes = {
   field: PropTypes.instanceOf(Field),
+  fieldValues: PropTypes.array,
 };
 
-function FieldFingerprintInfo({ field }) {
+function FieldFingerprintInfo({ field, fieldValues }) {
   if (!field?.fingerprint) {
     return null;
   }
@@ -21,7 +22,7 @@ function FieldFingerprintInfo({ field }) {
   } else if (field.isNumber()) {
     return <NumberFingerprint field={field} />;
   } else if (field.isCategory()) {
-    return <CategoryFingerprint field={field} />;
+    return <CategoryFingerprint field={field} fieldValues={fieldValues} />;
   } else {
     return null;
   }
@@ -89,7 +90,7 @@ function NumberFingerprint({ field }) {
   );
 }
 
-function CategoryFingerprint({ field }) {
+function CategoryFingerprint({ field, fieldValues }) {
   const distinctCount = field.fingerprint.global?.["distinct-count"];
   if (distinctCount == null) {
     return null;
@@ -104,7 +105,7 @@ function CategoryFingerprint({ field }) {
           distinctCount,
         )}
       </div>
-      <FieldValuesList field={field} />
+      <FieldValuesList field={field} fieldValues={fieldValues} />
     </div>
   );
 }
