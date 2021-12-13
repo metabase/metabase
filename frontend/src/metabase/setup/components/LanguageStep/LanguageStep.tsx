@@ -3,9 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
-import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
+import InactiveStep from "../InvactiveStep";
 import { Locale } from "../../types";
-import InactiveStep from "../InvactiveStep/InactiveStep";
+import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
 
 interface Props {
   locales: Locale[];
