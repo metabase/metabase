@@ -249,7 +249,7 @@ export default class Table extends Component {
     let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
 
     const options = [
-      { name: t`Off`, value: null },
+      { name: t`Text`, value: null },
       { name: t`Link`, value: "link" },
     ];
 
