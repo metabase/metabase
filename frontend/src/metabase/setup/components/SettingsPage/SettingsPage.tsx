@@ -5,13 +5,13 @@ import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../components/UserStep";
 import DatabaseStep from "../DatabaseStep";
 import SetupFooter from "../SetupFooter";
-import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 import {
   LANGUAGE_STEP,
   USER_STEP,
   DATABASE_STEP,
   PREFERENCES_STEP,
 } from "../../constants";
+import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 
 interface Props {
   step: number;
@@ -23,7 +23,7 @@ interface Props {
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
-  onChangeDatabase: (database: DatabaseInfo) => void;
+  onChangeDatabase: (database?: DatabaseInfo) => void;
 }
 
 const SettingsPage = ({

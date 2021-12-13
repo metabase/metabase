@@ -8,7 +8,7 @@ interface Props {
   database?: DatabaseInfo;
   isActive: boolean;
   isCompleted: boolean;
-  onChangeDatabase: (datasbase: DatabaseInfo) => void;
+  onChangeDatabase: (datasbase?: DatabaseInfo) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
