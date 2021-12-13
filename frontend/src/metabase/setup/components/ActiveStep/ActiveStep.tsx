@@ -9,22 +9,24 @@ import {
 
 interface Props {
   title: string;
-  label: string;
+  label: number;
   description?: string;
   isOpened?: boolean;
   isCompleted?: boolean;
   children?: ReactNode;
 }
 
-const ActiveStep = ({ title, label, description, children }: Props) => (
-  <StepRoot>
-    <StepTitle>{title}</StepTitle>
-    <StepLabel>
-      <StepLabelText>{label}</StepLabelText>
-    </StepLabel>
-    {description && <StepDescription>{description}</StepDescription>}
-    {children}
-  </StepRoot>
-);
+const ActiveStep = ({ title, label, description, children }: Props) => {
+  return (
+    <StepRoot>
+      <StepTitle>{title}</StepTitle>
+      <StepLabel>
+        <StepLabelText>{label}</StepLabelText>
+      </StepLabel>
+      {description && <StepDescription>{description}</StepDescription>}
+      {children}
+    </StepRoot>
+  );
+};
 
 export default ActiveStep;
