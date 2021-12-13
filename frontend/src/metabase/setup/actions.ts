@@ -7,5 +7,6 @@ export const SET_LOCALE = "metabase/setup/SET_LOCALE";
 export const setLocale = createThunkAction(SET_LOCALE, (locale: Locale) => {
   return () => {
     Settings.set("user-locale", locale.code);
+    return locale;
   };
 });
