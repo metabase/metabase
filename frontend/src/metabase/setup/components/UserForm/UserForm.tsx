@@ -1,7 +1,8 @@
-import React, { ComponentType, useMemo } from "react";
+import React, { ComponentType } from "react";
 import { t } from "ttag";
 import User from "metabase/entities/users";
 import { UserInfo } from "../../types";
+import { UserFormRoot, FormGroup } from "./UserForm.styled";
 
 interface Props {
   user?: UserInfo;
@@ -11,7 +12,7 @@ interface Props {
 
 const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
   return (
-    <User.Form
+    <UserFormRoot
       form={User.forms.setup()}
       user={user}
       asyncValidate={onValidatePassword}
@@ -19,7 +20,7 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
       onSubmit={onSubmit}
     >
       {getFormFields}
-    </User.Form>
+    </UserFormRoot>
   );
 };
 
@@ -32,8 +33,10 @@ interface FormOpts {
 const getFormFields = ({ Form, FormField, FormFooter }: FormOpts) => {
   return (
     <Form>
-      <FormField name="first_name" />
-      <FormField name="last_name" />
+      <FormGroup>
+        <FormField name="first_name" />
+        <FormField name="last_name" />
+      </FormGroup>
       <FormField name="email" />
       <FormField name="site_name" />
       <FormField name="password" />
