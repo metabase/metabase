@@ -1,10 +1,20 @@
 import { connect } from "react-redux";
 import Setup from "../../components/Setup";
-import { isStepActive } from "../../selectors";
-import { WELCOME_STEP } from "../../constants";
+import { setStep, setLocale, setUser, validatePassword } from "../../actions";
+import { getStep, getLocale, getUser } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
-  isWelcome: isStepActive(state, WELCOME_STEP),
+  step: getStep(state),
+  locale: getLocale(state),
+  availableLocales: [],
+  user: getUser(state),
 });
 
-export default connect(mapStateToProps)(Setup);
+const mapDispatchToProps = {
+  onChangeStep: setStep,
+  onChangeLocale: setLocale,
+  onChangeUser: setUser,
+  onValidatePassword: validatePassword,
+};
+
+export default connect(mapStateToProps, mapDispatchToProps)(Setup);
