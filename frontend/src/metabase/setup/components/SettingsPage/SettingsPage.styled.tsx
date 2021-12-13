@@ -8,3 +8,8 @@ export const PageHeader = styled.header`
   padding: 1rem 0;
   border-bottom: 1px solid ${color("border")};
 `;
+
+export const PageBody = styled.div`
+  margin-top: 4rem;
+  padding: 0 1em;
+`;

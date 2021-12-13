@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { StepRoot, StepTitle } from "./SetupStep.styled";
 
 interface Props {
   title: string;
@@ -8,6 +9,11 @@ interface Props {
   children?: ReactNode;
 }
 
-const SetupStep = () => <div />;
+const SetupStep = ({ title, children }: Props) => (
+  <StepRoot>
+    <StepTitle>{title}</StepTitle>
+    {children}
+  </StepRoot>
+);
 
 export default SetupStep;

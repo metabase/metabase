@@ -1,11 +1,19 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
-import { PageHeader } from "./SettingsPage.styled";
+import { PageHeader, PageBody } from "./SettingsPage.styled";
+import LanguageStep from "../LanguageStep/LanguageStep";
+import SetupFooter from "../SetupFooter";
 
 const SettingsPage = () => (
-  <PageHeader>
-    <LogoIcon height={51} />
-  </PageHeader>
+  <div>
+    <PageHeader>
+      <LogoIcon height={51} />
+    </PageHeader>
+    <PageBody>
+      <LanguageStep />
+      <SetupFooter />
+    </PageBody>
+  </div>
 );
 
 export default SettingsPage;
