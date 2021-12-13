@@ -1,1 +1,4 @@
-export type Locale = [string, string];
+export interface Locale {
+  name: string;
+  code: string;
+}

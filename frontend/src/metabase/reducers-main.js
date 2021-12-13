@@ -7,9 +7,6 @@ import commonReducers from "./reducers-common";
 /* admin */
 import admin from "metabase/admin/admin";
 
-/* setup */
-import * as setup from "metabase/setup/reducers";
-
 /* dashboards */
 import dashboard from "metabase/dashboard/reducers";
 import * as home from "metabase/home/reducers";
@@ -40,6 +37,5 @@ export default {
   qb: combineReducers(qb),
   reference,
   revisions,
-  setup: combineReducers(setup),
   admin,
 };

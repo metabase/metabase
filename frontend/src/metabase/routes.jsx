@@ -41,7 +41,7 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
-import SetupApp from "metabase/setup/containers/SetupApp/SetupApp";
+import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
