@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -18,7 +18,9 @@ import { keyForColumn } from "metabase/lib/dataset";
 import RootForm from "metabase/containers/Form";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
+import ColumnSettings, {
+  hasColumnSettingsWidgets,
+} from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
@@ -224,6 +226,22 @@ function DatasetFieldMetadataSidebar({
     [field, fieldFormattingSettings, handleFormattingSettingsChange],
   );
 
+  const hasColumnFormattingOptions = useMemo(
+    () =>
+      field &&
+      hasColumnSettingsWidgets({
+        ...columnSettingsProps,
+        denylist: HIDDEN_COLUMN_FORMATTING_OPTIONS,
+      }),
+    [field, columnSettingsProps],
+  );
+
+  useEffect(() => {
+    if (!hasColumnFormattingOptions && tab !== TAB.SETTINGS) {
+      setTab(TAB.SETTINGS);
+    }
+  }, [tab, hasColumnFormattingOptions]);
+
   return (
     <SidebarContent>
       {field && (
@@ -240,15 +258,17 @@ function DatasetFieldMetadataSidebar({
                 {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
               </MainFormContainer>
-              <FormTabsContainer>
-                <Radio
-                  value={tab}
-                  options={TAB_OPTIONS}
-                  onChange={setTab}
-                  variant="underlined"
-                  py={1}
-                />
-              </FormTabsContainer>
+              {hasColumnFormattingOptions && (
+                <FormTabsContainer>
+                  <Radio
+                    value={tab}
+                    options={TAB_OPTIONS}
+                    onChange={setTab}
+                    variant="underlined"
+                    py={1}
+                  />
+                </FormTabsContainer>
+              )}
               <FormFieldDivider />
               <SecondaryFormContainer>
                 {tab === TAB.SETTINGS ? (

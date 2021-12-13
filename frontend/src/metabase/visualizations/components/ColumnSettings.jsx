@@ -14,17 +14,14 @@ import {
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import NoResults from "assets/img/no_results.svg";
 
-const ColumnSettings = ({
-  value,
-  onChange,
+function getWidgets({
   column,
+  inheritedSettings,
+  storedSettings,
+  onChange,
   allowlist,
   denylist,
-  inheritedSettings = {},
-  variant = "default",
-}) => {
-  const storedSettings = value || {};
-
+}) {
   // fake series
   const series = [{ card: {}, data: { rows: [], cols: [] } }];
 
@@ -51,11 +48,23 @@ const ColumnSettings = ({
       onChange({ ...storedSettings, ...changedSettings });
     },
     { series },
-  ).filter(
+  );
+
+  return widgets.filter(
     widget =>
       (!allowlist || allowlist.has(widget.id)) &&
       (!denylist || !denylist.has(widget.id)),
   );
+}
+
+export function hasColumnSettingsWidgets({ value, ...props }) {
+  const storedSettings = value || {};
+  return getWidgets({ storedSettings, ...props }).length > 0;
+}
+
+const ColumnSettings = ({ value, variant = "default", ...props }) => {
+  const storedSettings = value || {};
+  const widgets = getWidgets({ storedSettings, ...props });
 
   return (
     <div style={{ maxWidth: 300 }}>
