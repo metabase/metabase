@@ -17,7 +17,9 @@ describe("metabase-smoketest > admin", () => {
       cy.visit("/");
       cy.findByText("Welcome to Metabase");
       cy.url().should("not.include", "login");
-      cy.findByText("Let's get started").click();
+      cy.findByText("Let's get started")
+        .should("be.visible")
+        .click();
 
       // Language
 
