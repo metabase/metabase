@@ -206,17 +206,42 @@
            ;; flip it back to put it back the way we found it.
            (reverse (normalize-mbql-clause-tokens (reverse subclause)))))))
 
+(defn- template-tag-definition-key->transform-fn
+  "Get the function that should be used to transform values for normalized key `k` in a template tag definition."
+  [k]
+  (get {:default     identity
+        :type        maybe-normalize-token
+        :widget-type maybe-normalize-token}
+       k
+       ;; if there's not a special transform function for the key in the map above, just wrap the key-value
+       ;; pair in a dummy map and let [[normalize-tokens]] take care of it. Then unwrap
+       (fn [v]
+         (-> (normalize-tokens {k v} :ignore-path)
+             (get k)))))
+
+(defn- normalize-template-tag-definition
+  "For a template tag definition, normalize all the keys appropriately."
+  [tag-definition]
+  (into
+   {}
+   (map (fn [[k v]]
+          (let [k            (maybe-normalize-token k)
+                transform-fn (template-tag-definition-key->transform-fn k)]
+            [k (transform-fn v)])))
+   tag-definition))
+
 (defn- normalize-template-tags
   "Normalize native-query template tags. Like `expressions` we want to preserve the original name rather than normalize
   it."
   [template-tags]
-  (into {} (for [[tag-name tag-def] template-tags]
-             [(mbql.u/qualified-name tag-name)
-              (let [tag-def' (normalize-tokens (dissoc tag-def :default) :ignore-path)]
-                (cond-> tag-def'
-                  (:default tag-def)      (assoc :default (:default tag-def)) ;; don't normalize default values
-                  (:type tag-def')        (update :type maybe-normalize-token)
-                  (:widget-type tag-def') (update :widget-type maybe-normalize-token)))])))
+  (into
+   {}
+   (map (fn [[tag-name tag-definition]]
+          (let [tag-name (mbql.u/qualified-name tag-name)]
+            [tag-name
+             (-> (normalize-template-tag-definition tag-definition)
+                 (assoc :name tag-name))])))
+   template-tags))
 
 (defn- normalize-query-parameter [{:keys [type target], :as param}]
   (cond-> param

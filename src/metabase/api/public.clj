@@ -4,7 +4,6 @@
             [clojure.core.async :as a]
             [compojure.core :refer [GET]]
             [medley.core :as m]
-            [metabase.api.card :as card-api]
             [metabase.api.common :as api]
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
@@ -18,6 +17,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.params :as params]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.card :as qp.card]
+            [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.pivot :as qp.pivot]
@@ -120,7 +121,7 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (m/mapply card-api/run-query-for-card-async card-id export-format
+    (m/mapply qp.card/run-query-for-card-async card-id export-format
               :parameters parameters
               :context    :public-question
               :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
@@ -206,7 +207,7 @@
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check anyway
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (m/mapply dashboard-api/run-query-for-dashcard-async options))))
+      (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
 (api/defendpoint ^:streaming GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public

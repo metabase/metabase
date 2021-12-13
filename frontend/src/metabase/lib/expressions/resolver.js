@@ -63,7 +63,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
     let operandType = null;
     if (LOGICAL_OPS.includes(op)) {
       operandType = "boolean";
-    } else if (NUMBER_OPS.includes(op) || op === "coalesce") {
+    } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
@@ -72,7 +72,9 @@ export function resolve(expression, type = "expression", fn = undefined) {
         throw new Error(t`Expecting field but found ${firstOperand}`);
       }
     } else if (op === "concat") {
-      operandType = "string";
+      operandType = "expression";
+    } else if (op === "coalesce") {
+      operandType = type;
     } else if (op === "case") {
       const [pairs, options] = operands;
       if (pairs.length < 1) {
