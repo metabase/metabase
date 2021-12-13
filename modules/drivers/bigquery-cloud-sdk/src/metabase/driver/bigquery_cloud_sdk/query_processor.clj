@@ -385,6 +385,39 @@
 (defmethod sql.qp/date [:bigquery-cloud-sdk :quarter-of-year] [_ _ expr] (extract :quarter   expr))
 (defmethod sql.qp/date [:bigquery-cloud-sdk :year]            [_ _ expr] (trunc   :year      expr))
 
+;; date extraction functions
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-year]
+  [driver [_ arg]]
+  (extract :year (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-quarter]
+  [driver [_ arg]]
+  (sql.qp/date driver :quarter-of-year arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-month]
+  [driver [_ arg]]
+  (sql.qp/date driver :month-of-year arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-day]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-month arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-day-of-week]
+  [driver [_ arg]]
+  (sql.qp/date driver :day-of-week arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-hour]
+  [driver [_ arg]]
+  (sql.qp/date driver :hour-of-day arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-minute]
+  [driver [_ arg]]
+  (sql.qp/date driver :minute-of-hour arg))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :get-second]
+  [driver [_ arg]]
+  (extract :second (sql.qp/->honeysql driver arg)))
+
 ;; BigQuery mod is a function like mod(x, y) rather than an operator like x mod y
 (defmethod hformat/fn-handler (u/qualified-name ::mod)
   [_ x y]
