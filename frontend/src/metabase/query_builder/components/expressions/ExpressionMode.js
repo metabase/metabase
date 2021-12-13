@@ -9,6 +9,11 @@ class ExpressionHighlight extends window.ace.acequire(
     this.$rules = {
       start: [
         {
+          token: "aggregation",
+          regex:
+            "Average|CountIf|CumulativeCount|CumulativeSum|Median|Min|Max|Percentile|Share|StandardDeviation|SumIf|Variance",
+        },
+        {
           token: "constant.numeric",
           regex: "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b",
         },

@@ -12,6 +12,10 @@
   color: var(--color-brand);
 }
 
+.expression-editor-textfield .ace-tm .ace_aggregation {
+  color: var(--color-accent1);
+}
+
 .ace_cursor {
   border-left-width: 1px;
 }
