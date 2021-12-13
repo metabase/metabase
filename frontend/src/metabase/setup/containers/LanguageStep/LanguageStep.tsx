@@ -6,6 +6,7 @@ import { getLocales, getLocale } from "../../selectors";
 const mapStateToProps = (state: any) => ({
   locales: getLocales(state),
   selectedLocale: getLocale(state),
+  isActive: true,
 });
 
 const mapDispatchToProps = {
