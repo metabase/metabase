@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import SetupFooter from "../SetupFooter";
+import { LANGUAGE_STEP } from "../../constants";
 import {
   PageRoot,
   PageMain,
@@ -11,10 +12,10 @@ import {
 } from "./WelcomePage.styled";
 
 interface Props {
-  onSelectNextStep?: () => void;
+  onChangeStep: (step: number) => void;
 }
 
-const WelcomePage = ({ onSelectNextStep }: Props) => {
+const WelcomePage = ({ onChangeStep }: Props) => {
   return (
     <PageRoot>
       <PageMain>
@@ -25,7 +26,7 @@ const WelcomePage = ({ onSelectNextStep }: Props) => {
         </PageBody>
         <PageButton
           primary
-          onClick={onSelectNextStep}
+          onClick={() => onChangeStep(LANGUAGE_STEP)}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupFooter />

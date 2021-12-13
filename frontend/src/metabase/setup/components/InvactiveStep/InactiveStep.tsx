@@ -10,8 +10,8 @@ import {
 interface Props {
   title: string;
   label: number;
-  isCompleted?: boolean;
-  onSelect?: () => void;
+  isCompleted: boolean;
+  onSelect: () => void;
 }
 
 const InactiveStep = ({ title, label, isCompleted, onSelect }: Props) => {

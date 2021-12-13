@@ -11,8 +11,6 @@ interface Props {
   title: string;
   label: number;
   description?: string;
-  isOpened?: boolean;
-  isCompleted?: boolean;
   children?: ReactNode;
 }
 
