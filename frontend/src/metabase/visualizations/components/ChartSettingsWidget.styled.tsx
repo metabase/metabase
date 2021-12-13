@@ -54,7 +54,6 @@ export const Title = styled.label<VariantProp>`
   ${props =>
     props.variant === "default" &&
     css`
-      font-size: 1.12em;
       font-weight: 700;
     `}
 `;
