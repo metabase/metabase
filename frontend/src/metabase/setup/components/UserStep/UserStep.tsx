@@ -23,8 +23,8 @@ const UserStep = ({
       <InactiveStep
         title={
           isCompleted
-            ? t`What should we call you?`
-            : t`Hi, ${user?.first_name}. Nice to meet you!`
+            ? t`Hi, ${user?.first_name}. Nice to meet you!`
+            : t`What should we call you?`
         }
         label={2}
         isCompleted={isCompleted}
