@@ -1,7 +1,8 @@
-import React, { ComponentType } from "react";
+import React from "react";
 import { t } from "ttag";
 import User from "metabase/entities/users";
 import { UserInfo } from "../../types";
+import { FormProps, FormError } from "./types";
 import { UserFormRoot, FormGroup } from "./UserForm.styled";
 
 interface Props {
@@ -11,15 +12,28 @@ interface Props {
 }
 
 const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
+  const handleValidate = async (user: UserInfo) => {
+    try {
+      await onValidatePassword(user);
+      return {};
+    } catch (error) {
+      if (isFormError(error)) {
+        return error.data.errors;
+      } else {
+        throw error;
+      }
+    }
+  };
+
   return (
     <UserFormRoot
       form={User.forms.setup()}
       user={user}
-      asyncValidate={onValidatePassword}
+      asyncValidate={handleValidate}
       asyncBlurFields={["password"]}
       onSubmit={onSubmit}
     >
-      {({ Form, FormField, FormFooter }: FormOpts) => {
+      {({ Form, FormField, FormFooter }: FormProps) => {
         return (
           <Form>
             <FormGroup>
@@ -38,10 +52,8 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
   );
 };
 
-interface FormOpts {
-  Form: ComponentType;
-  FormField: ComponentType<{ name: string }>;
-  FormFooter: ComponentType<{ submitTitle?: string }>;
-}
+const isFormError = (error: unknown): error is FormError => {
+  return typeof error === "object";
+};
 
 export default UserForm;
