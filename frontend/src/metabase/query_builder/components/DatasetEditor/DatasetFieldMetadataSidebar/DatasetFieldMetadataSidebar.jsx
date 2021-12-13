@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -14,8 +20,10 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { keyForColumn } from "metabase/lib/dataset";
+import { isSameField } from "metabase/lib/query/field_ref";
 
 import RootForm from "metabase/containers/Form";
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ColumnSettings, {
@@ -167,6 +175,18 @@ function DatasetFieldMetadataSidebar({
   IDFields,
   updateCardVisualizationSettings,
 }) {
+  const displayNameInputRef = useRef();
+  const previousField = usePrevious(field);
+
+  useEffect(() => {
+    if (field && !isSameField(field?.field_ref, previousField?.field_ref)) {
+      // setTimeout is required as form fields are rerendered pretty frequently
+      setTimeout(() => {
+        displayNameInputRef.current.select();
+      });
+    }
+  }, [field, previousField]);
+
   const initialValues = useMemo(() => {
     const values = {
       display_name: field?.display_name,
@@ -253,7 +273,11 @@ function DatasetFieldMetadataSidebar({
           {({ Form, FormField }) => (
             <Form>
               <MainFormContainer>
-                <FormField name="display_name" />
+                <FormField
+                  autoFocus
+                  name="display_name"
+                  ref={displayNameInputRef}
+                />
                 <FormField name="description" />
                 {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
