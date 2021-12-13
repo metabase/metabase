@@ -594,6 +594,9 @@
                                 html-tree))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Renders negative value without error"
+      (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
 
 (def donut-info #'body/donut-info)
