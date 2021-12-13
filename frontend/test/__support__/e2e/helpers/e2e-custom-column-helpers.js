@@ -3,7 +3,7 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .first()
     .as("formula")
     .focus()
-    .type(formula, { delay: 50 })
+    .type(formula)
     .blur();
 
   if (name) {
