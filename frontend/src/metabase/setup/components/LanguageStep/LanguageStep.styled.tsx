@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const LanguageList = styled.ol`
   margin-bottom: 2rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem;
   max-height: 17.5rem;
   overflow-y: scroll;
   border: 1px solid ${color("border")};
@@ -17,12 +17,13 @@ interface LocaleItemProps {
 export const LanguageItemRoot = styled.li<LocaleItemProps>`
   padding: 0.5rem;
   color: ${props => color(props.isSelected ? "white" : "text-dark")};
+  border-radius: 0.25rem;
   background-color: ${props => color(props.isSelected ? "brand" : "white")};
   cursor: pointer;
   font-weight: 700;
 
   &:hover {
-    color: ${color("white")}
+    color: ${color("white")};
     background-color: ${color("brand")};
   }
 `;

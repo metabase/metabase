@@ -1,7 +1,7 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
-import LanguageStep from "../LanguageStep";
+import LanguageStep from "../../containers/LanguageStep";
 import SetupFooter from "../SetupFooter";
 
 const SettingsPage = () => (
@@ -10,7 +10,7 @@ const SettingsPage = () => (
       <LogoIcon height={51} />
     </PageHeader>
     <PageBody>
-      <LanguageStep locales={[]} />
+      <LanguageStep />
       <SetupFooter />
     </PageBody>
   </div>
