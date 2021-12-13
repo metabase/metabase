@@ -16,3 +16,20 @@ export const StepTitle = styled.div`
   font-weight: 700;
   margin-bottom: 0.5rem;
 `;
+
+export const StepLabel = styled.div`
+  position: absolute;
+  top: 3.5rem;
+  left: -1.3125rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  border: 1px solid ${color("border")};
+  border-radius: 50%;
+  background-color: ${color("white")};
+  color: ${color("brand")};
+  font-weight: 700;
+  line-height: 1;
+`;
