@@ -5,24 +5,25 @@ import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale } from "../../types";
-import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
+import { LanguageList, LanguageItem } from "./LanguageStep.styled";
+import { USER_STEP, LANGUAGE_STEP } from "../../constants";
 
 interface Props {
-  step: number;
   locales: Locale[];
   selectedLocale?: Locale;
   isActive?: boolean;
   isCompleted?: boolean;
   onLocaleChange?: (locale: Locale) => void;
+  onStepChange?: (step: number) => void;
 }
 
 const LanguageStep = ({
-  step,
   locales,
   selectedLocale,
   isActive,
   isCompleted,
   onLocaleChange,
+  onStepChange,
 }: Props) => {
   const sortedLocales = useMemo(() => {
     return _.sortBy(locales, l => l.name);
@@ -31,7 +32,7 @@ const LanguageStep = ({
   if (!isActive) {
     return (
       <InactiveStep
-        step={step}
+        step={LANGUAGE_STEP}
         title={t`Your language is set to ${selectedLocale?.name}`}
         isCompleted={isCompleted}
       />
@@ -40,7 +41,7 @@ const LanguageStep = ({
 
   return (
     <ActiveStep
-      step={step}
+      step={LANGUAGE_STEP}
       title={t`What's your preferred language?`}
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
     >
@@ -48,40 +49,18 @@ const LanguageStep = ({
         {sortedLocales.map(locale => (
           <LanguageItem
             key={locale.code}
-            locale={locale}
             isSelected={locale.code === selectedLocale?.code}
-            onLocaleChange={onLocaleChange}
-          />
+            onClick={() => onLocaleChange?.(locale)}
+          >
+            {locale.name}
+          </LanguageItem>
         ))}
       </LanguageList>
-      <Button primary>{t`Next`}</Button>
+      <Button
+        primary
+        onClick={() => onStepChange?.(USER_STEP)}
+      >{t`Next`}</Button>
     </ActiveStep>
-  );
-};
-
-interface LanguageItemProps {
-  locale: Locale;
-  isSelected?: boolean;
-  onLocaleChange?: (locale: Locale) => void;
-}
-
-const LanguageItem = ({
-  locale,
-  isSelected,
-  onLocaleChange,
-}: LanguageItemProps) => {
-  const handleClick = useCallback(() => {
-    onLocaleChange && onLocaleChange(locale);
-  }, [locale, onLocaleChange]);
-
-  return (
-    <LanguageItemRoot
-      key={locale.code}
-      isSelected={isSelected}
-      onClick={handleClick}
-    >
-      {locale.name}
-    </LanguageItemRoot>
   );
 };
 

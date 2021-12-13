@@ -14,7 +14,7 @@ interface LocaleItemProps {
   isSelected?: boolean;
 }
 
-export const LanguageItemRoot = styled.li<LocaleItemProps>`
+export const LanguageItem = styled.li<LocaleItemProps>`
   padding: 0.5rem;
   color: ${props => color(props.isSelected ? "white" : "text-dark")};
   border-radius: 0.25rem;

@@ -16,10 +16,6 @@ interface Props {
 }
 
 const WelcomePage = ({ onStepChange }: Props) => {
-  const handleClick = useCallback(() => {
-    onStepChange && onStepChange(LANGUAGE_STEP);
-  }, [onStepChange]);
-
   return (
     <PageRoot>
       <PageMain>
@@ -30,7 +26,7 @@ const WelcomePage = ({ onStepChange }: Props) => {
         </PageBody>
         <PageButton
           primary
-          onClick={handleClick}
+          onClick={() => onStepChange?.(LANGUAGE_STEP)}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupFooter />
