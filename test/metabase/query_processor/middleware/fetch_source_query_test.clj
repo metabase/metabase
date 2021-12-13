@@ -141,6 +141,16 @@
 ;;; |                                                   JOINS 2.0                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- clean-metadata
+  "The metadata that comes back gets merged quite a bit. In these tests we only assert on the field_ref leave for other
+  tests the actual contents of the metadata."
+  [results]
+  (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
+   (update-in results [:query :joins]
+              (fn [joins]
+                (map (fn [join] (update join :source-metadata clean))
+                     joins)))))
+
 (deftest joins-test
   (let [metadata [{:name         "ID"
                    :display_name "Card ID"
@@ -208,20 +218,13 @@
                                                :source-metadata metadata
                                                :limit           200}
                              :source-card-id  card-2-id
-                             ;; TODO - FIXME
-                             ;;
-                             ;; The source metadata that comes back here looks like the result of running the Card
-                             ;; itself. I'm not sure when this is happening -- we're not adding it when we save the
-                             ;; Card -- so it might be happening at QP time??? I'm not sure why we need to run the
-                             ;; Card here -- can't we infer the same (more limited) metadata that we infer in the
-                             ;; `:source-query` itself? Investigate.
-                             :source-metadata (get-in (mt/run-mbql-query categories {:limit 100})
-                                                      [:data :cols])}]})
-                 (resolve-card-id-source-tables
-                  (mt/mbql-query venues
-                    {:joins [{:source-table (str "card__" card-2-id)
-                              :alias        "c"
-                              :condition    [:= $category_id &c.categories.id]}]})))))))))
+                             :source-metadata (map #(select-keys % [:field_ref]) metadata)}]})
+                 (clean-metadata
+                  (resolve-card-id-source-tables
+                   (mt/mbql-query venues
+                     {:joins [{:source-table (str "card__" card-2-id)
+                               :alias        "c"
+                               :condition    [:= $category_id &c.categories.id]}]}))))))))))
 
 (deftest circular-dependency-test
   (testing "Middleware should throw an Exception if we try to resolve a source query for a card whose source query is itself"

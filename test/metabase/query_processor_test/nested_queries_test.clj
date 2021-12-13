@@ -68,7 +68,8 @@
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
-                       :effective_type :type/Integer)
+                       :effective_type :type/Integer
+                       :display_name "PRICE")
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
@@ -396,8 +397,9 @@
 
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
-                (assoc :field_ref [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                       :unit      :day)
+                (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
+                       :display_name "DATE" ;; the underlying native field has this as its display name
+                       :unit         :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
