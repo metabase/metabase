@@ -3,7 +3,6 @@ import styled from "styled-components";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
 
 export const InfoContainer = styled.div`
   display: flex;

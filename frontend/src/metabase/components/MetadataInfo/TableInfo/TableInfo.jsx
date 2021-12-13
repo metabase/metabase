@@ -14,6 +14,7 @@ import {
   Description,
   EmptyDescription,
   Label,
+  LabelContainer,
 } from "../MetadataInfo.styled";
 import { InteractiveTableLabel } from "./TableInfo.styled";
 
@@ -75,13 +76,15 @@ function TableInfo({
 function ColumnCount({ table }) {
   const fieldCount = table.fields.length;
   return (
-    <Label>
-      {ngettext(
-        msgid`${fieldCount} column`,
-        `${fieldCount} columns`,
-        fieldCount,
-      )}
-    </Label>
+    <LabelContainer color="text-dark">
+      <Label>
+        {ngettext(
+          msgid`${fieldCount} column`,
+          `${fieldCount} columns`,
+          fieldCount,
+        )}
+      </Label>
+    </LabelContainer>
   );
 }
 
@@ -90,7 +93,9 @@ function ConnectedTables({ table }) {
   const fkTables = fks.map(fk => new Table(fk.origin.table));
   return fks.length ? (
     <React.Fragment>
-      <Label>{t`Connected to these tables`}</Label>
+      <LabelContainer color="text-dark">
+        <Label>{t`Connected to these tables`}</Label>
+      </LabelContainer>
       {fkTables.map(fkTable => {
         return (
           <Link

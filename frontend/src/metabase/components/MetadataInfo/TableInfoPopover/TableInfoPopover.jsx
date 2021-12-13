@@ -2,7 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import TippyPopver from "metabase/components/Popover/TippyPopover";
-import TableInfo from "metabase/components/MetadataInfo/TableInfo";
+
+import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
 export const POPOVER_DELAY = [1000, 300];
 
@@ -15,9 +16,10 @@ const propTypes = {
 function TableInfoPopover({ tableId, children, placement }) {
   return tableId != null ? (
     <TippyPopver
+      interactive
       delay={POPOVER_DELAY}
       placement={placement || "left-start"}
-      content={<TableInfo tableId={tableId} />}
+      content={<WidthBoundTableInfo tableId={tableId} />}
     >
       {children}
     </TippyPopver>
