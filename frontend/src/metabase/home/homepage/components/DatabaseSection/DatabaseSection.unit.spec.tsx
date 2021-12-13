@@ -94,6 +94,7 @@ describe("DatabaseSection", () => {
 });
 
 const getUser = (opts?: Partial<User>): User => ({
+  id: 1,
   first_name: "John",
   is_superuser: false,
   personal_collection_id: "personal",
@@ -104,5 +105,6 @@ const getDatabase = (opts?: Partial<Database>): Database => ({
   id: 1,
   name: "Our database",
   is_sample: false,
+  initial_sync_status: "complete",
   ...opts,
 });

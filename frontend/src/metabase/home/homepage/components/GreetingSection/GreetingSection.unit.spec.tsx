@@ -14,6 +14,7 @@ describe("GreetingSection", () => {
 });
 
 const getUser = (opts?: Partial<User>): User => ({
+  id: 1,
   first_name: "John",
   is_superuser: false,
   personal_collection_id: "personal",

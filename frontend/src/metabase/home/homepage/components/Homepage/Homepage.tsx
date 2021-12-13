@@ -12,6 +12,7 @@ import GreetingSection from "../GreetingSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./Homepage.styled";
+import SyncingSection from "../SyncingSection/SyncingSection";
 
 interface Props {
   user: User;
@@ -22,9 +23,11 @@ interface Props {
   showData?: boolean;
   showXrays?: boolean;
   showPinMessage?: boolean;
+  showSyncingModal?: boolean;
   onHideData?: () => void;
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
+  onHideSyncingModal?: () => void;
 }
 
 const Homepage = ({
@@ -36,9 +39,11 @@ const Homepage = ({
   showData,
   showXrays,
   showPinMessage,
+  showSyncingModal,
   onHideData,
   onHideXrays,
   onHidePinMessage,
+  onHideSyncingModal,
 }: Props) => {
   return (
     <LandingRoot>
@@ -65,6 +70,13 @@ const Homepage = ({
             databases={databases}
             showData={showData}
             onHideData={onHideData}
+          />
+          <SyncingSection
+            user={user}
+            databases={databases}
+            showXrays={showXrays}
+            showSyncingModal={showSyncingModal}
+            onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
       )}

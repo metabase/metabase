@@ -179,6 +179,7 @@ describe("snapshots", () => {
     it("withSqlite", () => {
       restore("default");
       cy.signInAsAdmin();
+
       cy.request("POST", "/api/database", {
         engine: "sqlite",
         name: "sqlite",
