@@ -11,10 +11,10 @@ import {
 } from "./WelcomePage.styled";
 
 interface Props {
-  onNextClick?: () => void;
+  onSelectNextStep?: () => void;
 }
 
-const WelcomePage = ({ onNextClick }: Props) => {
+const WelcomePage = ({ onSelectNextStep }: Props) => {
   return (
     <PageRoot>
       <PageMain>
@@ -25,7 +25,7 @@ const WelcomePage = ({ onNextClick }: Props) => {
         </PageBody>
         <PageButton
           primary
-          onClick={onNextClick}
+          onClick={onSelectNextStep}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupFooter />

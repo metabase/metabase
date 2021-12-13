@@ -11,11 +11,15 @@ interface Props {
   title: string;
   label: number;
   isCompleted?: boolean;
+  onSelect?: () => void;
 }
 
-const InactiveStep = ({ title, label, isCompleted }: Props) => {
+const InactiveStep = ({ title, label, isCompleted, onSelect }: Props) => {
   return (
-    <StepRoot isCompleted={isCompleted}>
+    <StepRoot
+      isCompleted={isCompleted}
+      onClick={isCompleted ? onSelect : undefined}
+    >
       <StepTitle isCompleted={isCompleted}>{title}</StepTitle>
       <StepLabel isCompleted={isCompleted}>
         {isCompleted ? (

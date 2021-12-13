@@ -14,6 +14,7 @@ export const StepRoot = styled.section<Props>`
   margin-bottom: 1.75rem;
   background-color: ${props =>
     color(props.isCompleted ? "white" : "bg-medium")};
+  cursor: ${props => (props.isCompleted ? "pointer" : "")};
 `;
 
 export const StepTitle = styled.div<Props>`

@@ -11,8 +11,9 @@ interface Props {
   selectedLocale?: Locale;
   isActive?: boolean;
   isCompleted?: boolean;
-  onNextClick?: () => void;
-  onLocaleChange?: (locale: Locale) => void;
+  onChangeLocale?: (locale: Locale) => void;
+  onSelectThisStep?: () => void;
+  onSelectNextStep?: () => void;
 }
 
 const LanguageStep = ({
@@ -20,8 +21,9 @@ const LanguageStep = ({
   selectedLocale,
   isActive,
   isCompleted,
-  onNextClick,
-  onLocaleChange,
+  onChangeLocale,
+  onSelectThisStep,
+  onSelectNextStep,
 }: Props) => {
   if (!isActive) {
     return (
@@ -29,6 +31,7 @@ const LanguageStep = ({
         title={t`Your language is set to ${selectedLocale?.name}`}
         label={1}
         isCompleted={isCompleted}
+        onSelect={onSelectThisStep}
       />
     );
   }
@@ -44,13 +47,13 @@ const LanguageStep = ({
           <LanguageItem
             key={locale.code}
             isSelected={locale.code === selectedLocale?.code}
-            onClick={() => onLocaleChange?.(locale)}
+            onClick={() => onChangeLocale?.(locale)}
           >
             {locale.name}
           </LanguageItem>
         ))}
       </LanguageList>
-      <Button primary onClick={onNextClick}>{t`Next`}</Button>
+      <Button primary onClick={onSelectNextStep}>{t`Next`}</Button>
     </ActiveStep>
   );
 };

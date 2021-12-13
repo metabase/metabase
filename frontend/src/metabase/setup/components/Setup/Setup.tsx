@@ -1,6 +1,6 @@
 import React from "react";
 import SettingsPage from "../SettingsPage";
-import WelcomePage from "../WelcomePage";
+import WelcomePage from "../../containers/WelcomePage";
 
 interface Props {
   isWelcome?: boolean;
