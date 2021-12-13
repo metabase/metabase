@@ -923,28 +923,20 @@
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
                         :attributes {:user_id 1, :user_cat "Widget"}}
           (perms/grant-permissions! &group (perms/table-query-path (Table (mt/id :people))))
-          ;; not sure why Snowflake has slightly different results
-          (is (= (if (= driver/*driver* :snowflake)
-                   [["Twitter" "Widget" 0 510.82]
-                    ["Twitter" nil      0 407.93]
-                    [nil       "Widget" 1 510.82]
-                    [nil       nil      1 407.93]
-                    ["Twitter" nil      2 918.75]
-                    [nil       nil      3 918.75]]
-                   (->> [["Twitter" nil      0 401.51]
-                         ["Twitter" "Widget" 0 498.59]
-                         [nil       nil      1 401.51]
-                         [nil       "Widget" 1 498.59]
-                         ["Twitter" nil      2 900.1]
-                         [nil       nil      3 900.1]]
-                        (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
-                                       sort-str   (fn [s]
-                                                    (cond
-                                                      (some? s)  s
-                                                      nil-first? "A"
-                                                      :else      "Z"))]
-                                   (fn [[x y group]]
-                                     [group (sort-str x) (sort-str y)])))))
+          (is (= (->> [["Twitter" nil      0 401.51]
+                       ["Twitter" "Widget" 0 498.59]
+                       [nil       nil      1 401.51]
+                       [nil       "Widget" 1 498.59]
+                       ["Twitter" nil      2 900.1]
+                       [nil       nil      3 900.1]]
+                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver*)
+                                     sort-str   (fn [s]
+                                                  (cond
+                                                    (some? s)  s
+                                                    nil-first? "A"
+                                                    :else      "Z"))]
+                                 (fn [[x y group]]
+                                   [group (sort-str x) (sort-str y)]))))
                  (mt/formatted-rows [str str int 2.0]
                    (qp.pivot/run-pivot-query
                     (mt/mbql-query orders
