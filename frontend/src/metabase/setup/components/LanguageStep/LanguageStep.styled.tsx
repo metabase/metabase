@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
-export const LocaleList = styled.ol`
+export const LanguageList = styled.ol`
   margin-bottom: 2rem;
   padding: 0.5rem 1rem;
   max-height: 17.5rem;
@@ -14,7 +14,7 @@ interface LocaleItemProps {
   isSelected?: boolean;
 }
 
-export const LocaleItem = styled.li<LocaleItemProps>`
+export const LanguageItemRoot = styled.li<LocaleItemProps>`
   padding: 0.5rem;
   color: ${props => color(props.isSelected ? "white" : "text-dark")};
   background-color: ${props => color(props.isSelected ? "brand" : "white")};

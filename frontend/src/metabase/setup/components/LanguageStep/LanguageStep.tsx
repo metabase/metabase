@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import Button from "metabase/components/Button";
 import SetupStep from "../SetupStep";
-import { LocaleList, LocaleItem } from "./LanguageStep.styled";
+import { LanguageList, LanguageItemRoot } from "./LanguageStep.styled";
 import { Locale } from "../../types";
 
 interface Props {
@@ -23,19 +23,44 @@ const LanguageStep = ({ locales, selectedLocale, onLocaleChange }: Props) => {
       label={t`1`}
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
     >
-      <LocaleList>
+      <LanguageList>
         {sortedLocales.map(locale => (
-          <LocaleItem
+          <LanguageItem
             key={locale.code}
+            locale={locale}
             isSelected={locale.code === selectedLocale?.code}
-            onClick={() => onLocaleChange && onLocaleChange(locale)}
-          >
-            {locale.name}
-          </LocaleItem>
+            onLocaleChange={onLocaleChange}
+          />
         ))}
-      </LocaleList>
+      </LanguageList>
       <Button primary>{t`Next`}</Button>
     </SetupStep>
+  );
+};
+
+interface LanguageItemProps {
+  locale: Locale;
+  isSelected?: boolean;
+  onLocaleChange?: (locale: Locale) => void;
+}
+
+const LanguageItem = ({
+  locale,
+  isSelected,
+  onLocaleChange,
+}: LanguageItemProps) => {
+  const handleClick = useCallback(() => {
+    onLocaleChange && onLocaleChange(locale);
+  }, [locale, onLocaleChange]);
+
+  return (
+    <LanguageItemRoot
+      key={locale.code}
+      isSelected={isSelected}
+      onClick={handleClick}
+    >
+      {locale.name}
+    </LanguageItemRoot>
   );
 };
 
