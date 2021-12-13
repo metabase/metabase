@@ -1,20 +1,18 @@
-import React, { useMemo, useCallback } from "react";
+import React from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale } from "../../types";
 import { LanguageList, LanguageItem } from "./LanguageStep.styled";
-import { USER_STEP, LANGUAGE_STEP } from "../../constants";
 
 interface Props {
   locales: Locale[];
   selectedLocale?: Locale;
   isActive?: boolean;
   isCompleted?: boolean;
+  onNextStep?: () => void;
   onLocaleChange?: (locale: Locale) => void;
-  onStepChange?: (step: number) => void;
 }
 
 const LanguageStep = ({
@@ -22,18 +20,14 @@ const LanguageStep = ({
   selectedLocale,
   isActive,
   isCompleted,
+  onNextStep,
   onLocaleChange,
-  onStepChange,
 }: Props) => {
-  const sortedLocales = useMemo(() => {
-    return _.sortBy(locales, l => l.name);
-  }, [locales]);
-
   if (!isActive) {
     return (
       <InactiveStep
-        step={LANGUAGE_STEP}
         title={t`Your language is set to ${selectedLocale?.name}`}
+        label={1}
         isCompleted={isCompleted}
       />
     );
@@ -41,12 +35,12 @@ const LanguageStep = ({
 
   return (
     <ActiveStep
-      step={LANGUAGE_STEP}
       title={t`What's your preferred language?`}
+      label={1}
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
     >
       <LanguageList>
-        {sortedLocales.map(locale => (
+        {locales.map(locale => (
           <LanguageItem
             key={locale.code}
             isSelected={locale.code === selectedLocale?.code}
@@ -56,10 +50,7 @@ const LanguageStep = ({
           </LanguageItem>
         ))}
       </LanguageList>
-      <Button
-        primary
-        onClick={() => onStepChange?.(USER_STEP)}
-      >{t`Next`}</Button>
+      <Button primary onClick={onNextStep}>{t`Next`}</Button>
     </ActiveStep>
   );
 };
