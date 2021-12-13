@@ -8,10 +8,14 @@ import { Locale } from "../../types";
 
 interface Props {
   locales: Locale[];
+  selectedLocale?: Locale;
+  onLocaleChange?: (locale: Locale) => void;
 }
 
-const LanguageStep = ({ locales }: Props) => {
-  const items = useMemo(() => _.sortBy(locales, l => l.name), [locales]);
+const LanguageStep = ({ locales, selectedLocale, onLocaleChange }: Props) => {
+  const sortedLocales = useMemo(() => {
+    return _.sortBy(locales, l => l.name);
+  }, [locales]);
 
   return (
     <SetupStep
@@ -20,8 +24,14 @@ const LanguageStep = ({ locales }: Props) => {
       description={t`This language will be used throughout Metabase and will be the default for new users.`}
     >
       <LocaleList>
-        {items.map(item => (
-          <LocaleItem key={item.code}>{item.name}</LocaleItem>
+        {sortedLocales.map(locale => (
+          <LocaleItem
+            key={locale.code}
+            isSelected={locale.code === selectedLocale?.code}
+            onClick={() => onLocaleChange && onLocaleChange(locale)}
+          >
+            {locale.name}
+          </LocaleItem>
         ))}
       </LocaleList>
       <Button primary>{t`Next`}</Button>
