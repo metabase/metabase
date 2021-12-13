@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import Settings from "metabase/lib/settings";
 import Setup from "../../components/Setup";
 import { setStep, setLocale, setUser, validatePassword } from "../../actions";
 import { getStep, getLocale, getUser } from "../../selectors";
@@ -6,7 +7,7 @@ import { getStep, getLocale, getUser } from "../../selectors";
 const mapStateToProps = (state: any) => ({
   step: getStep(state),
   locale: getLocale(state),
-  availableLocales: [],
+  localeData: Settings.get("available-locales"),
   user: getUser(state),
 });
 

@@ -2,12 +2,12 @@ import React from "react";
 import SettingsPage from "../SettingsPage";
 import WelcomePage from "../WelcomePage";
 import { WELCOME_STEP } from "../../constants";
-import { Locale, UserInfo } from "../../types";
+import { Locale, UserInfo, LocaleData } from "../../types";
 
 interface Props {
   step: number;
   locale?: Locale;
-  availableLocales: Locale[];
+  localeData: LocaleData[];
   user?: UserInfo;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;

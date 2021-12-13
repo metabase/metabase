@@ -4,13 +4,13 @@ import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../components/UserStep";
 import SetupFooter from "../SetupFooter";
-import { Locale, UserInfo } from "../../types";
+import { Locale, UserInfo, LocaleData } from "../../types";
 import { LANGUAGE_STEP, USER_STEP, DATABASE_STEP } from "../../constants";
 
 interface Props {
   step: number;
   locale?: Locale;
-  availableLocales: Locale[];
+  localeData: LocaleData[];
   user?: UserInfo;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
@@ -21,7 +21,7 @@ interface Props {
 const SettingsPage = ({
   step,
   locale,
-  availableLocales,
+  localeData,
   user,
   onChangeStep,
   onChangeLocale,
@@ -35,7 +35,7 @@ const SettingsPage = ({
     <PageBody>
       <LanguageStep
         locale={locale}
-        availableLocales={availableLocales}
+        localeData={localeData}
         isActive={step === LANGUAGE_STEP}
         isCompleted={step > LANGUAGE_STEP}
         onChangeLocale={onChangeLocale}
