@@ -4,6 +4,7 @@ import {
   StepTitle,
   StepLabel,
   StepDescription,
+  StepLabelText,
 } from "./ActiveStep.styled";
 
 interface Props {
@@ -18,7 +19,9 @@ interface Props {
 const ActiveStep = ({ title, label, description, children }: Props) => (
   <StepRoot>
     <StepTitle>{title}</StepTitle>
-    <StepLabel>{label}</StepLabel>
+    <StepLabel>
+      <StepLabelText>{label}</StepLabelText>
+    </StepLabel>
     {description && <StepDescription>{description}</StepDescription>}
     {children}
   </StepRoot>

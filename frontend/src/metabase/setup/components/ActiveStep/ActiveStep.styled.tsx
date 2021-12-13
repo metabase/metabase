@@ -29,6 +29,9 @@ export const StepLabel = styled.div`
   border: 1px solid ${color("border")};
   border-radius: 50%;
   background-color: ${color("white")};
+`;
+
+export const StepLabelText = styled.span`
   color: ${color("brand")};
   font-weight: 700;
   line-height: 1;
