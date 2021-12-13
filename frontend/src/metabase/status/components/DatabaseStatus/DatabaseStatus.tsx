@@ -58,7 +58,7 @@ const DatabaseStatus = ({ database }: Props) => {
 const getProgress = ({ tables = [] }: Database) => {
   const done = tables.filter(isSyncCompleted).length;
   const total = tables.length;
-  return total != 0 ? done / total : 0;
+  return total > 0 ? done / total : 0;
 };
 
 const getProgressLabel = (database: Database, progress: number) => {
