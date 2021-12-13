@@ -23,6 +23,8 @@ const propTypes = {
   fetchFieldValues: PropTypes.func.isRequired,
 };
 
+const FIELD_VALUES_SHOW_LIMIT = 35;
+
 export function FieldValuesList({ field, fieldValues = [], fetchFieldValues }) {
   useEffect(() => {
     if (fieldValues.length === 0 && field.has_field_values === "list") {
@@ -30,7 +32,9 @@ export function FieldValuesList({ field, fieldValues = [], fetchFieldValues }) {
     }
   }, [fetchFieldValues, field, fieldValues]);
 
-  const shortenedValuesStr = fieldValues.slice(0, 35).join(", ");
+  const shortenedValuesStr = fieldValues
+    .slice(0, FIELD_VALUES_SHOW_LIMIT)
+    .join(", ");
 
   return fieldValues.length ? <NoWrap>{shortenedValuesStr}</NoWrap> : null;
 }
