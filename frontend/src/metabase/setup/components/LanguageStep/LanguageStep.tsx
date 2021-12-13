@@ -53,7 +53,11 @@ const LanguageStep = ({
           </LanguageItem>
         ))}
       </LanguageList>
-      <Button primary onClick={onSelectNextStep}>{t`Next`}</Button>
+      <Button
+        primary={selectedLocale != null}
+        disabled={selectedLocale == null}
+        onClick={onSelectNextStep}
+      >{t`Next`}</Button>
     </ActiveStep>
   );
 };

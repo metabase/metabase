@@ -4,6 +4,7 @@ import User from "metabase/entities/users";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { UserInfo } from "../../types";
+import { UserForm, FieldGroup } from "./UserStep.styled";
 
 interface Props {
   user?: UserInfo;
@@ -44,15 +45,29 @@ const UserStep = ({
 
   return (
     <ActiveStep title={title} label={2}>
-      <User.Form
+      <UserForm
         form={User.forms.setup()}
         user={user}
         asyncValidate={onValidatePassword}
         asyncBlurFields={["password"]}
         onSubmit={handleSubmit}
       >
-        {getFormFields}
-      </User.Form>
+        {({ Form, FormField, FormFooter }: FormOpts) => {
+          return (
+            <Form>
+              <FieldGroup>
+                <FormField name="first_name" />
+                <FormField name="last_name" />
+              </FieldGroup>
+              <FormField name="email" />
+              <FormField name="site_name" />
+              <FormField name="password" />
+              <FormField name="password_confirm" />
+              <FormFooter submitTitle={t`Next`} />
+            </Form>
+          );
+        }}
+      </UserForm>
     </ActiveStep>
   );
 };
@@ -68,19 +83,5 @@ interface FormOpts {
   FormField: ComponentType<{ name: string }>;
   FormFooter: ComponentType<{ submitTitle?: string }>;
 }
-
-const getFormFields = ({ Form, FormField, FormFooter }: FormOpts) => {
-  return (
-    <Form>
-      <FormField name="first_name" />
-      <FormField name="last_name" />
-      <FormField name="email" />
-      <FormField name="site_name" />
-      <FormField name="password" />
-      <FormField name="password_confirm" />
-      <FormFooter submitTitle={t`Next`} />
-    </Form>
-  );
-};
 
 export default UserStep;
