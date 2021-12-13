@@ -11,7 +11,7 @@ interface Props {
   selectedLocale?: Locale;
   isActive?: boolean;
   isCompleted?: boolean;
-  onNextStep?: () => void;
+  onNextClick?: () => void;
   onLocaleChange?: (locale: Locale) => void;
 }
 
@@ -20,7 +20,7 @@ const LanguageStep = ({
   selectedLocale,
   isActive,
   isCompleted,
-  onNextStep,
+  onNextClick,
   onLocaleChange,
 }: Props) => {
   if (!isActive) {
@@ -50,7 +50,7 @@ const LanguageStep = ({
           </LanguageItem>
         ))}
       </LanguageList>
-      <Button primary onClick={onNextStep}>{t`Next`}</Button>
+      <Button primary onClick={onNextClick}>{t`Next`}</Button>
     </ActiveStep>
   );
 };

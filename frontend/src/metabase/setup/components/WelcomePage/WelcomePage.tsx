@@ -1,8 +1,7 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import SetupFooter from "../SetupFooter";
-import { LANGUAGE_STEP } from "../../constants";
 import {
   PageRoot,
   PageMain,
@@ -12,10 +11,10 @@ import {
 } from "./WelcomePage.styled";
 
 interface Props {
-  onStepChange?: (step: number) => void;
+  onNextClick?: () => void;
 }
 
-const WelcomePage = ({ onStepChange }: Props) => {
+const WelcomePage = ({ onNextClick }: Props) => {
   return (
     <PageRoot>
       <PageMain>
@@ -26,7 +25,7 @@ const WelcomePage = ({ onStepChange }: Props) => {
         </PageBody>
         <PageButton
           primary
-          onClick={() => onStepChange?.(LANGUAGE_STEP)}
+          onClick={onNextClick}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupFooter />
