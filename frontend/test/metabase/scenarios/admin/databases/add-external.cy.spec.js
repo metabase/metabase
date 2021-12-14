@@ -38,7 +38,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.findByRole("status").within(() => {
       cy.findByText("Syncing…");
-      cy.findByText("QA Postgres12");
+      cy.findByText("Done!");
     });
   });
 
@@ -73,7 +73,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.findByRole("status").within(() => {
       cy.findByText("Syncing…");
-      cy.findByText("QA Mongo4");
+      cy.findByText("Done!");
     });
   });
 
@@ -114,7 +114,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.findByRole("status").within(() => {
       cy.findByText("Syncing…");
-      cy.findByText("QA MySQL8");
+      cy.findByText("Done!");
     });
   });
 });

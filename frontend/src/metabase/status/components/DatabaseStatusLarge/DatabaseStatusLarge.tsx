@@ -31,7 +31,7 @@ interface Props {
 
 const DatabaseStatusLarge = ({ databases, onCollapse }: Props): JSX.Element => {
   return (
-    <StatusRoot>
+    <StatusRoot role="status">
       <StatusHeader>
         <StatusTitle>{getTitle(databases)}</StatusTitle>
         <StatusToggle onClick={onCollapse}>
