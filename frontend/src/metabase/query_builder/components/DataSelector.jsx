@@ -498,6 +498,20 @@ export class UnconnectedDataSelector extends Component {
     return loaded && search?.length > 0;
   };
 
+  getDatabases = () => {
+    const { databases } = this.state;
+
+    // When there is at least one dataset,
+    // "Saved Questions" are presented in a different picker step
+    // So it should be excluded from a regular databases list
+    const shouldRemoveSavedQuestionDatabaseFromList =
+      !MetabaseSettings.get("enable-nested-queries") || this.hasDatasets();
+
+    return shouldRemoveSavedQuestionDatabaseFromList
+      ? databases.filter(db => !db.is_saved_questions)
+      : databases;
+  };
+
   async hydrateActiveStep() {
     const { steps } = this.props;
     if (this.isSavedQuestionSelected()) {
@@ -524,7 +538,7 @@ export class UnconnectedDataSelector extends Component {
       this.props.useOnlyAvailableDatabase &&
       this.props.selectedDatabaseId == null
     ) {
-      const { databases } = this.state;
+      const databases = this.getDatabases();
       if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
@@ -817,16 +831,10 @@ export class UnconnectedDataSelector extends Component {
 
   renderActiveStep() {
     const { combineDatabaseSchemaSteps } = this.props;
-    const { databases } = this.state;
-
-    const showSavedQuestionsInDatabasePicker = !this.hasDatasets();
-    const filteredDatabases = showSavedQuestionsInDatabasePicker
-      ? databases
-      : databases?.filter(db => !db.is_saved_questions);
 
     const props = {
       ...this.state,
-      databases: filteredDatabases,
+      databases: this.getDatabases(),
 
       onChangeDataBucket: this.onChangeDataBucket,
       onChangeDatabase: this.onChangeDatabase,
