@@ -498,6 +498,10 @@
    source-metadata-col
    col
    (select-keys source-metadata-col preserved-keys)
+   ;; if there is a join involved, allow a possible "Question 5 → B Column" display name from the outer query to
+   ;; dominate
+   (when (:source_alias col)
+     (select-keys col [:display_name]))
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
