@@ -266,29 +266,31 @@ function getEngineFormFields(engine, details, id) {
   const engineFields = engineInfo ? engineInfo["details-fields"] : [];
 
   // convert database details-fields to Form fields
-  return engineFields
-     // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
-    .concat(getDatabaseCachingField())
-    .filter(field => shouldShowEngineProvidedField(field, details))
-    .map(field => {
-      const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
+  return (
+    engineFields
+      // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
+      .concat(getDatabaseCachingField())
+      .filter(field => shouldShowEngineProvidedField(field, details))
+      .map(field => {
+        const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
-      return {
-        name: `details.${field.name}`,
-        title: field["display-name"] || field["title"],
-        type: field.type,
-        description: field.description,
-        placeholder: field.placeholder || field.default,
-        options: field.options,
-        validate: value => (field.required && !value ? t`required` : null),
-        normalize: value => normalizeFieldValue(value, field),
-        horizontal: field.type === "boolean",
-        initial: field.default,
-        readOnly: field.readOnly || false,
-        helperText: field["helper-text"],
-        ...(overrides && overrides(engine, details, id)),
-      };
-    });
+        return {
+          name: `details.${field.name}`,
+          title: field["display-name"] || field["title"],
+          type: field.type,
+          description: field.description,
+          placeholder: field.placeholder || field.default,
+          options: field.options,
+          validate: value => (field.required && !value ? t`required` : null),
+          normalize: value => normalizeFieldValue(value, field),
+          horizontal: field.type === "boolean",
+          initial: field.default,
+          readOnly: field.readOnly || false,
+          helperText: field["helper-text"],
+          ...(overrides && overrides(engine, details, id)),
+        };
+      })
+  );
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
@@ -346,7 +348,6 @@ function getDatabaseCachingField() {
     MetabaseSettings.get("enable-query-caching");
   return hasField ? PLUGIN_CACHING.databaseCacheTTLFormField : null;
 }
-
 
 const forms = {
   details: {
