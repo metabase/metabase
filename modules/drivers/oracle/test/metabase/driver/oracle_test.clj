@@ -138,6 +138,8 @@
                     {:name "advanced-options"}
                     {:name "auto_run_queries"}
                     {:name "let-user-control-scheduling"}
+                    {:name "schedules.metadata_sync"}
+                    {:name "schedules.cache_field_values"}
                     {:name "refingerprint"}]
           actual   (->> (driver/connection-properties :oracle)
                         (driver.u/connection-props-server->client :oracle))]
