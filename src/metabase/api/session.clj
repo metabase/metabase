@@ -198,16 +198,13 @@
 
 (defn- forgot-password-impl
   [email]
-  ;; site-url can be pulled from `common-context` in the templating system
-  (let [site-url (public-settings/site-url)]
-    (future
-      (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
-                 (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
-        (let [reset-token        (user/set-password-reset-token! user-id)
-              password-reset-url (str site-url "/auth/reset_password/" reset-token)]
-          (log/info password-reset-url)
-          ;; site-url doesn't need to go here
-          (email/send-password-reset-email! email google-auth? site-url password-reset-url is-active?))))))
+  (future
+    (when-let [{user-id :id, google-auth? :google_auth, is-active? :is_active}
+               (db/select-one [User :id :google_auth :is_active] :%lower.email (u/lower-case-en email))]
+      (let [reset-token        (user/set-password-reset-token! user-id)
+            password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+        (log/info password-reset-url)
+        (email/send-password-reset-email! email google-auth? password-reset-url is-active?)))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
