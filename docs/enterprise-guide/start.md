@@ -36,6 +36,12 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](dashboard-subscriptions.md)
 
+## Question moderation
+
+People can ask administrators to verify their questions.
+
+- [Question moderation](../users-guide/06-sharing-answers.html#question-moderation)
+
 ## Advanced caching controls
 
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
