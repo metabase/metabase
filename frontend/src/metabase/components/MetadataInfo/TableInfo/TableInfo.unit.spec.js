@@ -4,27 +4,85 @@ import { render, screen } from "@testing-library/react";
 import { PRODUCTS } from "__support__/sample_dataset_fixture";
 import Table from "metabase-lib/lib/metadata/Table";
 
-import TableInfo from "./TableInfo";
+import { TableInfo } from "./TableInfo";
 
-const table = new Table(PRODUCTS);
-const tableNoDescription = new Table({ id: 123, display_name: "Foo" });
+const productsTable = new Table({
+  ...PRODUCTS,
+  fields: [1, 2, 3],
+  fks: [
+    {
+      origin: {
+        table: {
+          id: 111,
+          db_id: 222,
+          display_name: "Connected Table",
+        },
+      },
+    },
+  ],
+});
+const tableWithoutDescription = new Table({
+  id: 123,
+  display_name: "Foo",
+  fields: [],
+});
+
+const fetchForeignKeys = jest.fn();
+const fetchMetadata = jest.fn();
+
+function setup(table) {
+  fetchForeignKeys.mockReset();
+  fetchMetadata.mockReset();
+
+  return render(
+    <TableInfo
+      tableId={table.id}
+      table={table}
+      fetchForeignKeys={fetchForeignKeys}
+      fetchMetadata={fetchMetadata}
+    />,
+  );
+}
 
 describe("TableInfo", () => {
-  beforeEach(() => {
-    render(<TableInfo table={table} />);
+  it("should send requests fetching table metadata", () => {
+    setup(productsTable);
+
+    expect(fetchForeignKeys).toHaveBeenCalledWith({
+      id: PRODUCTS.id,
+    });
+    expect(fetchMetadata).toHaveBeenCalledWith({
+      id: PRODUCTS.id,
+    });
   });
 
-  it("should display the given table's name", () => {
-    expect(screen.getByText(PRODUCTS.display_name)).toBeInTheDocument();
+  it("should render nothing while the metadata for the table is being fetched", () => {
+    const { container } = setup(productsTable);
+
+    expect(container.firstChild).toBeNull();
   });
 
-  it("should display the given table's description", () => {
-    expect(screen.getByText(PRODUCTS.description)).toBeInTheDocument();
+  it("should display a placeholder if table has no description", async () => {
+    setup(tableWithoutDescription);
+
+    expect(await screen.findByText("No description")).toBeInTheDocument();
   });
 
-  it("should display a placeholder if table has no description", () => {
-    render(<TableInfo table={tableNoDescription} />);
+  describe("after metadata has been fetched", () => {
+    beforeEach(() => {
+      setup(productsTable);
+    });
 
-    expect(screen.getByText("No description")).toBeInTheDocument();
+    it("should display the given table's description", () => {
+      expect(screen.getByText(PRODUCTS.description)).toBeInTheDocument();
+    });
+
+    it("should show a count of columns on the table", () => {
+      expect(screen.getByText("3 columns")).toBeInTheDocument();
+    });
+
+    it("should list connected tables", () => {
+      expect(screen.getByText("Connected Table")).toBeInTheDocument();
+    });
   });
 });

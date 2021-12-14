@@ -37,14 +37,12 @@ const mapDispatchToProps = {
   fetchMetadata: Tables.actions.fetchMetadata,
 };
 
-function TableInfo({
-  className,
+function useDependentTableMetadata({
   tableId,
-  table,
   fetchForeignKeys,
   fetchMetadata,
 }) {
-  const [isReady, setIsReady] = useState(false);
+  const [hasFetchedMetadata, setHasFetchedMetadata] = useState(false);
   const fetchDependentData = useAsyncFunction(() => {
     return Promise.all([
       fetchForeignKeys({ id: tableId }),
@@ -53,14 +51,31 @@ function TableInfo({
   }, [tableId, fetchForeignKeys, fetchMetadata]);
 
   useEffect(() => {
-    fetchDependentData().then(() => {
-      setIsReady(true);
-    });
+    fetchDependentData()
+      .then(() => {
+        setHasFetchedMetadata(true);
+      })
+      .catch(e => console.log(e));
   }, [fetchDependentData]);
 
-  const description = table.description;
+  return hasFetchedMetadata;
+}
 
-  return isReady ? (
+export function TableInfo({
+  className,
+  tableId,
+  table,
+  fetchForeignKeys,
+  fetchMetadata,
+}) {
+  const description = table.description;
+  const hasFetchedMetadata = useDependentTableMetadata({
+    tableId,
+    fetchForeignKeys,
+    fetchMetadata,
+  });
+
+  return hasFetchedMetadata ? (
     <InfoContainer className={className}>
       {description ? (
         <Description>{description}</Description>
