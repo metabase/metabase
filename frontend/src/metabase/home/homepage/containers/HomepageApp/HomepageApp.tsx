@@ -6,8 +6,18 @@ import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
 import Homepage from "../../components/Homepage";
-import { hideData, hidePinMessage, hideXrays } from "../../actions";
-import { getShowData, getShowPinMessage, getShowXrays } from "../../selectors";
+import {
+  hideData,
+  hidePinMessage,
+  hideXrays,
+  hideSyncingModal,
+} from "../../actions";
+import {
+  getShowData,
+  getShowPinMessage,
+  getShowXrays,
+  getShowSyncingModal,
+} from "../../selectors";
 import { Database } from "../../types";
 
 const databasesProps = {
@@ -59,12 +69,14 @@ const mapStateToProps = (state: any) => ({
   showData: getShowData(state),
   showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
+  showSyncingModal: getShowSyncingModal(state),
 });
 
 const mapDispatchToProps = {
   onHideData: hideData,
   onHideXrays: hideXrays,
   onHidePinMessage: hidePinMessage,
+  onHideSyncingModal: hideSyncingModal,
 };
 
 export default _.compose(

@@ -146,6 +146,28 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
+(deftest area-test
+  (let [tl-rows    [[#t "2020" 2]
+                    [#t "2021" 3]]
+        cat-rows   [["bob" 2]
+                    ["dobbs" 3]]
+        tl-labels  {:left "count" :bottom "year"}
+        cat-labels {:left "count" :bottom "string stuff"}
+        settings   (json/generate-string {:y {:prefix   "prefix"
+                                              :decimals 4}})]
+    (testing "It returns bytes"
+      (let [tl-svg-bytes  (js-svg/timelineseries-area tl-rows tl-labels settings)
+            cat-svg-bytes (js-svg/categorical-area cat-rows cat-labels settings)]
+        (is (bytes? tl-svg-bytes))
+        (is (bytes? cat-svg-bytes))))
+    (let [tl-svg-string (.asString (js/execute-fn-name @context "timeseries_area" tl-rows tl-labels settings))
+          tl-svg-hiccup (-> tl-svg-string parse-svg document-tag-hiccup)
+          cat-svg-string (.asString (js/execute-fn-name @context "categorical_area" cat-rows cat-labels settings))
+          cat-svg-hiccup (-> cat-svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :timelineseries-area tl-svg-string)
+        (validate-svg-string :categorical-area cat-svg-string)))))
+
 (deftest timelineseries-waterfall-test
   (let [rows     [[#t "2020" 2]
                   [#t "2021" 3]]

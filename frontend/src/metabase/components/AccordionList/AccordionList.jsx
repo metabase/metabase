@@ -73,6 +73,7 @@ export default class AccordionList extends Component {
     renderItemDescription: PropTypes.func,
     renderItemIcon: PropTypes.func,
     renderItemExtra: PropTypes.func,
+    renderItemWrapper: PropTypes.func,
     getItemClassName: PropTypes.func,
 
     alwaysTogglable: PropTypes.bool,
@@ -474,6 +475,7 @@ const AccordionListCell = ({
   renderItemDescription,
   renderItemIcon,
   renderItemExtra,
+  renderItemWrapper,
   searchText,
   onChangeSearchText,
   searchPlaceholder,
@@ -601,6 +603,10 @@ const AccordionListCell = ({
         )}
       </div>
     );
+
+    if (renderItemWrapper) {
+      content = renderItemWrapper(content, item);
+    }
   }
 
   return (

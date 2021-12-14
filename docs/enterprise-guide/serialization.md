@@ -1,4 +1,6 @@
-## Copying contents of one Metabase instance to another
+## Serialization: copying contents of one Metabase instance to another
+
+{% include plans-blockquote.html feature="Serialization" %}
 
 Once you really get rolling with Metabase it's often the case that you'll have more than one instance of it spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate instance per office or region.
 
