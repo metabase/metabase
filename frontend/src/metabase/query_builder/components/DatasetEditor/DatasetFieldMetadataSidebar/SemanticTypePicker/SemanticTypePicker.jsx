@@ -111,6 +111,7 @@ function SemanticTypePicker({ field, sections, IDFields }) {
           searchPlaceholder={t`Search for a special type`}
           hideEmptySectionsInSearch
           renderSearchSection={renderSearchSection}
+          maxHeight={350}
         />
         {renderExtraSelect()}
       </React.Fragment>
