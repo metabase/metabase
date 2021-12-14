@@ -498,6 +498,11 @@ export class UnconnectedDataSelector extends Component {
     return loaded && search?.length > 0;
   };
 
+  hasUsableDatasets = () => {
+    // As datasets are actually saved questions, nested queries must be enabled
+    return this.hasDatasets() && MetabaseSettings.get("enable-nested-queries");
+  };
+
   getDatabases = () => {
     const { databases } = this.state;
 
@@ -522,7 +527,7 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
       await this.switchToStep(steps[1]);
     } else {
       await this.switchToStep(steps[0]);
@@ -587,7 +592,7 @@ export class UnconnectedDataSelector extends Component {
     }
 
     // data bucket step doesn't make a lot of sense when there're no datasets
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
       return null;
     }
 
@@ -823,7 +828,10 @@ export class UnconnectedDataSelector extends Component {
 
   handleSavedQuestionPickerClose = () => {
     const { selectedDataBucketId } = this.state;
-    if (selectedDataBucketId === DATA_BUCKET.DATASETS || this.hasDatasets()) {
+    if (
+      selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.hasUsableDatasets()
+    ) {
       this.previousStep();
     }
     this.setState({ isSavedQuestionPickerShown: false });
@@ -865,7 +873,7 @@ export class UnconnectedDataSelector extends Component {
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasDatasets() && props.onBack}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
         ) : (
           <DatabasePicker {...props} />
@@ -874,7 +882,7 @@ export class UnconnectedDataSelector extends Component {
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasDatasets() && props.onBack}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
         ) : (
           <SchemaPicker {...props} />
@@ -929,7 +937,9 @@ export class UnconnectedDataSelector extends Component {
 
   handleCollectionDatasetsPickerClose = () => {
     this.props.onCloseCollectionDatasets();
-    this.switchToStep(this.hasDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP);
+    this.switchToStep(
+      this.hasUsableDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP,
+    );
   };
 
   handleSearchItemSelect = async item => {
@@ -965,7 +975,7 @@ export class UnconnectedDataSelector extends Component {
 
   getSearchModels = () => {
     const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
-    if (!this.hasDatasets()) {
+    if (!this.hasUsableDatasets()) {
       return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
     }
     if (!selectedDataBucketId) {
