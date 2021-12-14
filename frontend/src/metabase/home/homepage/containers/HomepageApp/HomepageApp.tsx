@@ -19,6 +19,11 @@ import {
   getShowSyncingModal,
 } from "../../selectors";
 import { Database } from "../../types";
+import {
+  trackDatabaseClick,
+  trackCollectionClick,
+  trackDashboardClick,
+} from "../../analytics";
 
 const databasesProps = {
   loadingAndErrorWrapper: false,
@@ -70,6 +75,9 @@ const mapStateToProps = (state: any) => ({
   showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
   showSyncingModal: getShowSyncingModal(state),
+  onCollectionClick: trackCollectionClick,
+  onDashboardClick: trackDashboardClick,
+  onDatabaseClick: trackDatabaseClick,
 });
 
 const mapDispatchToProps = {
