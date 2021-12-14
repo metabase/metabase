@@ -1,6 +1,6 @@
 import React, { Fragment } from "react";
 import { User, Database } from "../../types";
-import DatabaseStatus from "../DatabaseStatus";
+import DatabaseStatusSmall from "../DatabaseStatusSmall";
 
 interface Props {
   user?: User;
@@ -13,7 +13,7 @@ const DatabaseStatusListing = ({ user, databases = [] }: Props) => {
   return (
     <Fragment>
       {userDatabases.map(database => (
-        <DatabaseStatus key={database.id} database={database} />
+        <DatabaseStatusSmall key={database.id} database={database} />
       ))}
     </Fragment>
   );
