@@ -264,12 +264,13 @@ function normalizeFieldValue(value, field) {
 function getEngineFormFields(engine, details, id) {
   const engineInfo = getEngineInfo(engine, details, id);
   const engineFields = engineInfo ? engineInfo["details-fields"] : [];
+  const cachingField = getDatabaseCachingField();
 
   // convert database details-fields to Form fields
   return (
     engineFields
       // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
-      .concat(getDatabaseCachingField())
+      .concat(cachingField || [])
       .filter(field => shouldShowEngineProvidedField(field, details))
       .map(field => {
         const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
