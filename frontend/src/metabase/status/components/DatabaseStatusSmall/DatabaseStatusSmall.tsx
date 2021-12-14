@@ -24,7 +24,7 @@ const CIRCLE_PERIMETER = 2 * Math.PI * CIRCLE_RADIUS;
 
 interface Props {
   databases: Database[];
-  onExpand: () => void;
+  onExpand?: () => void;
 }
 
 const DatabaseStatusSmall = ({ databases, onExpand }: Props): JSX.Element => {

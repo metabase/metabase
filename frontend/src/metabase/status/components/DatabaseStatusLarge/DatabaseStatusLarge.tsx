@@ -26,7 +26,7 @@ import useStatusVisibility from "../../hooks/use-status-visibility";
 
 interface Props {
   databases: Database[];
-  onCollapse: () => void;
+  onCollapse?: () => void;
 }
 
 const DatabaseStatusLarge = ({ databases, onCollapse }: Props): JSX.Element => {
