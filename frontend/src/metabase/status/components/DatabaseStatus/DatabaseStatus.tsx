@@ -12,11 +12,16 @@ interface Props {
 const DatabaseStatus = ({ databases = [] }: Props): JSX.Element | null => {
   const isActive = databases.some(isSyncInProgress);
   const isVisible = useStatusVisibility(isActive);
-  const [isExpanded, setIsExpanded] = useState(true);
 
-  if (!isVisible) {
+  if (isVisible) {
+    return <DatabaseStatusContent databases={databases} />;
+  } else {
     return null;
   }
+};
+
+const DatabaseStatusContent = ({ databases = [] }: Props): JSX.Element => {
+  const [isExpanded, setIsExpanded] = useState(true);
 
   return isExpanded ? (
     <DatabaseStatusLarge
