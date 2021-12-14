@@ -1,41 +1,56 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { Database } from "../../types";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
+import { Database } from "../../types";
 
 describe("DatabaseStatusSmall", () => {
   it("should render in-progress status", () => {
-    const database = getDatabase({
-      initial_sync_status: "incomplete",
-      tables: [
-        { id: 1, initial_sync_status: "complete" },
-        { id: 2, initial_sync_status: "incomplete" },
-        { id: 3, initial_sync_status: "aborted" },
-        { id: 4, initial_sync_status: "incomplete" },
-      ],
-    });
+    const databases = [
+      getDatabase({
+        initial_sync_status: "incomplete",
+        tables: [
+          { id: 1, initial_sync_status: "complete" },
+          { id: 2, initial_sync_status: "incomplete" },
+          { id: 3, initial_sync_status: "aborted" },
+          { id: 4, initial_sync_status: "incomplete" },
+        ],
+      }),
+      getDatabase({
+        initial_sync_status: "complete",
+      }),
+    ];
 
-    render(<DatabaseStatusSmall databases={[database]} />);
+    render(<DatabaseStatusSmall databases={databases} />);
 
     expect(screen.getByLabelText("Syncing database…")).toBeInTheDocument();
   });
 
   it("should render complete status", () => {
-    const database = getDatabase({
-      initial_sync_status: "complete",
-    });
+    const databases = [
+      getDatabase({
+        initial_sync_status: "complete",
+      }),
+      getDatabase({
+        initial_sync_status: "complete",
+      }),
+    ];
 
-    render(<DatabaseStatusSmall databases={[database]} />);
+    render(<DatabaseStatusSmall databases={databases} />);
 
     expect(screen.getByLabelText("Done!")).toBeInTheDocument();
   });
 
   it("should render error status", () => {
-    const database = getDatabase({
-      initial_sync_status: "aborted",
-    });
+    const databases = [
+      getDatabase({
+        initial_sync_status: "aborted",
+      }),
+      getDatabase({
+        initial_sync_status: "complete",
+      }),
+    ];
 
-    render(<DatabaseStatusSmall databases={[database]} />);
+    render(<DatabaseStatusSmall databases={databases} />);
 
     expect(screen.getByLabelText("Error syncing")).toBeInTheDocument();
   });
