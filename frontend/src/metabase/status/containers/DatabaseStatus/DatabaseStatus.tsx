@@ -3,16 +3,16 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
-import DatabaseStatusListing from "../../components/DatabaseStatusListing";
+import DatabaseStatus from "../../components/DatabaseStatus";
 import { Database } from "../../types";
 
 const RELOAD_INTERVAL = 2000;
 
 const databasesProps = {
   query: { include: "tables" },
+  loadingAndErrorWrapper: false,
   reloadInterval: (state: any, props: any, databases: Database[] = []) =>
     databases.some(isSyncInProgress) ? RELOAD_INTERVAL : 0,
-  loadingAndErrorWrapper: false,
 };
 
 const mapStateToProps = (state: any) => ({
@@ -22,4 +22,4 @@ const mapStateToProps = (state: any) => ({
 export default _.compose(
   Databases.loadList(databasesProps),
   connect(mapStateToProps),
-)(DatabaseStatusListing);
+)(DatabaseStatus);

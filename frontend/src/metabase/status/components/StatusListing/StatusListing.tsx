@@ -1,5 +1,5 @@
 import React from "react";
-import DatabaseStatusListing from "../../containers/DatabaseStatusListing";
+import DatabaseStatus from "../../containers/DatabaseStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
 interface Props {
@@ -7,11 +7,7 @@ interface Props {
 }
 
 const StatusListing = ({ isAdmin }: Props) => {
-  return (
-    <StatusListingRoot>
-      {isAdmin && <DatabaseStatusListing />}
-    </StatusListingRoot>
-  );
+  return <StatusListingRoot>{isAdmin && <DatabaseStatus />}</StatusListingRoot>;
 };
 
 export default StatusListing;

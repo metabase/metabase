@@ -9,7 +9,7 @@ interface Props {
   databases?: Database[];
 }
 
-const DatabaseStatus = ({ databases = [] }: Props) => {
+const DatabaseStatus = ({ databases = [] }: Props): JSX.Element | null => {
   const isActive = databases.some(isSyncInProgress);
   const isVisible = useStatusVisibility(isActive);
   const [isExpanded, setIsExpanded] = useState(true);
