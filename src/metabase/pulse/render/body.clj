@@ -459,7 +459,8 @@
   [_ render-type timezone-id card _ {:keys [cols rows viz-settings] :as data}]
   (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
-        color        (or (:progress.color viz-settings) (first colors))
+        ;; See issue #19248 on GH for why it's the second color
+        color        (or (:progress.color viz-settings) (second colors))
         settings     (assoc
                        (->js-viz (first cols) (first cols) viz-settings)
                        :color color)
