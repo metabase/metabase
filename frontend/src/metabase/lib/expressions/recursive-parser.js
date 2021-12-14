@@ -199,7 +199,7 @@ const NEGATIVE_FILTER_SHORTHANDS = {
 };
 
 // ["NOT", ["is-null", 42]] becomes ["not-null",42]
-const useShorthands = tree =>
+export const useShorthands = tree =>
   modify(tree, node => {
     if (Array.isArray(node) && node.length === 2) {
       const [operator, operand] = node;
@@ -214,7 +214,7 @@ const useShorthands = tree =>
     return node;
   });
 
-const adjustOptions = tree =>
+export const adjustOptions = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
@@ -242,7 +242,7 @@ const adjustOptions = tree =>
   });
 
 // ["case", X, Y, Z] becomes ["case", [[X, Y]], { default: Z }]
-const adjustCase = tree =>
+export const adjustCase = tree =>
   modify(tree, node => {
     if (Array.isArray(node)) {
       const [operator, ...operands] = node;
