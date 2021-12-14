@@ -6,7 +6,6 @@ import {
   isSyncInProgress,
 } from "metabase/lib/syncing";
 import Tooltip from "metabase/components/Tooltip";
-import useStatusVisibility from "../../hooks/use-status-visibility";
 import { Database, InitialSyncStatus } from "../../types";
 import {
   StatusRoot,
@@ -66,10 +65,15 @@ const getStatus = (databases: Database[]): InitialSyncStatus => {
 };
 
 const getProgress = (databases: Database[]): number => {
-  const tables = databases.flatMap(d => d.tables ?? []);
-  const done = tables.filter(isSyncCompleted).length;
-  const total = tables.length;
-  return total > 0 ? done / total : 0;
+  if (databases.every(isSyncCompleted)) {
+    return 1;
+  }
+
+  const syncingDatabases = databases.filter(isSyncInProgress);
+  const syncingTables = syncingDatabases.flatMap(d => d.tables ?? []);
+  const doneCount = syncingTables.filter(isSyncCompleted).length;
+  const totalCount = syncingTables.length;
+  return totalCount > 0 ? doneCount / totalCount : 0;
 };
 
 const getStatusLabel = (status: InitialSyncStatus): string => {
