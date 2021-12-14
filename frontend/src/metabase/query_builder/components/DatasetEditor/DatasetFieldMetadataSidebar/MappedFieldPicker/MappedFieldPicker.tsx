@@ -5,10 +5,11 @@ import _ from "underscore";
 import { FieldSelector } from "metabase/query_builder/components/DataSelector";
 
 import Question from "metabase-lib/lib/Question";
+import Field from "metabase-lib/lib/metadata/Field";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
-type Field = {
+type FieldObject = {
   display_name: string;
   table: {
     display_name: string;
@@ -19,13 +20,10 @@ type CollapsedPickerProps = {
   selectedField?: Field;
 };
 
-function formatFieldLabel(field: Field) {
-  const tableName = field.table.display_name;
-  return `${tableName} → ${field.display_name}`;
-}
-
 function MappedFieldPickerTrigger({ selectedField }: CollapsedPickerProps) {
-  const label = selectedField ? formatFieldLabel(selectedField) : t`None`;
+  const label = selectedField
+    ? selectedField.displayName({ includeTable: true })
+    : t`None`;
   return (
     <StyledSelectButton hasValue={!!selectedField}>{label}</StyledSelectButton>
   );

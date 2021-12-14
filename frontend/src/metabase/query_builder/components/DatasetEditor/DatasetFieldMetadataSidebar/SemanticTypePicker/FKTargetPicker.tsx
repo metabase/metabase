@@ -4,7 +4,9 @@ import _ from "underscore";
 
 import Select from "metabase/components/Select";
 
-type Field = {
+import Field from "metabase-lib/lib/metadata/Field";
+
+type FieldObject = {
   id: number;
   display_name: string;
   fk_target_field_id?: number;
@@ -14,22 +16,21 @@ type Field = {
 };
 
 type Props = {
-  field: Field;
+  field: FieldObject;
   IDFields: Field[];
   onChange: () => void;
 };
 
-function getOptionValue(option: Field) {
+function getOptionValue(option: FieldObject) {
   return option.id;
 }
 
-function getOptionIcon(option: Field) {
+function getOptionIcon(option: FieldObject) {
   return null;
 }
 
-function formatFieldLabel(field: Field) {
-  const tableName = field.table.display_name;
-  return `${tableName} → ${field.display_name}`;
+function getFieldName(field: Field) {
+  return field.displayName({ includeTable: true });
 }
 
 const SEARCH_PROPERTIES = [
@@ -40,7 +41,7 @@ const SEARCH_PROPERTIES = [
 
 function FKTargetPicker({ field, IDFields, onChange }: Props) {
   const options = useMemo(
-    () => _.sortBy(IDFields, field => formatFieldLabel(field)),
+    () => _.sortBy(IDFields, field => getFieldName(field)),
     [IDFields],
   );
 
@@ -53,7 +54,7 @@ function FKTargetPicker({ field, IDFields, onChange }: Props) {
       searchable
       searchProp={SEARCH_PROPERTIES}
       optionValueFn={getOptionValue}
-      optionNameFn={formatFieldLabel}
+      optionNameFn={getFieldName}
       optionIconFn={getOptionIcon}
     />
   );
