@@ -14,6 +14,7 @@ const ENGINES_MOCK = {
   h2: {
     "details-fields": [
       { "display-name": "Connection String", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "H2",
     "superseded-by": null,
@@ -21,6 +22,7 @@ const ENGINES_MOCK = {
   sqlite: {
     "details-fields": [
       { "display-name": "Filename", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "SQLite",
     "superseded-by": null,
@@ -68,7 +70,6 @@ describe("DatabaseEditApp", () => {
       it("is invisible", async () => {
         await setup({ cachingEnabled: true });
 
-        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).not.toBeInTheDocument();
@@ -83,7 +84,6 @@ describe("DatabaseEditApp", () => {
       it("is visible", async () => {
         await setup({ cachingEnabled: true });
 
-        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).toBeInTheDocument();
@@ -92,7 +92,6 @@ describe("DatabaseEditApp", () => {
       it("is invisible when caching disabled", async () => {
         await setup({ cachingEnabled: false });
 
-        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).not.toBeInTheDocument();
