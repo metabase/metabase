@@ -22,8 +22,19 @@ type Props = { dimension: Dimension } & Pick<
   "children" | "placement"
 >;
 
+function checkForMetadata(dimension: Dimension): boolean {
+  const query = dimension?.query?.();
+  if (dimension && query) {
+    return query.isEditable();
+  }
+
+  return false;
+}
+
 function DimensionInfoPopover({ dimension, children, placement }: Props) {
-  return dimension ? (
+  const hasMetadata = checkForMetadata(dimension);
+
+  return hasMetadata ? (
     <TippyPopver
       delay={isCypressActive ? 0 : POPOVER_DELAY}
       interactive
