@@ -62,7 +62,7 @@ const DatabaseSection = ({
           <DatabaseCardRoot
             key={database.id}
             to={Urls.browseDatabase(database)}
-            onClick={() => onDatabaseClick && onDatabaseClick(database)}
+            onClick={() => onDatabaseClick?.(database)}
           >
             <CardIcon name="database" />
             <CardTitle>

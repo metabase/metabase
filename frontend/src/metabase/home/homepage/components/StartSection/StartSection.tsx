@@ -82,10 +82,7 @@ const DashboardCard = ({ dashboard, onDashboardClick }: DashboardCardProps) => {
   const dashboardUrl = Urls.dashboard(dashboard);
 
   return (
-    <CardRoot
-      to={dashboardUrl}
-      onClick={() => onDashboardClick && onDashboardClick(dashboard)}
-    >
+    <CardRoot to={dashboardUrl} onClick={() => onDashboardClick?.(dashboard)}>
       <CardIcon name="dashboard" />
       <CardTitle>
         <Ellipsified>{dashboard.name}</Ellipsified>
