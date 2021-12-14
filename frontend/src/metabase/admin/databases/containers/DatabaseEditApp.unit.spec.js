@@ -4,6 +4,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
 import { setupEnterpriseTest } from "__support__/enterprise";
@@ -67,6 +68,7 @@ describe("DatabaseEditApp", () => {
       it("is invisible", async () => {
         await setup({ cachingEnabled: true });
 
+        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).not.toBeInTheDocument();
@@ -81,6 +83,7 @@ describe("DatabaseEditApp", () => {
       it("is visible", async () => {
         await setup({ cachingEnabled: true });
 
+        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).toBeInTheDocument();
@@ -89,6 +92,7 @@ describe("DatabaseEditApp", () => {
       it("is invisible when caching disabled", async () => {
         await setup({ cachingEnabled: false });
 
+        userEvent.click(screen.getByLabelText("Show advanced options"));
         expect(
           screen.queryByText("Default result cache duration"),
         ).not.toBeInTheDocument();
