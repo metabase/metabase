@@ -77,6 +77,25 @@ describe("scenarios > reference > databases", () => {
       checkQuestionSourceDatabasesOrder("Native query");
     });
   });
+
+  it("should show a popover with metadata related to the table", () => {
+    cy.visit("/browse/1");
+    cy.findByText("Products").trigger("mouseenter");
+
+    popover().within(() => {
+      // check that is has shows the table's description
+      cy.contains("This is our product catalog");
+
+      // check that it shows the number of columns in the table
+      cy.findByText("8 columns");
+
+      // check that fk links are shown
+      cy.findByText("Orders");
+      cy.findByText("Reviews").click();
+      // check that the links are clickable
+      cy.location("pathname").should("eq", "/reference/databases/1/tables/4");
+    });
+  });
 });
 
 function checkReferenceDatabasesOrder() {
