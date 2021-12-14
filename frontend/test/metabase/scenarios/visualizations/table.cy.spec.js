@@ -44,6 +44,19 @@ describe("scenarios > visualizations > table", () => {
     );
   });
 
+  it("should show field metadata in a popover when hovering over a column header", () => {
+    openPeopleTable();
+    cy.wait("@dataset");
+
+    cy.findByText("City").trigger("mouseenter");
+
+    popover().within(() => {
+      cy.contains("The city of the account’s billing address");
+
+      cy.findByText("1966 distinct values");
+    });
+  });
+
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable();
     cy.wait("@dataset");
