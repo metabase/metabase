@@ -8,7 +8,6 @@ import SelectButton from "metabase/components/SelectButton";
 import { isCurrency, isFK } from "metabase/lib/schema_metadata";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import FormFieldDivider from "../FormFieldDivider";
 import CurrencyPicker from "./CurrencyPicker";
 import FKTargetPicker from "./FKTargetPicker";
 import {
@@ -100,7 +99,6 @@ function SemanticTypePicker({ field, sections, IDFields }) {
   if (isPickerOpen) {
     return (
       <React.Fragment>
-        <FormFieldDivider />
         <AccordionList
           className="MB-Select text-brand"
           sections={sections}
