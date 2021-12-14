@@ -190,6 +190,7 @@
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
+                              ;; hostname is not required at all
                               :hostname         hostname
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
