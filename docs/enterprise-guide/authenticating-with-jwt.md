@@ -1,6 +1,6 @@
 # JWT-based authentication
 
-{% include plans-blockquote.html %}
+{% include plans-blockquote.html feature="JWT-based authentication" %}
 
 You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people.
 

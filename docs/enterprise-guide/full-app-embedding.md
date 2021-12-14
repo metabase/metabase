@@ -1,5 +1,7 @@
 ## Embedding all of Metabase in your web app
 
+{% include plans-blockquote.html feature="Full-app embedding" %}
+
 The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide [drill-through](https://www.metabase.com/learn/basics/questions/drill-through.html) for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
 
 You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
