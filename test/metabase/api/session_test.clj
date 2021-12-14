@@ -5,7 +5,6 @@
             [clojure.test :refer :all]
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
-            [metabase.email-test :as et]
             [metabase.http-client :as http-client]
             [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
@@ -217,26 +216,37 @@
     ;; deref forgot-password-impl for the tests since it returns a future
     (with-redefs [session-api/forgot-password-impl
                   (let [orig @#'session-api/forgot-password-impl]
-                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
-        (et/with-fake-inbox
+        (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
                     (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
-                                                                  :id (mt/user->id :rasta))]
+                                                                               :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
             (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
-                   (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                   (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                         {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
             (is (= true
                    (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (= "[Metabase] Password Reset Request"
-                   (-> @et/inbox (get "rasta@metabase.com") first :subject))
+                   (-> @mt/inbox (get "rasta@metabase.com") first :subject))
                 "User should get a password reset email"))))
+      (testing "We use `site-url` in the email"
+        (mt/with-temporary-setting-values [site-url "abcdefghij"]
+          (mt/with-fake-inbox
+            (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                  {:email (:username (mt/user->credentials :rasta))})
+            (let [rasta-emails (-> (mt/regex-email-bodies #"abcdefghij")
+                                   (get (:username (mt/user->credentials :rasta))))]
+              ;; this is a gross predicate
+              (is (some #(-> % :body (= {"abcdefghij" true}))
+                        rasta-emails))))))
 
       (testing "test that email is required"
         (is (= {:errors {:email "value must be a valid email address."}}
@@ -267,7 +277,7 @@
 (deftest reset-password-test
   (testing "POST /api/session/reset_password"
     (testing "Test that we can reset password from token (AND after token is used it gets removed)"
-      (et/with-fake-inbox
+      (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
           (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
