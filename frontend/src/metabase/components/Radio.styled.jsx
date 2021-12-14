@@ -59,12 +59,12 @@ export const RadioButton = styled.div`
 `;
 
 // BASE
-const BaseList = styled.ul`
+export const BaseList = styled.ul`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
-const BaseItem = styled.label.attrs({
+export const BaseItem = styled.label.attrs({
   mr: props => (!props.vertical && !props.last ? props.xspace : null),
   mb: props => (props.vertical && !props.last ? props.yspace : null),
 })`

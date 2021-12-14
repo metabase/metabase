@@ -1,13 +1,24 @@
 import styled from "styled-components";
+import Radio from "metabase/components/Radio";
 import { color } from "metabase/lib/colors";
 
 const CONTENT_PADDING = "24px";
 
-export const MainFormContainer = styled.div`
+const FormContainer = styled.div`
+  ${Radio.BaseItem} {
+    color: ${color("text-dark")};
+  }
+
+  .AdminSelect {
+    color: ${color("text-dark")};
+  }
+`;
+
+export const MainFormContainer = styled(FormContainer)`
   padding: ${CONTENT_PADDING} ${CONTENT_PADDING} 0 ${CONTENT_PADDING};
 `;
 
-export const SecondaryFormContainer = styled.div`
+export const SecondaryFormContainer = styled(FormContainer)`
   padding: 0 ${CONTENT_PADDING} ${CONTENT_PADDING} ${CONTENT_PADDING};
 `;
 
