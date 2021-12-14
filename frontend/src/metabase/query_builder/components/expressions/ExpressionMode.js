@@ -15,8 +15,7 @@ class ExpressionHighlight extends window.ace.acequire(
         },
         {
           token: "boolean",
-          regex:
-            "between|contains|endsWith|interval|isempty|isnull||startsWith",
+          regex: "between|contains|endsWith|interval|isempty|isnull|startsWith",
         },
         {
           token: "constant.numeric",

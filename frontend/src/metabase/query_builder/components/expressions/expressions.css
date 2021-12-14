@@ -20,6 +20,10 @@
   color: var(--color-accent2);
 }
 
+.expression-editor-textfield .ace-tm .ace_string {
+  color: var(--color-accent5);
+}
+
 .ace_cursor {
   border-left-width: 1px;
 }
