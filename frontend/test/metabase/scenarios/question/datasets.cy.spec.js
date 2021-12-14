@@ -6,6 +6,7 @@ import {
   openNewCollectionItemFlowFor,
   visualize,
   runNativeQuery,
+  mockSessionProperty,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > datasets", () => {
@@ -251,6 +252,16 @@ describe("scenarios > datasets", () => {
       });
 
       cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
+    });
+
+    it("should not display datasets if nested queries are disabled", () => {
+      mockSessionProperty("enable-nested-queries", false);
+      cy.visit("/question/new");
+      cy.findByText("Custom question").click();
+      popover().within(() => {
+        cy.findByText("Datasets").should("not.exist");
+        cy.findByText("Saved Questions").should("not.exist");
+      });
     });
   });
 
