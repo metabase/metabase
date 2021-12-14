@@ -7,7 +7,7 @@ interface Props {
   status: InitialSyncStatus;
 }
 
-const getIconColor = ({ status }: Props) => {
+const getIconColor = ({ status }: Props): string => {
   switch (status) {
     case "incomplete":
       return color("brand");
@@ -16,7 +16,7 @@ const getIconColor = ({ status }: Props) => {
   }
 };
 
-const getIconSize = ({ status }: Props) => {
+const getIconSize = ({ status }: Props): string => {
   switch (status) {
     case "incomplete":
       return "0.875rem";
@@ -25,7 +25,7 @@ const getIconSize = ({ status }: Props) => {
   }
 };
 
-const getBackgroundColor = ({ status }: Props) => {
+const getBackgroundColor = ({ status }: Props): string => {
   switch (status) {
     case "incomplete":
       return "transparent";
@@ -41,6 +41,7 @@ export const StatusRoot = styled.div`
   width: 3rem;
   height: 3rem;
   margin: 1rem 0 0 0;
+  cursor: pointer;
 `;
 
 export const StatusContainer = styled.div<Props>`

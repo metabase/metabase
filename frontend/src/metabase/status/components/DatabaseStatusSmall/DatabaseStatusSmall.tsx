@@ -25,22 +25,17 @@ const CIRCLE_PERIMETER = 2 * Math.PI * CIRCLE_RADIUS;
 
 interface Props {
   databases: Database[];
+  onExpand: () => void;
 }
 
-const DatabaseStatusSmall = ({ databases }: Props) => {
+const DatabaseStatusSmall = ({ databases, onExpand }: Props): JSX.Element => {
   const status = getStatus(databases);
-  const isActive = status == "incomplete";
-  const isVisible = useStatusVisibility(isActive);
   const progress = getProgress(databases);
   const statusLabel = getStatusLabel(status);
 
-  if (!isVisible) {
-    return null;
-  }
-
   return (
     <Tooltip tooltip={statusLabel}>
-      <StatusRoot role="status" aria-label={statusLabel}>
+      <StatusRoot role="status" aria-label={statusLabel} onClick={onExpand}>
         <StatusContainer status={status}>
           <StatusIconContainer status={status}>
             <StatusIcon status={status} name={getIconName(status)} />
@@ -88,7 +83,7 @@ const getStatusLabel = (status: InitialSyncStatus): string => {
   }
 };
 
-const getIconName = (status: InitialSyncStatus) => {
+const getIconName = (status: InitialSyncStatus): string => {
   switch (status) {
     case "incomplete":
       return "database";
@@ -99,7 +94,7 @@ const getIconName = (status: InitialSyncStatus) => {
   }
 };
 
-const getCircleDasharray = (progress: number) => {
+const getCircleDasharray = (progress: number): string | undefined => {
   return progress < 1
     ? `${progress * CIRCLE_PERIMETER} ${CIRCLE_PERIMETER}`
     : undefined;
