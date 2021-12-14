@@ -267,13 +267,15 @@ function getEngineFormFields(engine, details, id) {
 
   // convert database details-fields to Form fields
   return engineFields
+     // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
+    .concat(getDatabaseCachingField())
     .filter(field => shouldShowEngineProvidedField(field, details))
     .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
       return {
         name: `details.${field.name}`,
-        title: field["display-name"],
+        title: field["display-name"] || field["title"],
         type: field.type,
         description: field.description,
         placeholder: field.placeholder || field.default,
@@ -345,6 +347,7 @@ function getDatabaseCachingField() {
   return hasField ? PLUGIN_CACHING.databaseCacheTTLFormField : null;
 }
 
+
 const forms = {
   details: {
     fields: ({ id, engine, details = {} } = {}) =>
@@ -368,7 +371,6 @@ const forms = {
         ...(getEngineFormFields(engine, details, id) || []),
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
-        getDatabaseCachingField(),
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
