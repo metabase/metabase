@@ -1,5 +1,7 @@
 ## White labeling Metabase
 
+{% include plans-blockquote.html feature="White labeling" %}
+
 White labeling lets you customize the way Metabase looks so that it matches your company’s branding. Go to the Admin Panel and click on the White Labeling section to start customizing things. Here’s what you can do:
 
 ### Change the name of the application
