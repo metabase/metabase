@@ -269,7 +269,7 @@ export default class Table extends Component {
     if (options.length > 1) {
       settings["view_as"] = {
         title: t`Display as`,
-        widget: "radio",
+        widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
         props: {
           options,
