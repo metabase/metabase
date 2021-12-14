@@ -25,7 +25,6 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 
-import FormFieldDivider from "./FormFieldDivider";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker from "./SemanticTypePicker";
 import {
@@ -33,6 +32,7 @@ import {
   SecondaryFormContainer,
   FormTabsContainer,
   ViewAsFieldContainer,
+  Divider,
 } from "./DatasetFieldMetadataSidebar.styled";
 
 const propTypes = {
@@ -269,7 +269,7 @@ function DatasetFieldMetadataSidebar({
                   />
                 </FormTabsContainer>
               )}
-              <FormFieldDivider />
+              <Divider />
               <SecondaryFormContainer>
                 {tab === TAB.SETTINGS ? (
                   <React.Fragment>
