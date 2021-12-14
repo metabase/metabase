@@ -181,17 +181,14 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url is-active?]
+  [email google-auth? password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
-         (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              ;; hostname is not required at all
-                              :hostname         hostname
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
