@@ -271,6 +271,10 @@ export function listDatabases() {
   return `/admin/databases`;
 }
 
+export function exploreDatabase(database) {
+  return `/explore/${database.id}`;
+}
+
 export function browseDatabase(database) {
   const name =
     database.id === SAVED_QUESTIONS_VIRTUAL_DB_ID

@@ -78,7 +78,6 @@
       (or (set-property! database (parse-keypath keypath) value)
           (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
 
-
 (s/defn is-metabase-metadata-table? :- s/Bool
   "Is this TABLE the special `_metabase_metadata` table?"
   [table :- i/DatabaseMetadataTable]
@@ -91,9 +90,12 @@
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing _metabase_metadata table for %s"
                                          (sync-util/name-for-logging database))
-    ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
-    ;; Hopefully this is never the case.
-    (doseq [table (:tables (fetch-metadata/db-metadata database))]
-      (when (is-metabase-metadata-table? table)
-        (sync-metabase-metadata-table! (driver.u/database->driver database) database table)))
-    {}))
+    (let [driver (driver.u/database->driver database)]
+      ;; `sync-metabase-metadata-table!` relies on `driver/table-rows-seq` being defined
+      (when (get-method driver/table-rows-seq driver)
+        ;; If there's more than one metabase metadata table (in different schemas) we'll sync each one in turn.
+        ;; Hopefully this is never the case.
+        (doseq [table (:tables (fetch-metadata/db-metadata database))]
+          (when (is-metabase-metadata-table? table)
+            (sync-metabase-metadata-table! driver database table))))
+      {})))

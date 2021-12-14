@@ -19,3 +19,8 @@ export const getShowPinMessage = createSelector(
   [getSettings],
   settings => settings["show-homepage-pin-message"],
 );
+
+export const getShowSyncingModal = createSelector(
+  [getSettings],
+  settings => settings["show-database-syncing-modal"],
+);

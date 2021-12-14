@@ -1,4 +1,6 @@
-## Sandboxing your data
+## Data sandboxes 
+
+{% include plans-blockquote.html feature="Data sandboxes" %}
 
 Data sandboxes are a powerful and flexible permissions tool in Metabase Enterprise Edition that allow you to grant filtered access to specific tables. If you haven't already, check out our [overview of how permissions work in Metabase][permissions-overview].
 
@@ -22,7 +24,7 @@ Metabase gives you two options for filtering a sandboxed table:
 #### Option 1: filter using a column in the table
 
 The simplest way to filter a sandboxed table is to pick a column in the sandboxed table and match it up with a user attribute so that any time a user with sandboxed access to this table views it, they’ll only see rows in the table where that column’s value is equal to the value that user has for that attribute.
-
+	
 #### Option 2: create a custom view of the table with a saved question
 
 Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question.  For example, you might have columns in your Orders table that you don’t want any of your users to see. You can create a SQL-based saved question that only returns the columns you want users to see. For even more surgical access controls, you can map variables in a SQL question to user attributes in order to customize the view for that user. For example, if you only want users to see _their_ order data, you could map a variable in the `where` clause of the filtering saved question to one of their user attributes, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}`, and the user would only have access to order information related to that user ID.
