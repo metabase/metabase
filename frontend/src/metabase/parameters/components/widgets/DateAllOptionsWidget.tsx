@@ -81,7 +81,7 @@ const DateAllOptionsWidget = ({
 
   const commitAndClose = () => {
     setValue(filterToUrlEncoded(filter));
-    onClose();
+    onClose?.();
   };
 
   const isValid = () => {
