@@ -4,7 +4,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import userEvent from "@testing-library/user-event";
 import admin from "metabase/admin/admin";
 import MetabaseSettings from "metabase/lib/settings";
 import { setupEnterpriseTest } from "__support__/enterprise";
