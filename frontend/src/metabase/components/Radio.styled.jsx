@@ -37,7 +37,15 @@ export const RadioButton = styled.div`
   width: 12px;
   height: 12px;
   border: 2px solid white;
-  box-shadow: 0 0 0 2px ${color("shadow")};
+  box-shadow: ${props => {
+    let shadowColor = "shadow";
+    if (props.checked) {
+      shadowColor = props.colorScheme
+        ? COLOR_SCHEMES[props.colorScheme].button()
+        : color("brand");
+    }
+    return `0 0 0 2px ${color(shadowColor)}`;
+  }};
   border-radius: 12px;
   background-color: ${props => {
     if (props.checked) {
