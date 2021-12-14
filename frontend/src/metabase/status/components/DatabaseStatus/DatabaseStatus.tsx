@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import useStatusVisibility from "../../hooks/use-status-visibility";
-import { Database } from "../../types";
 import DatabaseStatusLarge from "../DatabaseStatusLarge";
 import DatabaseStatusSmall from "../DatabaseStatusSmall";
+import { Database } from "../../types";
 
 interface Props {
   databases?: Database[];

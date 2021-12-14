@@ -40,7 +40,6 @@ export const StatusRoot = styled.div`
   position: relative;
   width: 3rem;
   height: 3rem;
-  margin: 1rem 0 0 0;
   cursor: pointer;
 `;
 
