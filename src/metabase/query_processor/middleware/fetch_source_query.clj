@@ -29,6 +29,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
@@ -163,7 +164,10 @@
     map-with-card-id-source-table?
     ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
     ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
-    (let [resolved (resolve-one &match)]
+    (let [resolved (if (public-settings/enable-nested-queries)
+                     (resolve-one &match)
+                     (throw (ex-info (trs "Nested queries are disabled")
+                                     {:clause &match})))]
       ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
       ;; resolution that were we in the process of
       (try
