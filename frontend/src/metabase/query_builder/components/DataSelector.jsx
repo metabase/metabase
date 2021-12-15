@@ -738,7 +738,13 @@ export class UnconnectedDataSelector extends Component {
       this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
-    this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+    this.switchToStep(
+      DATABASE_STEP,
+      {
+        selectedDataBucketId,
+      },
+      false,
+    );
     const database = databases.find(db => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
