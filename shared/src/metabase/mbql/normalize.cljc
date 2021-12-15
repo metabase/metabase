@@ -304,7 +304,7 @@
                      :joins           {::sequence normalize-join}}
    ;; we smuggle metadata for datasets and want to preserve their "database" form vs a normalized form so it matches
    ;; the style in annotate.clj
-   :info            {:metadata/card-metadata identity}
+   :info            {:metadata/dataset-metadata identity}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}

@@ -1502,7 +1502,7 @@
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :nested?)      (s/maybe s/Bool)
 
-   (s/optional-key :metadata/card-metadata) (s/maybe [{s/Any s/Any}])
+   (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them

@@ -183,15 +183,13 @@
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
                                          middleware))))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               ;; todo: tests fail when we do this all the time. figure out why
-               :metadata/card-metadata (when (and (:dataset card)
-                                                  (seq (:result_metadata card)))
-                                             (:result_metadata card))
-               :card-name    (:name card)
-               :dashboard-id dashboard-id}]
+        info  (cond-> {:executed-by  api/*current-user-id*
+                       :context      context
+                       :card-id      card-id
+                       :card-name    (:name card)
+                       :dashboard-id dashboard-id}
+                (and (:dataset card) (seq (:result_metadata card)))
+                (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (normalize/normalize-fragment [:parameters] parameters)))

@@ -659,20 +659,20 @@
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
   (fn [{query-type :type, :as query
-        {:keys [:metadata/card-metadata]} :info} rff context]
+        {:keys [:metadata/dataset-metadata]} :info} rff context]
     (qp
      query
      (fn [metadata]
        (if (= query-type :query)
          (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-                (seq card-metadata)
-                (update :cols combine-metadata card-metadata)))
+                (seq dataset-metadata)
+                (update :cols combine-metadata dataset-metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                           ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                          (seq card-metadata)
-                          (update :cols combine-metadata card-metadata)
+                          (seq dataset-metadata)
+                          (update :cols combine-metadata dataset-metadata)
                           ;; but we want those column refs removed since they have type info which we don't know yet
                           :always
                           (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
