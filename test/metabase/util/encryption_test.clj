@@ -88,9 +88,8 @@
 
 (deftest no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
-    (is (= []
-           (tu/with-log-messages-for-level :warn
-             (encryption/maybe-decrypt secret "abc"))))))
+    (is (empty? (tu/with-log-messages-for-level :warn
+                  (encryption/maybe-decrypt secret "abc"))))))
 
 (def ^:private fake-ciphertext
   "AES+CBC's block size is 16 bytes and the tag length is 32 bytes. This is a string of characters that is the same
@@ -99,8 +98,7 @@
   (apply str (repeat 64 "a")))
 
 (deftest log-warning-on-failure-test
-  ;; disabled due to CVE-2021-44228
-  #_(testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
+  (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
                 "decrypted. If unable to decrypt it, log a warning.")
     (is (includes-encryption-warning?
          (tu/with-log-messages-for-level :warn
