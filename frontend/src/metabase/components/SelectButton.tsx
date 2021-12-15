@@ -4,22 +4,18 @@ import Icon from "metabase/components/Icon";
 
 type Props = {
   className?: string;
-  style?: React.CSSProperties;
   hasValue?: boolean;
   children: React.ReactNode;
-  onClick?: () => void;
 };
 
 const SelectButton = ({
   className,
-  style,
   children,
   hasValue = true,
-  onClick,
+  ...props
 }: Props) => (
   <div
-    onClick={onClick}
-    style={style}
+    {...props}
     className={cx(className, "AdminSelect flex align-center", {
       "text-medium": !hasValue,
     })}
