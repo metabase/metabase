@@ -77,7 +77,16 @@
                                                          {:request-options {:redirect-strategy :none}}
                                                          :redirect default-redirect-uri)
             redirect-url (get-in result [:headers "Location"])]
-        (is (str/starts-with? redirect-url default-idp-uri))))))
+        (is (str/starts-with? redirect-url default-idp-uri)))))
+  (testing (str "JWT configured with a redirect-uri containing query params, "
+                "a GET request should result in a redirect to the IdP as a correctly formatted URL")
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [jwt-identity-provider-uri "http://test.idp.metabase.com/login?some_param=yes"]
+        (let [result       (saml-test/client-full-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :redirect default-redirect-uri)
+              redirect-url (get-in result [:headers "Location"])]
+          (is (str/includes? redirect-url "&return_to=")))))))
 
 (deftest happy-path-test
   (testing (str "Happy path login, valid JWT, checks to ensure the user was logged in successfully and the redirect to "

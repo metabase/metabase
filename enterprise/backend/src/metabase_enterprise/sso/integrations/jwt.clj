@@ -10,7 +10,8 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.response :as resp])
+            [ring.util.response :as resp]
+            [clojure.string :as str])
   (:import java.net.URLEncoder))
 
 (defn fetch-or-create-user!
@@ -95,9 +96,10 @@
   (check-jwt-enabled)
   (if jwt
     (login-jwt-user jwt request)
-    (resp/redirect (str (sso-settings/jwt-identity-provider-uri)
-                        (when redirect
-                          (str "?return_to=" redirect))))))
+    (let [idp (sso-settings/jwt-identity-provider-uri)
+          return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
+      (resp/redirect (str idp (when redirect
+                                (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
   [req]
