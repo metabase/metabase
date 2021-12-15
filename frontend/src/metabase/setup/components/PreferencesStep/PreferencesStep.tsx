@@ -2,9 +2,10 @@ import React from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
+import Toggle from "metabase/components/Toggle";
 import InactiveStep from "../InvactiveStep";
 import ActiveStep from "../ActiveStep";
-import { StepDescription } from "./PreferencesStep.styled";
+import { StepDescription, StepToggleContainer } from "./PreferencesStep.styled";
 
 interface Props {
   isTrackingAllowed: boolean;
@@ -40,6 +41,15 @@ const PreferencesStep = ({
           href={Settings.docsUrl("information-collection")}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </StepDescription>
+      <StepToggleContainer>
+        <Toggle
+          value={isTrackingAllowed}
+          aria-labelledby="anonymous-usage-events-label"
+        />
+        <StepToggleContainer id="anonymous-usage-events-label">
+          {t`Allow Metabase to anonymously collect usage events`}
+        </StepToggleContainer>
+      </StepToggleContainer>
     </ActiveStep>
   );
 };
