@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import User from "metabase/entities/users";
 import { UserInfo } from "../../types";
-import { FormProps, FormError } from "./types";
+import { FormProps } from "./types";
 import { UserFormRoot, FormGroup } from "./UserForm.styled";
 
 interface Props {
@@ -12,24 +12,11 @@ interface Props {
 }
 
 const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
-  const handleValidate = async (user: UserInfo) => {
-    try {
-      await onValidatePassword(user);
-      return {};
-    } catch (error) {
-      if (isFormError(error)) {
-        return error.data.errors;
-      } else {
-        throw error;
-      }
-    }
-  };
-
   return (
     <UserFormRoot
       form={User.forms.setup()}
       user={user}
-      asyncValidate={handleValidate}
+      asyncValidate={onValidatePassword}
       asyncBlurFields={["password"]}
       onSubmit={onSubmit}
     >
@@ -50,10 +37,6 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
       }}
     </UserFormRoot>
   );
-};
-
-const isFormError = (error: unknown): error is FormError => {
-  return typeof error === "object";
 };
 
 export default UserForm;
