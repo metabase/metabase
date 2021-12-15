@@ -33,6 +33,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 
+import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker from "./SemanticTypePicker";
 import {
@@ -274,11 +275,14 @@ function DatasetFieldMetadataSidebar({
             <Form>
               <MainFormContainer>
                 <FormField
-                  autoFocus
                   name="display_name"
                   ref={displayNameInputRef}
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                 />
-                <FormField name="description" />
+                <FormField
+                  name="description"
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                />
                 {dataset.isNative() && <FormField name="id" />}
                 <FormField name="semantic_type" />
               </MainFormContainer>

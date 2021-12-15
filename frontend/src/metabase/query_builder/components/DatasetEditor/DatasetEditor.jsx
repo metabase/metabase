@@ -21,6 +21,7 @@ import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isSameField } from "metabase/lib/query/field_ref";
 
+import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
@@ -98,6 +99,14 @@ function getSidebar(props, { datasetEditorTab, focusedField }) {
   return null;
 }
 
+function getColumnTabIndex(columnIndex, focusedFieldIndex) {
+  return columnIndex === focusedFieldIndex
+    ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
+    : columnIndex > focusedFieldIndex
+    ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+    : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+}
+
 function DatasetEditor(props) {
   const {
     question: dataset,
@@ -146,33 +155,47 @@ function DatasetEditor(props) {
 
   const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
 
+  const handleColumnSelect = useCallback(
+    column => {
+      const field = dataset
+        .getResultMetadata()
+        .find(f => isSameField(column?.field_ref, f?.field_ref));
+      setFocusedField(field);
+    },
+    [dataset],
+  );
+
   const handleTableElementClick = useCallback(
     ({ element, ...clickedObject }) => {
       const isColumnClick =
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        const field = dataset
-          .getResultMetadata()
-          .find(f =>
-            isSameField(clickedObject.column?.field_ref, f?.field_ref),
-          );
-        setFocusedField(field);
+        handleColumnSelect(clickedObject.column);
       }
     },
-    [dataset],
+    [handleColumnSelect],
   );
 
+  const focusedFieldIndex = useMemo(() => {
+    const fields = dataset.getResultMetadata();
+    return fields.findIndex(f =>
+      isSameField(focusedField?.field_ref, f?.field_ref),
+    );
+  }, [dataset, focusedField]);
+
   const renderSelectableTableColumnHeader = useCallback(
-    (element, column) => (
+    (element, column, columnIndex) => (
       <TableHeaderColumnName
+        tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
+        onFocus={() => handleColumnSelect(column)}
         isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>
       </TableHeaderColumnName>
     ),
-    [focusedField],
+    [focusedField, focusedFieldIndex, handleColumnSelect],
   );
 
   const renderTableHeaderWrapper = useMemo(
