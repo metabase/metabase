@@ -182,12 +182,14 @@
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                         (when (and (:dataset card) (seq (:result_metadata card)))
-                                           {:metadata/dataset-metadata (:result_metadata card)})
                                          middleware))))
         info  {:executed-by  api/*current-user-id*
                :context      context
                :card-id      card-id
+               ;; todo: tests fail when we do this all the time. figure out why
+               :metadata/card-metadata (when (and (:dataset card)
+                                                  (seq (:result_metadata card)))
+                                             (:result_metadata card))
                :card-name    (:name card)
                :dashboard-id dashboard-id}]
     (api/check-not-archived card)
