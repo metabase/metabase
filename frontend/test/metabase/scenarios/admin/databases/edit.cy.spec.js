@@ -122,7 +122,7 @@ describe("scenarios > admin > databases > edit", () => {
     it("shows the initial scheduling settings correctly", () => {
       cy.visit("/admin/databases/1");
 
-      cy.findByText("Show advanced options").click()
+      cy.findByText("Show advanced options").click();
       cy.findByText("Database syncing")
         .closest(".Form-field")
         .findByText("Hourly");
@@ -161,7 +161,7 @@ describe("scenarios > admin > databases > edit", () => {
 
     it("lets you change the cache_field_values perid", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("Show advanced options").click()
+      cy.findByText("Show advanced options").click();
 
       cy.findByText("Regularly, on a schedule")
         .parent()
@@ -183,7 +183,7 @@ describe("scenarios > admin > databases > edit", () => {
 
     it("lets you change the cache_field_values to 'Only when adding a new filter widget'", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("Show advanced options").click()
+      cy.findByText("Show advanced options").click();
 
       cy.findByText("Only when adding a new filter widget").click();
       cy.findByText("Save changes").click();
@@ -195,7 +195,7 @@ describe("scenarios > admin > databases > edit", () => {
 
     it("lets you change the cache_field_values to Never", () => {
       cy.visit("/admin/databases/1");
-      cy.findByText("Show advanced options").click()
+      cy.findByText("Show advanced options").click();
 
       cy.findByText("Never, I'll do this manually if I need to").click();
       cy.findByText("Save changes").click();
