@@ -2,13 +2,14 @@ import React from "react";
 import { t } from "ttag";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
+import DatabaseForm from "../DatabaseForm";
 import { DatabaseInfo } from "../../types";
 
 interface Props {
   database?: DatabaseInfo;
   isActive: boolean;
   isCompleted: boolean;
-  onChangeDatabase: (datasbase?: DatabaseInfo) => void;
+  onChangeDatabase: (database?: DatabaseInfo) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -21,6 +22,16 @@ const DatabaseStep = ({
   onSelectThisStep,
   onSelectNextStep,
 }: Props) => {
+  const handleSubmit = (database: DatabaseInfo) => {
+    onChangeDatabase(database);
+    onSelectNextStep();
+  };
+
+  const handleCancel = () => {
+    onChangeDatabase();
+    onSelectNextStep();
+  };
+
   if (!isActive) {
     return (
       <InactiveStep
@@ -34,7 +45,11 @@ const DatabaseStep = ({
 
   return (
     <ActiveStep title={getStepTitle(database, isCompleted)} label={3}>
-      <div />
+      <DatabaseForm
+        database={database}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+      />
     </ActiveStep>
   );
 };
