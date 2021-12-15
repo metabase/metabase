@@ -1,9 +1,8 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
-type Props = {
-  className?: string;
+type Props = HTMLAttributes<HTMLDivElement> & {
   hasValue?: boolean;
   children: React.ReactNode;
 };
