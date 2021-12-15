@@ -1,7 +1,12 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
-export const LanguageList = styled.ol`
+export const StepDescription = styled.div`
+  color: ${color("text-dark")};
+  margin: 0.875rem 0;
+`;
+
+export const StepList = styled.ol`
   margin-bottom: 2rem;
   padding: 0.5rem;
   max-height: 17.5rem;
@@ -10,11 +15,11 @@ export const LanguageList = styled.ol`
   border-radius: 0.25rem;
 `;
 
-interface LocaleItemProps {
+interface StepListItemProps {
   isSelected?: boolean;
 }
 
-export const LanguageItem = styled.li<LocaleItemProps>`
+export const StepListItem = styled.li<StepListItemProps>`
   padding: 0.5rem;
   color: ${props => color(props.isSelected ? "white" : "text-dark")};
   border-radius: 0.25rem;

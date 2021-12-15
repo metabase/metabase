@@ -5,7 +5,7 @@ export const UserFormRoot = styled(User.Form)`
   margin-top: 1rem;
 `;
 
-export const FormGroup = styled.div`
+export const UserFormGroup = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;

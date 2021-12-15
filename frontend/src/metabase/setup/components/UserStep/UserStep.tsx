@@ -2,8 +2,8 @@ import React from "react";
 import { t } from "ttag";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
+import UserForm from "../UserForm";
 import { UserInfo } from "../../types";
-import UserForm from "../UserForm/UserForm";
 
 interface Props {
   user?: UserInfo;

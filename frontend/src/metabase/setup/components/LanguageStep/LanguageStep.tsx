@@ -5,7 +5,7 @@ import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";
-import { LanguageList, LanguageItem } from "./LanguageStep.styled";
+import { StepList, StepListItem, StepDescription } from "./LanguageStep.styled";
 
 interface Props {
   locale?: Locale;
@@ -40,22 +40,21 @@ const LanguageStep = ({
   }
 
   return (
-    <ActiveStep
-      title={t`What's your preferred language?`}
-      label={1}
-      description={t`This language will be used throughout Metabase and will be the default for new users.`}
-    >
-      <LanguageList>
+    <ActiveStep title={t`What's your preferred language?`} label={1}>
+      <StepDescription>
+        {t`This language will be used throughout Metabase and will be the default for new users.`}
+      </StepDescription>
+      <StepList>
         {locales.map(item => (
-          <LanguageItem
+          <StepListItem
             key={item.code}
             isSelected={item.code === locale?.code}
             onClick={() => onChangeLocale(item)}
           >
             {item.name}
-          </LanguageItem>
+          </StepListItem>
         ))}
-      </LanguageList>
+      </StepList>
       <Button
         primary={locale != null}
         disabled={locale == null}

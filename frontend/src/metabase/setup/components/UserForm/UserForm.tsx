@@ -3,7 +3,7 @@ import { t } from "ttag";
 import User from "metabase/entities/users";
 import { UserInfo } from "../../types";
 import { FormProps } from "./types";
-import { UserFormRoot, FormGroup } from "./UserForm.styled";
+import { UserFormRoot, UserFormGroup } from "./UserForm.styled";
 
 interface Props {
   user?: UserInfo;
@@ -23,10 +23,10 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: Props) => {
       {({ Form, FormField, FormFooter }: FormProps) => {
         return (
           <Form>
-            <FormGroup>
+            <UserFormGroup>
               <FormField name="first_name" />
               <FormField name="last_name" />
-            </FormGroup>
+            </UserFormGroup>
             <FormField name="email" />
             <FormField name="site_name" />
             <FormField name="password" />
