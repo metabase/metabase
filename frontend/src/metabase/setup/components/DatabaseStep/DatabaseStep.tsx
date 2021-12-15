@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
+import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
-import DatabaseForm from "../DatabaseForm";
-import { DatabaseInfo } from "../../types";
 import { StepDescription } from "./DatabaseStep.styled";
+import { FormProps } from "./types";
+import { DatabaseInfo } from "../../types";
 
 interface Props {
   database?: DatabaseInfo;
@@ -56,6 +57,37 @@ const DatabaseStep = ({
         onCancel={handleCancel}
       />
     </ActiveStep>
+  );
+};
+
+interface DatabaseFormProps {
+  database?: DatabaseInfo;
+  onSubmit?: (database: DatabaseInfo) => void;
+  onCancel?: () => void;
+}
+
+const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
+  return (
+    <Databases.Form
+      form={Databases.forms.setup}
+      database={database}
+      onSubmit={onSubmit}
+    >
+      {({ formFields, Form, FormField, FormFooter }: FormProps) => (
+        <Form>
+          {formFields.map(({ name }) => (
+            <FormField key={name} name={name} />
+          ))}
+          {
+            <FormFooter
+              submitTitle={t`Connect database`}
+              cancelTitle={t`Skip`}
+              onCancel={onCancel}
+            />
+          }
+        </Form>
+      )}
+    </Databases.Form>
   );
 };
 
