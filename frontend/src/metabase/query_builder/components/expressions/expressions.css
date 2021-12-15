@@ -1,3 +1,7 @@
+.ace_content * {
+  font-family: monospace !important;
+}
+
 .expression-editor-textfield .ace_hidpi .ace_content {
   color: #4c5773;
   font-weight: 700;
