@@ -376,6 +376,7 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
         )
       }
       inheritedSettings={getGlobalSettingsForColumn(field)}
+      forcefullyShowHiddenSettings
     />
   </Section>
 );

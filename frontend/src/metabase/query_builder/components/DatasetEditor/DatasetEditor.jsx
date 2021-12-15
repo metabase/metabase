@@ -76,7 +76,9 @@ function getSidebar(props, { datasetEditorTab, focusedField }) {
   } = props;
 
   if (datasetEditorTab === "metadata") {
-    return <DatasetFieldMetadataSidebar field={focusedField} />;
+    return (
+      <DatasetFieldMetadataSidebar dataset={dataset} field={focusedField} />
+    );
   }
 
   if (!dataset.isNative()) {
