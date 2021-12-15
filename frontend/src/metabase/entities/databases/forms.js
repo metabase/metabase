@@ -271,9 +271,6 @@ function getEngineFormFields(engine, details, id) {
   // convert database details-fields to Form fields
   return (
     engineFields
-      // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
-      .concat(cachingField ? [cachingField] : [])
-      .filter(field => shouldShowEngineProvidedField(field, details))
       .map(field => {
         const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
@@ -290,9 +287,13 @@ function getEngineFormFields(engine, details, id) {
           initial: field.default,
           readOnly: field.readOnly || false,
           helperText: field["helper-text"],
+          "visible-if": field["visible-if"],
           ...(overrides && overrides(engine, details, id)),
         };
       })
+      // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
+      .concat(cachingField ? [cachingField] : [])
+      .filter(field => shouldShowEngineProvidedField(field, details))
   );
 }
 
