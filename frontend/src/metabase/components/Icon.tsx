@@ -12,8 +12,8 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 const MISSING_ICON_NAME = "unknown";
 
 type IconWrapperProps = {
-  open: boolean;
-  hover: React.CSSProperties;
+  open?: boolean;
+  hover?: React.CSSProperties;
 };
 
 export const IconWrapper = styled.div<IconWrapperProps>`

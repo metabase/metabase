@@ -60,7 +60,7 @@ const ProgressBar = ({
     range: [0, barWidth],
   });
 
-  const currentX = xScale(Math.min(data.goal, data.value));
+  const currentX = xScale(Math.max(0, Math.min(data.goal, data.value)));
 
   const pointerY = layout.margin.top - layout.pointer.height * 1.5;
   const pointerX = xMin + Math.max(xScale(data.value), 0);

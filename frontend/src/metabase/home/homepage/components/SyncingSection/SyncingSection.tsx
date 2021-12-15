@@ -29,7 +29,7 @@ const SyncingSection = ({
 
   useEffect(() => {
     if (isOpened) {
-      onHideSyncingModal && onHideSyncingModal();
+      onHideSyncingModal?.();
     }
   }, [isOpened, onHideSyncingModal]);
 
