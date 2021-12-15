@@ -3,6 +3,19 @@ import EditBar from "metabase/components/EditBar";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
+export const TabHintToastContainer = styled.div`
+  position: fixed;
+  bottom: 16px;
+  left: 24px;
+  transform: translateY(200%);
+  transition: all 0.4s;
+  ${props =>
+    props.isVisible &&
+    css`
+      transform: translateY(0);
+    `}
+`;
+
 export const DatasetEditBar = styled(EditBar)`
   background-color: ${color("nav")};
 `;

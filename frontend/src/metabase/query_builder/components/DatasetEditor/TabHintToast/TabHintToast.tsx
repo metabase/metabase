@@ -8,12 +8,17 @@ import {
   CloseIcon,
 } from "./TabHintToast.styled";
 
-export function TabHintToast() {
+type Props = {
+  className?: string;
+  onClose: () => void;
+};
+
+export function TabHintToast({ className, onClose }: Props) {
   return (
-    <ToastCard>
+    <ToastCard className={className}>
       <TabIcon name="tab" size={14} />
       <ToastMessage>{t`Use the tab key to navigate through settings and columns.`}</ToastMessage>
-      <CloseIcon name="close" size={12} />
+      <CloseIcon name="close" size={12} onClick={onClose} />
     </ToastCard>
   );
 }

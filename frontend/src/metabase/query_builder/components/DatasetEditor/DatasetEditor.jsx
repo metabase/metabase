@@ -20,11 +20,13 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isSameField } from "metabase/lib/query/field_ref";
+import { useToggle } from "metabase/hooks/use-toggle";
 
 import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
+import { TabHintToast } from "./TabHintToast";
 
 import {
   Root,
@@ -33,6 +35,7 @@ import {
   QueryEditorContainer,
   TableHeaderColumnName,
   TableContainer,
+  TabHintToastContainer,
 } from "./DatasetEditor.styled";
 
 const propTypes = {
@@ -139,6 +142,20 @@ function DatasetEditor(props) {
       setFocusedField(firstField);
     }
   }, [dataset, result, focusedField]);
+
+  const [
+    isTabHintVisible,
+    { turnOn: showTabHint, turnOff: hideTabHint },
+  ] = useToggle(false);
+
+  useEffect(() => {
+    let timeoutId;
+    if (result) {
+      timeoutId = setTimeout(() => showTabHint(), 500);
+    }
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   const onChangeEditorTab = useCallback(
     tab => {
@@ -265,6 +282,11 @@ function DatasetEditor(props) {
                 renderTableHeaderWrapper={renderTableHeaderWrapper}
               />
             </DebouncedFrame>
+            <TabHintToastContainer
+              isVisible={isEditingMetadata && isTabHintVisible}
+            >
+              <TabHintToast onClose={hideTabHint} />
+            </TabHintToastContainer>
           </TableContainer>
         </MainContainer>
         <ViewSidebar side="right" isOpen={!!sidebar}>
