@@ -138,6 +138,14 @@ export const SchemaTableAndFieldDataSelector = props => (
   />
 );
 
+export const FieldSelector = props => (
+  <DataSelector
+    steps={[TABLE_STEP, FIELD_STEP]}
+    getTriggerElementContent={FieldTriggerContent}
+    {...props}
+  />
+);
+
 const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
     <span className="text-wrap text-grey no-decoration">
@@ -292,6 +300,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleDatabase: false,
     hasTableSearch: false,
     canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -769,6 +778,7 @@ export class UnconnectedDataSelector extends Component {
       triggerIconSize,
       triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
 
     if (triggerElement) {
@@ -787,7 +797,7 @@ export class UnconnectedDataSelector extends Component {
           selectedTable,
           selectedField,
         })}
-        {!this.props.readOnly && (
+        {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
             className="ml1"
             name="chevrondown"

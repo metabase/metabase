@@ -1,13 +1,24 @@
-/* eslint "react/prop-types": "warn" */
 import React from "react";
-import PropTypes from "prop-types";
-
+import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
-import cx from "classnames";
+type Props = {
+  className?: string;
+  style?: React.CSSProperties;
+  hasValue?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+};
 
-const SelectButton = ({ className, style, children, hasValue = true }) => (
+const SelectButton = ({
+  className,
+  style,
+  children,
+  hasValue = true,
+  onClick,
+}: Props) => (
   <div
+    onClick={onClick}
     style={style}
     className={cx(className, "AdminSelect flex align-center", {
       "text-medium": !hasValue,
@@ -21,12 +32,5 @@ const SelectButton = ({ className, style, children, hasValue = true }) => (
     />
   </div>
 );
-
-SelectButton.propTypes = {
-  className: PropTypes.string,
-  style: PropTypes.object,
-  children: PropTypes.any,
-  hasValue: PropTypes.any,
-};
 
 export default SelectButton;
