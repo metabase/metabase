@@ -284,7 +284,10 @@ function DatasetFieldMetadataSidebar({
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                 />
                 {dataset.isNative() && <FormField name="id" />}
-                <FormField name="semantic_type" />
+                <FormField
+                  name="semantic_type"
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                />
               </MainFormContainer>
               {hasColumnFormattingOptions && (
                 <FormTabsContainer>

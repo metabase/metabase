@@ -30,13 +30,15 @@ const sectionShape = PropTypes.shape({
 const propTypes = {
   field: PropTypes.shape({
     value: PropTypes.any,
+    field_ref: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
   }).isRequired,
   sections: PropTypes.arrayOf(sectionShape).isRequired,
   IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
+  tabIndex: PropTypes.string,
 };
 
-function SemanticTypePicker({ field, sections, IDFields }) {
+function SemanticTypePicker({ field, sections, IDFields, tabIndex }) {
   const [
     isPickerOpen,
     { turnOn: openPicker, turnOff: closePicker },
@@ -109,6 +111,9 @@ function SemanticTypePicker({ field, sections, IDFields }) {
           searchFuzzy={false}
           searchProp="name"
           searchPlaceholder={t`Search for a special type`}
+          searchInputProps={{
+            tabIndex,
+          }}
           hideEmptySectionsInSearch
           renderSearchSection={renderSearchSection}
           maxHeight={350}
@@ -124,6 +129,8 @@ function SemanticTypePicker({ field, sections, IDFields }) {
         className="cursor-pointer"
         hasValue={!!field.value}
         onClick={openPicker}
+        onFocus={openPicker}
+        tabIndex={tabIndex}
       >
         {pickerLabel}
       </SelectButton>
