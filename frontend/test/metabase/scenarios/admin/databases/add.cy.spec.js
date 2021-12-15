@@ -342,6 +342,7 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover()
         .findByText("Custom")
