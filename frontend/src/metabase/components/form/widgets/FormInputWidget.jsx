@@ -13,10 +13,19 @@ const propTypes = {
   readOnly: PropTypes.bool,
   autoFocus: PropTypes.bool,
   helperText: PropTypes.node,
+  tabIndex: PropTypes.string,
 };
 
 const FormInputWidget = forwardRef(function FormInputWidget(
-  { type = "text", placeholder, field, readOnly, autoFocus, helperText },
+  {
+    type = "text",
+    placeholder,
+    field,
+    readOnly,
+    autoFocus,
+    helperText,
+    tabIndex,
+  },
   ref,
 ) {
   return (
@@ -30,6 +39,7 @@ const FormInputWidget = forwardRef(function FormInputWidget(
       error={field.visited && !field.active && field.error != null}
       helperText={helperText}
       fullWidth
+      tabIndex={tabIndex}
       ref={ref}
     />
   );
