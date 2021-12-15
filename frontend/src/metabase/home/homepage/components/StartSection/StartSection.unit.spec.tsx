@@ -178,6 +178,7 @@ const getUser = (opts?: Partial<User>): User => ({
 const getDatabase = (opts?: Partial<Database>): Database => ({
   id: 1,
   name: "Our database",
+  engine: "postgres",
   is_sample: false,
   initial_sync_status: "complete",
   ...opts,

@@ -21,9 +21,6 @@ export const StoreIconWrapper = styled(IconWrapper)`
   }
 `;
 
-export const StoreIcon = styled(Icon).attrs({
-  name: "store",
-  size: 18,
-})`
+export const StoreIcon = styled(Icon)`
   margin: ${space(1)};
 `;

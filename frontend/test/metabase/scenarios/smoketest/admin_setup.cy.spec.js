@@ -32,7 +32,7 @@ describe("smoketest > admin_setup", () => {
       cy.icon("gear")
         .first()
         .click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
 
       cy.findByText("Metabase Admin");
       cy.findByText("dashboard").should("not.exist");
@@ -299,7 +299,7 @@ describe("smoketest > admin_setup", () => {
       cy.icon("gear")
         .first()
         .click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
 
       cy.findByText("Getting set up");
       cy.findByText(admin.first_name).should("not.exist");
@@ -377,10 +377,6 @@ describe("smoketest > admin_setup", () => {
 
     it("should reflect changes to column name, visibility, and formatting in the notebook editor for admin", () => {
       // Navigate
-
-      cy.icon("gear")
-        .eq(1)
-        .click();
       cy.findByText("Exit admin").click();
 
       // Checking table name
@@ -617,7 +613,7 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       cy.icon("gear").click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
       cy.findByText("Permissions").click();
 
       // Data access permissions (database/schema)

@@ -28,6 +28,9 @@ interface Props {
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
   onHideSyncingModal?: () => void;
+  onCollectionClick?: () => void;
+  onDashboardClick?: (dashboard: Dashboard) => void;
+  onDatabaseClick?: (database: Database) => void;
 }
 
 const Homepage = ({
@@ -44,6 +47,9 @@ const Homepage = ({
   onHideXrays,
   onHidePinMessage,
   onHideSyncingModal,
+  onCollectionClick,
+  onDashboardClick,
+  onDatabaseClick,
 }: Props) => {
   return (
     <LandingRoot>
@@ -56,6 +62,7 @@ const Homepage = ({
             dashboards={dashboards}
             showPinMessage={showPinMessage}
             onHidePinMessage={onHidePinMessage}
+            onDashboardClick={onDashboardClick}
           />
           <XraySection
             user={user}
@@ -64,12 +71,17 @@ const Homepage = ({
             showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
-          <CollectionSection user={user} collections={collections} />
+          <CollectionSection
+            user={user}
+            collections={collections}
+            onCollectionClick={onCollectionClick}
+          />
           <DatabaseSection
             user={user}
             databases={databases}
             showData={showData}
             onHideData={onHideData}
+            onDatabaseClick={onDatabaseClick}
           />
           <SyncingSection
             user={user}
