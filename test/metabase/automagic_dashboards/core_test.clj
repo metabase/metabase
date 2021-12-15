@@ -1,5 +1,6 @@
 (ns metabase.automagic-dashboards.core-test
-  (:require [clojure.core.async :as a]
+  (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.api.common :as api]
@@ -12,11 +13,13 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.query :as query :refer [Query]]
             [metabase.query-processor.async :as qp.async]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.automagic-dashboards :as automagic-dashboards.test]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
+            [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -541,3 +544,57 @@
       (testing "Should humanize inside filter"
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
                (magic/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
+
+
+;;; -------------------- Filters --------------------
+
+(deftest filter-referenced-fields-test
+  (testing "X-Ray should work if there's a filter in the question (#19241)"
+    (mt/dataset sample-dataset
+      (let [query (query/map->QueryInstance
+                   {:database-id   (mt/id)
+                    :table-id      (mt/id :products)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :products)
+                                               :aggregation  [[:count]]
+                                               :breakout     [[:field (mt/id :products :created_at) {:temporal-unit :year}]]
+                                               :filter       [:=
+                                                              [:field (mt/id :products :category) nil]
+                                                              "Doohickey"]}}})]
+        (testing `magic/filter-referenced-fields
+          (is (= {(mt/id :products :category)   (Field (mt/id :products :category))
+                  (mt/id :products :created_at) (Field (mt/id :products :created_at))}
+                 (#'magic/filter-referenced-fields
+                  {:source   (Table (mt/id :products))
+                   :database (mt/id)
+                   :entity   query}
+                  [:and
+                   [:=
+                    [:field (mt/id :products :created_at) {:temporal-unit :year}]
+                    "2017-01-01T00:00:00Z"]
+                   [:=
+                    [:field (mt/id :products :category) nil]
+                    "Doohickey"]]))))
+
+        (testing "end-to-end"
+          ;; VERY IMPORTANT! Make sure the Table is FULLY synced (so it gets classified correctly), otherwise the
+          ;; automagic Dashboards won't work (the normal quick sync we do for tests doesn't include everything that's
+          ;; needed)
+          (sync/sync-table! (Table (mt/id :products)))
+          (let [query     {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :products)
+                                      :filter       [:= [:field (mt/id :products :category) nil] "Doohickey"]
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field (mt/id :products :created_at) {:temporal-unit "year"}]]}}
+                cell      [:=
+                           [:field (mt/id :products :created_at) {:temporal-unit "year"}]
+                           "2017-01-01T00:00:00Z"]
+                ->base-64 (fn [x]
+                            (codec/base64-encode (.getBytes (json/generate-string x) "UTF-8")))]
+            (is (schema= {:description (s/eq "A closer look at the metrics and dimensions used in this saved question.")
+                          s/Keyword    s/Any}
+                         (mt/user-http-request
+                          :crowberto :get 200
+                          (format "automagic-dashboards/adhoc/%s/cell/%s" (->base-64 query) (->base-64 cell)))))))))))
