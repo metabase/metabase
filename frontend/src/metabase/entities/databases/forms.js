@@ -78,6 +78,12 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "schedules.metadata_sync": () => ({
+    type: MetadataSyncScheduleWidget,
+  }),
+  "schedules.cache_field_values": () => ({
+    type: CacheFieldValuesScheduleWidget,
+  }),
 };
 
 function getEngineName(engine) {
@@ -374,14 +380,6 @@ const forms = {
           description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
           hidden: !engine,
         },
-        {
-          name: "refingerprint",
-          type: "boolean",
-          title: t`Periodically refingerprint tables`,
-          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
-          hidden: !engine,
-        },
-        getDatabaseCachingField(),
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
         {
@@ -401,6 +399,14 @@ const forms = {
             t`When should Metabase automatically scan and cache field values?`,
           hidden: !engine || !details["let-user-control-scheduling"],
         },
+        {
+          name: "refingerprint",
+          type: "boolean",
+          title: t`Periodically refingerprint tables`,
+          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
+          hidden: !engine,
+        },
+        getDatabaseCachingField(),
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
@@ -427,33 +433,18 @@ forms.setup = {
     })),
 };
 
-// partial forms for tabbed view:
 forms.connection = {
   ...forms.details,
   fields: (...args) =>
     forms.details.fields(...args).map(field => ({
       ...field,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden,
     })),
 };
-forms.scheduling = {
-  ...forms.details,
-  fields: (...args) =>
-    forms.details.fields(...args).map(field => ({
-      ...field,
-      hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
-    })),
-};
-
-const SCHEDULING_FIELDS = new Set([
-  "schedules.metadata_sync",
-  "schedules.cache_field_values",
-]);
 
 const ADVANCED_FIELDS = new Set([
   "auto_run_queries",
   "details.let-user-control-scheduling",
-  ...SCHEDULING_FIELDS,
 ]);
 
 export default forms;

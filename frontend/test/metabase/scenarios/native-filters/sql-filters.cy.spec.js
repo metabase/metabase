@@ -99,6 +99,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
       // Since we have fixed dates in Sample Dataset (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
       cy.findByText("15").click();
+      cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
 
@@ -112,6 +113,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       cy.findByText("Select a default value…").click();
       cy.findByText("15").click();
+      cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
 

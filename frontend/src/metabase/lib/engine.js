@@ -1,3 +1,4 @@
+import Settings from "metabase/lib/settings";
 import { formatSQL } from "metabase/lib/formatting";
 
 export function getEngineNativeType(engine) {
@@ -86,6 +87,11 @@ export function formatNativeQuery(query, engine) {
   return getEngineNativeType(engine) === "json"
     ? formatJsonQuery(query, engine)
     : formatSQL(query);
+}
+
+export function isDeprecatedEngine(engine) {
+  const engines = Settings.get("engines", {});
+  return engines[engine] != null && engines[engine]["superseded-by"] != null;
 }
 
 const GA_ORDERED_PARAMS = [

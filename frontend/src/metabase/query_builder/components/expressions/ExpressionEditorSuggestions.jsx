@@ -88,6 +88,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
           attachment: "top left",
           targetAttachment: "bottom left",
         }}
+        targetOffsetY={0}
         sizeToFit
       >
         <UlStyled data-testid="expression-suggestions-list">

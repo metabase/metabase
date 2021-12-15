@@ -84,7 +84,7 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall :combo :funnel} display-type)
+        (#{:progress :waterfall :combo :funnel :area} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -108,7 +108,7 @@
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
-             (not (#{:waterfall :pie :table} display-type)))
+             (not (#{:waterfall :pie :table :area} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)

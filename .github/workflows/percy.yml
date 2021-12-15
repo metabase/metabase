@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     strategy:
       matrix:

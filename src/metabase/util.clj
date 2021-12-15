@@ -137,7 +137,7 @@
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
   (let [validator (UrlValidator. (varargs String ["http" "https"])
-                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 (RegexValidator. "^[\\p{Alnum}\\_]+([\\.|\\-][\\p{Alnum}\\_]+)*(:\\d*)?")
                                  UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
@@ -164,7 +164,6 @@
   [f x]
   (or (nil? x)
       (f x)))
-
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."

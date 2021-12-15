@@ -15,16 +15,6 @@ import { tokenize } from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
-import {
-  KEYCODE_TAB,
-  KEYCODE_ENTER,
-  KEYCODE_ESCAPE,
-  KEYCODE_LEFT,
-  KEYCODE_UP,
-  KEYCODE_RIGHT,
-  KEYCODE_DOWN,
-} from "metabase/lib/keyboard";
-
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -49,6 +39,7 @@ const HelpText = ({ helpText, width }) =>
         attachment: "top left",
         targetAttachment: "bottom left",
       }}
+      targetOffsetY={-47}
       style={{ width }}
       isOpen
     >
@@ -142,12 +133,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       fontSize: "12px",
     });
 
-    this._setCaretPosition(
+    this.setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
     );
 
-    this._triggerAutosuggest();
+    this.triggerAutosuggest();
   }
 
   onSuggestionSelected = index => {
@@ -175,7 +166,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         const replacement = suggested.slice(0, suggested.length - extraTrim);
 
         const updatedExpression = prefix + replacement.trim() + postfix;
-        this.onExpressionChange(updatedExpression);
+        this.handleExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
 
         // setTimeout solves a race condition that happens only
@@ -184,7 +175,7 @@ export default class ExpressionEditorTextfield extends React.Component {
         setTimeout(() => editor.moveCursorTo(row, caretPos));
       } else {
         const newExpression = source + suggestion.text;
-        this.onExpressionChange(newExpression);
+        this.handleExpressionChange(newExpression);
         editor.moveCursorTo(row, newExpression.length);
       }
     }
@@ -239,85 +230,13 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  onInputKeyDown = e => {
-    const { suggestions, highlightedSuggestionIndex } = this.state;
-
-    if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
-      setTimeout(() => this._triggerAutosuggest());
-      return;
-    }
-
-    if (e.keyCode === KEYCODE_ESCAPE) {
-      e.stopPropagation();
-      e.preventDefault();
-      this.clearSuggestions();
-      return;
-    }
-
-    if (!suggestions.length) {
-      if (e.keyCode === KEYCODE_ENTER && this.props.onCommit) {
-        const expression = this._compileExpression();
-        if (isExpression(expression)) {
-          this.props.onCommit(expression);
-        }
-      }
-      return;
-    }
-
-    if (e.keyCode === KEYCODE_ENTER || e.keyCode === KEYCODE_TAB) {
-      this.onSuggestionSelected(highlightedSuggestionIndex);
-      e.preventDefault();
-    } else if (e.keyCode === KEYCODE_UP) {
-      this.setState({
-        highlightedSuggestionIndex:
-          (highlightedSuggestionIndex + suggestions.length - 1) %
-          suggestions.length,
-      });
-      e.preventDefault();
-    } else if (e.keyCode === KEYCODE_DOWN) {
-      this.setState({
-        highlightedSuggestionIndex:
-          (highlightedSuggestionIndex + suggestions.length + 1) %
-          suggestions.length,
-      });
-      e.preventDefault();
-    }
-  };
-
-  clearSuggestions() {
-    this.setState({
-      suggestions: [],
-      highlightedSuggestionIndex: 0,
-      helpText: null,
-    });
-  }
-
-  _compileExpression() {
-    const { source } = this.state;
-    if (!source || source.length === 0) {
-      return null;
-    }
-    const { query, startRule } = this.props;
-    const { expression } = processSource({ source, query, startRule });
-
-    return expression;
-  }
-
-  commitExpression() {
-    const expression = this._compileExpression();
-
-    if (isExpression(expression)) {
-      this.props.onCommit(expression);
-    }
-  }
-
   handleFocus = () => {
     this.setState({ isFocused: true });
     const { editor } = this.input.current;
-    this.onCursorChange(editor.selection);
+    this.handleCursorChange(editor.selection);
   };
 
-  onInputBlur = e => {
+  handleInputBlur = e => {
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
@@ -337,7 +256,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    const expression = this._compileExpression();
+    const expression = this.compileExpression();
     if (expression) {
       if (!isExpression(expression)) {
         console.warn("isExpression=false", expression);
@@ -350,29 +269,52 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  onInputClick = () => {
-    this._triggerAutosuggest();
+  clearSuggestions() {
+    this.setState({
+      suggestions: [],
+      highlightedSuggestionIndex: 0,
+      helpText: null,
+    });
+  }
+
+  compileExpression() {
+    const { source } = this.state;
+    if (!source || source.length === 0) {
+      return null;
+    }
+    const { query, startRule } = this.props;
+    const { expression } = processSource({ source, query, startRule });
+
+    return expression;
+  }
+
+  commitExpression() {
+    const expression = this.compileExpression();
+
+    if (isExpression(expression)) {
+      this.props.onCommit(expression);
+    }
+  }
+
+  triggerAutosuggest = () => {
+    this.handleExpressionChange(this.state.source);
   };
 
-  _triggerAutosuggest = () => {
-    this.onExpressionChange(this.state.source);
-  };
-
-  _setCaretPosition = (position, autosuggest) => {
+  setCaretPosition = (position, autosuggest) => {
     // FIXME setCaretPosition(this.input.current, position);
     if (autosuggest) {
-      setTimeout(() => this._triggerAutosuggest());
+      setTimeout(() => this.triggerAutosuggest());
     }
   };
 
-  onExpressionChange(source) {
+  handleExpressionChange(source) {
     this.setState({ source });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
   }
 
-  onCursorChange(selection) {
+  handleCursorChange(selection) {
     const cursor = selection.getCursor();
 
     const { query, startRule } = this.props;
@@ -436,7 +378,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             highlightActiveLine={false}
             wrapEnabled={true}
             fontSize={12}
-            onBlur={this.onInputBlur}
+            onBlur={this.handleInputBlur}
             onFocus={this.handleFocus}
             role="ace-editor"
             setOptions={{
@@ -449,8 +391,8 @@ export default class ExpressionEditorTextfield extends React.Component {
               showFoldWidgets: false,
               showPrintMargin: false,
             }}
-            onChange={source => this.onExpressionChange(source)}
-            onCursorChange={selection => this.onCursorChange(selection)}
+            onChange={source => this.handleExpressionChange(source)}
+            onCursorChange={selection => this.handleCursorChange(selection)}
             width="100%"
           />
           <ExpressionEditorSuggestions

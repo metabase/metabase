@@ -119,7 +119,7 @@
     (svg-string->bytes svg-string)))
 
 (defn funnel
-  "Clojure entrypoint to render a timeseries waterfall chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
+  "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
   (let [svg-string (.asString (js/execute-fn-name @context "funnel" (json/generate-string data)
@@ -127,10 +127,19 @@
     (svg-string->bytes svg-string)))
 
 (defn timelineseries-bar
-  "Clojure entrypoint to render a timeseries bar char. Rows should be tuples of [datetime numeric-value]. Labels is a
+  "Clojure entrypoint to render a timeseries bar chart. Rows should be tuples of [datetime numeric-value]. Labels is a
   map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "timeseries_bar" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
+(defn timelineseries-area
+  "Clojure entrypoint to render a timeseries area chart. Rows should be tuples of [datetime numeric-value]. Labels is a
+  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
+  [rows labels settings]
+  (let [svg-string (.asString (js/execute-fn-name @context "timeseries_area" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
@@ -173,6 +182,15 @@
   a map of {:left \"left-label\" :botton \"bottom-label\". Returns a byte array of a png file."
   [rows labels settings]
   (let [svg-string (.asString (js/execute-fn-name @context "categorical_bar" rows
+                                                  (map (fn [[k v]] [(name k) v]) labels)
+                                                  (json/generate-string settings)))]
+    (svg-string->bytes svg-string)))
+
+(defn categorical-area
+  "Clojure entrypoint to render a categorical area chart. Rows should be tuples of [stringable numeric-value]. Labels is a
+  map of {:left \"left-label\" :botton \"bottom-label\"}. Returns a byte array of a png file."
+  [rows labels settings]
+  (let [svg-string (.asString (js/execute-fn-name @context "categorical_area" rows
                                                   (map (fn [[k v]] [(name k) v]) labels)
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))

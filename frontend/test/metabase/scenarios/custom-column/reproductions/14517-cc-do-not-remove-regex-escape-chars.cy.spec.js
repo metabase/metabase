@@ -13,8 +13,12 @@ describe.skip("postgres > question > custom columns", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME).click();
-    cy.findByText("People").click();
+    cy.findByText(PG_DB_NAME)
+      .should("be.visible")
+      .click();
+    cy.findByText("People")
+      .should("be.visible")
+      .click();
   });
 
   it("should not remove regex escape characters (metabase#14517)", () => {

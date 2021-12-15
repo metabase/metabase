@@ -16,6 +16,7 @@ export const ListRoot = styled.div<ListRootProps>`
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
   margin-top: ${props => (props.hasMargin ? "2.5rem" : "")};
+  overflow: hidden;
 
   ${breakpointMinSmall} {
     grid-template-columns: repeat(2, 1fr);
@@ -34,6 +35,7 @@ export const CardRoot = styled(Link)`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 2px ${color("shadow")};
+  overflow: hidden;
 
   &:hover {
     color: ${color("brand")};
@@ -51,6 +53,7 @@ export const CardTitle = styled.span`
   display: block;
   font-weight: 700;
   margin-top: 2.25rem;
+  overflow: hidden;
 `;
 
 export const BannerIconContainer = styled.div`

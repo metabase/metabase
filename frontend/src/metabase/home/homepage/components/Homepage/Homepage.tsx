@@ -12,6 +12,7 @@ import GreetingSection from "../GreetingSection";
 import StartSection from "../StartSection";
 import XraySection from "../XraySection";
 import { LandingRoot } from "./Homepage.styled";
+import SyncingSection from "../SyncingSection/SyncingSection";
 
 interface Props {
   user: User;
@@ -22,9 +23,14 @@ interface Props {
   showData?: boolean;
   showXrays?: boolean;
   showPinMessage?: boolean;
+  showSyncingModal?: boolean;
   onHideData?: () => void;
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
+  onHideSyncingModal?: () => void;
+  onCollectionClick?: () => void;
+  onDashboardClick?: (dashboard: Dashboard) => void;
+  onDatabaseClick?: (database: Database) => void;
 }
 
 const Homepage = ({
@@ -36,9 +42,14 @@ const Homepage = ({
   showData,
   showXrays,
   showPinMessage,
+  showSyncingModal,
   onHideData,
   onHideXrays,
   onHidePinMessage,
+  onHideSyncingModal,
+  onCollectionClick,
+  onDashboardClick,
+  onDatabaseClick,
 }: Props) => {
   return (
     <LandingRoot>
@@ -51,6 +62,7 @@ const Homepage = ({
             dashboards={dashboards}
             showPinMessage={showPinMessage}
             onHidePinMessage={onHidePinMessage}
+            onDashboardClick={onDashboardClick}
           />
           <XraySection
             user={user}
@@ -59,12 +71,24 @@ const Homepage = ({
             showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
-          <CollectionSection user={user} collections={collections} />
+          <CollectionSection
+            user={user}
+            collections={collections}
+            onCollectionClick={onCollectionClick}
+          />
           <DatabaseSection
             user={user}
             databases={databases}
             showData={showData}
             onHideData={onHideData}
+            onDatabaseClick={onDatabaseClick}
+          />
+          <SyncingSection
+            user={user}
+            databases={databases}
+            showXrays={showXrays}
+            showSyncingModal={showSyncingModal}
+            onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
       )}
