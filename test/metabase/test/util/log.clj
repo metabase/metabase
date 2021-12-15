@@ -107,7 +107,7 @@
   ^LoggerConfig [a-namespace]
   (assert (= (log.impl/name log/*logger-factory*) "org.apache.logging.log4j"))
   (let [^Logger logger (log.impl/get-logger log/*logger-factory* (logger-name a-namespace))]
-      (.get logger)))
+    (.get logger)))
 
 (s/defn ns-log-level :- LogLevelKeyword
   "Get the log level currently applied to the namespace named by symbol `a-namespace`. `a-namespace` may be a symbol
@@ -129,6 +129,7 @@
   "Ensure that `a-namespace` has its own unique logger, e.g. it's not a parent logger like `metabase`. This way we can
   set the level for this namespace without affecting others."
   [a-namespace]
+  {:post [(exact-ns-logger a-namespace)]}
   (when-not (exact-ns-logger a-namespace)
     (let [parent-logger (effective-ns-logger a-namespace)
           new-logger    (LoggerConfig/createLogger
@@ -143,6 +144,7 @@
                          (configuration)
                          (.getFilter parent-logger))]
       (.addLogger (configuration) (logger-name a-namespace) new-logger)
+      (.updateLoggers (logger-context))
       (println "Created a new logger for" (logger-name a-namespace)))))
 
 (s/defn set-ns-log-level!
@@ -159,7 +161,6 @@
    (ensure-unique-logger! a-namespace)
    (let [logger    (exact-ns-logger a-namespace)
          new-level (->Level new-level)]
-     (println "\nSet logger" (pr-str (logger-name a-namespace)) (pr-str logger) "level to" new-level)
      (.setLevel logger new-level)
      (.updateLoggers (logger-context)))))
 
