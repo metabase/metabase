@@ -4,6 +4,7 @@ import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import DatabaseForm from "../DatabaseForm";
 import { DatabaseInfo } from "../../types";
+import { StepDescription } from "./DatabaseStep.styled";
 
 interface Props {
   database?: DatabaseInfo;
@@ -45,6 +46,10 @@ const DatabaseStep = ({
 
   return (
     <ActiveStep title={getStepTitle(database, isCompleted)} label={3}>
+      <StepDescription>
+        <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
+        <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
+      </StepDescription>
       <DatabaseForm
         database={database}
         onSubmit={handleSubmit}
