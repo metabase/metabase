@@ -6,6 +6,7 @@ import InactiveStep from "../InvactiveStep";
 import { UserFormRoot, UserFormGroup } from "./UserStep.styled";
 import { FormProps } from "./types";
 import { UserInfo } from "../../types";
+import { getIn } from "icepick";
 
 interface Props {
   user?: UserInfo;
@@ -60,11 +61,20 @@ interface UserFormProps {
 }
 
 const UserForm = ({ user, onSubmit, onValidatePassword }: UserFormProps) => {
+  const handleAsyncValidate = async (user: UserInfo) => {
+    try {
+      onValidatePassword(user);
+      return {};
+    } catch (error) {
+      return getIn(error, ["data", "errors"]);
+    }
+  };
+
   return (
     <UserFormRoot
       form={Users.forms.setup()}
       user={user}
-      asyncValidate={onValidatePassword}
+      asyncValidate={handleAsyncValidate}
       asyncBlurFields={["password"]}
       onSubmit={onSubmit}
     >

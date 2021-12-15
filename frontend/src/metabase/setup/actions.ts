@@ -24,12 +24,7 @@ export const VALIDATE_PASSWORD = "metabase/setup/VALIDATE_PASSWORD";
 export const validatePassword = createThunkAction(
   VALIDATE_PASSWORD,
   (user: UserInfo) => async () => {
-    try {
-      await UtilApi.password_check({ password: user.password });
-      return {};
-    } catch (error) {
-      return getIn(error, ["data", "errors"]);
-    }
+    await UtilApi.password_check({ password: user.password });
   },
 );
 
