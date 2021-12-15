@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const StepDescription = styled.div`
   margin: 0.875rem 0;
-  color: ${color("text-dark")};
+  color: ${color("text-medium")};
 `;
 
 export const StepToggleContainer = styled.div`
@@ -14,7 +14,7 @@ export const StepToggleContainer = styled.div`
   border-radius: 0.5rem;
 `;
 
-export const StepToggleText = styled.div`
-  color: ${color("text-dark")};
+export const StepToggleLabel = styled.div`
+  color: ${color("text-medium")};
   margin-left: 0.5rem;
 `;

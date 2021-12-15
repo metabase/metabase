@@ -11,7 +11,7 @@ interface Props {
   database?: DatabaseInfo;
   isActive: boolean;
   isCompleted: boolean;
-  onChangeDatabase: (database?: DatabaseInfo) => void;
+  onChangeDatabase: (database: DatabaseInfo | null) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -30,7 +30,7 @@ const DatabaseStep = ({
   };
 
   const handleCancel = () => {
-    onChangeDatabase();
+    onChangeDatabase(null);
     onSelectNextStep();
   };
 

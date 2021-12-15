@@ -5,7 +5,11 @@ import ExternalLink from "metabase/components/ExternalLink";
 import Toggle from "metabase/components/Toggle";
 import InactiveStep from "../InvactiveStep";
 import ActiveStep from "../ActiveStep";
-import { StepDescription, StepToggleContainer } from "./PreferencesStep.styled";
+import {
+  StepDescription,
+  StepToggleContainer,
+  StepToggleLabel,
+} from "./PreferencesStep.styled";
 
 interface Props {
   isTrackingAllowed: boolean;
@@ -46,9 +50,9 @@ const PreferencesStep = ({
           value={isTrackingAllowed}
           aria-labelledby="anonymous-usage-events-label"
         />
-        <StepToggleContainer id="anonymous-usage-events-label">
+        <StepToggleLabel id="anonymous-usage-events-label">
           {t`Allow Metabase to anonymously collect usage events`}
-        </StepToggleContainer>
+        </StepToggleLabel>
       </StepToggleContainer>
     </ActiveStep>
   );

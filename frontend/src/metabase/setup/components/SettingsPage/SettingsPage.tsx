@@ -25,7 +25,7 @@ interface Props {
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
-  onChangeDatabase: (database?: DatabaseInfo) => void;
+  onChangeDatabase: (database: DatabaseInfo | null) => void;
 }
 
 const SettingsPage = ({
