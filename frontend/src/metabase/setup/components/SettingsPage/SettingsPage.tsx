@@ -4,12 +4,14 @@ import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../components/UserStep";
 import DatabaseStep from "../DatabaseStep";
+import PreferencesStep from "../PreferencesStep";
 import SetupFooter from "../SetupFooter";
 import {
   LANGUAGE_STEP,
   USER_STEP,
   DATABASE_STEP,
   PREFERENCES_STEP,
+  COMPLETED_STEP,
 } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 
@@ -68,6 +70,13 @@ const SettingsPage = ({
         onChangeDatabase={onChangeDatabase}
         onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
         onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
+      />
+      <PreferencesStep
+        isTrackingAllowed={false}
+        isActive={step === PREFERENCES_STEP}
+        isCompleted={step > PREFERENCES_STEP}
+        onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
+        onSelectNextStep={() => onChangeStep(COMPLETED_STEP)}
       />
       <SetupFooter />
     </PageBody>
