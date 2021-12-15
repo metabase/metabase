@@ -421,7 +421,7 @@
 
 (defsetting start-of-week
   (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.
-  It won''t affect SQL queries.")
+  It won''t affect most SQL queries, although it is used to set the WEEK_START session variable in Snowflake.")
   :visibility :public
   :type       :keyword
   :default    :sunday)

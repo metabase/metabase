@@ -3,6 +3,10 @@
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
 
+(def ^:private ^:const default-name-value-separator "=")
+
+(def ^:private separator-style->entry-separator {:comma ",", :semicolon ";", :url "&"})
+
 (defn conn-str-with-additional-opts
   "Adds `additional-opts` (a string) to the given `connection-string` based on the given `separator-style`. See
   documentation for `handle-additional-options` for further details."
@@ -23,17 +27,17 @@
 (defn additional-opts->string
   "Turns a map of `additional-opts` into a single string, based on the `separator-style`."
   {:added "0.41.0"}
-  [separator-style additional-opts]
+  [separator-style additional-opts & [name-value-separator]]
   {:pre [(or (nil? additional-opts) (map? additional-opts)) (contains? valid-separator-styles separator-style)]}
   (when (some? additional-opts)
     (reduce-kv (fn [m k v]
                  (str m
                       (when (seq m)
-                        (case separator-style :comma "," :semicolon ";" :url "&"))
+                        (separator-style->entry-separator separator-style))
                       (if (keyword? k)
                         (name k)
                         (str k))
-                      "="
+                      (or name-value-separator default-name-value-separator)
                       v)) "" additional-opts)))
 
 (defn handle-additional-options
@@ -52,3 +56,19 @@
                                                                                                                :or   {seperator-style :url}}]
    (-> (dissoc connection-spec :additional-options)
        (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
+
+(defn parse-additional-options-value
+  "Attempts to parse the value for `opt-name` from an `additional-options` string, with `separator-style`, having
+  `opt-name-val-separator?` in between option names and values (optional; defaults to '='). Searches the additional
+  options string in a case insensitive manner."
+  [additional-options opt-name separator-style & [name-value-separator?]]
+  {:pre [(or (nil? additional-options) (string? additional-options))
+         (string? opt-name)
+         (contains? valid-separator-styles separator-style)
+         (or (nil? name-value-separator?) (and (string? name-value-separator?)
+                                               (= 1 (count name-value-separator?))))]}
+  (let [entry-sep (or (separator-style->entry-separator separator-style))
+        nv-sep    (or name-value-separator? default-name-value-separator)
+        re-pat    (str "(?i).*(?:^|" entry-sep ")(?:" opt-name nv-sep ")([^" nv-sep entry-sep "]+).*$")
+        [_ match] (re-matches (re-pattern re-pat) additional-options)]
+    match))

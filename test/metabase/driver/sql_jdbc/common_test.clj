@@ -18,3 +18,15 @@
                                                ["localhost:4321?a=1&b=2" :url "localhost:4321" {:a 1 :b 2}]]]
       (let [opts-str (sql-jdbc.common/additional-opts->string sep-style opts)]
         (t/is (= exp-str (sql-jdbc.common/conn-str-with-additional-opts conn-str sep-style opts-str)))))))
+
+(t/deftest parse-additional-options-value-test
+  (t/testing "parse-additional-options-value function works as expected"
+    (doseq [[exp addl-opts sep-style nv-sep] [["two" "bar=two" :url]
+                                              ["two" "bar=two&baz=three" :url]
+                                              ["two" "foo=one&bar=two&baz=three" :url]
+                                              ["two" "foo=one&BAR=two" :url]
+                                              [nil "foo=one&bar=&baz=three" :url]
+                                              ["two" "foo=one,bar=two,baz=three" :comma]
+                                              ["two" "foo=one;BaR=two;baz=three" :semicolon]]]
+      (t/testing (format "can parse value for %s separator style from %s" sep-style addl-opts)
+        (t/is (= exp (sql-jdbc.common/parse-additional-options-value addl-opts "bar" sep-style nv-sep)))))))
