@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.jwt
   "Implementation of the JWT backend for sso"
   (:require [buddy.sign.jwt :as jwt]
+            [clojure.string :as str]
             [metabase-enterprise.sso.api.interface :as sso.i]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
@@ -10,8 +11,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.response :as resp]
-            [clojure.string :as str])
+            [ring.util.response :as resp])
   (:import java.net.URLEncoder))
 
 (defn fetch-or-create-user!
