@@ -24,7 +24,6 @@ const MAX_SEARCH_RESULTS = 100;
 const fieldValuesWidgetPropTypes = {
   addRemappings: PropTypes.func,
   expand: PropTypes.bool,
-  isSidebar: PropTypes.bool,
 };
 
 const optionsMessagePropTypes = {
@@ -422,7 +421,6 @@ export class FieldValuesWidget extends Component {
 
     return (
       <div
-        className={cx({ "PopoverBody--marginBottom": !this.props.isSidebar })}
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
