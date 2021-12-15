@@ -50,7 +50,6 @@
 (p/import-vars
  [tu.log
   with-log-level
-  with-log-messages
   with-log-messages-for-level])
 
 (defn- random-uppercase-letter []
