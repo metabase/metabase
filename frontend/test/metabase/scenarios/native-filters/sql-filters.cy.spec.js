@@ -1,6 +1,5 @@
 import {
   restore,
-  mockSessionProperty,
   openNativeEditor,
   filterWidget,
 } from "__support__/e2e/cypress";
@@ -13,8 +12,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
   });
