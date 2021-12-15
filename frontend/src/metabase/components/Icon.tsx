@@ -60,7 +60,7 @@ export const iconPropTypes = {
   onClick: PropTypes.func,
 };
 
-type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
+export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
   innerRef?: () => void;
 };
 
