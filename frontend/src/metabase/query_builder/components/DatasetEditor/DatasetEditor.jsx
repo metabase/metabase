@@ -38,6 +38,7 @@ import {
 const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
+  result: PropTypes.object,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -111,6 +112,7 @@ function DatasetEditor(props) {
   const {
     question: dataset,
     datasetEditorTab,
+    result,
     height,
     setQueryBuilderMode,
     setDatasetEditorTab,
@@ -129,11 +131,14 @@ function DatasetEditor(props) {
   const [focusedField, setFocusedField] = useState();
 
   useEffect(() => {
-    const resultMetadata = dataset.getResultMetadata();
-    if (!focusedField && resultMetadata?.length > 0) {
-      setFocusedField(resultMetadata[0]);
+    // Focused field has to be set once the query is completed and the result is rendered
+    // Visualization render can remove the focus
+    const hasQueryResults = !!result;
+    if (!focusedField && hasQueryResults) {
+      const [firstField] = dataset.getResultMetadata();
+      setFocusedField(firstField);
     }
-  }, [dataset, focusedField]);
+  }, [dataset, result, focusedField]);
 
   const onChangeEditorTab = useCallback(
     tab => {
