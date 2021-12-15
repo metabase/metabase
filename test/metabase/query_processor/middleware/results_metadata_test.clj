@@ -209,7 +209,7 @@
                          {:database (mt/id)
                           :type :native
                           :native {:query native-query}
-                          :middleware {:metadata/dataset-metadata existing-metadata}})]
+                          :info {:metadata/dataset-metadata existing-metadata}})]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))
         (testing "mbql"
@@ -220,9 +220,10 @@
                                                      (qp/process-userland-query)
                                                      :data :results_metadata :columns))
                 results (qp/process-userland-query
-                         (assoc query
-                                :middleware
-                                {:metadata/dataset-metadata existing-metadata}))]
+                         (update query
+                                 :info
+                                 merge
+                                 {:metadata/dataset-metadata existing-metadata}))]
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))))))
 
