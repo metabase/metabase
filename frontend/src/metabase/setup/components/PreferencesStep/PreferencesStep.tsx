@@ -1,6 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import Settings from "metabase/lib/settings";
+import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Toggle from "metabase/components/Toggle";
 import InactiveStep from "../InvactiveStep";
@@ -54,16 +55,19 @@ const PreferencesStep = ({
         <StepToggleLabel id="anonymous-usage-events-label">
           {t`Allow Metabase to anonymously collect usage events`}
         </StepToggleLabel>
-        {isTrackingAllowed && (
-          <StepList>
-            <li>{jt`Metabase ${(
-              <strong>{t`never`}</strong>
-            )} collects anything about your data or question results.`}</li>
-            <li>{t`All collection is completely anonymous.`}</li>
-            <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
-          </StepList>
-        )}
       </StepToggle>
+      {isTrackingAllowed && (
+        <StepList>
+          <li>{jt`Metabase ${(
+            <strong>{t`never`}</strong>
+          )} collects anything about your data or question results.`}</li>
+          <li>{t`All collection is completely anonymous.`}</li>
+          <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
+        </StepList>
+      )}
+      <Button primary onClick={onSelectNextStep}>
+        {t`Next`}
+      </Button>
     </ActiveStep>
   );
 };

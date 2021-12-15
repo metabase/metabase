@@ -72,7 +72,7 @@ const SettingsPage = ({
         onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
       />
       <PreferencesStep
-        isTrackingAllowed={false}
+        isTrackingAllowed={true}
         isActive={step === PREFERENCES_STEP}
         isCompleted={step > PREFERENCES_STEP}
         onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
