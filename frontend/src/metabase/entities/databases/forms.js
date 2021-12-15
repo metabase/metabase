@@ -80,9 +80,11 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   "schedules.metadata_sync": () => ({
     type: MetadataSyncScheduleWidget,
+    normalize: value => value,
   }),
   "schedules.cache_field_values": () => ({
     type: CacheFieldValuesScheduleWidget,
+    normalize: value => value,
   }),
 };
 
@@ -270,13 +272,13 @@ function getEngineFormFields(engine, details, id) {
   return (
     engineFields
       // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
-      .concat(cachingField || [])
+      .concat(cachingField ? [cachingField] : [])
       .filter(field => shouldShowEngineProvidedField(field, details))
       .map(field => {
         const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
         return {
-          name: `details.${field.name}`,
+          name: field.name.includes(".") ? field.name : `details.${field.name}`,
           title: field["display-name"] || field["title"],
           type: field.type,
           description: field.description,
