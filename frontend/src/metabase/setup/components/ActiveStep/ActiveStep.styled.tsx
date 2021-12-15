@@ -3,10 +3,10 @@ import { color } from "metabase/lib/colors";
 
 export const StepRoot = styled.section`
   position: relative;
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
   padding: 4rem;
   margin-bottom: 1.75rem;
+  border: 1px solid ${color("border")};
+  border-radius: 0.5rem;
   background-color: ${color("white")};
 `;
 

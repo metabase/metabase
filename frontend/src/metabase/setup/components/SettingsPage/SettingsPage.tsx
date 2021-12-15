@@ -14,6 +14,7 @@ import {
   COMPLETED_STEP,
 } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
+import CompletedStep from "../CompletedStep";
 
 interface Props {
   step: number;
@@ -78,6 +79,7 @@ const SettingsPage = ({
         onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
         onSelectNextStep={() => onChangeStep(COMPLETED_STEP)}
       />
+      <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
       <SetupFooter />
     </PageBody>
   </div>
