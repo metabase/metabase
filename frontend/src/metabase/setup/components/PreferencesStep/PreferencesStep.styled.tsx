@@ -6,7 +6,7 @@ export const StepDescription = styled.div`
   color: ${color("text-medium")};
 `;
 
-export const StepToggleContainer = styled.div`
+export const StepToggle = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem;
@@ -17,4 +17,10 @@ export const StepToggleContainer = styled.div`
 export const StepToggleLabel = styled.div`
   color: ${color("text-medium")};
   margin-left: 0.5rem;
+`;
+
+export const StepList = styled.ul`
+  color: ${color("text-medium")};
+  list-style: disc inside;
+  line-height: 2;
 `;
