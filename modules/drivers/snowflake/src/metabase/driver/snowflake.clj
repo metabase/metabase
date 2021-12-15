@@ -21,8 +21,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.models.setting :as setting])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql ResultSet Types]
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))

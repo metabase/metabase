@@ -67,7 +67,7 @@
          (contains? valid-separator-styles separator-style)
          (or (nil? name-value-separator?) (and (string? name-value-separator?)
                                                (= 1 (count name-value-separator?))))]}
-  (let [entry-sep (or (separator-style->entry-separator separator-style))
+  (let [entry-sep (separator-style->entry-separator separator-style)
         nv-sep    (or name-value-separator? default-name-value-separator)
         re-pat    (str "(?i).*(?:^|" entry-sep ")(?:" opt-name nv-sep ")([^" nv-sep entry-sep "]+).*$")
         [_ match] (re-matches (re-pattern re-pat) additional-options)]
