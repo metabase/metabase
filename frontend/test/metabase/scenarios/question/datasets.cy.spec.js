@@ -206,7 +206,7 @@ describe("scenarios > datasets", () => {
         cy.icon("chevronleft").click();
 
         cy.findByText("Raw Data").click();
-        cy.findByText("Sample Dataset");
+        cy.findByText("Sample Dataset").click(); // go back to db list
         cy.findByText("Saved Questions").should("not.exist");
         testDataPickerSearch({
           inputPlaceholderText: "Search for a table…",
