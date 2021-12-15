@@ -8,8 +8,8 @@
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test :as mt]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn- resolve-card-id-source-tables [query]
   (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
