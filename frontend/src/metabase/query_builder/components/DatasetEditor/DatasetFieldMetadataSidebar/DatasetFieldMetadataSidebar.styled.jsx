@@ -1,13 +1,39 @@
 import styled from "styled-components";
+import Radio from "metabase/components/Radio";
 import { color } from "metabase/lib/colors";
 
-export const PaddedContent = styled.div`
-  padding: 24px;
+const CONTENT_PADDING = "24px";
+
+const FormContainer = styled.div`
+  ${Radio.BaseItem} {
+    color: ${color("text-dark")};
+  }
+
+  .AdminSelect {
+    color: ${color("text-dark")};
+  }
+`;
+
+export const MainFormContainer = styled(FormContainer)`
+  padding: ${CONTENT_PADDING} ${CONTENT_PADDING} 0 ${CONTENT_PADDING};
+`;
+
+export const SecondaryFormContainer = styled(FormContainer)`
+  padding: 0 ${CONTENT_PADDING} ${CONTENT_PADDING} ${CONTENT_PADDING};
+`;
+
+export const ViewAsFieldContainer = styled.div`
+  font-weight: bold;
+`;
+
+export const FormTabsContainer = styled.div`
+  padding-left: ${CONTENT_PADDING};
+  padding-right: ${CONTENT_PADDING};
 `;
 
 export const Divider = styled.div`
   height: 1px;
   width: 100%;
   background-color: ${color("bg-medium")};
-  margin-bottom: 21px;
+  margin-bottom: 1.5em;
 `;

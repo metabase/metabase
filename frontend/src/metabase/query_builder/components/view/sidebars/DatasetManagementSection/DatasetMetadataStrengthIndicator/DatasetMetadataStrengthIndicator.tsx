@@ -1,14 +1,13 @@
 import React from "react";
 import { t } from "ttag";
 
+import Question from "metabase-lib/lib/Question";
+
 import ProgressBar from "metabase/components/ProgressBar";
 import Tooltip from "metabase/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
-import {
-  FieldMetadata,
-  getDatasetMetadataCompletenessPercentage,
-} from "metabase/lib/data-modeling/metadata";
+import { getDatasetMetadataCompletenessPercentage } from "metabase/lib/data-modeling/metadata";
 import { useHover } from "metabase/hooks/use-hover";
 
 import {
@@ -53,9 +52,7 @@ function formatPercentage(percentage: number): string {
 }
 
 type Props = {
-  dataset: {
-    getResultMetadata: () => FieldMetadata[];
-  };
+  dataset: Question;
 };
 
 const TOOLTIP_DELAY: [number, null] = [700, null];

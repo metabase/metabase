@@ -59,7 +59,11 @@ export default class Field extends Base {
     return path;
   }
 
-  displayName({ includeSchema, includeTable, includePath = true } = {}) {
+  displayName({
+    includeSchema = false,
+    includeTable,
+    includePath = true,
+  } = {}) {
     let displayName = "";
 
     if (includeTable && this.table) {

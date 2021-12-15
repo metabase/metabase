@@ -6,6 +6,8 @@ import Icon from "metabase/components/Icon";
 import {
   RadioInput,
   RadioButton,
+  BaseList,
+  BaseItem,
   BubbleList,
   BubbleItem,
   NormalList,
@@ -146,5 +148,7 @@ function Radio({
 }
 
 Radio.propTypes = propTypes;
+Radio.BaseList = BaseList;
+Radio.BaseItem = BaseItem;
 
 export default Radio;
