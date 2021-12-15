@@ -1,7 +1,10 @@
 import React from "react";
 import { t } from "ttag";
+import Settings from "metabase/lib/settings";
+import ExternalLink from "metabase/components/ExternalLink";
 import InactiveStep from "../InvactiveStep";
 import ActiveStep from "../ActiveStep";
+import { StepDescription } from "./PreferencesStep.styled";
 
 interface Props {
   isTrackingAllowed: boolean;
@@ -31,7 +34,12 @@ const PreferencesStep = ({
 
   return (
     <ActiveStep title={getStepTitle(isTrackingAllowed, isCompleted)} label={4}>
-      <div />
+      <StepDescription>
+        {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
+        <ExternalLink
+          href={Settings.docsUrl("information-collection")}
+        >{t`Here's a full list of what we track and why.`}</ExternalLink>
+      </StepDescription>
     </ActiveStep>
   );
 };
