@@ -20,3 +20,7 @@ export const getDefaultLocale = (
     locales.find(({ code }) => code === "en")
   );
 };
+
+export const getUserToken = (hash = window.location.hash) => {
+  return hash.replace(/^#/, "");
+};

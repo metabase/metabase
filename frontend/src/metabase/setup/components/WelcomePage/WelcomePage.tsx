@@ -10,20 +10,22 @@ import {
   PageBody,
   PageButton,
 } from "./WelcomePage.styled";
-import { Locale, LocaleData } from "../../types";
-import { getLocales, getDefaultLocale } from "../../utils";
 
 interface Props {
-  localeData?: LocaleData[];
   onChangeStep: (step: number) => void;
-  onChangeLocale: (locale: Locale) => void;
+  onLoadUserDefaults: () => void;
+  onLoadLocaleDefaults: () => void;
 }
 
-const WelcomePage = ({ localeData, onChangeStep, onChangeLocale }: Props) => {
+const WelcomePage = ({
+  onChangeStep,
+  onLoadLocaleDefaults,
+  onLoadUserDefaults,
+}: Props) => {
   useEffect(() => {
-    const defaultLocale = getDefaultLocale(getLocales(localeData));
-    defaultLocale && onChangeLocale(defaultLocale);
-  }, [localeData, onChangeLocale]);
+    onLoadUserDefaults();
+    onLoadLocaleDefaults();
+  }, [onLoadUserDefaults, onLoadLocaleDefaults]);
 
   return (
     <PageRoot>

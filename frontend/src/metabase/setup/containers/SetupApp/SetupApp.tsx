@@ -10,6 +10,8 @@ import {
   setTracking,
   validateDatabase,
   submitSetup,
+  loadUserDefaults,
+  loadLocaleDefaults,
 } from "../../actions";
 import {
   getStep,
@@ -39,6 +41,8 @@ const mapDispatchToProps = {
   onChangeTracking: setTracking,
   onValidatePassword: validatePassword,
   onValidateDatabase: validateDatabase,
+  onLoadUserDefaults: loadUserDefaults,
+  onLoadLocaleDefaults: loadLocaleDefaults,
   onSubmitSetup: submitSetup,
 };
 

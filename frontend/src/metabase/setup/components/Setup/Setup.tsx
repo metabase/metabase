@@ -20,6 +20,8 @@ interface Props {
   onChangeTracking: (isTrackingAllowed: boolean) => void;
   onValidatePassword: (user: UserInfo) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
+  onLoadUserDefaults: () => void;
+  onLoadLocaleDefaults: () => void;
   onSubmitSetup: () => void;
 }
 
