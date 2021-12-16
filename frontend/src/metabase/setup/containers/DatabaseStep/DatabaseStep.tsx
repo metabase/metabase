@@ -1,6 +1,10 @@
 import { connect } from "react-redux";
 import DatabaseStep from "../../components/DatabaseStep";
 import { setDatabase, validateDatabase, setStep } from "../../actions";
+import {
+  trackDatabaseSelected,
+  trackAddDataLaterClicked,
+} from "../../analytics";
 import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
 import {
   getDatabase,
@@ -18,6 +22,8 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
+  onChangeEngine: (engine: string) => trackDatabaseSelected(engine),
+  onSkipThisStep: (engine?: string) => trackAddDataLaterClicked(engine),
   onChangeDatabase: (database: DatabaseInfo | null) =>
     dispatch(setDatabase(database)),
   onValidateDatabase: (database: DatabaseInfo) =>

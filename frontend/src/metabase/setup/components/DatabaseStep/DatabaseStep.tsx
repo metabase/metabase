@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { t } from "ttag";
 import { updateIn } from "icepick";
 import Databases from "metabase/entities/databases";
@@ -10,25 +10,35 @@ import { DatabaseInfo } from "../../types";
 
 interface Props {
   database?: DatabaseInfo;
+  engine?: string;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
+  onChangeEngine: (engine: string) => void;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
+  onSkipThisStep: (engine?: string) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
 
 const DatabaseStep = ({
   database,
+  engine,
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
+  onChangeEngine,
   onChangeDatabase,
   onValidateDatabase,
+  onSkipThisStep,
   onSelectThisStep,
   onSelectNextStep,
 }: Props) => {
+  useEffect(() => {
+    engine && onChangeEngine(engine);
+  }, [engine, onChangeEngine]);
+
   const handleSubmit = async (database: DatabaseInfo) => {
     onChangeDatabase(await validateDatabase(database, onValidateDatabase));
     onSelectNextStep();
@@ -36,6 +46,7 @@ const DatabaseStep = ({
 
   const handleCancel = () => {
     onChangeDatabase(null);
+    onSkipThisStep(engine);
     onSelectNextStep();
   };
 

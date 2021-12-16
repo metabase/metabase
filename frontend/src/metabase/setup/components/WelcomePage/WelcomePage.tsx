@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import SetupHelp from "../SetupHelp";
-import { LANGUAGE_STEP } from "../../constants";
 import {
   PageRoot,
   PageMain,
@@ -12,13 +11,13 @@ import {
 } from "./WelcomePage.styled";
 
 interface Props {
-  onChangeStep: (step: number) => void;
+  onSelectNextStep: () => void;
   onLoadUserDefaults: () => void;
   onLoadLocaleDefaults: () => void;
 }
 
 const WelcomePage = ({
-  onChangeStep,
+  onSelectNextStep,
   onLoadLocaleDefaults,
   onLoadUserDefaults,
 }: Props) => {
@@ -37,7 +36,7 @@ const WelcomePage = ({
         </PageBody>
         <PageButton
           primary
-          onClick={() => onChangeStep(LANGUAGE_STEP)}
+          onClick={onSelectNextStep}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupHelp />

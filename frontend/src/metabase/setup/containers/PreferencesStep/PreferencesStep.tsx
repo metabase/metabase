@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import PreferencesStep from "../../components/PreferencesStep";
 import { setTracking, submitSetup, setStep } from "../../actions";
+import { trackTrackingChanged } from "../../analytics";
 import { PREFERENCES_STEP, COMPLETED_STEP } from "../../constants";
 import {
   isTrackingAllowed,
@@ -17,7 +18,10 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onChangeTracking: (isAllowed: boolean) => dispatch(setTracking(isAllowed)),
+  onChangeTracking(isAllowed: boolean) {
+    dispatch(setTracking(isAllowed));
+    trackTrackingChanged(isAllowed);
+  },
   onSubmitSetup: () => dispatch(submitSetup()),
   onSelectThisStep: () => dispatch(setStep(PREFERENCES_STEP)),
   onSelectNextStep: () => dispatch(setStep(COMPLETED_STEP)),
