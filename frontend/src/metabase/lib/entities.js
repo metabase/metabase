@@ -306,8 +306,8 @@ export function createEntity(def: EntityDefinition): Entity {
         ({ id }) => [...getObjectStatePath(id), "fetch"],
       ),
       withEntityActionDecorators("fetch"),
-    )(entityObject => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get({ id: entityObject.id })),
+    )((entityObject, options = {}) => async (dispatch, getState) =>
+      entity.normalize(await entity.api.get({ id: entityObject.id }, options)),
     ),
 
     create: compose(

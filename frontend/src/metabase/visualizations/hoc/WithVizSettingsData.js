@@ -64,7 +64,9 @@ const WithVizSettingsData = ComposedComponent => {
         getLinkTargets(
           this.dashcardSettings(this.props),
         ).forEach(({ entity, entityId }) =>
-          this.props.dispatch(entity.actions.fetch({ id: entityId })),
+          this.props.dispatch(
+            entity.actions.fetch({ id: entityId }, { noEvent: true }),
+          ),
         );
       }
 
