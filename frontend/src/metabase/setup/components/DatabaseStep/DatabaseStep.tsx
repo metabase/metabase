@@ -1,12 +1,12 @@
 import React from "react";
 import { t } from "ttag";
+import { updateIn } from "icepick";
 import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { StepDescription } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo } from "../../types";
-import { updateIn } from "icepick";
 
 interface Props {
   database?: DatabaseInfo;
