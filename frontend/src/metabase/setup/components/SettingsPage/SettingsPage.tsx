@@ -4,7 +4,7 @@ import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../DatabaseStep";
-import PreferencesStep from "../PreferencesStep";
+import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../CompletedStep";
 import SetupHelp from "../SetupHelp";
 import {
@@ -80,16 +80,7 @@ const SettingsPage = ({
         onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
         onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
       />
-      <PreferencesStep
-        isTrackingAllowed={isTrackingAllowed}
-        isActive={step === PREFERENCES_STEP}
-        isFilled={step > PREFERENCES_STEP}
-        isCompleted={step === COMPLETED_STEP}
-        onChangeTracking={onChangeTracking}
-        onSubmitSetup={onSubmitSetup}
-        onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
-        onSelectNextStep={() => onChangeStep(COMPLETED_STEP)}
-      />
+      <PreferencesStep />
       <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
       <SetupHelp />
       <DatabaseHelp engine={databaseEngine} isActive={step === DATABASE_STEP} />
