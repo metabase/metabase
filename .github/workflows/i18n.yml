@@ -9,6 +9,8 @@ on:
     - '**.clj*'
     - '**.js'
     - '**.jsx'
+    - '**.ts'
+    - '**.tsx'
     - '.github/workflows/**'
     - 'bin/**'
 

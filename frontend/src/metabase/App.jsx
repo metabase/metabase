@@ -7,6 +7,7 @@ import Navbar from "metabase/nav/containers/Navbar";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
+import StatusListing from "metabase/status/containers/StatusListing";
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import {
@@ -81,6 +82,7 @@ export default class App extends Component {
           {this.hasNavbar() && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
+          <StatusListing />
         </div>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
