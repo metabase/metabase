@@ -172,7 +172,7 @@ class RawCustomFormField extends React.Component {
   }
 }
 
-const CustomFormField = React.forwardRef((props, ref) => (
+export const CustomFormField = React.forwardRef((props, ref) => (
   <RawCustomFormField {...props} innerRef={ref} />
 ));
 
