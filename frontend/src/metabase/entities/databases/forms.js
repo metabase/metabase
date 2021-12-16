@@ -281,8 +281,11 @@ function getEngineFormFields(engine, details, id) {
           description: field.description,
           placeholder: field.placeholder || field.default,
           options: field.options,
-          validate: value => (field.required && !value ? t`required` : null),
-          normalize: value => normalizeFieldValue(value, field),
+          validate:
+            field.validate ||
+            (value => (field.required && !value ? t`required` : null)),
+          normalize:
+            field.normalize || (value => normalizeFieldValue(value, field)),
           horizontal: field.type === "boolean",
           initial: field.default,
           readOnly: field.readOnly || false,
