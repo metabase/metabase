@@ -4,12 +4,12 @@ import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../containers/LanguageStep";
 import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../../containers/DatabaseStep";
+import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../CompletedStep";
 import SetupHelp from "../SetupHelp";
-import { DATABASE_STEP, COMPLETED_STEP } from "../../constants";
+import { COMPLETED_STEP } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
-import DatabaseHelp from "../DatabaseHelp";
 
 interface Props {
   step: number;
@@ -59,7 +59,7 @@ const SettingsPage = ({
       <PreferencesStep />
       <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
       <SetupHelp />
-      <DatabaseHelp engine={databaseEngine} isActive={step === DATABASE_STEP} />
+      <DatabaseHelp />
     </PageBody>
   </div>
 );
