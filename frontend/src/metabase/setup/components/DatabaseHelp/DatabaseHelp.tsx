@@ -3,11 +3,11 @@ import { DatabaseHelpRoot, DatabaseHelpCard } from "./DatabaseHelp.styled";
 
 interface Props {
   engine?: string;
-  isActive: boolean;
+  isStepActive: boolean;
 }
 
-const DatabaseHelp = ({ engine, isActive }: Props): JSX.Element => {
-  const isVisible = isActive && engine != null;
+const DatabaseHelp = ({ engine, isStepActive }: Props): JSX.Element => {
+  const isVisible = isStepActive && engine != null;
 
   return (
     <DatabaseHelpRoot

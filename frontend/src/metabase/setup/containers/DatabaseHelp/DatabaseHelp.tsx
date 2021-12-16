@@ -5,7 +5,7 @@ import { getDatabaseEngine, isStepActive } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   engine: getDatabaseEngine(state),
-  isActive: isStepActive(state, DATABASE_STEP),
+  isStepActive: isStepActive(state, DATABASE_STEP),
 });
 
 export default connect(mapStateToProps)(DatabaseHelp);

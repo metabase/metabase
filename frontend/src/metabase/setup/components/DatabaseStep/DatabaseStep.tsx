@@ -10,9 +10,9 @@ import { DatabaseInfo } from "../../types";
 
 interface Props {
   database?: DatabaseInfo;
-  isActive: boolean;
-  isFilled: boolean;
-  isCompleted: boolean;
+  isStepActive: boolean;
+  isStepCompleted: boolean;
+  isSetupCompleted: boolean;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
   onSelectThisStep: () => void;
@@ -21,9 +21,9 @@ interface Props {
 
 const DatabaseStep = ({
   database,
-  isActive,
-  isFilled,
-  isCompleted,
+  isStepActive,
+  isStepCompleted,
+  isSetupCompleted,
   onChangeDatabase,
   onValidateDatabase,
   onSelectThisStep,
@@ -39,20 +39,20 @@ const DatabaseStep = ({
     onSelectNextStep();
   };
 
-  if (!isActive) {
+  if (!isStepActive) {
     return (
       <InactiveStep
-        title={getStepTitle(database, isFilled)}
+        title={getStepTitle(database, isStepCompleted)}
         label={3}
-        isFilled={isFilled}
-        isCompleted={isCompleted}
+        isStepCompleted={isStepCompleted}
+        isSetupCompleted={isSetupCompleted}
         onSelect={onSelectThisStep}
       />
     );
   }
 
   return (
-    <ActiveStep title={getStepTitle(database, isFilled)} label={3}>
+    <ActiveStep title={getStepTitle(database, isStepCompleted)} label={3}>
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
         <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
@@ -100,9 +100,9 @@ const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
 
 const getStepTitle = (
   database: DatabaseInfo | undefined,
-  isFilled: boolean,
+  isStepCompleted: boolean,
 ) => {
-  if (!isFilled) {
+  if (!isStepCompleted) {
     return t`Add your data`;
   } else if (database) {
     return t`Connecting to ${database.name}`;

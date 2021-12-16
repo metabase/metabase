@@ -5,7 +5,7 @@ import { getUser, isStepActive } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   user: getUser(state),
-  isActive: isStepActive(state, COMPLETED_STEP),
+  isStepActive: isStepActive(state, COMPLETED_STEP),
 });
 
 export default connect(mapStateToProps)(CompletedStep);

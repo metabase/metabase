@@ -5,16 +5,16 @@ import { DATABASE_STEP, PREFERENCES_STEP } from "../../constants";
 import {
   getDatabase,
   isStepActive,
-  isStepFilled,
   isStepCompleted,
+  isSetupCompleted,
 } from "../../selectors";
 import { DatabaseInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
   database: getDatabase(state),
-  isActive: isStepActive(state, DATABASE_STEP),
-  isFilled: isStepFilled(state, DATABASE_STEP),
-  isCompleted: isStepCompleted(state),
+  isStepActive: isStepActive(state, DATABASE_STEP),
+  isStepCompleted: isStepCompleted(state, DATABASE_STEP),
+  isSetupCompleted: isSetupCompleted(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

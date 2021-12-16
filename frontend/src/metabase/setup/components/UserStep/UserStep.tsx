@@ -14,9 +14,9 @@ import { UserInfo } from "../../types";
 
 interface Props {
   user?: UserInfo;
-  isActive: boolean;
-  isFilled: boolean;
-  isCompleted: boolean;
+  isStepActive: boolean;
+  isStepCompleted: boolean;
+  isSetupCompleted: boolean;
   isHosted: boolean;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
@@ -26,9 +26,9 @@ interface Props {
 
 const UserStep = ({
   user,
-  isActive,
-  isFilled,
-  isCompleted,
+  isStepActive,
+  isStepCompleted,
+  isSetupCompleted,
   isHosted,
   onChangeUser,
   onValidatePassword,
@@ -40,20 +40,20 @@ const UserStep = ({
     onSelectNextStep();
   };
 
-  if (!isActive) {
+  if (!isStepActive) {
     return (
       <InactiveStep
-        title={getStepTitle(user, isFilled)}
+        title={getStepTitle(user, isStepCompleted)}
         label={2}
-        isFilled={isFilled}
-        isCompleted={isCompleted}
+        isStepCompleted={isStepCompleted}
+        isSetupCompleted={isSetupCompleted}
         onSelect={onSelectThisStep}
       />
     );
   }
 
   return (
-    <ActiveStep title={getStepTitle(user, isFilled)} label={2}>
+    <ActiveStep title={getStepTitle(user, isStepCompleted)} label={2}>
       {isHosted && (
         <StepDescription>
           {t`We know you’ve already created one of these.`}{" "}
@@ -112,8 +112,8 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: UserFormProps) => {
   );
 };
 
-const getStepTitle = (user: UserInfo | undefined, isFilled: boolean) => {
-  return isFilled
+const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+  return isStepCompleted
     ? t`Hi, ${user?.first_name}. Nice to meet you!`
     : t`What should we call you?`;
 };

@@ -17,9 +17,9 @@ import { getIn } from "icepick";
 
 interface Props {
   isTrackingAllowed: boolean;
-  isActive: boolean;
-  isFilled: boolean;
-  isCompleted: boolean;
+  isStepActive: boolean;
+  isStepCompleted: boolean;
+  isSetupCompleted: boolean;
   onChangeTracking: (isTrackingAllowed: boolean) => void;
   onSubmitSetup: () => void;
   onSelectThisStep: () => void;
@@ -28,9 +28,9 @@ interface Props {
 
 const PreferencesStep = ({
   isTrackingAllowed,
-  isActive,
-  isFilled,
-  isCompleted,
+  isStepActive,
+  isStepCompleted,
+  isSetupCompleted,
   onChangeTracking,
   onSubmitSetup,
   onSelectThisStep,
@@ -47,20 +47,23 @@ const PreferencesStep = ({
     }
   };
 
-  if (!isActive) {
+  if (!isStepActive) {
     return (
       <InactiveStep
-        title={getStepTitle(isTrackingAllowed, isFilled)}
+        title={getStepTitle(isTrackingAllowed, isStepCompleted)}
         label={4}
-        isFilled={isFilled}
-        isCompleted={isCompleted}
+        isStepCompleted={isStepCompleted}
+        isSetupCompleted={isSetupCompleted}
         onSelect={onSelectThisStep}
       />
     );
   }
 
   return (
-    <ActiveStep title={getStepTitle(isTrackingAllowed, isFilled)} label={4}>
+    <ActiveStep
+      title={getStepTitle(isTrackingAllowed, isStepCompleted)}
+      label={4}
+    >
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
@@ -102,9 +105,9 @@ const PreferencesStep = ({
 
 const getStepTitle = (
   isTrackingAllowed: boolean,
-  isFilled: boolean,
+  isStepCompleted: boolean,
 ): string => {
-  if (!isFilled) {
+  if (!isStepCompleted) {
     return t`Usage data preferences`;
   } else if (isTrackingAllowed) {
     return t`Thanks for helping us improve`;

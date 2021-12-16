@@ -11,11 +11,11 @@ import { UserInfo } from "../../types";
 
 interface Props {
   user?: UserInfo;
-  isActive: boolean;
+  isStepActive: boolean;
 }
 
-const CompletedStep = ({ user, isActive }: Props): JSX.Element | null => {
-  if (!isActive) {
+const CompletedStep = ({ user, isStepActive }: Props): JSX.Element | null => {
+  if (!isStepActive) {
     return null;
   }
 

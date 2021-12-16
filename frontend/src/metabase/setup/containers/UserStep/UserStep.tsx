@@ -6,16 +6,16 @@ import { USER_STEP, DATABASE_STEP } from "../../constants";
 import {
   getUser,
   isStepActive,
-  isStepFilled,
   isStepCompleted,
+  isSetupCompleted,
 } from "../../selectors";
 import { UserInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
   user: getUser(state),
-  isActive: isStepActive(state, USER_STEP),
-  isFilled: isStepFilled(state, USER_STEP),
-  isCompleted: isStepCompleted(state),
+  isStepActive: isStepActive(state, USER_STEP),
+  isStepCompleted: isStepCompleted(state, USER_STEP),
+  isSetupCompleted: isSetupCompleted(state),
   isHosted: Settings.isHosted(),
 });
 

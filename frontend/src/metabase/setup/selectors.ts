@@ -27,11 +27,11 @@ export const isStepActive = (state: any, step: number): boolean => {
   return getStep(state) === step;
 };
 
-export const isStepFilled = (state: any, step: number): boolean => {
+export const isStepCompleted = (state: any, step: number): boolean => {
   return getStep(state) > step;
 };
 
-export const isStepCompleted = (state: any): boolean => {
+export const isSetupCompleted = (state: any): boolean => {
   return getStep(state) === COMPLETED_STEP;
 };
 

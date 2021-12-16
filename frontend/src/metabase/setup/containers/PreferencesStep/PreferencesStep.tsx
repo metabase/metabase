@@ -5,15 +5,15 @@ import { PREFERENCES_STEP, COMPLETED_STEP } from "../../constants";
 import {
   isTrackingAllowed,
   isStepActive,
-  isStepFilled,
   isStepCompleted,
+  isSetupCompleted,
 } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   isTrackingAllowed: isTrackingAllowed(state),
-  isActive: isStepActive(state, PREFERENCES_STEP),
-  isFilled: isStepFilled(state, PREFERENCES_STEP),
-  isCompleted: isStepCompleted(state),
+  isStepActive: isStepActive(state, PREFERENCES_STEP),
+  isStepCompleted: isStepCompleted(state, PREFERENCES_STEP),
+  isSetupCompleted: isSetupCompleted(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

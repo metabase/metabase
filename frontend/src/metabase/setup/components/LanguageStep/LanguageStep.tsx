@@ -14,9 +14,9 @@ import {
 interface Props {
   locale?: Locale;
   localeData?: LocaleData[];
-  isActive: boolean;
-  isFilled: boolean;
-  isCompleted: boolean;
+  isStepActive: boolean;
+  isStepCompleted: boolean;
+  isSetupCompleted: boolean;
   onChangeLocale: (locale: Locale) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
@@ -25,22 +25,22 @@ interface Props {
 const LanguageStep = ({
   locale,
   localeData,
-  isActive,
-  isFilled,
-  isCompleted,
+  isStepActive,
+  isStepCompleted,
+  isSetupCompleted,
   onChangeLocale,
   onSelectThisStep,
   onSelectNextStep,
 }: Props) => {
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
-  if (!isActive) {
+  if (!isStepActive) {
     return (
       <InactiveStep
         title={t`Your language is set to ${locale?.name}`}
         label={1}
-        isFilled={isFilled}
-        isCompleted={isCompleted}
+        isStepCompleted={isStepCompleted}
+        isSetupCompleted={isSetupCompleted}
         onSelect={onSelectThisStep}
       />
     );
