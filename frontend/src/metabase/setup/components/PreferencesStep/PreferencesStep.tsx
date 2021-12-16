@@ -17,6 +17,7 @@ interface Props {
   isTrackingAllowed: boolean;
   isActive: boolean;
   isCompleted: boolean;
+  onChangeTracking: (isTrackingAllowed: boolean) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -25,6 +26,7 @@ const PreferencesStep = ({
   isTrackingAllowed,
   isActive,
   isCompleted,
+  onChangeTracking,
   onSelectThisStep,
   onSelectNextStep,
 }: Props): JSX.Element => {
@@ -50,6 +52,7 @@ const PreferencesStep = ({
       <StepToggle>
         <Toggle
           value={isTrackingAllowed}
+          onChange={onChangeTracking}
           aria-labelledby="anonymous-usage-events-label"
         />
         <StepToggleLabel id="anonymous-usage-events-label">

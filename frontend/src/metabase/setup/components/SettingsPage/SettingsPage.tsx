@@ -28,6 +28,7 @@ interface Props {
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
+  onChangeTracking: (isTrackingAllowed: boolean) => void;
 }
 
 const SettingsPage = ({
@@ -42,6 +43,7 @@ const SettingsPage = ({
   onChangeUser,
   onValidatePassword,
   onChangeDatabase,
+  onChangeTracking,
 }: Props) => (
   <div>
     <PageHeader>
@@ -78,6 +80,7 @@ const SettingsPage = ({
         isTrackingAllowed={isTrackingAllowed}
         isActive={step === PREFERENCES_STEP}
         isCompleted={step > PREFERENCES_STEP}
+        onChangeTracking={onChangeTracking}
         onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
         onSelectNextStep={() => onChangeStep(COMPLETED_STEP)}
       />
