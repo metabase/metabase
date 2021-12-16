@@ -30,7 +30,7 @@ export const validatePassword = createThunkAction(
 export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
 export const validateDatabase = createThunkAction(
   VALIDATE_DATABASE,
-  (database: DatabaseInfo) => async () => {
+  (database: DatabaseInfo) => async (dispatch: any) => {
     await SetupApi.validate_db({
       token: Settings.get("setup-token"),
       details: database,

@@ -6,12 +6,14 @@ import InactiveStep from "../InvactiveStep";
 import { StepDescription } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo } from "../../types";
+import { updateIn } from "icepick";
 
 interface Props {
   database?: DatabaseInfo;
   isActive: boolean;
   isCompleted: boolean;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
+  onValidateDatabase: (database: DatabaseInfo) => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -21,11 +23,12 @@ const DatabaseStep = ({
   isActive,
   isCompleted,
   onChangeDatabase,
+  onValidateDatabase,
   onSelectThisStep,
   onSelectNextStep,
 }: Props) => {
-  const handleSubmit = (database: DatabaseInfo) => {
-    onChangeDatabase(database);
+  const handleSubmit = async (database: DatabaseInfo) => {
+    onChangeDatabase(await validateDatabase(database, onValidateDatabase));
     onSelectNextStep();
   };
 
@@ -101,6 +104,30 @@ const getStepTitle = (
     return t`Connecting to ${database.name}`;
   } else {
     return t`I'll add my own data later`;
+  }
+};
+
+const validateDatabase = async (
+  database: DatabaseInfo,
+  onValidateDatabase: (database: DatabaseInfo) => void,
+): Promise<DatabaseInfo> => {
+  const sslDetails = { ...database.details, ssl: true };
+  const sslDatabase = { ...database, details: sslDetails };
+  const nonSslDetails = { ...database.details, ssl: false };
+  const nonSslDatabase = { ...database, database: nonSslDetails };
+
+  try {
+    await onValidateDatabase(sslDatabase);
+    return sslDatabase;
+  } catch (error) {
+    try {
+      await onValidateDatabase(nonSslDatabase);
+      return nonSslDatabase;
+    } catch (error) {
+      throw updateIn(error, ["data", "errors"], errors => ({
+        details: errors,
+      }));
+    }
   }
 };
 

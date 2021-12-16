@@ -26,9 +26,10 @@ interface Props {
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => Promise<void>;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
   onChangeTracking: (isTrackingAllowed: boolean) => void;
+  onValidatePassword: (user: UserInfo) => void;
+  onValidateDatabase: (database: DatabaseInfo) => void;
 }
 
 const SettingsPage = ({
@@ -41,9 +42,10 @@ const SettingsPage = ({
   onChangeStep,
   onChangeLocale,
   onChangeUser,
-  onValidatePassword,
   onChangeDatabase,
+  onValidatePassword,
   onChangeTracking,
+  onValidateDatabase,
 }: Props) => (
   <div>
     <PageHeader>
@@ -73,6 +75,7 @@ const SettingsPage = ({
         isActive={step === DATABASE_STEP}
         isCompleted={step > DATABASE_STEP}
         onChangeDatabase={onChangeDatabase}
+        onValidateDatabase={onValidateDatabase}
         onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
         onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
       />
