@@ -89,7 +89,8 @@
            :combo
            :funnel
            :progress
-           :waterfall} display-type)
+           :waterfall
+           :line} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)

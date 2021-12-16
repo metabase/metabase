@@ -661,12 +661,24 @@
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
-  (let [
-        rows         (sparkline/cleaned-rows timezone-id card data)
-        last-rows    (reverse (take-last 2 rows))
-        values       (for [row last-rows]
-                       (some-> row y-axis-rowfn common/format-number))
-        image-bundle (lab-image-bundle :sparkline render-type _timezone-id card _dashcard data)]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        rows           (sparkline/cleaned-rows timezone-id card data)
+        last-rows      (reverse (take-last 2 rows))
+        values         (for [row last-rows]
+                         (some-> row y-axis-rowfn common/format-number))
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-line
+                         js-svg/categorical-line)
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                                   (->js-viz x-col y-col viz-settings)))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -700,6 +712,19 @@
 (s/defmethod render :area :- common/RenderedPulseCard
   [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [image-bundle     (lab-image-bundle :area render-type timezone-id card _dashcard data)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :line :- common/RenderedPulseCard
+  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [image-bundle     (lab-image-bundle :line render-type timezone-id card _dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
