@@ -10,6 +10,7 @@ interface Props {
   localeData?: LocaleData[];
   user?: UserInfo;
   database?: DatabaseInfo;
+  databaseEngine?: string;
   isTrackingAllowed: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;

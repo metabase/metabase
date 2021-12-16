@@ -17,6 +17,7 @@ import {
   getUser,
   getDatabase,
   isTrackingAllowed,
+  getDatabaseEngine,
 } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
@@ -25,6 +26,7 @@ const mapStateToProps = (state: any) => ({
   localeData: Settings.get("available-locales"),
   user: getUser(state),
   database: getDatabase(state),
+  databaseEngine: getDatabaseEngine(state),
   isTrackingAllowed: isTrackingAllowed(state),
 });
 

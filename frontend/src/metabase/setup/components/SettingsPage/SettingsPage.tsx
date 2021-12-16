@@ -15,6 +15,7 @@ import {
   COMPLETED_STEP,
 } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
+import DatabaseHelp from "../DatabaseHelp";
 
 interface Props {
   step: number;
@@ -22,6 +23,7 @@ interface Props {
   localeData?: LocaleData[];
   user?: UserInfo;
   database?: DatabaseInfo;
+  databaseEngine?: string;
   isTrackingAllowed: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
@@ -39,6 +41,7 @@ const SettingsPage = ({
   localeData,
   user,
   database,
+  databaseEngine,
   isTrackingAllowed,
   onChangeStep,
   onChangeLocale,
@@ -96,6 +99,7 @@ const SettingsPage = ({
       />
       <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
       <SetupHelp />
+      <DatabaseHelp engine={databaseEngine} isActive={step === DATABASE_STEP} />
     </PageBody>
   </div>
 );

@@ -28,5 +28,5 @@ export const getDatabaseFields = createSelector(
 
 export const getDatabaseEngine = createSelector(
   [getDatabaseFields],
-  fields => fields.engine,
+  fields => fields?.engine,
 );
