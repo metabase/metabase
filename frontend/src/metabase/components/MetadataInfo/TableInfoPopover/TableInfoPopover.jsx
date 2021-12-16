@@ -5,7 +5,7 @@ import TippyPopver from "metabase/components/Popover/TippyPopover";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
-export const POPOVER_DELAY = [1000, 300];
+export const POPOVER_DELAY = [500, 300];
 
 const propTypes = {
   tableId: PropTypes.number,
