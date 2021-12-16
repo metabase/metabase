@@ -5,6 +5,7 @@ import { t, ngettext, msgid } from "ttag";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Field from "metabase-lib/lib/metadata/Field";
 
+import { Table } from "../MetadataInfo.styled";
 import FieldValuesList from "./FieldValuesList";
 
 const propTypes = {
@@ -39,7 +40,7 @@ function DateTimeFingerprint({ field }) {
   const formattedLatest = formatDateTimeWithUnit(latest, "minute");
 
   return (
-    <table>
+    <Table>
       <tbody>
         <tr>
           <th>{t`Timezone`}</th>
@@ -54,7 +55,7 @@ function DateTimeFingerprint({ field }) {
           <td>{formattedLatest}</td>
         </tr>
       </tbody>
-    </table>
+    </Table>
   );
 }
 
@@ -70,7 +71,7 @@ function NumberFingerprint({ field }) {
   const fixedMax = Number.isInteger(max) ? max : max.toFixed(2);
 
   return (
-    <table>
+    <Table>
       <thead>
         <tr>
           <th>{t`Average`}</th>
@@ -85,7 +86,7 @@ function NumberFingerprint({ field }) {
           <td>{fixedMax}</td>
         </tr>
       </tbody>
-    </table>
+    </Table>
   );
 }
 

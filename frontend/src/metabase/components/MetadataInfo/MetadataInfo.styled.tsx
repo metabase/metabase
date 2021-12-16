@@ -94,3 +94,15 @@ export const LoadingSpinner = styled(_LoadingSpinner)`
   justify-content: center;
   color: ${color("brand")};
 `;
+
+export const Table = styled.table`
+  font-size: 12.8px;
+
+  th {
+    font-weight: normal;
+  }
+
+  td {
+    font-weight: bold;
+  }
+`;
