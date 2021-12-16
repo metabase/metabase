@@ -18,10 +18,10 @@ const SettingsPage = () => (
       <LanguageStep />
       <UserStep />
       <DatabaseStep />
+      <DatabaseHelp />
       <PreferencesStep />
       <CompletedStep />
       <SetupHelp />
-      <DatabaseHelp />
     </PageBody>
   </div>
 );
