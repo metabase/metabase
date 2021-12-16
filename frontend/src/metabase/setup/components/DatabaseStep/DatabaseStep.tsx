@@ -11,6 +11,7 @@ import { DatabaseInfo } from "../../types";
 interface Props {
   database?: DatabaseInfo;
   isActive: boolean;
+  isFilled: boolean;
   isCompleted: boolean;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
@@ -21,6 +22,7 @@ interface Props {
 const DatabaseStep = ({
   database,
   isActive,
+  isFilled,
   isCompleted,
   onChangeDatabase,
   onValidateDatabase,
@@ -40,8 +42,9 @@ const DatabaseStep = ({
   if (!isActive) {
     return (
       <InactiveStep
-        title={getStepTitle(database, isCompleted)}
+        title={getStepTitle(database, isFilled)}
         label={3}
+        isFilled={isFilled}
         isCompleted={isCompleted}
         onSelect={onSelectThisStep}
       />
@@ -49,7 +52,7 @@ const DatabaseStep = ({
   }
 
   return (
-    <ActiveStep title={getStepTitle(database, isCompleted)} label={3}>
+    <ActiveStep title={getStepTitle(database, isFilled)} label={3}>
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
         <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
@@ -96,9 +99,9 @@ const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
 
 const getStepTitle = (
   database: DatabaseInfo | undefined,
-  isCompleted: boolean,
+  isFilled: boolean,
 ) => {
-  if (!isCompleted) {
+  if (!isFilled) {
     return t`Add your data`;
   } else if (database) {
     return t`Connecting to ${database.name}`;

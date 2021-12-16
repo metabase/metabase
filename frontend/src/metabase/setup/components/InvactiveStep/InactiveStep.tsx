@@ -10,19 +10,26 @@ import {
 interface Props {
   title: string;
   label: number;
+  isFilled: boolean;
   isCompleted: boolean;
   onSelect: () => void;
 }
 
-const InactiveStep = ({ title, label, isCompleted, onSelect }: Props) => {
+const InactiveStep = ({
+  title,
+  label,
+  isFilled,
+  isCompleted,
+  onSelect,
+}: Props) => {
   return (
     <StepRoot
-      isCompleted={isCompleted}
-      onClick={isCompleted ? onSelect : undefined}
+      isFilled={isFilled}
+      onClick={isFilled && !isCompleted ? onSelect : undefined}
     >
-      <StepTitle isCompleted={isCompleted}>{title}</StepTitle>
-      <StepLabel isCompleted={isCompleted}>
-        {isCompleted ? (
+      <StepTitle isFilled={isFilled}>{title}</StepTitle>
+      <StepLabel isFilled={isFilled}>
+        {isFilled ? (
           <StepLabelIcon name="check" />
         ) : (
           <StepLabelText>{label}</StepLabelText>

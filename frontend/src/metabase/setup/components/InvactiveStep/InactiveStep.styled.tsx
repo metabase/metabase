@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 interface Props {
-  isCompleted?: boolean;
+  isFilled?: boolean;
 }
 
 export const StepRoot = styled.section<Props>`
@@ -12,12 +12,11 @@ export const StepRoot = styled.section<Props>`
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
-  background-color: ${props =>
-    color(props.isCompleted ? "white" : "bg-medium")};
+  background-color: ${props => color(props.isFilled ? "white" : "bg-medium")};
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${props => color(props.isCompleted ? "success" : "brand")};
+  color: ${props => color(props.isFilled ? "success" : "brand")};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -33,9 +32,9 @@ export const StepLabel = styled.div<Props>`
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid ${props => color(props.isCompleted ? "success" : "border")};
+  border: 1px solid ${props => color(props.isFilled ? "success" : "border")};
   border-radius: 50%;
-  background-color: ${props => color(props.isCompleted ? "success" : "white")};
+  background-color: ${props => color(props.isFilled ? "success" : "white")};
 `;
 
 export const StepLabelText = styled.span`

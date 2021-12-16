@@ -11,6 +11,7 @@ import { getIn } from "icepick";
 interface Props {
   user?: UserInfo;
   isActive: boolean;
+  isFilled: boolean;
   isCompleted: boolean;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
@@ -21,6 +22,7 @@ interface Props {
 const UserStep = ({
   user,
   isActive,
+  isFilled,
   isCompleted,
   onChangeUser,
   onValidatePassword,
@@ -35,8 +37,9 @@ const UserStep = ({
   if (!isActive) {
     return (
       <InactiveStep
-        title={getStepTitle(user, isCompleted)}
+        title={getStepTitle(user, isFilled)}
         label={2}
+        isFilled={isFilled}
         isCompleted={isCompleted}
         onSelect={onSelectThisStep}
       />
@@ -44,7 +47,7 @@ const UserStep = ({
   }
 
   return (
-    <ActiveStep title={getStepTitle(user, isCompleted)} label={2}>
+    <ActiveStep title={getStepTitle(user, isFilled)} label={2}>
       <UserForm
         user={user}
         onSubmit={handleSubmit}
@@ -97,8 +100,8 @@ const UserForm = ({ user, onSubmit, onValidatePassword }: UserFormProps) => {
   );
 };
 
-const getStepTitle = (user: UserInfo | undefined, isCompleted: boolean) => {
-  return isCompleted
+const getStepTitle = (user: UserInfo | undefined, isFilled: boolean) => {
+  return isFilled
     ? t`Hi, ${user?.first_name}. Nice to meet you!`
     : t`What should we call you?`;
 };

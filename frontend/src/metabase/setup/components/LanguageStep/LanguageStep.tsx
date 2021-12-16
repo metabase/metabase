@@ -15,6 +15,7 @@ interface Props {
   locale?: Locale;
   localeData?: LocaleData[];
   isActive: boolean;
+  isFilled: boolean;
   isCompleted: boolean;
   onChangeLocale: (locale: Locale) => void;
   onSelectThisStep: () => void;
@@ -25,6 +26,7 @@ const LanguageStep = ({
   locale,
   localeData,
   isActive,
+  isFilled,
   isCompleted,
   onChangeLocale,
   onSelectThisStep,
@@ -37,6 +39,7 @@ const LanguageStep = ({
       <InactiveStep
         title={t`Your language is set to ${locale?.name}`}
         label={1}
+        isFilled={isFilled}
         isCompleted={isCompleted}
         onSelect={onSelectThisStep}
       />

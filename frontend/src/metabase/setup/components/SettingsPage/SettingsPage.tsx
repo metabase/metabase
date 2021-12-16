@@ -58,7 +58,8 @@ const SettingsPage = ({
         locale={locale}
         localeData={localeData}
         isActive={step === LANGUAGE_STEP}
-        isCompleted={step > LANGUAGE_STEP}
+        isFilled={step > LANGUAGE_STEP}
+        isCompleted={step === COMPLETED_STEP}
         onChangeLocale={onChangeLocale}
         onSelectThisStep={() => onChangeStep(LANGUAGE_STEP)}
         onSelectNextStep={() => onChangeStep(USER_STEP)}
@@ -66,7 +67,8 @@ const SettingsPage = ({
       <UserStep
         user={user}
         isActive={step === USER_STEP}
-        isCompleted={step > USER_STEP}
+        isFilled={step > USER_STEP}
+        isCompleted={step === COMPLETED_STEP}
         onChangeUser={onChangeUser}
         onValidatePassword={onValidatePassword}
         onSelectThisStep={() => onChangeStep(USER_STEP)}
@@ -75,7 +77,8 @@ const SettingsPage = ({
       <DatabaseStep
         database={database}
         isActive={step === DATABASE_STEP}
-        isCompleted={step > DATABASE_STEP}
+        isFilled={step > DATABASE_STEP}
+        isCompleted={step === COMPLETED_STEP}
         onChangeDatabase={onChangeDatabase}
         onValidateDatabase={onValidateDatabase}
         onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
@@ -84,7 +87,8 @@ const SettingsPage = ({
       <PreferencesStep
         isTrackingAllowed={isTrackingAllowed}
         isActive={step === PREFERENCES_STEP}
-        isCompleted={step > PREFERENCES_STEP}
+        isFilled={step > PREFERENCES_STEP}
+        isCompleted={step === COMPLETED_STEP}
         onChangeTracking={onChangeTracking}
         onSubmitSetup={onSubmitSetup}
         onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
