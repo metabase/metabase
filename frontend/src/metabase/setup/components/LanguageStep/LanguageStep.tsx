@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";
+import { getLocales } from "../../utils";
 import {
   StepLocaleList,
   StepLocaleListItem,
@@ -66,13 +66,6 @@ const LanguageStep = ({
       >{t`Next`}</Button>
     </ActiveStep>
   );
-};
-
-export const getLocales = (localeData: LocaleData[] = [["en", "English"]]) => {
-  return _.chain(localeData)
-    .map(([code, name]) => ({ code, name }))
-    .sortBy(locale => locale.name)
-    .value();
 };
 
 export default LanguageStep;

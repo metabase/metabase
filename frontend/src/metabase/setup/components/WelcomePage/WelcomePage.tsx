@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import SetupFooter from "../SetupFooter";
@@ -10,12 +10,21 @@ import {
   PageBody,
   PageButton,
 } from "./WelcomePage.styled";
+import { Locale, LocaleData } from "../../types";
+import { getLocales, getDefaultLocale } from "../../utils";
 
 interface Props {
+  localeData?: LocaleData[];
   onChangeStep: (step: number) => void;
+  onChangeLocale: (locale: Locale) => void;
 }
 
-const WelcomePage = ({ onChangeStep }: Props) => {
+const WelcomePage = ({ localeData, onChangeStep, onChangeLocale }: Props) => {
+  useEffect(() => {
+    const defaultLocale = getDefaultLocale(getLocales(localeData));
+    defaultLocale && onChangeLocale(defaultLocale);
+  }, [localeData, onChangeLocale]);
+
   return (
     <PageRoot>
       <PageMain>
