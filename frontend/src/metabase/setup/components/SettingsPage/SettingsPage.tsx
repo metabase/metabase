@@ -3,17 +3,11 @@ import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../containers/LanguageStep";
 import UserStep from "../../containers/UserStep";
-import DatabaseStep from "../DatabaseStep";
+import DatabaseStep from "../../containers/DatabaseStep";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../CompletedStep";
 import SetupHelp from "../SetupHelp";
-import {
-  LANGUAGE_STEP,
-  USER_STEP,
-  DATABASE_STEP,
-  PREFERENCES_STEP,
-  COMPLETED_STEP,
-} from "../../constants";
+import { DATABASE_STEP, COMPLETED_STEP } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 import DatabaseHelp from "../DatabaseHelp";
 
@@ -61,16 +55,7 @@ const SettingsPage = ({
     <PageBody>
       <LanguageStep />
       <UserStep />
-      <DatabaseStep
-        database={database}
-        isActive={step === DATABASE_STEP}
-        isFilled={step > DATABASE_STEP}
-        isCompleted={step === COMPLETED_STEP}
-        onChangeDatabase={onChangeDatabase}
-        onValidateDatabase={onValidateDatabase}
-        onSelectThisStep={() => onChangeStep(DATABASE_STEP)}
-        onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
-      />
+      <DatabaseStep />
       <PreferencesStep />
       <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
       <SetupHelp />
