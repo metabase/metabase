@@ -20,6 +20,7 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isSameField } from "metabase/lib/query/field_ref";
+import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { EDITOR_TAB_INDEXES } from "./constants";
@@ -69,7 +70,10 @@ function mapStateToProps(state) {
 
 const mapDispatchToProps = { setDatasetEditorTab };
 
-function getSidebar(props, { datasetEditorTab, focusedField }) {
+function getSidebar(
+  props,
+  { datasetEditorTab, focusedField, focusedFieldIndex, focusFirstField },
+) {
   const {
     question: dataset,
     isShowingTemplateTagsEditor,
@@ -81,8 +85,16 @@ function getSidebar(props, { datasetEditorTab, focusedField }) {
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    const isLastField =
+      focusedField &&
+      focusedFieldIndex === dataset.getResultMetadata().length - 1;
     return (
-      <DatasetFieldMetadataSidebar dataset={dataset} field={focusedField} />
+      <DatasetFieldMetadataSidebar
+        dataset={dataset}
+        field={focusedField}
+        isLastField={isLastField}
+        handleFirstFieldFocus={focusFirstField}
+      />
     );
   }
 
@@ -133,15 +145,19 @@ function DatasetEditor(props) {
 
   const [focusedField, setFocusedField] = useState();
 
+  const focusFirstField = useCallback(() => {
+    const [firstField] = dataset.getResultMetadata() || [];
+    setFocusedField(firstField);
+  }, [dataset]);
+
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
     if (!focusedField && hasQueryResults) {
-      const [firstField] = dataset.getResultMetadata();
-      setFocusedField(firstField);
+      focusFirstField();
     }
-  }, [dataset, result, focusedField]);
+  }, [result, focusedField, focusFirstField]);
 
   const [
     isTabHintVisible,
@@ -175,8 +191,6 @@ function DatasetEditor(props) {
     setQueryBuilderMode("view");
   }, [dataset, onSave, setQueryBuilderMode]);
 
-  const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
-
   const handleColumnSelect = useCallback(
     column => {
       const field = dataset
@@ -206,6 +220,25 @@ function DatasetEditor(props) {
     );
   }, [dataset, focusedField]);
 
+  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
+
+  // This value together with focusedFieldIndex is used to
+  // horizontally scroll the InteractiveTable to the focused column
+  // (via react-virtualized's "scrollToColumn" prop)
+  const scrollToColumnModifier = useMemo(() => {
+    // Normally the modifier is either 1 or -1 and added to focusedFieldIndex,
+    // so it's either the previous or the next column is visible
+    // (depending on if we're tabbing forward or backwards)
+    // But when the first field is selected, it's important to keep "scrollToColumn" 0
+    // So when you hit "Tab" while the very last column is focused,
+    // it'd jump exactly to the beginning of the table
+    if (focusedFieldIndex === 0) {
+      return 0;
+    }
+    const isGoingForward = focusedFieldIndex >= previousFocusedFieldIndex;
+    return isGoingForward ? 1 : -1;
+  }, [focusedFieldIndex, previousFocusedFieldIndex]);
+
   const renderSelectableTableColumnHeader = useCallback(
     (element, column, columnIndex) => (
       <TableHeaderColumnName
@@ -227,6 +260,13 @@ function DatasetEditor(props) {
         : undefined,
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
+
+  const sidebar = getSidebar(props, {
+    datasetEditorTab,
+    focusedField,
+    focusedFieldIndex,
+    focusFirstField,
+  });
 
   return (
     <React.Fragment>
@@ -280,6 +320,7 @@ function DatasetEditor(props) {
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}
+                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
               />
             </DebouncedFrame>
             <TabHintToastContainer

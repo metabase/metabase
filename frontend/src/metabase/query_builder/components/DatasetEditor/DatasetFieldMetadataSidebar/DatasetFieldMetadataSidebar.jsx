@@ -47,7 +47,9 @@ import {
 const propTypes = {
   dataset: PropTypes.object.isRequired,
   field: PropTypes.instanceOf(Field),
+  isLastField: PropTypes.bool.isRequired,
   IDFields: PropTypes.array.isRequired,
+  handleFirstFieldFocus: PropTypes.func.isRequired,
   updateCardVisualizationSettings: PropTypes.func.isRequired,
 };
 
@@ -173,7 +175,9 @@ const TAB_OPTIONS = [
 function DatasetFieldMetadataSidebar({
   dataset,
   field,
+  isLastField,
   IDFields,
+  handleFirstFieldFocus,
   updateCardVisualizationSettings,
 }) {
   const displayNameInputRef = useRef();
@@ -263,6 +267,17 @@ function DatasetFieldMetadataSidebar({
     }
   }, [tab, hasColumnFormattingOptions]);
 
+  const onLastEssentialFieldKeyUp = useCallback(
+    e => {
+      const isNextFieldAction = !e.shiftKey && e.key === "Tab";
+      if (isNextFieldAction && isLastField) {
+        e.preventDefault();
+        handleFirstFieldFocus();
+      }
+    },
+    [isLastField, handleFirstFieldFocus],
+  );
+
   return (
     <SidebarContent>
       {field && (
@@ -287,6 +302,7 @@ function DatasetFieldMetadataSidebar({
                 <FormField
                   name="semantic_type"
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  onKeyUp={onLastEssentialFieldKeyUp}
                 />
               </MainFormContainer>
               {hasColumnFormattingOptions && (
