@@ -180,13 +180,17 @@ describe("binning related reproductions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
+    cy.findByText("Sample Dataset")
+      .should("be.visible")
+      .click();
     cy.findByText("Orders").click();
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("Saved Questions").click();
       cy.findByText("18646").click();
     });

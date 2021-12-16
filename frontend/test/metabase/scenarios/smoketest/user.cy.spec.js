@@ -9,7 +9,9 @@ describe("smoketest > user", () => {
     cy.visit("/");
     cy.findByText("Ask a question").click();
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
+    cy.findByText("Sample Dataset")
+      .should("be.visible")
+      .click();
     cy.findByText("Products").click();
     cy.findByText("Add filters to narrow your answer").click();
     cy.findByText("Vendor").click();

@@ -88,7 +88,9 @@ describe("scenarios > admin > databases > edit", () => {
           expect(response.body.cache_ttl).to.equal(32);
 
           cy.visit("/admin/databases");
-          cy.findByText("Sample Dataset").click();
+          cy.findByText("Sample Dataset")
+            .should("be.visible")
+            .click();
 
           cy.findByText("Custom").click();
           popover()

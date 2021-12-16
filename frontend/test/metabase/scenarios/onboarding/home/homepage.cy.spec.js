@@ -29,7 +29,9 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Other users' personal collections");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("Learn about our data");
 
       cy.visit("/");
@@ -96,7 +98,9 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("Learn about our data");
     });
 

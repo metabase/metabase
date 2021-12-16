@@ -91,7 +91,9 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Native query");
 
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("People").click();
 
       cy.findByText("Save");
@@ -156,7 +158,9 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("Orders").click();
 
       // Join tables
@@ -199,7 +203,9 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
+      cy.findByText("Sample Dataset")
+        .should("be.visible")
+        .click();
       cy.findByText("Orders").click();
 
       cy.findByText("Product ID");
@@ -336,7 +342,9 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Native query");
 
         cy.findByText("Simple question").click();
-        cy.findByText("Sample Dataset").click();
+        cy.findByText("Sample Dataset")
+          .should("be.visible")
+          .click();
         cy.findByText("Reviews").click();
 
         cy.get(".Button")
