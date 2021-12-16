@@ -33,7 +33,9 @@ describe("scenarios > question > joined questions", () => {
     cy.findByText("Sample Dataset")
       .should("be.visible")
       .click();
-    cy.findByText("Products").click();
+    cy.findByText("Products")
+      .should("be.visible")
+      .click();
 
     cy.icon("join_left_outer").click();
 

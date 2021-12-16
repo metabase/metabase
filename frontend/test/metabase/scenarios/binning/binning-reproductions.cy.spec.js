@@ -183,7 +183,9 @@ describe("binning related reproductions", () => {
     cy.findByText("Sample Dataset")
       .should("be.visible")
       .click();
-    cy.findByText("Orders").click();
+    cy.findByText("Orders")
+      .should("be.visible")
+      .click();
 
     cy.icon("join_left_outer").click();
 
@@ -191,7 +193,9 @@ describe("binning related reproductions", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Saved Questions").click();
+      cy.findByText("Saved Questions")
+        .should("be.visible")
+        .click();
       cy.findByText("18646").click();
     });
 

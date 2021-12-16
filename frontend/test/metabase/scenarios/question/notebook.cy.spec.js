@@ -243,7 +243,9 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Orders").click();
+      cy.findByText("Orders")
+        .should("be.visible")
+        .click();
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
@@ -302,7 +304,9 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Sample Dataset")
           .should("be.visible")
           .click();
-        cy.findByText("Saved Questions").click();
+        cy.findByText("Saved Questions")
+          .should("be.visible")
+          .click();
         cy.findByText("question b").click();
       });
 
@@ -464,7 +468,9 @@ describe("scenarios > question > notebook", () => {
         cy.findByText("Sample Dataset")
           .should("be.visible")
           .click();
-        cy.findByText("Saved Questions").click();
+        cy.findByText("Saved Questions")
+          .should("be.visible")
+          .click();
       });
       cy.findByText("12928_Q2").click();
 
@@ -713,7 +719,9 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Orders").click();
+      cy.findByText("Orders")
+        .should("be.visible")
+        .click();
     });
 
     it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {

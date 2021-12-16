@@ -94,7 +94,9 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("People").click();
+      cy.findByText("People")
+        .should("be.visible")
+        .click();
 
       cy.findByText("Save");
 
@@ -161,7 +163,9 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Orders").click();
+      cy.findByText("Orders")
+        .should("be.visible")
+        .click();
 
       // Join tables
       cy.icon("notebook").click();
@@ -206,7 +210,9 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Orders").click();
+      cy.findByText("Orders")
+        .should("be.visible")
+        .click();
 
       cy.findByText("Product ID");
       cy.findByText("Pick your data").should("not.exist");
@@ -345,7 +351,9 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Sample Dataset")
           .should("be.visible")
           .click();
-        cy.findByText("Reviews").click();
+        cy.findByText("Reviews")
+          .should("be.visible")
+          .click();
 
         cy.get(".Button")
           .findByText("Summarize")

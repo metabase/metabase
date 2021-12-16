@@ -12,7 +12,9 @@ describe("smoketest > user", () => {
     cy.findByText("Sample Dataset")
       .should("be.visible")
       .click();
-    cy.findByText("Products").click();
+    cy.findByText("Products")
+      .should("be.visible")
+      .click();
     cy.findByText("Add filters to narrow your answer").click();
     cy.findByText("Vendor").click();
     cy.findByText("Is").click();

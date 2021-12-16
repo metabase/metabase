@@ -554,7 +554,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Test Table").click();
+      cy.findByText("Test Table")
+        .should("be.visible")
+        .click();
 
       cy.findByText("Visualization");
       cy.findByText("Discount").should("not.exist");
@@ -898,7 +900,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("People").click();
+      cy.findByText("People")
+        .should("be.visible")
+        .click();
       cy.findByText("Save").click();
       cy.findByLabelText("Name")
         .clear()

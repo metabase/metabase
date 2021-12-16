@@ -16,7 +16,9 @@ describe("visual tests > notebook > major UI elements", () => {
     cy.findByText("Sample Dataset")
       .should("be.visible")
       .click();
-    cy.findByText("Orders").click();
+    cy.findByText("Orders")
+      .should("be.visible")
+      .click();
 
     addJoin({
       rightTable: "Products",
@@ -73,7 +75,9 @@ describe("visual tests > notebook > Run buttons", () => {
     cy.findByText("Sample Dataset")
       .should("be.visible")
       .click();
-    cy.findByText("Orders").click();
+    cy.findByText("Orders")
+      .should("be.visible")
+      .click();
     // Waiting for notebook icon to load
     cy.wait(1000);
     cy.icon("notebook").click();

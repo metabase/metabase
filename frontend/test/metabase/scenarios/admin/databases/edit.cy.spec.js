@@ -92,7 +92,9 @@ describe("scenarios > admin > databases > edit", () => {
             .should("be.visible")
             .click();
 
-          cy.findByText("Custom").click();
+          cy.findByText("Custom")
+            .should("be.visible")
+            .click();
           popover()
             .findByText("Use instance default (TTL)")
             .click();

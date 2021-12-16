@@ -28,7 +28,9 @@ describe.skip("issue 18502", () => {
       cy.findByText("Sample Dataset")
         .should("be.visible")
         .click();
-      cy.findByText("Saved Questions").click();
+      cy.findByText("Saved Questions")
+        .should("be.visible")
+        .click();
       cy.findByText("18502#2").click();
     });
 
