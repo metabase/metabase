@@ -26,7 +26,7 @@ interface Props {
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => void;
+  onValidatePassword: (user: UserInfo) => Promise<void>;
   onChangeDatabase: (database: DatabaseInfo | null) => void;
   onChangeTracking: (isTrackingAllowed: boolean) => void;
 }

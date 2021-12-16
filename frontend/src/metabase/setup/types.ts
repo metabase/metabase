@@ -14,6 +14,11 @@ export interface UserInfo {
 export interface DatabaseInfo {
   name: string;
   engine: string;
+  details: DatabaseDetails;
+}
+
+export interface DatabaseDetails {
+  ssl: boolean;
 }
 
 export type LocaleData = [string, string];

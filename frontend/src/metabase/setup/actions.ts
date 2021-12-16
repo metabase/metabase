@@ -1,7 +1,8 @@
 import { createAction } from "redux-actions";
+import { SetupApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
-import { UtilApi } from "metabase/services";
-import { UserInfo } from "./types";
+import Settings from "metabase/lib/settings";
+import { UserInfo, DatabaseInfo } from "./types";
 
 export const SET_STEP = "metabase/setup/SET_STEP";
 export const setStep = createAction(SET_STEP);
@@ -23,5 +24,16 @@ export const validatePassword = createThunkAction(
   VALIDATE_PASSWORD,
   (user: UserInfo) => async () => {
     await UtilApi.password_check({ password: user.password });
+  },
+);
+
+export const VALIDATE_DATABASE = "metabase/setup/VALIDATE_DATABASE";
+export const validateDatabase = createThunkAction(
+  VALIDATE_DATABASE,
+  (database: DatabaseInfo) => async () => {
+    await SetupApi.validate_db({
+      token: Settings.get("setup-token"),
+      details: database,
+    });
   },
 );

@@ -13,7 +13,7 @@ interface Props {
   isActive: boolean;
   isCompleted: boolean;
   onChangeUser: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => void;
+  onValidatePassword: (user: UserInfo) => Promise<void>;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -57,7 +57,7 @@ const UserStep = ({
 interface UserFormProps {
   user?: UserInfo;
   onSubmit: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => void;
+  onValidatePassword: (user: UserInfo) => Promise<void>;
 }
 
 const UserForm = ({ user, onSubmit, onValidatePassword }: UserFormProps) => {
