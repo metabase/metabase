@@ -21,8 +21,8 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onPasswordChange: (user: UserInfo) => {
-    dispatch(validatePassword(user));
+  onPasswordChange: async (user: UserInfo) => {
+    await dispatch(validatePassword(user));
   },
   onStepSelect: () => {
     dispatch(setStep(USER_STEP));

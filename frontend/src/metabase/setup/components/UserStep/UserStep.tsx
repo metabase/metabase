@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import { getIn } from "icepick";
 import Users from "metabase/entities/users";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
