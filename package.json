@@ -199,7 +199,7 @@
     "babel-plugin-ttag": "^1.7.26",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "^6.8.0",
+    "cypress": "^9.1.1",
     "cypress-grep": "^2.5.2",
     "cypress-real-events": "^1.4.0",
     "documentation": "^13.2.5",
