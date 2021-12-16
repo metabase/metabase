@@ -27,7 +27,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     trackTrackingChanged(isTrackingAllowed);
   },
   onStepSelect: () => {
-    return dispatch(setStep(PREFERENCES_STEP));
+    dispatch(setStep(PREFERENCES_STEP));
   },
   onStepSubmit: async (isTrackingAllowed: boolean) => {
     await dispatch(submitSetup());
