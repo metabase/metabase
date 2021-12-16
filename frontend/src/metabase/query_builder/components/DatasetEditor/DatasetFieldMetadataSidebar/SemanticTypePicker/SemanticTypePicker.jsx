@@ -129,7 +129,6 @@ function SemanticTypePicker({ field, sections, IDFields, tabIndex }) {
         className="cursor-pointer"
         hasValue={!!field.value}
         onClick={openPicker}
-        onFocus={openPicker}
         tabIndex={tabIndex}
       >
         {pickerLabel}
