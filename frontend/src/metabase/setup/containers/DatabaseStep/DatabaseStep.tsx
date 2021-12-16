@@ -35,8 +35,8 @@ const mapDispatchToProps = (dispatch: any) => ({
     trackDatabaseStepCompleted();
   },
   onStepCancel: (engine?: string) => {
-    trackAddDataLaterClicked(engine);
     dispatch(setStep(PREFERENCES_STEP));
+    trackAddDataLaterClicked(engine);
   },
 });
 
