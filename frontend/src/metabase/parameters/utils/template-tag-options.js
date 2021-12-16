@@ -1,4 +1,6 @@
-import { getOperatorDisplayName } from "./operators";
+import { t } from "ttag";
+
+import { getOperatorDisplayName, buildTypedOperatorOptions } from "./operators";
 import { fieldFilterForParameter } from "./filters";
 
 import {
@@ -13,6 +15,7 @@ export function getParameterOptions() {
     ...OPTIONS_WITH_OPERATOR_SUBTYPES.map(option =>
       buildOperatorSubtypeOptions(option),
     ),
+    ...buildTypedOperatorOptions("string", "location", t`Location`),
   ].flat();
 }
 

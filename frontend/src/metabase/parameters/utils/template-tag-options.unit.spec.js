@@ -22,12 +22,18 @@ describe("parameters/utils/template-tag-options", () => {
     });
 
     it("should add a `combinedName` property to options", () => {
-      const optionsByType = _.indexBy(getParameterOptions(), "type");
+      const optionsByType = _.groupBy(getParameterOptions(), "type");
 
-      expect(optionsByType["string/="].combinedName).toEqual("String");
-      expect(optionsByType["string/!="].combinedName).toEqual("String is not");
-      expect(optionsByType["number/!="].combinedName).toEqual("Not equal to");
-      expect(optionsByType["date/single"].combinedName).toEqual("Single Date");
+      expect(optionsByType["string/="][0].combinedName).toEqual("String");
+      expect(optionsByType["string/!="][0].combinedName).toEqual(
+        "String is not",
+      );
+      expect(optionsByType["number/!="][0].combinedName).toEqual(
+        "Not equal to",
+      );
+      expect(optionsByType["date/single"][0].combinedName).toEqual(
+        "Single Date",
+      );
     });
   });
 
@@ -69,10 +75,13 @@ describe("parameters/utils/template-tag-options", () => {
       ).toBe(true);
     });
 
-    it("as a result of all location parameters haiving subtypes should return nothing for a generic location field", () => {
+    it("should return string options for a location field", () => {
       const locationField = { ...field, isLocation: () => true };
       const availableOptions = getParameterOptionsForField(locationField);
-      expect(availableOptions).toEqual([]);
+      expect(
+        availableOptions.length > 0 &&
+          availableOptions.every(option => option.type.startsWith("string")),
+      ).toBe(true);
     });
   });
 });

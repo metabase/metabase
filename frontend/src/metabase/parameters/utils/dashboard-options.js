@@ -1,20 +1,6 @@
 import { t } from "ttag";
-import { getOperatorDisplayName } from "./operators";
-import { PARAMETER_OPERATOR_TYPES, ID_OPTION } from "../constants";
-
-function buildTypedOperatorOptions(operatorType, sectionId, sectionName) {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
-    return {
-      ...operatorOption,
-      sectionId,
-      combinedName: getOperatorDisplayName(
-        operatorOption,
-        operatorType,
-        sectionName,
-      ),
-    };
-  });
-}
+import { buildTypedOperatorOptions } from "./operators";
+import { ID_OPTION } from "../constants";
 
 export function getDashboardParameterSections() {
   return [
