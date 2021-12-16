@@ -17,9 +17,9 @@ interface Props {
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onChangeLocale: (locale: Locale) => void;
-  onSelectThisStep: () => void;
-  onSelectNextStep: () => void;
+  onLocaleChange: (locale: Locale) => void;
+  onStepSelect: () => void;
+  onStepSubmit: () => void;
 }
 
 const LanguageStep = ({
@@ -28,9 +28,9 @@ const LanguageStep = ({
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
-  onChangeLocale,
-  onSelectThisStep,
-  onSelectNextStep,
+  onLocaleChange,
+  onStepSelect,
+  onStepSubmit,
 }: Props) => {
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
@@ -41,7 +41,7 @@ const LanguageStep = ({
         label={1}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onSelect={onSelectThisStep}
+        onStepSelect={onStepSelect}
       />
     );
   }
@@ -57,7 +57,7 @@ const LanguageStep = ({
             key={item.code}
             isSelected={item.code === locale?.code}
             data-testid={`language-option-${item.code}`}
-            onClick={() => onChangeLocale(item)}
+            onClick={() => onLocaleChange(item)}
           >
             {item.name}
           </StepLocaleListItem>
@@ -66,7 +66,7 @@ const LanguageStep = ({
       <Button
         primary={locale != null}
         disabled={locale == null}
-        onClick={onSelectNextStep}
+        onClick={onStepSubmit}
       >{t`Next`}</Button>
     </ActiveStep>
   );

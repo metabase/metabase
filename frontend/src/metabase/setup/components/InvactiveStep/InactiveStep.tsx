@@ -12,7 +12,7 @@ interface Props {
   label: number;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onSelect: () => void;
+  onStepSelect: () => void;
 }
 
 const InactiveStep = ({
@@ -20,12 +20,12 @@ const InactiveStep = ({
   label,
   isStepCompleted,
   isSetupCompleted,
-  onSelect,
+  onStepSelect,
 }: Props) => {
   return (
     <StepRoot
       isCompleted={isStepCompleted}
-      onClick={isStepCompleted && !isSetupCompleted ? onSelect : undefined}
+      onClick={isStepCompleted && !isSetupCompleted ? onStepSelect : undefined}
     >
       <StepTitle isCompleted={isStepCompleted}>{title}</StepTitle>
       <StepLabel isCompleted={isStepCompleted}>

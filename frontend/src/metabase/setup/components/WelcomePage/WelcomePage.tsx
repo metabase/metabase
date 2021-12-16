@@ -11,20 +11,14 @@ import {
 } from "./WelcomePage.styled";
 
 interface Props {
-  onSelectNextStep: () => void;
-  onLoadUserDefaults: () => void;
-  onLoadLocaleDefaults: () => void;
+  onStepShow: () => void;
+  onStepSubmit: () => void;
 }
 
-const WelcomePage = ({
-  onSelectNextStep,
-  onLoadLocaleDefaults,
-  onLoadUserDefaults,
-}: Props) => {
+const WelcomePage = ({ onStepShow, onStepSubmit }: Props) => {
   useEffect(() => {
-    onLoadUserDefaults();
-    onLoadLocaleDefaults();
-  }, [onLoadUserDefaults, onLoadLocaleDefaults]);
+    onStepShow();
+  }, [onStepShow]);
 
   return (
     <PageRoot>
@@ -36,7 +30,7 @@ const WelcomePage = ({
         </PageBody>
         <PageButton
           primary
-          onClick={onSelectNextStep}
+          onClick={onStepSubmit}
         >{t`Let's get started`}</PageButton>
       </PageMain>
       <SetupHelp />

@@ -20,9 +20,9 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onChangeLocale: (locale: Locale) => dispatch(setLocale(locale)),
-  onSelectThisStep: () => dispatch(setStep(LANGUAGE_STEP)),
-  onSelectNextStep: () => dispatch(setStep(USER_STEP)),
+  onLocaleChange: (locale: Locale) => dispatch(setLocale(locale)),
+  onStepSelect: () => dispatch(setStep(LANGUAGE_STEP)),
+  onStepSubmit: () => dispatch(setStep(USER_STEP)),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(LanguageStep);

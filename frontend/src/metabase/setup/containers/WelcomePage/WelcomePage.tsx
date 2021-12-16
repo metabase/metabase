@@ -4,9 +4,13 @@ import { setStep, loadUserDefaults, loadLocaleDefaults } from "../../actions";
 import { LANGUAGE_STEP } from "../../constants";
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onSelectNextStep: () => dispatch(setStep(LANGUAGE_STEP)),
-  onLoadUserDefaults: () => dispatch(loadUserDefaults()),
-  onLoadLocaleDefaults: () => dispatch(loadLocaleDefaults()),
+  onStepShow: () => {
+    dispatch(loadUserDefaults());
+    dispatch(loadLocaleDefaults());
+  },
+  onStepSubmit: () => {
+    dispatch(setStep(LANGUAGE_STEP));
+  },
 });
 
 export default connect(null, mapDispatchToProps)(WelcomePage);
