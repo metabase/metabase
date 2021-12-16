@@ -55,5 +55,7 @@ export const submitSetup = createThunkAction(
         allow_tracking: isTrackingAllowed.toString(),
       },
     });
+
+    Settings.set("setup-token", null);
   },
 );

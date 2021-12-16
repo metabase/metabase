@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import Link from "metabase/components/Link";
 import NewsletterForm from "metabase/components/NewsletterForm";
 import {
   StepRoot,
@@ -27,10 +26,10 @@ const CompletedStep = ({ user, isActive }: Props): JSX.Element | null => {
         <NewsletterForm initialEmail={user?.email} />
       </StepBody>
       <StepFooter>
-        <Link
+        <a
           className="Button Button--primary"
-          to="/"
-        >{t`Take me to Metabase`}</Link>
+          href="/"
+        >{t`Take me to Metabase`}</a>
       </StepFooter>
     </StepRoot>
   );
