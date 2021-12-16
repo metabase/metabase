@@ -2,6 +2,7 @@ import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import UserStep from "../../components/UserStep";
 import { setUser, validatePassword, setStep } from "../../actions";
+import { trackUserStepCompleted } from "../../analytics";
 import { USER_STEP, DATABASE_STEP } from "../../constants";
 import {
   getUser,
@@ -29,6 +30,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   onStepSubmit: (user: UserInfo) => {
     dispatch(setUser(user));
     dispatch(setStep(DATABASE_STEP));
+    trackUserStepCompleted();
   },
 });
 

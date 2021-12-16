@@ -1,6 +1,7 @@
 import { connect } from "react-redux";
 import WelcomePage from "../../components/WelcomePage";
 import { setStep, loadUserDefaults, loadLocaleDefaults } from "../../actions";
+import { trackWelcomeStepCompleted } from "../../analytics";
 import { LANGUAGE_STEP } from "../../constants";
 
 const mapDispatchToProps = (dispatch: any) => ({
@@ -10,6 +11,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
   onStepSubmit: () => {
     dispatch(setStep(LANGUAGE_STEP));
+    trackWelcomeStepCompleted();
   },
 });
 

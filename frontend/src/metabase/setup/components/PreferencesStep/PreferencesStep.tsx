@@ -21,7 +21,7 @@ interface Props {
   isSetupCompleted: boolean;
   onTrackingChange: (isTrackingAllowed: boolean) => void;
   onStepSelect: () => void;
-  onStepSubmit: () => void;
+  onStepSubmit: (isTrackingAllowed: boolean) => void;
 }
 
 const PreferencesStep = ({
@@ -37,7 +37,7 @@ const PreferencesStep = ({
 
   const handleSubmit = async () => {
     try {
-      await onStepSubmit();
+      await onStepSubmit(isTrackingAllowed);
     } catch (error) {
       setErrorMessage(String(error));
     }
