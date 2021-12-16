@@ -20,10 +20,12 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onChangeUser: (user: UserInfo) => dispatch(setUser(user)),
-  onValidatePassword: (user: UserInfo) => dispatch(validatePassword(user)),
-  onSelectThisStep: () => dispatch(setStep(USER_STEP)),
-  onSelectNextStep: () => dispatch(setStep(DATABASE_STEP)),
+  onPasswordChange: (user: UserInfo) => dispatch(validatePassword(user)),
+  onStepSelect: () => dispatch(setStep(USER_STEP)),
+  onStepSubmit: (user: UserInfo) => {
+    dispatch(setUser(user));
+    dispatch(setStep(DATABASE_STEP));
+  },
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(UserStep);

@@ -18,10 +18,9 @@ interface Props {
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
   isHosted: boolean;
-  onChangeUser: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => void;
-  onSelectThisStep: () => void;
-  onSelectNextStep: () => void;
+  onPasswordChange: (user: UserInfo) => void;
+  onStepSelect: () => void;
+  onStepSubmit: (user: UserInfo) => void;
 }
 
 const UserStep = ({
@@ -30,16 +29,10 @@ const UserStep = ({
   isStepCompleted,
   isSetupCompleted,
   isHosted,
-  onChangeUser,
-  onValidatePassword,
-  onSelectThisStep,
-  onSelectNextStep,
+  onPasswordChange,
+  onStepSelect,
+  onStepSubmit,
 }: Props) => {
-  const handleSubmit = (user: UserInfo) => {
-    onChangeUser(user);
-    onSelectNextStep();
-  };
-
   if (!isStepActive) {
     return (
       <InactiveStep
@@ -47,7 +40,7 @@ const UserStep = ({
         label={2}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onSelect={onSelectThisStep}
+        onStepSelect={onStepSelect}
       />
     );
   }
@@ -62,8 +55,8 @@ const UserStep = ({
       )}
       <UserForm
         user={user}
-        onSubmit={handleSubmit}
-        onValidatePassword={onValidatePassword}
+        onSubmit={onStepSubmit}
+        onPasswordChange={onPasswordChange}
       />
     </ActiveStep>
   );
@@ -72,13 +65,13 @@ const UserStep = ({
 interface UserFormProps {
   user?: UserInfo;
   onSubmit: (user: UserInfo) => void;
-  onValidatePassword: (user: UserInfo) => void;
+  onPasswordChange: (user: UserInfo) => void;
 }
 
-const UserForm = ({ user, onSubmit, onValidatePassword }: UserFormProps) => {
+const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
   const handleAsyncValidate = async (user: UserInfo) => {
     try {
-      onValidatePassword(user);
+      await onPasswordChange(user);
       return {};
     } catch (error) {
       return getIn(error, ["data", "errors"]);
