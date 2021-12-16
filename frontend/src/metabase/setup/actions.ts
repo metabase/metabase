@@ -37,3 +37,23 @@ export const validateDatabase = createThunkAction(
     });
   },
 );
+
+export const SUBMIT_SETUP = "metabase/setup/SUBMIT_SETUP";
+export const submitSetup = createThunkAction(
+  SUBMIT_SETUP,
+  () => async (dispatch: any, getState: any) => {
+    const { setup } = getState();
+    const { locale, user, database, isTrackingAllowed } = setup;
+
+    await SetupApi.create({
+      token: Settings.get("setup-token"),
+      user,
+      database,
+      prefs: {
+        site_name: user.site_name,
+        site_locale: locale.code,
+        allow_tracking: isTrackingAllowed.toString(),
+      },
+    });
+  },
+);

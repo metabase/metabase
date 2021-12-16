@@ -7,6 +7,7 @@ export interface UserInfo {
   first_name: string;
   last_name: string;
   email: string;
+  site_name: string;
   password: string;
   password_confirm: string;
 }
