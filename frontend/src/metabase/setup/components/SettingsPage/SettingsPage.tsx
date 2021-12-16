@@ -25,6 +25,7 @@ interface Props {
   database?: DatabaseInfo;
   databaseEngine?: string;
   isTrackingAllowed: boolean;
+  isHosted: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
@@ -43,6 +44,7 @@ const SettingsPage = ({
   database,
   databaseEngine,
   isTrackingAllowed,
+  isHosted,
   onChangeStep,
   onChangeLocale,
   onChangeUser,
@@ -72,6 +74,7 @@ const SettingsPage = ({
         isActive={step === USER_STEP}
         isFilled={step > USER_STEP}
         isCompleted={step === COMPLETED_STEP}
+        isHosted={isHosted}
         onChangeUser={onChangeUser}
         onValidatePassword={onValidatePassword}
         onSelectThisStep={() => onChangeStep(USER_STEP)}

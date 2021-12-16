@@ -12,6 +12,7 @@ interface Props {
   database?: DatabaseInfo;
   databaseEngine?: string;
   isTrackingAllowed: boolean;
+  isHosted: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;

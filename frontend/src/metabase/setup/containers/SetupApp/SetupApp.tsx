@@ -28,6 +28,7 @@ const mapStateToProps = (state: any) => ({
   database: getDatabase(state),
   databaseEngine: getDatabaseEngine(state),
   isTrackingAllowed: isTrackingAllowed(state),
+  isHosted: Settings.isHosted(),
 });
 
 const mapDispatchToProps = {

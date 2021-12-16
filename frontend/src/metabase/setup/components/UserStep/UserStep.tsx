@@ -3,7 +3,11 @@ import { t } from "ttag";
 import Users from "metabase/entities/users";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
-import { UserFormRoot, UserFormGroup } from "./UserStep.styled";
+import {
+  UserFormRoot,
+  UserFormGroup,
+  StepDescription,
+} from "./UserStep.styled";
 import { FormProps } from "./types";
 import { UserInfo } from "../../types";
 import { getIn } from "icepick";
@@ -13,6 +17,7 @@ interface Props {
   isActive: boolean;
   isFilled: boolean;
   isCompleted: boolean;
+  isHosted: boolean;
   onChangeUser: (user: UserInfo) => void;
   onValidatePassword: (user: UserInfo) => void;
   onSelectThisStep: () => void;
@@ -24,6 +29,7 @@ const UserStep = ({
   isActive,
   isFilled,
   isCompleted,
+  isHosted,
   onChangeUser,
   onValidatePassword,
   onSelectThisStep,
@@ -48,6 +54,12 @@ const UserStep = ({
 
   return (
     <ActiveStep title={getStepTitle(user, isFilled)} label={2}>
+      {isHosted && (
+        <StepDescription>
+          {t`We know you’ve already created one of these.`}{" "}
+          {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
+        </StepDescription>
+      )}
       <UserForm
         user={user}
         onSubmit={handleSubmit}
