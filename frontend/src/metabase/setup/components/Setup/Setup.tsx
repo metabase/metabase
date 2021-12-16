@@ -1,6 +1,6 @@
 import React from "react";
 import SettingsPage from "../SettingsPage";
-import WelcomePage from "../WelcomePage";
+import WelcomePage from "../../containers/WelcomePage";
 import { WELCOME_STEP } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 
@@ -20,14 +20,12 @@ interface Props {
   onChangeTracking: (isTrackingAllowed: boolean) => void;
   onValidatePassword: (user: UserInfo) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
-  onLoadUserDefaults: () => void;
-  onLoadLocaleDefaults: () => void;
   onSubmitSetup: () => void;
 }
 
 const Setup = (props: Props) => {
   if (props.step === WELCOME_STEP) {
-    return <WelcomePage {...props} />;
+    return <WelcomePage />;
   } else {
     return <SettingsPage {...props} />;
   }

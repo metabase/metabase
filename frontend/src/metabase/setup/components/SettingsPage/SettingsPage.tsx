@@ -2,7 +2,7 @@ import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../components/LanguageStep";
-import UserStep from "../../components/UserStep";
+import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../DatabaseStep";
 import PreferencesStep from "../PreferencesStep";
 import CompletedStep from "../CompletedStep";
@@ -69,17 +69,7 @@ const SettingsPage = ({
         onSelectThisStep={() => onChangeStep(LANGUAGE_STEP)}
         onSelectNextStep={() => onChangeStep(USER_STEP)}
       />
-      <UserStep
-        user={user}
-        isActive={step === USER_STEP}
-        isFilled={step > USER_STEP}
-        isCompleted={step === COMPLETED_STEP}
-        isHosted={isHosted}
-        onChangeUser={onChangeUser}
-        onValidatePassword={onValidatePassword}
-        onSelectThisStep={() => onChangeStep(USER_STEP)}
-        onSelectNextStep={() => onChangeStep(DATABASE_STEP)}
-      />
+      <UserStep />
       <DatabaseStep
         database={database}
         isActive={step === DATABASE_STEP}
