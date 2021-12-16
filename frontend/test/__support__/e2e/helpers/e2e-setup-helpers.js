@@ -13,7 +13,10 @@ export function restore(name = "default") {
       cy.request("POST", `/api/testing/restore/${name}`);
       // If the restore doesn't throw, we can break out
       return;
-    } catch {}
+    } catch {
+      // If we fail, wait a second before trying again in case its a race condition
+      cy.wait(1000);
+    }
   }
   // One final request to throw an exception
   cy.request("POST", `/api/testing/restore/${name}`);
