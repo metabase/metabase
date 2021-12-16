@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { getIn } from "icepick";
 import Users from "metabase/entities/users";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -10,7 +11,6 @@ import {
 } from "./UserStep.styled";
 import { FormProps } from "./types";
 import { UserInfo } from "../../types";
-import { getIn } from "icepick";
 
 interface Props {
   user?: UserInfo;
