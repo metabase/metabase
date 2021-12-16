@@ -6,11 +6,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 
 import { DimensionInfo } from "./DimensionInfo";
 
-const categoryDimension = Dimension.parseMBQL(
-  ["field", PRODUCTS.CATEGORY.id, null],
-  metadata,
-);
-
 const fieldDimension = Dimension.parseMBQL(
   ["field", PRODUCTS.CREATED_AT.id, null],
   metadata,
@@ -21,16 +16,8 @@ const expressionDimension = Dimension.parseMBQL(
   metadata,
 );
 
-const mockFetchFieldValues = jest.fn(() => Promise.resolve([]));
 function setup(dimension, fieldValues) {
-  mockFetchFieldValues.mockReset();
-  return render(
-    <DimensionInfo
-      dimension={dimension}
-      fieldValues={fieldValues}
-      fetchFieldValues={mockFetchFieldValues}
-    />,
-  );
+  return render(<DimensionInfo dimension={dimension} />);
 }
 
 describe("DimensionInfo", () => {
@@ -52,28 +39,5 @@ describe("DimensionInfo", () => {
     setup(expressionDimension);
 
     expect(screen.getByText("No description")).toBeInTheDocument();
-  });
-
-  it("should fetch field values when `fieldValues` is empty and the field is set to list values", () => {
-    categoryDimension.field().has_field_values = "list";
-    setup(categoryDimension, []);
-
-    expect(mockFetchFieldValues).toHaveBeenCalledWith({
-      id: categoryDimension.field().id,
-    });
-  });
-
-  it("should not fetch field values when `fieldValues` is not empty", () => {
-    categoryDimension.field().has_field_values = "list";
-    setup(categoryDimension, ["hey"]);
-
-    expect(mockFetchFieldValues).not.toHaveBeenCalled();
-  });
-
-  it("should not fetch field values when the field is not set to list values", () => {
-    categoryDimension.field().has_field_values = "search";
-    setup(categoryDimension, [""]);
-
-    expect(mockFetchFieldValues).not.toHaveBeenCalled();
   });
 });

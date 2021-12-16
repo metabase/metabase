@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import FieldValuesList from "./FieldValuesList";
+import { FieldValuesList } from "./FieldValuesList";
 
 const categoryField = Dimension.parseMBQL(
   ["field", PRODUCTS.CATEGORY.id, null],
@@ -43,5 +43,28 @@ describe("FieldValuesList", () => {
           .join(", "),
       ),
     ).toBeInTheDocument();
+  });
+
+  it("should fetch field values when `fieldValues` is empty and the field is set to list values", () => {
+    categoryField.has_field_values = "list";
+    setup(categoryField, []);
+
+    expect(mockFetchFieldValues).toHaveBeenCalledWith({
+      id: categoryField.id,
+    });
+  });
+
+  it("should not fetch field values when `fieldValues` is not empty", () => {
+    categoryField.has_field_values = "list";
+    setup(categoryField, ["hey"]);
+
+    expect(mockFetchFieldValues).not.toHaveBeenCalled();
+  });
+
+  it("should not fetch field values when the field is not set to list values", () => {
+    categoryField.has_field_values = "search";
+    setup(categoryField, [""]);
+
+    expect(mockFetchFieldValues).not.toHaveBeenCalled();
   });
 });
