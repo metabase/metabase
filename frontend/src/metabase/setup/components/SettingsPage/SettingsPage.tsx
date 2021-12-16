@@ -6,7 +6,7 @@ import UserStep from "../../components/UserStep";
 import DatabaseStep from "../DatabaseStep";
 import PreferencesStep from "../PreferencesStep";
 import CompletedStep from "../CompletedStep";
-import SetupFooter from "../SetupFooter";
+import SetupHelp from "../SetupHelp";
 import {
   LANGUAGE_STEP,
   USER_STEP,
@@ -95,7 +95,7 @@ const SettingsPage = ({
         onSelectNextStep={() => onChangeStep(COMPLETED_STEP)}
       />
       <CompletedStep user={user} isActive={step === COMPLETED_STEP} />
-      <SetupFooter />
+      <SetupHelp />
     </PageBody>
   </div>
 );

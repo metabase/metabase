@@ -76,6 +76,7 @@ const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
   return (
     <Databases.Form
       form={Databases.forms.setup}
+      formName="database"
       database={database}
       onSubmit={onSubmit}
     >

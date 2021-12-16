@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
-import SetupFooter from "../SetupFooter";
+import SetupHelp from "../SetupHelp";
 import { LANGUAGE_STEP } from "../../constants";
 import {
   PageRoot,
@@ -38,7 +38,7 @@ const WelcomePage = ({ localeData, onChangeStep, onChangeLocale }: Props) => {
           onClick={() => onChangeStep(LANGUAGE_STEP)}
         >{t`Let's get started`}</PageButton>
       </PageMain>
-      <SetupFooter />
+      <SetupHelp />
     </PageRoot>
   );
 };

@@ -2,9 +2,9 @@ import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
-import { SetupFooterRoot } from "./SetupFooter.styled";
+import { SetupFooterRoot } from "./SetupHelp.styled";
 
-const SetupFooter = () => {
+const SetupHelp = () => {
   return (
     <SetupFooterRoot>
       {t`If you feel stuck`},{" "}
@@ -18,4 +18,4 @@ const SetupFooter = () => {
   );
 };
 
-export default SetupFooter;
+export default SetupHelp;
