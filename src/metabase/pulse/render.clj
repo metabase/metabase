@@ -84,7 +84,12 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall :combo :funnel :area} display-type)
+        (#{:area
+           :bar
+           :combo
+           :funnel
+           :progress
+           :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -99,11 +104,6 @@
              (> (count (dc-model/dashcard->multi-cards maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
-
-        (and (= @col-sample-count 2)
-             (number-field? @col-2)
-             (= display-type :bar))
-        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
