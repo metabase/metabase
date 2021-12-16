@@ -364,18 +364,7 @@
 
 (s/defmethod render :bar :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
-  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows                        (map (juxt x-axis-rowfn y-axis-rowfn)
-                                         (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows))
-        [x-col y-col]               ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        labels                      (x-and-y-axis-label-info x-col y-col viz-settings)
-        image-bundle                (image-bundle/make-image-bundle
-                                     render-type
-                                     (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                                       (js-svg/timelineseries-bar rows labels
-                                                                  (->js-viz x-col y-col viz-settings))
-                                       (js-svg/categorical-bar rows labels
-                                                               (->js-viz x-col y-col viz-settings))))]
+  (let [image-bundle (lab-image-bundle :bar render-type _timezone-id card _dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -567,7 +556,7 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [char-type joined-rows x-cols y-cols viz-settings]
+  [chart-type joined-rows x-cols y-cols viz-settings]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
@@ -590,12 +579,13 @@
 
 (defn- lab-image-bundle
   "Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way"
-  [chart-type render-type _timezone-id :- (s/maybe s/Str) card _dashcard {:keys [cols rows viz-settings] :as data}]
-  (let [x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card rows)
-        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card rows)
-        x-rows           (keep some? (map x-axis-rowfn rows))
-        y-rows           (keep some? (map y-axis-rowfn rows))
+  [chart-type render-type _timezone-id card _dashcard {:keys [cols rows viz-settings] :as data}]
+  (let [x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
+        y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
+        x-rows           (filter some? (map x-axis-rowfn rows))
+        y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)
+        dealio           (println joined-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         enforced-type    (if (= chart-type :combo)
@@ -610,11 +600,11 @@
         settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
     (image-bundle/make-image-bundle
       render-type
-      (js-svg/combo-chart series settings)))
+      (js-svg/combo-chart series settings))))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _dashcard {:keys [cols rows viz-settings] :as data}]
-  (let [image-bundle     (lab-image-bundle :combo render-type _timezone-id card _dashcard data)]
+  (let [image-bundle (lab-image-bundle :combo render-type _timezone-id card _dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -671,24 +661,12 @@
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (common/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        rows           (sparkline/cleaned-rows timezone-id card data)
-        last-rows      (reverse (take-last 2 rows))
-        values         (for [row last-rows]
-                         (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-temporal-string-pair timezone-id
-                                                             (map x-axis-rowfn last-rows)
-                                                             (x-axis-rowfn cols))
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-line
-                         js-svg/categorical-line)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                   (x-and-y-axis-label-info x-col y-col viz-settings)
-                                   (->js-viz x-col y-col viz-settings)))]
+  (let [
+        rows         (sparkline/cleaned-rows timezone-id card data)
+        last-rows    (reverse (take-last 2 rows))
+        values       (for [row last-rows]
+                       (some-> row y-axis-rowfn common/format-number))
+        image-bundle (lab-image-bundle :sparkline render-type _timezone-id card _dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -720,23 +698,8 @@
          (second labels)]]]]}))
 
 (s/defmethod render :area :- common/RenderedPulseCard
-  [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (common/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        rows           (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
-        last-rows      (reverse (take-last 2 rows))
-        labels         (datetime/format-temporal-string-pair timezone-id
-                                                             (map x-axis-rowfn last-rows)
-                                                             (x-axis-rowfn cols))
-        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         js-svg/timelineseries-area
-                         js-svg/categorical-area)
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
-                                   (x-and-y-axis-label-info x-col y-col viz-settings)
-                                   (->js-viz x-col y-col viz-settings)))]
+  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [image-bundle     (lab-image-bundle :area render-type timezone-id card _dashcard data)]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
