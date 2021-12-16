@@ -164,3 +164,43 @@ export function getDashboardParametersWithFieldMetadata(
     };
   });
 }
+
+export function getParametersMappedToDashcard(dashboard, dashcard) {
+  const { parameters = [] } = dashboard;
+  const { parameter_mappings } = dashcard;
+  return parameters
+    .map(parameter => {
+      const mapping = _.findWhere(parameter_mappings, {
+        parameter_id: parameter.id,
+      });
+
+      if (mapping) {
+        return {
+          ...parameter,
+          target: mapping.target,
+        };
+      }
+    })
+    .filter(Boolean);
+}
+
+export function hasMatchingParameters({
+  dashboard,
+  cardId,
+  parameters,
+  metadata,
+}) {
+  const dashcard = _.findWhere(dashboard.ordered_cards, { card_id: cardId });
+  if (!dashcard) {
+    return false;
+  }
+
+  const dashcardMappingsByParameterId = _.indexBy(
+    getMapping(dashcard, metadata),
+    "parameter_id",
+  );
+
+  return parameters.every(parameter => {
+    return dashcardMappingsByParameterId[parameter.id] != null;
+  });
+}

@@ -181,16 +181,14 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url is-active?]
+  [email google-auth? password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
-         (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :hostname         hostname
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
@@ -346,7 +344,7 @@
       (some (complement render.body/show-in-table?) cols)
       (yes "some columns are not included in rendered results")
 
-      (not= :table (render/detect-pulse-chart-type card result-data))
+      (not= :table (render/detect-pulse-chart-type card nil result-data))
       (no "we've determined it should not be rendered as a table")
 
       (= (count (take render.body/cols-limit cols)) render.body/cols-limit)

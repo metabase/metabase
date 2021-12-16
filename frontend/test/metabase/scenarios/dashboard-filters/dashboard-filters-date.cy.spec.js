@@ -27,10 +27,7 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
         editDashboard();
         setFilter("Time", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Created At")
           .first()
@@ -84,10 +81,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Relative Date":

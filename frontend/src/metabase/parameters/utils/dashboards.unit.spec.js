@@ -5,7 +5,11 @@ import {
   hasMapping,
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
+  getParametersMappedToDashcard,
+  hasMatchingParameters,
 } from "metabase/parameters/utils/dashboards";
+import { metadata } from "__support__/sample_dataset_fixture";
+
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -374,6 +378,164 @@ describe("meta/Dashboard", () => {
           name: "boolean",
         }),
       );
+    });
+  });
+
+  describe("getParametersMappedToDashcard", () => {
+    const dashboard = {
+      parameters: [
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+        {
+          id: "baz",
+        },
+      ],
+    };
+
+    const dashboardWithNoParameters = {};
+
+    const dashcard = {
+      parameter_mappings: [
+        {
+          parameter_id: "foo",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          parameter_id: "bar",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ],
+    };
+
+    const dashcardWithNoMappings = {};
+
+    it("should return the subset of the dashboard's parameters that are found in a given dashcard's parameter_mappings", () => {
+      expect(
+        getParametersMappedToDashcard(dashboardWithNoParameters, dashcard),
+      ).toEqual([]);
+      expect(
+        getParametersMappedToDashcard(dashboard, dashcardWithNoMappings),
+      ).toEqual([]);
+
+      expect(getParametersMappedToDashcard(dashboard, dashcard)).toEqual([
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ]);
+    });
+  });
+
+  describe("hasMatchingParameters", () => {
+    it("should return false when the given card is not found on the dashboard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 456,
+          parameters: [],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return false when a given parameter is not found in the dashcard mappings", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+          {
+            card_id: 456,
+            parameter_mappings: [
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return true when all given parameters are found mapped to the dashcard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(true);
     });
   });
 });

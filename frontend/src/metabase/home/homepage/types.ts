@@ -1,4 +1,7 @@
+type InitialSyncStatus = "incomplete" | "complete" | "aborted";
+
 export interface User {
+  id: number;
   first_name: string;
   is_superuser: boolean;
   personal_collection_id: string;
@@ -7,7 +10,10 @@ export interface User {
 export interface Database {
   id: number;
   name: string;
+  engine: string;
   is_sample: boolean;
+  creator_id?: number;
+  initial_sync_status: InitialSyncStatus;
 }
 
 export interface Collection {
@@ -17,6 +23,7 @@ export interface Collection {
 export interface Dashboard {
   id: number;
   name: string;
+  model?: string;
 }
 
 export interface DatabaseCandidate {

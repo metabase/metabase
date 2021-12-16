@@ -34,6 +34,7 @@ import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
@@ -61,7 +62,7 @@ import {
 } from "./selectors";
 import { trackNewQuestionSaved } from "./tracking";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -241,11 +242,18 @@ export const updateUrl = createThunkAction(
     } else {
       question = new Question(card, getMetadata(getState()));
     }
+
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
         (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    }
+
+    // prevent clobbering of hash when there are fake parameters on the question
+    // consider handling this in a more general way, somehow
+    if (question.isStructured() && question.parameters().length > 0) {
+      dirty = true;
     }
 
     if (!queryBuilderMode) {
@@ -314,6 +322,23 @@ export const redirectToNewQuestionFlow = createThunkAction(
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
+async function verifyMatchingDashcardAndParameters({
+  dispatch,
+  dashboardId,
+  cardId,
+  parameters,
+  metadata,
+}) {
+  try {
+    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+      dispatch(setErrorPage({ status: 403 }));
+    }
+  } catch (error) {
+    dispatch(setErrorPage(error));
+  }
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params, queryParams) => {
   return async (dispatch, getState) => {
@@ -352,7 +377,6 @@ export const initializeQB = (location, params, queryParams) => {
         // if we have a serialized card then unpack and use it
         if (serializedCard) {
           card = deserializeCardFromUrl(serializedCard);
-
           // if serialized query has database we normalize syntax to support older mbql
           if (card.dataset_query.database != null) {
             card.dataset_query = normalize(card.dataset_query);
@@ -360,6 +384,8 @@ export const initializeQB = (location, params, queryParams) => {
         } else {
           card = {};
         }
+
+        const deserializedCard = card;
 
         // load the card either from `cardId` parameter or the serialized card
         if (cardId) {
@@ -369,6 +395,22 @@ export const initializeQB = (location, params, queryParams) => {
           // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
           // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
           card.original_card_id = card.id;
+
+          // if there's a card in the url, it may have parameters from a dashboard
+          if (deserializedCard && deserializedCard.parameters) {
+            const metadata = getMetadata(getState());
+            const { dashboardId, parameters } = deserializedCard;
+            verifyMatchingDashcardAndParameters({
+              dispatch,
+              dashboardId,
+              cardId,
+              parameters,
+              metadata,
+            });
+
+            card.parameters = parameters;
+            card.dashboardId = dashboardId;
+          }
         } else if (card.original_card_id) {
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
@@ -521,12 +563,6 @@ export const initializeQB = (location, params, queryParams) => {
       question = question.setQuery(
         question.query().updateQueryTextWithNewSnippetNames(snippets),
       );
-    }
-
-    for (const [paramId, value] of Object.entries(
-      (card && card.parameterValues) || {},
-    )) {
-      dispatch(setParameterValue(paramId, value));
     }
 
     card = question && question.card();
@@ -1151,7 +1187,8 @@ export const runQuestionQuery = ({
     }
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
+        question.card().id == null
       : true;
 
     if (shouldUpdateUrl) {

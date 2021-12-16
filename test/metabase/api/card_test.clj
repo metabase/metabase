@@ -11,17 +11,16 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
-                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
+                                     PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
-            [metabase.models.query :as query]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
@@ -160,7 +159,7 @@
                       s/Keyword    s/Any}
                      (mt/user-http-request
                       :rasta :post 202 (format "card/%d/query" card-id)
-                      {:parameters [{:type   :category
+                      {:parameters [{:type   :number
                                      :target [:variable [:template-tag :category]]
                                      :value  2}]})))))))
 
@@ -1294,7 +1293,7 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :category
+  (json/generate-string [{:type   :number
                           :target [:variable [:template-tag :category]]
                           :value  2}]))
 
@@ -1360,8 +1359,8 @@
                                             :middleware {:add-default-userland-constraints? true
                                                          :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
-      (let [orig card-api/run-query-for-card-async]
-        (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
+      (let [orig qp.card/run-query-for-card-async]
+        (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
                                                           (apply orig card-id export-format
                                                                  :run (fn [{:keys [constraints]} _]
                                                                         {:constraints constraints})
@@ -1380,35 +1379,6 @@
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
-
-(deftest query-cache-ttl-hierarchy-test
-  (mt/discard-setting-changes [enable-query-caching]
-    (public-settings/enable-query-caching true)
-    (testing "query-magic-ttl converts to seconds correctly"
-      (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
-        ;; fake average execution time (in millis)
-        (with-redefs [query/average-execution-time-ms (constantly 4000)]
-          (mt/with-temp Card [card]
-            ;; the magic multiplier should be ttl-ratio times avg execution time
-            (is (= (* 2 4) (:cache-ttl (card-api/query-for-card card {} {} {}))))))))
-    (testing "card ttl only"
-      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
-    (testing "multiple ttl, dash wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash {:cache_ttl 1338}]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1338) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "multiple ttl, db wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "no ttl, nil res"
-      (mt/with-temp* [Database [db]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -1866,9 +1836,73 @@
 
 (deftest dataset-card
   (testing "Setting a question to a dataset makes it viz type table"
-    (mt/with-temp Card [card {:display :bar
+    (mt/with-temp Card [card {:display       :bar
                               :dataset_query (mbql-count-query)}]
       (is (= {:display "table" :dataset true}
              (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
                                        (assoc card :dataset true))
-                 (select-keys [:display :dataset])))))))
+                 (select-keys [:display :dataset]))))))
+  (testing "Cards preserve their edited metadata"
+    (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+            (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
+            (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                       :type/Integer :type/Quantity
+                                       :type/Float :type/Cost
+                                       :type/Text :type/Name
+                                       base-type))
+            (add-preserved [cols] (map merge
+                                       cols
+                                       (repeat {:description "user description"
+                                                :display_name "user display name"})
+                                       (map (comp
+                                             (fn [x] {:semantic_type x})
+                                             refine-type
+                                             :base_type)
+                                            cols)))]
+      (mt/with-temp* [Card [mbql-ds {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :venues)}}
+                                     :dataset true}]
+                      Card [mbql-nested {:dataset_query
+                                         {:database (mt/id)
+                                          :type     :query
+                                          :query    {:source-table
+                                                     (str "card__" (u/the-id mbql-ds))}}}]
+                      Card [native-ds {:dataset true
+                                       :dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native
+                                        {:query
+                                         "select * from venues"
+                                         :template-tags {}}}}]
+                      Card [native-nested {:dataset_query
+                                           {:database (mt/id)
+                                            :type :query
+                                            :query {:source-table
+                                                    (str "card__" (u/the-id native-ds))}}}]]
+        (doseq [[query-type card-id nested-id] [[:mbql
+                                                 (u/the-id mbql-ds) (u/the-id mbql-nested)]
+                                                [:native
+                                                 (u/the-id native-ds) (u/the-id native-nested)]]]
+          (query! card-id) ;; populate metadata
+          (let [metadata (db/select-one-field :result_metadata Card :id card-id)
+                ;; simulate updating metadat with user changed stuff
+                user-edited (add-preserved metadata)]
+            (db/update! Card card-id :result_metadata user-edited)
+            (testing "Saved metadata preserves user edits"
+              (is (= (map only-user-edits user-edited)
+                     (map only-user-edits (db/select-one-field :result_metadata Card :id card-id)))))
+            (testing "API response includes user edits"
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! card-id)
+                          :data :results_metadata :columns
+                          (map only-user-edits)
+                          (map #(update % :semantic_type keyword))))))
+            (testing "Nested queries have metadata"
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! nested-id)
+                          :data :results_metadata :columns
+                          (map only-user-edits)
+                          (map #(update % :semantic_type keyword))))))))))))

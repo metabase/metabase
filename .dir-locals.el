@@ -60,6 +60,8 @@
             (p.types/deftype+ '(2 nil nil (:defn)))
             (p/def-map-type '(2 nil nil (:defn)))
             (p/defprotocol+ '(1 (:defn)))
+            (p/defrecord+ '(2 nil nil (:defn)))
+            (p/deftype+ '(2 nil nil (:defn)))
             (tools.macro/macrolet '(1 ((:defn)) :form))))
   (cider-clojure-cli-aliases . "dev:drivers:drivers-dev:ee:ee-dev:user")
   (clojure-indent-style . always-align)

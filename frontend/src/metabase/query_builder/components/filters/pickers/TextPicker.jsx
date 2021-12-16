@@ -14,11 +14,13 @@ export default class TextPicker extends Component {
     validations: PropTypes.array,
     multi: PropTypes.bool,
     onCommit: PropTypes.func,
+    isSingleLine: PropTypes.bool,
   };
 
   static defaultProps = {
     validations: [],
     placeholder: t`Enter desired text`,
+    autoFocus: true,
   };
 
   constructor(props) {
@@ -48,7 +50,13 @@ export default class TextPicker extends Component {
   }
 
   render() {
-    const { validations, multi, onCommit } = this.props;
+    const {
+      validations,
+      multi,
+      onCommit,
+      isSingleLine,
+      autoFocus,
+    } = this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
     const commitOnEnter = e => {
@@ -60,19 +68,35 @@ export default class TextPicker extends Component {
     return (
       <div>
         <div className="FilterInput px1 pt1 relative">
-          <AutosizeTextarea
-            className={cx("input block full border-purple", {
-              "border-error": hasInvalidValues,
-            })}
-            type="text"
-            value={this.state.fieldString}
-            onChange={e => this.setValue(e.target.value)}
-            onKeyPress={commitOnEnter}
-            placeholder={this.props.placeholder}
-            autoFocus={true}
-            style={{ resize: "none" }}
-            maxRows={8}
-          />
+          {!isSingleLine && (
+            <AutosizeTextarea
+              className={cx("input block full border-purple", {
+                "border-error": hasInvalidValues,
+              })}
+              type="text"
+              value={this.state.fieldString}
+              onChange={e => this.setValue(e.target.value)}
+              onKeyPress={commitOnEnter}
+              placeholder={this.props.placeholder}
+              autoFocus={autoFocus}
+              style={{ resize: "none" }}
+              maxRows={8}
+            />
+          )}
+
+          {isSingleLine && (
+            <input
+              className={cx("input block full border-purple", {
+                "border-error": hasInvalidValues,
+              })}
+              type="text"
+              value={this.state.fieldString}
+              onChange={e => this.setValue(e.target.value)}
+              onKeyPress={commitOnEnter}
+              placeholder={this.props.placeholder}
+              autoFocus={autoFocus}
+            />
+          )}
         </div>
 
         {multi ? (

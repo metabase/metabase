@@ -53,6 +53,13 @@
     "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new" true
     "http://192.168.1.10/"                                                                   true
     "http://metabase.intranet/"                                                              true
+    "http://under_score.ca/"                                                                 true
+    "http://under__score.ca/"                                                                true
+    "http://_under_score.ca/"                                                                true
+    "http://__under_score.ca/"                                                               true
+    "http://hy-phen.ca/"                                                                     true
+    "http://hy--phen.ca/"                                                                    true
+    "http://two..dots.ca"                                                                    false
     ;; missing protocol
     "google.com"                                                                             false
     ;; protocol isn't HTTP/HTTPS

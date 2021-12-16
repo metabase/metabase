@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
 import { ClipPath } from "@visx/clip-path";
@@ -59,7 +60,7 @@ const ProgressBar = ({
     range: [0, barWidth],
   });
 
-  const currentX = xScale(Math.min(data.goal, data.value));
+  const currentX = xScale(Math.max(0, Math.min(data.goal, data.value)));
 
   const pointerY = layout.margin.top - layout.pointer.height * 1.5;
   const pointerX = xMin + Math.max(xScale(data.value), 0);
@@ -111,7 +112,7 @@ const ProgressBar = ({
               color="white"
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
-              dominantBaseline="central"
+              verticalAnchor="middle"
               fill="white"
             >
               {barText}
@@ -144,7 +145,7 @@ const ProgressBar = ({
           {formatNumber(0, format)}
         </Text>
         <Text fontSize={layout.fontSize} textAnchor="end" x={xMax}>
-          {`Goal ${formatNumber(data.goal, format)}`}
+          {t`Goal ${formatNumber(data.goal, format)}`}
         </Text>
       </Group>
     </svg>

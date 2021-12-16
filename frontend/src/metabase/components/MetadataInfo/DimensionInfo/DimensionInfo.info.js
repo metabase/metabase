@@ -1,6 +1,6 @@
 import React from "react";
 
-import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
+import { PRODUCTS, ORDERS, metadata } from "__support__/sample_dataset_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 import Card from "metabase/components/Card";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -12,6 +12,43 @@ const fieldDimension = Dimension.parseMBQL(
   ["field", PRODUCTS.CATEGORY.id, null],
   metadata,
 );
+fieldDimension.field().fingerprint = {
+  global: {
+    "distinct-count": 5,
+  },
+};
+
+const numberDimension = Dimension.parseMBQL(
+  ["field", ORDERS.TOTAL.id, null],
+  metadata,
+);
+numberDimension.field().fingerprint = {
+  type: {
+    "type/Number": {
+      avg: 3.5,
+      min: 2,
+      max: 5,
+    },
+  },
+};
+
+const dateDimension = Dimension.parseMBQL(
+  ["field", PRODUCTS.CREATED_AT.id, null],
+  metadata,
+);
+dateDimension.field().table = {
+  database: {
+    timezone: "America/Los_Angeles",
+  },
+};
+dateDimension.field().fingerprint = {
+  type: {
+    "type/DateTime": {
+      earliest: "2021-11-09T04:43:33.667Z",
+      latest: "2021-12-09T04:43:33.667Z",
+    },
+  },
+};
 
 const expressionDimension = Dimension.parseMBQL(
   [
@@ -49,5 +86,15 @@ export const examples = {
     <PopoverWithTrigger triggerElement={<Button>click me</Button>}>
       <DimensionInfo dimension={longDescriptionDimension} />
     </PopoverWithTrigger>
+  ),
+  "with number fingerprint": (
+    <Card>
+      <DimensionInfo dimension={numberDimension} />
+    </Card>
+  ),
+  "with date fingerprint": (
+    <Card>
+      <DimensionInfo dimension={dateDimension} />
+    </Card>
   ),
 };

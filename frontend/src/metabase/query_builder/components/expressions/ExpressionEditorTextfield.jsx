@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
+import AceEditor from "react-ace";
 
 import { format } from "metabase/lib/expressions/format";
 import { suggest } from "metabase/lib/expressions/suggest";
@@ -15,28 +15,22 @@ import { tokenize } from "metabase/lib/expressions/tokenizer";
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
 
-import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
-
-import {
-  KEYCODE_TAB,
-  KEYCODE_ENTER,
-  KEYCODE_ESCAPE,
-  KEYCODE_LEFT,
-  KEYCODE_UP,
-  KEYCODE_RIGHT,
-  KEYCODE_DOWN,
-} from "metabase/lib/keyboard";
-
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-import TokenizedInput from "./TokenizedInput";
-
 import { isExpression } from "metabase/lib/expressions";
 
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
+import {
+  EditorContainer,
+  EditorEqualsSign,
+} from "./ExpressionEditorTextfield.styled";
+
+import ExpressionMode from "./ExpressionMode";
+
+import "./expressions.css";
 
 const HelpText = ({ helpText, width }) =>
   helpText ? (
@@ -45,7 +39,7 @@ const HelpText = ({ helpText, width }) =>
         attachment: "top left",
         targetAttachment: "bottom left",
       }}
-      style={{ width: width }}
+      style={{ width }}
       isOpen
     >
       {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
@@ -113,6 +107,8 @@ export default class ExpressionEditorTextfield extends React.Component {
     placeholder: "write some math!",
   };
 
+  state = null;
+
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
@@ -128,21 +124,34 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   componentDidMount() {
-    this._setCaretPosition(
+    const { editor } = this.input.current;
+    editor.getSession().setMode(new ExpressionMode());
+
+    editor.setOptions({
+      fontFamily: "Monaco, monospace",
+      fontSize: "12px",
+    });
+
+    this.setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
     );
 
-    this._triggerAutosuggest();
+    this.triggerAutosuggest();
   }
 
   onSuggestionSelected = index => {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
 
+    const { editor } = this.input.current;
+
     if (suggestion) {
       const { tokens } = tokenize(source);
       const token = tokens.find(t => t.end >= suggestion.index);
+
+      const { row } = editor.getCursorPosition();
+
       if (token) {
         const prefix = source.slice(0, token.start);
         const postfix = source.slice(token.end);
@@ -156,83 +165,79 @@ export default class ExpressionEditorTextfield extends React.Component {
         const replacement = suggested.slice(0, suggested.length - extraTrim);
 
         const updatedExpression = prefix + replacement.trim() + postfix;
-        this.onExpressionChange(updatedExpression);
+        this.handleExpressionChange(updatedExpression);
         const caretPos = updatedExpression.length - postfix.length;
-        setTimeout(() => {
-          this._setCaretPosition(caretPos, true);
-        });
+
+        // setTimeout solves a race condition that happens only
+        // when a suggestion has been selected by
+        // clicking on the autocomplete
+        setTimeout(() => editor.moveCursorTo(row, caretPos));
       } else {
         const newExpression = source + suggestion.text;
-        this.onExpressionChange(newExpression);
-        setTimeout(() => this._setCaretPosition(newExpression.length, true));
+        this.handleExpressionChange(newExpression);
+        editor.moveCursorTo(row, newExpression.length);
       }
     }
   };
 
-  onInputKeyDown = e => {
-    const { suggestions, highlightedSuggestionIndex } = this.state;
+  handleArrowUp = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
 
-    if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
-      setTimeout(() => this._triggerAutosuggest());
-      return;
-    }
-    if (e.keyCode === KEYCODE_ESCAPE) {
-      e.stopPropagation();
-      e.preventDefault();
-      this.clearSuggestions();
-      return;
-    }
-
-    if (!suggestions.length) {
-      if (e.keyCode === KEYCODE_ENTER && this.props.onCommit) {
-        const expression = this._compileExpression();
-        if (isExpression(expression)) {
-          this.props.onCommit(expression);
-        }
-      }
-      return;
-    }
-
-    if (e.keyCode === KEYCODE_ENTER || e.keyCode === KEYCODE_TAB) {
-      this.onSuggestionSelected(highlightedSuggestionIndex);
-      e.preventDefault();
-    } else if (e.keyCode === KEYCODE_UP) {
+    if (suggestions.length) {
       this.setState({
         highlightedSuggestionIndex:
           (highlightedSuggestionIndex + suggestions.length - 1) %
           suggestions.length,
       });
-      e.preventDefault();
-    } else if (e.keyCode === KEYCODE_DOWN) {
+    } else {
+      this.input.current.editor.navigateLineEnd();
+    }
+  };
+
+  handleArrowDown = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+
+    if (suggestions.length) {
       this.setState({
         highlightedSuggestionIndex:
           (highlightedSuggestionIndex + suggestions.length + 1) %
           suggestions.length,
       });
-      e.preventDefault();
+    } else {
+      this.input.current.editor.navigateLineEnd();
     }
   };
 
-  clearSuggestions() {
-    this.setState({
-      suggestions: [],
-      highlightedSuggestionIndex: 0,
-      helpText: null,
-    });
-  }
+  handleEnter = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
 
-  _compileExpression() {
-    const { source } = this.state;
-    if (!source || source.length === 0) {
-      return null;
+    if (suggestions.length) {
+      this.onSuggestionSelected(highlightedSuggestionIndex);
+    } else {
+      this.commitExpression();
     }
-    const { query, startRule } = this.props;
-    const { expression } = processSource({ source, query, startRule });
+  };
 
-    return expression;
-  }
+  handleTab = () => {
+    const { highlightedSuggestionIndex, suggestions } = this.state;
+    const { editor } = this.input.current;
 
-  onInputBlur = e => {
+    if (suggestions.length) {
+      this.onSuggestionSelected(highlightedSuggestionIndex);
+    } else {
+      editor.commands.byName.tab();
+    }
+  };
+
+  handleFocus = () => {
+    this.setState({ isFocused: true });
+    const { editor } = this.input.current;
+    this.handleCursorChange(editor.selection);
+  };
+
+  handleInputBlur = e => {
+    this.setState({ isFocused: false });
+
     // Switching to another window also triggers the blur event.
     // When our window gets focus again, the input will automatically
     // get focus, so ignore the blue event to avoid showing an
@@ -250,7 +255,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    const expression = this._compileExpression();
+    const expression = this.compileExpression();
     if (expression) {
       if (!isExpression(expression)) {
         console.warn("isExpression=false", expression);
@@ -263,97 +268,141 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  onInputClick = () => {
-    this._triggerAutosuggest();
+  clearSuggestions() {
+    this.setState({
+      suggestions: [],
+      highlightedSuggestionIndex: 0,
+      helpText: null,
+    });
+  }
+
+  compileExpression() {
+    const { source } = this.state;
+    if (!source || source.length === 0) {
+      return null;
+    }
+    const { query, startRule } = this.props;
+    const { expression } = processSource({ source, query, startRule });
+
+    return expression;
+  }
+
+  commitExpression() {
+    const expression = this.compileExpression();
+
+    if (isExpression(expression)) {
+      this.props.onCommit(expression);
+    }
+  }
+
+  triggerAutosuggest = () => {
+    this.handleExpressionChange(this.state.source);
   };
 
-  _triggerAutosuggest = () => {
-    this.onExpressionChange(this.state.source);
-  };
-
-  _setCaretPosition = (position, autosuggest) => {
-    setCaretPosition(this.input.current, position);
+  setCaretPosition = (position, autosuggest) => {
+    // FIXME setCaretPosition(this.input.current, position);
     if (autosuggest) {
-      setTimeout(() => this._triggerAutosuggest());
+      setTimeout(() => this.triggerAutosuggest());
     }
   };
 
-  onExpressionChange(source) {
-    const inputElement = this.input.current;
-    if (!inputElement) {
-      return;
-    }
-
+  handleExpressionChange(source) {
     this.setState({ source });
-    this.clearSuggestions();
+    if (this.props.onBlankChange) {
+      this.props.onBlankChange(source.length === 0);
+    }
+  }
 
-    const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
-    const hasSelection = selectionStart !== selectionEnd;
-    const targetOffset = !hasSelection ? selectionEnd : null;
+  handleCursorChange(selection) {
+    const cursor = selection.getCursor();
 
     const { query, startRule } = this.props;
+    const { source } = this.state;
     const { suggestions, helpText } = suggest({
       query,
       startRule,
       source,
-      targetOffset,
+      targetOffset: cursor.column,
     });
-    this.setState({ suggestions, helpText });
 
-    if (this.props.onBlankChange) {
-      this.props.onBlankChange(source.length === 0);
-    }
-
-    this.setState({ suggestions: hasSelection ? [] : suggestions });
+    this.setState({
+      suggestions: suggestions || [],
+      helpText,
+    });
   }
 
-  render() {
-    const { placeholder } = this.props;
-    const { source, suggestions, errorMessage } = this.state;
+  commands = [
+    {
+      name: "arrowDown",
+      bindKey: { win: "Down", mac: "Down" },
+      exec: () => {
+        this.handleArrowDown();
+      },
+    },
+    {
+      name: "arrowUp",
+      bindKey: { win: "Up", mac: "Up" },
+      exec: () => {
+        this.handleArrowUp();
+      },
+    },
+    {
+      name: "enter",
+      bindKey: { win: "Enter", mac: "Enter" },
+      exec: () => {
+        this.handleEnter();
+      },
+    },
+    {
+      name: "tab",
+      bindKey: { win: "Tab", mac: "Tab" },
+      exec: () => {
+        this.handleTab();
+      },
+    },
+  ];
 
-    const inputClassName = cx("input text-bold text-monospace", {
-      "text-dark": source,
-      "text-light": !source,
-    });
-    const inputStyle = { fontSize: 12 };
+  render() {
+    const { source, suggestions, errorMessage, isFocused } = this.state;
 
     return (
-      <div className={cx("relative my1")}>
-        <div
-          className={cx(inputClassName, "absolute top left")}
-          style={{
-            ...inputStyle,
-            pointerEvents: "none",
-            borderColor: "transparent",
-          }}
-        >
-          {"= "}
-        </div>
-        <TokenizedInput
-          ref={this.input}
-          type="text"
-          className={cx(inputClassName, {
-            "border-error": errorMessage,
-          })}
-          style={{ ...inputStyle, paddingLeft: 26, whiteSpace: "pre-wrap" }}
-          placeholder={placeholder}
-          value={source}
-          startRule={this.props.startRule}
-          onChange={e => this.onExpressionChange(e.target.value)}
-          onKeyDown={this.onInputKeyDown}
-          onBlur={this.onInputBlur}
-          onFocus={e => this._triggerAutosuggest()}
-          onClick={this.onInputClick}
-          autoFocus
-        />
+      <React.Fragment>
+        <EditorContainer isFocused={isFocused} hasError={Boolean(errorMessage)}>
+          <EditorEqualsSign>=</EditorEqualsSign>
+          <AceEditor
+            commands={this.commands}
+            ref={this.input}
+            value={source}
+            focus={true}
+            highlightActiveLine={false}
+            wrapEnabled={true}
+            fontSize={12}
+            onBlur={this.handleInputBlur}
+            onFocus={this.handleFocus}
+            role="ace-editor"
+            setOptions={{
+              behavioursEnabled: false,
+              indentedSoftWrap: false,
+              minLines: 1,
+              maxLines: 9,
+              showLineNumbers: false,
+              showGutter: false,
+              showFoldWidgets: false,
+              showPrintMargin: false,
+            }}
+            onChange={source => this.handleExpressionChange(source)}
+            onCursorChange={selection => this.handleCursorChange(selection)}
+            width="100%"
+          />
+          <ExpressionEditorSuggestions
+            suggestions={suggestions}
+            onSuggestionMouseDown={this.onSuggestionSelected}
+            highlightedIndex={this.state.highlightedSuggestionIndex}
+          />
+        </EditorContainer>
         <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
-        <ExpressionEditorSuggestions
-          suggestions={suggestions}
-          onSuggestionMouseDown={this.onSuggestionSelected}
-          highlightedIndex={this.state.highlightedSuggestionIndex}
-        />
-      </div>
+      </React.Fragment>
     );
   }
 }

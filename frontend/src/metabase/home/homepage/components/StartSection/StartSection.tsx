@@ -1,5 +1,6 @@
 import React from "react";
 import { jt, t } from "ttag";
+import Ellipsified from "metabase/components/Ellipsified";
 import ExternalLink from "metabase/components/ExternalLink";
 import Link from "metabase/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -27,6 +28,7 @@ interface Props {
   dashboards: Dashboard[];
   showPinMessage?: boolean;
   onHidePinMessage?: () => void;
+  onDashboardClick?: (dashboard: Dashboard) => void;
 }
 
 const StartSection = ({
@@ -35,6 +37,7 @@ const StartSection = ({
   dashboards,
   showPinMessage,
   onHidePinMessage,
+  onDashboardClick,
 }: Props) => {
   const showDatabaseBanner =
     user.is_superuser && !databases.some(d => !d.is_sample);
@@ -58,7 +61,11 @@ const StartSection = ({
       {showDashboardList && (
         <ListRoot hasMargin={showDatabaseBanner}>
           {dashboards.map(dashboard => (
-            <DashboardCard key={dashboard.id} dashboard={dashboard} />
+            <DashboardCard
+              key={dashboard.id}
+              dashboard={dashboard}
+              onDashboardClick={onDashboardClick}
+            />
           ))}
         </ListRoot>
       )}
@@ -68,15 +75,18 @@ const StartSection = ({
 
 interface DashboardCardProps {
   dashboard: Dashboard;
+  onDashboardClick?: (dashboard: Dashboard) => void;
 }
 
-const DashboardCard = ({ dashboard }: DashboardCardProps) => {
+const DashboardCard = ({ dashboard, onDashboardClick }: DashboardCardProps) => {
   const dashboardUrl = Urls.dashboard(dashboard);
 
   return (
-    <CardRoot to={dashboardUrl}>
+    <CardRoot to={dashboardUrl} onClick={() => onDashboardClick?.(dashboard)}>
       <CardIcon name="dashboard" />
-      <CardTitle>{dashboard.name}</CardTitle>
+      <CardTitle>
+        <Ellipsified>{dashboard.name}</Ellipsified>
+      </CardTitle>
     </CardRoot>
   );
 };

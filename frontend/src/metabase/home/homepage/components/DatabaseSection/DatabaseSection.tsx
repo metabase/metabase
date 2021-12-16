@@ -1,6 +1,7 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
+import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
@@ -24,9 +25,16 @@ interface Props {
   databases: Database[];
   showData?: boolean;
   onHideData?: () => void;
+  onDatabaseClick?: (database: Database) => void;
 }
 
-const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
+const DatabaseSection = ({
+  user,
+  databases,
+  showData,
+  onHideData,
+  onDatabaseClick,
+}: Props) => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -54,9 +62,12 @@ const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
           <DatabaseCardRoot
             key={database.id}
             to={Urls.browseDatabase(database)}
+            onClick={() => onDatabaseClick?.(database)}
           >
             <CardIcon name="database" />
-            <CardTitle>{database.name}</CardTitle>
+            <CardTitle>
+              <Ellipsified>{database.name}</Ellipsified>
+            </CardTitle>
           </DatabaseCardRoot>
         ))}
         {hasAddLink && !hasUserDatabase && (

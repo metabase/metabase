@@ -18,9 +18,10 @@ import {
 interface Props {
   user: User;
   collections: Collection[];
+  onCollectionClick?: () => void;
 }
 
-const CollectionSection = ({ user, collections }: Props) => {
+const CollectionSection = ({ user, collections, onCollectionClick }: Props) => {
   const showList = collections.some(c => c.id !== user.personal_collection_id);
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
@@ -38,7 +39,7 @@ const CollectionSection = ({ user, collections }: Props) => {
         ) : (
           <EmptyState user={user} />
         )}
-        <CollectionLink to={collectionUrl}>
+        <CollectionLink to={collectionUrl} onClick={onCollectionClick}>
           <CollectionLinkText>{t`Browse all items`}</CollectionLinkText>
           <CollectionLinkIcon name="chevronright" />
         </CollectionLink>

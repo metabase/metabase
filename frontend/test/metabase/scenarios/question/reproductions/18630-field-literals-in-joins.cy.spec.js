@@ -56,8 +56,9 @@ describe("issue 18630", () => {
       { visitQuestion: true },
     );
 
-    // The query itself is not expected to run,
-    // it just shouldn't stuck on the loading phase
-    cy.findByText("There was a problem with your question");
+    // The query runs and we assert the page is not blank,
+    // rather than an infinite loop and stack overflow.
+    // 'test question' is the name of the question.
+    cy.findByText("test question");
   });
 });

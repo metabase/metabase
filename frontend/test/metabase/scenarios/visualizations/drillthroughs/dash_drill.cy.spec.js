@@ -179,7 +179,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                         card_id: QUESTION_ID,
                         target: [
                           "dimension",
-                          ["field", PRODUCTS.CATEGORY, null],
+                          [
+                            "field",
+                            PRODUCTS.CATEGORY,
+                            { "source-field": ORDERS.PRODUCT_ID },
+                          ],
                         ],
                       },
                     ],

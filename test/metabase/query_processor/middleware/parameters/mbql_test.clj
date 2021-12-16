@@ -281,7 +281,7 @@
            (mt/query checkins
              {:query      {:aggregation [[:count]]}
               :parameters [{:name   "date"
-                            :type   "date/month"
+                            :type   "date/month-year"
                             :target $date
                             :value  ["2014-06" "2015-06"]}]})))))
 
