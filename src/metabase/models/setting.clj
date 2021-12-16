@@ -534,7 +534,7 @@
 
 (defn register-setting!
   "Register a new Setting with a map of [[SettingDefinition]] attributes. Returns the map it was passed. This is used
-  internally be [[defsetting]]; you shouldn't need to use it yourself."
+  internally by [[defsetting]]; you shouldn't need to use it yourself."
   [{setting-name :name, setting-ns :namespace, setting-type :type, default :default, :as setting}]
   (let [munged-name (munge-setting-name (name setting-name))]
     (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
