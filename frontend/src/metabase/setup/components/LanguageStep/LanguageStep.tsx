@@ -5,7 +5,11 @@ import Button from "metabase/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";
-import { StepList, StepListItem, StepDescription } from "./LanguageStep.styled";
+import {
+  StepLocaleList,
+  StepLocaleListItem,
+  StepDescription,
+} from "./LanguageStep.styled";
 
 interface Props {
   locale?: Locale;
@@ -44,17 +48,17 @@ const LanguageStep = ({
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>
-      <StepList>
+      <StepLocaleList>
         {locales.map(item => (
-          <StepListItem
+          <StepLocaleListItem
             key={item.code}
             isSelected={item.code === locale?.code}
             onClick={() => onChangeLocale(item)}
           >
             {item.name}
-          </StepListItem>
+          </StepLocaleListItem>
         ))}
-      </StepList>
+      </StepLocaleList>
       <Button
         primary={locale != null}
         disabled={locale == null}

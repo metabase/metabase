@@ -6,7 +6,7 @@ export const StepDescription = styled.div`
   margin: 0.875rem 0;
 `;
 
-export const StepList = styled.ol`
+export const StepLocaleList = styled.ol`
   margin-bottom: 2rem;
   padding: 0.5rem;
   max-height: 17.5rem;
@@ -15,11 +15,11 @@ export const StepList = styled.ol`
   border-radius: 0.25rem;
 `;
 
-interface StepListItemProps {
+interface StepLocaleListItemProps {
   isSelected?: boolean;
 }
 
-export const StepListItem = styled.li<StepListItemProps>`
+export const StepLocaleListItem = styled.li<StepLocaleListItemProps>`
   padding: 0.5rem;
   color: ${props => color(props.isSelected ? "white" : "text-dark")};
   border-radius: 0.25rem;

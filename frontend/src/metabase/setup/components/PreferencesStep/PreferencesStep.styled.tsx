@@ -20,9 +20,14 @@ export const StepToggleLabel = styled.div`
   margin-left: 0.5rem;
 `;
 
-export const StepList = styled.ul`
+export const StepInfoList = styled.ul`
   margin: 0 0 1.25rem;
   color: ${color("text-medium")};
   list-style: disc inside;
   line-height: 2;
+`;
+
+export const StepError = styled.div`
+  color: ${color("error")};
+  margin-top: 0.5rem;
 `;

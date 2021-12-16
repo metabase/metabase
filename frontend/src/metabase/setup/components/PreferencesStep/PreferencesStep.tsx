@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { t, jt } from "ttag";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
@@ -10,8 +10,10 @@ import {
   StepDescription,
   StepToggle,
   StepToggleLabel,
-  StepList,
+  StepInfoList,
+  StepError,
 } from "./PreferencesStep.styled";
+import { getIn } from "icepick";
 
 interface Props {
   isTrackingAllowed: boolean;
@@ -32,9 +34,15 @@ const PreferencesStep = ({
   onSelectThisStep,
   onSelectNextStep,
 }: Props): JSX.Element => {
+  const [errorMessage, setErrorMessage] = useState<string>();
+
   const handleSubmit = async () => {
-    await onSubmitSetup();
-    onSelectNextStep();
+    try {
+      await onSubmitSetup();
+      onSelectNextStep();
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    }
   };
 
   if (!isActive) {
@@ -67,13 +75,13 @@ const PreferencesStep = ({
         </StepToggleLabel>
       </StepToggle>
       {isTrackingAllowed && (
-        <StepList>
+        <StepInfoList>
           <li>{jt`Metabase ${(
             <strong>{t`never`}</strong>
           )} collects anything about your data or question results.`}</li>
           <li>{t`All collection is completely anonymous.`}</li>
           <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
-        </StepList>
+        </StepInfoList>
       )}
       <ActionButton
         normalText={t`Next`}
@@ -84,6 +92,7 @@ const PreferencesStep = ({
         type="button"
         actionFn={handleSubmit}
       />
+      {errorMessage && <StepError>{errorMessage}</StepError>}
     </ActiveStep>
   );
 };
@@ -98,6 +107,18 @@ const getStepTitle = (
     return t`Thanks for helping us improve`;
   } else {
     return t`We won't collect any usage events`;
+  }
+};
+
+const getErrorMessage = (error: unknown): string | undefined => {
+  const message = getIn(error, ["data", "message"]);
+  const errors = getIn(error, ["data", "errors"]);
+
+  if (message) {
+    return message;
+  } else if (errors) {
+    const [error] = Object.values(errors);
+    return String(error);
   }
 };
 
