@@ -13,11 +13,11 @@
 (def ^:private site-url*
   (or (u/ignore-exceptions
         (classloader/require 'metabase-enterprise.embedding.utils)
-        (resolve 'metabase-enterprise.embedding.utils/pulse-url))
+        (resolve 'metabase-enterprise.embedding.utils/notification-link-base-url))
       (constantly nil)))
 
 (defn- site-url
-  "Return the Pulse URL if set by enterprise env var, or Site URL."
+  "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
   []
   (or (site-url*) (public-settings/site-url)))
 

@@ -748,6 +748,14 @@ Default: `""`
 
 Comma-separated namespaces to trace. **WARNING:** Could log sensitive information like database passwords.
 
+### `MB_NOTIFICATION_LINK_BASE_URL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize full app embedding.
+
 ### `MB_PASSWORD_COMPLEXITY`
 
 Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
