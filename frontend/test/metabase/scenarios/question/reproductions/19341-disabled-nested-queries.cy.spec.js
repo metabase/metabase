@@ -30,6 +30,14 @@ describe("issue 19341", () => {
 
       cy.findByText("Sample Dataset").click(); // go back to DB list
       cy.findByText("Saved Questions").should("not.exist");
+
+      // Ensure the search doesn't list saved questions
+      cy.findByPlaceholderText("Search for a table…").type("Ord");
+      cy.findByText("Loading...").should("not.exist");
+      cy.findAllByText(/Saved question in/i).should("not.exist");
+      cy.findAllByText(/Table in/i).should("exist");
+      cy.icon("close").click();
+
       cy.findByText("Sample Dataset").click();
       cy.findByText("Orders").click();
     });

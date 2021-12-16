@@ -981,6 +981,9 @@ export class UnconnectedDataSelector extends Component {
 
   getSearchModels = () => {
     const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
+    if (!MetabaseSettings.get("enable-nested-queries")) {
+      return ["table"];
+    }
     if (!this.hasUsableDatasets()) {
       return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
     }
