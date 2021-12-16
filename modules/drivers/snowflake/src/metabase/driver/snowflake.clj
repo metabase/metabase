@@ -51,7 +51,8 @@
 
 (defn- maybe-set-week-start [{:keys [:additional-options] :as details}]
   (if-not (str/blank? additional-options)
-    (let [week-start-from-opts (sql-jdbc.common/parse-additional-options-value additional-options "week_start" :url)]
+    (let [week-start-from-opts (-> (sql-jdbc.common/additional-options->map additional-options :url)
+                                   (get "week_start"))]
       (if-not week-start-from-opts
         (assoc details :week_start (or (start-of-week-setting->snowflake-offset) 7))
         details))

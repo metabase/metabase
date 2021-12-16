@@ -57,18 +57,27 @@
    (-> (dissoc connection-spec :additional-options)
        (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
 
-(defn parse-additional-options-value
-  "Attempts to parse the value for `opt-name` from an `additional-options` string, with `separator-style`, having
-  `opt-name-val-separator?` in between option names and values (optional; defaults to '='). Searches the additional
-  options string in a case insensitive manner."
-  [additional-options opt-name separator-style & [name-value-separator?]]
+(defn additional-options->map
+  "Attempts to parse the entires within the `additional-options` string into a map of keys to values. `separator-style`
+  works as in the other functions in this namespace (since it influences the separator that appears between pairs).
+
+  `opt-name-val-separator?` is an optional parameter that indicates the string that appears between keys and values. If
+  provided, it must be a single-character string. If not, then a default separator of \"=\" is used.
+
+  `lowercase-keys?` is an optional parameter that indicates the keys should be lowercased before being placed into the
+  returned map (defaults to `true`)."
+  [additional-options separator-style & [name-value-separator? lowercase-keys?]]
   {:pre [(or (nil? additional-options) (string? additional-options))
-         (string? opt-name)
          (contains? valid-separator-styles separator-style)
          (or (nil? name-value-separator?) (and (string? name-value-separator?)
-                                               (= 1 (count name-value-separator?))))]}
+                                            (= 1 (count name-value-separator?))))
+         (or (nil? lowercase-keys?) (boolean? lowercase-keys?))]}
   (let [entry-sep (separator-style->entry-separator separator-style)
         nv-sep    (or name-value-separator? default-name-value-separator)
-        re-pat    (str "(?i).*(?:^|" entry-sep ")(?:" opt-name nv-sep ")([^" nv-sep entry-sep "]+).*$")
-        [_ match] (re-matches (re-pattern re-pat) additional-options)]
-    match))
+        pairs     (str/split additional-options (re-pattern entry-sep))
+        k-fn      (if (or (nil? lowercase-keys?) (false? lowercase-keys?)) str/lower-case identity)
+        kv-fn     (fn [part]
+                    (let [[k v] (str/split part (re-pattern (str "\\" nv-sep)))]
+                      [(k-fn k) v]))
+        kvs       (map kv-fn pairs)]
+    (into {} kvs)))
