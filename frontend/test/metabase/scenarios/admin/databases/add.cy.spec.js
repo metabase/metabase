@@ -203,7 +203,9 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").click();
 
-    cy.findByText(databaseName).click();
+    cy.findByRole("table").within(() => {
+      cy.findByText(databaseName).click();
+    });
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
   });
