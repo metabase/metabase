@@ -56,6 +56,7 @@ const LanguageStep = ({
           <StepLocaleListItem
             key={item.code}
             isSelected={item.code === locale?.code}
+            data-testid={`language-option-${item.code}`}
             onClick={() => onChangeLocale(item)}
           >
             {item.name}

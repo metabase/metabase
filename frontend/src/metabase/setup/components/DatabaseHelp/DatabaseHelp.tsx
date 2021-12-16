@@ -10,7 +10,10 @@ const DatabaseHelp = ({ engine, isActive }: Props): JSX.Element => {
   const isVisible = isActive && engine != null;
 
   return (
-    <DatabaseHelpRoot isVisible={isVisible}>
+    <DatabaseHelpRoot
+      isVisible={isVisible}
+      data-testid="database-setup-help-card"
+    >
       <DatabaseHelpCard {...{ engine, hasCircle: false }} />
     </DatabaseHelpRoot>
   );
