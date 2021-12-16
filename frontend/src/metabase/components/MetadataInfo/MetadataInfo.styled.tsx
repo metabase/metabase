@@ -47,13 +47,14 @@ export const LabelContainer = styled.div`
   display: inline-flex;
   align-items: center;
   column-gap: ${space(0)};
-  font-size: 12px;
+  font-size: 12.8px;
   color: ${({ color: _color = "brand" }) => color(_color)};
 `;
 
 export const Label = styled.span`
   font-weight: bold;
   font-size: 1em;
+  line-height: 1em;
 `;
 
 export const RelativeSizeIcon = styled(Icon)`

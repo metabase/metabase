@@ -8,4 +8,5 @@ export const NoWrap = styled.div`
   overflow: hidden;
   font-weight: bold;
   padding-top: ${space(0)} 0;
+  font-size: 12.8px;
 `;
