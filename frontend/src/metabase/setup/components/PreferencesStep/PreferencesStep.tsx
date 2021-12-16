@@ -13,17 +13,15 @@ import {
   StepInfoList,
   StepError,
 } from "./PreferencesStep.styled";
-import { getIn } from "icepick";
 
 interface Props {
   isTrackingAllowed: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onChangeTracking: (isTrackingAllowed: boolean) => void;
-  onSubmitSetup: () => void;
-  onSelectThisStep: () => void;
-  onSelectNextStep: () => void;
+  onTrackingChange: (isTrackingAllowed: boolean) => void;
+  onStepSelect: () => void;
+  onStepSubmit: () => void;
 }
 
 const PreferencesStep = ({
@@ -31,19 +29,17 @@ const PreferencesStep = ({
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
-  onChangeTracking,
-  onSubmitSetup,
-  onSelectThisStep,
-  onSelectNextStep,
+  onTrackingChange,
+  onStepSelect,
+  onStepSubmit,
 }: Props): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();
 
   const handleSubmit = async () => {
     try {
-      await onSubmitSetup();
-      onSelectNextStep();
+      await onStepSubmit();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(String(error));
     }
   };
 
@@ -54,7 +50,7 @@ const PreferencesStep = ({
         label={4}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onSelect={onSelectThisStep}
+        onStepSelect={onStepSelect}
       />
     );
   }
@@ -73,7 +69,7 @@ const PreferencesStep = ({
       <StepToggle>
         <Toggle
           value={isTrackingAllowed}
-          onChange={onChangeTracking}
+          onChange={onTrackingChange}
           aria-labelledby="anonymous-usage-events-label"
         />
         <StepToggleLabel id="anonymous-usage-events-label">
@@ -113,18 +109,6 @@ const getStepTitle = (
     return t`Thanks for helping us improve`;
   } else {
     return t`We won't collect any usage events`;
-  }
-};
-
-const getErrorMessage = (error: unknown): string | undefined => {
-  const message = getIn(error, ["data", "message"]);
-  const errors = getIn(error, ["data", "errors"]);
-
-  if (message) {
-    return message;
-  } else if (errors) {
-    const [error] = Object.values(errors);
-    return String(error);
   }
 };
 

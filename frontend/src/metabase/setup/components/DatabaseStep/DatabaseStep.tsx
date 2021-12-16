@@ -1,6 +1,5 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
-import { updateIn } from "icepick";
 import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -14,12 +13,10 @@ interface Props {
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onChangeEngine: (engine: string) => void;
-  onChangeDatabase: (database: DatabaseInfo | null) => void;
-  onValidateDatabase: (database: DatabaseInfo) => void;
-  onSkipThisStep: (engine?: string) => void;
-  onSelectThisStep: () => void;
-  onSelectNextStep: () => void;
+  onEngineChange: (engine: string) => void;
+  onStepSelect: () => void;
+  onStepSubmit: (database: DatabaseInfo) => void;
+  onStepCancel: (engine?: string) => void;
 }
 
 const DatabaseStep = ({
@@ -28,26 +25,17 @@ const DatabaseStep = ({
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
-  onChangeEngine,
-  onChangeDatabase,
-  onValidateDatabase,
-  onSkipThisStep,
-  onSelectThisStep,
-  onSelectNextStep,
+  onEngineChange,
+  onStepSelect,
+  onStepSubmit,
+  onStepCancel,
 }: Props) => {
   useEffect(() => {
-    engine && onChangeEngine(engine);
-  }, [engine, onChangeEngine]);
-
-  const handleSubmit = async (database: DatabaseInfo) => {
-    onChangeDatabase(await validateDatabase(database, onValidateDatabase));
-    onSelectNextStep();
-  };
+    engine && onEngineChange(engine);
+  }, [engine, onEngineChange]);
 
   const handleCancel = () => {
-    onChangeDatabase(null);
-    onSkipThisStep(engine);
-    onSelectNextStep();
+    onStepCancel(engine);
   };
 
   if (!isStepActive) {
@@ -57,7 +45,7 @@ const DatabaseStep = ({
         label={3}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
-        onSelect={onSelectThisStep}
+        onStepSelect={onStepSelect}
       />
     );
   }
@@ -70,7 +58,7 @@ const DatabaseStep = ({
       </StepDescription>
       <DatabaseForm
         database={database}
-        onSubmit={handleSubmit}
+        onSubmit={onStepSubmit}
         onCancel={handleCancel}
       />
     </ActiveStep>
@@ -119,30 +107,6 @@ const getStepTitle = (
     return t`Connecting to ${database.name}`;
   } else {
     return t`I'll add my own data later`;
-  }
-};
-
-const validateDatabase = async (
-  database: DatabaseInfo,
-  onValidateDatabase: (database: DatabaseInfo) => void,
-): Promise<DatabaseInfo> => {
-  const sslDetails = { ...database.details, ssl: true };
-  const sslDatabase = { ...database, details: sslDetails };
-  const nonSslDetails = { ...database.details, ssl: false };
-  const nonSslDatabase = { ...database, database: nonSslDetails };
-
-  try {
-    await onValidateDatabase(sslDatabase);
-    return sslDatabase;
-  } catch (error) {
-    try {
-      await onValidateDatabase(nonSslDatabase);
-      return nonSslDatabase;
-    } catch (error) {
-      throw updateIn(error, ["data", "errors"], errors => ({
-        details: errors,
-      }));
-    }
   }
 };
 

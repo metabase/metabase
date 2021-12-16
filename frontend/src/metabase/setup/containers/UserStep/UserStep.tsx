@@ -20,8 +20,12 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onPasswordChange: (user: UserInfo) => dispatch(validatePassword(user)),
-  onStepSelect: () => dispatch(setStep(USER_STEP)),
+  onPasswordChange: (user: UserInfo) => {
+    dispatch(validatePassword(user));
+  },
+  onStepSelect: () => {
+    dispatch(setStep(USER_STEP));
+  },
   onStepSubmit: (user: UserInfo) => {
     dispatch(setUser(user));
     dispatch(setStep(DATABASE_STEP));

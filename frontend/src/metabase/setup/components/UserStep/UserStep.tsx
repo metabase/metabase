@@ -74,7 +74,7 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
       await onPasswordChange(user);
       return {};
     } catch (error) {
-      return getIn(error, ["data", "errors"]);
+      return error;
     }
   };
 

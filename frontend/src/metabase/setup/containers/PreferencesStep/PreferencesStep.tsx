@@ -18,13 +18,17 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onChangeTracking(isAllowed: boolean) {
+  onTrackingChange: (isAllowed: boolean) => {
     dispatch(setTracking(isAllowed));
     trackTrackingChanged(isAllowed);
   },
-  onSubmitSetup: () => dispatch(submitSetup()),
-  onSelectThisStep: () => dispatch(setStep(PREFERENCES_STEP)),
-  onSelectNextStep: () => dispatch(setStep(COMPLETED_STEP)),
+  onStepSelect: () => {
+    return dispatch(setStep(PREFERENCES_STEP));
+  },
+  onStepSubmit: async () => {
+    await dispatch(submitSetup());
+    dispatch(setStep(COMPLETED_STEP));
+  },
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(PreferencesStep);
