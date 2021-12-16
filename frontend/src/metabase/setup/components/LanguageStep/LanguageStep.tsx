@@ -9,7 +9,7 @@ import { StepList, StepListItem, StepDescription } from "./LanguageStep.styled";
 
 interface Props {
   locale?: Locale;
-  localeData: LocaleData[];
+  localeData?: LocaleData[];
   isActive: boolean;
   isCompleted: boolean;
   onChangeLocale: (locale: Locale) => void;

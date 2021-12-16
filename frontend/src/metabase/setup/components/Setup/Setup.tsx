@@ -7,9 +7,10 @@ import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
 interface Props {
   step: number;
   locale?: Locale;
-  localeData: LocaleData[];
+  localeData?: LocaleData[];
   user?: UserInfo;
   database?: DatabaseInfo;
+  isTrackingAllowed: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;

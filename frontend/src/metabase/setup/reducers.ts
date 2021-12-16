@@ -1,5 +1,11 @@
 import { handleActions } from "redux-actions";
-import { SET_LOCALE, SET_STEP, SET_USER, SET_DATABASE } from "./actions";
+import {
+  SET_LOCALE,
+  SET_STEP,
+  SET_USER,
+  SET_DATABASE,
+  SET_TRACKING,
+} from "./actions";
 import { WELCOME_STEP } from "./constants";
 
 export const step = handleActions(
@@ -20,14 +26,21 @@ export const user = handleActions(
   {
     [SET_USER]: { next: (state, { payload }) => payload },
   },
-  {},
+  null,
 );
 
 export const database = handleActions(
   {
     [SET_DATABASE]: { next: (state, { payload }) => payload },
   },
-  {},
+  null,
+);
+
+export const isTrackingAllowed = handleActions(
+  {
+    [SET_TRACKING]: { next: (state, { payload }) => payload },
+  },
+  true,
 );
 
 export default {

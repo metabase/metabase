@@ -8,7 +8,13 @@ import {
   validatePassword,
   setDatabase,
 } from "../../actions";
-import { getStep, getLocale, getUser, getDatabase } from "../../selectors";
+import {
+  getStep,
+  getLocale,
+  getUser,
+  getDatabase,
+  isTrackingAllowed,
+} from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   step: getStep(state),
@@ -16,6 +22,7 @@ const mapStateToProps = (state: any) => ({
   localeData: Settings.get("available-locales"),
   user: getUser(state),
   database: getDatabase(state),
+  isTrackingAllowed: isTrackingAllowed(state),
 });
 
 const mapDispatchToProps = {

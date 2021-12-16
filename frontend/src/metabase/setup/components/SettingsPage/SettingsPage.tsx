@@ -5,6 +5,7 @@ import LanguageStep from "../../components/LanguageStep";
 import UserStep from "../../components/UserStep";
 import DatabaseStep from "../DatabaseStep";
 import PreferencesStep from "../PreferencesStep";
+import CompletedStep from "../CompletedStep";
 import SetupFooter from "../SetupFooter";
 import {
   LANGUAGE_STEP,
@@ -14,14 +15,14 @@ import {
   COMPLETED_STEP,
 } from "../../constants";
 import { Locale, UserInfo, LocaleData, DatabaseInfo } from "../../types";
-import CompletedStep from "../CompletedStep";
 
 interface Props {
   step: number;
   locale?: Locale;
-  localeData: LocaleData[];
+  localeData?: LocaleData[];
   user?: UserInfo;
   database?: DatabaseInfo;
+  isTrackingAllowed: boolean;
   onChangeStep: (step: number) => void;
   onChangeLocale: (locale: Locale) => void;
   onChangeUser: (user: UserInfo) => void;
@@ -35,6 +36,7 @@ const SettingsPage = ({
   localeData,
   user,
   database,
+  isTrackingAllowed,
   onChangeStep,
   onChangeLocale,
   onChangeUser,
@@ -73,7 +75,7 @@ const SettingsPage = ({
         onSelectNextStep={() => onChangeStep(PREFERENCES_STEP)}
       />
       <PreferencesStep
-        isTrackingAllowed={true}
+        isTrackingAllowed={isTrackingAllowed}
         isActive={step === PREFERENCES_STEP}
         isCompleted={step > PREFERENCES_STEP}
         onSelectThisStep={() => onChangeStep(PREFERENCES_STEP)}
