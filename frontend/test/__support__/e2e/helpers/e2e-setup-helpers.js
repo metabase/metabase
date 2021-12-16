@@ -6,7 +6,7 @@ export function snapshot(name) {
 
 export function restore(name = "default") {
   cy.log("Restore Data Set");
-  // Restore sometimes throughs a 500 error in e2e tests but it's idemptotent so
+  // Restore sometimes throw a 500 error in e2e tests but it's idempotent so
   // we can retry a couple of times
   for (let i = 0; i < RESTORE_ATTEMPTS; i++) {
     try {
