@@ -18,6 +18,7 @@ interface Props {
   onChangeTracking: (isTrackingAllowed: boolean) => void;
   onValidatePassword: (user: UserInfo) => void;
   onValidateDatabase: (database: DatabaseInfo) => void;
+  onSubmitSetup: () => void;
 }
 
 const Setup = (props: Props) => {

@@ -9,6 +9,7 @@ import {
   setDatabase,
   setTracking,
   validateDatabase,
+  submitSetup,
 } from "../../actions";
 import {
   getStep,
@@ -35,6 +36,7 @@ const mapDispatchToProps = {
   onChangeTracking: setTracking,
   onValidatePassword: validatePassword,
   onValidateDatabase: validateDatabase,
+  onSubmitSetup: submitSetup,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(Setup);

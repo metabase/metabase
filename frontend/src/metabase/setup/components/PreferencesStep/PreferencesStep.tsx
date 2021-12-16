@@ -1,7 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import Settings from "metabase/lib/settings";
-import Button from "metabase/components/Button";
+import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/components/ExternalLink";
 import Toggle from "metabase/components/Toggle";
 import InactiveStep from "../InvactiveStep";
@@ -18,6 +18,7 @@ interface Props {
   isActive: boolean;
   isCompleted: boolean;
   onChangeTracking: (isTrackingAllowed: boolean) => void;
+  onSubmitSetup: () => void;
   onSelectThisStep: () => void;
   onSelectNextStep: () => void;
 }
@@ -27,9 +28,15 @@ const PreferencesStep = ({
   isActive,
   isCompleted,
   onChangeTracking,
+  onSubmitSetup,
   onSelectThisStep,
   onSelectNextStep,
 }: Props): JSX.Element => {
+  const handleSubmit = async () => {
+    await onSubmitSetup();
+    onSelectNextStep();
+  };
+
   if (!isActive) {
     return (
       <InactiveStep
@@ -68,9 +75,15 @@ const PreferencesStep = ({
           <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
         </StepList>
       )}
-      <Button primary onClick={onSelectNextStep}>
-        {t`Next`}
-      </Button>
+      <ActionButton
+        normalText={t`Next`}
+        activeText={t`Next`}
+        failedText={t`Failed`}
+        successText={t`Success`}
+        primary
+        type="button"
+        actionFn={handleSubmit}
+      />
     </ActiveStep>
   );
 };
