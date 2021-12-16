@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -6,6 +6,7 @@ import AccordionList from "metabase/components/AccordionList";
 import SelectButton from "metabase/components/SelectButton";
 
 import { isCurrency, isFK } from "metabase/lib/schema_metadata";
+import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import CurrencyPicker from "./CurrencyPicker";
@@ -36,13 +37,17 @@ const propTypes = {
   sections: PropTypes.arrayOf(sectionShape).isRequired,
   IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
   tabIndex: PropTypes.string,
+  onKeyUp: PropTypes.func,
 };
 
-function SemanticTypePicker({ field, sections, IDFields, tabIndex }) {
+function SemanticTypePicker({ field, sections, IDFields, tabIndex, onKeyUp }) {
   const [
     isPickerOpen,
     { turnOn: openPicker, turnOff: closePicker },
   ] = useToggle(false);
+  const wasPickerOpen = usePrevious(isPickerOpen);
+
+  const selectButtonRef = useRef();
 
   const onChange = useCallback(
     item => {
@@ -50,6 +55,24 @@ function SemanticTypePicker({ field, sections, IDFields, tabIndex }) {
       closePicker();
     },
     [field, closePicker],
+  );
+
+  useEffect(() => {
+    // Focuses the select button after the picker is closed,
+    // so it's easier to go further through columns using the "Tab" key
+    if (wasPickerOpen && !isPickerOpen) {
+      selectButtonRef.current?.focus();
+    }
+  }, [wasPickerOpen, isPickerOpen]);
+
+  const onSelectButtonKeyUp = useCallback(
+    e => {
+      if (e.key === "Enter") {
+        openPicker();
+      }
+      onKeyUp(e);
+    },
+    [onKeyUp, openPicker],
   );
 
   const checkIsItemSelected = useCallback(item => item.value === field.value, [
@@ -129,7 +152,9 @@ function SemanticTypePicker({ field, sections, IDFields, tabIndex }) {
         className="cursor-pointer"
         hasValue={!!field.value}
         onClick={openPicker}
+        onKeyUp={onSelectButtonKeyUp}
         tabIndex={tabIndex}
+        ref={selectButtonRef}
       >
         {pickerLabel}
       </SelectButton>
