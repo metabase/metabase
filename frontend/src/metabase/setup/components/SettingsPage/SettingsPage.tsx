@@ -1,7 +1,7 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 import { PageHeader, PageBody } from "./SettingsPage.styled";
-import LanguageStep from "../../components/LanguageStep";
+import LanguageStep from "../../containers/LanguageStep";
 import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../DatabaseStep";
 import PreferencesStep from "../../containers/PreferencesStep";
@@ -59,16 +59,7 @@ const SettingsPage = ({
       <LogoIcon height={51} />
     </PageHeader>
     <PageBody>
-      <LanguageStep
-        locale={locale}
-        localeData={localeData}
-        isActive={step === LANGUAGE_STEP}
-        isFilled={step > LANGUAGE_STEP}
-        isCompleted={step === COMPLETED_STEP}
-        onChangeLocale={onChangeLocale}
-        onSelectThisStep={() => onChangeStep(LANGUAGE_STEP)}
-        onSelectNextStep={() => onChangeStep(USER_STEP)}
-      />
+      <LanguageStep />
       <UserStep />
       <DatabaseStep
         database={database}
