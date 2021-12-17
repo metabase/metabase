@@ -52,7 +52,10 @@ set_up_env_vars () {
 }
 
 # enable https redirect
-server_https () {
+server_https_al1 () {
+    if grep -q "Amazon Linux 2" /etc/os-release; then
+        return 0  # noop on AL2 platform
+    fi
     cd /etc/nginx/sites-available/
     if [[ "x$NGINX_FORCE_SSL" == "x1" ]] # && ! grep -q https elasticbeanstalk-nginx-docker-proxy.conf ;
     then
@@ -187,8 +190,8 @@ case $1 in
 set_up_env_vars)
     set_up_env_vars
     ;;
-server_https)
-    server_https
+server_https_al1)
+    server_https_al1
     ;;
 install_papertrail)
     install_papertrail
