@@ -99,16 +99,11 @@
            java.io.StringWriter
            java.time.temporal.Temporal))
 
-;; TODO -- Not sure I *love* the fact that this is expected to have String-serialized values (which therefore means
-;; things like JSON get doubly-serialized) but I don't set any other way to do this without completely reworking all the
-;; other code in the Settings framework since [[get-string]] is a low-level function ultimately used basically
-;; everywhere.
-;;
 ;; TODO -- bind in contexts mentioned below.
 ;;
-;; TODO -- a way to set Database-local values.
+;; TODO -- a way to SET Database-local values.
 (def ^:dynamic *database-local-values*
-  "Database-local Settings values (as a map of Setting name -> *STRING*-serialized value). This comes from the value of
+  "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
   from this map returned preferentially to the site-wide value.
 
@@ -298,40 +293,69 @@
   ^String [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
     (when (allows-site-wide-values? setting)
-      (if *disable-cache*
-        (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
-        (do
-          (cache/restore-cache-if-needed!)
-          (clojure.core/get (cache/cache) (setting-name setting-definition-or-name)))))))
+      (let [v (if *disable-cache*
+                (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+                (do
+                  (cache/restore-cache-if-needed!)
+                  (clojure.core/get (cache/cache) (setting-name setting-definition-or-name))))]
+        (when (seq v)
+          v)))))
 
 (defn default-value
-  "Get the `:default` value of `setting-definition-or-name` if one was specified. With optional arg `pred`, only returns
-  default value if `(some-> default pred)` is truthy."
+  "Get the `:default` value of `setting-definition-or-name` if one was specified."
+  [setting-definition-or-name]
+  (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
+    default))
+
+(defn get-raw-value
+  "Get the raw value of a Setting from wherever it may be specified. Value is fetched by trying the following sources in
+  order:
+
+  1. From [[*database-local-values*]] if this Setting is allowed to have a Database-local value
+  2. From the corresponding env var (excluding empty string values)
+  3. From the application database (i.e., set via the admin panel) (excluding empty string values)
+  4. The default value, if one was specified
+
+  !!!!!!!!!! The value returned MAY OR MAY NOT be a String depending on the source !!!!!!!!!!
+
+  This is the underlying function powering all the other getters such as [[get-string]]. These getter functions *must*
+  be coded to handle either String or non-String values. You can use the three-arity version of this function to do that.
+
+  Three-arity version can be used to specify how to parse non-empty String values (`parse-fn`) and under what
+  conditions values can be returned directly (`pred`) -- see [[get-boolean]] for example usage."
   ([setting-definition-or-name]
-   (default-value setting-definition-or-name nil))
-  ([setting-definition-or-name pred]
-   (let [{:keys [default]} (resolve-setting setting-definition-or-name)]
-     (if pred
-       (when (some-> default pred)
-         default)
-       default))))
+   (let [setting    (resolve-setting setting-definition-or-name)
+         source-fns [database-local-value
+                     env-var-value
+                     db-or-cache-value
+                     default-value]]
+     (loop [[f & more] source-fns]
+       (let [v (f setting)]
+         (cond
+           (some? v)  v
+           (seq more) (recur more))))))
+
+  ([setting-definition-or-name pred parse-fn]
+   (let [parse     (fn [v]
+                     (try
+                       (parse-fn v)
+                       (catch Throwable e
+                         (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
+                           (throw (ex-info (tru "Error parsing setting {0}: {1}" setting-name (ex-message e))
+                                           {:setting setting-name}
+                                           e))))))
+         raw-value (get-raw-value setting-definition-or-name)
+         v         (cond-> raw-value
+                     (string? raw-value) parse)]
+     (when (pred v)
+       v))))
 
 (defn get-string
-  "Get string value of `setting-definition-or-name`. This is the default getter for `:string` settings. Value is fetched
-  as follows:
+  "Get string value of `setting-definition-or-name`. This is the default getter for `:string` settings.
 
-  1. From corresponding env var, if any;
-  2. From the database (i.e., set via the admin panel), if a value is present;
-  3. The default value, if one was specified, *if* it is a string.
-
-  If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
+  This method *does not* return values unless they are Strings, e.g. non-String default values will be ignored."
   ^String [setting-definition-or-name]
-  (let [v (or (database-local-value setting-definition-or-name)
-              (env-var-value setting-definition-or-name)
-              (db-or-cache-value setting-definition-or-name)
-              (default-value setting-definition-or-name string?))]
-    (when (seq v)
-      v)))
+  (get-raw-value setting-definition-or-name string? identity))
 
 (s/defn string->boolean :- (s/maybe s/Bool)
   "Interpret a `string-value` of a Setting as a boolean."
@@ -346,8 +370,8 @@
 (defn get-boolean
   "Get the value of `setting-definition-or-name` as a boolean. Default getter for `:boolean` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
-  it as a boolean using the rules below; if not, returns the [[default-value]] directly if it it is a boolean.
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, parses it as
+  a boolean using the rules below; if not, returns the value directly if it is a boolean.
 
   Strings are parsed as follows:
 
@@ -355,81 +379,59 @@
   * `false` if *lowercased* string value is `false`.
   * Otherwise, throw an Exception."
   ^Boolean [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (string->boolean s)
-    (default-value setting-definition-or-name boolean?)))
+  (get-raw-value setting-definition-or-name boolean? string->boolean))
 
 (defn get-integer
   "Get the value of `setting-definition-or-name` as a long. Default getter for `:integer` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
-  it to a keyword with [[java.lang.Long/parseLong]]; if not, returns the [[default-value]] directly if it it is an
-  integer."
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, converts it
+  to an integer with [[java.lang.Long/parseLong]]; if not, returns the value directly if it is an integer."
   ^Long [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (Long/parseLong s)
-    ;; if default is actually `Integer` or something make sure we return an instance of `Long`.
-    (some-> (default-value setting-definition-or-name integer?) long)))
+  (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
 
 (defn get-double
   "Get the value of `setting-definition-or-name` as a double. Default getter for `:double` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
-  it to a keyword with [[java.lang.Double/parseDouble]]; if not, returns the [[default-value]] directly if it it is a
-  double."
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, converts it
+  to a double with [[java.lang.Double/parseDouble]]; if not, returns the value directly if it is a double."
   ^Double [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (Double/parseDouble s)
-    (default-value setting-definition-or-name double?)))
+  (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
 
 (defn get-keyword
   "Get the value of `setting-definition-or-name` as a keyword. Default getter for `:keyword` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, converts
-  it to a keyword with [[keyword]]; if not, returns the [[default-value]] directly if it it is a keyword."
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, converts it
+  to a keyword with [[keyword]]; if not, returns the value directly if it is a keyword."
   ^clojure.lang.Keyword [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (keyword s)
-    (default-value setting-definition-or-name keyword?)))
+  (get-raw-value setting-definition-or-name keyword? keyword))
 
 (defn get-json
   "Get the value of `setting-definition-or-name` as parsed JSON. Default getter for `:json` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
-  it with [[cheshire.core/parse-string]]; if not, returns the [[default-value]] directly if it it is a collection."
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, parses it
+  with [[cheshire.core/parse-string]]; if not, returns the value directly if it is a collection."
   [setting-definition-or-name]
-  (try
-    (if-let [s (get-string setting-definition-or-name)]
-      (json/parse-string s keyword)
-      (default-value setting-definition-or-name coll?))
-    (catch Throwable e
-      (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
-        (throw (ex-info (tru "Error parsing JSON setting {0}: {1}" setting-name (ex-message e))
-                        {:setting setting-name}
-                        e))))))
+  (letfn [(parse [s])])
+  (get-raw-value setting-definition-or-name coll? #(json/parse-string % true)))
 
 (defn get-timestamp
   "Get the value of `setting-definition-or-name` as a [[java.time.temporal.Temporal]] of some sort (e.g.
   a [[java.time.OffsetDateTime]]. Default getter for `:timestamp` Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
-  it with [[metabase.util.date-2/parse]]; if not, returns the [[default-value]] directly if it it is an instance
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, parses it
+  with [[metabase.util.date-2/parse]]; if not, returns the value directly is an instance
   of [[java.time.temporal.Temporal]]."
   ^Temporal [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (u.date/parse s)
-    (default-value setting-definition-or-name (partial instance? Temporal))))
+  (get-raw-value setting-definition-or-name #(instance? Temporal %) u.date/parse))
 
 (defn get-csv
   "Get the value of `setting-definition-or-name` as a sequence of exploded strings. Default getter for `:csv`
   Settings.
 
-  Calls [[get-string]] to get the underlying string value from the DB or env var. If a string value is found, parses
-  it with [[clojure.data.csv/read-csv]]; if not, returns the [[default-value]] directly if it it is sequential."
+  Calls [[get-raw-value]] to get the underlying possibly-serialized value. If a string value is returned, parses it
+  with [[clojure.data.csv/read-csv]]; if not, returns the value directly is sequential."
   [setting-definition-or-name]
-  (if-let [s (get-string setting-definition-or-name)]
-    (some-> s csv/read-csv first)
-    (default-value setting-definition-or-name sequential?)))
+  (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
 
 (def ^:private default-getter-for-type
   {:string    get-string
@@ -788,7 +790,7 @@
   ###### `:getter`
 
   A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in turn call functions
-  in this namespace like [[get-string]] or [[get-boolean]] to invoke the default getter behavior.)
+  in this namespace like [[get-string]] or [[get-boolean]] to invoke the 'parent' getter behavior.)
 
   ###### `:setter`
 
@@ -870,7 +872,7 @@
   Accepts options:
 
   * `:getter` -- the getter function to use to fetch the Setting value. By default, uses `setting/get`, which will
-    convert the setting to the appropriate type; you can use `get-string` to get all string values of Settings, for
+    convert the setting to the appropriate type; you can use [[get-string]] to get all string values of Settings, for
     example."
   [setting-definition-or-name & {:keys [getter], :or {getter get}}]
   (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-definition-or-name)

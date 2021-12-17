@@ -357,7 +357,7 @@
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value [v]
-  (with-redefs [setting/get-string (constantly v)]
+  (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
