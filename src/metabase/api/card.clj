@@ -27,7 +27,6 @@
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
