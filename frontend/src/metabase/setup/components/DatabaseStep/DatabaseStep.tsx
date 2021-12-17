@@ -4,6 +4,7 @@ import { updateIn } from "icepick";
 import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
+import SetupSection from "../SetupSection";
 import { StepDescription } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo } from "../../types";
@@ -11,6 +12,7 @@ import { DatabaseInfo } from "../../types";
 export interface Props {
   database?: DatabaseInfo;
   engine?: string;
+  isHosted: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
@@ -23,6 +25,7 @@ export interface Props {
 const DatabaseStep = ({
   database,
   engine,
+  isHosted,
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
@@ -70,6 +73,12 @@ const DatabaseStep = ({
         onSubmit={handleSubmit}
         onCancel={handleCancel}
       />
+      {isHosted && (
+        <SetupSection
+          title={t`Need help connecting to your data?`}
+          description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
+        />
+      )}
     </ActiveStep>
   );
 };

@@ -36,10 +36,10 @@ describe("UserStep", () => {
 });
 
 const getProps = (opts?: Partial<Props>): Props => ({
+  isHosted: false,
   isStepActive: false,
   isStepCompleted: false,
   isSetupCompleted: false,
-  isHosted: false,
   onPasswordChange: jest.fn(),
   onStepSelect: jest.fn(),
   onStepSubmit: jest.fn(),

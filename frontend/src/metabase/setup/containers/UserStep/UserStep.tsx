@@ -14,10 +14,10 @@ import { UserInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
   user: getUser(state),
+  isHosted: Settings.isHosted(),
   isStepActive: isStepActive(state, USER_STEP),
   isStepCompleted: isStepCompleted(state, USER_STEP),
   isSetupCompleted: isSetupCompleted(state),
-  isHosted: Settings.isHosted(),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

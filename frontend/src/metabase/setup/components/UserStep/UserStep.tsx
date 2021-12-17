@@ -14,10 +14,10 @@ import { UserInfo } from "../../types";
 
 export interface Props {
   user?: UserInfo;
+  isHosted: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  isHosted: boolean;
   onPasswordChange: (user: UserInfo) => void;
   onStepSelect: () => void;
   onStepSubmit: (user: UserInfo) => void;
@@ -25,10 +25,10 @@ export interface Props {
 
 const UserStep = ({
   user,
+  isHosted,
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
-  isHosted,
   onPasswordChange,
   onStepSelect,
   onStepSubmit,
