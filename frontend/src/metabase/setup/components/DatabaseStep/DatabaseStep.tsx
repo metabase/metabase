@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
 import { updateIn } from "icepick";
+import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
-import { StepDescription } from "./DatabaseStep.styled";
+import { StepDescription, UserFormGroup } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo } from "../../types";
 
@@ -33,7 +34,7 @@ const DatabaseStep = ({
   onStepSelect,
   onStepSubmit,
   onStepCancel,
-}: Props) => {
+}: Props): JSX.Element => {
   useEffect(() => {
     engine && onEngineChange(engine);
   }, [engine, onEngineChange]);
@@ -77,7 +78,9 @@ const DatabaseStep = ({
         <SetupSection
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
-        />
+        >
+          <UserForm />
+        </SetupSection>
       )}
     </ActiveStep>
   );
@@ -89,7 +92,11 @@ interface DatabaseFormProps {
   onCancel: () => void;
 }
 
-const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
+const DatabaseForm = ({
+  database,
+  onSubmit,
+  onCancel,
+}: DatabaseFormProps): JSX.Element => {
   return (
     <Databases.Form
       form={Databases.forms.setup}
@@ -112,6 +119,23 @@ const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
         </Form>
       )}
     </Databases.Form>
+  );
+};
+
+const UserForm = (): JSX.Element => {
+  return (
+    <Users.Form form={Users.forms.setup_invite}>
+      {({ Form, FormField, FormFooter }: FormProps) => (
+        <Form>
+          <UserFormGroup>
+            <FormField name="first_name" />
+            <FormField name="last_name" />
+          </UserFormGroup>
+          <FormField name="email" />
+          <FormFooter submitTitle={t`Submit invitation`} />
+        </Form>
+      )}
+    </Users.Form>
   );
 };
 

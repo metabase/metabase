@@ -26,11 +26,11 @@ const SetupSection = ({ title, description, children }: Props): JSX.Element => {
         </SectionContainer>
         <Button
           round
-          icon={isExpanded ? "chevronup" : "chevrondown"}
+          icon="chevrondown"
           onClick={() => setIsExpanded(!isExpanded)}
         />
       </SectionHeader>
-      {children}
+      {isExpanded && children}
     </SectionRoot>
   );
 };

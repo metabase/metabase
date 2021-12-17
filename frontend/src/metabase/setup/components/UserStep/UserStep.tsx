@@ -86,21 +86,19 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
       asyncBlurFields={["password"]}
       onSubmit={onSubmit}
     >
-      {({ Form, FormField, FormFooter }: FormProps) => {
-        return (
-          <Form>
-            <UserFormGroup>
-              <FormField name="first_name" />
-              <FormField name="last_name" />
-            </UserFormGroup>
-            <FormField name="email" />
-            <FormField name="site_name" />
-            <FormField name="password" />
-            <FormField name="password_confirm" />
-            <FormFooter submitTitle={t`Next`} />
-          </Form>
-        );
-      }}
+      {({ Form, FormField, FormFooter }: FormProps) => (
+        <Form>
+          <UserFormGroup>
+            <FormField name="first_name" />
+            <FormField name="last_name" />
+          </UserFormGroup>
+          <FormField name="email" />
+          <FormField name="site_name" />
+          <FormField name="password" />
+          <FormField name="password_confirm" />
+          <FormFooter submitTitle={t`Next`} />
+        </Form>
+      )}
     </UserFormRoot>
   );
 };

@@ -10,6 +10,7 @@ export const SectionRoot = styled.div`
 export const SectionHeader = styled.div`
   display: flex;
   align-items: center;
+  margin-bottom: 2rem;
 `;
 
 export const SectionContainer = styled.div`
