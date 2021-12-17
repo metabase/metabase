@@ -42,8 +42,10 @@
                   :password (tx/db-test-env-var-or-throw :oracle :password)
                   :sid      (tx/db-test-env-var-or-throw :oracle :sid)
                   :ssl      (tx/db-test-env-var :oracle :ssl false)}
-        ssl-keys [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
-                  :ssl-use-keystore :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value]]
+        ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
+                  :ssl-truststore-password-value
+                  :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
+                  :ssl-keystore-password-value]]
     (merge details*
            (m/filter-vals some?
                           (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))

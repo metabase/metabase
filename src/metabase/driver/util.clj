@@ -227,26 +227,48 @@
   [driver db-details]
   (when db-details
     (assert (some? driver))
-    (let [secret-names->props (reduce (fn [acc prop]
-                                        (if (= "secret" (:type prop))
-                                          (assoc acc (:name prop) prop)
-                                          acc))
-                                      {}
-                                      (driver/connection-properties driver))]
+    (let [secret-names->props    (reduce (fn [acc prop]
+                                           (if (= "secret" (:type prop))
+                                             (assoc acc (:name prop) prop)
+                                             acc))
+                                         {}
+                                         (driver/connection-properties driver))
+
+          secrets-server->client (reduce (fn [acc prop]
+                                           (assoc acc (keyword (:name prop)) prop))
+                                   {}
+                                   (connection-props-server->client driver (vals secret-names->props)))]
       (reduce-kv (fn [acc prop-name prop]
-                   (let [subprop (fn [suffix]
-                                   (keyword (str prop-name suffix)))
-                         path-kw (subprop "-path")
-                         val-kw  (subprop "-value")
-                         path    (path-kw acc)
-                         treat   (:treat-before-posting prop)
-                         value   (let [^String v (val-kw acc)]
-                                   (case treat
-                                     "base64" (.decode (Base64/getDecoder) v)
-                                     v))]
+                   (let [subprop    (fn [suffix]
+                                      (keyword (str prop-name suffix)))
+                         path-kw    (subprop "-path")
+                         val-kw     (subprop "-value")
+                         source-kw  (subprop "-source")
+                         options-kw (subprop "-options")
+                         path       (path-kw acc)
+                         get-treat  (fn []
+                                      (let [options (options-kw acc)]
+                                        (when (= "uploaded" options)
+                                          ;; the :treat-before-posting, if defined, would be applied to the client
+                                          ;; version of the -value property (the :type "textFile" one)
+                                          (let [textfile-prop (val-kw secrets-server->client)]
+                                            (:treat-before-posting textfile-prop)))))
+                         value      (let [^String v (val-kw acc)]
+                                      (case (get-treat)
+                                        "base64" (.decode (Base64/getDecoder) v)
+                                        v))]
                      (cond-> (assoc acc val-kw value)
-                       path  (dissoc val-kw) ; local path specified; remove the -value entry, if it exists
-                       value (dissoc path-kw) ; value specified; remove the -path entry, if it exists
+                       ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
+                       ;; with the existing db-details blob to produce the final details
+                       ;; therefore, if we want a changed setting to take effect (i.e. switching from a file path to an
+                       ;; upload), then we need to ensure the nil value is merged, rather than the stale value from the
+                       ;; app DB being picked
+                       path  (-> ; from outer cond->
+                               (assoc val-kw nil) ; local path specified; remove the -value entry, if it exists
+                               (assoc source-kw :file-path)) ; and set the :source to :file-path
+                       value (-> ; from outer cond->
+                               (assoc path-kw nil) ; value specified; remove the -path entry, if it exists
+                               (assoc source-kw nil)) ; and remove the :source mapping
                        true  (dissoc (subprop "-options")))))
                  db-details
                  secret-names->props))))
