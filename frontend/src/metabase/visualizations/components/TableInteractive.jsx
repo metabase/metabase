@@ -732,7 +732,7 @@ export default class TableInteractive extends Component {
           // Grid's doc says scrollToColumn takes precedence over scrollLeft
           // (https://github.com/bvaughn/react-virtualized/blob/master/docs/Grid.md#prop-types)
           // For some reason, for TableInteractive's main grid scrollLeft appears to be more prior
-          const mainGridProps = { scrollLeft };
+          const mainGridProps = {};
           if (scrollToColumn >= 0) {
             mainGridProps.scrollToColumn = scrollToColumn;
           } else {
