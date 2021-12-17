@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -19,8 +18,6 @@ Object.entries(DASHBOARD_NUMBER_FILTERS).forEach(
 
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         cy.visit("/dashboard/1");
 

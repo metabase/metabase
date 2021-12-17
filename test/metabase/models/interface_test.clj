@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.dashboard-card :as dashboard-card]
             [toucan.models :as t.models]))
 
 ;; let's make sure the `:metabase-query`/`:metric-segment-definition`/`::dashboard-card/parameter-mappings`
@@ -56,7 +55,7 @@
                 "sure the Toucan type fn handles the error gracefully")
     (with-redefs [normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
       (is (= nil
-             ((type-fn ::dashboard-card/parameter-mappings :out)
+             ((type-fn :parameters-list :out)
               (json/generate-string
                [{:target [:dimension [:field "ABC" nil]]}])))))))
 
@@ -65,5 +64,5 @@
     (is (thrown?
          Exception
          (with-redefs [normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-           ((type-fn ::dashboard-card/parameter-mappings :in)
+           ((type-fn :parameters-list :in)
             [{:target [:dimension [:field "ABC" nil]]}]))))))

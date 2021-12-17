@@ -119,7 +119,11 @@ export default class ParameterFieldWidget extends Component {
     } else {
       return (
         <Popover hasArrow={false} onClose={() => focusChanged(false)}>
-          <div className={cx("relative", { p2: !isEqualsOp })}>
+          <div
+            className={cx("relative PopoverBody--marginBottom", {
+              p2: !isEqualsOp,
+            })}
+          >
             {verboseName && !isEqualsOp && (
               <div className="text-bold mb1">{verboseName}...</div>
             )}

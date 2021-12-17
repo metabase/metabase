@@ -166,17 +166,7 @@
                    (substitute query {"param" (i/map->FieldFilter
                                                {:field (Field (mt/id :venues field))
                                                 :value {:type  operator
-                                                        :value value}})})))))))
-    (testing "Throws if not enabled (#15488)"
-      (with-redefs [i/field-filter-operators-enabled? (constantly false)]
-        (is (= :invalid-parameter
-               (try
-                 (substitute ["select * from venues where " (param "param")]
-                             {"param" (i/map->FieldFilter
-                                       {:field (Field (mt/id :venues :price))
-                                        :value {:type  :number/>=
-                                                :value [3]}})})
-                 (catch Exception e (:type (ex-data e)))))))))
+                                                        :value value}})}))))))))
 
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------

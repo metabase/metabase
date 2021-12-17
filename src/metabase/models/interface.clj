@@ -86,6 +86,16 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
+(defn normalize-parameters-list
+  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameters]
+  (or (normalize/normalize-fragment [:parameters] parameters)
+      []))
+
+(models/add-type! :parameters-list
+  :in  (comp json-in normalize-parameters-list)
+  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
+
 (def ^:private MetricSegmentDefinition
   {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
    (s/optional-key :aggregation) (s/maybe [mbql.s/Aggregation])

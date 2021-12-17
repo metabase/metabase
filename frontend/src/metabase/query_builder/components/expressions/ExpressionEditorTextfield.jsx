@@ -39,7 +39,6 @@ const HelpText = ({ helpText, width }) =>
         attachment: "top left",
         targetAttachment: "bottom left",
       }}
-      targetOffsetY={-47}
       style={{ width }}
       isOpen
     >

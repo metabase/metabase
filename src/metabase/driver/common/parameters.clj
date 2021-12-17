@@ -1,29 +1,8 @@
 (ns metabase.driver.common.parameters
   "Various record types below are used as a convenience for differentiating the different param types."
-  (:require [metabase.models.setting :refer [defsetting]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [potemkin.types :as p.types]
+  (:require [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]))
-
-(defsetting field-filter-operators-enabled?
-  (deferred-tru "Enable the new field-filter operators")
-  :type       :boolean
-  :visibility :public
-  :setter     :none)
-
-(defn throw-if-field-filter-operators-not-enabled
-  "Feature flag check for new field filter operations. Assumed already has been checked that `ops/operator?` is
-  true. Throws if the new field filter operators are not enabled. Intended to be removed when feature flag is no
-  longer necessary; designed so it can be used in a threading context and just raised out."
-  {:added "0.39.0"}
-  [field-filter]
-  (if (field-filter-operators-enabled?)
-    field-filter
-    (throw (ex-info (tru "New field filter operators are not enabled")
-                    {:type qp.error-type/invalid-parameter
-                     :operator (:type field-filter)}))))
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
 ;;
