@@ -106,10 +106,10 @@
               (is (= (:last_name invited-user) last-name))
               (is (:is_superuser invited-user)))
             (let [invite-email (-> (mt/regex-email-bodies
-                                    (re-pattern (str invitor-first-name " wants you to join them on Metabase.*")))
+                                    (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
                                    (get email)
                                    first)]
-             (is (= {(str invitor-first-name " wants you to join them on Metabase.*") true}
+             (is (= {(str invitor-first-name " could use your help setting up Metabase.*") true}
                     (:body invite-email))))))))
 
     (testing "No second user is created if email is not set up"

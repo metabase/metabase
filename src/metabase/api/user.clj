@@ -183,7 +183,7 @@
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
-                                 true))]
+                                 false))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id})
       (-> (fetch-user :id new-user-id)
