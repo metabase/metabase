@@ -138,14 +138,6 @@ export const SchemaTableAndFieldDataSelector = props => (
   />
 );
 
-export const FieldSelector = props => (
-  <DataSelector
-    steps={[TABLE_STEP, FIELD_STEP]}
-    getTriggerElementContent={FieldTriggerContent}
-    {...props}
-  />
-);
-
 const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
     <span className="text-wrap text-grey no-decoration">

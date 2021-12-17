@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { FieldSelector } from "metabase/query_builder/components/DataSelector";
+import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import Question from "metabase-lib/lib/Question";
 import Field from "metabase-lib/lib/metadata/Field";
@@ -35,7 +35,7 @@ type MappedFieldPickerProps = {
 
 function MappedFieldPicker({ dataset }: MappedFieldPickerProps) {
   return (
-    <FieldSelector
+    <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
       selectedDatabaseId={dataset.databaseId()}
       getTriggerElementContent={MappedFieldPickerTrigger}
