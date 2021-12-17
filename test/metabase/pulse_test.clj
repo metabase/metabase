@@ -420,10 +420,11 @@
 
 (deftest rows-alert-test
   (testing "Rows alert"
-    (tests {:pulse {:alert_condition "rows", :alert_first_only false} :display :sparkline}
+    (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
       "with data"
       {:card
        (checkins-query-card {:breakout [!day.date]})
+       :display :sparkline
 
        :assert
        {:email
@@ -452,6 +453,7 @@
       {:card
        (checkins-query-card {:filter   [:> $date "2017-10-24"]
                              :breakout [!day.date]})
+       :display :sparkline
        :assert
        {:email
         (fn [_ _]
@@ -461,6 +463,7 @@
       "too much data"
       {:card
        (checkins-query-card {:limit 21, :aggregation nil})
+       :display :table
 
        :assert
        {:email
@@ -478,6 +481,7 @@
       "with data and a CSV + XLS attachment"
       {:card       (checkins-query-card {:breakout [!day.date]})
        :pulse-card {:include_csv true, :include_xls true}
+       :display :sparkline
 
        :assert
        {:email
@@ -566,8 +570,7 @@
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"
-    (tests {:card  {:display                :bar
-                    :visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
+    (tests {:card  {:visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
             :pulse {:alert_condition  "goal"
                     :alert_first_only false
                     :alert_above_goal false}}
@@ -575,6 +578,7 @@
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
                              :breakout [!day.date]})
+       :display :bar
 
        :assert
        {:email
@@ -587,6 +591,7 @@
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
                              :breakout [!day.date]})
+       :display :bar
 
        :assert
        {:email
