@@ -6,6 +6,7 @@ import {
   SET_DATABASE,
   SET_TRACKING,
   LOAD_USER_DEFAULTS,
+  SET_INVITE,
 } from "./actions";
 import { WELCOME_STEP } from "./constants";
 
@@ -33,6 +34,13 @@ export const user = handleActions(
 export const database = handleActions(
   {
     [SET_DATABASE]: { next: (state, { payload }) => payload },
+  },
+  null,
+);
+
+export const invite = handleActions(
+  {
+    [SET_INVITE]: { next: (state, { payload }) => payload },
   },
   null,
 );

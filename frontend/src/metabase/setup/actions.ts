@@ -18,6 +18,9 @@ export const setUser = createAction(SET_USER);
 export const SET_DATABASE = "metabase/setup/SET_DATABASE";
 export const setDatabase = createAction(SET_DATABASE);
 
+export const SET_INVITE = "metabase/setup/SET_INVITE";
+export const setInvite = createAction(SET_INVITE);
+
 export const SET_TRACKING = "metabase/setup/SET_TRACKING";
 export const setTracking = createAction(SET_TRACKING);
 
