@@ -168,7 +168,7 @@
       (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment aside from dashboard icon"
     {:card (checkins-query-card {:aggregation nil, :limit 9})
 

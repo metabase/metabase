@@ -574,7 +574,7 @@
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
                              :breakout [!day.date]})
-       :display :bar
+       :display :line
 
        :assert
        {:email
