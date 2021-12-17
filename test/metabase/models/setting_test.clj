@@ -692,7 +692,7 @@
                                            ;; [[mt/with-temporary-setting-values]] because that blows up when the
                                            ;; Setting is Database-local-only
                                            (db/delete! Setting :key (name setting-name))
-                                           (when value
+                                           (when site-wide-value
                                              (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (cache/restore-cache!)
                                            (try
