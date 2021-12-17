@@ -11,18 +11,6 @@ jest.mock("metabase/entities/users", () => ({
 }));
 
 describe("UserStep", () => {
-  it("should render in inactive state", () => {
-    const props = getProps({
-      user: getUserInfo({ first_name: "Testy" }),
-      isStepActive: false,
-      isStepCompleted: true,
-    });
-
-    render(<UserStep {...props} />);
-
-    expect(screen.getByText(/Hi, Testy/)).toBeInTheDocument();
-  });
-
   it("should render in active state", () => {
     const props = getProps({
       isStepActive: true,
@@ -32,6 +20,18 @@ describe("UserStep", () => {
     render(<UserStep {...props} />);
 
     expect(screen.getByText("What should we call you?")).toBeInTheDocument();
+  });
+
+  it("should render in completed state", () => {
+    const props = getProps({
+      user: getUserInfo({ first_name: "Testy" }),
+      isStepActive: false,
+      isStepCompleted: true,
+    });
+
+    render(<UserStep {...props} />);
+
+    expect(screen.getByText(/Hi, Testy/)).toBeInTheDocument();
   });
 });
 
