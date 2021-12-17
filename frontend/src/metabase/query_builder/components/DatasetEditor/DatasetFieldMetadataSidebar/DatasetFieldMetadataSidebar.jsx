@@ -73,31 +73,6 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
-function getFieldSemanticTypeSections() {
-  const types = [
-    ...field_semantic_types,
-    {
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    },
-  ];
-
-  const groupedBySection = _.groupBy(types, "section");
-
-  return Object.entries(groupedBySection).map(entry => {
-    const [name, items] = entry;
-    return {
-      name,
-      items: items.map(item => ({
-        value: item.id,
-        name: item.name,
-        description: item.description,
-      })),
-    };
-  });
-}
-
 function getFormFields({ dataset, IDFields }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
@@ -114,7 +89,14 @@ function getFormFields({ dataset, IDFields }) {
     return (
       <SemanticTypePicker
         {...formFieldProps}
-        sections={getFieldSemanticTypeSections()}
+        options={[
+          ...field_semantic_types,
+          {
+            id: null,
+            name: t`No special type`,
+            section: t`Other`,
+          },
+        ]}
         IDFields={IDFields}
       />
     );
