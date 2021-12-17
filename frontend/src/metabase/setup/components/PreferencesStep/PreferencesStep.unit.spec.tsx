@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import PreferencesStep, { Props } from "./PreferencesStep";
 import userEvent from "@testing-library/user-event";
+import PreferencesStep, { Props } from "./PreferencesStep";
 
 describe("PreferencesStep", () => {
   it("should render in inactive state", () => {
@@ -40,7 +40,7 @@ describe("PreferencesStep", () => {
   });
 });
 
-const getProps = (props: Partial<Props>): Props => {
+const getProps = (opts?: Partial<Props>): Props => {
   return {
     isTrackingAllowed: false,
     isStepActive: false,
@@ -49,6 +49,6 @@ const getProps = (props: Partial<Props>): Props => {
     onTrackingChange: jest.fn(),
     onStepSelect: jest.fn(),
     onStepSubmit: jest.fn(),
-    ...props,
+    ...opts,
   };
 };

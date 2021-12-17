@@ -80,7 +80,7 @@ const PreferencesStep = ({
       {isTrackingAllowed && (
         <StepInfoList>
           <li>{jt`Metabase ${(
-            <strong>{t`never`}</strong>
+            <strong key="message">{t`never`}</strong>
           )} collects anything about your data or question results.`}</li>
           <li>{t`All collection is completely anonymous.`}</li>
           <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
