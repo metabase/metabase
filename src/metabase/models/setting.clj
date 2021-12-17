@@ -77,11 +77,7 @@
   continue the pattern of adding new columns and reworking existing code forever?
 
   Clearly being able to leverage the existing Settings framework will save us effort in the long run. (If you're still
-  not convinced, see #14055 for more information.)
-
-  ###### Setting Database-Local Settings
-
-  TODO (TBD)"
+  not convinced, see #14055 for more information.)"
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
             [clojure.core :as core]
