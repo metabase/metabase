@@ -78,13 +78,27 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "advanced-options": () => ({
+    normalize: () => undefined,
+  }),
   "schedules.metadata_sync": () => ({
+    name: "schedules.metadata_sync",
     type: MetadataSyncScheduleWidget,
     normalize: value => value,
   }),
   "schedules.cache_field_values": () => ({
+    name: "schedules.cache_field_values",
     type: CacheFieldValuesScheduleWidget,
     normalize: value => value,
+  }),
+  auto_run_queries: () => ({
+    name: "auto_run_queries",
+  }),
+  let_user_control_scheduling: () => ({
+    name: "let_user_control_scheduling",
+  }),
+  refingerprint: () => ({
+    name: "refingerprint",
   }),
 };
 
@@ -275,7 +289,7 @@ function getEngineFormFields(engine, details, id) {
         const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
         return {
-          name: field.name.includes(".") ? field.name : `details.${field.name}`,
+          name: `details.${field.name}`,
           title: field["display-name"] || field["title"],
           type: field.type,
           description: field.description,
