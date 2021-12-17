@@ -78,9 +78,6 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
-  "advanced-options": () => ({
-    normalize: () => undefined,
-  }),
   "schedules.metadata_sync": () => ({
     name: "schedules.metadata_sync",
     type: MetadataSyncScheduleWidget,
