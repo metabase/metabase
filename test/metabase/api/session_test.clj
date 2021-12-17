@@ -347,20 +347,20 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/properties :public)))
+      (is (= (set (keys (setting/user-readable-values-map :public)))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated))))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated)
-                         (setting/properties :admin))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated)
+                         (setting/user-readable-values-map :admin))))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
