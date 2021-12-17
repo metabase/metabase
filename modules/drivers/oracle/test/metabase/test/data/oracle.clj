@@ -7,6 +7,7 @@
             [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Table]]
             [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]
@@ -45,13 +46,18 @@
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
                   :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
-                  :ssl-keystore-password-value]]
-    (merge details*
-           (m/filter-vals some?
-                          (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
+                  :ssl-keystore-password-value]
+        with-ssl (merge details*
+                   (m/filter-vals some?
+                        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))]
+    ;; test environments are setting properties as if from the client perspective (i.e. with keys matching those
+    ;; sent by the client when saving DB details), therefore these values need to pass through the translation layer
+    ;; to turn back into the server side props
+    (driver.u/db-details-client->server :oracle with-ssl)))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
-  (connection-details))
+  (let [conn-details (connection-details)]
+    (identity conn-details)))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
@@ -181,7 +187,8 @@
            "INTO")))))))
 
 (defn- dbspec [& _]
-  (sql-jdbc.conn/connection-details->spec :oracle (connection-details)))
+  (let [conn-details  (connection-details)]
+    (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
 
 (defn- non-session-schemas
   "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should

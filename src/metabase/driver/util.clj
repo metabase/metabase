@@ -72,7 +72,9 @@
 
 (defn- database->driver* [database-or-id]
   (or
-   (:engine database-or-id)
+   (when-let [engine (:engine database-or-id)]
+     ;; ensure we get the engine as a keyword (sometimes it's a String)
+     (keyword engine))
    (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
 
 (def ^{:arglists '([database-or-id])} database->driver

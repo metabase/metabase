@@ -8536,7 +8536,7 @@ databaseChangeLog:
                     deferrable: false
                     foreignKeyName: fk_secret_ref_user_id
                     initiallyDeferred: false
-                    nullable: false
+                    nullable: true
                     references: core_user(id)
                   name: creator_id
                   remarks: User ID who created this secret instance
