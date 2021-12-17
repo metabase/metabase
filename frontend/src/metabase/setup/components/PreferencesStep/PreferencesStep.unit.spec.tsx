@@ -26,7 +26,7 @@ describe("PreferencesStep", () => {
     expect(props.onTrackingChange).toHaveBeenCalledWith(true);
   });
 
-  it("should show error message on submit", async () => {
+  it("should show an error message on submit", async () => {
     const props = getProps({
       isTrackingAllowed: true,
       isStepActive: true,

@@ -7,7 +7,7 @@ import {
   StepLabelText,
 } from "./InactiveStep.styled";
 
-interface Props {
+export interface Props {
   title: string;
   label: number;
   isStepCompleted: boolean;

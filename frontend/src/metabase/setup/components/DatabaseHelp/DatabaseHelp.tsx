@@ -1,7 +1,7 @@
 import React from "react";
 import { DatabaseHelpRoot, DatabaseHelpCard } from "./DatabaseHelp.styled";
 
-interface Props {
+export interface Props {
   engine?: string;
   isStepActive: boolean;
 }

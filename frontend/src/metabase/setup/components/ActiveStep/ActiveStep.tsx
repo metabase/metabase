@@ -6,7 +6,7 @@ import {
   StepLabelText,
 } from "./ActiveStep.styled";
 
-interface Props {
+export interface Props {
   title: string;
   label: number;
   children?: ReactNode;

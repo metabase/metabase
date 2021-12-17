@@ -2,7 +2,7 @@ import React from "react";
 import SettingsPage from "../../containers/SettingsPage";
 import WelcomePage from "../../containers/WelcomePage";
 
-interface Props {
+export interface Props {
   isWelcome: boolean;
 }
 

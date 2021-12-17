@@ -10,7 +10,7 @@ import {
   PageButton,
 } from "./WelcomePage.styled";
 
-interface Props {
+export interface Props {
   onStepShow: () => void;
   onStepSubmit: () => void;
 }

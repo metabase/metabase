@@ -12,7 +12,7 @@ import {
 import { FormProps } from "./types";
 import { UserInfo } from "../../types";
 
-interface Props {
+export interface Props {
   user?: UserInfo;
   isStepActive: boolean;
   isStepCompleted: boolean;

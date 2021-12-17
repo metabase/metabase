@@ -9,7 +9,7 @@ import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
 
-interface Props {
+export interface Props {
   step: number;
   onStepShow: (step: number) => void;
 }

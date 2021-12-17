@@ -11,7 +11,7 @@ import {
   StepDescription,
 } from "./LanguageStep.styled";
 
-interface Props {
+export interface Props {
   locale?: Locale;
   localeData?: LocaleData[];
   isStepActive: boolean;

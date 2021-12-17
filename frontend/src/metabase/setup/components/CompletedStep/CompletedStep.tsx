@@ -9,7 +9,7 @@ import {
 } from "./CompletedStep.styled";
 import { UserInfo } from "../../types";
 
-interface Props {
+export interface Props {
   user?: UserInfo;
   isStepActive: boolean;
 }

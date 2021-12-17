@@ -8,7 +8,7 @@ import { StepDescription } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo } from "../../types";
 
-interface Props {
+export interface Props {
   database?: DatabaseInfo;
   engine?: string;
   isStepActive: boolean;
