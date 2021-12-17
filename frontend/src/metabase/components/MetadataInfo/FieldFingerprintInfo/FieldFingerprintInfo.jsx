@@ -1,12 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { t, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Table } from "../MetadataInfo.styled";
-import FieldValuesList from "./FieldValuesList";
+import CategoryFingerprint from "./CategoryFingerprint";
 
 const propTypes = {
   field: PropTypes.instanceOf(Field),
@@ -90,29 +90,8 @@ function NumberFingerprint({ field }) {
   );
 }
 
-function CategoryFingerprint({ field }) {
-  const distinctCount = field.fingerprint.global?.["distinct-count"];
-  if (distinctCount == null) {
-    return null;
-  }
-
-  return (
-    <div>
-      <div>
-        {ngettext(
-          msgid`${distinctCount} distinct value`,
-          `${distinctCount} distinct values`,
-          distinctCount,
-        )}
-      </div>
-      <FieldValuesList field={field} />
-    </div>
-  );
-}
-
 FieldFingerprintInfo.propTypes = propTypes;
 DateTimeFingerprint.propTypes = propTypes;
 NumberFingerprint.propTypes = propTypes;
-CategoryFingerprint.propTypes = propTypes;
 
 export default FieldFingerprintInfo;
