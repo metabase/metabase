@@ -5,8 +5,8 @@ import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/components/ExternalLink";
 import Toggle from "metabase/components/Toggle";
-import InactiveStep from "../InvactiveStep";
 import ActiveStep from "../ActiveStep";
+import InactiveStep from "../InvactiveStep";
 import {
   StepDescription,
   StepToggle,
@@ -15,7 +15,7 @@ import {
   StepError,
 } from "./PreferencesStep.styled";
 
-interface Props {
+export interface Props {
   isTrackingAllowed: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
@@ -121,6 +121,8 @@ const getSubmitError = (error: unknown) => {
     return message;
   } else if (errors) {
     return Object.values(errors)[0];
+  } else {
+    return t`An error occurred`;
   }
 };
 
