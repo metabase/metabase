@@ -22,6 +22,7 @@ const mapStateToProps = (state: any) => ({
 const mapDispatchToProps = (dispatch: any) => ({
   onLocaleChange: (locale: Locale) => {
     dispatch(setLocale(locale));
+    Settings.set("user-locale", locale.code);
   },
   onStepSelect: () => {
     dispatch(setStep(LANGUAGE_STEP));
