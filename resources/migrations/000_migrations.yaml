@@ -9873,7 +9873,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: settings
-                  type: text
+                  type: ${text.type}
                   remarks: "Serialized JSON containing Database-local Settings for this Database"
 
 

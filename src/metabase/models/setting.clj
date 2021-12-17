@@ -39,7 +39,7 @@
 
   When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will be
   returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
-  `Database.settings` column in the application DB. `nil` values in `*database-local-values*` are ignored, i.e. you
+  `Database.settings` column in the application DB. `nil` values in [[*database-local-values*]] are ignored, i.e. you
   cannot 'unset' a site-wide value with a Database-local one.
 
   Whether or not a Setting can be Database-local is controlled by the `:database-local` option passed
