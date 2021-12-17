@@ -26,7 +26,58 @@
     (mandrill-api-key nil)
 
   [[admin-writable-settings]] and [[user-readable-values-map]] can be used to fetch *all* Admin-writable and
-  User-readable Settings, respectively. See their docstrings for more information."
+  User-readable Settings, respectively. See their docstrings for more information.
+
+  ### Database-Local Settings
+
+  Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
+  value. These are similar in concept to buffer-local variables in Emacs Lisp.
+
+  When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will
+  be returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
+  `Database.settings` column in the application DB. Database-local values can only override site-wide values when
+  non-`nil`; `nil` values in [[*database-local-values*]]` are ignored.
+
+  Whether or not a Setting can be Database-local is controlled by the `:database-local` option passed
+  to [[defsetting]]. There are three valid values of this option:
+
+  * `:only` means this Setting can *only* have a Database-local value and cannot have a 'normal' site-wide value. It
+  cannot be set via env var. Default values are still allowed for Database-local-only Settings. Database-local-only
+  Settings are never returned by [[admin-writable-settings]] or [[user-readable-values-map]] regardless of
+  their [[Visibility]].
+
+  * `:allowed` means this Setting can be Database-local and can also have a normal site-wide value; if both are
+  specified, the Database-specific value will be set and returned when we are in the context of a specific
+  Database (i.e., [[*database-local-values*]] is bound).
+
+  * `:never` means Database-specific values cannot be set for this Setting. Values in [[*database-local-values*]]
+  will be ignored.
+
+  `:never` is the default value of `:database-local`; to allow Database-local values, the Setting definition must
+  explicitly specify `:database-local` `:only` or `:allowed`.
+
+  ###### Motivation
+
+  Now that we know a little about what Database-local Settings *are*, let's briefly discuss the motivation behind them.
+
+  There are actually a lot of good use cases for Database-local Settings. In some cases we want to specify sane
+  defaults for things like row limits, but allow them to be set on *either* a site-wide or per-Database basis.
+  Something like [[metabase.driver/report-timezone]] has long been something we've allowing Database-specific
+  overrides for. To implement that, do we add a new column for the Database-specific override, and then rework all the
+  code that uses that to check either the Database-specific value, *or* fall back
+  to [[metabase.driver/report-timezone]] if one is not set?
+
+  That's certainly one option, but wouldn't it be nicer to solve this problem more generally? What if we want to do
+  the same thing yet another Setting in the future --
+  perhaps [[metabase.query-processor.middleware.constraints/max-results-bare-rows]], as proposed in #19267? Do we
+  continue the pattern of adding new columns and reworking existing code forever?
+
+  Clearly being able to leverage the existing Settings framework will save us effort in the long run. (If you're still
+  not convinced, see #14055 for more information.)
+
+  ###### Setting Database-Local Settings
+
+  TODO (TBD)"
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
             [clojure.core :as core]
@@ -48,6 +99,24 @@
            java.io.StringWriter
            java.time.temporal.Temporal))
 
+;; TODO -- Not sure I *love* the fact that this is expected to have String-serialized values (which therefore means
+;; things like JSON get doubly-serialized) but I don't set any other way to do this without completely reworking all the
+;; other code in the Settings framework since [[get-string]] is a low-level function ultimately used basically
+;; everywhere.
+;;
+;; TODO -- bind in contexts mentioned below.
+;;
+;; TODO -- a way to set Database-local values.
+(def ^:dynamic *database-local-values*
+  "Database-local Settings values (as a map of Setting name -> *STRING*-serialized value). This comes from the value of
+  `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
+  from this map returned preferentially to the site-wide value.
+
+  This is normally bound automatically in Query Processor context
+  by [[metabase.query-processor.middleware.resolve-database-and-driver]] and in sync contexts by [[metabase.sync]];
+  you may need to manually bind it in other places where you want to use Database-local values."
+  nil)
+
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
   :setting)
@@ -55,9 +124,8 @@
 (u/strict-extend (class Setting)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:value :encrypted-text})
+         {:types       (constantly {:value :encrypted-text})
           :primary-key (constantly :key)}))
-
 
 (def ^:private Type
   (s/enum :string :boolean :json :integer :double :timestamp :csv :keyword))
@@ -103,6 +171,13 @@
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
 
+;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
+;; User-Local Settings at some point in the future. The will use the same options
+(def ^:private LocalOption
+  "Schema for valid values of `:database-local`. See [[metabase.models.setting]] docstring for description of what these
+  options mean."
+  (s/enum :only :allowed :never))
+
 (def ^:private SettingDefinition
   {:name        s/Keyword
    :munged-name s/Str
@@ -117,9 +192,12 @@
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
-  ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
-  ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
-  ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
+   ;; whether this Setting can be Database-local. See [[metabase.models.setting]] docstring for more info.
+   :database-local LocalOption
+
+   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+   ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
+   ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
    :on-change   (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
@@ -176,6 +254,17 @@
   (setting-name [this]
     (name this)))
 
+(defn- allows-database-local-values? [setting]
+  (#{:only :allowed} (:database-local (resolve-setting setting))))
+
+(defn- allows-site-wide-values? [setting]
+  (not= (:database-local (resolve-setting setting)) :only))
+
+(defn- database-local-value [setting-definition-or-name]
+  (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
+    (when (allows-database-local-values? setting)
+      (some-> (core/get *database-local-values* setting-name) str))))
+
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
   [setting-nm]
@@ -196,20 +285,24 @@
   legal for shells. Setting `foo-bar?` will expect to find the key `:mb-foo-bar` which will be sourced from the
   environment variable `MB_FOO_BAR`."
   ^String [setting-definition-or-name]
-  (let [v (env/env (keyword (str "mb-" (munge-setting-name (setting-name setting-definition-or-name)))))]
-    (when (seq v)
-      v)))
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (when (allows-site-wide-values? setting)
+      (let [v (env/env (keyword (str "mb-" (munge-setting-name (setting-name setting)))))]
+        (when (seq v)
+          v)))))
 
 (def ^:private ^:dynamic *disable-cache* false)
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-definition-or-name]
-  (if *disable-cache*
-    (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
-    (do
-      (cache/restore-cache-if-needed!)
-      (clojure.core/get (cache/cache) (setting-name setting-definition-or-name)))))
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (when (allows-site-wide-values? setting)
+      (if *disable-cache*
+        (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+        (do
+          (cache/restore-cache-if-needed!)
+          (clojure.core/get (cache/cache) (setting-name setting-definition-or-name)))))))
 
 (defn default-value
   "Get the `:default` value of `setting-definition-or-name` if one was specified. With optional arg `pred`, only returns
@@ -233,7 +326,8 @@
 
   If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-definition-or-name]
-  (let [v (or (env-var-value setting-definition-or-name)
+  (let [v (or (database-local-value setting-definition-or-name)
+              (env-var-value setting-definition-or-name)
               (db-or-cache-value setting-definition-or-name)
               (default-value setting-definition-or-name string?))]
     (when (seq v)
@@ -365,7 +459,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- update-setting!
-  "Update an existing Setting. Used internally by `set-string!` below; do not use directly."
+  "Update an existing Setting. Used internally by [[set-string!]] below; do not use directly."
   [setting-name new-value]
   (assert (not= setting-name cache/settings-last-updated-key)
     (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
@@ -378,7 +472,7 @@
       :value maybe-encrypted-new-value)))
 
 (defn- set-new-setting!
-  "Insert a new row for a Setting. Used internally by `set-string!` below; do not use directly."
+  "Insert a new row for a Setting. Used internally by [[set-string!]] below; do not use directly."
   [setting-name new-value]
   (try (db/insert! Setting
          :key   setting-name
@@ -399,14 +493,17 @@
 (s/defn set-string!
   "Set string value of `setting-definition-or-name`. A `nil` or empty `new-value` can be passed to unset (i.e., delete)
   `setting-definition-or-name`. String-type settings use this function directly; all other types ultimately call this (e.g.
-  `set-boolean!` eventually calls `set-string!`). Returns the `new-value`."
-  [setting-definition-or-name, new-value :- (s/maybe s/Str)]
+  [[set-boolean!]] eventually calls [[set-string!]]). Returns the `new-value`."
+  [setting-definition-or-name new-value :- (s/maybe s/Str)]
   (let [new-value                         (when (seq new-value)
                                             new-value)
         {:keys [sensitive?], :as setting} (resolve-setting setting-definition-or-name)
         obfuscated?                       (and sensitive? (obfuscated-value? new-value))
         setting-name                      (setting-name setting)]
-    ;; if someone attempts to set a sensitive setting to an obfuscated value (probably via a misuse of the `set-many!`
+    ;; make sure we're not trying to set the value of a Database-local-only Setting or something like that
+    (when-not (allows-site-wide-values? setting)
+      (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
+                      {:setting (:name setting)})))
     ;; function, setting values that have not changed), ignore the change. Log a message that we are ignoring it.
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
@@ -511,14 +608,14 @@
    :csv       set-csv!})
 
 (defn set!
-  "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this just updates
-   the Settings cache and writes its value to the DB.
+  "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
+  just updates the Settings cache and writes its value to the DB.
 
     (set :mandrill-api-key \"xyz123\")
 
-   Style note: prefer using the setting directly instead:
+  Style note: prefer using the setting directly instead:
 
-     (mandrill-api-key \"xyz123\")"
+    (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
@@ -539,19 +636,20 @@
   (let [munged-name (munge-setting-name (name setting-name))]
     (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
                (merge
-                {:name        setting-name
-                 :munged-name munged-name
-                 :namespace   setting-ns
-                 :description nil
-                 :type        setting-type
-                 :default     default
-                 :on-change   nil
-                 :getter      (partial (default-getter-for-type setting-type) setting-name)
-                 :setter      (partial (default-setter-for-type setting-type) setting-name)
-                 :tag         (default-tag-for-type setting-type)
-                 :visibility  :admin
-                 :sensitive?  false
-                 :cache?      true}
+                {:name           setting-name
+                 :munged-name    munged-name
+                 :namespace      setting-ns
+                 :description    nil
+                 :type           setting-type
+                 :default        default
+                 :on-change      nil
+                 :getter         (partial (default-getter-for-type setting-type) setting-name)
+                 :setter         (partial (default-setter-for-type setting-type) setting-name)
+                 :tag            (default-tag-for-type setting-type)
+                 :visibility     :admin
+                 :sensitive?     false
+                 :cache?         true
+                 :database-local :never}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -564,7 +662,7 @@
                                            (vals @registered-settings)))]
         (when (not= setting-name (:name same-munge)) ;; redefinitions are fine
           (throw (ex-info (tru "Setting names in would collide: {0} and {1}"
-                                setting-name (:name same-munge))
+                               setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
       (swap! registered-settings assoc setting-name <>))))
@@ -673,32 +771,48 @@
 
   You may optionally pass any of the `options` below:
 
-   *  `:default`    - The default value of the setting. This must be of the same type as the Setting type, e.g. the
-                      default for an `:integer` setting must be some sort of integer. (default: `nil`)
+  ###### `:default`
 
-   *  `:type`       - `:string` (default) or one of the other types listed in [[Type]]. Non-`:string` Settings have
-                       special default getters and setters that automatically coerce values to the correct types.
+  The default value of the setting. This must be of the same type as the Setting type, e.g. the default for an
+  `:integer` setting must be some sort of integer. (default: `nil`)
 
-   *  `:visibility` - `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is
-                      visible
+  ###### `:type`
 
-   *  `:getter`     - A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in
-                      turn call functions in this namespace like [[get-string]] or [[get-boolean]] to invoke the default
-                      getter behavior.)
+  `:string` (default) or one of the other types listed in [[Type]]. Non-`:string` Settings have special default
+  getters and setters that automatically coerce values to the correct types.
 
-   *  `:setter`     - A custom setter fn, which takes a single argument, or `:none` for read-only settings. Overrides the
-                      default implementation. (This can in turn call functions in this namespace like `set-string!` or
-                      `set-boolean!` to invoke the default setter behavior. Keep in mind that the custom setter may be
-                      passed `nil`, which should clear the values of the Setting.)
+  ###### `:visibility`
 
-   *  `:cache?`     - Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could
-                      have a very negative performance impact.
+  `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is visible
 
-   *  `:sensitive?` - Is this a sensitive setting, such as a password, that we should never return in plaintext?
-                      (Default: `false`). Obfuscation is not done by getter functions, but instead by functions that
-                      ultimately return these values via the API, such as [[admin-writable-settings]] below. (In other
-                      words, code in the backend can continute to consume sensitive Settings normally; sensitivity is a
-                      purely user-facing option.)"
+  ###### `:getter`
+
+  A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in turn call functions
+  in this namespace like [[get-string]] or [[get-boolean]] to invoke the default getter behavior.)
+
+  ###### `:setter`
+
+  A custom setter fn, which takes a single argument, or `:none` for read-only settings. Overrides the default
+  implementation. (This can in turn call functions in this namespace like [[set-string!]] or `set-boolean!` to invoke
+  the default setter behavior. Keep in mind that the custom setter may be passed `nil`, which should clear the values
+  of the Setting.)
+
+  ###### `:cache?`
+
+  Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could have a very
+  negative performance impact.
+
+  ###### `:sensitive?`
+
+  Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
+  Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
+  API, such as [[admin-writable-settings]] below. (In other words, code in the backend can continute to consume
+  sensitive Settings normally; sensitivity is a purely user-facing option.)
+
+  ###### `:database-local`
+
+  The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
+  `:never`. See docstring for [[metabase.models.setting]] for more information."
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}
@@ -797,7 +911,7 @@
                        default)}))
 
 (defn admin-writable-settings
-  "Return a sequence of Settings maps in a format suitable for consumption by the frontend.
+  "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
 
   `options` are passed to [[user-facing-value]].
@@ -808,12 +922,18 @@
   `:internal`. In either case we *do not* want to return env var values -- we don't want to serialize them regardless
   of whether the value should be readable or not, and admins should not be allowed to modify them."
   [& {:as options}]
-  (for [setting (sort-by :name (vals @registered-settings))
-        :when   (not= (:visibility setting) :internal)]
-    (m/mapply user-facing-info setting options)))
+  ;; ignore Database-local values even if this is bound for some reason
+  (binding [*database-local-values* nil]
+    (into
+     []
+     (comp (filter (fn [setting]
+                     (and (not= (:visibility setting) :internal)
+                          (allows-site-wide-values? setting))))
+           (map #(m/mapply user-facing-info % options)))
+     (sort-by :name (vals @registered-settings)))))
 
 (defn user-readable-values-map
-  "Returns Settings as a map of setting name -> value for a given [[Visibility]] e.g. `:public`.
+  "Returns Settings as a map of setting name -> site-wide value for a given [[Visibility]] e.g. `:public`.
 
   Settings marked `:sensitive?` (e.g. passwords) are excluded.
 
@@ -822,8 +942,14 @@
   the frontend client. For that reason, these Settings *should* include values that come back from environment
   variables, *unless* they are marked `:sensitive?`."
   [visibility]
-  (->> @registered-settings
-       (filter (fn [[_ options]] (and (not (:sensitive? options))
-                                      (= (:visibility options) visibility))))
-       (map (fn [[name]] [name (get name)]))
-       (into {})))
+  ;; ignore Database-local values even if this is bound for some reason
+  (binding [*database-local-values* nil]
+    (into
+     {}
+     (comp (filter (fn [[_ setting]]
+                     (and (not (:sensitive? setting))
+                          (allows-site-wide-values? setting)
+                          (= (:visibility setting) visibility))))
+           (map (fn [[setting-name]]
+                  [setting-name (get setting-name)])))
+     @registered-settings)))

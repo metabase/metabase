@@ -6,10 +6,11 @@
             [metabase.models.setting.cache :as cache]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.encryption-test :as encryption-test]
             [metabase.util.i18n :as i18n :refer [deferred-tru]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -183,11 +184,14 @@
 ;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (do-with-temporary-setting-value setting db-value
+  (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (with-redefs [env/env {(keyword (str "mb-" (name setting))) env-var-value}]
-        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                :key :description)))))
+      (tu/do-with-temp-env-var-value
+       (keyword (str "mb-" (name setting)))
+       env-var-value
+       (fn []
+         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                 :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
@@ -549,18 +553,17 @@
                     [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public)
         (catch Exception e
-          (is (= {:existing-setting
-                  {:description (deferred-tru "A testing setting"),
-                   :cache? true,
-                   :default nil,
-                   :name :foo,
-                   :munged-name "foo"
-                   :type :string,
-                   :sensitive? false,
-                   :tag 'java.lang.String,
-                   :namespace current-ns
-                   :visibility :public}}
-                 (ex-data e)))
+          (is (schema= {:existing-setting
+                        {:description (s/eq (deferred-tru "A testing setting"))
+                         :name        (s/eq :foo)
+                         :munged-name (s/eq "foo")
+                         :type        (s/eq :string)
+                         :sensitive?  (s/eq false)
+                         :tag         (s/eq 'java.lang.String)
+                         :namespace   (s/eq current-ns)
+                         :visibility  (s/eq :public)
+                         s/Keyword s/Any}}
+                       (ex-data e)))
           (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))
@@ -651,3 +654,141 @@
                  Exception
                  #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
                  (validate tag value)))))))))
+
+(defsetting ^:private test-database-local-only-setting
+  "test Setting"
+  :visibility     :internal
+  :type           :integer
+  :database-local :only)
+
+(defsetting ^:private test-database-local-allowed-setting
+  (deferred-tru "test Setting")
+  :visibility     :authenticated
+  :type           :integer
+  :database-local :allowed)
+
+(defsetting ^:private test-database-local-never-setting
+  "test Setting"
+  :visibility :internal
+  :type       :integer) ; `:never` should be the default
+
+(deftest database-local-settings-test
+  (doseq [[database-local-type {:keys [setting-name setting-fn returns]}]
+          {:only    {:setting-name :test-database-local-only-setting
+                     :setting-fn   test-database-local-only-setting
+                     :returns      [:database-local]}
+           :allowed {:setting-name :test-database-local-allowed-setting
+                     :setting-fn   test-database-local-allowed-setting
+                     :returns      [:database-local :site-wide]}
+           :never   {:setting-name :test-database-local-never-setting
+                     :setting-fn   test-database-local-never-setting
+                     :returns      [:site-wide]}}]
+    (testing (format "A Setting with :database-local = %s" database-local-type)
+      (doseq [site-wide-value         [1 nil]
+              database-local-value    [2 nil]
+              do-with-site-wide-value [(fn [thunk]
+                                         (testing "\nsite-wide value set in application DB"
+                                           ;; Set the setting directly instead of using
+                                           ;; [[mt/with-temporary-setting-values]] because that blows up when the
+                                           ;; Setting is Database-local-only
+                                           (db/delete! Setting :key (name setting-name))
+                                           (db/insert! Setting :key (name setting-name), :value (str site-wide-value))
+                                           (cache/restore-cache!)
+                                           (try
+                                             (thunk)
+                                             (finally
+                                               (db/delete! Setting :key (name setting-name))
+                                               (cache/restore-cache!)))))
+                                       (fn [thunk]
+                                         ()
+                                         (tu/do-with-temp-env-var-value
+                                          (keyword (str "mb-" (name setting-name)))
+                                          site-wide-value
+                                          thunk))]]
+        ;; clear out Setting if it was already set for some reason (except for `:only` where this is explicitly
+        ;; disallowed)
+        (when-not (= database-local-type :only)
+          (setting-fn nil))
+        ;; now set the Site-wide value
+        (testing (format "\nSite-wide value = %s\nDatabase-local value = %s"
+                         (pr-str site-wide-value) (pr-str database-local-value))
+          (do-with-site-wide-value
+           (fn []
+             ;; set the database-local-value
+             (binding [setting/*database-local-values* {setting-name (some-> database-local-value str)}]
+               ;; now fetch the value
+               (let [[expected-value-type expected-value] (some (fn [return-value-type]
+                                                                  (when-let [value ({:database-local database-local-value
+                                                                                     :site-wide      site-wide-value}
+                                                                                    return-value-type)]
+                                                                    [return-value-type value]))
+                                                                returns)]
+                 (testing (format "\nShould return %s value %s" (pr-str expected-value-type) (pr-str expected-value))
+                   (is (= expected-value
+                          (setting-fn)))))))))))))
+
+(defsetting ^:private test-boolean-database-local-setting
+  "test Setting"
+  :visibility     :internal
+  :type           :boolean
+  :database-local :allowed)
+
+(deftest boolean-database-local-settings-test
+  (testing "Boolean Database-local Settings\n"
+    (testing "Site-wide value is `true`"
+      (test-boolean-database-local-setting true)
+      (is (= true
+             (test-boolean-database-local-setting))))
+    (testing "Site-wide value is `false`"
+      (test-boolean-database-local-setting false)
+      (is (= false
+             (test-boolean-database-local-setting)))
+      (testing "Database-local value is `true`"
+        (binding [setting/*database-local-values* {:test-boolean-database-local-setting "true"}]
+          (is (= true
+                 (test-boolean-database-local-setting)))))
+      (testing "Database-local value is explicitly set to `nil` -- fall back to site-wide value"
+        (binding [setting/*database-local-values* {:test-boolean-database-local-setting nil}]
+          (is (= false
+                 (test-boolean-database-local-setting))))))))
+
+(defsetting ^:private test-database-local-only-setting-with-default
+  (deferred-tru "test Setting")
+  :visibility     :authenticated
+  :database-local :only
+  :default        "DEFAULT")
+
+(deftest database-local-only-settings-test
+  (testing "Disallow setting Database-local-only Settings"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
+         (test-database-local-only-setting 2))))
+
+  (testing "Default values should be allowed for Database-local-only Settings"
+    (is (= "DEFAULT"
+           (test-database-local-only-setting-with-default)))
+    (binding [setting/*database-local-values* {:test-database-local-only-setting-with-default "WOW"}]
+      (is (= "WOW"
+             (test-database-local-only-setting-with-default))))))
+
+(deftest database-local-settings-api-functions-test
+  ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
+  ;; with a `nil` value)
+  (doseq [[fn-name f] {`setting/admin-writable-settings
+                       (fn [k]
+                         (let [m (into {} (map (juxt :key :value)) (setting/admin-writable-settings))]
+                           (get m k ::not-present)))
+
+                       `setting/user-readable-values-map
+                       (fn [k]
+                         (get (setting/user-readable-values-map :authenticated) k ::not-present))}]
+    (testing fn-name
+      (testing "should return Database-local-allowed Settings (site-wide-value only)"
+        (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
+          (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
+            (is (= 2
+                   (f :test-database-local-allowed-setting))))))
+      (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
+        (is (= ::not-present
+               (f :test-database-local-only-setting-with-default)))))))

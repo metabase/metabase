@@ -258,7 +258,7 @@
       keyword))
 
 (defn do-with-temp-env-var-value
-  "Impl for `with-temp-env-var-value` macro."
+  "Impl for [[with-temp-env-var-value]] macro."
   [env-var-keyword value thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
   (let [value (str value)]
@@ -335,8 +335,7 @@
 
   If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
 
-  Prefer the macro `with-temporary-setting-values` over using this function directly."
-  {:style/indent 2}
+  Prefer the macro [[with-temporary-setting-values]] over using this function directly."
   [setting-k value thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
@@ -367,8 +366,8 @@
                                 e))))))))))
 
 (defmacro with-temporary-setting-values
-  "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
-  works much the same way as `binding`.
+  "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
+  This works much the same way as `binding`.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
