@@ -174,7 +174,6 @@
    email            su/Email
    group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
-  (def my-group-ids group_ids)
   (api/check-superuser)
   (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))

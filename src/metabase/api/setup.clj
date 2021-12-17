@@ -1,12 +1,12 @@
 (ns metabase.api.setup
-  (:require [compojure.core :refer [GET POST]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST]]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.database :as database-api :refer [DBEngineString]]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
-            [metabase.util.i18n :refer [trs]]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -26,12 +26,11 @@
             [metabase.setup :as setup]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as t.models]
-            [clojure.tools.logging :as log])
+            [toucan.models :as t.models])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
