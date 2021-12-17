@@ -47,11 +47,7 @@ export const VALIDATE_PASSWORD = "metabase/setup/VALIDATE_PASSWORD";
 export const validatePassword = createThunkAction(
   VALIDATE_PASSWORD,
   (user: UserInfo) => async () => {
-    try {
-      await UtilApi.password_check({ password: user.password });
-    } catch (error) {
-      throw getIn(error, ["data", "errors"]);
-    }
+    await UtilApi.password_check({ password: user.password });
   },
 );
 
@@ -79,14 +75,8 @@ export const submitDatabase = createThunkAction(
       await dispatch(validateDatabase(sslDatabase));
       await dispatch(setDatabase(sslDatabase));
     } catch (error) {
-      try {
-        await dispatch(validateDatabase(nonSslDatabase));
-        await dispatch(setDatabase(nonSslDatabase));
-      } catch (error) {
-        throw updateIn(error, ["data", "errors"], errors => ({
-          details: errors,
-        }));
-      }
+      await dispatch(validateDatabase(nonSslDatabase));
+      await dispatch(setDatabase(nonSslDatabase));
     }
   },
 );

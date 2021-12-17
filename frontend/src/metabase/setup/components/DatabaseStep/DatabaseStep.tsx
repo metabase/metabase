@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
+import { updateIn } from "icepick";
 import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -67,17 +68,25 @@ const DatabaseStep = ({
 
 interface DatabaseFormProps {
   database?: DatabaseInfo;
-  onSubmit?: (database: DatabaseInfo) => void;
-  onCancel?: () => void;
+  onSubmit: (database: DatabaseInfo) => void;
+  onCancel: () => void;
 }
 
 const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
+  const handleSubmit = async (database: DatabaseInfo) => {
+    try {
+      await onSubmit(database);
+    } catch (error) {
+      throw getSubmitError(error);
+    }
+  };
+
   return (
     <Databases.Form
       form={Databases.forms.setup}
       formName="database"
       database={database}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ formFields, Form, FormField, FormFooter }: FormProps) => (
         <Form>
@@ -108,6 +117,12 @@ const getStepTitle = (
   } else {
     return t`I'll add my own data later`;
   }
+};
+
+const getSubmitError = (error: unknown) => {
+  return updateIn(error, ["data", "errors"], errors => ({
+    details: errors,
+  }));
 };
 
 export default DatabaseStep;

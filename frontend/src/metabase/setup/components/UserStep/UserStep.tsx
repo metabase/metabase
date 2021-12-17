@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { getIn } from "icepick";
 import Users from "metabase/entities/users";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -73,7 +74,7 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
       await onPasswordChange(user);
       return {};
     } catch (error) {
-      return error;
+      return getSubmitError(error);
     }
   };
 
@@ -108,6 +109,10 @@ const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
   return isStepCompleted
     ? t`Hi, ${user?.first_name}. Nice to meet you!`
     : t`What should we call you?`;
+};
+
+const getSubmitError = (error: unknown) => {
+  return getIn(error, ["data", "errors"]);
 };
 
 export default UserStep;

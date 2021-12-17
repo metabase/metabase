@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { t, jt } from "ttag";
+import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/components/ExternalLink";
@@ -39,7 +40,7 @@ const PreferencesStep = ({
     try {
       await onStepSubmit(isTrackingAllowed);
     } catch (error) {
-      setErrorMessage(String(error));
+      setErrorMessage(getSubmitError(error));
     }
   };
 
@@ -109,6 +110,17 @@ const getStepTitle = (
     return t`Thanks for helping us improve`;
   } else {
     return t`We won't collect any usage events`;
+  }
+};
+
+const getSubmitError = (error: unknown) => {
+  const message = getIn(error, ["data", "message"]);
+  const errors = getIn(error, ["data", "errors"]);
+
+  if (message) {
+    return message;
+  } else if (errors) {
+    return Object.values(errors)[0];
   }
 };
 
