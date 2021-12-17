@@ -182,12 +182,14 @@ function DatasetFieldMetadataSidebar({
   updateCardVisualizationSettings,
 }) {
   const displayNameInputRef = useRef();
-  const [animateOut, setAnimateOut] = useState(false);
+  const [shouldAnimateFieldChange, setShouldAnimateFieldChange] = useState(
+    false,
+  );
   const previousField = usePrevious(field);
 
   useEffect(() => {
     if (field && !isSameField(field?.field_ref, previousField?.field_ref)) {
-      setAnimateOut(true);
+      setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
         displayNameInputRef.current.select();
@@ -281,11 +283,15 @@ function DatasetFieldMetadataSidebar({
     [isLastField, handleFirstFieldFocus],
   );
 
+  const onFieldChangeAnimationEnd = useCallback(() => {
+    setShouldAnimateFieldChange(false);
+  }, []);
+
   return (
     <SidebarContent>
       <AnimatableContent
-        animated={animateOut}
-        onAnimationEnd={() => setAnimateOut(false)}
+        animated={shouldAnimateFieldChange}
+        onAnimationEnd={onFieldChangeAnimationEnd}
       >
         {field && (
           <RootForm
