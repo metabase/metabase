@@ -26,22 +26,18 @@ describe("CompletedStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => {
-  return {
-    user: getUserInfo(),
-    isStepActive: false,
-    ...opts,
-  };
-};
+const getProps = (opts?: Partial<Props>): Props => ({
+  user: getUserInfo(),
+  isStepActive: false,
+  ...opts,
+});
 
-const getUserInfo = (opts?: Partial<UserInfo>): UserInfo => {
-  return {
-    first_name: "Testy",
-    last_name: "McTestface",
-    email: "testy@metabase.test",
-    site_name: "Epic Team",
-    password: "metasample123",
-    password_confirm: "metasample123",
-    ...opts,
-  };
-};
+const getUserInfo = (opts?: Partial<UserInfo>): UserInfo => ({
+  first_name: "Testy",
+  last_name: "McTestface",
+  email: "testy@metabase.test",
+  site_name: "Epic Team",
+  password: "metasample123",
+  password_confirm: "metasample123",
+  ...opts,
+});

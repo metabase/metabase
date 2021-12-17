@@ -40,15 +40,13 @@ describe("PreferencesStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => {
-  return {
-    isTrackingAllowed: false,
-    isStepActive: false,
-    isStepCompleted: false,
-    isSetupCompleted: false,
-    onTrackingChange: jest.fn(),
-    onStepSelect: jest.fn(),
-    onStepSubmit: jest.fn(),
-    ...opts,
-  };
-};
+const getProps = (opts?: Partial<Props>): Props => ({
+  isTrackingAllowed: false,
+  isStepActive: false,
+  isStepCompleted: false,
+  isSetupCompleted: false,
+  onTrackingChange: jest.fn(),
+  onStepSelect: jest.fn(),
+  onStepSubmit: jest.fn(),
+  ...opts,
+});

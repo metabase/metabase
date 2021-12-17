@@ -29,22 +29,18 @@ describe("LanguageStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => {
-  return {
-    isStepActive: false,
-    isSetupCompleted: false,
-    isStepCompleted: false,
-    onLocaleChange: jest.fn(),
-    onStepSelect: jest.fn(),
-    onStepSubmit: jest.fn(),
-    ...opts,
-  };
-};
+const getProps = (opts?: Partial<Props>): Props => ({
+  isStepActive: false,
+  isSetupCompleted: false,
+  isStepCompleted: false,
+  onLocaleChange: jest.fn(),
+  onStepSelect: jest.fn(),
+  onStepSubmit: jest.fn(),
+  ...opts,
+});
 
-const getLocale = (opts?: Partial<Locale>): Locale => {
-  return {
-    code: "en",
-    name: "English",
-    ...opts,
-  };
-};
+const getLocale = (opts?: Partial<Locale>): Locale => ({
+  code: "en",
+  name: "English",
+  ...opts,
+});
