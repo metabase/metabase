@@ -66,7 +66,7 @@
 
   There are actually a lot of good use cases for Database-local Settings. In some cases we want to specify sane
   defaults for things like row limits, but allow them to be set on *either* a site-wide or per-Database basis.
-  Something like [[metabase.driver/report-timezone]] has long been something we've allowing Database-specific
+  Something like [[metabase.driver/report-timezone]] has long been something we've wanted to allow Database-specific
   overrides for. To implement that, do we add a new column for the Database-specific override, and then rework all the
   code that uses that to check either the Database-specific value, *or* fall back
   to [[metabase.driver/report-timezone]] if one is not set?
