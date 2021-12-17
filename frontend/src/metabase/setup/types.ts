@@ -12,6 +12,12 @@ export interface UserInfo {
   password_confirm: string;
 }
 
+export interface InviteInfo {
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 export interface DatabaseInfo {
   name: string;
   engine: string;

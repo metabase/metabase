@@ -79,7 +79,7 @@ const DatabaseStep = ({
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
         >
-          <UserForm />
+          <InviteForm />
         </SetupSection>
       )}
     </ActiveStep>
@@ -122,7 +122,7 @@ const DatabaseForm = ({
   );
 };
 
-const UserForm = (): JSX.Element => {
+const InviteForm = (): JSX.Element => {
   return (
     <Users.Form form={Users.forms.setup_invite}>
       {({ Form, FormField, FormFooter }: FormProps) => (
@@ -132,7 +132,7 @@ const UserForm = (): JSX.Element => {
             <FormField name="last_name" />
           </UserFormGroup>
           <FormField name="email" />
-          <FormFooter submitTitle={t`Submit invitation`} />
+          <FormFooter submitTitle={t`Send invitation`} />
         </Form>
       )}
     </Users.Form>
