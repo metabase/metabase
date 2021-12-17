@@ -418,6 +418,9 @@
 (defn- render-bar-graph [results]
   (body/render :bar :inline pacific-tz render.tu/test-card nil results))
 
+(defn- render-multiseries-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-combo-card nil results))
+
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
     (is (has-inline-image?
@@ -434,10 +437,18 @@
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-bar-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
+
+(defn- render-multiseries-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
 
 (deftest render-area-graph-tet
   (testing "Render an area graph with non-nil values for the x and y axis"
@@ -455,7 +466,12 @@
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
           (render-area-graph {:cols default-columns
-                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-area-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
