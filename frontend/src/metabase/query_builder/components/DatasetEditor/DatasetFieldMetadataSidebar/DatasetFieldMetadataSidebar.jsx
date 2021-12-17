@@ -311,7 +311,12 @@ function DatasetFieldMetadataSidebar({
                     name="description"
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   />
-                  {dataset.isNative() && <FormField name="id" />}
+                  {dataset.isNative() && (
+                    <FormField
+                      name="id"
+                      tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    />
+                  )}
                   <FormField
                     name="semantic_type"
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
