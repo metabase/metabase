@@ -89,6 +89,8 @@
            :combo
            :funnel
            :progress
+           :sparkline
+           :table
            :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 

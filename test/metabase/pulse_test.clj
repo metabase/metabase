@@ -86,7 +86,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card pulse pulse-card display fixture], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -94,7 +94,7 @@
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
       (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
-                                                           :display :line}
+                                                           :display (or display :line)}
                                                           card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
@@ -165,8 +165,9 @@
 
 (deftest basic-timeseries-test
   (do-test
-   {:card  (checkins-query-card {:breakout [!day.date]})
-    :pulse {:skip_if_empty false}
+   {:card    (checkins-query-card {:breakout [!day.date]})
+    :pulse   {:skip_if_empty false}
+    :display :sparkline
 
     :assert
     {:email
@@ -190,9 +191,9 @@
               (thunk->boolean pulse-results))))}}))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 9})
+    {:card    (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -253,8 +254,8 @@
                 #"More results have been included" #"ID</th>"))))}}))
 
 (deftest csv-test
-  (tests {:pulse {:skip_if_empty false}
-          :card  (checkins-query-card {:breakout [!day.date]})}
+  (tests {:pulse   {:skip_if_empty false}
+          :card    (checkins-query-card {:breakout [!day.date]})}
     "alert with a CSV"
     {:pulse-card {:include_csv true}
 
@@ -266,7 +267,7 @@
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
-    {:card {:dataset_query (mt/mbql-query checkins)}
+    {:card {:display :table :dataset_query (mt/mbql-query checkins)}
 
      :assert
      {:email
@@ -282,6 +283,7 @@
     (do-test
      {:card       {:dataset_query (mt/mbql-query checkins)}
       :pulse-card {:include_xls true}
+      :display    :table
 
       :assert
       {:email
@@ -323,6 +325,7 @@
     (do-test
      {:card
       (checkins-query-card {:aggregation nil})
+      :display :table
 
       :fixture
       (fn [_ thunk]
@@ -417,7 +420,7 @@
 
 (deftest rows-alert-test
   (testing "Rows alert"
-    (tests {:pulse {:alert_condition "rows", :alert_first_only false}}
+    (tests {:pulse {:alert_condition "rows", :alert_first_only false} :display :sparkline}
       "with data"
       {:card
        (checkins-query-card {:breakout [!day.date]})
