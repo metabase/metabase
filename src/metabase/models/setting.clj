@@ -528,7 +528,7 @@
    (when new-value
      (assert (or (integer? new-value)
                  (and (string? new-value)
-                      (re-matches #"^\d+$" new-value))))
+                      (re-matches #"^-?\d+$" new-value))))
      (str new-value))))
 
 (defmethod set-value-of-type! :double

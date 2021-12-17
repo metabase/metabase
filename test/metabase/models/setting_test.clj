@@ -793,3 +793,18 @@
       (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
         (is (= ::not-present
                (f :test-database-local-only-setting-with-default)))))))
+
+(defsetting ^:private test-integer-setting
+  "test Setting"
+  :visibility :internal
+  :type       :integer)
+
+(deftest integer-setting-test
+  (testing "Should be able to set integer setting with a string"
+    (test-integer-setting "100")
+    (is (= 100
+           (test-integer-setting)))
+    (testing "should be able to set to a negative number (thanks Howon for spotting this)"
+      (test-integer-setting "-2")
+      (is (= -2
+             (test-integer-setting))))))
