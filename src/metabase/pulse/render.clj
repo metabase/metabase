@@ -89,8 +89,7 @@
            :combo
            :funnel
            :progress
-           :waterfall
-           :line} display-type)
+           :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -106,11 +105,16 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
+        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
+        ;; upon which they're lines
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
              (not (#{:waterfall :pie :table :area} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
+
+        (= display-type :line)
+        (chart-type display-type "display-type is %s" display-type)
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
