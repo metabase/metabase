@@ -9862,6 +9862,21 @@ databaseChangeLog:
             constraintName: fk_database_creator_id
             onDelete: SET NULL
 
+  - changeSet:
+      id: v420.00-070
+      author: camsaul
+      comment: >-
+        Added 0.42.0 - add Database.settings column to implement Database-local Settings
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: settings
+                  type: text
+                  remarks: "Serialized JSON containing Database-local Settings for this Database"
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

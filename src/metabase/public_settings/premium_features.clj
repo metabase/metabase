@@ -130,7 +130,7 @@
                    {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))
-      (setting/set-string! :premium-embedding-token new-value)
+      (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (catch Throwable e
         (log/error e (trs "Error setting premium features token"))
         (throw (ex-info (.getMessage e) (merge

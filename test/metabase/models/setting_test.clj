@@ -253,7 +253,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/admin-writable-settings :getter (comp count setting/get-string))))))
+                   (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
 
     ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
     (testing "test settings"

@@ -327,7 +327,7 @@
   "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
-        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-keyword :start-of-week))
+        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-value-of-type :keyword :start-of-week))
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))

@@ -66,7 +66,8 @@
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml (str path "/settings.yaml")
-             (into {} (for [{:keys [key value]} (setting/admin-writable-settings :getter setting/get-string)]
+             (into {} (for [{:keys [key value]} (setting/admin-writable-settings
+                                                 :getter (partial setting/get-value-of-type :string))]
                         [key value]))))
 
 (defn dump-dimensions
