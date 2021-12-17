@@ -16,9 +16,9 @@
 
     (require '[metabase.models.setting :as setting])
 
-    (setting/get :mandrill-api-key)           ; only returns values set explicitly from the Admin Panel
-    (mandrill-api-key)                        ; returns value set in the Admin Panel, OR value of corresponding env var,
-                                                 ; OR the default value, if any (in that order)
+    (setting/get :mandrill-api-key) ; only returns values set explicitly from the Admin Panel
+    (mandrill-api-key)              ; returns value set in the Admin Panel, OR value of corresponding env var,
+                                    ; OR the default value, if any (in that order)
 
     (setting/set! :mandrill-api-key \"NEW_KEY\")
     (mandrill-api-key \"NEW_KEY\")
@@ -37,10 +37,10 @@
   Starting in 0.42.0, some Settings are allowed to have Database-specific values that override the normal site-wide
   value. These are similar in concept to buffer-local variables in Emacs Lisp.
 
-  When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will
-  be returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
-  `Database.settings` column in the application DB. Database-local values can only override site-wide values when
-  non-`nil`; `nil` values in [[*database-local-values*]]` are ignored.
+  When a Setting is allowed to be Database-local, any values in [[*database-local-values*]] for that Setting will be
+  returned preferentially to site-wide values of that Setting. [[*database-local-values*]] comes from the
+  `Database.settings` column in the application DB. `nil` values in `*database-local-values*` are ignored, i.e. you
+  cannot 'unset' a site-wide value with a Database-local one.
 
   Whether or not a Setting can be Database-local is controlled by the `:database-local` option passed
   to [[defsetting]]. There are three valid values of this option:
@@ -51,7 +51,7 @@
   their [[Visibility]].
 
   * `:allowed` means this Setting can be Database-local and can also have a normal site-wide value; if both are
-  specified, the Database-specific value will be set and returned when we are in the context of a specific
+  specified, the Database-specific value will be returned preferentially when we are in the context of a specific
   Database (i.e., [[*database-local-values*]] is bound).
 
   * `:never` means Database-specific values cannot be set for this Setting. Values in [[*database-local-values*]]
@@ -60,24 +60,11 @@
   `:never` is the default value of `:database-local`; to allow Database-local values, the Setting definition must
   explicitly specify `:database-local` `:only` or `:allowed`.
 
-  ###### Motivation
+  Setting setter functions do not affect Database-local values; they always set the site-wide value. (At the time of
+  this writing, there is not yet a FE-client-friendly way to set Database-local values. Just set them manually in the
+  application DB until we figure that out.)
 
-  Now that we know a little about what Database-local Settings *are*, let's briefly discuss the motivation behind them.
-
-  There are actually a lot of good use cases for Database-local Settings. In some cases we want to specify sane
-  defaults for things like row limits, but allow them to be set on *either* a site-wide or per-Database basis.
-  Something like [[metabase.driver/report-timezone]] has long been something we've wanted to allow Database-specific
-  overrides for. To implement that, do we add a new column for the Database-specific override, and then rework all the
-  code that uses that to check either the Database-specific value, *or* fall back
-  to [[metabase.driver/report-timezone]] if one is not set?
-
-  That's certainly one option, but wouldn't it be nicer to solve this problem more generally? What if we want to do
-  the same thing yet another Setting in the future --
-  perhaps [[metabase.query-processor.middleware.constraints/max-results-bare-rows]], as proposed in #19267? Do we
-  continue the pattern of adding new columns and reworking existing code forever?
-
-  Clearly being able to leverage the existing Settings framework will save us effort in the long run. (If you're still
-  not convinced, see #14055 for more information.)"
+  See #19399 for more information about and motivation behind Database-local Settings."
   (:refer-clojure :exclude [get])
   (:require [cheshire.core :as json]
             [clojure.core :as core]
