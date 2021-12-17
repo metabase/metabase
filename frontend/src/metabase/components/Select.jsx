@@ -37,6 +37,7 @@ export default class Select extends Component {
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
     triggerElement: PropTypes.any,
+    onClose: PropTypes.func,
 
     // SelectButton props
     buttonProps: PropTypes.object,
@@ -177,6 +178,7 @@ export default class Select extends Component {
       searchPlaceholder,
       searchFuzzy,
       isInitiallyOpen,
+      onClose,
     } = this.props;
 
     const sections = this._getSections();
@@ -208,6 +210,7 @@ export default class Select extends Component {
             </SelectButton>
           )
         }
+        onClose={onClose}
         triggerClasses={cx("flex", className)}
         isInitiallyOpen={isInitiallyOpen}
         verticalAttachments={["top", "bottom"]}
