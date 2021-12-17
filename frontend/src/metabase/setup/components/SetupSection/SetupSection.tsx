@@ -17,10 +17,6 @@ export interface Props {
 const SetupSection = ({ title, description, children }: Props): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleClick = () => {
-    setIsExpanded(!isExpanded);
-  };
-
   return (
     <SectionRoot>
       <SectionHeader>
@@ -28,7 +24,11 @@ const SetupSection = ({ title, description, children }: Props): JSX.Element => {
           <SectionTitle>{title}</SectionTitle>
           <SectionDescription>{description}</SectionDescription>
         </SectionContainer>
-        <Button round icon="chevrondown" onClick={handleClick} />
+        <Button
+          round
+          icon={isExpanded ? "chevronup" : "chevrondown"}
+          onClick={() => setIsExpanded(!isExpanded)}
+        />
       </SectionHeader>
       {children}
     </SectionRoot>

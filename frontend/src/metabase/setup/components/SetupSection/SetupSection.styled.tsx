@@ -2,8 +2,9 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 export const SectionRoot = styled.div`
-  border-top: 1px solid ${color("border")};
+  margin-top: 1.5rem;
   padding-top: 1.5rem;
+  border-top: 1px solid ${color("border")};
 `;
 
 export const SectionHeader = styled.div`

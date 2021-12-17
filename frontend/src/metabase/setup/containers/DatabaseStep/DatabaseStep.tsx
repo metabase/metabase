@@ -17,6 +17,7 @@ import { DatabaseInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
   database: getDatabase(state),
+  isHosted: true,
   isStepActive: isStepActive(state, DATABASE_STEP),
   isStepCompleted: isStepCompleted(state, DATABASE_STEP),
   isSetupCompleted: isSetupCompleted(state),
