@@ -175,7 +175,8 @@
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
-  :default true)
+  :default true
+  :visibility :authenticated)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
