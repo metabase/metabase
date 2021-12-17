@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -22,6 +22,16 @@ type MappedFieldPickerProps = {
 };
 
 function MappedFieldPicker({ dataset, tabIndex }: MappedFieldPickerProps) {
+  const selectButtonRef = useRef<HTMLDivElement>();
+
+  const focusSelectButton = useCallback(() => {
+    selectButtonRef.current?.focus();
+  }, []);
+
+  const onFieldChange = useCallback(fieldId => {
+    selectButtonRef.current?.focus();
+  }, []);
+
   const renderTriggerElement = useCallback(
     ({ selectedField, open }: CollapsedPickerProps) => {
       const label = selectedField
@@ -36,6 +46,7 @@ function MappedFieldPicker({ dataset, tabIndex }: MappedFieldPickerProps) {
               open();
             }
           }}
+          ref={selectButtonRef}
         >
           {label}
         </StyledSelectButton>
@@ -51,6 +62,8 @@ function MappedFieldPicker({ dataset, tabIndex }: MappedFieldPickerProps) {
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
       triggerTabIndex={tabIndex}
+      setFieldFn={onFieldChange}
+      onClose={focusSelectButton}
     />
   );
 }
