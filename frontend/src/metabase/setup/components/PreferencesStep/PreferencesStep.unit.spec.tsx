@@ -14,7 +14,7 @@ describe("PreferencesStep", () => {
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
-  it("should toggle tracking permissions", () => {
+  it("should allow toggling tracking permissions", () => {
     const props = getProps({
       isTrackingAllowed: false,
       isStepActive: true,
