@@ -73,8 +73,8 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL],
-    exclude: [ENTITY, LOCATION],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    exclude: [LOCATION],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
