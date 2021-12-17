@@ -35,6 +35,14 @@ const DatabaseStep = ({
     engine && onEngineChange(engine);
   }, [engine, onEngineChange]);
 
+  const handleSubmit = async (database: DatabaseInfo) => {
+    try {
+      await onStepSubmit(database);
+    } catch (error) {
+      throw getSubmitError(error);
+    }
+  };
+
   const handleCancel = () => {
     onStepCancel(engine);
   };
@@ -59,7 +67,7 @@ const DatabaseStep = ({
       </StepDescription>
       <DatabaseForm
         database={database}
-        onSubmit={onStepSubmit}
+        onSubmit={handleSubmit}
         onCancel={handleCancel}
       />
     </ActiveStep>
@@ -73,20 +81,12 @@ interface DatabaseFormProps {
 }
 
 const DatabaseForm = ({ database, onSubmit, onCancel }: DatabaseFormProps) => {
-  const handleSubmit = async (database: DatabaseInfo) => {
-    try {
-      await onSubmit(database);
-    } catch (error) {
-      throw getSubmitError(error);
-    }
-  };
-
   return (
     <Databases.Form
       form={Databases.forms.setup}
       formName="database"
       database={database}
-      onSubmit={handleSubmit}
+      onSubmit={onSubmit}
     >
       {({ formFields, Form, FormField, FormFooter }: FormProps) => (
         <Form>
