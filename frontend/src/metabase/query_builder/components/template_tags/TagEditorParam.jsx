@@ -95,6 +95,19 @@ export default class TagEditorParam extends Component {
     }
   }
 
+  getFilterWidgetTypeValue = (tag, widgetOptions) => {
+    // avoid `undefined` value because it makes the component "uncontrollable"
+    // (see Uncontrollable.jsx, metabase#13825)
+    const widgetType = tag["widget-type"] || "none";
+
+    const isOldWidgetType =
+      widgetType.startsWith("location") || widgetType === "category";
+
+    // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
+    // dropdown is correctly populated with a set option
+    return isOldWidgetType ? "string/=" : widgetType;
+  };
+
   render() {
     const { tag, database, databases, metadata, parameter } = this.props;
     let widgetOptions = [],
@@ -177,9 +190,7 @@ export default class TagEditorParam extends Component {
             </h4>
             <Select
               className="block"
-              // avoid `undefined` value because it makes the component "uncontrollable"
-              // (see Uncontrollable.jsx, metabase#13825)
-              value={tag["widget-type"] || "none"}
+              value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
               onChange={e =>
                 this.setWidgetType(
                   e.target.value === "none" ? undefined : e.target.value,

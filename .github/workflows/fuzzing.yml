@@ -48,7 +48,7 @@ jobs:
         MB_FUZZ: 1
       name: Run fuzz testing on the tokenizer
 
-  fe-fuzz-parser:
+  fe-fuzz-recursive-parser:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
     steps:
@@ -73,7 +73,7 @@ jobs:
         path: node_modules
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.parser.unit.spec.js
+    - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.recursive-parser.unit.spec.js
       env:
         MB_FUZZ: 1
-      name: Run fuzz testing on the parser
+      name: Run fuzz testing on the recursive parser

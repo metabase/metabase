@@ -1,14 +1,15 @@
-import { compile } from "metabase/lib/expressions/compile";
+import { parse } from "metabase/lib/expressions/recursive-parser";
+import { resolve } from "metabase/lib/expressions/resolver";
 import { infer } from "metabase/lib/expressions/typeinferencer";
 
 describe("metabase/lib/expressions/typeinferencer", () => {
-  function resolve(kind, name) {
+  function mockResolve(kind, name) {
     return ["field", name];
   }
   function compileAs(source, startRule) {
     let mbql = null;
     try {
-      mbql = compile({ source, startRule, resolve });
+      mbql = resolve(parse(source), startRule, mockResolve);
     } catch (e) {}
     return mbql;
   }

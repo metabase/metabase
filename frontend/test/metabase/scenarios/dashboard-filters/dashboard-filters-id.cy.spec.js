@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -15,8 +14,6 @@ describe("scenarios > dashboard > filters > ID", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     cy.visit("/dashboard/1");
 

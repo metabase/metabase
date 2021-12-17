@@ -6,6 +6,7 @@ import {
   STRING,
   PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+import { PARAMETER_OPERATOR_TYPES } from "../constants";
 
 export function getOperatorDisplayName(option, operatorType, sectionName) {
   if (operatorType === "date" || operatorType === "number") {
@@ -44,4 +45,22 @@ function getParameterOperatorType(parameterType) {
     default:
       return undefined;
   }
+}
+
+export function buildTypedOperatorOptions(
+  operatorType,
+  sectionId,
+  sectionName,
+) {
+  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
+    return {
+      ...operatorOption,
+      sectionId,
+      combinedName: getOperatorDisplayName(
+        operatorOption,
+        operatorType,
+        sectionName,
+      ),
+    };
+  });
 }
