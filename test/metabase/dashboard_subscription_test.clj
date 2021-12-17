@@ -65,7 +65,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card dashboard dashcard pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card dashboard dashcard pulse pulse-card fixture display], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -75,7 +75,8 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name card-name} card)]]
+                      Card          [{card-id :id} (merge {:name card-name
+                                                           :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)

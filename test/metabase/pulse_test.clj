@@ -167,7 +167,6 @@
   (do-test
    {:card    (checkins-query-card {:breakout [!day.date]})
     :pulse   {:skip_if_empty false}
-    :display :sparkline
 
     :assert
     {:email
@@ -424,7 +423,6 @@
       "with data"
       {:card
        (checkins-query-card {:breakout [!day.date]})
-       :display :sparkline
 
        :assert
        {:email
@@ -453,7 +451,6 @@
       {:card
        (checkins-query-card {:filter   [:> $date "2017-10-24"]
                              :breakout [!day.date]})
-       :display :sparkline
        :assert
        {:email
         (fn [_ _]
@@ -481,7 +478,6 @@
       "with data and a CSV + XLS attachment"
       {:card       (checkins-query-card {:breakout [!day.date]})
        :pulse-card {:include_csv true, :include_xls true}
-       :display :sparkline
 
        :assert
        {:email
