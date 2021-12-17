@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -21,8 +20,6 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         const questionDetails = getQuestionDetails(sqlFilter);
 

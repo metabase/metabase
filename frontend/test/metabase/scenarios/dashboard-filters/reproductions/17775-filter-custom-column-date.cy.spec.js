@@ -4,7 +4,6 @@ import {
   filterWidget,
   editDashboard,
   saveDashboard,
-  mockSessionProperty,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -33,8 +32,6 @@ const dashboardDetails = { parameters };
 
 describe.skip("issue 17775", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
