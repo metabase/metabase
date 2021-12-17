@@ -362,18 +362,6 @@
                (:display_name (second y-cols))
                "")})
 
-(s/defmethod render :bar :- common/RenderedPulseCard
-  [_ render-type _timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows viz-settings] :as data}]
-  (let [image-bundle (lab-image-bundle :bar render-type _timezone-id card _dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (def ^:private colors
   "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
   ["#509EE3" "#88BF4D" "#A989C5" "#EF8C8C" "#F9D45C" "#F2A86F" "#98D9D9" "#7172AD" "#6450e3" "#4dbf5e"
@@ -585,7 +573,6 @@
         x-rows           (filter some? (map x-axis-rowfn rows))
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)
-        dealio           (println joined-rows)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         enforced-type    (if (= chart-type :combo)
@@ -601,6 +588,44 @@
     (image-bundle/make-image-bundle
       render-type
       (js-svg/combo-chart series settings))))
+
+(s/defmethod render :line :- common/RenderedPulseCard
+  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [image-bundle     (lab-image-bundle :line render-type timezone-id card _dashcard data)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :area :- common/RenderedPulseCard
+  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [image-bundle     (lab-image-bundle :area render-type timezone-id card _dashcard data)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]]}))
+
+(s/defmethod render :bar :- common/RenderedPulseCard
+  [_ render-type _timezone-id :- (s/maybe s/Str) card _dashcard {:keys [cols rows viz-settings] :as data}]
+  (let [image-bundle (lab-image-bundle :bar render-type _timezone-id card _dashcard data)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :combo :- common/RenderedPulseCard
   [_ render-type _timezone-id :- (s/maybe s/Str) card _dashcard {:keys [cols rows viz-settings] :as data}]
@@ -708,32 +733,6 @@
         [:td {:style (style/style {:color     style/color-gray-3
                                    :font-size :16px})}
          (second labels)]]]]}))
-
-(s/defmethod render :area :- common/RenderedPulseCard
-  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [image-bundle     (lab-image-bundle :area render-type timezone-id card _dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]]}))
-
-(s/defmethod render :line :- common/RenderedPulseCard
-  [_ render-type timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [image-bundle     (lab-image-bundle :line render-type timezone-id card _dashcard data)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block
-                                  :width   :100%})
-             :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
