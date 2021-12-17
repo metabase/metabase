@@ -157,12 +157,12 @@
 
 (declare form-password-reset-url set-password-reset-token!)
 
-(defn- send-welcome-email! [new-user invitor]
+(defn- send-welcome-email! [new-user invitor sent-from-setup?]
   (let [reset-token (set-password-reset-token! (u/the-id new-user))
         ;; the new user join url is just a password reset with an indicator that this is a first time user
         join-url    (str (form-password-reset-url reset-token) "#new")]
     (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url)))
+    ((resolve 'metabase.email.messages/send-new-user-email!) new-user invitor join-url sent-from-setup?)))
 
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
@@ -193,10 +193,10 @@
 
 (s/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending out the welcome email."
-  [new-user :- NewUser, invitor :- Invitor]
+  [new-user :- NewUser, invitor :- Invitor, setup? :- s/Bool]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
-    (send-welcome-email! <> invitor)))
+    (send-welcome-email! <> invitor setup?)))
 
 (s/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active

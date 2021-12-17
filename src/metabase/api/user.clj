@@ -174,6 +174,7 @@
    email            su/Email
    group_ids        (s/maybe [su/IntGreaterThanZero])
    login_attributes (s/maybe user/LoginAttributes)}
+  (def my-group-ids group_ids)
   (api/check-superuser)
   (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
@@ -181,7 +182,8 @@
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
-                                 @api/*current-user*))]
+                                 @api/*current-user*
+                                 true))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id})
       (-> (fetch-user :id new-user-id)
@@ -325,7 +327,7 @@
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email! user @api/*current-user* join-url)))
+      (email/send-new-user-email! user @api/*current-user* join-url false)))
   {:success true})
 
 (api/define-routes)

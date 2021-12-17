@@ -6,6 +6,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
+            [metabase.util.i18n :refer [trs]]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
             [metabase.models.card :refer [Card]]
@@ -13,6 +14,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.permissions-group :as group]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.session :refer [Session]]
@@ -28,7 +30,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as t.models])
+            [toucan.models :as t.models]
+            [clojure.tools.logging :as log])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
@@ -55,6 +58,13 @@
                       (t.models/post-insert (Session (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
+
+(defn- setup-maybe-create-and-invite-user! [{:keys [email first_name last_name] :as user}, invitor]
+  (when email
+    (if-not (email/email-configured?)
+      (log/error (trs "Could not invite user because email is not configured."))
+      (u/prog1 (user/create-and-invite-user! user invitor true)
+        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])))))
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
@@ -90,34 +100,44 @@
                  auto_run_queries]
           :as   database}                               :database
          {:keys [first_name last_name email password]}  :user
+         {invited_first_name :first_name,
+          invited_last_name  :last_name,
+          invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
-  {token            SetupToken
-   site_name        su/NonBlankString
-   site_locale      (s/maybe su/ValidLocale)
-   first_name       su/NonBlankString
-   last_name        su/NonBlankString
-   email            su/Email
-   password         su/ValidPassword
-   allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
-   auto_run_queries (s/maybe s/Bool)}
+  {token              SetupToken
+   site_name          su/NonBlankString
+   site_locale        (s/maybe su/ValidLocale)
+   first_name         su/NonBlankString
+   last_name          su/NonBlankString
+   email              su/Email
+   invited_first_name (s/maybe su/NonBlankString)
+   invited_last_name  (s/maybe su/NonBlankString)
+   invited_email      (s/maybe su/Email)
+   password           su/ValidPassword
+   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
+   auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
             (try
               (db/transaction
-                (let [user-info (setup-create-user!
-                                 {:email email, :first-name first_name, :last-name last_name, :password password})
-                      db        (setup-create-database! {:name name
-                                                         :driver engine
-                                                         :details details
-                                                         :schedules schedules
-                                                         :database database
-                                                         :creator-id (:user-id user-info)})]
-                  (setup-set-settings!
-                   request
-                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+               (let [user-info (setup-create-user!
+                                {:email email, :first-name first_name, :last-name last_name, :password password})
+                     db        (setup-create-database! {:name name
+                                                        :driver engine
+                                                        :details details
+                                                        :schedules schedules
+                                                        :database database
+                                                        :creator-id (:user-id user-info)})]
+                 (setup-maybe-create-and-invite-user! {:email invited_email,
+                                                       :first_name invited_first_name,
+                                                       :last_name invited_last_name}
+                                                {:email email, :first_name first_name})
+                 (setup-set-settings!
+                  request
+                  {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
                   ;; clear the setup token now, it's no longer needed
-                  (setup/clear-token!)
-                  (assoc user-info :database db)))
+                 (setup/clear-token!)
+                 (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
