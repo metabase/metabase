@@ -44,6 +44,7 @@ export default class Select extends Component {
     // AccordianList props
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchPlaceholder: PropTypes.string,
     searchFuzzy: PropTypes.bool,
 
     optionNameFn: PropTypes.func,
@@ -173,6 +174,7 @@ export default class Select extends Component {
       placeholder,
       searchProp,
       searchCaseInsensitive,
+      searchPlaceholder,
       searchFuzzy,
       isInitiallyOpen,
     } = this.props;
@@ -228,6 +230,7 @@ export default class Select extends Component {
           searchProp={searchProp}
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
+          searchPlaceholder={searchPlaceholder}
         />
       </PopoverWithTrigger>
     );
