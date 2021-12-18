@@ -53,6 +53,7 @@ export function CategoryFingerprint({
 
   const shortenedValuesStr = fieldValues
     .slice(0, FIELD_VALUES_SHOW_LIMIT)
+    .map(value => (Array.isArray(value) ? value[0] : value))
     .join(", ");
 
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
