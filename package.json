@@ -254,6 +254,7 @@
     "dev": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run' 'yarn build-hot:js' 'yarn build-hot:cljs' 'yarn docs'",
     "dev-ee": "yarn concurrently -n 'backend,frontend,cljs,docs' -c 'blue,green,yellow,magenta' 'clojure -M:run:ee' 'MB_EDITION=ee yarn build-hot:js' 'MB_EDITION=ee yarn build-hot:cljs' 'yarn docs'",
     "type-check": "yarn && tsc --noEmit",
+    "remove-webpack-cache": "rm -rf ./node_modules/.cache",
     "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-docs-links && yarn lint-yaml && yarn type-check",
     "lint-eslint": "yarn build-quick:cljs && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 enterprise/frontend/src frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
