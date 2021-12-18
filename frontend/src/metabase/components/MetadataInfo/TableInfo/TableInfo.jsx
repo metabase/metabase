@@ -137,10 +137,7 @@ function ConnectedTables({ table }) {
       </LabelContainer>
       {fkTables.map(fkTable => {
         return (
-          <Link
-            key={fkTable.id}
-            to={`/reference/databases/${fkTable.db_id}/tables/${fkTable.id}`}
-          >
+          <Link key={fkTable.id} to={fkTable.newQuestion().getUrl()}>
             <InteractiveTableLabel table={fkTable} />
           </Link>
         );
