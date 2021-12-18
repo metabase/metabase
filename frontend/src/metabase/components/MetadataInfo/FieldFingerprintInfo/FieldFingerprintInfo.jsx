@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { Table } from "../MetadataInfo.styled";
@@ -66,9 +66,9 @@ function NumberFingerprint({ field }) {
   }
 
   const { avg, min, max } = numberFingerprint;
-  const fixedAvg = Number.isInteger(avg) ? avg : avg.toFixed(2);
-  const fixedMin = Number.isInteger(min) ? min : min.toFixed(2);
-  const fixedMax = Number.isInteger(max) ? max : max.toFixed(2);
+  const fixedAvg = formatNumber(Number.isInteger(avg) ? avg : avg.toFixed(2));
+  const fixedMin = formatNumber(Number.isInteger(min) ? min : min.toFixed(2));
+  const fixedMax = formatNumber(Number.isInteger(max) ? max : max.toFixed(2));
 
   return (
     <Table>

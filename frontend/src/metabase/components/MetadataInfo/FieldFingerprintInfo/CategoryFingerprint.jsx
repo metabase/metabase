@@ -6,6 +6,7 @@ import { t, ngettext, msgid } from "ttag";
 import { useAsyncFunction } from "metabase/hooks/use-async-function";
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
+import { formatNumber } from "metabase/lib/formatting";
 
 import {
   NoWrap,
@@ -57,6 +58,7 @@ export function CategoryFingerprint({
     .join(", ");
 
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
+  const formattedDistinctCount = formatNumber(distinctCount);
 
   const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
   const safeFetchFieldValues = useAsyncFunction(fetchFieldValues);
@@ -79,8 +81,8 @@ export function CategoryFingerprint({
         <RelativeContainer>
           <Fade aria-hidden={!isLoading} visible={!isLoading}>
             {ngettext(
-              msgid`${distinctCount} distinct value`,
-              `${distinctCount} distinct values`,
+              msgid`${formattedDistinctCount} distinct value`,
+              `${formattedDistinctCount} distinct values`,
               distinctCount || 0,
             )}
           </Fade>
