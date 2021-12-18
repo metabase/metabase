@@ -3,6 +3,7 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
@@ -367,9 +368,15 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+  license: {
+    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
+    order: 11,
+    component: SettingsLicense,
+    settings: [],
+  },
   caching: {
     name: t`Caching`,
-    order: 11,
+    order: 12,
     settings: [
       {
         key: "enable-query-caching",
