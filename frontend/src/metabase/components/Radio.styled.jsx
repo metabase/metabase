@@ -43,6 +43,8 @@ export const RadioButton = styled.div`
         return props.colorScheme
           ? COLOR_SCHEMES[props.colorScheme].button()
           : color("brand");
+      } else {
+        return color("text-medium");
       }
     }};
   border-radius: 12px;
