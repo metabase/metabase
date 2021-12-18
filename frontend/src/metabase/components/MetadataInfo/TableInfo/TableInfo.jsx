@@ -16,7 +16,15 @@ import {
   Label,
   LabelContainer,
 } from "../MetadataInfo.styled";
-import { InteractiveTableLabel } from "./TableInfo.styled";
+import {
+  InteractiveTableLabel,
+  LoadingSpinner,
+  RelativeContainer,
+  AbsoluteContainer,
+  Fade,
+  FadeAndSlide,
+  Container,
+} from "./TableInfo.styled";
 
 TableInfo.propTypes = {
   className: PropTypes.string,
@@ -39,10 +47,14 @@ const mapDispatchToProps = {
 
 function useDependentTableMetadata({
   tableId,
+  table,
   fetchForeignKeys,
   fetchMetadata,
 }) {
-  const [hasFetchedMetadata, setHasFetchedMetadata] = useState(false);
+  const shouldFetchMetadata = !table?.fields?.length;
+  const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
+    !shouldFetchMetadata,
+  );
   const fetchDependentData = useAsyncFunction(() => {
     return Promise.all([
       fetchForeignKeys({ id: tableId }),
@@ -51,12 +63,12 @@ function useDependentTableMetadata({
   }, [tableId, fetchForeignKeys, fetchMetadata]);
 
   useEffect(() => {
-    fetchDependentData()
-      .then(() => {
+    if (shouldFetchMetadata) {
+      fetchDependentData().then(() => {
         setHasFetchedMetadata(true);
-      })
-      .catch(e => console.log(e));
-  }, [fetchDependentData]);
+      });
+    }
+  }, [fetchDependentData, shouldFetchMetadata]);
 
   return hasFetchedMetadata;
 }
@@ -71,25 +83,37 @@ export function TableInfo({
   const description = table.description;
   const hasFetchedMetadata = useDependentTableMetadata({
     tableId,
+    table,
     fetchForeignKeys,
     fetchMetadata,
   });
 
-  return hasFetchedMetadata ? (
+  return (
     <InfoContainer className={className}>
       {description ? (
         <Description>{description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <ColumnCount table={table} />
-      <ConnectedTables table={table} />
+      <Container>
+        <Fade visible={!hasFetchedMetadata}>
+          <AbsoluteContainer>
+            <LoadingSpinner />
+          </AbsoluteContainer>
+        </Fade>
+        <Fade visible={hasFetchedMetadata}>
+          <ColumnCount table={table} />
+        </Fade>
+        <Fade visible={hasFetchedMetadata}>
+          <ConnectedTables table={table} />
+        </Fade>
+      </Container>
     </InfoContainer>
-  ) : null;
+  );
 }
 
 function ColumnCount({ table }) {
-  const fieldCount = table.fields.length;
+  const fieldCount = table.fields?.length || 0;
   return (
     <LabelContainer color="text-dark">
       <Label>
@@ -107,7 +131,7 @@ function ConnectedTables({ table }) {
   const fks = table.fks || [];
   const fkTables = fks.map(fk => new Table(fk.origin.table));
   return fks.length ? (
-    <React.Fragment>
+    <Container>
       <LabelContainer color="text-dark">
         <Label>{t`Connected to these tables`}</Label>
       </LabelContainer>
@@ -121,7 +145,7 @@ function ConnectedTables({ table }) {
           </Link>
         );
       })}
-    </React.Fragment>
+    </Container>
   ) : null;
 }
 

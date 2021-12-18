@@ -6,6 +6,12 @@ import Table from "metabase-lib/lib/metadata/Table";
 
 import { TableInfo } from "./TableInfo";
 
+const productsTableWithoutMetadata = new Table({
+  ...PRODUCTS,
+  fields: undefined,
+  fks: undefined,
+});
+
 const productsTable = new Table({
   ...PRODUCTS,
   fields: [1, 2, 3],
@@ -46,7 +52,7 @@ function setup(table) {
 
 describe("TableInfo", () => {
   it("should send requests fetching table metadata", () => {
-    setup(productsTable);
+    setup(productsTableWithoutMetadata);
 
     expect(fetchForeignKeys).toHaveBeenCalledWith({
       id: PRODUCTS.id,
@@ -56,10 +62,11 @@ describe("TableInfo", () => {
     });
   });
 
-  it("should render nothing while the metadata for the table is being fetched", () => {
-    const { container } = setup(productsTable);
+  it("should not send requests fetching table metadata when metadata is already present", () => {
+    setup(productsTable);
 
-    expect(container.firstChild).toBeNull();
+    expect(fetchForeignKeys).not.toHaveBeenCalled();
+    expect(fetchMetadata).not.toHaveBeenCalled();
   });
 
   it("should display a placeholder if table has no description", async () => {
