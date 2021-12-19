@@ -46,14 +46,10 @@
         ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
                   :ssl-truststore-password-value
                   :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
-                  :ssl-keystore-password-value]
-        with-ssl (merge details*
-                   (m/filter-vals some?
-                        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))]
-    ;; test environments are setting properties as if from the client perspective (i.e. with keys matching those
-    ;; sent by the client when saving DB details), therefore these values need to pass through the translation layer
-    ;; to turn back into the server side props
-    (driver.u/db-details-client->server :oracle with-ssl)))
+                  :ssl-keystore-password-value]]
+    (merge details*
+      (m/filter-vals some?
+        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
   (let [conn-details (connection-details)]

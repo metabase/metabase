@@ -1209,8 +1209,8 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL=true
             MB_ORACLE_SSL_TEST_PORT=2484
             MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE=true
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_VALUE="$(base64 /home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks)"
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=uploaded
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
 
       - test-driver:
