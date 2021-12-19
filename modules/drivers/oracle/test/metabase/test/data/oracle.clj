@@ -7,7 +7,6 @@
             [metabase.db :as mdb]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Table]]
             [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]

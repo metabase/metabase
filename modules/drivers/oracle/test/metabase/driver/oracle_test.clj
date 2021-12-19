@@ -3,7 +3,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
             [honeysql.core :as hsql]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -31,7 +30,6 @@
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.util.Base64))
-
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
