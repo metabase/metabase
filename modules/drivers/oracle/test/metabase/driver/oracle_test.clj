@@ -3,7 +3,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [environ.core :as env]
             [honeysql.core :as hsql]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -310,7 +309,6 @@
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
-        (println "env: " (pr-str env/env))
         (let [details      (->> (#'oracle.tx/connection-details)
                                 (driver.u/db-details-client->server :oracle))
               orig-user-id api/*current-user-id*]
