@@ -29,6 +29,12 @@ const FormContainer = styled.div`
 
   .AdminSelect {
     color: ${color("text-dark")};
+    transition: border 0.3s;
+    outline: none;
+  }
+
+  .AdminSelect:focus {
+    border-color: ${color("brand")};
   }
 `;
 
