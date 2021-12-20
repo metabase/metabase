@@ -136,6 +136,8 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
+  const fields = useMemo(() => dataset.getResultMetadata() || [], [dataset]);
+
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
@@ -146,9 +148,9 @@ function DatasetEditor(props) {
   const [focusedField, setFocusedField] = useState();
 
   const focusFirstField = useCallback(() => {
-    const [firstField] = dataset.getResultMetadata() || [];
+    const [firstField] = fields;
     setFocusedField(firstField);
-  }, [dataset]);
+  }, [fields]);
 
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
@@ -193,12 +195,12 @@ function DatasetEditor(props) {
 
   const handleColumnSelect = useCallback(
     column => {
-      const field = dataset
-        .getResultMetadata()
-        .find(f => isSameField(column?.field_ref, f?.field_ref));
+      const field = fields.find(f =>
+        isSameField(column?.field_ref, f?.field_ref),
+      );
       setFocusedField(field);
     },
-    [dataset],
+    [fields],
   );
 
   const handleTableElementClick = useCallback(
@@ -214,11 +216,10 @@ function DatasetEditor(props) {
   );
 
   const focusedFieldIndex = useMemo(() => {
-    const fields = dataset.getResultMetadata();
     return fields.findIndex(f =>
       isSameField(focusedField?.field_ref, f?.field_ref),
     );
-  }, [dataset, focusedField]);
+  }, [fields, focusedField]);
 
   const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
