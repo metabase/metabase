@@ -88,7 +88,7 @@ export function TableInfo({
   table,
   fetchForeignKeys,
   fetchMetadata,
-}: Props): JSX.Element {
+}: AllProps): JSX.Element {
   const description = table.description;
   const hasFetchedMetadata = useDependentTableMetadata({
     tableId,

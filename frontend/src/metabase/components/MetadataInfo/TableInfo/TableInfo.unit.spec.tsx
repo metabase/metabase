@@ -36,7 +36,7 @@ const tableWithoutDescription = new Table({
 const fetchForeignKeys = jest.fn();
 const fetchMetadata = jest.fn();
 
-function setup(table) {
+function setup(table: Table) {
   fetchForeignKeys.mockReset();
   fetchMetadata.mockReset();
 
