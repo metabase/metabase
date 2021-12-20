@@ -208,7 +208,7 @@ class Settings {
     return this.currentVersion() !== this.engineDeprecationNoticeVersion();
   }
 
-  license() {
+  token() {
     return this.get("premium-embedding-token");
   }
 

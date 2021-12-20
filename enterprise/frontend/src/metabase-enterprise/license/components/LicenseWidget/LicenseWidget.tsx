@@ -1,35 +1,15 @@
 import React, { useState } from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import Button from "metabase/components/Button";
-import ExternalLink from "metabase/components/ExternalLink";
-import { SectionDescription, SectionHeader } from "../SettingsLicense.styled";
+import {
+  SectionDescription,
+  SectionHeader,
+} from "metabase/admin/settings/components/SettingsLicense/SettingsLicense.styled";
 import {
   LicenseErrorMessage,
   LicenseInput,
   LicenseInputContainer,
 } from "./LicenseWidget.styled";
-
-const getDescription = (hasLicense: boolean, isValid?: boolean) => {
-  if (!hasLicense) {
-    return t`Bought a license to unlock advanced functionality? Please enter it below.`;
-  }
-
-  if (!isValid) {
-    return (
-      <>
-        {jt`Your license isn’t valid anymore. If you have a new license, please
-        enter it below, otherwise please contact ${(
-          <ExternalLink href="mailto:support@metabase.com">
-            support@metabase.com
-          </ExternalLink>
-        )}`}
-      </>
-    );
-  }
-
-  return t`Your license is active! Hope you’re enjoying it.`;
-};
-
 export interface LicenseWidgetProps {
   token?: string;
   description: React.ReactNode;
@@ -63,6 +43,7 @@ export const LicenseWidget = ({
 
       <LicenseInputContainer>
         <LicenseInput
+          data-testid="license-input"
           disabled={!onUpdate}
           onChange={handleChange}
           value={value}
@@ -70,11 +51,12 @@ export const LicenseWidget = ({
         />
         {onUpdate && (
           <Button
+            data-testid="activate-button"
             disabled={isDisabled}
             className="px2"
             onClick={handleActivate}
           >
-            Activate
+            {t`Activate`}
           </Button>
         )}
       </LicenseInputContainer>

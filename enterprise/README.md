@@ -17,7 +17,7 @@ Unless otherwise noted, all files Copyright © 2021 Metabase, Inc.
 MB_EDITION=ee yarn build-hot
 ```
 
-Clear the Webpack cache using `yarn remove-webpack-cache` if you previously run OSS edition in dev mode to avoid unexpected application behavior.
+Clear the Webpack cache using `yarn remove-webpack-cache` if you previously ran OSS edition in dev mode to avoid unexpected application behavior.
 
 ### Back-end
 
