@@ -7,7 +7,7 @@ type DimensionInfoProps = {
   dimension: Dimension;
 };
 
-// this makes TypeScript happy
+// this makes TypeScript happy until `DimensionInfo` is typed
 function _DimensionInfo(props: DimensionInfoProps) {
   return <DimensionInfo {...props} />;
 }
