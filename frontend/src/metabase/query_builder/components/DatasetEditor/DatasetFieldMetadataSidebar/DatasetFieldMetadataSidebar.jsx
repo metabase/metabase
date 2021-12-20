@@ -254,7 +254,7 @@ function DatasetFieldMetadataSidebar({
     }
   }, [tab, hasColumnFormattingOptions]);
 
-  const onLastEssentialFieldKeyUp = useCallback(
+  const onLastEssentialFieldKeyDown = useCallback(
     e => {
       const isNextFieldAction = !e.shiftKey && e.key === "Tab";
       if (isNextFieldAction && isLastField) {
@@ -302,7 +302,7 @@ function DatasetFieldMetadataSidebar({
                   <FormField
                     name="semantic_type"
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    onKeyUp={onLastEssentialFieldKeyUp}
+                    onKeyDown={onLastEssentialFieldKeyDown}
                   />
                 </MainFormContainer>
                 {hasColumnFormattingOptions && (

@@ -22,10 +22,10 @@ const propTypes = {
   options: PropTypes.array.isRequired,
   IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
   tabIndex: PropTypes.string,
-  onKeyUp: PropTypes.func,
+  onKeyDown: PropTypes.func,
 };
 
-function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyUp }) {
+function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyDown }) {
   const selectButtonRef = useRef();
 
   const focusSelectButton = useCallback(() => {
@@ -77,13 +77,13 @@ function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyUp }) {
         if (e.key === "Enter") {
           open();
         }
-        onKeyUp(e);
       };
 
       return (
         <StyledSelectButton
           hasValue={!!field.value}
           onKeyUp={handleKeyUp}
+          onKeyDown={onKeyDown}
           tabIndex={tabIndex}
           ref={selectButtonRef}
         >
@@ -91,7 +91,7 @@ function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyUp }) {
         </StyledSelectButton>
       );
     },
-    [field, tabIndex, pickerLabel, onKeyUp],
+    [field, tabIndex, pickerLabel, onKeyDown],
   );
 
   return (
