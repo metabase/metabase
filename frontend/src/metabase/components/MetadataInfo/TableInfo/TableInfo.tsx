@@ -1,57 +1,66 @@
-/* eslint-disable react/prop-types */
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { useAsyncFunction } from "metabase/hooks/use-async-function";
-import Table from "metabase-lib/lib/metadata/Table";
 import Tables from "metabase/entities/tables";
-import Link from "metabase/components/Link";
+import Table from "metabase-lib/lib/metadata/Table";
 
 import {
   InfoContainer,
   Description,
   EmptyDescription,
-  Label,
-  LabelContainer,
 } from "../MetadataInfo.styled";
 import {
-  InteractiveTableLabel,
   LoadingSpinner,
-  RelativeContainer,
   AbsoluteContainer,
   Fade,
-  FadeAndSlide,
   Container,
 } from "./TableInfo.styled";
+import ColumnCount from "./ColumnCount";
+import ConnectedTables from "./ConnectedTables";
+
+type OwnProps = {
+  className?: string;
+  tableId: number;
+};
+
+const mapStateToProps = (state: any, props: OwnProps) => {
+  return {
+    table: Tables.selectors.getObject(state, {
+      entityId: props.tableId,
+    }) as Table,
+  };
+};
+
+const mapDispatchToProps: {
+  fetchForeignKeys: (args: { id: number }) => Promise<any>;
+  fetchMetadata: (args: { id: number }) => Promise<any>;
+} = {
+  fetchForeignKeys: Tables.actions.fetchForeignKeys,
+  fetchMetadata: Tables.actions.fetchMetadata,
+};
 
 TableInfo.propTypes = {
   className: PropTypes.string,
   tableId: PropTypes.number.isRequired,
+  table: PropTypes.instanceOf(Table).isRequired,
   fetchForeignKeys: PropTypes.func.isRequired,
   fetchMetadata: PropTypes.func.isRequired,
-  table: PropTypes.object.isRequired,
 };
 
-const mapStateToProps = (state, props) => {
-  return {
-    table: Tables.selectors.getObject(state, { entityId: props.tableId }),
-  };
-};
-
-const mapDispatchToProps = {
-  fetchForeignKeys: Tables.actions.fetchForeignKeys,
-  fetchMetadata: Tables.actions.fetchMetadata,
-};
+type AllProps = OwnProps &
+  ReturnType<typeof mapStateToProps> &
+  typeof mapDispatchToProps;
 
 function useDependentTableMetadata({
   tableId,
   table,
   fetchForeignKeys,
   fetchMetadata,
-}) {
-  const shouldFetchMetadata = !table?.fields?.length;
+}: Omit<AllProps, "className">) {
+  const shouldFetchMetadata = !table.numFields();
   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
     !shouldFetchMetadata,
   );
@@ -79,7 +88,7 @@ export function TableInfo({
   table,
   fetchForeignKeys,
   fetchMetadata,
-}) {
+}: Props): JSX.Element {
   const description = table.description;
   const hasFetchedMetadata = useDependentTableMetadata({
     tableId,
@@ -110,40 +119,6 @@ export function TableInfo({
       </Container>
     </InfoContainer>
   );
-}
-
-function ColumnCount({ table }) {
-  const fieldCount = table.fields?.length || 0;
-  return (
-    <LabelContainer color="text-dark">
-      <Label>
-        {ngettext(
-          msgid`${fieldCount} column`,
-          `${fieldCount} columns`,
-          fieldCount,
-        )}
-      </Label>
-    </LabelContainer>
-  );
-}
-
-function ConnectedTables({ table }) {
-  const fks = table.fks || [];
-  const fkTables = fks.map(fk => new Table(fk.origin.table));
-  return fks.length ? (
-    <Container>
-      <LabelContainer color="text-dark">
-        <Label>{t`Connected to these tables`}</Label>
-      </LabelContainer>
-      {fkTables.map(fkTable => {
-        return (
-          <Link key={fkTable.id} to={fkTable.newQuestion().getUrl()}>
-            <InteractiveTableLabel table={fkTable} />
-          </Link>
-        );
-      })}
-    </Container>
-  ) : null;
 }
 
 export default connect(mapStateToProps, mapDispatchToProps)(TableInfo);

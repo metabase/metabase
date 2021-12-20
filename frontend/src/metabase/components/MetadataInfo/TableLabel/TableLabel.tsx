@@ -10,10 +10,16 @@ const propTypes = {
   table: PropTypes.instanceOf(Table).isRequired,
 };
 
-function TableLabel({ className, table }) {
+function TableLabel({
+  className,
+  table,
+}: {
+  className?: string;
+  table: Table;
+}) {
   return (
     <LabelContainer className={className}>
-      <TableIcon />
+      <TableIcon name="table" />
       <Label>{table.displayName()}</Label>
     </LabelContainer>
   );

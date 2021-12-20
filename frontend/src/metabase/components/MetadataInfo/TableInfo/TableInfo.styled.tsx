@@ -47,18 +47,17 @@ export const AbsoluteContainer = styled.div`
   align-items: center;
 `;
 
-export const RelativeContainer = styled.div`
-  position: relative;
-  height: ${({ height }) => height || "1.1em"};
-`;
+type FadeProps = {
+  visible?: boolean;
+};
 
-export const Fade = styled.div`
+export const Fade = styled.div<FadeProps>`
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};
 `;
 
-export const FadeAndSlide = styled.div`
+export const FadeAndSlide = styled.div<FadeProps>`
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear,
     transform ${TRANSITION_DURATION} linear;
