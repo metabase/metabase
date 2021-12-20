@@ -31,4 +31,6 @@ export const SectionDescription = styled.div`
 
 export const SectionButton = styled(Button)`
   color: ${color("brand")};
+  width: 2.5rem;
+  height: 2.5rem;
 `;
