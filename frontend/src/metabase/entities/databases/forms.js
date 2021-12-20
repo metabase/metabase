@@ -90,9 +90,7 @@ const DATABASE_DETAIL_OVERRIDES = {
   }),
   auto_run_queries: () => ({
     name: "auto_run_queries",
-  }),
-  let_user_control_scheduling: () => ({
-    name: "let_user_control_scheduling",
+    initial: undefined,
   }),
   refingerprint: () => ({
     name: "refingerprint",
@@ -119,7 +117,7 @@ function getEngineInfo(engine, details, id) {
 }
 
 function shouldShowEngineProvidedField(field, details) {
-  const detailAndValueRequiredToShowField = field["visible-if"];
+  const detailAndValueRequiredToShowField = field.visibleIf;
 
   if (detailAndValueRequiredToShowField) {
     const pred = currentValue => {
@@ -280,35 +278,29 @@ function getEngineFormFields(engine, details, id) {
   const cachingField = getDatabaseCachingField();
 
   // convert database details-fields to Form fields
-  return (
-    engineFields
-      .map(field => {
-        const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
+  return engineFields
+    .map(field => {
+      const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
-        return {
-          name: `details.${field.name}`,
-          title: field["display-name"] || field["title"],
-          type: field.type,
-          description: field.description,
-          placeholder: field.placeholder || field.default,
-          options: field.options,
-          validate:
-            field.validate ||
-            (value => (field.required && !value ? t`required` : null)),
-          normalize:
-            field.normalize || (value => normalizeFieldValue(value, field)),
-          horizontal: field.type === "boolean",
-          initial: field.default,
-          readOnly: field.readOnly || false,
-          helperText: field["helper-text"],
-          "visible-if": field["visible-if"],
-          ...(overrides && overrides(engine, details, id)),
-        };
-      })
-      // add caching field here so that we can use the "visible-if" field to include it in "advanced options" section
-      .concat(cachingField ? [cachingField] : [])
-      .filter(field => shouldShowEngineProvidedField(field, details))
-  );
+      return {
+        name: `details.${field.name}`,
+        title: field["display-name"],
+        type: field.type,
+        description: field.description,
+        placeholder: field.placeholder || field.default,
+        options: field.options,
+        validate: value => (field.required && !value ? t`required` : null),
+        normalize: value => normalizeFieldValue(value, field),
+        horizontal: field.type === "boolean",
+        initial: field.default,
+        readOnly: field.readOnly || false,
+        helperText: field["helper-text"],
+        visibleIf: field["visible-if"],
+        ...(overrides && overrides(engine, details, id)),
+      };
+    })
+    .concat(cachingField ? [cachingField] : [])
+    .filter(field => shouldShowEngineProvidedField(field, details));
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
