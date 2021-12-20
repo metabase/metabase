@@ -152,6 +152,18 @@
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
+(defn add-has-invited-second-user
+  "Adds the `has_invited_second_user` flag to a collection of `users`. This should be `true` for only the user who
+  underwent the initial app setup flow (with an ID of 1), iff more than one user exists. This is used to modify
+  the wording for this user on a homepage banner that prompts them to add their database."
+  {:batched-hydrate :has_invited_second_user}
+  [users]
+  (def my-users users)
+  (when (seq users)
+    (for [user users]
+      (assoc user :has_invited_second_user (and (= (:id user) 1)
+                                                (> (db/count User) 1))))))
+
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 

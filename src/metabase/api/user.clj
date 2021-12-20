@@ -152,7 +152,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids)))
+      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."

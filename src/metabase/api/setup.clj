@@ -92,7 +92,8 @@
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID."
+  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  set specific settings from the setup flow."
   [:as {{:keys                                          [token]
          {:keys [name engine details is_full_sync
                  is_on_demand schedules
