@@ -420,6 +420,7 @@ forms.connection = {
 const ADVANCED_FIELDS = new Set([
   "auto_run_queries",
   "details.let-user-control-scheduling",
+  "cache_ttl",
 ]);
 
 export default forms;
