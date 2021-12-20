@@ -520,9 +520,10 @@
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
   [source-metadata cols]
-  (let [ref->metadata (u/key-by (comp u/field-ref->key :field_ref) source-metadata)]
+  (let [index          (fn [col] (or (:id col) (:name col "")))
+        name->metadata (u/key-by index source-metadata)]
     (for [col cols]
-      (if-let [source-metadata-for-field (-> col :field_ref u/field-ref->key ref->metadata)]
+      (if-let [source-metadata-for-field (-> col index name->metadata)]
         (merge-source-metadata-col source-metadata-for-field col)
         col))))
 

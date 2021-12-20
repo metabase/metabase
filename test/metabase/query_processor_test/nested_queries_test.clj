@@ -58,9 +58,10 @@
                       :order-by     [[:asc *venues.id]]
                       :limit        5})))))))))
 
-(defn- breakout-results [& {:keys [has-source-metadata? native-source?]
+(defn- breakout-results [& {:keys [has-source-metadata? native-source? count-lower?]
                             :or   {has-source-metadata? true
-                                   native-source?       false}}]
+                                   native-source?       false
+                                   count-lower?         false}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
@@ -74,7 +75,9 @@
 
             (not has-source-metadata?)
             (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
-          (qp.test/aggregate-col :count)]})
+          (cond-> (qp.test/aggregate-col :count)
+            (or native-source? count-lower?)
+            (assoc :display_name "count"))]})
 
 (deftest mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -146,10 +149,50 @@
                     :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
 
+(deftest nested-with-aggregations-at-both-levels
+  (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [{card-id :id :as card}
+                              {:dataset_query
+                               (mt/$ids :products
+                                        {:type     :query
+                                         :database (mt/id)
+                                         :query    {:source-table $$products
+                                                    :aggregation
+                                                    [[:aggregation-options
+                                                      [:sum $price]
+                                                      {:name "sum"}]
+                                                     [:aggregation-options
+                                                      [:max $rating]
+                                                      {:name "max"}]]
+                                                    :breakout     $category
+                                                    :order-by     [[:asc $category]]}})}]]
+          (is (= {:cols [{:name "count" :display_name "Count"}
+                         {:name "avg" :display_name "Average of Sum of Price"}]
+                  :rows [[4 2787.0]]}
+                 (-> {:type     :query
+                      :database (mt/id)
+                      :query    {:source-table (str "card__" card-id)
+                                 :aggregation  [[:aggregation-options
+                                                 [:count]
+                                                 {:name "count"}]
+                                                [:aggregation-options
+                                                 [:avg
+                                                  [:field
+                                                   "sum"
+                                                   {:base-type :type/Float}]]
+                                                 {:name "avg"}]]}}
+                     qp/process-query
+                     :data
+                     (select-keys [:cols :rows])
+                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))
+                     (update :rows #(mt/round-all-decimals 0 %))))))))))
+
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results)
+      (is (= (breakout-results :count-lower? true)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (mt/run-mbql-query venues
@@ -404,7 +447,8 @@
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
                         :id :settings :fingerprint))
-            (qp.test/aggregate-col :count)]
+            (assoc (qp.test/aggregate-col :count)
+                   :display_name "count")]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                        :type     :native
