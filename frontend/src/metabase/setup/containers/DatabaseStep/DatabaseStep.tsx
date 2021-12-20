@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import Settings from "metabase/lib/settings";
 import DatabaseStep from "../../components/DatabaseStep";
 import { setDatabase, setInvite, setStep, submitDatabase } from "../../actions";
 import {
@@ -21,7 +22,7 @@ const mapStateToProps = (state: any) => ({
   engine: getDatabaseEngine(state),
   database: getDatabase(state),
   invite: getInvite(state),
-  isHosted: true,
+  isEmailConfigured: Settings.isEmailConfigured(),
   isStepActive: isStepActive(state, DATABASE_STEP),
   isStepCompleted: isStepCompleted(state, DATABASE_STEP),
   isSetupCompleted: isSetupCompleted(state),

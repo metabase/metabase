@@ -41,7 +41,7 @@ describe("DatabaseStep", () => {
 });
 
 const getProps = (opts?: Partial<Props>): Props => ({
-  isHosted: false,
+  isEmailConfigured: false,
   isStepActive: false,
   isStepCompleted: false,
   isSetupCompleted: false,

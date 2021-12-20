@@ -19,7 +19,7 @@ export interface Props {
   engine?: string;
   database?: DatabaseInfo;
   invite?: InviteInfo;
-  isHosted: boolean;
+  isEmailConfigured: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
@@ -34,7 +34,7 @@ const DatabaseStep = ({
   engine,
   database,
   invite,
-  isHosted,
+  isEmailConfigured,
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
@@ -81,7 +81,7 @@ const DatabaseStep = ({
       <StepActions>
         <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
       </StepActions>
-      {isHosted && (
+      {isEmailConfigured && (
         <SetupSection
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
