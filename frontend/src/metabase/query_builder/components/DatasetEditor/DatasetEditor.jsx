@@ -186,7 +186,7 @@ function DatasetEditor(props) {
   return (
     <React.Fragment>
       <DatasetEditBar
-        title={t`You're editing ${dataset.displayName()}`}
+        title={dataset.displayName()}
         center={
           <EditorTabs
             currentTab={datasetEditorTab}
