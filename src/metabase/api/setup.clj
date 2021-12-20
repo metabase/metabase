@@ -131,11 +131,11 @@
                  (setup-maybe-create-and-invite-user! {:email invited_email,
                                                        :first_name invited_first_name,
                                                        :last_name invited_last_name}
-                                                {:email email, :first_name first_name})
+                                                      {:email email, :first_name first_name})
                  (setup-set-settings!
                   request
                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                  ;; clear the setup token now, it's no longer needed
+                 ;; clear the setup token now, it's no longer needed
                  (setup/clear-token!)
                  (assoc user-info :database db)))
               (catch Throwable e
