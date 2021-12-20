@@ -53,7 +53,7 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       cy.contains("The city of the account’s billing address");
 
-      cy.findByText("1966 distinct values");
+      cy.findByText("1,966 distinct values");
     });
   });
 
