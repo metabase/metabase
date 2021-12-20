@@ -10,10 +10,4 @@ export interface Database {
   is_sample: boolean;
   creator_id?: number;
   initial_sync_status: InitialSyncStatus;
-  tables?: Table[];
-}
-
-export interface Table {
-  id: number;
-  initial_sync_status: InitialSyncStatus;
 }
