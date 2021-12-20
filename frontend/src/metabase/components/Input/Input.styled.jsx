@@ -1,6 +1,5 @@
 import styled, { css } from "styled-components";
 import { color, darken } from "metabase/lib/colors";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const InputRoot = styled.div`
   display: inline-flex;
@@ -44,8 +43,13 @@ export const InputField = styled.input`
     `}
 `;
 
-export const InputHelpButton = styled(IconButtonWrapper)`
+export const InputIconContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: absolute;
   right: 0.75rem;
   color: ${color("text-light")};
+  cursor: pointer;
+  border-radius: 50%;
 `;
