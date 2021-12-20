@@ -6,7 +6,7 @@ export const TabBar = styled.ul`
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 `;
 
 function getActiveTabColor() {
