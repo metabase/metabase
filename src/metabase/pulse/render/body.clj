@@ -595,7 +595,7 @@
         x-rows           (map x-axis-rowfn clean-rows)
         y-rows           (map y-axis-rowfn clean-rows)
         joined-rows      (map vector x-rows y-rows)
-        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)

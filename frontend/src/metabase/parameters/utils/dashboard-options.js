@@ -1,26 +1,6 @@
 import { t } from "ttag";
-import { areFieldFilterOperatorsEnabled } from "./feature-flag";
-import { getOperatorDisplayName } from "./operators";
-import {
-  PARAMETER_OPERATOR_TYPES,
-  LOCATION_OPTIONS,
-  ID_OPTION,
-  CATEGORY_OPTION,
-} from "../constants";
-
-function buildTypedOperatorOptions(operatorType, sectionId, sectionName) {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
-    return {
-      ...operatorOption,
-      sectionId,
-      combinedName: getOperatorDisplayName(
-        operatorOption,
-        operatorType,
-        sectionName,
-      ),
-    };
-  });
-}
+import { buildTypedOperatorOptions } from "./operators";
+import { ID_OPTION } from "../constants";
 
 export function getDashboardParameterSections() {
   return [
@@ -34,9 +14,7 @@ export function getDashboardParameterSections() {
       id: "location",
       name: t`Location`,
       description: t`City, State, Country, ZIP code.`,
-      options: areFieldFilterOperatorsEnabled()
-        ? buildTypedOperatorOptions("string", "location", t`Location`)
-        : LOCATION_OPTIONS,
+      options: buildTypedOperatorOptions("string", "location", t`Location`),
     },
     {
       id: "id",
@@ -49,24 +27,17 @@ export function getDashboardParameterSections() {
         },
       ],
     },
-    areFieldFilterOperatorsEnabled() && {
+    {
       id: "number",
       name: t`Number`,
       description: t`Subtotal, Age, Price, Quantity, etc.`,
       options: buildTypedOperatorOptions("number", "number", t`Number`),
     },
-    areFieldFilterOperatorsEnabled()
-      ? {
-          id: "string",
-          name: t`Text or Category`,
-          description: t`Name, Rating, Description, etc.`,
-          options: buildTypedOperatorOptions("string", "string", t`Text`),
-        }
-      : {
-          id: "category",
-          name: t`Other Categories`,
-          description: t`Category, Type, Model, Rating, etc.`,
-          options: [CATEGORY_OPTION],
-        },
+    {
+      id: "string",
+      name: t`Text or Category`,
+      description: t`Name, Rating, Description, etc.`,
+      options: buildTypedOperatorOptions("string", "string", t`Text`),
+    },
   ].filter(Boolean);
 }

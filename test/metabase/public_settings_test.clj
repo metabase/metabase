@@ -101,7 +101,8 @@
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (:display-name (first (get-in (setting/properties :public) [:engines :postgres :details-fields])))))))))
+             (str (get-in (setting/user-readable-values-map :public)
+                          [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}

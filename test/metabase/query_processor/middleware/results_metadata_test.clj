@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.results-metadata-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dimension]]
             [metabase.models.permissions :as perms]
@@ -182,7 +183,49 @@
                (get-in [:data :results_metadata])
                (update :checksum class)
                round-to-2-decimals
-               (->> (tu/round-fingerprint-cols [:columns])))))))
+               (->> (tu/round-fingerprint-cols [:columns]))))))
+  (testing "datasets"
+    (testing "metadata from datasets can be preserved"
+      (letfn [(choose [col] (select-keys col [:name :description :display_name :semantic_type]))
+              (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                         :type/Integer :type/Quantity
+                                         :type/Float :type/Cost
+                                         :type/Text :type/Name
+                                         base-type))
+              (add-preserved [cols] (map merge
+                                         cols
+                                         (repeat {:description "user description"
+                                                  :display_name "user display name"})
+                                         (map (comp
+                                               (fn [x] {:semantic_type x})
+                                               refine-type
+                                               :base_type)
+                                              cols)))]
+        (testing "native"
+          (let [fields (str/join ", " (map :name default-card-results-native))
+                native-query (str "SELECT " fields " FROM VENUES")
+                existing-metadata (add-preserved default-card-results-native)
+                results (qp/process-userland-query
+                         {:database (mt/id)
+                          :type :native
+                          :native {:query native-query}
+                          :info {:metadata/dataset-metadata existing-metadata}})]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))
+        (testing "mbql"
+          (let [query {:database (mt/id)
+                       :type :query
+                       :query {:source-table (mt/id :venues)}}
+                existing-metadata (add-preserved (-> query
+                                                     (qp/process-userland-query)
+                                                     :data :results_metadata :columns))
+                results (qp/process-userland-query
+                         (update query
+                                 :info
+                                 merge
+                                 {:metadata/dataset-metadata existing-metadata}))]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))))))
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
