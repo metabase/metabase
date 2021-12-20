@@ -28,6 +28,13 @@ export const TableHeaderColumnName = styled.div`
   border: 1px solid ${color("brand")};
   border-radius: 8px;
 
+  transition: all 0.25s;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+  }
+
   ${props =>
     props.isSelected &&
     css`
