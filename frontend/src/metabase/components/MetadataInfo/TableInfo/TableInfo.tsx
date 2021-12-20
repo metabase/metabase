@@ -11,13 +11,11 @@ import {
   InfoContainer,
   Description,
   EmptyDescription,
-} from "../MetadataInfo.styled";
-import {
   LoadingSpinner,
   AbsoluteContainer,
   Fade,
   Container,
-} from "./TableInfo.styled";
+} from "../MetadataInfo.styled";
 import ColumnCount from "./ColumnCount";
 import ConnectedTables from "./ConnectedTables";
 
@@ -107,7 +105,7 @@ export function TableInfo({
       <Container>
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
-            <LoadingSpinner />
+            <LoadingSpinner size={24} />
           </AbsoluteContainer>
         </Fade>
         <Fade visible={hasFetchedMetadata}>

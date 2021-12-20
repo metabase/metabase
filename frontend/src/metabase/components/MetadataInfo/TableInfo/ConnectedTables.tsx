@@ -5,8 +5,8 @@ import { t } from "ttag";
 import Table from "metabase-lib/lib/metadata/Table";
 import Link from "metabase/components/Link";
 
-import { Label, LabelContainer } from "../MetadataInfo.styled";
-import { InteractiveTableLabel, Container } from "./TableInfo.styled";
+import { Label, LabelContainer, Container } from "../MetadataInfo.styled";
+import { InteractiveTableLabel } from "./ConnectedTables.styled";
 
 ConnectedTables.propTypes = {
   table: PropTypes.instanceOf(Table).isRequired,
