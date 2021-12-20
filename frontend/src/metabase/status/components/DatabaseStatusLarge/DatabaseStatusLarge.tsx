@@ -104,13 +104,9 @@ const getTitle = (databases: Database[]): string => {
 const getDescription = (database: Database): string => {
   const isDone = isSyncCompleted(database);
   const isError = isSyncAborted(database);
-  const doneCount = database.tables?.filter(isSyncCompleted).length;
-  const totalCount = database.tables?.length;
 
   if (isError) {
     return t`Sync failed`;
-  } else if (totalCount) {
-    return t`${doneCount} of ${totalCount} tables done`;
   } else if (isDone) {
     return t`Syncing completed`;
   } else {
