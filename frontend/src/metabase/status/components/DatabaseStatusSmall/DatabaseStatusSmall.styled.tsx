@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { InitialSyncStatus } from "../../types";
 
 interface Props {
@@ -22,6 +23,15 @@ const getIconSize = ({ status }: Props): string => {
       return "0.875rem";
     default:
       return "0.75rem";
+  }
+};
+
+const getBorderColor = ({ status }: Props): string => {
+  switch (status) {
+    case "complete":
+      return color("brand");
+    default:
+      return lighten("brand", 0.5);
   }
 };
 
@@ -50,7 +60,7 @@ export const StatusContainer = styled.div<Props>`
   width: 100%;
   height: 100%;
   color: ${getIconColor};
-  border: 0.25rem solid ${lighten("brand", 0.5)};
+  border: 0.25rem solid ${getBorderColor};
   border-radius: 50%;
   background-color: ${lighten("brand", 0.6)};
   box-shadow: 0 1px 12px ${color("shadow")};
@@ -71,17 +81,9 @@ export const StatusIcon = styled(Icon)`
   height: ${getIconSize};
 `;
 
-export const StatusImage = styled.svg`
+export const StatusSpinner = styled(LoadingSpinner)`
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-`;
-
-export const StatusCircle = styled.circle`
-  fill: none;
-  stroke: ${color("brand")};
-  transform: rotate(-90deg);
-  transform-origin: center;
+  color: ${color("brand")};
 `;

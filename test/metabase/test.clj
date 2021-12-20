@@ -175,6 +175,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  file->bytes
   is-uuid-string?
   obj->json->obj
   postwalk-pred

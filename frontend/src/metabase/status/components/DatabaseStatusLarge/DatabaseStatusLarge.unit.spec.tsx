@@ -8,12 +8,6 @@ describe("DatabaseStatusLarge", () => {
     const databases = [
       getDatabase({
         initial_sync_status: "incomplete",
-        tables: [
-          { id: 1, initial_sync_status: "complete" },
-          { id: 2, initial_sync_status: "incomplete" },
-          { id: 3, initial_sync_status: "aborted" },
-          { id: 4, initial_sync_status: "incomplete" },
-        ],
       }),
       getDatabase({
         initial_sync_status: "complete",
@@ -23,7 +17,7 @@ describe("DatabaseStatusLarge", () => {
     render(<DatabaseStatusLarge databases={databases} />);
 
     expect(screen.getByText("Syncing…")).toBeInTheDocument();
-    expect(screen.getByText("1 of 4 tables done")).toBeInTheDocument();
+    expect(screen.getByText("Syncing tables…")).toBeInTheDocument();
   });
 
   it("should render complete status", () => {
