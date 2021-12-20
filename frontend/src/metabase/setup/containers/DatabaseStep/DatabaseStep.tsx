@@ -38,7 +38,7 @@ const mapDispatchToProps = (dispatch: any) => ({
     await dispatch(submitDatabase(database));
     dispatch(setInvite(null));
     dispatch(setStep(PREFERENCES_STEP));
-    trackDatabaseStepCompleted();
+    trackDatabaseStepCompleted(database.engine);
   },
   onInviteSubmit: (invite: InviteInfo) => {
     dispatch(setDatabase(null));
