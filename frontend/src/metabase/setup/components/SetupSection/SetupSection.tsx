@@ -1,4 +1,5 @@
 import React, { ReactNode, useState } from "react";
+import { t } from "ttag";
 import {
   SectionRoot,
   SectionHeader,
@@ -25,8 +26,10 @@ const SetupSection = ({ title, description, children }: Props): JSX.Element => {
           <SectionDescription>{description}</SectionDescription>
         </SectionContainer>
         <SectionButton
-          icon={isExpanded ? "chevronup" : "chevrondown"}
           round
+          icon={isExpanded ? "chevronup" : "chevrondown"}
+          aria-label={t`Setup section`}
+          aria-expanded={isExpanded}
           onClick={() => setIsExpanded(!isExpanded)}
         />
       </SectionHeader>

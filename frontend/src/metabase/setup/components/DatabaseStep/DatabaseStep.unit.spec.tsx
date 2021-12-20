@@ -38,6 +38,17 @@ describe("DatabaseStep", () => {
 
     expect(screen.getByText("Connecting to Test"));
   });
+
+  it("should render a user invite form", () => {
+    const props = getProps({
+      isStepActive: true,
+      isEmailConfigured: true,
+    });
+
+    render(<DatabaseStep {...props} />);
+
+    expect(screen.getByText("Need help connecting to your data?"));
+  });
 });
 
 const getProps = (opts?: Partial<Props>): Props => ({
