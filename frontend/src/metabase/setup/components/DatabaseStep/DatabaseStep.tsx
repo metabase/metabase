@@ -6,46 +6,47 @@ import Databases from "metabase/entities/databases";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
-import { StepDescription, UserFormGroup } from "./DatabaseStep.styled";
+import {
+  StepActions,
+  StepDescription,
+  StepFormGroup,
+  StepLink,
+} from "./DatabaseStep.styled";
 import { FormProps } from "./types";
-import { DatabaseInfo } from "../../types";
+import { DatabaseInfo, InviteInfo } from "../../types";
 
 export interface Props {
-  database?: DatabaseInfo;
   engine?: string;
+  database?: DatabaseInfo;
+  invite?: InviteInfo;
   isHosted: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
   onEngineChange: (engine: string) => void;
   onStepSelect: () => void;
-  onStepSubmit: (database: DatabaseInfo) => void;
+  onDatabaseSubmit: (database: DatabaseInfo) => void;
+  onInviteSubmit: (invite: InviteInfo) => void;
   onStepCancel: (engine?: string) => void;
 }
 
 const DatabaseStep = ({
-  database,
   engine,
+  database,
+  invite,
   isHosted,
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
   onEngineChange,
   onStepSelect,
-  onStepSubmit,
+  onDatabaseSubmit,
+  onInviteSubmit,
   onStepCancel,
 }: Props): JSX.Element => {
   useEffect(() => {
     engine && onEngineChange(engine);
   }, [engine, onEngineChange]);
-
-  const handleSubmit = async (database: DatabaseInfo) => {
-    try {
-      await onStepSubmit(database);
-    } catch (error) {
-      throw getSubmitError(error);
-    }
-  };
 
   const handleCancel = () => {
     onStepCancel(engine);
@@ -54,7 +55,7 @@ const DatabaseStep = ({
   if (!isStepActive) {
     return (
       <InactiveStep
-        title={getStepTitle(database, isStepCompleted)}
+        title={getStepTitle(database, invite, isStepCompleted)}
         label={3}
         isStepCompleted={isStepCompleted}
         isSetupCompleted={isSetupCompleted}
@@ -64,22 +65,28 @@ const DatabaseStep = ({
   }
 
   return (
-    <ActiveStep title={getStepTitle(database, isStepCompleted)} label={3}>
+    <ActiveStep
+      title={getStepTitle(database, invite, isStepCompleted)}
+      label={3}
+    >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
         <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
       </StepDescription>
       <DatabaseForm
+        engine={engine}
         database={database}
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
+        onSubmit={onDatabaseSubmit}
       />
+      <StepActions>
+        <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
+      </StepActions>
       {isHosted && (
         <SetupSection
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
         >
-          <InviteForm />
+          <InviteForm invite={invite} onSubmit={onInviteSubmit} />
         </SetupSection>
       )}
     </ActiveStep>
@@ -87,50 +94,61 @@ const DatabaseStep = ({
 };
 
 interface DatabaseFormProps {
+  engine?: string;
   database?: DatabaseInfo;
   onSubmit: (database: DatabaseInfo) => void;
-  onCancel: () => void;
 }
 
 const DatabaseForm = ({
   database,
+  engine,
   onSubmit,
-  onCancel,
 }: DatabaseFormProps): JSX.Element => {
+  const handleSubmit = async (database: DatabaseInfo) => {
+    try {
+      await onSubmit(database);
+    } catch (error) {
+      throw getSubmitError(error);
+    }
+  };
+
   return (
     <Databases.Form
       form={Databases.forms.setup}
       formName="database"
       database={database}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ formFields, Form, FormField, FormFooter }: FormProps) => (
         <Form>
           {formFields.map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
-          {
-            <FormFooter
-              submitTitle={t`Connect database`}
-              cancelTitle={t`Skip`}
-              onCancel={onCancel}
-            />
-          }
+          {engine && <FormFooter submitTitle={t`Next`} />}
         </Form>
       )}
     </Databases.Form>
   );
 };
 
-const InviteForm = (): JSX.Element => {
+interface InviteFormProps {
+  invite?: InviteInfo;
+  onSubmit: (invite: InviteInfo) => void;
+}
+
+const InviteForm = ({ invite, onSubmit }: InviteFormProps): JSX.Element => {
   return (
-    <Users.Form form={Users.forms.setup_invite}>
+    <Users.Form
+      form={Users.forms.setup_invite}
+      user={invite}
+      onSubmit={onSubmit}
+    >
       {({ Form, FormField, FormFooter }: FormProps) => (
         <Form>
-          <UserFormGroup>
+          <StepFormGroup>
             <FormField name="first_name" />
             <FormField name="last_name" />
-          </UserFormGroup>
+          </StepFormGroup>
           <FormField name="email" />
           <FormFooter submitTitle={t`Send invitation`} />
         </Form>
@@ -141,12 +159,15 @@ const InviteForm = (): JSX.Element => {
 
 const getStepTitle = (
   database: DatabaseInfo | undefined,
+  invite: InviteInfo | undefined,
   isStepCompleted: boolean,
 ) => {
   if (!isStepCompleted) {
     return t`Add your data`;
   } else if (database) {
     return t`Connecting to ${database.name}`;
+  } else if (invite) {
+    return t`I'll invite a teammate to connect the database`;
   } else {
     return t`I'll add my own data later`;
   }

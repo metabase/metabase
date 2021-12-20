@@ -3,11 +3,11 @@ import { render, screen } from "@testing-library/react";
 import UserStep, { Props } from "./UserStep";
 import { UserInfo } from "../../types";
 
-const UserFormMock = () => <div />;
+const FormMock = () => <div />;
 
 jest.mock("metabase/entities/users", () => ({
   forms: { setup: jest.fn() },
-  Form: UserFormMock,
+  Form: FormMock,
 }));
 
 describe("UserStep", () => {

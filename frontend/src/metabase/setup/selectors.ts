@@ -1,7 +1,7 @@
 import { getValues } from "redux-form";
 import { createSelector } from "reselect";
 import { COMPLETED_STEP } from "./constants";
-import { Locale, UserInfo, DatabaseInfo } from "./types";
+import { Locale, UserInfo, DatabaseInfo, InviteInfo } from "./types";
 
 export const getStep = (state: any): number => {
   return state.setup.step;
@@ -17,6 +17,10 @@ export const getUser = (state: any): UserInfo | undefined => {
 
 export const getDatabase = (state: any): DatabaseInfo | undefined => {
   return state.setup.database;
+};
+
+export const getInvite = (state: any): InviteInfo | undefined => {
+  return state.setup.invite;
 };
 
 export const isTrackingAllowed = (state: any): boolean => {

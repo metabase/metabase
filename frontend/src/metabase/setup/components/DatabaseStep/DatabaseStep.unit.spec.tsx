@@ -3,11 +3,16 @@ import { render, screen } from "@testing-library/react";
 import DatabaseStep, { Props } from "./DatabaseStep";
 import { DatabaseDetails, DatabaseInfo } from "../../types";
 
-const DatabaseFormMock = () => <div />;
+const FormMock = () => <div />;
 
 jest.mock("metabase/entities/databases", () => ({
-  forms: { setup: "database" },
-  Form: DatabaseFormMock,
+  forms: { setup: jest.fn() },
+  Form: FormMock,
+}));
+
+jest.mock("metabase/entities/users", () => ({
+  forms: { setup_invite: jest.fn() },
+  Form: FormMock,
 }));
 
 describe("DatabaseStep", () => {
@@ -42,7 +47,8 @@ const getProps = (opts?: Partial<Props>): Props => ({
   isSetupCompleted: false,
   onEngineChange: jest.fn(),
   onStepSelect: jest.fn(),
-  onStepSubmit: jest.fn(),
+  onDatabaseSubmit: jest.fn(),
+  onInviteSubmit: jest.fn(),
   onStepCancel: jest.fn(),
   ...opts,
 });

@@ -1,5 +1,4 @@
 import { createAction } from "redux-actions";
-import { updateIn, getIn } from "icepick";
 import { SetupApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
@@ -89,12 +88,13 @@ export const submitSetup = createThunkAction(
   SUBMIT_SETUP,
   () => async (dispatch: any, getState: any) => {
     const { setup } = getState();
-    const { locale, user, database, isTrackingAllowed } = setup;
+    const { locale, user, database, invite, isTrackingAllowed } = setup;
 
     await SetupApi.create({
       token: Settings.get("setup-token"),
       user,
       database,
+      invite,
       prefs: {
         site_name: user.site_name,
         site_locale: locale.code,

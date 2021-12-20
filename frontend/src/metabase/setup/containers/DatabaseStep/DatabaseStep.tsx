@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import DatabaseStep from "../../components/DatabaseStep";
-import { setStep, submitDatabase } from "../../actions";
+import { setDatabase, setInvite, setStep, submitDatabase } from "../../actions";
 import {
   trackDatabaseSelected,
   trackAddDataLaterClicked,
@@ -12,11 +12,15 @@ import {
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
+  getDatabaseEngine,
+  getInvite,
 } from "../../selectors";
-import { DatabaseInfo } from "../../types";
+import { DatabaseInfo, InviteInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
+  engine: getDatabaseEngine(state),
   database: getDatabase(state),
+  invite: getInvite(state),
   isHosted: true,
   isStepActive: isStepActive(state, DATABASE_STEP),
   isStepCompleted: isStepCompleted(state, DATABASE_STEP),
@@ -30,13 +34,23 @@ const mapDispatchToProps = (dispatch: any) => ({
   onStepSelect: () => {
     dispatch(setStep(DATABASE_STEP));
   },
-  onStepSubmit: async (database: DatabaseInfo) => {
+  onDatabaseSubmit: async (database: DatabaseInfo) => {
     await dispatch(submitDatabase(database));
+    dispatch(setInvite(null));
+    dispatch(setStep(PREFERENCES_STEP));
+    trackDatabaseStepCompleted();
+  },
+  onInviteSubmit: (invite: InviteInfo) => {
+    dispatch(setDatabase(null));
+    dispatch(setInvite(invite));
     dispatch(setStep(PREFERENCES_STEP));
     trackDatabaseStepCompleted();
   },
   onStepCancel: (engine?: string) => {
+    dispatch(setDatabase(null));
+    dispatch(setInvite(null));
     dispatch(setStep(PREFERENCES_STEP));
+    trackDatabaseStepCompleted();
     trackAddDataLaterClicked(engine);
   },
 });
