@@ -93,7 +93,7 @@ describe("scenarios > reference > databases", () => {
       cy.findByText("Orders");
       cy.findByText("Reviews").click();
       // check that the links are clickable
-      cy.location("pathname").should("eq", "/reference/databases/1/tables/4");
+      cy.location("pathname").should("eq", "/question");
     });
   });
 });
