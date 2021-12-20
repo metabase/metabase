@@ -9,7 +9,6 @@ import { Database } from "../../types";
 const RELOAD_INTERVAL = 2000;
 
 const databasesProps = {
-  query: { include: "tables" },
   loadingAndErrorWrapper: false,
   reloadInterval: (state: any, props: any, databases: Database[] = []) =>
     databases.some(isSyncInProgress) ? RELOAD_INTERVAL : 0,
