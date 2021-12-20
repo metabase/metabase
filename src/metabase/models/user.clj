@@ -158,7 +158,6 @@
   the wording for this user on a homepage banner that prompts them to add their database."
   {:batched-hydrate :has_invited_second_user}
   [users]
-  (def my-users users)
   (when (seq users)
     (for [user users]
       (assoc user :has_invited_second_user (and (= (:id user) 1)
