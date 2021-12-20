@@ -1,6 +1,6 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, describeWithoutToken } from "__support__/e2e/cypress";
 
-describe("License section", () => {
+describeWithoutToken("License section", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
