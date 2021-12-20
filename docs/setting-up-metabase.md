@@ -53,7 +53,7 @@ At this point you are all set and ready to use Metabase.  Since we like keeping 
 
 Once you're done here simply follow the link to **Take me to Metabase**.  And if you decided to skip the newsletter sign-up, it's cool, we still like you :)
 
-# Next: Getting started with Metabase
-For a quick overview of how to use Metabase, head over to the [Getting Started Guide](/learn/getting-started/getting-started.html).
+## Getting started with Metabase
+For a tutorial on getting up and running with questions and dashboards, head over to [Learn Metabase](/learn/getting-started/getting-started.html).
 
 For information on adding team members, connecting additional databases, configuring Metabase settings, and more, check out the [Admin Guide](./administration-guide/start.md).
