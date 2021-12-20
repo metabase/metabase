@@ -10,6 +10,7 @@
 ## Installation and operation
 
 - [Installing Metabase](./operations-guide/installing-metabase.html)
+- [Setting up Metabase](setting-up-metabase.html)
 - [How to upgrade Metabase](./operations-guide/upgrading-metabase.html)
 - [Application database](./operations-guide/configuring-application-database.html)
 - [Backing up Metabase](./operations-guide/backing-up-metabase-application-data.html)
