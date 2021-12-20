@@ -8,12 +8,6 @@ describe("DatabaseStatusSmall", () => {
     const databases = [
       getDatabase({
         initial_sync_status: "incomplete",
-        tables: [
-          { id: 1, initial_sync_status: "complete" },
-          { id: 2, initial_sync_status: "incomplete" },
-          { id: 3, initial_sync_status: "aborted" },
-          { id: 4, initial_sync_status: "incomplete" },
-        ],
       }),
       getDatabase({
         initial_sync_status: "complete",
