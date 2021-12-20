@@ -1,11 +1,11 @@
 import React, { ReactNode, useState } from "react";
-import Button from "metabase/components/Button";
 import {
   SectionRoot,
   SectionHeader,
   SectionContainer,
   SectionTitle,
   SectionDescription,
+  SectionButton,
 } from "./SetupSection.styled";
 
 export interface Props {
@@ -24,7 +24,7 @@ const SetupSection = ({ title, description, children }: Props): JSX.Element => {
           <SectionTitle>{title}</SectionTitle>
           <SectionDescription>{description}</SectionDescription>
         </SectionContainer>
-        <Button
+        <SectionButton
           round
           icon={isExpanded ? "chevronup" : "chevrondown"}
           onClick={() => setIsExpanded(!isExpanded)}

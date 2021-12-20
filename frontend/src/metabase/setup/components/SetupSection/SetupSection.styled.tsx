@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
+import Button from "metabase/components/Button";
 
 export const SectionRoot = styled.div`
   margin-top: 1.5rem;
@@ -26,4 +27,8 @@ export const SectionTitle = styled.div`
 export const SectionDescription = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.5rem;
+`;
+
+export const SectionButton = styled(Button)`
+  color: ${color("brand")};
 `;
