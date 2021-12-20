@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
+import Icon from "metabase/components/Icon";
 
 class EditBar extends Component {
   static propTypes = {
@@ -30,6 +31,7 @@ class EditBar extends Component {
         )}
       >
         <div>
+          <Icon name="pencil" size={12} className="text-white mr1" />
           <span className="EditHeader-title">{title}</span>
           {subtitle && (
             <span className="EditHeader-subtitle mx1">{subtitle}</span>
