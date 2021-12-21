@@ -1473,15 +1473,11 @@ const TablePicker = ({
 class FieldPicker extends Component {
   renderItemWrapper = (itemContent, item) => {
     const dimension = item.field?.dimension?.();
-    if (dimension) {
-      return (
-        <DimensionInfoPopover dimension={dimension}>
-          {itemContent}
-        </DimensionInfoPopover>
-      );
-    }
-
-    return itemContent;
+    return (
+      <DimensionInfoPopover dimension={dimension}>
+        {itemContent}
+      </DimensionInfoPopover>
+    );
   };
 
   render() {
