@@ -6,6 +6,7 @@ import TippyPopver, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
 import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
+import { isCypressActive } from "metabase/env";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
@@ -23,7 +24,7 @@ type Props = { dimension: Dimension } & Pick<
 function DimensionInfoPopover({ dimension, children, placement }: Props) {
   return dimension ? (
     <TippyPopver
-      delay={POPOVER_DELAY}
+      delay={isCypressActive ? 0 : POPOVER_DELAY}
       interactive
       placement={placement || "left-start"}
       content={<DimensionInfo dimension={dimension} />}

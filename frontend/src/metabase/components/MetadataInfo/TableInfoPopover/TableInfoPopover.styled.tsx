@@ -7,6 +7,6 @@ type TableInfoProps = {
 };
 
 export const WidthBoundTableInfo = styled(TableInfo)<TableInfoProps>`
-  max-width: 300px;
-  min-width: 300px;
+  width: 300px;
+  font-size: 14px;
 `;

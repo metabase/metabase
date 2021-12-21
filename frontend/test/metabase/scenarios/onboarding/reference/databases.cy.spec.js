@@ -83,10 +83,10 @@ describe("scenarios > reference > databases", () => {
     cy.findByText("Products").trigger("mouseenter");
 
     popover().within(() => {
-      // check that is has shows the table's description
+      // check for the table's description
       cy.contains("This is our product catalog");
 
-      // check that it shows the number of columns in the table
+      // check for table column metadata
       cy.findByText("8 columns");
 
       // check that fk links are shown
