@@ -55,6 +55,7 @@ export type SettingName =
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
+  | "user-locale"
   | "available-locales"
   | "available-timezones"
   | "custom-formatting"

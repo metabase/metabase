@@ -24,12 +24,15 @@ import {
 import Ellipsified from "metabase/components/Ellipsified";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
-interface Props {
+export interface DatabaseStatusLargeProps {
   databases: Database[];
   onCollapse?: () => void;
 }
 
-const DatabaseStatusLarge = ({ databases, onCollapse }: Props): JSX.Element => {
+const DatabaseStatusLarge = ({
+  databases,
+  onCollapse,
+}: DatabaseStatusLargeProps): JSX.Element => {
   return (
     <StatusRoot role="status">
       <StatusHeader>
@@ -104,13 +107,9 @@ const getTitle = (databases: Database[]): string => {
 const getDescription = (database: Database): string => {
   const isDone = isSyncCompleted(database);
   const isError = isSyncAborted(database);
-  const doneCount = database.tables?.filter(isSyncCompleted).length;
-  const totalCount = database.tables?.length;
 
   if (isError) {
     return t`Sync failed`;
-  } else if (totalCount) {
-    return t`${doneCount} of ${totalCount} tables done`;
   } else if (isDone) {
     return t`Syncing completed`;
   } else {

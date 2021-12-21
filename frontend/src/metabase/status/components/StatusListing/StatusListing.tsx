@@ -2,11 +2,11 @@ import React from "react";
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
-interface Props {
+export interface StatusListingProps {
   isAdmin: boolean;
 }
 
-const StatusListing = ({ isAdmin }: Props): JSX.Element => {
+const StatusListing = ({ isAdmin }: StatusListingProps): JSX.Element => {
   return <StatusListingRoot>{isAdmin && <DatabaseStatus />}</StatusListingRoot>;
 };
 
