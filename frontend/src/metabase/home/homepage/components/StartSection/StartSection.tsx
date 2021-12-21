@@ -54,7 +54,7 @@ const StartSection = ({
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      {showDatabaseBanner && <DatabaseBanner />}
+      {showDatabaseBanner && <DatabaseBanner user={user} />}
       {showDashboardBanner && (
         <DashboardBanner user={user} onHidePinMessage={onHidePinMessage} />
       )}
@@ -94,8 +94,15 @@ const DashboardCard = ({
   );
 };
 
-const DatabaseBanner = (): JSX.Element => {
+export interface DatabaseBannerProps {
+  user: User;
+}
+
+const DatabaseBanner = ({ user }: DatabaseBannerProps): JSX.Element => {
   const userUrl = Urls.newUser();
+  const userLabel = user.has_invited_second_user
+    ? t`invite another teammate`
+    : t`invite a teammate`;
   const databaseUrl = Urls.newDatabase();
   const docsUrl = Settings.docsUrl(
     "administration-guide/01-managing-databases",
@@ -110,7 +117,7 @@ const DatabaseBanner = (): JSX.Element => {
         <BannerTitle>{t`Connect your data to get the most out of Metabase`}</BannerTitle>
         <BannerDescription>
           {jt`If you need help, you can ${(
-            <ExternalLink href={userUrl}>{t`invite a teammate`}</ExternalLink>
+            <ExternalLink href={userUrl}>{userLabel}</ExternalLink>
           )} or ${(
             <ExternalLink href={docsUrl}>
               {t`check out our setup guides`}
