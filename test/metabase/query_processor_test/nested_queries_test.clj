@@ -170,24 +170,23 @@
                                                     :order-by     [[:asc $category]]}})}]]
           (is (= {:cols [{:name "count" :display_name "Count"}
                          {:name "avg" :display_name "Average of Sum of Price"}]
-                  :rows [[4 2787.0]]}
-                 (-> {:type     :query
-                      :database (mt/id)
-                      :query    {:source-table (str "card__" card-id)
-                                 :aggregation  [[:aggregation-options
-                                                 [:count]
-                                                 {:name "count"}]
-                                                [:aggregation-options
-                                                 [:avg
-                                                  [:field
-                                                   "sum"
-                                                   {:base-type :type/Float}]]
-                                                 {:name "avg"}]]}}
-                     qp/process-query
+                  :rows [[4 2787]]}
+                 (-> (mt/format-rows-by [int int]
+                       (qp/process-query {:type     :query
+                                          :database (mt/id)
+                                          :query    {:source-table (str "card__" card-id)
+                                                     :aggregation  [[:aggregation-options
+                                                                     [:count]
+                                                                     {:name "count"}]
+                                                                    [:aggregation-options
+                                                                     [:avg
+                                                                      [:field
+                                                                       "sum"
+                                                                       {:base-type :type/Float}]]
+                                                                     {:name "avg"}]]}}))
                      :data
                      (select-keys [:cols :rows])
-                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))
-                     (update :rows #(mt/round-all-decimals 0 %))))))))))
+                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
