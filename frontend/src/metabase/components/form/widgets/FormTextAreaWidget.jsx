@@ -10,6 +10,7 @@ const FormTextAreaWidget = ({
   className,
   rows,
   autoFocus,
+  tabIndex,
 }) => (
   <textarea
     autoFocus={autoFocus}
@@ -17,6 +18,7 @@ const FormTextAreaWidget = ({
     rows={rows}
     placeholder={placeholder}
     aria-labelledby={`${field.name}-label`}
+    tabIndex={tabIndex}
     {...formDomOnlyProps(field)}
   />
 );

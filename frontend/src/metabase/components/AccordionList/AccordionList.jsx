@@ -87,6 +87,7 @@ export default class AccordionList extends Component {
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
+    searchInputProps: PropTypes.object,
     hideEmptySectionsInSearch: PropTypes.bool,
 
     itemTestId: PropTypes.string,
@@ -494,6 +495,7 @@ const AccordionListCell = ({
   searchText,
   onChangeSearchText,
   searchPlaceholder,
+  searchInputProps,
   showItemArrows,
   itemTestId,
   getItemClassName,
@@ -563,6 +565,7 @@ const AccordionListCell = ({
       value: searchText,
       onChange: onChangeSearchText,
       placeholder: searchPlaceholder,
+      ...searchInputProps,
     };
     content =
       typeof renderSearchSection === "function" ? (
