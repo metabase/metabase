@@ -11,7 +11,9 @@ export interface GreetingSectionProps {
   user: User;
 }
 
-const GreetingSection = ({ user: { first_name } }: GreetingSectionProps) => {
+const GreetingSection = ({
+  user: { first_name },
+}: GreetingSectionProps): JSX.Element => {
   const greeting = useMemo(() => Greeting.sayHello(first_name), [first_name]);
 
   return (

@@ -6,7 +6,7 @@ export interface SetupProps {
   isWelcome: boolean;
 }
 
-const Setup = ({ isWelcome }: SetupProps) => {
+const Setup = ({ isWelcome }: SetupProps): JSX.Element => {
   if (isWelcome) {
     return <WelcomePage />;
   } else {

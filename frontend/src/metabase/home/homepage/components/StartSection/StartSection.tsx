@@ -38,7 +38,7 @@ const StartSection = ({
   showPinMessage,
   onHidePinMessage,
   onDashboardClick,
-}: StartSectionProps) => {
+}: StartSectionProps): JSX.Element | null => {
   const showDatabaseBanner =
     user.is_superuser && !databases.some(d => !d.is_sample);
   const showDashboardBanner =
@@ -78,7 +78,10 @@ interface DashboardCardProps {
   onDashboardClick?: (dashboard: Dashboard) => void;
 }
 
-const DashboardCard = ({ dashboard, onDashboardClick }: DashboardCardProps) => {
+const DashboardCard = ({
+  dashboard,
+  onDashboardClick,
+}: DashboardCardProps): JSX.Element => {
   const dashboardUrl = Urls.dashboard(dashboard);
 
   return (
@@ -91,7 +94,7 @@ const DashboardCard = ({ dashboard, onDashboardClick }: DashboardCardProps) => {
   );
 };
 
-const DatabaseBanner = () => {
+const DatabaseBanner = (): JSX.Element => {
   const userUrl = Urls.newUser();
   const databaseUrl = Urls.newDatabase();
   const docsUrl = Settings.docsUrl(
@@ -128,7 +131,10 @@ interface DashboardBannerProps {
   onHidePinMessage?: () => void;
 }
 
-const DashboardBanner = ({ user, onHidePinMessage }: DashboardBannerProps) => {
+const DashboardBanner = ({
+  user,
+  onHidePinMessage,
+}: DashboardBannerProps): JSX.Element => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (

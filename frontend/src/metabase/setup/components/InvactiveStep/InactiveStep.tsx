@@ -21,7 +21,7 @@ const InactiveStep = ({
   isStepCompleted,
   isSetupCompleted,
   onStepSelect,
-}: InactiveStepProps) => {
+}: InactiveStepProps): JSX.Element => {
   return (
     <StepRoot
       isCompleted={isStepCompleted}

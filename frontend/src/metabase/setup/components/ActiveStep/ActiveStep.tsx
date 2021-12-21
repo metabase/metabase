@@ -12,7 +12,11 @@ export interface ActiveStepProps {
   children?: ReactNode;
 }
 
-const ActiveStep = ({ title, label, children }: ActiveStepProps) => {
+const ActiveStep = ({
+  title,
+  label,
+  children,
+}: ActiveStepProps): JSX.Element => {
   return (
     <StepRoot>
       <StepTitle>{title}</StepTitle>

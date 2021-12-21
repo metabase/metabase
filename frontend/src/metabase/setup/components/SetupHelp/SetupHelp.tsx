@@ -4,7 +4,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
 import { SetupFooterRoot } from "./SetupHelp.styled";
 
-const SetupHelp = () => {
+const SetupHelp = (): JSX.Element => {
   return (
     <SetupFooterRoot>
       {t`If you feel stuck`},{" "}

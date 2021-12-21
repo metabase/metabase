@@ -161,7 +161,7 @@ const getStepTitle = (
   database: DatabaseInfo | undefined,
   invite: InviteInfo | undefined,
   isStepCompleted: boolean,
-) => {
+): string => {
   if (!isStepCompleted) {
     return t`Add your data`;
   } else if (database) {
@@ -173,7 +173,7 @@ const getStepTitle = (
   }
 };
 
-const getSubmitError = (error: unknown) => {
+const getSubmitError = (error: unknown): unknown => {
   return updateIn(error, ["data", "errors"], errors => ({
     details: errors,
   }));

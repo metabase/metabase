@@ -50,7 +50,7 @@ const Homepage = ({
   onCollectionClick,
   onDashboardClick,
   onDatabaseClick,
-}: HomepageProps) => {
+}: HomepageProps): JSX.Element => {
   return (
     <LandingRoot>
       <GreetingSection user={user} />

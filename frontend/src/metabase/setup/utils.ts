@@ -1,7 +1,9 @@
 import _ from "underscore";
 import { LocaleData, Locale } from "./types";
 
-export const getLocales = (localeData: LocaleData[] = [["en", "English"]]) => {
+export const getLocales = (
+  localeData: LocaleData[] = [["en", "English"]],
+): Locale[] => {
   return _.chain(localeData)
     .map(([code, name]) => ({ code, name }))
     .sortBy(locale => locale.name)
@@ -21,6 +23,6 @@ export const getDefaultLocale = (
   );
 };
 
-export const getUserToken = (hash = window.location.hash) => {
+export const getUserToken = (hash = window.location.hash): string => {
   return hash.replace(/^#/, "");
 };

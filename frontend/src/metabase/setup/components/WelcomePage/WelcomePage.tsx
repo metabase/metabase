@@ -15,7 +15,10 @@ export interface WelcomePageProps {
   onStepSubmit: () => void;
 }
 
-const WelcomePage = ({ onStepShow, onStepSubmit }: WelcomePageProps) => {
+const WelcomePage = ({
+  onStepShow,
+  onStepSubmit,
+}: WelcomePageProps): JSX.Element => {
   useEffect(() => {
     onStepShow();
   }, [onStepShow]);

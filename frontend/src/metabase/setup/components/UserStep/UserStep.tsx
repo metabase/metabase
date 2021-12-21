@@ -32,7 +32,7 @@ const UserStep = ({
   onPasswordChange,
   onStepSelect,
   onStepSubmit,
-}: UserStepProps) => {
+}: UserStepProps): JSX.Element => {
   if (!isStepActive) {
     return (
       <InactiveStep

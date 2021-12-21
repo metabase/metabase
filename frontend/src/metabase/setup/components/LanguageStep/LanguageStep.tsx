@@ -31,7 +31,7 @@ const LanguageStep = ({
   onLocaleChange,
   onStepSelect,
   onStepSubmit,
-}: LanguageStepProps) => {
+}: LanguageStepProps): JSX.Element => {
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
   if (!isStepActive) {

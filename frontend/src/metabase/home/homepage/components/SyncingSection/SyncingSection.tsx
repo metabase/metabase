@@ -18,7 +18,7 @@ const SyncingSection = ({
   showXrays,
   showSyncingModal,
   onHideSyncingModal,
-}: SyncingSectionProps) => {
+}: SyncingSectionProps): JSX.Element => {
   const isSyncing = isUserSyncingDatabase(user, databases);
   const [isOpened, setIsOpened] = useState(isSyncing && showSyncingModal);
   const sampleDatabase = databases.find(d => d.is_sample);

@@ -25,7 +25,7 @@ const CollectionSection = ({
   user,
   collections,
   onCollectionClick,
-}: CollectionSectionProps) => {
+}: CollectionSectionProps): JSX.Element => {
   const showList = collections.some(c => c.id !== user.personal_collection_id);
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
@@ -56,7 +56,7 @@ interface EmptyStateProps {
   user: User;
 }
 
-const EmptyState = ({ user }: EmptyStateProps) => {
+const EmptyState = ({ user }: EmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
       <EmptyStateImage

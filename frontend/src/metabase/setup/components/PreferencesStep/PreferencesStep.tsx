@@ -113,14 +113,14 @@ const getStepTitle = (
   }
 };
 
-const getSubmitError = (error: unknown) => {
+const getSubmitError = (error: unknown): string => {
   const message = getIn(error, ["data", "message"]);
   const errors = getIn(error, ["data", "errors"]);
 
   if (message) {
-    return message;
+    return String(message);
   } else if (errors) {
-    return Object.values(errors)[0];
+    return String(Object.values(errors)[0]);
   } else {
     return t`An error occurred`;
   }

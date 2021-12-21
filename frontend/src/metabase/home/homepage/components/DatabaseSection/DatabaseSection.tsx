@@ -34,7 +34,7 @@ const DatabaseSection = ({
   showData,
   onHideData,
   onDatabaseClick,
-}: DatabaseSectionProps) => {
+}: DatabaseSectionProps): JSX.Element | null => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -86,7 +86,10 @@ interface HideSectionModalProps {
   onSubmit?: () => void;
 }
 
-const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
+const HideSectionModal = ({
+  children,
+  onSubmit,
+}: HideSectionModalProps): JSX.Element => {
   return (
     <ModalWithTrigger
       title={t`Remove this section?`}

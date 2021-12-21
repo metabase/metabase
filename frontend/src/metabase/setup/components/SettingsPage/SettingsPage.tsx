@@ -14,7 +14,7 @@ export interface SettingsPageProps {
   onStepShow: (step: number) => void;
 }
 
-const SettingsPage = ({ step, onStepShow }: SettingsPageProps) => {
+const SettingsPage = ({ step, onStepShow }: SettingsPageProps): JSX.Element => {
   useEffect(() => {
     onStepShow(step);
   }, [step, onStepShow]);
