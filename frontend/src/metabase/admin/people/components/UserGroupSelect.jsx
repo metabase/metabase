@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import { createMembership, deleteMembership } from "../people";
-import { getGroupsWithoutMetabot, getUserMemberships } from "../selectors";
+import { getGroups, getUserMemberships } from "../selectors";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -11,7 +11,7 @@ import GroupSelect from "./GroupSelect";
 
 @connect(
   (state, props) => ({
-    groups: getGroupsWithoutMetabot(state, props),
+    groups: getGroups(state, props),
     userMemberships: getUserMemberships(state, props),
   }),
   {
