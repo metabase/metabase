@@ -878,7 +878,8 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("ID").should("not.exist");
   });
 
-  it("should show an info popover when hovering over a field picker option for a table", () => {
+  // flaky test
+  it.skip("should show an info popover when hovering over a field picker option for a table", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
     cy.contains("Sample Dataset").click();
@@ -892,7 +893,8 @@ describe("scenarios > question > notebook", () => {
     popover().contains("80.36");
   });
 
-  it("should show an info popover when hovering over a field picker option for a saved question", () => {
+  // flaky test
+  it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
     cy.createNativeQuestion({
       name: "question a",
       native: { query: "select 'foo' as a_column" },
