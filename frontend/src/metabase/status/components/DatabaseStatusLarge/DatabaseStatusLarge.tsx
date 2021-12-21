@@ -24,12 +24,15 @@ import {
 import Ellipsified from "metabase/components/Ellipsified";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
-interface Props {
+export interface DatabaseStatusLargeProps {
   databases: Database[];
   onCollapse?: () => void;
 }
 
-const DatabaseStatusLarge = ({ databases, onCollapse }: Props): JSX.Element => {
+const DatabaseStatusLarge = ({
+  databases,
+  onCollapse,
+}: DatabaseStatusLargeProps): JSX.Element => {
   return (
     <StatusRoot role="status">
       <StatusHeader>

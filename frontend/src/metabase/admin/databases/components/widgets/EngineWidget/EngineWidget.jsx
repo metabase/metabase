@@ -173,7 +173,7 @@ const EngineToggle = ({ isExpanded, onExpandedChange }) => {
   return (
     <EngineExpandButton
       primary
-      icon={isExpanded ? "chevronup" : "chevrondown"}
+      iconRight={isExpanded ? "chevronup" : "chevrondown"}
       onClick={handleClick}
     >
       {isExpanded ? t`Show less options` : t`Show more options`}

@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from "react";
+import React, { ReactNode } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
 import Ellipsified from "metabase/components/Ellipsified";
@@ -20,7 +20,7 @@ import {
   ListRoot,
 } from "./DatabaseSection.styled";
 
-interface Props {
+export interface DatabaseSectionProps {
   user: User;
   databases: Database[];
   showData?: boolean;
@@ -34,7 +34,7 @@ const DatabaseSection = ({
   showData,
   onHideData,
   onDatabaseClick,
-}: Props) => {
+}: DatabaseSectionProps): JSX.Element | null => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -86,7 +86,10 @@ interface HideSectionModalProps {
   onSubmit?: () => void;
 }
 
-const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
+const HideSectionModal = ({
+  children,
+  onSubmit,
+}: HideSectionModalProps): JSX.Element => {
   return (
     <ModalWithTrigger
       title={t`Remove this section?`}
