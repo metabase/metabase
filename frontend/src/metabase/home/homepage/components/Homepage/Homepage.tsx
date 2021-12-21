@@ -14,7 +14,7 @@ import XraySection from "../XraySection";
 import { LandingRoot } from "./Homepage.styled";
 import SyncingSection from "../SyncingSection/SyncingSection";
 
-interface Props {
+export interface HomepageProps {
   user: User;
   databases?: Database[];
   collections?: Collection[];
@@ -50,7 +50,7 @@ const Homepage = ({
   onCollectionClick,
   onDashboardClick,
   onDatabaseClick,
-}: Props) => {
+}: HomepageProps) => {
   return (
     <LandingRoot>
       <GreetingSection user={user} />

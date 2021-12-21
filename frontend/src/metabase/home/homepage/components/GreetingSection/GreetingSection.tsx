@@ -7,11 +7,11 @@ import { User } from "../../types";
 import Section from "../Section";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
-interface Props {
+export interface GreetingSectionProps {
   user: User;
 }
 
-const GreetingSection = ({ user: { first_name } }: Props) => {
+const GreetingSection = ({ user: { first_name } }: GreetingSectionProps) => {
   const greeting = useMemo(() => Greeting.sayHello(first_name), [first_name]);
 
   return (

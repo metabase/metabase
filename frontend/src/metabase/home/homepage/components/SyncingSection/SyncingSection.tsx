@@ -4,7 +4,7 @@ import Modal from "metabase/components/Modal";
 import SyncDatabaseModal from "metabase/admin/databases/components/SyncDatabaseModal";
 import { Database, User } from "../../types";
 
-interface Props {
+export interface SyncingSectionProps {
   user: User;
   databases: Database[];
   showXrays?: boolean;
@@ -18,7 +18,7 @@ const SyncingSection = ({
   showXrays,
   showSyncingModal,
   onHideSyncingModal,
-}: Props) => {
+}: SyncingSectionProps) => {
   const isSyncing = isUserSyncingDatabase(user, databases);
   const [isOpened, setIsOpened] = useState(isSyncing && showSyncingModal);
   const sampleDatabase = databases.find(d => d.is_sample);

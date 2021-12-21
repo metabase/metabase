@@ -22,7 +22,7 @@ import {
   ListRoot,
 } from "./StartSection.styled";
 
-interface Props {
+export interface StartSectionProps {
   user: User;
   databases: Database[];
   dashboards: Dashboard[];
@@ -38,7 +38,7 @@ const StartSection = ({
   showPinMessage,
   onHidePinMessage,
   onDashboardClick,
-}: Props) => {
+}: StartSectionProps) => {
   const showDatabaseBanner =
     user.is_superuser && !databases.some(d => !d.is_sample);
   const showDashboardBanner =

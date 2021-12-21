@@ -23,7 +23,7 @@ import {
   ListRoot,
 } from "./XraySection.styled";
 
-interface Props {
+export interface XraySectionProps {
   user: User;
   dashboards: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
@@ -37,7 +37,7 @@ const XraySection = ({
   databaseCandidates = [],
   showXrays,
   onHideXrays,
-}: Props) => {
+}: XraySectionProps) => {
   const options = databaseCandidates.flatMap(database => database.tables);
 
   if (!showXrays || dashboards.length || !options.length) {
