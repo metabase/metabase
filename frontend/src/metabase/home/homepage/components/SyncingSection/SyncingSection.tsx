@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
-import SyncDatabaseModal from "metabase/admin/databases/components/SyncDatabaseModal";
+import SyncDatabaseModal from "metabase/admin/databases/containers/SyncDatabaseModal";
 import { Database, User } from "../../types";
 
 export interface SyncingSectionProps {
@@ -21,7 +21,6 @@ const SyncingSection = ({
 }: SyncingSectionProps): JSX.Element => {
   const isSyncing = isUserSyncingDatabase(user, databases);
   const [isOpened, setIsOpened] = useState(isSyncing && showSyncingModal);
-  const sampleDatabase = databases.find(d => d.is_sample);
 
   const handleClose = useCallback(() => {
     setIsOpened(false);
@@ -35,11 +34,7 @@ const SyncingSection = ({
 
   return (
     <Modal isOpen={isOpened} full={false} onClose={handleClose}>
-      <SyncDatabaseModal
-        sampleDatabase={sampleDatabase}
-        showXrays={showXrays}
-        onClose={handleClose}
-      />
+      <SyncDatabaseModal onClose={handleClose} />
     </Modal>
   );
 };
