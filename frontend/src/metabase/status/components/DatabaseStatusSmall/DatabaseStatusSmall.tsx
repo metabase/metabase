@@ -12,12 +12,15 @@ import {
   StatusSpinner,
 } from "./DatabaseStatusSmall.styled";
 
-interface Props {
+export interface DatabaseStatusSmallProps {
   databases: Database[];
   onExpand?: () => void;
 }
 
-const DatabaseStatusSmall = ({ databases, onExpand }: Props): JSX.Element => {
+const DatabaseStatusSmall = ({
+  databases,
+  onExpand,
+}: DatabaseStatusSmallProps): JSX.Element => {
   const status = getStatus(databases);
   const statusLabel = getStatusLabel(status);
   const hasSpinner = isSpinnerVisible(status);

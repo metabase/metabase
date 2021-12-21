@@ -5,12 +5,12 @@ import DatabaseStatusLarge from "../DatabaseStatusLarge";
 import DatabaseStatusSmall from "../DatabaseStatusSmall";
 import { Database, User } from "../../types";
 
-interface Props {
+export interface DatabaseStatusProps {
   user?: User;
   databases?: Database[];
 }
 
-const DatabaseStatus = (props: Props): JSX.Element | null => {
+const DatabaseStatus = (props: DatabaseStatusProps): JSX.Element | null => {
   const databases = getDatabases(props);
   const isActive = databases.some(isSyncInProgress);
   const isVisible = useStatusVisibility(isActive);
@@ -22,7 +22,9 @@ const DatabaseStatus = (props: Props): JSX.Element | null => {
   }
 };
 
-const DatabaseStatusContent = ({ databases = [] }: Props): JSX.Element => {
+const DatabaseStatusContent = ({
+  databases = [],
+}: DatabaseStatusProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return isExpanded ? (
@@ -38,7 +40,10 @@ const DatabaseStatusContent = ({ databases = [] }: Props): JSX.Element => {
   );
 };
 
-const getDatabases = ({ user, databases = [] }: Props): Database[] => {
+const getDatabases = ({
+  user,
+  databases = [],
+}: DatabaseStatusProps): Database[] => {
   return databases.filter(d => !d.is_sample && d.creator_id === user?.id);
 };
 

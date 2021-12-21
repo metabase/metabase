@@ -6,45 +6,10 @@
   --page-header-padding: 2.375rem;
 }
 
-.AdminNav {
-  background: var(--color-admin-navbar);
-  color: var(--color-text-white);
-  font-size: 0.85rem;
-}
-
-.AdminNav .NavItem {
-  color: color-mod(var(--color-text-white) alpha(-37%));
-}
-
-.AdminNav .NavItem:hover,
-.AdminNav .NavItem.is--selected {
-  color: var(--color-text-white);
-}
-
-/* TODO: this feels itchy. should refactor .NavItem.is--selected to be less cascadey */
-.AdminNav .NavItem:hover:after,
-.AdminNav .NavItem.is--selected:after {
-  display: none;
-}
-
-.AdminNav .NavDropdown.open .NavDropdown-button,
-.AdminNav .NavDropdown .NavDropdown-content-layer {
-  background-color: var(--color-bg-dark);
-}
-
-.AdminNav .Dropdown-item:hover {
-  background-color: var(--color-bg-dark);
-}
-
 /* utility to get a simple common hover state for admin items */
-.HoverItem:hover,
-.AdminHoverItem:hover {
+.HoverItem:hover {
   background-color: var(--color-bg-medium);
   transition: background 0.2s linear;
-}
-
-.AdminNav .Dropdown-chevron {
-  color: var(--color-text-white);
 }
 
 .Actions-group {

@@ -180,13 +180,6 @@ const EntityItem = ({
 
       <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
         {buttons}
-        {!loading && item.description && (
-          <Icon
-            tooltip={item.description}
-            name="info"
-            className="ml1 text-medium"
-          />
-        )}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}

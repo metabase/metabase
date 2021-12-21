@@ -390,7 +390,6 @@ describe("smoketest > admin_setup", () => {
       browse().click();
       cy.findByText("Sample Dataset").click();
 
-      cy.icon("info");
       cy.icon("database").should("not.exist");
 
       cy.findByText("Test Table").click();
