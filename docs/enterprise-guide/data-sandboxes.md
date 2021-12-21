@@ -136,15 +136,15 @@ I.e., if a user belongs to two user groups, both of which have been given sandbo
 
 You can't currently create data sandboxes with non-SQL databases such as Google Analytics, Apache Druid, or MongoDB .
 
-#### Data sandboxes do not work on SQL/native queries
+#### Data sandboxes do not work if users can execute SQL/native queries
 
-This goes for both saved or unsaved SQL queries. The reason is that Metabase does not currently parse the contents of SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. There are three specific situations to be aware of when it comes to SQL and sandboxes:
+If you're using data sandboxing, your user groups should _not_ have access to the native SQL editor or to saved SQL queries. The reason is that Metabase does not currently parse the contents of SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. There are three specific situations to be aware of when it comes to SQL and sandboxes:
 
 1. If a user has SQL editor access for a given database, they are able to query any table in that database, and will see unfiltered results for any table included in the query. Admins can grant SQL editor access for some databases but prohibit it on others as needed.
 2. If a user views a saved SQL/native query, data sandboxes will not filter the results of that query, even if the query includes data from a table for which the user only has sandboxed access.
 3. A user can start a new Custom GUI question using any saved question they have access to as the starting data for that new question (a "nested" question). If they have access to view any saved SQL questions, they can use such a question as starting data for their new question, and this new question will not be filtered by data sandboxes.
 
-An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. One of the options for setting up a data sandbox allows you to display the results of a saved question instead of the raw table. In this situation, you might choose to use a SQL query to supply the results that you'd like to display to a specific user group instead of the raw table itself.
+__Note__: An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. [Advanced data sandboxing][advanced-sandboxing] allows you to display the results of a saved question instead of the raw table. You might choose to use a SQL query to supply the results that you'd like to display to a specific user group instead of the raw table itself. In this case, it's you as the admin who crafts the SQL query that dictates what a table looks like to a user group; people in that user group aren't viewing or executing the query itself.
 
 #### Data sandboxes and public sharing don't play well together
 
@@ -161,6 +161,7 @@ Public questions and dashboards can't be sandboxed. Sandboxing works by filterin
 
 The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.
 
+[advanced-sandboxing]: /learn/permissions/data-sandboxing-column-permissions.html
 [permissions]: /learn/permissions/index.html
 [permissions-overview]: ../administration-guide/05-setting-permissions.md
 [troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.html
