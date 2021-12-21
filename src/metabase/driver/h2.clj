@@ -34,7 +34,7 @@
 
 (defmethod driver/connection-properties :h2
   [_]
-  (flatten
+  (->>
    [{:name         "db"
      :display-name (tru "Connection String")
      :helper-text (deferred-tru "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension.")
@@ -42,7 +42,9 @@
      :required     true}
     driver.common/cloud-ip-address-info
     driver.common/advanced-options-start
-    driver.common/default-advanced-options]))
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod driver/db-start-of-week :h2
   [_]

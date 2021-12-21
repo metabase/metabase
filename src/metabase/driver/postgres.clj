@@ -80,61 +80,63 @@
 
 (defmethod driver/connection-properties :postgres
   [_]
-  (flatten
-    [driver.common/default-host-details
-     (assoc driver.common/default-port-details :placeholder 5432)
-     driver.common/default-dbname-details
-     driver.common/default-user-details
-     driver.common/default-password-details
-     driver.common/cloud-ip-address-info
-     driver.common/default-ssl-details
-     {:name         "ssl-mode"
-      :display-name (trs "SSL Mode")
-      :type         :select
-      :options [{:name  "allow"
-                 :value "allow"}
-                {:name  "prefer"
-                 :value "prefer"}
-                {:name  "require"
-                 :value "require"}
-                {:name  "verify-ca"
-                 :value "verify-ca"}
-                {:name  "verify-full"
-                 :value "verify-full"}]
-      :default "require"
-      :visible-if {"ssl" true}}
-     {:name         "ssl-root-cert"
-      :display-name (trs "SSL Root Certificate (PEM)")
-      :type         :secret
-      :secret-kind  :pem-cert
-      ;; only need to specify the root CA if we are doing one of the verify modes
-      :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
-     {:name         "ssl-use-client-auth"
-      :display-name (trs "Authenticate client certificate?")
-      :type         :boolean
-      ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
-      :visible-if   {"ssl" true}}
-     {:name         "ssl-client-cert"
-      :display-name (trs "SSL Client Certificate (PEM)")
-      :type         :secret
-      :secret-kind  :pem-cert
-      :visible-if   {"ssl-use-client-auth" true}}
-     {:name         "ssl-key"
-      :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
-      :type         :secret
-      ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
-      :secret-kind  :binary-blob
-      :visible-if   {"ssl-use-client-auth" true}}
-     {:name         "ssl-key-password"
-      :display-name (trs "SSL Client Key Password")
-      :type         :secret
-      :secret-kind  :password
-      :visible-if   {"ssl-use-client-auth" true}}
-     driver.common/ssh-tunnel-preferences
-     driver.common/advanced-options-start
-     (assoc driver.common/additional-options
-            :placeholder "prepareThreshold=0")
-     driver.common/default-advanced-options]))
+  (->>
+   [driver.common/default-host-details
+    (assoc driver.common/default-port-details :placeholder 5432)
+    driver.common/default-dbname-details
+    driver.common/default-user-details
+    driver.common/default-password-details
+    driver.common/cloud-ip-address-info
+    driver.common/default-ssl-details
+    {:name         "ssl-mode"
+     :display-name (trs "SSL Mode")
+     :type         :select
+     :options [{:name  "allow"
+                :value "allow"}
+               {:name  "prefer"
+                :value "prefer"}
+               {:name  "require"
+                :value "require"}
+               {:name  "verify-ca"
+                :value "verify-ca"}
+               {:name  "verify-full"
+                :value "verify-full"}]
+     :default "require"
+     :visible-if {"ssl" true}}
+    {:name         "ssl-root-cert"
+     :display-name (trs "SSL Root Certificate (PEM)")
+     :type         :secret
+     :secret-kind  :pem-cert
+     ;; only need to specify the root CA if we are doing one of the verify modes
+     :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+    {:name         "ssl-use-client-auth"
+     :display-name (trs "Authenticate client certificate?")
+     :type         :boolean
+     ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+     :visible-if   {"ssl" true}}
+    {:name         "ssl-client-cert"
+     :display-name (trs "SSL Client Certificate (PEM)")
+     :type         :secret
+     :secret-kind  :pem-cert
+     :visible-if   {"ssl-use-client-auth" true}}
+    {:name         "ssl-key"
+     :display-name (trs "SSL Client Key (PKCS-8/DER or PKCS-12)")
+     :type         :secret
+     ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+     :secret-kind  :binary-blob
+     :visible-if   {"ssl-use-client-auth" true}}
+    {:name         "ssl-key-password"
+     :display-name (trs "SSL Client Key Password")
+     :type         :secret
+     :secret-kind  :password
+     :visible-if   {"ssl-use-client-auth" true}}
+    driver.common/ssh-tunnel-preferences
+    driver.common/advanced-options-start
+    (assoc driver.common/additional-options
+           :placeholder "prepareThreshold=0")
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod driver/db-start-of-week :postgres
   [_]

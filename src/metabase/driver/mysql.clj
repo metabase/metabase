@@ -83,7 +83,7 @@
 
 (defmethod driver/connection-properties :mysql
   [_]
-  (flatten
+  (->>
    [driver.common/default-host-details
     (assoc driver.common/default-port-details :placeholder 3306)
     driver.common/default-dbname-details
@@ -96,7 +96,9 @@
     driver.common/advanced-options-start
     (assoc driver.common/additional-options
            :placeholder  "tinyInt1isBit=false")
-    driver.common/default-advanced-options]))
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
