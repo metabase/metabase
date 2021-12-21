@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import CompletedStep, { Props } from "./CompletedStep";
+import CompletedStep, { CompletedStepProps } from "./CompletedStep";
 import { UserInfo } from "../../types";
 
 describe("CompletedStep", () => {
@@ -26,7 +26,7 @@ describe("CompletedStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => ({
+const getProps = (opts?: Partial<CompletedStepProps>): CompletedStepProps => ({
   user: getUserInfo(),
   isStepActive: false,
   ...opts,

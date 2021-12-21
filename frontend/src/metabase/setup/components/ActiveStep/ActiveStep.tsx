@@ -6,13 +6,13 @@ import {
   StepLabelText,
 } from "./ActiveStep.styled";
 
-export interface Props {
+export interface ActiveStepProps {
   title: string;
   label: number;
   children?: ReactNode;
 }
 
-const ActiveStep = ({ title, label, children }: Props) => {
+const ActiveStep = ({ title, label, children }: ActiveStepProps) => {
   return (
     <StepRoot>
       <StepTitle>{title}</StepTitle>

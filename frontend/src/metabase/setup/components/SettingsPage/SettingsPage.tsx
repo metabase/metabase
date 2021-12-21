@@ -9,12 +9,12 @@ import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
 
-export interface Props {
+export interface SettingsPageProps {
   step: number;
   onStepShow: (step: number) => void;
 }
 
-const SettingsPage = ({ step, onStepShow }: Props) => {
+const SettingsPage = ({ step, onStepShow }: SettingsPageProps) => {
   useEffect(() => {
     onStepShow(step);
   }, [step, onStepShow]);

@@ -11,7 +11,7 @@ import {
   StepDescription,
 } from "./LanguageStep.styled";
 
-export interface Props {
+export interface LanguageStepProps {
   locale?: Locale;
   localeData?: LocaleData[];
   isStepActive: boolean;
@@ -31,7 +31,7 @@ const LanguageStep = ({
   onLocaleChange,
   onStepSelect,
   onStepSubmit,
-}: Props) => {
+}: LanguageStepProps) => {
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
   if (!isStepActive) {

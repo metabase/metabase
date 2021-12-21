@@ -9,13 +9,17 @@ import {
   SectionButton,
 } from "./SetupSection.styled";
 
-export interface Props {
+export interface SetupSectionProps {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
 }
 
-const SetupSection = ({ title, description, children }: Props): JSX.Element => {
+const SetupSection = ({
+  title,
+  description,
+  children,
+}: SetupSectionProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (

@@ -7,7 +7,7 @@ import {
   StepLabelText,
 } from "./InactiveStep.styled";
 
-export interface Props {
+export interface InactiveStepProps {
   title: string;
   label: number;
   isStepCompleted: boolean;
@@ -21,7 +21,7 @@ const InactiveStep = ({
   isStepCompleted,
   isSetupCompleted,
   onStepSelect,
-}: Props) => {
+}: InactiveStepProps) => {
   return (
     <StepRoot
       isCompleted={isStepCompleted}

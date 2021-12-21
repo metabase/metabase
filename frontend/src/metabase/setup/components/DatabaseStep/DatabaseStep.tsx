@@ -15,7 +15,7 @@ import {
 import { FormProps } from "./types";
 import { DatabaseInfo, InviteInfo } from "../../types";
 
-export interface Props {
+export interface DatabaseStepProps {
   engine?: string;
   database?: DatabaseInfo;
   invite?: InviteInfo;
@@ -43,7 +43,7 @@ const DatabaseStep = ({
   onDatabaseSubmit,
   onInviteSubmit,
   onStepCancel,
-}: Props): JSX.Element => {
+}: DatabaseStepProps): JSX.Element => {
   useEffect(() => {
     engine && onEngineChange(engine);
   }, [engine, onEngineChange]);

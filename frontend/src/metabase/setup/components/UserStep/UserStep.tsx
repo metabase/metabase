@@ -12,7 +12,7 @@ import {
 import { FormProps } from "./types";
 import { UserInfo } from "../../types";
 
-export interface Props {
+export interface UserStepProps {
   user?: UserInfo;
   isHosted: boolean;
   isStepActive: boolean;
@@ -32,7 +32,7 @@ const UserStep = ({
   onPasswordChange,
   onStepSelect,
   onStepSubmit,
-}: Props) => {
+}: UserStepProps) => {
   if (!isStepActive) {
     return (
       <InactiveStep

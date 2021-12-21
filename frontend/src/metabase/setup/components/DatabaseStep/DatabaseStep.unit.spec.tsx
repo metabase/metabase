@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import DatabaseStep, { Props } from "./DatabaseStep";
+import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 import { DatabaseDetails, DatabaseInfo } from "../../types";
 
 const FormMock = () => <div />;
@@ -51,7 +51,7 @@ describe("DatabaseStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => ({
+const getProps = (opts?: Partial<DatabaseStepProps>): DatabaseStepProps => ({
   isEmailConfigured: false,
   isStepActive: false,
   isStepCompleted: false,

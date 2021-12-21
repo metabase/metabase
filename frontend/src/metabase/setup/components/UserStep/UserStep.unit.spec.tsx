@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import UserStep, { Props } from "./UserStep";
+import UserStep, { UserStepProps } from "./UserStep";
 import { UserInfo } from "../../types";
 
 const FormMock = () => <div />;
@@ -35,7 +35,7 @@ describe("UserStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => ({
+const getProps = (opts?: Partial<UserStepProps>): UserStepProps => ({
   isHosted: false,
   isStepActive: false,
   isStepCompleted: false,

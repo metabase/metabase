@@ -2,11 +2,11 @@ import React from "react";
 import SettingsPage from "../../containers/SettingsPage";
 import WelcomePage from "../../containers/WelcomePage";
 
-export interface Props {
+export interface SetupProps {
   isWelcome: boolean;
 }
 
-const Setup = ({ isWelcome }: Props) => {
+const Setup = ({ isWelcome }: SetupProps) => {
   if (isWelcome) {
     return <WelcomePage />;
   } else {

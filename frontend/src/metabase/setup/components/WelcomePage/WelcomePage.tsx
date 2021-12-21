@@ -10,12 +10,12 @@ import {
   PageButton,
 } from "./WelcomePage.styled";
 
-export interface Props {
+export interface WelcomePageProps {
   onStepShow: () => void;
   onStepSubmit: () => void;
 }
 
-const WelcomePage = ({ onStepShow, onStepSubmit }: Props) => {
+const WelcomePage = ({ onStepShow, onStepSubmit }: WelcomePageProps) => {
   useEffect(() => {
     onStepShow();
   }, [onStepShow]);

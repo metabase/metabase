@@ -1,12 +1,15 @@
 import React from "react";
 import { DatabaseHelpRoot, DatabaseHelpCard } from "./DatabaseHelp.styled";
 
-export interface Props {
+export interface DatabaseHelpProps {
   engine?: string;
   isStepActive: boolean;
 }
 
-const DatabaseHelp = ({ engine, isStepActive }: Props): JSX.Element => {
+const DatabaseHelp = ({
+  engine,
+  isStepActive,
+}: DatabaseHelpProps): JSX.Element => {
   const isVisible = isStepActive && engine != null;
 
   return (

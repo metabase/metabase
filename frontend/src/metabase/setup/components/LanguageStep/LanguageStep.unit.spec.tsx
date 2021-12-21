@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LanguageStep, { Props } from "./LanguageStep";
+import LanguageStep, { LanguageStepProps } from "./LanguageStep";
 import { Locale } from "../../types";
 
 describe("LanguageStep", () => {
@@ -29,7 +29,7 @@ describe("LanguageStep", () => {
   });
 });
 
-const getProps = (opts?: Partial<Props>): Props => ({
+const getProps = (opts?: Partial<LanguageStepProps>): LanguageStepProps => ({
   isStepActive: false,
   isSetupCompleted: false,
   isStepCompleted: false,

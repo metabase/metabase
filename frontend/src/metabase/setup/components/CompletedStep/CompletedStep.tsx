@@ -9,12 +9,15 @@ import {
 } from "./CompletedStep.styled";
 import { UserInfo } from "../../types";
 
-export interface Props {
+export interface CompletedStepProps {
   user?: UserInfo;
   isStepActive: boolean;
 }
 
-const CompletedStep = ({ user, isStepActive }: Props): JSX.Element | null => {
+const CompletedStep = ({
+  user,
+  isStepActive,
+}: CompletedStepProps): JSX.Element | null => {
   if (!isStepActive) {
     return null;
   }

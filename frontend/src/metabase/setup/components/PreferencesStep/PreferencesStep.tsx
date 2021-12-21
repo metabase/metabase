@@ -15,7 +15,7 @@ import {
   StepError,
 } from "./PreferencesStep.styled";
 
-export interface Props {
+export interface PreferencesStepProps {
   isTrackingAllowed: boolean;
   isStepActive: boolean;
   isStepCompleted: boolean;
@@ -33,7 +33,7 @@ const PreferencesStep = ({
   onTrackingChange,
   onStepSelect,
   onStepSubmit,
-}: Props): JSX.Element => {
+}: PreferencesStepProps): JSX.Element => {
   const [errorMessage, setErrorMessage] = useState<string>();
 
   const handleSubmit = async () => {
