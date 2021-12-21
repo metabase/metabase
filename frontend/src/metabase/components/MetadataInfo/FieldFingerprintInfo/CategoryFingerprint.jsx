@@ -18,6 +18,7 @@ import {
 } from "./CategoryFingerprint.styled";
 
 const propTypes = {
+  className: PropTypes.string,
   field: PropTypes.instanceOf(Field).isRequired,
   fieldValues: PropTypes.array.isRequired,
   fetchFieldValues: PropTypes.func.isRequired,
@@ -43,6 +44,7 @@ const mapDispatchToProps = {
 };
 
 export function CategoryFingerprint({
+  className,
   field,
   fieldValues = [],
   fetchFieldValues,
@@ -76,7 +78,7 @@ export function CategoryFingerprint({
   const showComponent = showDistinctCount || showFieldValuesBlock;
 
   return showComponent ? (
-    <Container>
+    <Container className={className}>
       {showDistinctCount && (
         <RelativeContainer>
           <Fade aria-hidden={!isLoading} visible={!isLoading}>
@@ -93,7 +95,7 @@ export function CategoryFingerprint({
         </RelativeContainer>
       )}
       {showFieldValuesBlock && (
-        <RelativeContainer height={isLoading ? "1.8em" : "1.25em"}>
+        <RelativeContainer height={isLoading && "1.8em"}>
           <Fade visible={isLoading}>
             <LoadingSpinner />
           </Fade>

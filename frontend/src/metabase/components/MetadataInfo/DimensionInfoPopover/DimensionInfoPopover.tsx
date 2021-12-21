@@ -25,7 +25,7 @@ type Props = { dimension: Dimension } & Pick<
 function checkForMetadata(dimension: Dimension): boolean {
   const query = dimension?.query?.();
   if (dimension && query) {
-    return query.isEditable();
+    return query.metadata() != null;
   }
 
   return false;

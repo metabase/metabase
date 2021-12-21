@@ -32,7 +32,6 @@ export const InfoContainer = styled(Container)`
 `;
 
 export const Description = styled.div`
-  font-size: 14px;
   white-space: pre-line;
   max-height: 200px;
   overflow: auto;
@@ -47,7 +46,7 @@ export const LabelContainer = styled.div`
   display: inline-flex;
   align-items: center;
   column-gap: ${space(0)};
-  font-size: 12.8px;
+  font-size: 1em;
   color: ${({ color: _color = "brand" }) => color(_color)};
 `;
 
@@ -96,7 +95,7 @@ export const LoadingSpinner = styled(_LoadingSpinner)`
 `;
 
 export const Table = styled.table`
-  font-size: 12.8px;
+  font-size: 1em;
 
   th {
     font-weight: normal;

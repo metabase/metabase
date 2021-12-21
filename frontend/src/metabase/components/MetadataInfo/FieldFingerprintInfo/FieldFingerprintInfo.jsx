@@ -9,38 +9,43 @@ import { Table } from "../MetadataInfo.styled";
 import CategoryFingerprint from "./CategoryFingerprint";
 
 const propTypes = {
+  className: PropTypes.string,
   field: PropTypes.instanceOf(Field),
 };
 
-function FieldFingerprintInfo({ field }) {
+function FieldFingerprintInfo({ className, field }) {
   if (!field?.fingerprint) {
     return null;
   }
 
   if (field.isDate()) {
-    return <DateTimeFingerprint field={field} />;
+    return <DateTimeFingerprint className={className} field={field} />;
   } else if (field.isNumber()) {
-    return <NumberFingerprint field={field} />;
+    return <NumberFingerprint className={className} field={field} />;
   } else if (field.isCategory()) {
-    return <CategoryFingerprint field={field} />;
+    return <CategoryFingerprint className={className} field={field} />;
   } else {
     return null;
   }
 }
 
-function DateTimeFingerprint({ field }) {
+function getTimezone(field) {
+  return field.query?.database?.()?.timezone || field.table?.database?.timezone;
+}
+
+function DateTimeFingerprint({ className, field }) {
   const dateTimeFingerprint = field.fingerprint.type["type/DateTime"];
   if (!dateTimeFingerprint) {
     return null;
   }
 
-  const timezone = field?.table?.database?.timezone;
+  const timezone = getTimezone(field);
   const { earliest, latest } = dateTimeFingerprint;
   const formattedEarliest = formatDateTimeWithUnit(earliest, "minute");
   const formattedLatest = formatDateTimeWithUnit(latest, "minute");
 
   return (
-    <Table>
+    <Table className={className}>
       <tbody>
         <tr>
           <th>{t`Timezone`}</th>
@@ -59,7 +64,7 @@ function DateTimeFingerprint({ field }) {
   );
 }
 
-function NumberFingerprint({ field }) {
+function NumberFingerprint({ className, field }) {
   const numberFingerprint = field.fingerprint.type["type/Number"];
   if (!numberFingerprint) {
     return null;
@@ -71,7 +76,7 @@ function NumberFingerprint({ field }) {
   const fixedMax = formatNumber(Number.isInteger(max) ? max : max.toFixed(2));
 
   return (
-    <Table>
+    <Table className={className}>
       <thead>
         <tr>
           <th>{t`Average`}</th>

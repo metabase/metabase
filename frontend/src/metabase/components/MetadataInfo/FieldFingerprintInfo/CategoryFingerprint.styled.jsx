@@ -8,7 +8,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 
 export const Container = styled.div`
-  font-size: 12.8px;
+  font-size: 1em;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -37,7 +37,8 @@ export const LoadingSpinner = styled(_LoadingSpinner).attrs({
 
 export const RelativeContainer = styled.div`
   position: relative;
-  height: ${({ height }) => height || "1.1em"};
+  height: ${({ height }) => height || "1em"};
+  line-height: 1em;
 `;
 
 export const Fade = styled.div`

@@ -13,6 +13,6 @@ function _DimensionInfo(props: DimensionInfoProps) {
 }
 
 export const WidthBoundDimensionInfo = styled(_DimensionInfo)`
-  min-width: 300px;
-  max-width: 300px;
+  width: 300px;
+  font-size: 14px;
 `;
