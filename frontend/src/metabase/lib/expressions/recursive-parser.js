@@ -87,7 +87,8 @@ function recursiveParse(source) {
     }
     const { type, start, end } = token;
     if (type === TOKEN.Operator) {
-      throw new Error(t`Unexpected operator`);
+      const text = source.substring(start, end);
+      throw new Error(t`Unexpected operator ${text}`);
     }
     const text = source.substring(start, end);
     if (type === TOKEN.Identifier) {
