@@ -1,46 +1,45 @@
 import React from "react";
-import { t, jt } from "ttag";
-import * as Urls from "metabase/lib/urls";
+import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { Database } from "../../types";
+import { Database, DatabaseCandidate, TableCandidate } from "../../types";
 
-interface Props {
-  sampleDatabase?: Database;
-  showXrays?: boolean;
+export interface SyncDatabaseModalProps {
+  databases: Database[];
+  databaseCandidates: DatabaseCandidate[];
   onClose?: () => void;
 }
 
-const SyncDatabaseModal = ({ sampleDatabase, showXrays, onClose }: Props) => {
+const SyncDatabaseModal = ({
+  databases,
+  databaseCandidates,
+  onClose,
+}: SyncDatabaseModalProps) => {
+  const sampleDatabase = getSampleDatabase(databases);
+  const sampleTable = getSampleTable(databaseCandidates);
+
   return (
     <ModalContent
       title={t`Great, we're taking a look at your database!`}
       footer={
-        sampleDatabase ? (
-          <Link to={showXrays ? Urls.exploreDatabase(sampleDatabase) : "/"}>
-            <Button primary onClick={onClose}>{t`Explore sample data`}</Button>
-          </Link>
-        ) : (
-          <Link to="/">
-            <Button
-              primary
-              onClick={onClose}
-            >{t`Explore your Metabase`}</Button>
-          </Link>
-        )
+        <Link to={sampleTable ? sampleTable.url : "/"}>
+          <Button primary onClick={onClose}>
+            {sampleTable ? t`Explore sample data` : t`Explore your Metabase`}
+          </Button>
+        </Link>
       }
       onClose={onClose}
     >
       <div>
         <span>
-          {t`You’ll be able to use individual tables as they finish syncing. `}
+          {t`You’ll be able to use individual tables as they finish syncing.`}{" "}
         </span>
-        {sampleDatabase ? (
+        {sampleTable && sampleDatabase ? (
           <span>
-            {jt`You can also explore our ${(
+            {jt` In the meantime, you can take a look at the ${(
               <strong key="name">{sampleDatabase.name}</strong>
-            )} in the meantime if you want to get a head start.`}
+            )} if you want to get a head start. Want to explore?`}
           </span>
         ) : (
           <span>
@@ -50,6 +49,17 @@ const SyncDatabaseModal = ({ sampleDatabase, showXrays, onClose }: Props) => {
       </div>
     </ModalContent>
   );
+};
+
+const getSampleDatabase = (databases: Database[]): Database | undefined => {
+  return databases.find(d => d.is_sample);
+};
+
+const getSampleTable = (
+  databaseCandidates: DatabaseCandidate[],
+): TableCandidate | undefined => {
+  const tables = databaseCandidates.flatMap(d => d.tables);
+  return tables.find(t => t.title.includes("Orders")) ?? tables[0];
 };
 
 export default SyncDatabaseModal;
