@@ -159,9 +159,10 @@
   {:batched-hydrate :has_invited_second_user}
   [users]
   (when (seq users)
-    (for [user users]
-      (assoc user :has_invited_second_user (and (= (:id user) 1)
-                                                (> (db/count User) 1))))))
+    (let [user-count (db/count User)]
+      (for [user users]
+        (assoc user :has_invited_second_user (and (= (:id user) 1)
+                                                  (> user-count 1)))))))
 
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
