@@ -1,6 +1,5 @@
 import styled from "styled-components";
 
-import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -12,7 +11,7 @@ export const Container = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: ${space(1)};
+  gap: 0.8em;
   overflow: auto;
 `;
 
@@ -28,7 +27,7 @@ export const AbsoluteContainer = styled.div`
 `;
 
 export const InfoContainer = styled(Container)`
-  padding: ${space(2)};
+  padding: 1.1em;
 `;
 
 export const Description = styled.div`
@@ -45,7 +44,7 @@ export const EmptyDescription = styled(Description)`
 export const LabelContainer = styled.div`
   display: inline-flex;
   align-items: center;
-  column-gap: ${space(0)};
+  column-gap: 0.3em;
   font-size: 1em;
   color: ${({ color: _color = "brand" }) => color(_color)};
 `;
@@ -62,11 +61,10 @@ export const RelativeSizeIcon = styled(Icon)`
 `;
 
 export const InvertedColorRelativeSizeIcon = styled(RelativeSizeIcon)`
-  padding: ${space(0)};
   background-color: ${color("brand")};
   color: ${color("white")};
-  border-radius: ${space(0)};
-  padding: ${space(0)};
+  border-radius: 0.3em;
+  padding: 0.3em;
 `;
 
 type FadeProps = {
@@ -77,13 +75,10 @@ export const Fade = styled.div<FadeProps>`
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};
-`;
 
-export const FadeAndSlide = styled.div<FadeProps>`
-  width: 100%;
-  transition: opacity ${TRANSITION_DURATION} linear,
-    transform ${TRANSITION_DURATION} linear;
-  opacity: ${({ visible }) => (visible ? "1" : "0")};
+  &:empty {
+    display: none;
+  }
 `;
 
 export const LoadingSpinner = styled(_LoadingSpinner)`

@@ -1,6 +1,5 @@
 import styled from "styled-components";
 
-import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -12,7 +11,7 @@ export const Container = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: ${space(1)};
+  gap: 0.6em;
   height: auto;
   overflow: hidden;
 `;
@@ -22,7 +21,7 @@ export const NoWrap = styled.div`
   text-overflow: ellipsis;
   overflow: hidden;
   font-weight: bold;
-  padding-top: ${space(0)} 0;
+  padding-top: 0.3em 0;
 `;
 
 export const LoadingSpinner = styled(_LoadingSpinner).attrs({

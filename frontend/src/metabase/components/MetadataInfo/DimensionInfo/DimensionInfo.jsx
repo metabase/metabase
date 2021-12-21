@@ -4,12 +4,12 @@ import { t } from "ttag";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
+import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
-  Description,
-  EmptyDescription,
-} from "../MetadataInfo.styled";
-import { DimensionLabel, FieldFingerprintInfo } from "./DimensionInfo.styled";
+  DimensionLabel,
+  FieldFingerprintInfo,
+} from "./DimensionInfo.styled";
 
 DimensionInfo.propTypes = {
   className: PropTypes.string,
