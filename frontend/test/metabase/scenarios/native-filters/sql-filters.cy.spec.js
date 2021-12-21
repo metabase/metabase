@@ -121,7 +121,8 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     });
   });
 
-  it("should show an info popover when hovering over fields in the field filter field picker", () => {
+  // flaky test (#19454)
+  it.skip("should show an info popover when hovering over fields in the field filter field picker", () => {
     SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
 
     SQLFilter.openTypePickerFromDefaultFilterType();
