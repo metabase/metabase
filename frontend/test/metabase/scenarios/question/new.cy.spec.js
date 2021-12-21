@@ -416,7 +416,8 @@ describe("scenarios > question > new", () => {
       cy.get("@select").contains(/Month/i);
     });
 
-    it("should show an info popover when hovering over summarize dimension options", () => {
+    // flaky test (#19454)
+    it.skip("should show an info popover when hovering over summarize dimension options", () => {
       openReviewsTable();
 
       cy.findByText("Summarize").click();

@@ -32,7 +32,8 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
-  it("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
+  // flaky test (#19454)
+  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
 
