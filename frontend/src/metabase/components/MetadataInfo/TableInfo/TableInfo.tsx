@@ -8,14 +8,13 @@ import Tables from "metabase/entities/tables";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import {
-  InfoContainer,
   Description,
   EmptyDescription,
   LoadingSpinner,
   AbsoluteContainer,
   Fade,
-  Container,
 } from "../MetadataInfo.styled";
+import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 import ColumnCount from "./ColumnCount";
 import ConnectedTables from "./ConnectedTables";
 
@@ -102,7 +101,7 @@ export function TableInfo({
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <Container>
+      <MetadataContainer>
         <Fade visible={!hasFetchedMetadata}>
           <AbsoluteContainer>
             <LoadingSpinner size={24} />
@@ -114,7 +113,7 @@ export function TableInfo({
         <Fade visible={hasFetchedMetadata}>
           <ConnectedTables table={table} />
         </Fade>
-      </Container>
+      </MetadataContainer>
     </InfoContainer>
   );
 }

@@ -5,8 +5,9 @@ import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopver, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import DimensionInfo from "metabase/components/MetadataInfo/DimensionInfo";
 import { isCypressActive } from "metabase/env";
+
+import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
@@ -21,13 +22,24 @@ type Props = { dimension: Dimension } & Pick<
   "children" | "placement"
 >;
 
+function checkForMetadata(dimension: Dimension): boolean {
+  const query = dimension?.query?.();
+  if (dimension && query) {
+    return query.metadata() != null;
+  }
+
+  return false;
+}
+
 function DimensionInfoPopover({ dimension, children, placement }: Props) {
-  return dimension ? (
+  const hasMetadata = checkForMetadata(dimension);
+
+  return hasMetadata ? (
     <TippyPopver
       delay={isCypressActive ? 0 : POPOVER_DELAY}
       interactive
       placement={placement || "left-start"}
-      content={<DimensionInfo dimension={dimension} />}
+      content={<WidthBoundDimensionInfo dimension={dimension} />}
     >
       {children}
     </TippyPopver>
