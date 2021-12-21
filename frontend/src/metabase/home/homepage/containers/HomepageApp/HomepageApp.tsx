@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import Databases from "metabase/entities/databases";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
@@ -55,15 +56,17 @@ const dashboardsProps = {
 
 const databaseCandidatesProps = {
   query: (state: any, { databases = [] }: { databases: Database[] }) => {
-    const [sampleDatabases, userDatabases] = _.partition(
-      databases,
-      d => d.is_sample,
+    const sampleDatabase = databases.find(
+      d => d.is_sample && isSyncCompleted(d),
+    );
+    const userDatabase = databases.find(
+      d => !d.is_sample && isSyncCompleted(d),
     );
 
-    if (userDatabases.length) {
-      return { id: userDatabases[0].id };
-    } else if (sampleDatabases.length) {
-      return { id: sampleDatabases[0].id };
+    if (userDatabase) {
+      return { id: userDatabase.id };
+    } else if (sampleDatabase) {
+      return { id: sampleDatabase.id };
     }
   },
   loadingAndErrorWrapper: false,
