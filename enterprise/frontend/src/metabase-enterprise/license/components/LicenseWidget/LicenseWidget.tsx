@@ -10,6 +10,9 @@ import {
   LicenseInput,
   LicenseInputContainer,
 } from "./LicenseWidget.styled";
+
+const TOKEN_LENGTH = 64;
+
 export interface LicenseWidgetProps {
   token?: string;
   description: React.ReactNode;
@@ -33,7 +36,7 @@ export const LicenseWidget = ({
     onUpdate?.(value);
   };
 
-  const isDisabled = value.length === 0 || loading;
+  const isDisabled = value.length !== TOKEN_LENGTH || loading;
 
   return (
     <>
@@ -51,8 +54,9 @@ export const LicenseWidget = ({
         />
         {onUpdate && (
           <Button
-            data-testid="activate-button"
+            primary={!isDisabled}
             disabled={isDisabled}
+            data-testid="activate-button"
             className="px2"
             onClick={handleActivate}
           >

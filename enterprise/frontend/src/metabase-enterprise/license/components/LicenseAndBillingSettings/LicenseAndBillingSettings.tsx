@@ -45,7 +45,7 @@ interface LicenseAndBillingSettingsProps {
 const LicenseAndBillingSettings = ({
   showLicenseAcceptedToast,
 }: LicenseAndBillingSettingsProps) => {
-  const { isLoading, error, status, updateToken } = useLicense(
+  const { isLoading, error, status, updateToken, isUpdating } = useLicense(
     showLicenseAcceptedToast,
   );
 
@@ -98,7 +98,7 @@ const LicenseAndBillingSettings = ({
       )}
 
       <LicenseWidget
-        loading={isLoading}
+        loading={isUpdating}
         description={getDescription(status)}
         error={error}
         token={MetabaseSettings.token()}

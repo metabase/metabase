@@ -12,6 +12,7 @@ export type LicenseStatus = "unlicensed" | "active" | "expired";
 
 export const useLicense = (onActivated: () => void) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [status, setStatus] = useState<LicenseStatus>();
   const [error, setError] = useState<string>();
 
@@ -25,7 +26,7 @@ export const useLicense = (onActivated: () => void) => {
   const updateToken = useCallback(async (license: string) => {
     try {
       setError(undefined);
-      setIsLoading(true);
+      setIsUpdating(true);
       await SettingsApi.put({
         key: "premium-embedding-token",
         value: license,
@@ -37,7 +38,7 @@ export const useLicense = (onActivated: () => void) => {
     } catch {
       setError(INVALID_TOKEN_ERROR);
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   }, []);
 
@@ -61,6 +62,7 @@ export const useLicense = (onActivated: () => void) => {
   }, []);
 
   return {
+    isUpdating,
     error,
     status,
     isLoading,
