@@ -7,11 +7,10 @@
   ### Core concepts
 
   Permissions are granted to individual [[metabase.models.permissions-group]]s, and Users are members of one or more
-  Permissions Groups. Permissions Groups are like 'roles' in other permissions systems. There are a few 'magic'
+  Permissions Groups. Permissions Groups are like 'roles' in other permissions systems. There are a couple of 'magic'
   Permissions Groups: the [[metabase.models.permissions-group/all-users]] Group, of which every User is a member and
-  cannot be removed; the [[metabase.models.permissions-group/admin]] Group, of which every superuser (i.e., every User
-  with `is_superuser`) is a member; and the [[metabase.models.permissions-group/metabot]] Group, which defines
-  permissions for the MetaBot.
+  cannot be removed; and the [[metabase.models.permissions-group/admin]] Group, of which every superuser (i.e., every
+  User with `is_superuser`) is a member.
 
   The permissions needed to perform an action are represented as slash-delimited path strings, for example
   `/db/1/schema/PUBLIC/`. Each slash represents a different part of the permissions path, and each permissions path
@@ -30,7 +29,7 @@
   The union of all permissions the current User's gets from all groups of which they are a member are automatically
   bound to [[metabase.api.common/*current-user-permissions-set*]] by
   [[metabase.server.middleware.session/bind-current-user]] for every REST API request, and in other places when
-  queries are ran in a non-API thread (e.g. for MetaBot or scheduled Dashboard Subscriptions).
+  queries are ran in a non-API thread (e.g. for scheduled Dashboard Subscriptions).
 
   ### Different types of permissions
 
@@ -313,22 +312,12 @@
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400, :path object}))))
 
-(defn- assert-valid-metabot-permissions
-  "MetaBot permissions can only be created for Collections, since MetaBot can only interact with objects that are always
-  in Collections (such as Cards)."
-  [{:keys [object group_id]}]
-  (when (and (= group_id (:id (group/metabot)))
-             (not (str/starts-with? object "/collection/")))
-    (throw (ex-info (tru "MetaBot can only have Collection permissions.")
-             {:status-code 400}))))
-
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
    path and it's not for the admin group)."
   [permissions]
   (doseq [f [assert-not-admin-group
-             assert-valid-object
-             assert-valid-metabot-permissions]]
+             assert-valid-object]]
     (f permissions)))
 
 
@@ -612,12 +601,10 @@
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
   (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
-                      {:where [:and
-                               [:not= :group_id (:id (group/metabot))]
-                               [:or
-                                [:= :object (hx/literal "/")]
-                                [:like :object (hx/literal "/db/%")]
-                                [:like :object (hx/literal "/block/db/%")]]]})
+                      {:where [:or
+                               [:= :object (hx/literal "/")]
+                               [:like :object (hx/literal "/db/%")]
+                               [:like :object (hx/literal "/block/db/%")]]})
         db-ids      (delay (db/select-ids 'Database))]
     (let [group-id->paths (reduce
                            (fn [m {:keys [group-id path]}]

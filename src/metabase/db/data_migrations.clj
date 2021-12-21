@@ -106,12 +106,10 @@
         :group_id (:id (perm-group/admin))
         :object   "/"))))
 
-;; add existing databases to default permissions groups. default and metabot groups have entries for each individual
-;; DB
+;; add existing databases to default permissions groups. default groups have entries for each individual DB
 (defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
   (let [db-ids (db/select-ids Database)]
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]
+    (doseq [{group-id :id} [(perm-group/all-users)]
             database-id    db-ids]
       (u/ignore-exceptions
         (db/insert! Permissions

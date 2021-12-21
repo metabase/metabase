@@ -2,10 +2,9 @@
   "A `PermissionsGroup` is a group (or role) that can be assigned certain permissions. Users can be members of one or
   more of these groups.
 
-  A few 'magic' groups exist: [[all-users]], which predicably contains All Users; [[admin]], which contains all
-  superusers, and [[metabot]], which is used to set permissions for the MetaBot. These groups are 'magic' in the sense
-  that you cannot add users to them yourself, nor can you delete them; they are created automatically. You can,
-  however, set permissions for them.
+  A few 'magic' groups exist: [[all-users]], which predictably contains All Users, and [[admin]], which contains all
+  superusers. These groups are 'magic' in the sense that you cannot add users to them yourself, nor can you delete
+  them; they are created automatically. You can, however, set permissions for them.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require [clojure.string :as str]
@@ -56,16 +55,6 @@
   "Fetch the `Administators` permissions group, creating it if needed."
   (get-or-create-magic-group! admin-group-name))
 
-(def ^{:const true
-       :doc   "The name of the \"MetaBot\" magic group."
-       :added "0.41.0"} metabot-group-name
-  "MetaBot")
-
-(def ^{:arglists '([])} ^metabase.models.permissions_group.PermissionsGroupInstance
-  metabot
-  "Fetch the `MetaBot` permissions group, creating it if needed."
-  (get-or-create-magic-group! metabot-group-name))
-
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
@@ -86,8 +75,7 @@
   [{id :id}]
   {:pre [(integer? id)]}
   (doseq [magic-group [(all-users)
-                       (admin)
-                       (metabot)]]
+                       (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                {:status-code 400})))))

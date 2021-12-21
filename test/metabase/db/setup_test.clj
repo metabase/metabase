@@ -18,7 +18,7 @@
     (letfn [(test* [spec]
               (is (= :done
                      (mdb.setup/setup-db! :h2 spec true)))
-              (is (= ["Administrators" "All Users" "MetaBot"]
+              (is (= ["Administrators" "All Users"]
                      (mapv :name (jdbc/query spec "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
       (let [subname (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))]
         (testing "from a jdbc-spec map"

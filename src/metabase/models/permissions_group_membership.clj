@@ -7,13 +7,6 @@
 
 (models/defmodel PermissionsGroupMembership :permissions_group_membership)
 
-(defn- check-not-metabot-group
-  "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
-  [group-id]
-  (when (= group-id (:id (group/metabot)))
-    (throw (ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
-             {:status-code 400}))))
-
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
   *allow-changing-all-users-group-members*
@@ -35,7 +28,6 @@
              {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]
-  (check-not-metabot-group group_id)
   (check-not-all-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (group/admin)))
@@ -47,7 +39,6 @@
 
 (defn- pre-insert [{:keys [group_id], :as membership}]
   (u/prog1 membership
-    (check-not-metabot-group group_id)
     (check-not-all-users-group group_id)))
 
 (defn- post-insert [{:keys [group_id user_id], :as membership}]

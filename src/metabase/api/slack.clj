@@ -11,12 +11,11 @@
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
-  [:as {{slack-token :slack-token, metabot-enabled :metabot-enabled, :as slack-settings} :body}]
-  {slack-token     (s/maybe su/NonBlankString)
-   metabot-enabled s/Bool}
+  [:as {{slack-token :slack-token, :as slack-settings} :body}]
+  {slack-token     (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (if-not slack-token
-    (setting/set-many! {:slack-token nil, :metabot-enabled false})
+    (setting/set-many! {:slack-token nil})
     (try
       (when-not config/is-test?
         (when-not (slack/valid-token? slack-token)

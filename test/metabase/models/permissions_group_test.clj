@@ -23,8 +23,7 @@
 (deftest magic-groups-test
   (testing "check that we can get the magic permissions groups through the helper functions\n"
     (doseq [[group-name group] {"All Users"      (perm-group/all-users)
-                                "Administrators" (perm-group/admin)
-                                "MetaBot"        (perm-group/metabot)}]
+                                "Administrators" (perm-group/admin)}]
       (testing group-name
         (is (instance? PermissionsGroupInstance group))
         (is (= group-name
@@ -51,11 +50,7 @@
         (testing "Should not be added to Admin group"
           (is (not (db/exists? PermissionsGroupMembership
                      :user_id  user-id
-                     :group_id (u/the-id (perm-group/admin))))))
-        (testing "Should not be added to MetaBot group"
-          (is (not (db/exists? PermissionsGroupMembership
-                     :user_id  user-id
-                     :group_id (u/the-id (perm-group/metabot))))))))
+                     :group_id (u/the-id (perm-group/admin))))))))
 
     (testing "superuser"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
@@ -66,11 +61,7 @@
         (testing "Should be added to Admin group"
           (is (db/exists? PermissionsGroupMembership
                 :user_id  user-id
-                :group_id (u/the-id (perm-group/admin)))))
-        (testing "Should not be added to MetaBot group"
-          (is (not (db/exists? PermissionsGroupMembership
-                     :user_id  user-id
-                     :group_id (u/the-id (perm-group/metabot))))))))))
+                :group_id (u/the-id (perm-group/admin)))))))))
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
@@ -86,17 +77,7 @@
       (doseq [group [(perm-group/all-users)
                      (perm-group/admin)]]
         (testing (format "Group = %s" (pr-str (:name group)))
-          (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id))))
-      (testing "(Except for the MetaBot, which doesn't get data permissions)"
-        (is (not (group-has-full-access? (u/the-id (perm-group/metabot)) (perms/data-perms-path database-id))))))))
-
-(deftest no-data-perms-for-metabot-test
-  (testing "Attempting to create a data permissions entry for the MetaBot should throw an Exception"
-    (mt/with-temp Database [{database-id :id}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"MetaBot can only have Collection permissions"
-           (db/insert! Permissions :group_id (u/the-id (perm-group/metabot)), :object (perms/data-perms-path database-id)))))))
+          (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id)))))))
 
 (deftest add-remove-from-admin-group-test
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
