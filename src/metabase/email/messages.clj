@@ -130,18 +130,19 @@
 
 (defn send-new-user-email!
   "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
-  [invited invitor join-url]
+  [invited invitor join-url sent-from-setup?]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
-                                                 {:emailType    "new_user_invite"
-                                                  :invitedName  (:first_name invited)
-                                                  :invitorName  (:first_name invitor)
-                                                  :invitorEmail (:email invitor)
-                                                  :company      company
-                                                  :joinUrl      join-url
-                                                  :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                                                  :logoHeader   true}))]
+                                                 {:emailType     "new_user_invite"
+                                                  :invitedName   (:first_name invited)
+                                                  :invitorName   (:first_name invitor)
+                                                  :invitorEmail  (:email invitor)
+                                                  :company       company
+                                                  :joinUrl       join-url
+                                                  :today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+                                                  :logoHeader    true
+                                                  :sentFromSetup sent-from-setup?}))]
     (email/send-message!
      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
      :recipients   [(:email invited)]
