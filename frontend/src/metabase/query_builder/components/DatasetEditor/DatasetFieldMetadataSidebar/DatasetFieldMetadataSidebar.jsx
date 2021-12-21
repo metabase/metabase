@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -14,8 +20,10 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { keyForColumn } from "metabase/lib/dataset";
+import { isSameField } from "metabase/lib/query/field_ref";
 
 import RootForm from "metabase/containers/Form";
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import ColumnSettings, {
@@ -25,9 +33,11 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 
+import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker from "./SemanticTypePicker";
 import {
+  AnimatableContent,
   MainFormContainer,
   SecondaryFormContainer,
   FormTabsContainer,
@@ -38,7 +48,9 @@ import {
 const propTypes = {
   dataset: PropTypes.object.isRequired,
   field: PropTypes.instanceOf(Field),
+  isLastField: PropTypes.bool.isRequired,
   IDFields: PropTypes.array.isRequired,
+  handleFirstFieldFocus: PropTypes.func.isRequired,
   updateCardVisualizationSettings: PropTypes.func.isRequired,
 };
 
@@ -61,31 +73,6 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
-function getFieldSemanticTypeSections() {
-  const types = [
-    ...field_semantic_types,
-    {
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    },
-  ];
-
-  const groupedBySection = _.groupBy(types, "section");
-
-  return Object.entries(groupedBySection).map(entry => {
-    const [name, items] = entry;
-    return {
-      name,
-      items: items.map(item => ({
-        value: item.id,
-        name: item.name,
-        description: item.description,
-      })),
-    };
-  });
-}
-
 function getFormFields({ dataset, IDFields }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
@@ -102,7 +89,14 @@ function getFormFields({ dataset, IDFields }) {
     return (
       <SemanticTypePicker
         {...formFieldProps}
-        sections={getFieldSemanticTypeSections()}
+        options={[
+          ...field_semantic_types,
+          {
+            id: null,
+            name: t`No special type`,
+            section: t`Other`,
+          },
+        ]}
         IDFields={IDFields}
       />
     );
@@ -164,9 +158,27 @@ const TAB_OPTIONS = [
 function DatasetFieldMetadataSidebar({
   dataset,
   field,
+  isLastField,
   IDFields,
+  handleFirstFieldFocus,
   updateCardVisualizationSettings,
 }) {
+  const displayNameInputRef = useRef();
+  const [shouldAnimateFieldChange, setShouldAnimateFieldChange] = useState(
+    false,
+  );
+  const previousField = usePrevious(field);
+
+  useEffect(() => {
+    if (field && !isSameField(field?.field_ref, previousField?.field_ref)) {
+      setShouldAnimateFieldChange(true);
+      // setTimeout is required as form fields are rerendered pretty frequently
+      setTimeout(() => {
+        displayNameInputRef.current.select();
+      });
+    }
+  }, [field, previousField]);
+
   const initialValues = useMemo(() => {
     const values = {
       display_name: field?.display_name,
@@ -242,57 +254,93 @@ function DatasetFieldMetadataSidebar({
     }
   }, [tab, hasColumnFormattingOptions]);
 
+  const onLastEssentialFieldKeyDown = useCallback(
+    e => {
+      const isNextFieldAction = !e.shiftKey && e.key === "Tab";
+      if (isNextFieldAction && isLastField) {
+        e.preventDefault();
+        handleFirstFieldFocus();
+      }
+    },
+    [isLastField, handleFirstFieldFocus],
+  );
+
+  const onFieldChangeAnimationEnd = useCallback(() => {
+    setShouldAnimateFieldChange(false);
+  }, []);
+
   return (
     <SidebarContent>
-      {field && (
-        <RootForm
-          fields={formFields}
-          initialValues={initialValues}
-          overwriteOnInitialValuesChange
-        >
-          {({ Form, FormField }) => (
-            <Form>
-              <MainFormContainer>
-                <FormField name="display_name" />
-                <FormField name="description" />
-                {dataset.isNative() && <FormField name="id" />}
-                <FormField name="semantic_type" />
-              </MainFormContainer>
-              {hasColumnFormattingOptions && (
-                <FormTabsContainer>
-                  <Radio
-                    value={tab}
-                    options={TAB_OPTIONS}
-                    onChange={setTab}
-                    variant="underlined"
-                    py={1}
+      <AnimatableContent
+        animated={shouldAnimateFieldChange}
+        onAnimationEnd={onFieldChangeAnimationEnd}
+      >
+        {field && (
+          <RootForm
+            fields={formFields}
+            initialValues={initialValues}
+            overwriteOnInitialValuesChange
+          >
+            {({ Form, FormField }) => (
+              <Form>
+                <MainFormContainer>
+                  <FormField
+                    name="display_name"
+                    ref={displayNameInputRef}
+                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   />
-                </FormTabsContainer>
-              )}
-              <Divider />
-              <SecondaryFormContainer>
-                {tab === TAB.SETTINGS ? (
-                  <React.Fragment>
-                    <FormField name="visibility_type" />
-                    <ViewAsFieldContainer>
-                      <ColumnSettings
-                        {...columnSettingsProps}
-                        allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
-                      />
-                    </ViewAsFieldContainer>
-                    <FormField name="has_field_values" />
-                  </React.Fragment>
-                ) : (
-                  <ColumnSettings
-                    {...columnSettingsProps}
-                    denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                  <FormField
+                    name="description"
+                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   />
+                  {dataset.isNative() && (
+                    <FormField
+                      name="id"
+                      tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    />
+                  )}
+                  <FormField
+                    name="semantic_type"
+                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                    onKeyDown={onLastEssentialFieldKeyDown}
+                  />
+                </MainFormContainer>
+                {hasColumnFormattingOptions && (
+                  <FormTabsContainer>
+                    <Radio
+                      value={tab}
+                      options={TAB_OPTIONS}
+                      onChange={setTab}
+                      variant="underlined"
+                      py={1}
+                    />
+                  </FormTabsContainer>
                 )}
-              </SecondaryFormContainer>
-            </Form>
-          )}
-        </RootForm>
-      )}
+                <Divider />
+                <SecondaryFormContainer>
+                  {tab === TAB.SETTINGS ? (
+                    <React.Fragment>
+                      <FormField name="visibility_type" />
+                      <ViewAsFieldContainer>
+                        <ColumnSettings
+                          {...columnSettingsProps}
+                          allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
+                        />
+                      </ViewAsFieldContainer>
+                      <FormField name="has_field_values" />
+                    </React.Fragment>
+                  ) : (
+                    <ColumnSettings
+                      {...columnSettingsProps}
+                      denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                    />
+                  )}
+                </SecondaryFormContainer>
+              </Form>
+            )}
+          </RootForm>
+        )}
+      </AnimatableContent>
     </SidebarContent>
   );
 }
