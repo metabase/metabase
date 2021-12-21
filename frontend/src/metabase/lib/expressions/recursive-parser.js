@@ -1,5 +1,6 @@
-import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
+import { t } from "ttag";
 
+import { tokenize, TOKEN, OPERATOR as OP } from "./tokenizer";
 import { getMBQLName, MBQL_CLAUSES } from "./index";
 
 const COMPARISON_OPS = [
@@ -21,12 +22,12 @@ function recursiveParse(source) {
   const expectOp = nextOp => {
     const token = next();
     if (!token) {
-      throw new Error(`Unexpected end of input, expecting ${nextOp}`);
+      throw new Error(t`Unexpected end of input, expecting ${nextOp}`);
     }
     const { type, op, start, end } = token;
     if (type !== TOKEN.Operator || op !== nextOp) {
       const text = source.substring(start, end);
-      throw new Error(`Expecting ${nextOp} but got ${text} instead`);
+      throw new Error(t`Expecting ${nextOp} but got ${text} instead`);
     }
   };
 
@@ -43,7 +44,7 @@ function recursiveParse(source) {
     const terminated = matchOps([OP.CloseParenthesis]);
     expectOp(OP.CloseParenthesis);
     if (!terminated) {
-      throw new Error("Expecting a closing parenthesis");
+      throw new Error(t`Expecting a closing parenthesis`);
     }
     return expr;
   };
@@ -82,11 +83,12 @@ function recursiveParse(source) {
     }
     const token = next();
     if (!token) {
-      throw new Error("Unexpected end of input");
+      throw new Error(t`Unexpected end of input`);
     }
     const { type, start, end } = token;
     if (type === TOKEN.Operator) {
-      throw new Error("Unexpected operator");
+      const text = source.substring(start, end);
+      throw new Error(t`Unexpected operator ${text}`);
     }
     const text = source.substring(start, end);
     if (type === TOKEN.Identifier) {
