@@ -1,10 +1,10 @@
-## Exploring in Metabase
+# Exploring in Metabase
 
-#### See what your teammates have made
+## See what your teammates have made
 
-As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page, or in collections you have access to.
+As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page, or in [collections][collections] you have access to.
 
-#### Browse your data
+## Browse your data
 
 Alternatively, you can dive right in to exploring the data in Metabase by clicking on one of the databases at the bottom of the home page or clicking the **Browse data** button in the top nav bar, and then selecting a database and clicking on one of its tables to see it. You can also click on the bolt icon on any table to see an automatic exploration of its data. Give it a try!
 
@@ -12,7 +12,7 @@ Alternatively, you can dive right in to exploring the data in Metabase by clicki
 
 To learn more, see [Exploring data with Metabase's data browser](https://www.metabase.com/learn/basics/questions/data-browser.html).
 
-#### Exploring collections
+## Exploring collections
 
 [Collections][collections] in Metabase are a lot like folders. They're where all your team's dashboards and charts are kept. To explore a collection, just click on one in the **Our analytics** section of the home page, or click on `Browse all items` to see everything.
 
@@ -22,7 +22,11 @@ If your teammates are cool, they'll have pinned some important dashboards or que
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
 
-#### Exploring dashboards
+## Datasets
+
+[Datasets][datasets] are 
+
+## Exploring dashboards
 
 [Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer back to regularly.
 
@@ -47,7 +51,7 @@ Lastly, clicking on the ID of an item in a table gives you the option to go to a
 
 When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default action menu, you can add a [custom destination](https://www.metabase.com/learn/building-analytics/dasboards/custom-destinations.html) or [update a filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html). Check out [interactive dashboards](interactive-dashboards.md). to learn more.
 
-#### Exploring saved questions
+## Exploring saved questions
 
 In Metabase parlance, every chart on a dashboard is called a "question." Clicking on the title of a question on a dashboard will take you to a detail view of that question. You'll also end up at this detail view if you use one of the actions mentioned above.
 
@@ -57,7 +61,7 @@ When you're looking at the detail view of a question, you can use all the same a
 
 One of our personal favorite ways to explore is with the **Distribution** option. This will show you how many rows there are in a given table, grouped by the column you clicked on. So if you have a Users table, if you click on an Age column and select Distribution, you'll see a bar chart with the count of users you have in each age bracket.
 
-### Search
+## Search
 
 ![Search results](./images/basic-exploration/search-results.gif)
 
@@ -69,9 +73,10 @@ Searches take into account items’ titles, descriptions, and other metadata —
 
 ---
 
-## Next: Asking custom questions
+## Next: Asking questions
 
 So what do you do if you can't find an existing dashboard or question that's exactly what you're looking for? Let's learn about [asking our own new questions](04-asking-questions.md).
 
 [collections]: collections.md
 [dashboards]: 07-dashboards.md
+[datasets]: datasets.md

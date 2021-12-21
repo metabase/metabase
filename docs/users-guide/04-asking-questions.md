@@ -2,25 +2,29 @@
 
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the Ask a Question button at the top of the screen.
 
-### Ways to start a new question
+## Ways to start a new question
 
 ![The new question menu](./images/new-question.png)
 
 When you click the Ask a Question button, you'll see that there are three ways to ask a specific question in Metabase:
 
-1. The simple question mode, which lets you filter, summarize, and visualize data.
+1. The simple question mode (covered on this page) lets you filter, summarize, and visualize data.
 2. [The custom question mode](custom-questions.md), which gives you a powerful notebook-style editor to create more complex questions that require joins, multiple stages of filtering and aggregating, or custom columns.
 3. [The SQL/native query editor](writing-sql.md).
 
-This page will cover the simple mode.
-
 ## Asking a simple question
 
-After you select the Simple Question option, you'll need to pick some data that you have a question about. Just pick one of the databases that's connected to Metabase, and you'll see a list of all the tables inside of it. Pick the one that you have a question about; it could be a Users table, or maybe it's something like Events, Orders, or Downloads.
+You'll need to pick some data that you have a question about. 
+
+You can start a question from:
+
+- [A dataset][datasets].
+- **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
+- A **Saved question**. You can use the results of any question as the starting point for a new question. So feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from. If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [dataset] to let others know it's a good starting place.
 
 To ask a question about a table of data, we usually do some **filtering** and/or **summarizing**.
 
-### Filtering
+## Filtering results
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Steinbeck," or pictures of people wearing olive-colored pants reading John Steinbeck.
 
@@ -38,21 +42,21 @@ One important thing to understand when filtering on a date column is the differe
 
 **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you for example how many users visited your website in the last 7 days.
 
-#### Filtering by a segment
+### Filtering by a segment
 
-If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called "segments," and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called **Segments**, and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 Once you're happy with your filter, click Done, and your data will be updated with your filter applied. If you want to edit your filter, just click the little purple token at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
 ![An active filter](./images/notebook/filter-badge.png)
 
-### Summarizing
+## Summarizing results
 
 When we have a question like "how many people downloaded our app each day this week?" or "what's the average age of customers who visit each of our stores on the weekend?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more _numbers_ we care about (called a "metric" in data-speak), and how we want to see that number _grouped_ or _broken out_. So in our first example:
 
-- the metric is "how many people downloaded our app"
-- we want that metric to be grouped by "each day"
-- and "this week" is a filter
+- The metric is "how many people downloaded our app."
+- We want that metric to be grouped by "each day."
+- And "this week" is a filter.
 
 There are two very common ways you'll tend to summarize your data:
 
@@ -63,13 +67,7 @@ And a lot of the time, you'll then **group** that number by:
 
 - Time
 - Place
-- Some other category like operating system, gender, state, etc.
-
-To do this in Metabase, click the Summarize button in the top-right of the screen, and the summary sidebar will open up.
-
-![The Summarize sidebar](./images/notebook/summarize-sidebar.png)
-
-#### Picking metrics
+- Category
 
 The sidebar has two main parts: the top is where you pick the number ("metric") you want to see, and the part below it is where you pick how to group that number (or how to "break it out").
 
@@ -87,7 +85,7 @@ By default the "count of rows" metric will be selected, since it's super common,
 
 If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
 
-#### Picking a grouping for your metrics
+### Grouping your metrics
 
 Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this:
 
@@ -111,13 +109,6 @@ Click on a record's ID number (or primary key) to see more information about a g
 
 ![Record details](./images/notebook/record-details.png)
 
-## Starting new explorations from saved questions
-
-Each time you start modifying a saved question, Metabase will create a new question for you. It'll give the new question a placeholder title, and let you know which question you started from.
-
-![Starting from a saved question](./images/notebook/started-from-saved-question.png)
-
-So feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
 ## Editing and sharing questions
 
@@ -127,4 +118,6 @@ Check out [sharing answers](06-sharing-answers.md).
 
 ## Next: creating custom questions
 
-If you have a question that's a bit more involved or specific, you can use the powerful notebook editor to craft a [custom question](custom-questions.md).
+If you have a question that's a bit more involved or specific, you can use the query builder's notebook editor to craft a [custom question](custom-questions.md).
+
+[datasets]: datasets.md
