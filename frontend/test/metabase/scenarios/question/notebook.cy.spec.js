@@ -194,7 +194,8 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing first 2000 rows");
   });
 
-  it("should show an info popover for dimensions listened by the custom expression editor", () => {
+  // flaky test (#19454)
+  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
