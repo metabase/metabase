@@ -222,8 +222,8 @@
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
 
-(deftest all-test
-  (testing "setting/all"
+(deftest admin-writable-settings-test
+  (testing `setting/admin-writable-settings
     (test-setting-1 nil)
     (test-setting-2 "TOUCANS")
     (is (= {:key            :test-setting-2
@@ -235,7 +235,7 @@
            (some (fn [setting]
                    (when (re-find #"^test-setting-2$" (name (:key setting)))
                      setting))
-                 (setting/all))))
+                 (setting/admin-writable-settings))))
 
     (testing "with a custom getter"
       (test-setting-1 nil)
@@ -249,7 +249,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/all :getter (comp count setting/get-string))))))
+                   (setting/admin-writable-settings :getter (comp count setting/get-string))))))
 
     ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
     (testing "test settings"
@@ -267,7 +267,7 @@
                :env_name       "MB_TEST_SETTING_2"
                :description    "Test setting - this only shows up in dev (2)"
                :default        "[Default Value]"}]
-             (for [setting (setting/all)
+             (for [setting (setting/admin-writable-settings)
                    :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                setting))))))
 
@@ -281,7 +281,7 @@
                 (some (fn [{:keys [key description]}]
                         (when (= :test-i18n-setting key)
                           description))
-                      (setting/all)))]
+                      (setting/admin-writable-settings)))]
         (is (= "Test setting - with i18n"
                (description)))
         (mt/with-user-locale "zz"

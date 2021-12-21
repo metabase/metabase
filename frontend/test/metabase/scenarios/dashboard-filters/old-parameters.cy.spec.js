@@ -1,86 +1,204 @@
-import { popover, restore, mockSessionProperty } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
-describe("scenarios > dashboard > parameters", () => {
+const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+
+// the dashboard parameters used in these tests ('category' and 'location/...') are no longer accessible
+// via the UI but should still work as expected
+
+describe("scenarios > dashboard > OLD parameters", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", false);
     restore();
     cy.signInAsAdmin();
   });
 
-  it("should hide field operator parameters/show old options", () => {
-    cy.visit("/dashboard/1");
+  describe("question connected to a 'category' parameter", () => {
+    beforeEach(() => {
+      const filter = {
+        id: "c2967a17",
+        name: "Category",
+        slug: "category",
+        type: "category",
+      };
 
-    // Add a filter
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+      cy.createQuestion({
+        name: "Products table",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      }).then(({ body: { id: card_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+            cardId: card_id,
+          }).then(({ body: { id } }) => {
+            cy.addFilterToDashboard({ filter, dashboard_id });
+            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+              cards: [
+                {
+                  id,
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      card_id,
+                      parameter_id: filter.id,
+                      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                    },
+                  ],
+                },
+              ],
+            });
 
-    cy.findByText("Number").should("not.exist");
-    cy.findByText("Text or Category").should("not.exist");
-
-    cy.findByText("Location").click();
-    cy.findByText("Contains").should("not.exist");
-    cy.findByText("City").should("exist");
-
-    cy.icon("filter").click();
-  });
-
-  it("should filter by city", () => {
-    cy.visit("/dashboard/1");
-
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-
-    cy.findByText("Location").click();
-    cy.findByText("City").click();
-
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("City").click();
+            cy.visit(`/dashboard/${dashboard_id}`);
+          });
+        });
+      });
     });
 
-    cy.findByText("No default").click();
-    cy.findByPlaceholderText("Search by City")
-      .click()
-      .type("B");
-    cy.findByText("Baker").click();
-    cy.findByText("Add filter").click();
-    cy.get(".Button--primary")
-      .contains("Done")
-      .click();
+    it("should work", () => {
+      cy.findAllByText("Doohickey");
 
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.findByText("Baker");
+      cy.contains("Category").click();
+      popover().within(() => {
+        cy.get("input").type("Gadget{enter}");
+        cy.findByText("Add filter").click();
+      });
 
-    cy.findAllByTestId("table-row").should("have.length", 8);
+      // verify that the filter is applied
+      cy.findByText("Doohickey").should("not.exist");
+    });
   });
 
-  it("should filter by category", () => {
-    cy.visit("/dashboard/1");
+  describe("question connected to a 'location/state' parameter", () => {
+    beforeEach(() => {
+      const filter = {
+        id: "c2967a17",
+        name: "City",
+        slug: "city",
+        type: "location/city",
+      };
 
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+      cy.createQuestion({
+        name: "People table",
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      }).then(({ body: { id: card_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+            cardId: card_id,
+          }).then(({ body: { id } }) => {
+            cy.addFilterToDashboard({ filter, dashboard_id });
+            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+              cards: [
+                {
+                  id,
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      card_id,
+                      parameter_id: filter.id,
+                      target: ["dimension", ["field", PEOPLE.CITY, null]],
+                    },
+                  ],
+                },
+              ],
+            });
 
-    cy.findByText("Other Categories").click();
-
-    cy.findByText("Select…").click();
-    popover().within(() => {
-      cy.findByText("Name").click();
+            cy.visit(`/dashboard/${dashboard_id}`);
+          });
+        });
+      });
     });
 
-    cy.contains("Done").click();
+    it("should work", () => {
+      cy.contains("City").click();
+      popover().within(() => {
+        cy.get("input").type("Flagstaff{enter}");
+        cy.findByText("Add filter").click();
+      });
 
-    cy.findByText("Save").click();
-    cy.findByText("You're editing this dashboard.").should("not.exist");
+      cy.get(".DashCard tbody tr").should("have.length", 1);
+    });
+  });
 
-    cy.findByText("Category").click();
-    cy.findByPlaceholderText("Search by Name")
-      .click()
-      .type("bb");
-    cy.findByText("Abbie Parisian").click();
-    cy.findByText("Add filter").click();
+  describe("native question field filter connected to 'category' parameter", () => {
+    beforeEach(() => {
+      const filter = {
+        id: "c2967a17",
+        name: "Category",
+        slug: "category",
+        type: "category",
+      };
 
-    cy.contains("of 18");
+      cy.createNativeQuestion({
+        name: "Products SQL",
+        native: {
+          query: "select * from products where {{category}}",
+          "template-tags": {
+            category: {
+              "display-name": "Field Filter",
+              id: "abc123",
+              name: "category",
+              type: "dimension",
+              "widget-type": "category",
+              dimension: ["field", PRODUCTS.CATEGORY, null],
+              default: ["Doohickey"],
+            },
+          },
+        },
+        display: "table",
+      }).then(({ body: { id: card_id } }) => {
+        cy.createDashboard().then(({ body: { id: dashboard_id } }) => {
+          cy.request("POST", `/api/dashboard/${dashboard_id}/cards`, {
+            cardId: card_id,
+          }).then(({ body: { id } }) => {
+            cy.addFilterToDashboard({ filter, dashboard_id });
+            cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+              cards: [
+                {
+                  id,
+                  card_id,
+                  row: 0,
+                  col: 0,
+                  sizeX: 8,
+                  sizeY: 6,
+                  parameter_mappings: [
+                    {
+                      card_id,
+                      parameter_id: "c2967a17",
+                      target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                    },
+                  ],
+                },
+              ],
+            });
+
+            cy.visit(`/dashboard/${dashboard_id}`);
+          });
+        });
+      });
+    });
+
+    it("should work", () => {
+      cy.findAllByText("Doohickey");
+
+      cy.contains("Category").click();
+      popover().within(() => {
+        cy.get("input").type("Gadget{enter}");
+        cy.findByText("Add filter").click();
+      });
+
+      // verify that the filter is applied
+      cy.findByText("Doohickey").should("not.exist");
+    });
   });
 });

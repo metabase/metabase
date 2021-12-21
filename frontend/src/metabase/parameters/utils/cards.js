@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 
-import { areFieldFilterOperatorsEnabled } from "./feature-flag";
 import {
   getParameterTargetField,
   getTemplateTagFromTarget,
@@ -18,9 +17,9 @@ export function getTemplateTagParameters(tags) {
     const { type } = tag;
     if (type === "date") {
       return "date/single";
-    } else if (areFieldFilterOperatorsEnabled() && type === "string") {
+    } else if (type === "string") {
       return "string/=";
-    } else if (areFieldFilterOperatorsEnabled() && type === "number") {
+    } else if (type === "number") {
       return "number/=";
     } else {
       return "category";

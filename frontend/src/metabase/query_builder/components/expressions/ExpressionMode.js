@@ -22,7 +22,7 @@ class ExpressionHighlight extends window.ace.acequire(
         },
         {
           token: "variable",
-          regex: "\\[.+\\]",
+          regex: "\\[.*?\\]",
         },
         {
           token: "paren.lparen",

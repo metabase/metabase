@@ -1,31 +1,45 @@
-// combine compile/suggest/syntax so we only need to parse once
-export function processSource(options) {
-  // Lazily load all these parser-related stuff, because parser construction is expensive
-  // https://github.com/metabase/metabase/issues/13472
-  const parse = require("./parser").parse;
-  const compile = require("./compile").compile;
+import { parse } from "metabase/lib/expressions/recursive-parser";
+import { resolve } from "metabase/lib/expressions/resolver";
 
-  const { source } = options;
+import {
+  parseDimension,
+  parseMetric,
+  parseSegment,
+} from "metabase/lib/expressions/";
+
+export function processSource(options) {
+  const resolveMBQLField = (kind, name) => {
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        throw new Error(`Unknown Metric: ${name}`);
+      }
+      return ["metric", metric.id];
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new Error(`Unknown Segment: ${name}`);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${name}`);
+      }
+      return dimension.mbql();
+    }
+  };
+
+  const { source, startRule } = options;
 
   let expression;
   let compileError;
-
-  // PARSE
-  const { cst, tokenVector, parserErrors } = parse({
-    ...options,
-    recover: true,
-  });
-
-  // COMPILE
-  if (parserErrors.length > 0) {
-    compileError = parserErrors;
-  } else {
-    try {
-      expression = compile({ cst, tokenVector, ...options });
-    } catch (e) {
-      console.warn("compile error", e);
-      compileError = e;
-    }
+  try {
+    expression = resolve(parse(source), startRule, resolveMBQLField);
+  } catch (e) {
+    console.warn("compile error", e);
+    compileError = e;
   }
 
   return {

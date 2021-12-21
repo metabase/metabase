@@ -28,7 +28,8 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.util.Base64))
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
@@ -308,33 +309,47 @@
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
-        (let [details      (->> (#'oracle.tx/connection-details)
-                                (driver.u/db-details-client->server :oracle))
+        (let [ssl-details  (#'oracle.tx/connection-details)
               orig-user-id api/*current-user-id*]
           (testing "Oracle can-connect? with SSL connection"
-            (is (driver/can-connect? :oracle details)))
+            (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
             (binding [metabase.sync.util/*log-exceptions-and-continue?* false
                       api/*current-user-id* (mt/user->id :crowberto)]
-              (mt/with-temp Database [database {:engine :oracle,
-                                                :name (format "SSL connection version of %d" (mt/id)),
-                                                :details details}]
-                (mt/with-db database
-                  (sync/sync-database! database {:scan :schema})
-                  ;; should be four tables from test-data
-                  (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
-                  (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
-                            ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
-                            ;; actually the name of the database, and not some variation on the :name specified
-                            ;; above, so that the table names resolve correctly in the generated query we can't
-                            ;; simply call this new temp database "test-data", because then it will no longer be
-                            ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
-                            ;; database, and the logic within metabase.test.data.interface/metabase-instance would
-                            ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
-                            ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                            tx/*database-name-override* "test-data"]
-                    (testing "Execute query with SSL connection"
-                      (qp-test.order-by-test/order-by-test)))))))))
+              (doseq [[details variant] [[ssl-details "SSL with Truststore Path"]
+                                         ;; in the file upload scenario, the truststore bytes are base64 encoded
+                                         ;; to the -value suffix property, and the -path suffix property is removed
+                                         [(-> (assoc
+                                               ssl-details
+                                               :ssl-truststore-value
+                                               (.encodeToString (Base64/getEncoder)
+                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               :ssl-truststore-options
+                                               "uploaded")
+                                              (dissoc :ssl-truststore-path))
+                                          "SSL with Truststore Upload"]]]
+                (testing (str " " variant)
+                  (mt/with-temp Database [database {:engine  :oracle,
+                                                    :name    (format (str variant " version of %d") (mt/id)),
+                                                    :details (->> details
+                                                                  (driver.u/db-details-client->server :oracle))}]
+                    (mt/with-db database
+                      (testing " can sync correctly"
+                        (sync/sync-database! database {:scan :schema})
+                        ;; should be four tables from test-data
+                        (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                        (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                                  ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
+                                  ;; actually the name of the database, and not some variation on the :name specified
+                                  ;; above, so that the table names resolve correctly in the generated query we can't
+                                  ;; simply call this new temp database "test-data", because then it will no longer be
+                                  ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
+                                  ;; database, and the logic within metabase.test.data.interface/metabase-instance would
+                                  ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
+                                  ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
+                                  tx/*database-name-override* "test-data"]
+                          (testing " and execute a query correctly"
+                            (qp-test.order-by-test/order-by-test))))))))))))
       (println (u/format-color 'yellow
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"

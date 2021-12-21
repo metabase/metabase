@@ -67,8 +67,7 @@
       (let [body (assoc (mt/user->credentials :rasta) :remember false)
             response (mt/client-full-response :post 200 "session" body)]
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
-  ;; disabled due to CVE-2021-44228
-  #_(testing "failure should log an error(#14317)"
+  (testing "failure should log an error(#14317)"
     (mt/with-temp User [user]
       (is (schema= [(s/one (s/eq :error)
                            "log type")
@@ -111,8 +110,7 @@
       (testing "throttling should now be triggered"
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
-      ;; disabled due to CVE-2021-44228
-      #_(testing "Error should be logged (#14317)"
+      (testing "Error should be logged (#14317)"
         (is (schema= [(s/one (s/eq :error)
                              "log type")
                       (s/one clojure.lang.ExceptionInfo
@@ -349,20 +347,20 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/properties :public)))
+      (is (= (set (keys (setting/user-readable-values-map :public)))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated))))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated)
-                         (setting/properties :admin))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated)
+                         (setting/user-readable-values-map :admin))))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test

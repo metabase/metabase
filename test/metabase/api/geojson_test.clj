@@ -1,10 +1,13 @@
 (ns metabase.api.geojson-test
-  (:require [clojure.test :refer :all]
-            [metabase.api.geojson :as geojson-api]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
+            [metabase.api.geojson :as api.geojson]
             [metabase.http-client :as client]
+            [metabase.models.setting :as setting]
             [metabase.server.middleware.security :as mw.security]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (def ^:private ^String test-geojson-url
@@ -31,7 +34,7 @@
 
 (deftest geojson-schema-test
   (is (= true
-         (boolean (s/validate @#'geojson-api/CustomGeoJSON test-custom-geojson)))))
+         (boolean (s/validate @#'api.geojson/CustomGeoJSON test-custom-geojson)))))
 
 (deftest validate-geojson-test
   (testing "It validates URLs and files appropriately"
@@ -73,7 +76,7 @@
                     "rasta@metabase.com"                       false
                     ""                                         false
                     "Tom Bombadil"                             false}
-          valid?   #'geojson-api/validate-geojson]
+          valid?   #'api.geojson/validate-geojson]
       (doseq [[url should-pass?] examples]
         (let [geojson {:deadb33f {:name        "Rivendell"
                                   :url         url
@@ -86,24 +89,24 @@
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"
     (mt/with-temporary-setting-values [custom-geojson nil]
-      (let [built-in @#'geojson-api/builtin-geojson]
+      (let [built-in @#'api.geojson/builtin-geojson]
         (testing "Make sure the built-in entries still look like what we expect so our test still makes sense."
           (is (schema= {:us_states {:name     (s/eq "United States")
                                     s/Keyword s/Any}
                         s/Keyword  s/Any}
                        built-in))
           (is (= built-in
-                 (geojson-api/custom-geojson))))
+                 (api.geojson/custom-geojson))))
         (testing "Try to change one of the built-in entries..."
-          (geojson-api/custom-geojson (assoc-in built-in [:us_states :name] "USA"))
+          (api.geojson/custom-geojson (assoc-in built-in [:us_states :name] "USA"))
           (testing "Value should not have actually changed"
             (is (= built-in
-                   (geojson-api/custom-geojson)))))))))
+                   (api.geojson/custom-geojson)))))))))
 
 (deftest update-endpoint-test
   (testing "PUT /api/setting/custom-geojson"
-    (testing "test that we can set the value of geojson-api/custom-geojson via the normal routes"
-      (is (= (merge @#'geojson-api/builtin-geojson test-custom-geojson)
+    (testing "test that we can set the value of api.geojson/custom-geojson via the normal routes"
+      (is (= (merge @#'api.geojson/builtin-geojson test-custom-geojson)
              ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
              (u/auto-retry 3
                ;; bind a temporary value so it will get set back to its old value here after the API calls are done
@@ -121,7 +124,7 @@
       (let [resource-geojson {(first (keys test-custom-geojson))
                               (assoc (first (vals test-custom-geojson))
                                      :url "c3p0.properties")}]
-        (is (= (merge @#'geojson-api/builtin-geojson resource-geojson)
+        (is (= (merge @#'api.geojson/builtin-geojson resource-geojson)
                (u/auto-retry 3
                  (mt/with-temporary-setting-values [custom-geojson nil]
                    (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
@@ -168,3 +171,34 @@
       (testing "fetching a broken URL should fail"
         (is (= "GeoJSON URL failed to load"
                (mt/user-http-request :rasta :get 400 "geojson/middle-earth")))))))
+
+(deftest set-custom-geojson-from-env-var-test
+  (testing "Should be able to set the `custom-geojson` Setting via env var (#18862)"
+    (let [custom-geojson {:custom_states
+                          {:name        "Custom States"
+                           :url         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/us-states.json"
+                           :region_key  "STATE"
+                           :region_name "NAME"}}
+          expected-value (merge @#'api.geojson/builtin-geojson custom-geojson)]
+      (mt/with-temporary-setting-values [custom-geojson nil]
+        (mt/with-temp-env-var-value [mb-custom-geojson (json/generate-string custom-geojson)]
+          (binding [setting/*disable-cache* true]
+            (testing "Should parse env var custom GeoJSON and merge in"
+              (is (= expected-value
+                     (api.geojson/custom-geojson))))
+            (testing "Env var value SHOULD NOT come back with [[setting/admin-writable-settings]] -- should NOT be WRITABLE"
+              (is (schema= {:key            (s/eq :custom-geojson)
+                            :value          (s/eq nil)
+                            :is_env_setting (s/eq true)
+                            :env_name       (s/eq "MB_CUSTOM_GEOJSON")
+                            :description    su/NonBlankString
+                            :default        (s/eq "Using value of env var $MB_CUSTOM_GEOJSON")
+                            s/Keyword       s/Any}
+                           (some
+                            (fn [{setting-name :key, :as setting}]
+                              (when (= setting-name :custom-geojson)
+                                setting))
+                            (setting/admin-writable-settings)))))
+            (testing "Env var value SHOULD come back with [[setting/user-readable-values-map]] -- should be READABLE."
+              (is (= expected-value
+                     (get (setting/user-readable-values-map :public) :custom-geojson))))))))))

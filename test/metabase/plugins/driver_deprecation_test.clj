@@ -9,4 +9,4 @@
 (deftest driver-deprecation-test
   (mt/with-driver :driver-deprecation-test-legacy
     (is (= :driver-deprecation-test-new
-           (get-in (setting/properties :public) [:engines :driver-deprecation-test-legacy :superseded-by])))))
+           (get-in (setting/user-readable-values-map :public) [:engines :driver-deprecation-test-legacy :superseded-by])))))

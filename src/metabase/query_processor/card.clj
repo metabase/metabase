@@ -116,6 +116,28 @@
                   :when                                  (contains? allowed-for widget-type)]
               parameter-type)))
 
+(s/defn check-allowed-parameter-value-type
+  "If a parameter (i.e., a template tag or Dashboard parameter) is specified with `widget-type` (e.g.
+  `:date/all-options`), make sure a user is allowed to pass in parameters with value type `parameter-value-type` (e.g.
+  `:date/range`) for it when running the query, otherwise throw an Exception.
+
+  `parameter-name` is used only for the Exception message and data and can be a name or parameter ID (whichever is
+  more appropriate; Dashboard stuff uses ID while Card stuff tends to use `:name` at this point).
+
+  Background: some more-specific parameter types aren't allowed for certain types of parameters.
+  See [[metabase.mbql.schema/parameter-types]] for details."
+  [parameter-name widget-type :- mbql.s/ParameterType parameter-value-type :- mbql.s/ParameterType]
+  (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
+    (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
+      (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"
+                           parameter-value-type
+                           (pr-str parameter-name)
+                           (str/join ", " (sort allowed-types)))
+                      {:type              qp.error-type/invalid-parameter
+                       :invalid-parameter parameter-name
+                       :template-tag-type widget-type
+                       :allowed-types     allowed-types})))))
+
 (defn- infer-parameter-name
   "Attempt to infer the name of a parameter. Uses `:name` if explicitly specified, otherwise attempts to infer this by
   parsing `:target`. Parameters are matched up by name for validation purposes."
@@ -142,16 +164,7 @@
                                                         :invalid-parameter  request-parameter
                                                         :allowed-parameters (keys template-tags)})))]
           ;; now make sure the type agrees as well
-          (when-not (allowed-parameter-type-for-template-tag-widget-type? (:type request-parameter) matching-widget-type)
-            (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type matching-widget-type)]
-              (throw (ex-info (tru "Invalid parameter type {0} for template tag {1}. Parameter type must be one of: {2}"
-                                   (:type request-parameter)
-                                   (pr-str parameter-name)
-                                   (str/join ", " (sort allowed-types)))
-                              {:type              qp.error-type/invalid-parameter
-                               :invalid-parameter request-parameter
-                               :template-tag-type matching-widget-type
-                               :allowed-types     allowed-types})))))))))
+          (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
 (defn run-query-for-card-async
   "Run the query for Card with `parameters` and `constraints`, and return results in a
@@ -175,17 +188,21 @@
                    (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
                      (binding [qp.perms/*card-id* card-id]
                        (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id] :id card-id))
+        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id
+                                              :cache_ttl :collection_id :dataset :result_metadata]
+                                             :id card-id))
         query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
                   (update :middleware (fn [middleware]
                                         (merge
                                          {:js-int-to-string? true :ignore-cached-results? ignore_cache}
                                          middleware))))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               :card-name    (:name card)
-               :dashboard-id dashboard-id}]
+        info  (cond-> {:executed-by  api/*current-user-id*
+                       :context      context
+                       :card-id      card-id
+                       :card-name    (:name card)
+                       :dashboard-id dashboard-id}
+                (and (:dataset card) (seq (:result_metadata card)))
+                (assoc :metadata/dataset-metadata (:result_metadata card)))]
     (api/check-not-archived card)
     (when (seq parameters)
       (validate-card-parameters card-id (normalize/normalize-fragment [:parameters] parameters)))

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.card-test
+  "There are more e2e tests in [[metabase.api.card-test]]."
   (:require [clojure.test :refer :all]
             [metabase.api.common :as api]
             [metabase.models :refer [Card Dashboard Database]]
@@ -146,7 +147,7 @@
             (testing disallowed-type
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Invalid parameter type :[^\s]+ for template tag \"date\".*/"
+                   #"Invalid parameter type :[^\s]+ for parameter \"date\".*/"
                    (validate disallowed-type)))
               (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
                 (binding [qp.card/*allow-arbitrary-mbql-parameters* true]

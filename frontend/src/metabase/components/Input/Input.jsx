@@ -1,7 +1,7 @@
 import React, { forwardRef } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
-import { InputField, InputHelpButton, InputRoot } from "./Input.styled";
+import { InputField, InputIconContainer, InputRoot } from "./Input.styled";
 import Tooltip from "metabase/components/Tooltip";
 
 const propTypes = {
@@ -30,9 +30,9 @@ const Input = ({ error, fullWidth, helperText, ...rest }) => {
 
 const InputHelpContent = forwardRef(function InputHelpContent(props, ref) {
   return (
-    <InputHelpButton innerRef={ref}>
+    <InputIconContainer innerRef={ref}>
       <Icon name="info" />
-    </InputHelpButton>
+    </InputIconContainer>
   );
 });
 
