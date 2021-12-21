@@ -37,7 +37,7 @@ export const LicenseWidget = ({
 
   return (
     <>
-      <SectionHeader>License</SectionHeader>
+      <SectionHeader>{t`License`}</SectionHeader>
 
       <SectionDescription>{description}</SectionDescription>
 
