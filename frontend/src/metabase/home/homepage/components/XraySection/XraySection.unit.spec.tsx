@@ -105,7 +105,31 @@ describe("XraySection", () => {
 
   it("should not be visible when there are no table candidates", () => {
     const user = getUser();
-    const databaseCandidates = [getDatabaseCandidate()];
+
+    render(
+      <XraySection
+        user={user}
+        dashboards={[]}
+        databaseCandidates={[]}
+        showXrays
+      />,
+    );
+
+    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
+  });
+
+  it("should allow changing database schema for table candidates", () => {
+    const user = getUser();
+    const databaseCandidates = [
+      getDatabaseCandidate({
+        schema: "public",
+        tables: [getTableCandidate({ title: "Public table" })],
+      }),
+      getDatabaseCandidate({
+        schema: "admin",
+        tables: [getTableCandidate({ title: "Admin table" })],
+      }),
+    ];
 
     render(
       <XraySection
@@ -116,7 +140,14 @@ describe("XraySection", () => {
       />,
     );
 
-    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
+    expect(screen.getByText("Public table")).toBeInTheDocument();
+    expect(screen.queryByText("Admin table")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByText("public"));
+    userEvent.click(screen.getByText("admin"));
+
+    expect(screen.queryByText("Public table")).not.toBeInTheDocument();
+    expect(screen.getByText("Admin table")).toBeInTheDocument();
   });
 });
 
