@@ -138,12 +138,12 @@ You can't currently create data sandboxes with non-SQL databases such as Google 
 
 ### Data sandboxes don't work for groups that can execute SQL/native queries
 
-If you're using data sandboxing, your groups should _not_ have access to:
+If you're using data sandboxing, groups with people that you want sandboxed should _not_ have access to:
 
 1. The native SQL editor for that data.
 2. Any collections with saved SQL queries that use that data.
 
-The reason is that Metabase doesn't currently parse the contents of SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. 
+The reason is that Metabase doesn't currently parse the contents of native SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. 
 
 There are three specific situations to be aware of when it comes to SQL and sandboxes:
 
