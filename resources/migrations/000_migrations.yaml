@@ -9865,6 +9865,14 @@ databaseChangeLog:
             constraintName: fk_database_creator_id
             onDelete: SET NULL
 
+  - changeSet:
+    id: v42.00-071
+    author: noahmoss
+    comment: Added 0.42.0: Remove MetaBot permission group
+    changes:
+      - sql:
+          sql: DELETE FROM permissions_group WHERE name = 'MetaBot';
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
