@@ -1,4 +1,4 @@
-## Data sandboxes 
+# Data sandboxes 
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
@@ -8,7 +8,7 @@ Say you have users who you want to be able to log into your Metabase instance, b
 
 The way they work is that you first pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users, manually or via SSO, so that Metabase will know how to filter things for them specifically.
 
-### Getting user attributes
+## Getting user attributes
 
 For Metabase to be able to automatically filter tables based on who's viewing them, your users will need to have distinct attributes associated with their accounts to differentiate them — something like `User_ID`. We'll then use these attributes as the basis for filtering the tables you choose. There are two ways to add these attributes to your users:
 
@@ -17,19 +17,19 @@ For Metabase to be able to automatically filter tables based on who's viewing th
 
 Now that your users have attributes, you’ll be able to sandbox tables, and automatically filter them based on these user attributes.
 
-### Filtering a sandboxed table
+## Filtering a sandboxed table
 
 Metabase gives you two options for filtering a sandboxed table:
 
-#### Option 1: filter using a column in the table
+### Option 1: filter using a column in the table
 
 The simplest way to filter a sandboxed table is to pick a column in the sandboxed table and match it up with a user attribute so that any time a user with sandboxed access to this table views it, they’ll only see rows in the table where that column’s value is equal to the value that user has for that attribute.
 	
-#### Option 2: create a custom view of the table with a saved question
+### Option 2: create a custom view of the table with a saved question
 
 Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question.  For example, you might have columns in your Orders table that you don’t want any of your users to see. You can create a SQL-based saved question that only returns the columns you want users to see. For even more surgical access controls, you can map variables in a SQL question to user attributes in order to customize the view for that user. For example, if you only want users to see _their_ order data, you could map a variable in the `where` clause of the filtering saved question to one of their user attributes, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}`, and the user would only have access to order information related to that user ID.
 
-### An example setup
+## An example setup
 
 That was a mouthful, so here’s an example. (The example happens to use a group called "Customers" but this works the same whether you're doing this for internal or external folks.) We’ll sandbox our Orders table so that any user in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the user’s `user_id` attribute.
 
@@ -61,11 +61,11 @@ Another great thing about sandboxing is that this user can still use all of the 
 
 ![Filtered pie chart](images/sandboxing/filtered-pie-chart.png)
 
-### Advanced sandbox examples
+## Advanced sandbox examples
 
 As we mentioned above, the second way you can create a sandbox is by using a saved question to define a customized view of a table to display. When a user with sandboxed access to a table queries that table, behind the scenes they'll really be using that saved question as the source data for their query.
 
-#### Example 1: hiding specific columns
+### Example 1: hiding specific columns
 
 In this example I have a table called `People` that I want users in my Marketing team to be able to see, but I don't want them to see most of these sensitive columns that have personal information in them:
 
@@ -85,7 +85,7 @@ To verify things are working correctly, I'll log in as a test user in the Market
 
 **Note:** this filtering will also happen when a user with sandboxed access goes to look at a chart that uses data from the sandboxed table. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will not load for that user.
 
-#### Example 2: using variables in a saved question
+### Example 2: using variables in a saved question
 
 To create even more powerful and nuanced filters, you can use variables in a filtering question in conjunction with user attributes.
 
@@ -126,27 +126,34 @@ Now, when I log in as this user and look at the `Orders` table, I only see the c
 
 ![Results](images/sandboxing/advanced-example-2-results.png)
 
-### Current limitations
+## Current limitations
 
-#### A user can only have one sandbox per table
+### A user can only have one sandbox per table
 
 I.e., if a user belongs to two user groups, both of which have been given sandboxed access to the same table, that user will not be able to access data from that table. You will either need to remove that user from one of those groups, or remove the sandboxed access from one of those groups.
 
-#### Data sandboxes do not support non-SQL databases
+### Data sandboxes do not support non-SQL databases
 
 You can't currently create data sandboxes with non-SQL databases such as Google Analytics, Apache Druid, or MongoDB .
 
-#### Data sandboxes do not work on SQL/native queries
+### Data sandboxes don't work for groups that can execute SQL/native queries
 
-This goes for both saved or unsaved SQL queries. The reason is that Metabase does not currently parse the contents of SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. There are three specific situations to be aware of when it comes to SQL and sandboxes:
+If you're using data sandboxing, groups with people that you want sandboxed should _not_ have access to:
+
+1. The native SQL editor for that data.
+2. Any collections with saved SQL queries that use that data.
+
+The reason is that Metabase doesn't currently parse the contents of native SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. 
+
+There are three specific situations to be aware of when it comes to SQL and sandboxes:
 
 1. If a user has SQL editor access for a given database, they are able to query any table in that database, and will see unfiltered results for any table included in the query. Admins can grant SQL editor access for some databases but prohibit it on others as needed.
 2. If a user views a saved SQL/native query, data sandboxes will not filter the results of that query, even if the query includes data from a table for which the user only has sandboxed access.
 3. A user can start a new Custom GUI question using any saved question they have access to as the starting data for that new question (a "nested" question). If they have access to view any saved SQL questions, they can use such a question as starting data for their new question, and this new question will not be filtered by data sandboxes.
 
-An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. One of the options for setting up a data sandbox allows you to display the results of a saved question instead of the raw table. In this situation, you might choose to use a SQL query to supply the results that you'd like to display to a specific user group instead of the raw table itself.
+__Note__: An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. [Advanced data sandboxing][advanced-sandboxing] allows you to display the results of a saved question instead of the raw table. You might choose to use a SQL query to supply the results that you'd like to display to a specific group instead of the raw table itself. In this case, it's you as the admin who crafts the SQL query that dictates what a table looks like to a group; people in that user group aren't viewing or executing the query itself.
 
-#### Data sandboxes and public sharing don't play well together
+### Data sandboxes and public sharing don't play well together
 
 Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user — so since a user doesn't have to log in to see a public question or dashboard, Metabase has no knowledge of who that user is.
 
@@ -161,6 +168,7 @@ Public questions and dashboards can't be sandboxed. Sandboxing works by filterin
 
 The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.
 
+[advanced-sandboxing]: /learn/permissions/data-sandboxing-column-permissions.html
 [permissions]: /learn/permissions/index.html
 [permissions-overview]: ../administration-guide/05-setting-permissions.md
 [troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.html
