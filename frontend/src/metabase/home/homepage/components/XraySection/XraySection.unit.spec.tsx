@@ -144,6 +144,7 @@ const getTableCandidate = (opts?: Partial<TableCandidate>): TableCandidate => ({
 const getDatabaseCandidate = (
   opts?: Partial<DatabaseCandidate>,
 ): DatabaseCandidate => ({
+  schema: "public",
   tables: [],
   ...opts,
 });

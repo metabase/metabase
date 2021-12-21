@@ -1,8 +1,9 @@
-import React, { ReactNode } from "react";
+import React, { ChangeEvent, ReactNode, useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
 import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Select, { Option } from "metabase/components/Select";
 import Tooltip from "metabase/components/Tooltip";
 import {
   Dashboard,
@@ -21,6 +22,8 @@ import {
   CardRoot,
   CardTitle,
   ListRoot,
+  SelectRoot,
+  SelectTitle,
 } from "./XraySection.styled";
 
 export interface XraySectionProps {
@@ -38,9 +41,7 @@ const XraySection = ({
   showXrays,
   onHideXrays,
 }: XraySectionProps): JSX.Element | null => {
-  const options = databaseCandidates.flatMap(database => database.tables);
-
-  if (!showXrays || dashboards.length || !options.length) {
+  if (!showXrays || dashboards.length || !databaseCandidates.length) {
     return null;
   }
 
@@ -56,28 +57,62 @@ const XraySection = ({
           </HideSectionModal>
         )}
       </SectionHeader>
-      <ListRoot>
-        {options.map(option => (
-          <XrayCard key={option.url} option={option} />
-        ))}
-      </ListRoot>
+      <XrayContent databases={databaseCandidates} />
     </Section>
   );
 };
 
-interface XrayCardProps {
-  option: TableCandidate;
+interface XrayContentProps {
+  databases: DatabaseCandidate[];
 }
 
-const XrayCard = ({ option }: XrayCardProps): JSX.Element => {
+const XrayContent = ({ databases }: XrayContentProps) => {
+  const schemas = databases.map(d => d.schema);
+  const [schema, setSchema] = useState(schemas[0]);
+  const database = databases.find(d => d.schema === schema);
+
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSchema(event.target.value);
+  };
+
   return (
-    <CardRoot to={option.url}>
+    <div>
+      {schemas.length > 1 && (
+        <SelectRoot>
+          <SelectTitle>{t`Based on the schema`}</SelectTitle>
+          <Select value={schema} onChange={handleChange}>
+            {schemas.map(schema => (
+              <Option key={schema} value={schema}>
+                {schema}
+              </Option>
+            ))}
+          </Select>
+        </SelectRoot>
+      )}
+      {database && (
+        <ListRoot>
+          {database.tables.map(table => (
+            <XrayCard key={table.url} table={table} />
+          ))}
+        </ListRoot>
+      )}
+    </div>
+  );
+};
+
+interface XrayCardProps {
+  table: TableCandidate;
+}
+
+const XrayCard = ({ table }: XrayCardProps): JSX.Element => {
+  return (
+    <CardRoot to={table.url}>
       <CardIconContainer>
         <CardIcon name="bolt" />
       </CardIconContainer>
       <CardTitle>
         <Ellipsified>
-          {t`A look at your`} <strong>{option.title}</strong>
+          {t`A look at your`} <strong>{table.title}</strong>
         </Ellipsified>
       </CardTitle>
     </CardRoot>

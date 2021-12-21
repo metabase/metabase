@@ -28,6 +28,7 @@ export interface Dashboard {
 }
 
 export interface DatabaseCandidate {
+  schema: string;
   tables: TableCandidate[];
 }
 
