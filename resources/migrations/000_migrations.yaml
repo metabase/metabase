@@ -9868,7 +9868,7 @@ databaseChangeLog:
   - changeSet:
     id: v42.00-071
     author: noahmoss
-    comment: Added 0.42.0: Remove MetaBot permission group
+    comment: Added 0.42.0 - Remove MetaBot permission group
     changes:
       - sql:
           sql: DELETE FROM permissions_group WHERE name = 'MetaBot';
