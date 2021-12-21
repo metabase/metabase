@@ -20,10 +20,14 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isSameField } from "metabase/lib/query/field_ref";
+import { usePrevious } from "metabase/hooks/use-previous";
+import { useToggle } from "metabase/hooks/use-toggle";
 
+import { EDITOR_TAB_INDEXES } from "./constants";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
+import { TabHintToast } from "./TabHintToast";
 
 import {
   Root,
@@ -32,11 +36,13 @@ import {
   QueryEditorContainer,
   TableHeaderColumnName,
   TableContainer,
+  TabHintToastContainer,
 } from "./DatasetEditor.styled";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
+  result: PropTypes.object,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -64,7 +70,10 @@ function mapStateToProps(state) {
 
 const mapDispatchToProps = { setDatasetEditorTab };
 
-function getSidebar(props, { datasetEditorTab, focusedField }) {
+function getSidebar(
+  props,
+  { datasetEditorTab, focusedField, focusedFieldIndex, focusFirstField },
+) {
   const {
     question: dataset,
     isShowingTemplateTagsEditor,
@@ -76,8 +85,16 @@ function getSidebar(props, { datasetEditorTab, focusedField }) {
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    const isLastField =
+      focusedField &&
+      focusedFieldIndex === dataset.getResultMetadata().length - 1;
     return (
-      <DatasetFieldMetadataSidebar dataset={dataset} field={focusedField} />
+      <DatasetFieldMetadataSidebar
+        dataset={dataset}
+        field={focusedField}
+        isLastField={isLastField}
+        handleFirstFieldFocus={focusFirstField}
+      />
     );
   }
 
@@ -98,10 +115,19 @@ function getSidebar(props, { datasetEditorTab, focusedField }) {
   return null;
 }
 
+function getColumnTabIndex(columnIndex, focusedFieldIndex) {
+  return columnIndex === focusedFieldIndex
+    ? EDITOR_TAB_INDEXES.FOCUSED_FIELD
+    : columnIndex > focusedFieldIndex
+    ? EDITOR_TAB_INDEXES.NEXT_FIELDS
+    : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
+}
+
 function DatasetEditor(props) {
   const {
     question: dataset,
     datasetEditorTab,
+    result,
     height,
     setQueryBuilderMode,
     setDatasetEditorTab,
@@ -119,12 +145,33 @@ function DatasetEditor(props) {
 
   const [focusedField, setFocusedField] = useState();
 
+  const focusFirstField = useCallback(() => {
+    const [firstField] = dataset.getResultMetadata() || [];
+    setFocusedField(firstField);
+  }, [dataset]);
+
   useEffect(() => {
-    const resultMetadata = dataset.getResultMetadata();
-    if (!focusedField && resultMetadata?.length > 0) {
-      setFocusedField(resultMetadata[0]);
+    // Focused field has to be set once the query is completed and the result is rendered
+    // Visualization render can remove the focus
+    const hasQueryResults = !!result;
+    if (!focusedField && hasQueryResults) {
+      focusFirstField();
     }
-  }, [dataset, focusedField]);
+  }, [result, focusedField, focusFirstField]);
+
+  const [
+    isTabHintVisible,
+    { turnOn: showTabHint, turnOff: hideTabHint },
+  ] = useToggle(false);
+
+  useEffect(() => {
+    let timeoutId;
+    if (result) {
+      timeoutId = setTimeout(() => showTabHint(), 500);
+    }
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   const onChangeEditorTab = useCallback(
     tab => {
@@ -144,7 +191,15 @@ function DatasetEditor(props) {
     setQueryBuilderMode("view");
   }, [dataset, onSave, setQueryBuilderMode]);
 
-  const sidebar = getSidebar(props, { datasetEditorTab, focusedField });
+  const handleColumnSelect = useCallback(
+    column => {
+      const field = dataset
+        .getResultMetadata()
+        .find(f => isSameField(column?.field_ref, f?.field_ref));
+      setFocusedField(field);
+    },
+    [dataset],
+  );
 
   const handleTableElementClick = useCallback(
     ({ element, ...clickedObject }) => {
@@ -152,27 +207,50 @@ function DatasetEditor(props) {
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        const field = dataset
-          .getResultMetadata()
-          .find(f =>
-            isSameField(clickedObject.column?.field_ref, f?.field_ref),
-          );
-        setFocusedField(field);
+        handleColumnSelect(clickedObject.column);
       }
     },
-    [dataset],
+    [handleColumnSelect],
   );
 
+  const focusedFieldIndex = useMemo(() => {
+    const fields = dataset.getResultMetadata();
+    return fields.findIndex(f =>
+      isSameField(focusedField?.field_ref, f?.field_ref),
+    );
+  }, [dataset, focusedField]);
+
+  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
+
+  // This value together with focusedFieldIndex is used to
+  // horizontally scroll the InteractiveTable to the focused column
+  // (via react-virtualized's "scrollToColumn" prop)
+  const scrollToColumnModifier = useMemo(() => {
+    // Normally the modifier is either 1 or -1 and added to focusedFieldIndex,
+    // so it's either the previous or the next column is visible
+    // (depending on if we're tabbing forward or backwards)
+    // But when the first field is selected, it's important to keep "scrollToColumn" 0
+    // So when you hit "Tab" while the very last column is focused,
+    // it'd jump exactly to the beginning of the table
+    if (focusedFieldIndex === 0) {
+      return 0;
+    }
+    const isGoingForward = focusedFieldIndex >= previousFocusedFieldIndex;
+    return isGoingForward ? 1 : -1;
+  }, [focusedFieldIndex, previousFocusedFieldIndex]);
+
   const renderSelectableTableColumnHeader = useCallback(
-    (element, column) => (
+    (element, column, columnIndex) => (
       <TableHeaderColumnName
+        tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
+        onFocus={() => handleColumnSelect(column)}
         isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>
       </TableHeaderColumnName>
     ),
-    [focusedField],
+    [focusedField, focusedFieldIndex, handleColumnSelect],
   );
 
   const renderTableHeaderWrapper = useMemo(
@@ -182,6 +260,13 @@ function DatasetEditor(props) {
         : undefined,
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
+
+  const sidebar = getSidebar(props, {
+    datasetEditorTab,
+    focusedField,
+    focusedFieldIndex,
+    focusFirstField,
+  });
 
   return (
     <React.Fragment>
@@ -235,8 +320,14 @@ function DatasetEditor(props) {
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}
+                scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
               />
             </DebouncedFrame>
+            <TabHintToastContainer
+              isVisible={isEditingMetadata && isTabHintVisible}
+            >
+              <TabHintToast onClose={hideTabHint} />
+            </TabHintToastContainer>
           </TableContainer>
         </MainContainer>
         <ViewSidebar side="right" isOpen={!!sidebar}>

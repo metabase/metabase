@@ -1,22 +1,12 @@
 import styled from "styled-components";
 
-import Button from "metabase/components/Button";
+import SelectButton from "metabase/components/SelectButton";
 
-import { space } from "metabase/styled-components/theme";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
-export const SearchSectionContainer = styled.div`
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-export const CloseButton = styled(Button).attrs({
-  icon: "close",
-  onlyIcon: true,
-})`
-  margin-left: ${space(1)};
-`;
+export const StyledSelectButton = forwardRefToInnerRef(styled(SelectButton)`
+  width: 100%;
+`);
 
 export const ExtraSelectContainer = styled.div`
   margin-top: 1em;

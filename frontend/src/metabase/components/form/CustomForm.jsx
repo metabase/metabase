@@ -110,7 +110,7 @@ Form.contextTypes = {
   style: PropTypes.object,
 };
 
-export class CustomFormField extends React.Component {
+class RawCustomFormField extends React.Component {
   static contextTypes = {
     fields: PropTypes.object,
     formFieldsByName: PropTypes.object,
@@ -142,7 +142,7 @@ export class CustomFormField extends React.Component {
     }
   }
   render() {
-    const { name } = this.props;
+    const { name, innerRef } = this.props;
     const { fields, formFieldsByName, values, onChangeField } = this.context;
 
     const field = getIn(fields, name.split("."));
@@ -166,11 +166,15 @@ export class CustomFormField extends React.Component {
 
     return (
       <FormField {...props}>
-        <Widget {...props} />
+        <Widget {...props} ref={innerRef} />
       </FormField>
     );
   }
 }
+
+export const CustomFormField = React.forwardRef((props, ref) => (
+  <RawCustomFormField {...props} innerRef={ref} />
+));
 
 export const CustomFormSubmit = (
   { children, ...props },

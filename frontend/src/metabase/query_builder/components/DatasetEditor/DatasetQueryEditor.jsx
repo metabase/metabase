@@ -1,8 +1,13 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
+import styled from "styled-components";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import ResizableNotebook from "./ResizableNotebook";
+
+const QueryEditorContainer = styled.div`
+  visibility: ${props => (props.isActive ? "visible" : "hidden")};
+`;
 
 const SMOOTH_RESIZE_STYLE = { transition: "height 0.25s" };
 
@@ -46,28 +51,32 @@ function DatasetQueryEditor({ question: dataset, isActive, height, ...props }) {
     return resizableBoxProps;
   }, [height, isResizing, isActive]);
 
-  return dataset.isNative() ? (
-    <NativeQueryEditor
-      {...props}
-      question={dataset}
-      isInitiallyOpen
-      hasTopBar={isActive}
-      hasEditingSidebar={isActive}
-      hasParametersList={false}
-      resizableBoxProps={resizableBoxProps}
-      // We need to rerun the query after saving changes or canceling edits
-      // By default, NativeQueryEditor cancels an active query on unmount,
-      // which can also cancel the expected query rerun
-      // (see https://github.com/metabase/metabase/issues/19180)
-      cancelQueryOnLeave={false}
-    />
-  ) : (
-    <ResizableNotebook
-      {...props}
-      question={dataset}
-      isResizing={isResizing}
-      resizableBoxProps={resizableBoxProps}
-    />
+  return (
+    <QueryEditorContainer isActive={isActive}>
+      {dataset.isNative() ? (
+        <NativeQueryEditor
+          {...props}
+          question={dataset}
+          isInitiallyOpen
+          hasTopBar={isActive}
+          hasEditingSidebar={isActive}
+          hasParametersList={false}
+          resizableBoxProps={resizableBoxProps}
+          // We need to rerun the query after saving changes or canceling edits
+          // By default, NativeQueryEditor cancels an active query on unmount,
+          // which can also cancel the expected query rerun
+          // (see https://github.com/metabase/metabase/issues/19180)
+          cancelQueryOnLeave={false}
+        />
+      ) : (
+        <ResizableNotebook
+          {...props}
+          question={dataset}
+          isResizing={isResizing}
+          resizableBoxProps={resizableBoxProps}
+        />
+      )}
+    </QueryEditorContainer>
   );
 }
 
