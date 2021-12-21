@@ -91,10 +91,8 @@ describe("scenarios > question > view", () => {
       cy.contains("Filter").click();
 
       cy.contains("Name").trigger("mouseenter");
-      popover().within(() => {
-        cy.contains("Name");
-        cy.contains("2,499 distinct values");
-      });
+      popover().contains("Name");
+      popover().contains("2,499 distinct values");
     });
   });
 
