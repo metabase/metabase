@@ -44,6 +44,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Add database").click();
 
+      cy.findByText("Show advanced options").click();
+
       cy.findByText("Rerun queries for simple explorations");
 
       // Add new database
