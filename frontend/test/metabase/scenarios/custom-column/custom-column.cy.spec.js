@@ -49,10 +49,8 @@ describe("scenarios > question > custom column", () => {
       .findByText("Math")
       .trigger("mouseenter");
 
-    popover().within(() => {
-      cy.findByText("Math");
-      cy.contains("No description");
-    });
+    popover().contains("Math");
+    popover().contains("No description");
   });
 
   it("can create a custom column with an existing column name", () => {

@@ -425,10 +425,8 @@ describe("scenarios > question > new", () => {
         .findByText("Title")
         .trigger("mouseenter");
 
-      popover().within(() => {
-        cy.contains("Title");
-        cy.contains("199 distinct values");
-      });
+      popover().contains("Title");
+      popover().contains("199 distinct values");
     });
   });
 
