@@ -80,7 +80,7 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 
   return (
     <UserFormRoot
-      form={Users.forms.setup()}
+      form={Users.forms.setup}
       user={user}
       asyncValidate={handleAsyncValidate}
       asyncBlurFields={["password"]}

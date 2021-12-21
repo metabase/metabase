@@ -2,11 +2,12 @@ import _ from "underscore";
 
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
-const DETAILS_FORM_FIELDS = () => [
+const NAME_FIELDS = [
   {
     name: "first_name",
     title: t`First name`,
@@ -20,13 +21,14 @@ const DETAILS_FORM_FIELDS = () => [
     placeholder: "Appleseed",
     validate: validate.required().maxLength(100),
   },
-  {
-    name: "email",
-    title: t`Email`,
-    placeholder: "youlooknicetoday@email.com",
-    validate: validate.required().email(),
-  },
 ];
+
+const EMAIL_FIELD = {
+  name: "email",
+  title: t`Email`,
+  placeholder: "youlooknicetoday@email.com",
+  validate: validate.required().email(),
+};
 
 const LOCALE_FIELD = {
   name: "locale",
@@ -41,7 +43,7 @@ const LOCALE_FIELD = {
   ].map(([code, name]) => ({ name, value: code })),
 };
 
-const PASSWORD_FORM_FIELDS = () => [
+const PASSWORD_FORM_FIELDS = [
   {
     name: "password",
     title: t`Create a password`,
@@ -54,16 +56,21 @@ const PASSWORD_FORM_FIELDS = () => [
     title: t`Confirm your password`,
     type: "password",
     placeholder: t`Shhh... but one more time so we get it right`,
-    validate: (password_confirm, { values: { password } = {} }) =>
-      (!password_confirm && t`required`) ||
-      (password_confirm !== password && t`passwords do not match`),
+    validate: (password_confirm, { values: { password } = {} }) => {
+      if (!password_confirm) {
+        return t`required`;
+      } else if (password_confirm !== password) {
+        return t`passwords do not match`;
+      }
+    },
   },
 ];
 
 export default {
   admin: {
     fields: [
-      ...DETAILS_FORM_FIELDS(),
+      ...NAME_FIELDS,
+      EMAIL_FIELD,
       {
         name: "group_ids",
         title: t`Groups`,
@@ -73,19 +80,39 @@ export default {
     ],
   },
   user: {
-    fields: [...DETAILS_FORM_FIELDS(), LOCALE_FIELD],
+    fields: [...NAME_FIELDS, EMAIL_FIELD, LOCALE_FIELD],
     disablePristineSubmit: true,
   },
-  setup: () => ({
+  setup: {
     fields: [
-      ...DETAILS_FORM_FIELDS(),
+      ...NAME_FIELDS,
+      EMAIL_FIELD,
       {
         name: "site_name",
         title: t`Company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS(),
+      ...PASSWORD_FORM_FIELDS,
+    ],
+  },
+  setup_invite: user => ({
+    fields: [
+      ...NAME_FIELDS,
+      {
+        name: "email",
+        title: t`Email`,
+        placeholder: "youlooknicetoday@email.com",
+        validate: email => {
+          if (!email) {
+            return t`required`;
+          } else if (!MetabaseUtils.isEmail(email)) {
+            return t`must be a valid email address`;
+          } else if (email === user.email) {
+            return t`must be different from the email address you used in setup`;
+          }
+        },
+      },
     ],
   }),
   password: {
@@ -97,10 +124,10 @@ export default {
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS(),
+      ...PASSWORD_FORM_FIELDS,
     ],
   },
   password_reset: {
-    fields: [...PASSWORD_FORM_FIELDS()],
+    fields: [...PASSWORD_FORM_FIELDS],
   },
 };
