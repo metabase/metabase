@@ -66,7 +66,7 @@ interface XrayContentProps {
   databases: DatabaseCandidate[];
 }
 
-const XrayContent = ({ databases }: XrayContentProps) => {
+const XrayContent = ({ databases }: XrayContentProps): JSX.Element => {
   const schemas = databases.map(d => d.schema);
   const [schema, setSchema] = useState(schemas[0]);
   const database = databases.find(d => d.schema === schema);
