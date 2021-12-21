@@ -137,8 +137,9 @@ describe("LicenseAndBilling", () => {
     const licenseInput = screen.getByTestId("license-input");
     const activateButton = screen.getByTestId("activate-button");
 
+    const token = "a".repeat(64);
     await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: "license" } });
+      await fireEvent.change(licenseInput, { target: { value: token } });
       await fireEvent.click(activateButton);
     });
 
@@ -161,8 +162,9 @@ describe("LicenseAndBilling", () => {
     const licenseInput = screen.getByTestId("license-input");
     const activateButton = screen.getByTestId("activate-button");
 
+    const token = "a".repeat(64);
     await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: "license" } });
+      await fireEvent.change(licenseInput, { target: { value: token } });
       await fireEvent.click(activateButton);
     });
 
