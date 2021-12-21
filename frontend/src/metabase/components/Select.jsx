@@ -37,6 +37,7 @@ export default class Select extends Component {
     // PopoverWithTrigger props
     isInitiallyOpen: PropTypes.bool,
     triggerElement: PropTypes.any,
+    onClose: PropTypes.func,
 
     // SelectButton props
     buttonProps: PropTypes.object,
@@ -44,6 +45,7 @@ export default class Select extends Component {
     // AccordianList props
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchPlaceholder: PropTypes.string,
     searchFuzzy: PropTypes.bool,
 
     optionNameFn: PropTypes.func,
@@ -173,8 +175,10 @@ export default class Select extends Component {
       placeholder,
       searchProp,
       searchCaseInsensitive,
+      searchPlaceholder,
       searchFuzzy,
       isInitiallyOpen,
+      onClose,
     } = this.props;
 
     const sections = this._getSections();
@@ -206,6 +210,7 @@ export default class Select extends Component {
             </SelectButton>
           )
         }
+        onClose={onClose}
         triggerClasses={cx("flex", className)}
         isInitiallyOpen={isInitiallyOpen}
         verticalAttachments={["top", "bottom"]}
@@ -228,6 +233,7 @@ export default class Select extends Component {
           searchProp={searchProp}
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
+          searchPlaceholder={searchPlaceholder}
         />
       </PopoverWithTrigger>
     );

@@ -140,14 +140,6 @@ export const SchemaTableAndFieldDataSelector = props => (
   />
 );
 
-export const FieldSelector = props => (
-  <DataSelector
-    steps={[TABLE_STEP, FIELD_STEP]}
-    getTriggerElementContent={FieldTriggerContent}
-    {...props}
-  />
-);
-
 const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
     <span className="text-wrap text-grey no-decoration">
@@ -798,7 +790,7 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedFieldId: field && field.id });
   };
 
-  getTriggerElement() {
+  getTriggerElement = triggerProps => {
     const {
       className,
       style,
@@ -823,6 +815,7 @@ export class UnconnectedDataSelector extends Component {
           selectedDatabase,
           selectedTable,
           selectedField,
+          ...triggerProps,
         })}
         {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
@@ -833,7 +826,7 @@ export class UnconnectedDataSelector extends Component {
         )}
       </span>
     );
-  }
+  };
 
   getTriggerClasses() {
     if (this.props.triggerClasses) {
@@ -972,6 +965,7 @@ export class UnconnectedDataSelector extends Component {
 
   handleClose = () => {
     this.setState({ searchText: "" });
+    this.props?.onClose();
   };
 
   getSearchInputPlaceholder = () => {
@@ -1032,7 +1026,7 @@ export class UnconnectedDataSelector extends Component {
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         containerClassName={this.props.containerClassName}
-        triggerElement={this.getTriggerElement()}
+        triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}
