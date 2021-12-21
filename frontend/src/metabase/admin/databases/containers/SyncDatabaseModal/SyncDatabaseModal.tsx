@@ -1,17 +1,15 @@
 import _ from "underscore";
 import Settings from "metabase/lib/settings";
-import { isSyncCompleted } from "metabase/lib/syncing";
 import Databases from "metabase/entities/databases";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import SyncDatabaseModal from "../../components/SyncDatabaseModal";
 import { Database } from "../../types";
 
-const getCandidatesQuery = (databases: Database[] = []) => {
+const getCandidatesQuery = (databases: Database[]) => {
   const sampleDatabase = databases.find(d => d.is_sample);
-  const hasSynced = isSyncCompleted(sampleDatabase);
-  const hasXrays = Settings.enableXrays();
+  const enableXrays = Settings.get("enable-xrays");
 
-  if (sampleDatabase && hasSynced && hasXrays) {
+  if (sampleDatabase && enableXrays) {
     return { id: sampleDatabase.id };
   }
 };

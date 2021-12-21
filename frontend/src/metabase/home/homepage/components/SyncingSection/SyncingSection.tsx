@@ -7,7 +7,6 @@ import { Database, User } from "../../types";
 export interface SyncingSectionProps {
   user: User;
   databases: Database[];
-  showXrays?: boolean;
   showSyncingModal?: boolean;
   onHideSyncingModal?: () => void;
 }
@@ -15,7 +14,6 @@ export interface SyncingSectionProps {
 const SyncingSection = ({
   user,
   databases,
-  showXrays,
   showSyncingModal,
   onHideSyncingModal,
 }: SyncingSectionProps): JSX.Element => {

@@ -3,20 +3,17 @@ import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { Database, DatabaseCandidate, TableCandidate } from "../../types";
+import { DatabaseCandidate, TableCandidate } from "../../types";
 
 export interface SyncDatabaseModalProps {
-  databases: Database[];
   databaseCandidates: DatabaseCandidate[];
   onClose?: () => void;
 }
 
 const SyncDatabaseModal = ({
-  databases,
   databaseCandidates,
   onClose,
 }: SyncDatabaseModalProps) => {
-  const sampleDatabase = getSampleDatabase(databases);
   const sampleTable = getSampleTable(databaseCandidates);
 
   return (
@@ -35,10 +32,10 @@ const SyncDatabaseModal = ({
         <span>
           {t`You’ll be able to use individual tables as they finish syncing.`}{" "}
         </span>
-        {sampleTable && sampleDatabase ? (
+        {sampleTable ? (
           <span>
             {jt` In the meantime, you can take a look at the ${(
-              <strong key="name">{sampleDatabase.name}</strong>
+              <strong key="name">{t`Sample Database`}</strong>
             )} if you want to get a head start. Want to explore?`}
           </span>
         ) : (
@@ -49,10 +46,6 @@ const SyncDatabaseModal = ({
       </div>
     </ModalContent>
   );
-};
-
-const getSampleDatabase = (databases: Database[]): Database | undefined => {
-  return databases.find(d => d.is_sample);
 };
 
 const getSampleTable = (

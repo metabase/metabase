@@ -193,10 +193,6 @@ class Settings {
     return this.get("snowplow-url");
   }
 
-  enableXrays(): boolean {
-    return this.get("enable-xrays");
-  }
-
   engineDeprecationNoticeVersion() {
     return this.get("engine-deprecation-notice-version");
   }
