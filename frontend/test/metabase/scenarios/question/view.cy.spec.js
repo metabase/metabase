@@ -86,7 +86,8 @@ describe("scenarios > question > view", () => {
       cy.contains("Showing 91 rows");
     });
 
-    it("should show info popover for dimension in the filter list", () => {
+    // flaky test (#19454)
+    it.skip("should show info popover for dimension in the filter list", () => {
       openOrdersTable();
       cy.contains("Filter").click();
 
