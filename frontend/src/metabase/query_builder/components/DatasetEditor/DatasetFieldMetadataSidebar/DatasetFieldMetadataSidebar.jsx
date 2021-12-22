@@ -52,6 +52,7 @@ const propTypes = {
   IDFields: PropTypes.array.isRequired,
   handleFirstFieldFocus: PropTypes.func.isRequired,
   updateCardVisualizationSettings: PropTypes.func.isRequired,
+  onFieldMetadataChange: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state, { dataset }) {
@@ -162,6 +163,7 @@ function DatasetFieldMetadataSidebar({
   IDFields,
   handleFirstFieldFocus,
   updateCardVisualizationSettings,
+  onFieldMetadataChange,
 }) {
   const displayNameInputRef = useRef();
   const [shouldAnimateFieldChange, setShouldAnimateFieldChange] = useState(
@@ -265,6 +267,38 @@ function DatasetFieldMetadataSidebar({
     setShouldAnimateFieldChange(false);
   }, []);
 
+  const onFieldMetadataChangeDebounced = useMemo(
+    () => _.debounce(onFieldMetadataChange, 500),
+    [onFieldMetadataChange],
+  );
+
+  const onDisplayNameChange = useCallback(
+    e => {
+      onFieldMetadataChangeDebounced({
+        display_name: e.target.value,
+      });
+    },
+    [onFieldMetadataChangeDebounced],
+  );
+
+  const onDescriptionChange = useCallback(
+    e => {
+      onFieldMetadataChangeDebounced({
+        description: e.target.value,
+      });
+    },
+    [onFieldMetadataChangeDebounced],
+  );
+
+  const onSemanticTypeChange = useCallback(
+    e => {
+      onFieldMetadataChange({
+        semantic_type: e.target.value,
+      });
+    },
+    [onFieldMetadataChange],
+  );
+
   return (
     <SidebarContent>
       <AnimatableContent
@@ -281,11 +315,13 @@ function DatasetFieldMetadataSidebar({
               <MainFormContainer>
                 <FormField
                   name="display_name"
+                  onChange={onDisplayNameChange}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   ref={displayNameInputRef}
                 />
                 <FormField
                   name="description"
+                  onChange={onDescriptionChange}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                 />
                 {dataset.isNative() && (
@@ -296,6 +332,7 @@ function DatasetFieldMetadataSidebar({
                 )}
                 <FormField
                   name="semantic_type"
+                  onChange={onSemanticTypeChange}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   onKeyDown={onLastEssentialFieldKeyDown}
                 />
