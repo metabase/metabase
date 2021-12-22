@@ -15,9 +15,7 @@ describe.skip("issue 17777", () => {
     cy.visit("/admin/permissions/data/group/1");
 
     cy.findByText("Permissions for the All Users group");
-    cy.findByText("Sample Dataset")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
 
     cy.location("pathname").should(
       "eq",

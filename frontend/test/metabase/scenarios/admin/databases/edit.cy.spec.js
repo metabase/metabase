@@ -88,13 +88,9 @@ describe("scenarios > admin > databases > edit", () => {
           expect(response.body.cache_ttl).to.equal(32);
 
           cy.visit("/admin/databases");
-          cy.findByText("Sample Dataset")
-            .should("be.visible")
-            .click();
+          cy.findByTextEnsureVisible("Sample Dataset").click();
 
-          cy.findByText("Custom")
-            .should("be.visible")
-            .click();
+          cy.findByTextEnsureVisible("Custom").click();
           popover()
             .findByText("Use instance default (TTL)")
             .click();

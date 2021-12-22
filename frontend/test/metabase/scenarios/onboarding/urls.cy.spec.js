@@ -11,9 +11,7 @@ describe("URLs", () => {
     ["/", "/browse"].forEach(url => {
       it(`should slugify database name when opening it from "${url}"`, () => {
         cy.visit(url);
-        cy.findByText("Sample Dataset")
-          .should("be.visible")
-          .click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
         cy.findByText("Sample Dataset");
         cy.location("pathname").should("eq", "/browse/1-sample-dataset");
       });

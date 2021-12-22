@@ -13,12 +13,8 @@ describe("visual tests > notebook > major UI elements", () => {
   it("renders correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset")
-      .should("be.visible")
-      .click();
-    cy.findByText("Orders")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     addJoin({
       rightTable: "Products",
@@ -72,12 +68,8 @@ describe("visual tests > notebook > Run buttons", () => {
   it("in Custom Question render correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset")
-      .should("be.visible")
-      .click();
-    cy.findByText("Orders")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Orders").click();
     // Waiting for notebook icon to load
     cy.wait(1000);
     cy.icon("notebook").click();

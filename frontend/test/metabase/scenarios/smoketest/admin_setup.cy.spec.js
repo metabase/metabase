@@ -386,9 +386,7 @@ describe("smoketest > admin_setup", () => {
       // Navigating to Test Table table
 
       browse().click();
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       cy.icon("info");
       cy.icon("database").should("not.exist");
@@ -551,12 +549,8 @@ describe("smoketest > admin_setup", () => {
       // Check column names and visiblity
 
       browse().click();
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
-      cy.findByText("Test Table")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Test Table").click();
 
       cy.findByText("Visualization");
       cy.findByText("Discount").should("not.exist");
@@ -628,9 +622,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("All Users").click();
 
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       cy.findByText("Products");
 
@@ -649,9 +641,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       // Turn on data access for Marketing users to Products
       cy.icon("eye")
@@ -897,12 +887,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
-      cy.findByText("People")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();
       cy.findByLabelText("Name")
         .clear()

@@ -180,22 +180,14 @@ describe("binning related reproductions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset")
-      .should("be.visible")
-      .click();
-    cy.findByText("Orders")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByText("Sample Dataset")
-        .should("be.visible")
-        .click();
-      cy.findByText("Saved Questions")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18646").click();
     });
 
