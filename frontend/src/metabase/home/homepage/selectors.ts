@@ -1,4 +1,11 @@
 import { createSelector } from "reselect";
+import { Database } from "./types";
+import { createCandidatesQuery } from "./utils";
+
+export const getCandidatesQuery = createSelector(
+  (databases: Database[]) => databases,
+  createCandidatesQuery,
+);
 
 export const getSettings = createSelector<any, any, any>(
   state => state.settings,
