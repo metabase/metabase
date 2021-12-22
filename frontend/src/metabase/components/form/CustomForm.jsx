@@ -141,6 +141,18 @@ class RawCustomFormField extends React.Component {
       this.context.unregisterFormField(this._getFieldDefinition());
     }
   }
+
+  onChange = (...args) => {
+    const { name, onChange } = this.props;
+    const { fields } = this.context;
+    const field = getIn(fields, name.split("."));
+
+    field.onChange(...args);
+    if (typeof onChange === "function") {
+      onChange(...args);
+    }
+  };
+
   render() {
     const { name, innerRef } = this.props;
     const { fields, formFieldsByName, values, onChangeField } = this.context;
@@ -155,8 +167,11 @@ class RawCustomFormField extends React.Component {
       ...this.props,
       values,
       onChangeField,
-      field,
       formField,
+      field: {
+        ...field,
+        onChange: this.onChange,
+      },
     };
 
     const hasCustomWidget =
