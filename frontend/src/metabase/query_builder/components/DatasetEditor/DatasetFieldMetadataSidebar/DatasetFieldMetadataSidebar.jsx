@@ -170,7 +170,7 @@ function DatasetFieldMetadataSidebar({
   const previousField = usePrevious(field);
 
   useEffect(() => {
-    if (field && !isSameField(field?.field_ref, previousField?.field_ref)) {
+    if (!isSameField(field.field_ref, previousField?.field_ref)) {
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
@@ -181,15 +181,15 @@ function DatasetFieldMetadataSidebar({
 
   const initialValues = useMemo(() => {
     const values = {
-      display_name: field?.display_name,
-      description: field?.description,
-      semantic_type: field?.semantic_type,
+      display_name: field.display_name,
+      description: field.description,
+      semantic_type: field.semantic_type,
       visibility_type: "normal",
       display_as: "text",
       has_field_values: "search",
     };
     if (dataset.isNative()) {
-      values.id = field?.id;
+      values.id = field.id;
     }
     return values;
   }, [field, dataset]);
@@ -202,9 +202,6 @@ function DatasetFieldMetadataSidebar({
   const [tab, setTab] = useState(TAB.SETTINGS);
 
   const fieldFormattingSettings = useMemo(() => {
-    if (!field) {
-      return {};
-    }
     const fieldKey = keyForColumn(field);
     const columnSettings = dataset.setting("column_settings", {});
     return columnSettings[fieldKey] || {};
@@ -240,12 +237,11 @@ function DatasetFieldMetadataSidebar({
 
   const hasColumnFormattingOptions = useMemo(
     () =>
-      field &&
       hasColumnSettingsWidgets({
         ...columnSettingsProps,
         denylist: HIDDEN_COLUMN_FORMATTING_OPTIONS,
       }),
-    [field, columnSettingsProps],
+    [columnSettingsProps],
   );
 
   useEffect(() => {
@@ -275,71 +271,69 @@ function DatasetFieldMetadataSidebar({
         animated={shouldAnimateFieldChange}
         onAnimationEnd={onFieldChangeAnimationEnd}
       >
-        {field && (
-          <RootForm
-            fields={formFields}
-            initialValues={initialValues}
-            overwriteOnInitialValuesChange
-          >
-            {({ Form, FormField }) => (
-              <Form>
-                <MainFormContainer>
+        <RootForm
+          fields={formFields}
+          initialValues={initialValues}
+          overwriteOnInitialValuesChange
+        >
+          {({ Form, FormField }) => (
+            <Form>
+              <MainFormContainer>
+                <FormField
+                  name="display_name"
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  ref={displayNameInputRef}
+                />
+                <FormField
+                  name="description"
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                />
+                {dataset.isNative() && (
                   <FormField
-                    name="display_name"
-                    ref={displayNameInputRef}
+                    name="id"
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   />
-                  <FormField
-                    name="description"
-                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                  />
-                  {dataset.isNative() && (
-                    <FormField
-                      name="id"
-                      tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    />
-                  )}
-                  <FormField
-                    name="semantic_type"
-                    tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    onKeyDown={onLastEssentialFieldKeyDown}
-                  />
-                </MainFormContainer>
-                {hasColumnFormattingOptions && (
-                  <FormTabsContainer>
-                    <Radio
-                      value={tab}
-                      options={TAB_OPTIONS}
-                      onChange={setTab}
-                      variant="underlined"
-                      py={1}
-                    />
-                  </FormTabsContainer>
                 )}
-                <Divider />
-                <SecondaryFormContainer>
-                  {tab === TAB.SETTINGS ? (
-                    <React.Fragment>
-                      <FormField name="visibility_type" />
-                      <ViewAsFieldContainer>
-                        <ColumnSettings
-                          {...columnSettingsProps}
-                          allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
-                        />
-                      </ViewAsFieldContainer>
-                      <FormField name="has_field_values" />
-                    </React.Fragment>
-                  ) : (
-                    <ColumnSettings
-                      {...columnSettingsProps}
-                      denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
-                    />
-                  )}
-                </SecondaryFormContainer>
-              </Form>
-            )}
-          </RootForm>
-        )}
+                <FormField
+                  name="semantic_type"
+                  tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
+                  onKeyDown={onLastEssentialFieldKeyDown}
+                />
+              </MainFormContainer>
+              {hasColumnFormattingOptions && (
+                <FormTabsContainer>
+                  <Radio
+                    value={tab}
+                    options={TAB_OPTIONS}
+                    onChange={setTab}
+                    variant="underlined"
+                    py={1}
+                  />
+                </FormTabsContainer>
+              )}
+              <Divider />
+              <SecondaryFormContainer>
+                {tab === TAB.SETTINGS ? (
+                  <React.Fragment>
+                    <FormField name="visibility_type" />
+                    <ViewAsFieldContainer>
+                      <ColumnSettings
+                        {...columnSettingsProps}
+                        allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
+                      />
+                    </ViewAsFieldContainer>
+                    <FormField name="has_field_values" />
+                  </React.Fragment>
+                ) : (
+                  <ColumnSettings
+                    {...columnSettingsProps}
+                    denylist={HIDDEN_COLUMN_FORMATTING_OPTIONS}
+                  />
+                )}
+              </SecondaryFormContainer>
+            </Form>
+          )}
+        </RootForm>
       </AnimatableContent>
     </SidebarContent>
   );
