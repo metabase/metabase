@@ -133,15 +133,16 @@ const config = (module.exports = {
           : SRC_PATH + "/lib/noop",
     },
   },
-  cache: devMode
-    ? {
-        type: "filesystem",
-        buildDependencies: {
-          // invalidates the cache on configuration change
-          config: [__filename],
-        },
-      }
-    : false,
+  cache:
+    WEBPACK_BUNDLE === "hot"
+      ? {
+          type: "filesystem",
+          buildDependencies: {
+            // invalidates the cache on configuration change
+            config: [__filename],
+          },
+        }
+      : false,
   optimization: {
     splitChunks: {
       cacheGroups: {
