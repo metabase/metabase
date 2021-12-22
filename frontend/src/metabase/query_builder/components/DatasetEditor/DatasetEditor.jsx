@@ -85,8 +85,12 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    if (!focusedField) {
+      // Returning a div, so the sidebar is visible while the data is loading.
+      // The field metadata sidebar will appear with an animation once a query completes
+      return <div />;
+    }
     const isLastField =
-      focusedField &&
       focusedFieldIndex === dataset.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
