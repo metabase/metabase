@@ -3,14 +3,14 @@ import { Dashboard, Database } from "./types";
 
 export const createCandidatesQuery = (
   databases: Database[] = [],
-  dashboards: Dashboard[] = [],
+  dashboards: Dashboard[] | undefined,
   showXrays: boolean,
   enableXrays: boolean,
 ) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
 
-  if (dashboards.length || !showXrays || !enableXrays) {
+  if (!dashboards || dashboards.length || !showXrays || !enableXrays) {
     return;
   } else if (userDatabase) {
     return { id: userDatabase.id };
