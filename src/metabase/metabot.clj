@@ -9,7 +9,8 @@
 (defsetting metabot-enabled
   (deferred-trs "Enable MetaBot, which lets you search for and view your saved questions directly via Slack.")
   :type    :boolean
-  :default false)
+  :getter  (constantly false)
+  :setter  :none)
 
 
 ;;; ------------------------------------------- Websocket Connection Stuff -------------------------------------------

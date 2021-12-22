@@ -11,17 +11,16 @@
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
-  [:as {{slack-token :slack-token, metabot-enabled :metabot-enabled, :as slack-settings} :body}]
-  {slack-token     (s/maybe su/NonBlankString)
-   metabot-enabled s/Bool}
+  [:as {{slack-token :slack-token, :as slack-settings} :body}]
+  {slack-token     (s/maybe su/NonBlankString)}
   (api/check-superuser)
   (if-not slack-token
-    (setting/set-many! {:slack-token nil, :metabot-enabled false})
+    (slack/slack-app-token nil)
     (try
       (when-not config/is-test?
         (when-not (slack/valid-token? slack-token)
           (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
-      (setting/set-many! slack-settings)
+      (slack/slack-app-token slack-token)
       {:ok true}
       (catch clojure.lang.ExceptionInfo info
         {:status 400, :body (ex-data info)}))))

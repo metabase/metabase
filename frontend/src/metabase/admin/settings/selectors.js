@@ -197,15 +197,6 @@ const SECTIONS = updateSectionsWithPlugins({
         required: false,
         autoFocus: true,
       },
-      {
-        key: "metabot-enabled",
-        display_name: "MetaBot",
-        type: "boolean",
-        // TODO: why do we have "defaultValue" here in addition to the "default" specified by the backend?
-        defaultValue: false,
-        required: true,
-        autoFocus: false,
-      },
     ],
   },
   authentication: {

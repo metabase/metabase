@@ -11,8 +11,16 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-;; Define a setting which captures our Slack api token
-(defsetting slack-token (deferred-tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
+(defsetting slack-token
+  (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot. Please use a new Slack app integration instead."))
+
+(defsetting slack-app-token
+  (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
+       " "
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :setter (fn [v]
+            (setting/set-value-of-type! :slack-token nil)
+            (setting/set-value-of-type! :slack-app-token v)))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")
@@ -20,7 +28,7 @@
 (defn slack-configured?
   "Is Slack integration configured?"
   []
-  (boolean (seq (slack-token))))
+  (boolean (or (seq (slack-app-token)) (seq (slack-token)))))
 
 (defn- handle-error [body]
   (let [invalid-token? (= (:error body) "invalid_auth")
@@ -46,18 +54,19 @@
 (defn- do-slack-request [request-fn endpoint request]
   (let [token (or (get-in request [:query-params :token])
                   (get-in request [:form-params :token])
+                  (slack-app-token)
                   (slack-token))]
     (when token
       (let [url     (str slack-api-base-url "/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (merge-with merge
-                      {:query-params   {:token token}
+                      {:headers        {:authorization (str "Bearer\n" token)}
                        :as             :stream
                        ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
                        ;; amounts of data -- see #11735
                        :conn-timeout   10000
                        :socket-timeout 10000}
-                      request)]
+                      (m/dissoc-in request [:query-params :token]))]
         (try
           (handle-response (request-fn url request))
           (catch Throwable e
@@ -105,7 +114,7 @@
   "Calls Slack API `conversations.list` and returns list of available 'conversations' (channels and direct messages). By
   default only fetches channels."
   [& {:as query-parameters}]
-  (let [params (merge {:exclude_archived true, :types "public_channel,private_channel"} query-parameters)]
+  (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
     (paged-list-request "conversations.list" :channels params)))
 
 (defn- channel-with-name
@@ -141,7 +150,7 @@
                          " "
                          (tru "Please create or unarchive the channel in order to complete the Slack integration.")
                          " "
-                         (tru "The channel is used for storing graphs that are included in Pulses and MetaBot answers."))]
+                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
         (log/error (u/format-color 'red message))
         (throw (ex-info message {:status-code 400})))))
 
@@ -149,7 +158,7 @@
   "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't, throws an
   error that advices an admin to create it."
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
-  ;; this information every time we send out a pulse, but making a call to the `coversations.list` endpoint everytime we
+  ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
   ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
   ;; https://github.com/metabase/metabase/issues/8967
   ;;
@@ -163,15 +172,24 @@
    not-empty
    "Non-empty byte array"))
 
+(s/defn maybe-join-channel!
+  "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
+  This must be done before uploading a file to the channel, if using a Slack app integration."
+  [channel-id :- su/NonBlankString]
+  (if (slack-app-token)
+    (POST "conversations.join" {:channel channel-id})))
+
 (s/defn upload-file!
   "Calls Slack API `files.upload` endpoint and returns the URL of the uploaded file."
   [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-id :- su/NonBlankString]
-  {:pre [(seq (slack-token))]}
-  (let [response (http/post (str slack-api-base-url "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
-                                                                                  {:name "file",     :content file}
-                                                                                  {:name "filename", :content filename}
-                                                                                  {:name "channels", :content channel-id}]
-                                                                      :as        :json})]
+  {:pre [(slack-configured?)]}
+  (maybe-join-channel! channel-id)
+  (let [response (http/post (str slack-api-base-url "/files.upload")
+                            {:headers {:authorization (str "Bearer\n" (or (slack-app-token) (slack-token)))}
+                             :multipart [{:name "file",     :content file}
+                                         {:name "filename", :content filename}
+                                         {:name "channels", :content channel-id}]
+                             :as        :json})]
     (if (= 200 (:status response))
       (u/prog1 (get-in response [:body :file :url_private])
         (log/debug (trs "Uploaded image") <>))
