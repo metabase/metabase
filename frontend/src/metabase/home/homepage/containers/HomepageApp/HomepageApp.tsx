@@ -54,7 +54,7 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state: any, props: any) => getCandidatesQuery(props.databases),
+  query: getCandidatesQuery,
   loadingAndErrorWrapper: false,
 };
 
