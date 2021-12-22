@@ -1,7 +1,7 @@
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Database } from "./types";
 
-export const createCandidatesQuery = (databases: Database[]) => {
+export const createCandidatesQuery = (databases: Database[] = []) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));
 
