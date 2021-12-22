@@ -1,6 +1,5 @@
 import React from "react";
 import { jt, t } from "ttag";
-import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Link from "metabase/components/Link";
 
@@ -14,10 +13,12 @@ const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
     <ModalContent
       title={t`We're taking a look at your database!`}
       footer={
-        <Link to={sampleUrl ? sampleUrl : "/"}>
-          <Button primary onClick={onClose}>
-            {sampleUrl ? t`Explore sample data` : t`Explore your Metabase`}
-          </Button>
+        <Link
+          className="Button Button--primary"
+          to={sampleUrl ? sampleUrl : "/"}
+          onClick={onClose}
+        >
+          {sampleUrl ? t`Explore sample data` : t`Explore your Metabase`}
         </Link>
       }
       onClose={onClose}
