@@ -3,7 +3,7 @@ import { Database } from "./types";
 import { createCandidatesQuery } from "./utils";
 
 export const getCandidatesQuery = createSelector(
-  (databases: Database[]) => databases,
+  (databases?: Database[]) => databases,
   createCandidatesQuery,
 );
 
