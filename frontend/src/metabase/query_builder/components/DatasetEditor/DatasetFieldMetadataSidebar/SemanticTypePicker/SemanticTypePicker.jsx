@@ -22,22 +22,31 @@ const propTypes = {
   options: PropTypes.array.isRequired,
   IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
   tabIndex: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
   onKeyDown: PropTypes.func,
 };
 
-function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyDown }) {
+function SemanticTypePicker({
+  field,
+  options,
+  IDFields,
+  tabIndex,
+  onChange,
+  onKeyDown,
+}) {
   const selectButtonRef = useRef();
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
   }, []);
 
-  const onChange = useCallback(
-    item => {
-      field.onChange(item.id);
+  const onSelectValue = useCallback(
+    value => {
+      field.onChange(value);
+      onChange(value);
       selectButtonRef.current?.focus();
     },
-    [field],
+    [field, onChange],
   );
 
   const pickerLabel = useMemo(() => {
@@ -99,7 +108,7 @@ function SemanticTypePicker({ field, options, IDFields, tabIndex, onKeyDown }) {
       <Select
         value={field.value}
         options={options}
-        onChange={onChange}
+        onChange={onSelectValue}
         optionValueFn={o => o.id}
         optionSectionFn={o => o.section}
         placeholder={t`Select a semantic type`}
