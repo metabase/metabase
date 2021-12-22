@@ -4,12 +4,12 @@ import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import Link from "metabase/components/Link";
 
-export interface ExploreModalProps {
+export interface SyncingModalProps {
   sampleUrl?: string;
   onClose?: () => void;
 }
 
-const SyncingModal = ({ sampleUrl, onClose }: ExploreModalProps) => {
+const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
   return (
     <ModalContent
       title={t`We're taking a look at your database!`}
