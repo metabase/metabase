@@ -22,7 +22,6 @@ export interface HomepageProps {
   dashboards?: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
   showData?: boolean;
-  showXrays?: boolean;
   showPinMessage?: boolean;
   showSyncingModal?: boolean;
   onHideData?: () => void;
@@ -41,7 +40,6 @@ const Homepage = ({
   dashboards,
   databaseCandidates,
   showData,
-  showXrays,
   showPinMessage,
   showSyncingModal,
   onHideData,
@@ -85,7 +83,6 @@ const Homepage = ({
           <SyncingSection
             user={user}
             databases={databases}
-            showXrays={showXrays}
             showSyncingModal={showSyncingModal}
             onHideSyncingModal={onHideSyncingModal}
           />
