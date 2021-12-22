@@ -3,12 +3,8 @@ import { render, screen } from "@testing-library/react";
 import SyncingSection from "./SyncingSection";
 import { User, Database } from "../../types";
 
-const SyncDatabaseModalMock = () => <div>Explore sample data</div>;
-
-jest.mock(
-  "metabase/admin/databases/containers/SyncDatabaseModal",
-  () => SyncDatabaseModalMock,
-);
+const SyncingModal = () => <div>Explore sample data</div>;
+jest.mock("metabase/containers/SyncingModal", () => SyncingModal);
 
 describe("SyncingSection", () => {
   it("should display a modal for a syncing database", () => {

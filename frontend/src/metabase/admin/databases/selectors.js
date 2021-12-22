@@ -1,6 +1,3 @@
-import { createSelector } from "reselect";
-import { createCandidatesQuery } from "./utils";
-
 // Database Edit
 
 export const getEditingDatabase = state =>
@@ -24,10 +21,3 @@ export const getInitializeError = state =>
 
 export const isDeprecationNoticeEnabled = state =>
   state.admin.databases.isDeprecationNoticeEnabled;
-
-// Sync modal
-
-export const getCandidatesQuery = createSelector(
-  (state, props) => props.databases,
-  createCandidatesQuery,
-);
