@@ -1,28 +1,22 @@
 import React from "react";
 import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
-import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
-import { DatabaseCandidate, TableCandidate } from "../../types";
+import Link from "metabase/components/Link";
 
-export interface SyncDatabaseModalProps {
-  databaseCandidates: DatabaseCandidate[];
+export interface ExploreModalProps {
+  sampleUrl?: string;
   onClose?: () => void;
 }
 
-const SyncDatabaseModal = ({
-  databaseCandidates,
-  onClose,
-}: SyncDatabaseModalProps) => {
-  const sampleTable = getSampleTable(databaseCandidates);
-
+const ExploreModal = ({ sampleUrl, onClose }: ExploreModalProps) => {
   return (
     <ModalContent
       title={t`We're taking a look at your database!`}
       footer={
-        <Link to={sampleTable ? sampleTable.url : "/"}>
+        <Link to={sampleUrl ? sampleUrl : "/"}>
           <Button primary onClick={onClose}>
-            {sampleTable ? t`Explore sample data` : t`Explore your Metabase`}
+            {sampleUrl ? t`Explore sample data` : t`Explore your Metabase`}
           </Button>
         </Link>
       }
@@ -32,7 +26,7 @@ const SyncDatabaseModal = ({
         <span>
           {t`You’ll be able to use individual tables as they finish syncing.`}{" "}
         </span>
-        {sampleTable ? (
+        {sampleUrl ? (
           <span>
             {jt`In the meantime, you can take a look at the ${(
               <strong key="name">{t`Sample Dataset`}</strong>
@@ -48,11 +42,4 @@ const SyncDatabaseModal = ({
   );
 };
 
-const getSampleTable = (
-  databaseCandidates: DatabaseCandidate[],
-): TableCandidate | undefined => {
-  const tables = databaseCandidates.flatMap(d => d.tables);
-  return tables.find(t => t.title.includes("Orders")) ?? tables[0];
-};
-
-export default SyncDatabaseModal;
+export default ExploreModal;

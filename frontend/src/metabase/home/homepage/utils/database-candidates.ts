@@ -1,11 +1,11 @@
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Dashboard, Database } from "./types";
+import { Dashboard, Database } from "../types";
 
 export const createCandidatesQuery = (
   databases: Database[] = [],
-  dashboards: Dashboard[] | undefined,
-  showXrays: boolean,
-  enableXrays: boolean,
+  dashboards?: Dashboard[],
+  showXrays = false,
+  enableXrays = false,
 ) => {
   const sampleDatabase = databases.find(d => d.is_sample && isSyncCompleted(d));
   const userDatabase = databases.find(d => !d.is_sample && isSyncCompleted(d));

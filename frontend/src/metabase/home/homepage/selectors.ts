@@ -1,5 +1,5 @@
 import { createSelector } from "reselect";
-import { createCandidatesQuery } from "./utils";
+import { createCandidatesQuery } from "./utils/database-candidates";
 
 export const getCandidatesQuery = createSelector(
   (state: any, props: any) => props.databases,

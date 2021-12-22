@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
-import SyncDatabaseModal from "metabase/admin/databases/containers/SyncDatabaseModal";
+import ExploreModal from "metabase/containers/ExploreModal";
 import { Database, User } from "../../types";
 
 export interface SyncingSectionProps {
@@ -32,7 +32,7 @@ const SyncingSection = ({
 
   return (
     <Modal isOpen={isOpened} full={false} onClose={handleClose}>
-      <SyncDatabaseModal onClose={handleClose} />
+      <ExploreModal onClose={handleClose} />
     </Modal>
   );
 };
