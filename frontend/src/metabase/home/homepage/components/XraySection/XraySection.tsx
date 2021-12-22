@@ -23,7 +23,7 @@ import {
   ListRoot,
 } from "./XraySection.styled";
 
-interface Props {
+export interface XraySectionProps {
   user: User;
   dashboards: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
@@ -37,7 +37,7 @@ const XraySection = ({
   databaseCandidates = [],
   showXrays,
   onHideXrays,
-}: Props) => {
+}: XraySectionProps): JSX.Element | null => {
   const options = databaseCandidates.flatMap(database => database.tables);
 
   if (!showXrays || dashboards.length || !options.length) {
@@ -69,7 +69,7 @@ interface XrayCardProps {
   option: TableCandidate;
 }
 
-const XrayCard = ({ option }: XrayCardProps) => {
+const XrayCard = ({ option }: XrayCardProps): JSX.Element => {
   return (
     <CardRoot to={option.url}>
       <CardIconContainer>
@@ -89,7 +89,10 @@ interface HideSectionModalProps {
   onSubmit?: () => void;
 }
 
-const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
+const HideSectionModal = ({
+  children,
+  onSubmit,
+}: HideSectionModalProps): JSX.Element => {
   return (
     <ModalWithTrigger
       title={t`Remove these suggestions?`}

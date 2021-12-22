@@ -15,6 +15,7 @@ describe("admin > database > add > external databases", () => {
       .find("a")
       .click();
     cy.contains("PostgreSQL").click({ force: true });
+    cy.findByText("Show advanced options").click();
     cy.contains("Additional JDBC connection string options");
 
     typeAndBlurUsingLabel("Display name", "QA Postgres12");
@@ -31,7 +32,15 @@ describe("admin > database > add > external databases", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases$/);
-    cy.findByText("QA Postgres12");
+
+    cy.findByRole("table").within(() => {
+      cy.findByText("QA Postgres12");
+    });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("Syncing…");
+      cy.findByText("Done!");
+    });
   });
 
   it("should add Mongo database and redirect to listing", () => {
@@ -41,6 +50,7 @@ describe("admin > database > add > external databases", () => {
       .find("a")
       .click();
     cy.contains("MongoDB").click({ force: true });
+    cy.findByText("Show advanced options").click();
     cy.contains("Additional connection string options");
 
     typeAndBlurUsingLabel("Display name", "QA Mongo4");
@@ -58,7 +68,15 @@ describe("admin > database > add > external databases", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases$/);
-    cy.findByText("QA Mongo4");
+
+    cy.findByRole("table").within(() => {
+      cy.findByText("QA Mongo4");
+    });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("Syncing…");
+      cy.findByText("Done!");
+    });
   });
 
   it("should add MySQL database and redirect to listing", () => {
@@ -68,6 +86,7 @@ describe("admin > database > add > external databases", () => {
       .find("a")
       .click();
     cy.contains("MySQL").click({ force: true });
+    cy.findByText("Show advanced options").click();
     cy.contains("Additional JDBC connection string options");
 
     typeAndBlurUsingLabel("Display name", "QA MySQL8");
@@ -91,6 +110,14 @@ describe("admin > database > add > external databases", () => {
     cy.wait("@createDatabase");
 
     cy.url().should("match", /\/admin\/databases$/);
-    cy.findByText("QA MySQL8");
+
+    cy.findByRole("table").within(() => {
+      cy.findByText("QA MySQL8");
+    });
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("Syncing…");
+      cy.findByText("Done!");
+    });
   });
 });

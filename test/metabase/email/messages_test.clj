@@ -15,7 +15,8 @@
            (email-test/with-fake-inbox
              (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
                                             {:first_name "invitor" :email "invited_by@test.com"}
-                                            "http://localhost/some/url")
+                                            "http://localhost/some/url"
+                                            false)
              (-> (@email-test/inbox "test@test.com")
                  (update-in [0 :body 0] dissoc :content)))))))
 

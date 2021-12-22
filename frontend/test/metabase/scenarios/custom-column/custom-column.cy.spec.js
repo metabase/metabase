@@ -395,14 +395,6 @@ describe("scenarios > question > custom column", () => {
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
   });
 
-  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
-    cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.button("Done").should("not.be.disabled");
-  });
-
   it.skip("should work with `isNull` function (metabase#15922)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();

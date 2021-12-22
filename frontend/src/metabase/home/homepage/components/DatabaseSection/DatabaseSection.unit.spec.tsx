@@ -97,6 +97,7 @@ const getUser = (opts?: Partial<User>): User => ({
   id: 1,
   first_name: "John",
   is_superuser: false,
+  has_invited_second_user: false,
   personal_collection_id: "personal",
   ...opts,
 });

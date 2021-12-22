@@ -8,6 +8,7 @@
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test :as mt]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defn- resolve-card-id-source-tables [query]
@@ -71,7 +72,24 @@
                   :filter       [:between
                                  [:field "date" {:base-type :type/Date}]
                                  "2015-01-01"
-                                 "2015-02-01"]}))))))))
+                                 "2015-02-01"]})))))))
+  (testing "respects `enable-nested-queries` server setting"
+    (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]]
+      (letfn [(resolve [] (resolve-card-id-source-tables
+                           (mt/mbql-query nil
+                                          {:source-table (str "card__" card-id)})))]
+        (mt/with-temporary-setting-values [enable-nested-queries true]
+          (is (some? (resolve-card-id-source-tables
+                      (mt/mbql-query nil
+                                     {:source-table (str "card__" card-id)})))))
+        (mt/with-temporary-setting-values [enable-nested-queries false]
+          (try (resolve-card-id-source-tables
+                (mt/mbql-query nil
+                               {:source-table (str "card__" card-id)}))
+               (is false "Nested queries disabled not honored")
+               (catch Exception e
+                 (is (schema= {:clause {:source-table (s/eq (str "card__" card-id))}}
+                              (ex-data e))))))))))
 
 (deftest resolve-native-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves native queries"

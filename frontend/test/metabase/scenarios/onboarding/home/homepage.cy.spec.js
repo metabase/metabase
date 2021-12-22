@@ -16,7 +16,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Need help setting up your database?");
 
       cy.visit("/");
-      cy.findByText("invite a teammate").click();
+      cy.findByText("invite another teammate").click();
       cy.findByText("New user");
 
       cy.visit("/");

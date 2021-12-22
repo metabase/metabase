@@ -36,8 +36,10 @@ driver:
       helper-text: Specify a role to override the database user’s default role.
       placeholder: user
     - cloud-ip-address-info
+    - ssh-tunnel
+    - advanced-options-start
     - additional-options
-  connection-properties-include-tunnel-config: true
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.snowflake

@@ -124,42 +124,6 @@ describe("FieldFingerprintInfo", () => {
     });
   });
 
-  describe("Category field", () => {
-    const categoryField = Dimension.parseMBQL(
-      ["field", PRODUCTS.CATEGORY.id, null],
-      metadata,
-    ).field();
-    let container;
-
-    describe("without type/Category fingerprint", () => {
-      beforeEach(() => {
-        categoryField.fingerprint = { type: {} };
-        const wrapper = setup(categoryField);
-        container = wrapper.container;
-      });
-
-      it("should render nothing", () => {
-        expect(container.firstChild).toBeNull();
-      });
-    });
-
-    describe("with type/Category fingerprint", () => {
-      beforeEach(() => {
-        categoryField.fingerprint = {
-          global: {
-            "distinct-count": 123,
-          },
-        };
-
-        setup(categoryField);
-      });
-
-      it("should render the distinct count value", () => {
-        expect(screen.getByText("123 distinct values")).toBeVisible();
-      });
-    });
-  });
-
   describe("Other field types", () => {
     it("should render nothing", () => {
       const idField = Dimension.parseMBQL(

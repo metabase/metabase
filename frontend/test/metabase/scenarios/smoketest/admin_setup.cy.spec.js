@@ -44,6 +44,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Add database").click();
 
+      cy.findByText("Show advanced options").click();
+
       cy.findByText("Rerun queries for simple explorations");
 
       // Add new database
@@ -388,7 +390,6 @@ describe("smoketest > admin_setup", () => {
       browse().click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
 
-      cy.icon("info");
       cy.icon("database").should("not.exist");
 
       cy.findByText("Test Table").click();

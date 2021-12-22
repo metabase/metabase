@@ -32,7 +32,7 @@ export const GENERAL_DB_DOC = MetabaseSettings.docsUrl(
 export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 
 const propTypes = {
-  engine: PropTypes.string.isRequired,
+  engine: PropTypes.string,
   hasCircle: PropTypes.bool,
 };
 

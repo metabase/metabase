@@ -129,9 +129,6 @@ export function tokenize(expression) {
       }
       ++index;
     }
-    if (index <= start) {
-      return null;
-    }
     const dot = source[index];
     if (dot === ".") {
       ++index;
@@ -142,6 +139,13 @@ export function tokenize(expression) {
         }
         ++index;
       }
+      // just a dot?
+      if (index - start <= 1) {
+        index = start;
+        return null;
+      }
+    } else if (index <= start) {
+      return null;
     }
     const exp = source[index];
     if (exp === "e" || exp === "E") {

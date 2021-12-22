@@ -1,9 +1,4 @@
-import {
-  restore,
-  mockSessionProperty,
-  filterWidget,
-  popover,
-} from "__support__/e2e/cypress";
+import { restore, filterWidget, popover } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -33,8 +28,6 @@ describe("issue 17751", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
   });

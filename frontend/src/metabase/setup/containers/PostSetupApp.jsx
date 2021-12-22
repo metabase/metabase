@@ -73,7 +73,7 @@ export default class PostSetupApp extends Component {
                     description={
                       isSample
                         ? jt`While we’re syncing your data, you can check out these explorations of our ${(
-                            <strong>{t`Sample Dataset`}</strong>
+                            <strong key="database">{t`Sample Dataset`}</strong>
                           )}. Hope you like them!`
                         : t`I took a look at the data you just connected, and I have some explorations of interesting things I found. Hope you like them!`
                     }

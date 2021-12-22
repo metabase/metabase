@@ -71,7 +71,7 @@ export default class MetadataTableList extends Component {
 
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
-        <li className="AdminList-section">
+        <li className="AdminList-section flex justify-between align-center">
           {(n =>
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
@@ -117,7 +117,7 @@ export default class MetadataTableList extends Component {
           />
         </div>
         {(this.props.onBack || this.props.schema) && (
-          <h4 className="p2 border-bottom">
+          <h4 className="p2 border-bottom break-anywhere">
             {this.props.onBack && (
               <span
                 className="text-brand cursor-pointer"

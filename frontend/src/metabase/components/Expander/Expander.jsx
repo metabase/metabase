@@ -14,7 +14,11 @@ const Expander = ({ isExpanded, children, onChange }) => {
   }, [isExpanded, onChange]);
 
   return (
-    <ExpanderRoot aria-expanded={isExpanded} onClick={handleClick}>
+    <ExpanderRoot
+      type="button"
+      onClick={handleClick}
+      aria-expanded={isExpanded}
+    >
       <ExpanderContent>{children}</ExpanderContent>
       <ExpanderIcon name={isExpanded ? "chevronup" : "chevrondown"} />
     </ExpanderRoot>

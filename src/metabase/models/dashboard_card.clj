@@ -2,7 +2,6 @@
   (:require [clojure.set :as set]
             [metabase.db.util :as mdb.u]
             [metabase.events :as events]
-            [metabase.mbql.normalize :as normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.interface :as i]
@@ -36,21 +35,11 @@
                   :visualization_settings {}}]
     (merge defaults dashcard)))
 
-(defn normalize-parameter-mappings
-  "Normalize `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameter-mappings]
-  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
-      []))
-
-(models/add-type! ::parameter-mappings
-  :in  (comp i/json-in normalize-parameter-mappings)
-  :out (comp (i/catch-normalization-exceptions normalize-parameter-mappings) i/json-out-with-keywordization))
-
 (u/strict-extend (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:parameter_mappings     ::parameter-mappings
+          :types       (constantly {:parameter_mappings     :parameters-list
                                     :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
           :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})

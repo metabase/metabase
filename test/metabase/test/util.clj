@@ -33,7 +33,8 @@
             [toucan.db :as db]
             [toucan.models :as t.models]
             [toucan.util.test :as tt])
-  (:import java.net.ServerSocket
+  (:import [java.io File FileInputStream]
+           java.net.ServerSocket
            java.nio.charset.StandardCharsets
            java.util.concurrent.TimeoutException
            java.util.Locale
@@ -1059,3 +1060,12 @@
 
     :else
     actual))
+
+(defn file->bytes
+  "Reads a file at `file-path` completely into a byte array, returning that array."
+  [file-path]
+  (let [f   (File. file-path)
+        ary (byte-array (.length f))]
+    (with-open [is (FileInputStream. f)]
+      (.read is ary)
+      ary)))
