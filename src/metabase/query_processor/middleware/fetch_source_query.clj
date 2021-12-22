@@ -44,7 +44,9 @@
 (def ^:private SourceQueryAndMetadata
   {:source-query    mbql.s/SourceQuery
    :database        mbql.s/DatabaseID
-   :source-metadata [mbql.s/SourceQueryMetadata]})
+   :source-metadata [mbql.s/SourceQueryMetadata]
+
+   (s/optional-key :source-query/dataset?) s/Bool})
 
 (def ^:private MapWithResolvedSourceQuery
   (s/constrained
@@ -97,7 +99,8 @@
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
-        (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
+        (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
+                           :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
 
@@ -105,7 +108,8 @@
           database-id                  :database
           {template-tags :template-tags
            :as           native-query} :native} :dataset_query
-         result-metadata                        :result_metadata}
+         result-metadata                        :result_metadata
+         dataset?                               :dataset}
         card
 
         source-query
@@ -127,9 +131,10 @@
       (log/info (trs "Fetched source query from Card {0}:" card-id)
                 "\n"
                 (u/pprint-to-str 'yellow source-query)))
-    {:source-query    source-query
-     :database        database-id
-     :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}))
+    (cond-> {:source-query    source-query
+             :database        database-id
+             :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}
+      dataset? (assoc :source-query/dataset? dataset?))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]

@@ -58,10 +58,9 @@
                       :order-by     [[:asc *venues.id]]
                       :limit        5})))))))))
 
-(defn- breakout-results [& {:keys [has-source-metadata? native-source? count-lower?]
+(defn- breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
-                                   native-source?       false
-                                   count-lower?         false}}]
+                                   native-source?       false}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
@@ -69,15 +68,12 @@
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
-                       :effective_type :type/Integer
-                       :display_name "PRICE")
+                       :effective_type :type/Integer)
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
             (dissoc :id :semantic_type :settings :fingerprint :table_id :coercion_strategy))
-          (cond-> (qp.test/aggregate-col :count)
-            (or native-source? count-lower?)
-            (assoc :display_name "count"))]})
+          (qp.test/aggregate-col :count)]})
 
 (deftest mbql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -191,7 +187,7 @@
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results :count-lower? true)
+      (is (= (breakout-results)
              (qp.test/rows-and-cols
                (mt/format-rows-by [int int]
                  (mt/run-mbql-query venues
@@ -440,14 +436,12 @@
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
                 (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                       :display_name "DATE" ;; the underlying native field has this as its display name
                        :unit         :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
                         :id :settings :fingerprint))
-            (assoc (qp.test/aggregate-col :count)
-                   :display_name "count")]
+            (qp.test/aggregate-col :count)]
            (mt/cols
              (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                        :type     :native
