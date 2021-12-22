@@ -61,6 +61,8 @@ const EmptyState = ({ user }: EmptyStateProps): JSX.Element => {
     <EmptyStateRoot>
       <EmptyStateImage
         src="app/img/empty.png"
+        width={124}
+        height={130}
         srcSet="app/img/empty.png 1x, app/img/empty@2x.png 2x"
       />
       <EmptyStateTitle>

@@ -9,20 +9,20 @@ import Homepage from "../../components/Homepage";
 import {
   hideData,
   hidePinMessage,
-  hideXrays,
   hideSyncingModal,
+  hideXrays,
 } from "../../actions";
 import {
+  getCandidatesQuery,
   getShowData,
   getShowPinMessage,
-  getShowXrays,
   getShowSyncingModal,
+  getShowXrays,
 } from "../../selectors";
-import { Database } from "../../types";
 import {
-  trackDatabaseClick,
   trackCollectionClick,
   trackDashboardClick,
+  trackDatabaseClick,
 } from "../../analytics";
 
 const databasesProps = {
@@ -54,18 +54,7 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state: any, { databases = [] }: { databases: Database[] }) => {
-    const [sampleDatabases, userDatabases] = _.partition(
-      databases,
-      d => d.is_sample,
-    );
-
-    if (userDatabases.length) {
-      return { id: userDatabases[0].id };
-    } else if (sampleDatabases.length) {
-      return { id: sampleDatabases[0].id };
-    }
-  },
+  query: getCandidatesQuery,
   loadingAndErrorWrapper: false,
 };
 
