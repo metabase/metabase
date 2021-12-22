@@ -4,7 +4,7 @@ import SyncDatabaseModal from "./SyncDatabaseModal";
 import { DatabaseCandidate, TableCandidate } from "../../types";
 
 describe("SyncDatabaseModal", () => {
-  it("should render a table from the sample dataset", () => {
+  it("should render with a table from the sample dataset", () => {
     const table = getTableCandidate();
     const database = getDatabaseCandidate({ tables: [table] });
     const onClose = jest.fn();
