@@ -19,7 +19,6 @@ import {
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
-import { keyForColumn } from "metabase/lib/dataset";
 import { isSameField } from "metabase/lib/query/field_ref";
 import { isCurrency, isFK } from "metabase/lib/schema_metadata";
 
@@ -31,8 +30,6 @@ import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-
-import { updateCardVisualizationSettings } from "metabase/query_builder/actions";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
@@ -55,7 +52,6 @@ const propTypes = {
   isLastField: PropTypes.bool.isRequired,
   IDFields: PropTypes.array.isRequired,
   handleFirstFieldFocus: PropTypes.func.isRequired,
-  updateCardVisualizationSettings: PropTypes.func.isRequired,
   onFieldMetadataChange: PropTypes.func.isRequired,
 };
 
@@ -65,8 +61,6 @@ function mapStateToProps(state, { dataset }) {
     IDFields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 }
-
-const mapDispatchToProps = { updateCardVisualizationSettings };
 
 function getVisibilityTypeName(visibilityType) {
   if (visibilityType.id === "normal") {
@@ -173,7 +167,6 @@ function DatasetFieldMetadataSidebar({
   isLastField,
   IDFields,
   handleFirstFieldFocus,
-  updateCardVisualizationSettings,
   onFieldMetadataChange,
 }) {
   const displayNameInputRef = useRef();
@@ -216,38 +209,22 @@ function DatasetFieldMetadataSidebar({
 
   const [tab, setTab] = useState(TAB.SETTINGS);
 
-  const fieldFormattingSettings = useMemo(() => {
-    const fieldKey = keyForColumn(field);
-    const columnSettings = dataset.setting("column_settings", {});
-    return columnSettings[fieldKey] || {};
-  }, [dataset, field]);
-
   const handleFormattingSettingsChange = useCallback(
     settings => {
-      const fieldKey = keyForColumn(field);
-      const nextFieldSettings = {
-        ...fieldFormattingSettings,
-        ...settings,
-      };
-      updateCardVisualizationSettings({
-        column_settings: {
-          ...dataset.setting("column_settings"),
-          [fieldKey]: nextFieldSettings,
-        },
-      });
+      onFieldMetadataChange({ settings });
     },
-    [dataset, field, fieldFormattingSettings, updateCardVisualizationSettings],
+    [onFieldMetadataChange],
   );
 
   const columnSettingsProps = useMemo(
     () => ({
       column: field,
-      value: fieldFormattingSettings,
+      value: field.settings,
       onChange: handleFormattingSettingsChange,
       inheritedSettings: getGlobalSettingsForColumn(field),
       variant: "form-field",
     }),
-    [field, fieldFormattingSettings, handleFormattingSettingsChange],
+    [field, handleFormattingSettingsChange],
   );
 
   const hasColumnFormattingOptions = useMemo(
@@ -419,7 +396,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(DatasetFieldMetadataSidebar);
+export default connect(mapStateToProps)(DatasetFieldMetadataSidebar);
