@@ -174,6 +174,15 @@ function DatasetEditor(props) {
     }
   }, [result, focusedField, focusFirstField]);
 
+  useEffect(() => {
+    if (focusedField) {
+      const field = fields.find(f =>
+        isSameField(focusedField.field_ref, f.field_ref),
+      );
+      setFocusedField(field);
+    }
+  }, [focusedField, fields]);
+
   const onFieldMetadataChange = useCallback(
     changes => {
       setFieldMetadata({ field_ref: focusedField.field_ref, changes });
