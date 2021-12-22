@@ -1,4 +1,12 @@
 import React, { Fragment } from "react";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CollectionSection from "../CollectionSection";
+import DatabaseSection from "../DatabaseSection";
+import GreetingSection from "../GreetingSection";
+import StartSection from "../StartSection";
+import XraySection from "../XraySection";
+import SyncingSection from "../SyncingSection/SyncingSection";
+import { HomepageRoot } from "./Homepage.styled";
 import {
   Collection,
   Dashboard,
@@ -6,13 +14,6 @@ import {
   DatabaseCandidate,
   User,
 } from "../../types";
-import CollectionSection from "../CollectionSection";
-import DatabaseSection from "../DatabaseSection";
-import GreetingSection from "../GreetingSection";
-import StartSection from "../StartSection";
-import XraySection from "../XraySection";
-import { LandingRoot } from "./Homepage.styled";
-import SyncingSection from "../SyncingSection/SyncingSection";
 
 export interface HomepageProps {
   user: User;
@@ -52,9 +53,9 @@ const Homepage = ({
   onDatabaseClick,
 }: HomepageProps): JSX.Element => {
   return (
-    <LandingRoot>
+    <HomepageRoot>
       <GreetingSection user={user} />
-      {databases && collections && dashboards && (
+      {databases && collections && dashboards ? (
         <Fragment>
           <StartSection
             user={user}
@@ -89,8 +90,10 @@ const Homepage = ({
             onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
+      ) : (
+        <LoadingAndErrorWrapper loading />
       )}
-    </LandingRoot>
+    </HomepageRoot>
   );
 };
 
