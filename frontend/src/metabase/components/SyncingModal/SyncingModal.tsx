@@ -9,7 +9,7 @@ export interface ExploreModalProps {
   onClose?: () => void;
 }
 
-const ExploreModal = ({ sampleUrl, onClose }: ExploreModalProps) => {
+const SyncingModal = ({ sampleUrl, onClose }: ExploreModalProps) => {
   return (
     <ModalContent
       title={t`We're taking a look at your database!`}
@@ -42,4 +42,4 @@ const ExploreModal = ({ sampleUrl, onClose }: ExploreModalProps) => {
   );
 };
 
-export default ExploreModal;
+export default SyncingModal;

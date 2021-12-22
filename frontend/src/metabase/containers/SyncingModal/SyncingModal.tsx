@@ -4,7 +4,7 @@ import _ from "underscore";
 import Settings from "metabase/lib/settings";
 import Databases from "metabase/entities/databases";
 import DatabaseCandidates from "metabase/entities/database-candidates";
-import ExploreModal from "metabase/components/ExploreModal";
+import SyncingModal from "metabase/components/SyncingModal";
 import { Database, DatabaseCandidate } from "./types";
 
 interface WithDatabases {
@@ -44,4 +44,4 @@ export default _.compose(
   Databases.loadList(),
   DatabaseCandidates.loadList({ query: getSampleQuery }),
   connect(mapStateToProps),
-)(ExploreModal);
+)(SyncingModal);
