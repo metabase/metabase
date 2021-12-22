@@ -27,6 +27,7 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
+import { isSameField } from "metabase/lib/query/field_ref";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 
