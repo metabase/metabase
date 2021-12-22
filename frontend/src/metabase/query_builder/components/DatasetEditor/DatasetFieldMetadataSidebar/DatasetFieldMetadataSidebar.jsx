@@ -21,6 +21,7 @@ import {
 } from "metabase/lib/core";
 import { keyForColumn } from "metabase/lib/dataset";
 import { isSameField } from "metabase/lib/query/field_ref";
+import { isCurrency, isFK } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/Form";
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -35,7 +36,10 @@ import { updateCardVisualizationSettings } from "metabase/query_builder/actions"
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker from "./SemanticTypePicker";
+import SemanticTypePicker, {
+  FKTargetPicker,
+  CurrencyPicker,
+} from "./SemanticTypePicker";
 import {
   AnimatableContent,
   MainFormContainer,
@@ -74,6 +78,17 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
+function getSemanticTypeOptions() {
+  return [
+    ...field_semantic_types,
+    {
+      id: null,
+      name: t`No special type`,
+      section: t`Other`,
+    },
+  ];
+}
+
 function getFormFields({ dataset, IDFields }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
@@ -86,55 +101,51 @@ function getFormFields({ dataset, IDFields }) {
     return <MappedFieldPicker {...formFieldProps} dataset={dataset} />;
   }
 
-  function SemanticTypeWidget(formFieldProps) {
-    return (
-      <SemanticTypePicker
-        {...formFieldProps}
-        options={[
-          ...field_semantic_types,
-          {
-            id: null,
-            name: t`No special type`,
-            section: t`Other`,
-          },
-        ]}
-        IDFields={IDFields}
-      />
-    );
-  }
-
-  return [
-    { name: "display_name", title: t`Display name` },
-    {
-      name: "description",
-      title: t`Description`,
-      placeholder: t`It’s optional, but oh, so helpful`,
-      type: "text",
-    },
-    dataset.isNative() && {
-      name: "id",
-      title: t`Database column this maps to`,
-      widget: MappedFieldWidget,
-    },
-    {
-      name: "semantic_type",
-      title: t`Column type`,
-      widget: SemanticTypeWidget,
-    },
-    {
-      name: "visibility_type",
-      title: t`This column should appear in…`,
-      type: "radio",
-      options: visibilityTypeOptions,
-    },
-    {
-      name: "has_field_values",
-      title: t`Filtering on this field`,
-      info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
-      type: "select",
-      options: has_field_values_options,
-    },
-  ].filter(Boolean);
+  return fieldFormValues =>
+    [
+      { name: "display_name", title: t`Display name` },
+      {
+        name: "description",
+        title: t`Description`,
+        placeholder: t`It’s optional, but oh, so helpful`,
+        type: "text",
+      },
+      dataset.isNative() && {
+        name: "id",
+        title: t`Database column this maps to`,
+        widget: MappedFieldWidget,
+      },
+      {
+        name: "semantic_type",
+        title: t`Column type`,
+        widget: SemanticTypePicker,
+        options: getSemanticTypeOptions(),
+      },
+      {
+        name: "fk_target_field_id",
+        hidden: !isFK(fieldFormValues),
+        widget: FKTargetPicker,
+        options: IDFields,
+      },
+      {
+        name: "settings_currency",
+        hidden: !isCurrency(fieldFormValues),
+        widget: CurrencyPicker,
+      },
+      {
+        name: "visibility_type",
+        title: t`This column should appear in…`,
+        type: "radio",
+        options: visibilityTypeOptions,
+      },
+      {
+        name: "has_field_values",
+        title: t`Filtering on this field`,
+        info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
+        type: "select",
+        options: has_field_values_options,
+      },
+    ].filter(Boolean);
 }
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
@@ -186,6 +197,8 @@ function DatasetFieldMetadataSidebar({
       display_name: field.display_name,
       description: field.description,
       semantic_type: field.semantic_type,
+      fk_target_field_id: field.fk_target_field_id || null,
+      settings_currency: field.settings?.currency || null,
       visibility_type: "normal",
       display_as: "text",
       has_field_values: "search",
@@ -196,10 +209,10 @@ function DatasetFieldMetadataSidebar({
     return values;
   }, [field, dataset]);
 
-  const formFields = useMemo(() => getFormFields({ dataset, IDFields }), [
-    dataset,
-    IDFields,
-  ]);
+  const form = useMemo(
+    () => ({ fields: getFormFields({ dataset, IDFields }) }),
+    [dataset, IDFields],
+  );
 
   const [tab, setTab] = useState(TAB.SETTINGS);
 
@@ -299,6 +312,26 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
+  const onFKTargetFieldChange = useCallback(
+    e => {
+      onFieldMetadataChange({
+        fk_target_field_id: e.target.value,
+      });
+    },
+    [onFieldMetadataChange],
+  );
+
+  const onCurrencyChange = useCallback(
+    e => {
+      onFieldMetadataChange({
+        settings: {
+          currency: e.target.value,
+        },
+      });
+    },
+    [onFieldMetadataChange],
+  );
+
   return (
     <SidebarContent>
       <AnimatableContent
@@ -306,7 +339,7 @@ function DatasetFieldMetadataSidebar({
         onAnimationEnd={onFieldChangeAnimationEnd}
       >
         <RootForm
-          fields={formFields}
+          form={form}
           initialValues={initialValues}
           overwriteOnInitialValuesChange
         >
@@ -335,6 +368,14 @@ function DatasetFieldMetadataSidebar({
                   onChange={onSemanticTypeChange}
                   tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   onKeyDown={onLastEssentialFieldKeyDown}
+                />
+                <FormField
+                  name="fk_target_field_id"
+                  onChange={onFKTargetFieldChange}
+                />
+                <FormField
+                  name="settings_currency"
+                  onChange={onCurrencyChange}
                 />
               </MainFormContainer>
               {hasColumnFormattingOptions && (

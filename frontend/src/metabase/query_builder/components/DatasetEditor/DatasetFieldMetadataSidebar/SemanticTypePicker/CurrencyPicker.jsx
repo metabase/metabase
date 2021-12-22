@@ -16,11 +16,7 @@ const propTypes = {
 };
 
 function getCurrency(field) {
-  return (
-    field?.settings?.currency ||
-    getGlobalSettingsForColumn(field).currency ||
-    "USD"
-  );
+  return field.value || getGlobalSettingsForColumn(field).currency || "USD";
 }
 
 function CurrencyPicker({ field, onChange }) {
