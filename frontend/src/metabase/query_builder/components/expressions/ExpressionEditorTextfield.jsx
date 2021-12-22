@@ -180,6 +180,16 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
+  // This method focuses on the editor input.
+  // Using react-ace’s `onFocus` rendered the editor code
+  // with a severe vertical misalignment.
+  // Occurrences of this bug were rare and non-deterministic wrt to browser.
+  handleEditorLoaded = () => {
+    setTimeout(() => {
+      this.input.current.editor.focus();
+    }, 10);
+  };
+
   handleArrowUp = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
@@ -401,7 +411,9 @@ export default class ExpressionEditorTextfield extends React.Component {
             wrapEnabled={true}
             fontSize={12}
             onBlur={this.handleInputBlur}
-            onFocus={this.handleFocus}
+            // onLoad circumvents a buggy onFocus,
+            // see declaration of `handleEditorLoaded`
+            onLoad={this.handleEditorLoaded}
             role="ace-editor"
             setOptions={{
               behavioursEnabled: false,
