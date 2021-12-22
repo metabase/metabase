@@ -17,6 +17,7 @@ import {
   getShowData,
   getShowPinMessage,
   getShowSyncingModal,
+  getShowXrays,
 } from "../../selectors";
 import {
   trackCollectionClick,

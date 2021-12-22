@@ -41,6 +41,7 @@ const PreferencesStep = ({
       await onStepSubmit(isTrackingAllowed);
     } catch (error) {
       setErrorMessage(getSubmitError(error));
+      throw error;
     }
   };
 
@@ -87,8 +88,8 @@ const PreferencesStep = ({
         </StepInfoList>
       )}
       <ActionButton
-        normalText={t`Next`}
-        activeText={t`Next`}
+        normalText={t`Finish`}
+        activeText={t`Finishing…`}
         failedText={t`Failed`}
         successText={t`Success`}
         primary

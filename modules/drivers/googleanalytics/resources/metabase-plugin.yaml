@@ -30,6 +30,8 @@ driver:
       helper-text: Once you've provided Client ID and Client Secret, a link to get an auth code will appear. Authorize the connection and copy and paste the code here.
       placeholder: 4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek
       required: true
+    - advanced-options-start
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.google

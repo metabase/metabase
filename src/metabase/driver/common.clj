@@ -105,11 +105,121 @@
    :type         :boolean
    :default      false})
 
-(def default-additional-options-details
+(def additional-options
   "Map of the db `additional-options` details field, useful for `connection-properties` implementations. Should assoc a
   `:placeholder` key"
   {:name         "additional-options"
-   :display-name (deferred-tru "Additional JDBC connection string options")})
+   :display-name (deferred-tru "Additional JDBC connection string options")
+   :visible-if   {"advanced-options" true}})
+
+(def ssh-tunnel-preferences
+  "Configuration parameters to include in the add driver page on drivers that
+  support ssh tunnels"
+  [{:name         "tunnel-enabled"
+    :display-name (deferred-tru "Use an SSH tunnel")
+    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :type         :boolean
+    :default      false}
+   {:name         "tunnel-host"
+    :display-name (deferred-tru "SSH tunnel host")
+    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :placeholder  "hostname"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-port"
+    :display-name (deferred-tru "SSH tunnel port")
+    :type         :integer
+    :default      22
+    :required     false
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-user"
+    :display-name (deferred-tru "SSH tunnel username")
+    :helper-text  (deferred-tru "The username you use to login to your SSH tunnel.")
+    :placeholder  "username"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   ;; this is entirely a UI flag
+   {:name         "tunnel-auth-option"
+    :display-name (deferred-tru "SSH Authentication")
+    :type         :select
+    :options      [{:name (deferred-tru "SSH Key") :value "ssh-key"}
+                   {:name (deferred-tru "Password") :value "password"}]
+    :default      "ssh-key"
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-pass"
+    :display-name (deferred-tru "SSH tunnel password")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "password"}}
+   {:name         "tunnel-private-key"
+    :display-name (deferred-tru "SSH private key to connect to the tunnel")
+    :type         :string
+    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :required     true
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
+   {:name         "tunnel-private-key-passphrase"
+    :display-name (deferred-tru "Passphrase for SSH private key")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
+
+(def advanced-options-start
+  "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
+  have their visibility controlled using the `visible-if` property."
+  {:name    "advanced-options"
+   :type    :section
+   :default false})
+
+(def auto-run-queries
+  "Map representing the `auto-run-queries` option in a DB connection form."
+  {:name         "auto_run_queries"
+   :type         :boolean
+   :default      true
+   :display-name (deferred-tru "Rerun queries for simple explorations")
+   :description  (str (deferred-tru "We execute the underlying query when you explore data using Summarize or Filter.")
+                      " "
+                      (deferred-tru "This is on by default but you can turn it off if performance is slow."))
+   :visible-if   {"advanced-options" true}})
+
+(def let-user-control-scheduling
+  "Map representing the `let-user-control-scheduling` option in a DB connection form."
+  {:name         "let-user-control-scheduling"
+   :type         :boolean
+   :display-name (deferred-tru "Choose when syncs and scans happen")
+   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :visible-if   {"advanced-options" true}})
+
+(def metadata-sync-schedule
+  "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.metadata_sync"
+   :display-name (deferred-tru "Database syncing")
+   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
+                      " "
+                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def cache-field-values-schedule
+  "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.cache_field_values"
+   :display-name (deferred-tru "Scanning for Filter Values")
+   :description  (str (deferred-tru "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.")
+                      " "
+                      (deferred-tru "When should Metabase automatically scan and cache field values?"))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def refingerprint
+  "Map representing the `refingerprint` option in a DB connection form."
+  {:name         "refingerprint"
+   :type         :boolean
+   :display-name (deferred-tru "Periodically refingerprint tables")
+   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :visible-if   {"advanced-options" true}})
+
+(def default-advanced-options
+  "Vector containing the three most common options present in the advanced option section of the DB connection form."
+  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -121,13 +231,16 @@
 
   See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
   for more details."
-  {:additional-options default-additional-options-details
-   :dbname             default-dbname-details
-   :host               default-host-details
-   :password           default-password-details
-   :port               default-port-details
-   :ssl                default-ssl-details
-   :user               default-user-details})
+  {:dbname                   default-dbname-details
+   :host                     default-host-details
+   :password                 default-password-details
+   :port                     default-port-details
+   :ssl                      default-ssl-details
+   :user                     default-user-details
+   :ssh-tunnel               ssh-tunnel-preferences
+   :additional-options       additional-options
+   :advanced-options-start   advanced-options-start
+   :default-advanced-options default-advanced-options})
 
 (def cloud-ip-address-info
   "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior

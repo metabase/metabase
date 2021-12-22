@@ -99,8 +99,7 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByText("Settings").click();
-      cy.findByText("Click and drag to change their order")
-        .should("be.visible")
+      cy.findByTextEnsureVisible("Click and drag to change their order")
         .parent()
         .find(".cursor-grab")
         .as("sidebarColumns"); // Store all columns in an array

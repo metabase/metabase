@@ -34,7 +34,7 @@ describe("PreferencesStep", () => {
     });
 
     render(<PreferencesStep {...props} />);
-    userEvent.click(screen.getByText("Next"));
+    userEvent.click(screen.getByText("Finish"));
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
   });

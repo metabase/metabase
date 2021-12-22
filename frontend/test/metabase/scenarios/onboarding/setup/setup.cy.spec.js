@@ -27,9 +27,7 @@ describe("scenarios > setup", () => {
       });
       cy.location("pathname").should("eq", "/setup");
       cy.findByText("Welcome to Metabase");
-      cy.findByText("Let's get started")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Let's get started").click();
 
       // ========
       // Language
@@ -156,7 +154,7 @@ describe("scenarios > setup", () => {
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
-      cy.findByText("Next").click();
+      cy.findByText("Finish").click();
 
       // ==================
       // Finish & Subscribe
@@ -174,9 +172,7 @@ describe("scenarios > setup", () => {
     cy.visit(`/setup#123456`);
 
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
 
     cy.findByText("What's your preferred language?");
     cy.findByTestId("language-option-en");
@@ -208,9 +204,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     // 2 - setup/step_seen
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
 
     // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
@@ -224,9 +218,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
     // One backend event should be recorded (on new instance initialization)

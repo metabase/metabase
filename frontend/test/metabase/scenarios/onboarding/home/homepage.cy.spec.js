@@ -16,7 +16,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Need help setting up your database?");
 
       cy.visit("/");
-      cy.findByText("invite a teammate").click();
+      cy.findByText("invite another teammate").click();
       cy.findByText("New user");
 
       cy.visit("/");
@@ -29,7 +29,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Other users' personal collections");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByText("Learn about our data");
 
       cy.visit("/");
@@ -97,7 +97,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByText("Learn about our data");
     });
 

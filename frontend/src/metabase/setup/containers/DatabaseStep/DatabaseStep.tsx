@@ -15,12 +15,14 @@ import {
   isSetupCompleted,
   getDatabaseEngine,
   getInvite,
+  getUser,
 } from "../../selectors";
 import { DatabaseInfo, InviteInfo } from "../../types";
 
 const mapStateToProps = (state: any) => ({
-  engine: getDatabaseEngine(state),
+  user: getUser(state),
   database: getDatabase(state),
+  engine: getDatabaseEngine(state),
   invite: getInvite(state),
   isEmailConfigured: Settings.isEmailConfigured(),
   isStepActive: isStepActive(state, DATABASE_STEP),
