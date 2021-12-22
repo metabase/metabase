@@ -1,6 +1,5 @@
 import { connect } from "react-redux";
 import _ from "underscore";
-import { isSyncCompleted } from "metabase/lib/syncing";
 import Databases from "metabase/entities/databases";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
@@ -10,20 +9,20 @@ import Homepage from "../../components/Homepage";
 import {
   hideData,
   hidePinMessage,
-  hideXrays,
   hideSyncingModal,
+  hideXrays,
 } from "../../actions";
 import {
+  getCandidatesQuery,
   getShowData,
   getShowPinMessage,
-  getShowXrays,
   getShowSyncingModal,
+  getShowXrays,
 } from "../../selectors";
-import { Database } from "../../types";
 import {
-  trackDatabaseClick,
   trackCollectionClick,
   trackDashboardClick,
+  trackDatabaseClick,
 } from "../../analytics";
 
 const databasesProps = {
@@ -55,20 +54,7 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state: any, { databases = [] }: { databases: Database[] }) => {
-    const sampleDatabase = databases.find(
-      d => d.is_sample && isSyncCompleted(d),
-    );
-    const userDatabase = databases.find(
-      d => !d.is_sample && isSyncCompleted(d),
-    );
-
-    if (userDatabase) {
-      return { id: userDatabase.id };
-    } else if (sampleDatabase) {
-      return { id: sampleDatabase.id };
-    }
-  },
+  query: (state: any, props: any) => getCandidatesQuery(props.databases),
   loadingAndErrorWrapper: false,
 };
 
