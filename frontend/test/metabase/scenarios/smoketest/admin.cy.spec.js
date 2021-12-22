@@ -63,7 +63,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
-      cy.findByText("Next").click();
+      cy.findByText("Finish").click();
 
       // Finish & Subscribe
 
