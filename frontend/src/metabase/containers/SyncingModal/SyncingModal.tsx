@@ -7,16 +7,16 @@ import DatabaseCandidates from "metabase/entities/database-candidates";
 import SyncingModal from "metabase/components/SyncingModal";
 import { Database, DatabaseCandidate } from "./types";
 
-interface WithDatabases {
+interface DatabaseProps {
   databases: Database[];
 }
 
-interface WithDatabaseCandidates {
+interface CandidatesProps {
   databaseCandidates: DatabaseCandidate[];
 }
 
 const getSampleQuery = createSelector(
-  (state: unknown, props: WithDatabases) => props.databases,
+  (state: unknown, props: DatabaseProps) => props.databases,
   databases => {
     const sampleDatabase = databases.find(d => d.is_sample);
     const enableXrays = Settings.get("enable-xrays");
@@ -28,7 +28,7 @@ const getSampleQuery = createSelector(
 );
 
 const getSampleUrl = createSelector(
-  (state: unknown, props: WithDatabaseCandidates) => props.databaseCandidates,
+  (state: unknown, props: CandidatesProps) => props.databaseCandidates,
   candidates => {
     const tables = candidates.flatMap(d => d.tables);
     const table = tables.find(t => t.title.includes("Orders")) ?? tables[0];
@@ -36,7 +36,7 @@ const getSampleUrl = createSelector(
   },
 );
 
-const mapStateToProps = (state: unknown, props: WithDatabaseCandidates) => ({
+const mapStateToProps = (state: unknown, props: CandidatesProps) => ({
   sampleUrl: getSampleUrl(state, props),
 });
 
