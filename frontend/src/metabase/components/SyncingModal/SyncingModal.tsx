@@ -1,5 +1,6 @@
 import React from "react";
 import { jt, t } from "ttag";
+import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
 import {
   ModalMessage,
@@ -33,13 +34,15 @@ const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
               )} if you want to get a head start. Want to explore?`
             : t`Have a look around your Metabase in the meantime if you want to get a head start.`}
         </ModalMessage>
-        <Link
-          className="Button Button--primary"
-          to={sampleUrl ? sampleUrl : "/"}
-          onClick={onClose}
-        >
-          {sampleUrl ? t`Explore sample data` : t`Explore your Metabase`}
-        </Link>
+        {sampleUrl ? (
+          <Link className="Button Button--primary" to={sampleUrl}>
+            {t`Explore sample data`}
+          </Link>
+        ) : (
+          <Button primary onClick={onClose}>
+            {t`Got it`}
+          </Button>
+        )}
       </ModalBody>
       {onClose && <ModalCloseIcon name="close" onClick={onClose} />}
     </ModalRoot>

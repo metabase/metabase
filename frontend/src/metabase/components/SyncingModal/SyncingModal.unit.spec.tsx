@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import SyncingModal from "./SyncingModal";
 
 describe("SyncingModal", () => {
@@ -10,8 +11,11 @@ describe("SyncingModal", () => {
   });
 
   it("should render with no sample dataset", () => {
-    render(<SyncingModal />);
+    const onClose = jest.fn();
 
-    expect(screen.getByText("Explore your Metabase")).toBeInTheDocument();
+    render(<SyncingModal onClose={onClose} />);
+    userEvent.click(screen.getByText("Got it"));
+
+    expect(onClose).toHaveBeenCalled();
   });
 });
