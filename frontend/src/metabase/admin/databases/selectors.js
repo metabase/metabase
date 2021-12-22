@@ -28,6 +28,6 @@ export const isDeprecationNoticeEnabled = state =>
 // Sync modal
 
 export const getCandidatesQuery = createSelector(
-  databases => databases,
+  (state, props) => props.databases,
   createCandidatesQuery,
 );

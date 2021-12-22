@@ -6,7 +6,5 @@ import { getCandidatesQuery } from "../../selectors";
 
 export default _.compose(
   Databases.loadList(),
-  DatabaseCandidates.loadList({
-    query: (state: any, props: any) => getCandidatesQuery(props.databases),
-  }),
+  DatabaseCandidates.loadList({ query: getCandidatesQuery }),
 )(SyncDatabaseModal);

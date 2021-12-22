@@ -4,7 +4,6 @@ export interface Database {
 }
 
 export interface DatabaseCandidate {
-  schema: string;
   tables: TableCandidate[];
 }
 
