@@ -18,7 +18,7 @@ const SyncDatabaseModal = ({
 
   return (
     <ModalContent
-      title={t`Great, we're taking a look at your database!`}
+      title={t`We're taking a look at your database!`}
       footer={
         <Link to={sampleTable ? sampleTable.url : "/"}>
           <Button primary onClick={onClose}>
