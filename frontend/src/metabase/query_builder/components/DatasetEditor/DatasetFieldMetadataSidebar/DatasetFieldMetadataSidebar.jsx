@@ -192,8 +192,8 @@ function DatasetFieldMetadataSidebar({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       settings_currency: field.settings?.currency || null,
-      visibility_type: "normal",
-      has_field_values: "search",
+      visibility_type: field.visibility_type,
+      has_field_values: field.has_field_values,
     };
     if (dataset.isNative()) {
       values.id = field.id;
@@ -308,6 +308,24 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
+  const onVisibilityTypeChange = useCallback(
+    value => {
+      onFieldMetadataChange({
+        visibility_type: value,
+      });
+    },
+    [onFieldMetadataChange],
+  );
+
+  const onHasFieldValuesChange = useCallback(
+    value => {
+      onFieldMetadataChange({
+        has_field_values: value,
+      });
+    },
+    [onFieldMetadataChange],
+  );
+
   return (
     <SidebarContent>
       <AnimatableContent
@@ -369,14 +387,20 @@ function DatasetFieldMetadataSidebar({
               <SecondaryFormContainer>
                 {tab === TAB.SETTINGS ? (
                   <React.Fragment>
-                    <FormField name="visibility_type" />
+                    <FormField
+                      name="visibility_type"
+                      onChange={onVisibilityTypeChange}
+                    />
                     <ViewAsFieldContainer>
                       <ColumnSettings
                         {...columnSettingsProps}
                         allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                       />
                     </ViewAsFieldContainer>
-                    <FormField name="has_field_values" />
+                    <FormField
+                      name="has_field_values"
+                      onChange={onHasFieldValuesChange}
+                    />
                   </React.Fragment>
                 ) : (
                   <ColumnSettings
