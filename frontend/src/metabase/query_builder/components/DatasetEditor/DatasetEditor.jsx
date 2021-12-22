@@ -46,6 +46,7 @@ const propTypes = {
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
+  setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
@@ -72,7 +73,13 @@ const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
   props,
-  { datasetEditorTab, focusedField, focusedFieldIndex, focusFirstField },
+  {
+    datasetEditorTab,
+    focusedField,
+    focusedFieldIndex,
+    focusFirstField,
+    onFieldMetadataChange,
+  },
 ) {
   const {
     question: dataset,
@@ -98,6 +105,7 @@ function getSidebar(
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
+        onFieldMetadataChange={onFieldMetadataChange}
       />
     );
   }
@@ -135,6 +143,7 @@ function DatasetEditor(props) {
     height,
     setQueryBuilderMode,
     setDatasetEditorTab,
+    setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
@@ -164,6 +173,13 @@ function DatasetEditor(props) {
       focusFirstField();
     }
   }, [result, focusedField, focusFirstField]);
+
+  const onFieldMetadataChange = useCallback(
+    changes => {
+      setFieldMetadata({ field_ref: focusedField.field_ref, changes });
+    },
+    [focusedField, setFieldMetadata],
+  );
 
   const [
     isTabHintVisible,
@@ -271,6 +287,7 @@ function DatasetEditor(props) {
     focusedField,
     focusedFieldIndex,
     focusFirstField,
+    onFieldMetadataChange,
   });
 
   return (
