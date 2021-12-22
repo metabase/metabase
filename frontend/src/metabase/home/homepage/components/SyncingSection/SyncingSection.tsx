@@ -31,7 +31,7 @@ const SyncingSection = ({
   }, [isOpened, onHideSyncingModal]);
 
   return (
-    <Modal isOpen small full={false} onClose={handleClose}>
+    <Modal isOpen={isOpened} small full={false} onClose={handleClose}>
       <SyncingModal onClose={handleClose} />
     </Modal>
   );
