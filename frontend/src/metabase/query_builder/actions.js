@@ -1574,3 +1574,34 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
     }),
   );
 };
+
+export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
+export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
+
+export const setFieldMetadata = ({ field_ref, changes }) => (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  const resultsMetadata = getResultsMetadata(getState());
+
+  const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
+    const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
+    return isTargetField
+      ? {
+          ...fieldMetadata,
+          ...changes,
+        }
+      : fieldMetadata;
+  });
+
+  const nextResultsMetadata = {
+    ...resultsMetadata,
+    columns: nextColumnMetadata,
+  };
+
+  const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
+
+  dispatch(updateQuestion(nextQuestion));
+  dispatch(setResultsMetadata(nextResultsMetadata));
+};
