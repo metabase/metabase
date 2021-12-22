@@ -18,9 +18,7 @@ describe("issue 13751", () => {
     cy.findByText(PG_DB_NAME)
       .should("be.visible")
       .click();
-    cy.findByText("People")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("People").click();
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {

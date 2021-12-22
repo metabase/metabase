@@ -388,7 +388,7 @@ describe("smoketest > admin_setup", () => {
       // Navigating to Test Table table
 
       browse().click();
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       cy.icon("database").should("not.exist");
 
@@ -550,8 +550,8 @@ describe("smoketest > admin_setup", () => {
       // Check column names and visiblity
 
       browse().click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Test Table").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Test Table").click();
 
       cy.findByText("Visualization");
       cy.findByText("Discount").should("not.exist");
@@ -623,7 +623,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("All Users").click();
 
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       cy.findByText("Products");
 
@@ -642,7 +642,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
 
       // Turn on data access for Marketing users to Products
       cy.icon("eye")
@@ -888,8 +888,8 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("People").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();
       cy.findByLabelText("Name")
         .clear()

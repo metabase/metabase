@@ -240,8 +240,8 @@ describe("scenarios > question > notebook", () => {
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
@@ -297,8 +297,8 @@ describe("scenarios > question > notebook", () => {
       // join to question b
       cy.icon("join_left_outer").click();
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Saved Questions").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });
 
@@ -457,8 +457,8 @@ describe("scenarios > question > notebook", () => {
       cy.icon("join_left_outer").click();
 
       popover().within(() => {
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Saved Questions").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
 
@@ -704,8 +704,8 @@ describe("scenarios > question > notebook", () => {
       cy.viewport(1280, 720);
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
     });
 
     it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {

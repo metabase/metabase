@@ -17,9 +17,7 @@ describe("metabase-smoketest > admin", () => {
       cy.visit("/");
       cy.findByText("Welcome to Metabase");
       cy.url().should("not.include", "login");
-      cy.findByText("Let's get started")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Let's get started").click();
 
       // Language
 
@@ -91,8 +89,8 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Native query");
 
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("People").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("People").click();
 
       cy.findByText("Save");
 
@@ -156,8 +154,8 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
 
       // Join tables
       cy.icon("notebook").click();
@@ -199,8 +197,8 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
 
       cy.findByText("Product ID");
       cy.findByText("Pick your data").should("not.exist");
@@ -336,8 +334,8 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Native query");
 
         cy.findByText("Simple question").click();
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Reviews").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Reviews").click();
 
         cy.get(".Button")
           .findByText("Summarize")
