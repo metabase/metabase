@@ -145,7 +145,7 @@ Identify when new versions of Metabase are available.
 Type: string<br>
 Default: `null`
 
-Used to recognize the Mac App client, which then defaults to `"OSX"`.
+Used to recognize the (now deprecated) Mac App client, which then defaults to `"OSX"`.
 
 ### `MB_COLORIZE_LOGS`
 
