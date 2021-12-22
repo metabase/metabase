@@ -415,6 +415,20 @@ describe("scenarios > question > new", () => {
         .contains(/All Time/i);
       cy.get("@select").contains(/Month/i);
     });
+
+    // flaky test (#19454)
+    it.skip("should show an info popover when hovering over summarize dimension options", () => {
+      openReviewsTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Title")
+        .trigger("mouseenter");
+
+      popover().contains("Title");
+      popover().contains("199 distinct values");
+    });
   });
 
   describe("ask a (custom) question", () => {

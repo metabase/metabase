@@ -32,6 +32,28 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
+  // flaky test (#19454)
+  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Math")
+      .trigger("mouseenter");
+
+    popover().contains("Math");
+    popover().contains("No description");
+  });
+
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
       {
