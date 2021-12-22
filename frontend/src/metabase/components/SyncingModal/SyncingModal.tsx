@@ -1,7 +1,14 @@
 import React from "react";
 import { jt, t } from "ttag";
-import ModalContent from "metabase/components/ModalContent";
 import Link from "metabase/components/Link";
+import {
+  ModalMessage,
+  ModalIllustration,
+  ModalRoot,
+  ModalTitle,
+  ModalBody,
+  ModalCloseIcon,
+} from "./SyncingModal.styled";
 
 export interface SyncingModalProps {
   sampleUrl?: string;
@@ -10,9 +17,22 @@ export interface SyncingModalProps {
 
 const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
   return (
-    <ModalContent
-      title={t`We're taking a look at your database!`}
-      footer={
+    <ModalRoot>
+      <ModalBody>
+        <ModalIllustration
+          src="app/img/syncing-illustration.svg"
+          width={148}
+          height={109}
+        />
+        <ModalTitle>{t`We're taking a look at your database!`}</ModalTitle>
+        <ModalMessage>
+          {t`You’ll be able to use individual tables as they finish syncing.`}{" "}
+          {sampleUrl
+            ? jt`In the meantime, you can take a look at the ${(
+                <strong key="name">{t`Sample Dataset`}</strong>
+              )} if you want to get a head start. Want to explore?`
+            : t`Have a look around your Metabase in the meantime if you want to get a head start.`}
+        </ModalMessage>
         <Link
           className="Button Button--primary"
           to={sampleUrl ? sampleUrl : "/"}
@@ -20,26 +40,9 @@ const SyncingModal = ({ sampleUrl, onClose }: SyncingModalProps) => {
         >
           {sampleUrl ? t`Explore sample data` : t`Explore your Metabase`}
         </Link>
-      }
-      onClose={onClose}
-    >
-      <div>
-        <span>
-          {t`You’ll be able to use individual tables as they finish syncing.`}{" "}
-        </span>
-        {sampleUrl ? (
-          <span>
-            {jt`In the meantime, you can take a look at the ${(
-              <strong key="name">{t`Sample Dataset`}</strong>
-            )} if you want to get a head start. Want to explore?`}
-          </span>
-        ) : (
-          <span>
-            {t`Have a look around your Metabase in the meantime if you want to get a head start.`}
-          </span>
-        )}
-      </div>
-    </ModalContent>
+      </ModalBody>
+      {onClose && <ModalCloseIcon name="close" onClick={onClose} />}
+    </ModalRoot>
   );
 };
 
