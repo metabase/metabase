@@ -193,7 +193,6 @@ function DatasetFieldMetadataSidebar({
       fk_target_field_id: field.fk_target_field_id || null,
       settings_currency: field.settings?.currency || null,
       visibility_type: "normal",
-      display_as: "text",
       has_field_values: "search",
     };
     if (dataset.isNative()) {
