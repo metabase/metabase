@@ -37,6 +37,7 @@ import {
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
   CANCEL_DATASET_CHANGES,
+  SET_RESULTS_METADATA,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -353,6 +354,22 @@ export const queryResults = handleActions(
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
+    },
+    [SET_RESULTS_METADATA]: {
+      next: (state, { payload: results_metadata }) => {
+        const [result] = state;
+        const { columns } = results_metadata;
+        return [
+          {
+            ...result,
+            data: {
+              ...result.data,
+              cols: columns,
+              results_metadata,
+            },
+          },
+        ];
+      },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
     [CANCEL_DATASET_CHANGES]: { next: () => null },
