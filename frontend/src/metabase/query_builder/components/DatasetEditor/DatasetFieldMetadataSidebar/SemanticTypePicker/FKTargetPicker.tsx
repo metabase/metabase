@@ -16,9 +16,13 @@ type FieldObject = {
 };
 
 type Props = {
-  field: FieldObject;
-  IDFields: Field[];
-  onChange: () => void;
+  field: {
+    value: number | null;
+    onChange: (e: { target: { value: number } }) => void;
+  };
+  formField: {
+    options: Field[];
+  };
 };
 
 function getOptionValue(option: FieldObject) {
@@ -39,17 +43,20 @@ const SEARCH_PROPERTIES = [
   "table.schema_name",
 ];
 
-function FKTargetPicker({ field, IDFields, onChange }: Props) {
-  const options = useMemo(
-    () => _.sortBy(IDFields, field => getFieldName(field)),
-    [IDFields],
+function FKTargetPicker({ field, formField }: Props) {
+  const { value, onChange } = field;
+  const { options } = formField;
+
+  const formattedOptions = useMemo(
+    () => _.sortBy(options, field => getFieldName(field)),
+    [options],
   );
 
   return (
     <Select
       placeholder={t`Select a target`}
-      value={field.fk_target_field_id}
-      options={options}
+      value={value}
+      options={formattedOptions}
       onChange={onChange}
       searchable
       searchProp={SEARCH_PROPERTIES}

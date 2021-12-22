@@ -4,23 +4,18 @@ import { t } from "ttag";
 
 import Select from "metabase/components/Select";
 
-import { isCurrency, isFK } from "metabase/lib/schema_metadata";
-
-import CurrencyPicker from "./CurrencyPicker";
-import FKTargetPicker from "./FKTargetPicker";
-import {
-  StyledSelectButton,
-  ExtraSelectContainer,
-} from "./SemanticTypePicker.styled";
+import { StyledSelectButton } from "./SemanticTypePicker.styled";
 
 const propTypes = {
   field: PropTypes.shape({
     value: PropTypes.any,
+    options: PropTypes.array.isRequired,
     field_ref: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
   }).isRequired,
-  options: PropTypes.array.isRequired,
-  IDFields: PropTypes.array.isRequired, // list of PK / FK fields in dataset DB
+  formField: PropTypes.shape({
+    options: PropTypes.array.isRequired,
+  }),
   tabIndex: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   onKeyDown: PropTypes.func,
@@ -28,12 +23,13 @@ const propTypes = {
 
 function SemanticTypePicker({
   field,
-  options,
-  IDFields,
+  formField,
   tabIndex,
   onChange,
   onKeyDown,
 }) {
+  const { options } = formField;
+
   const selectButtonRef = useRef();
 
   const focusSelectButton = useCallback(() => {
@@ -53,32 +49,6 @@ function SemanticTypePicker({
     const item = options.find(item => item.id === field.value);
     return item?.name ?? t`None`;
   }, [field, options]);
-
-  const renderExtraSelect = useCallback(() => {
-    const pseudoField = { semantic_type: field.value };
-
-    if (isFK(pseudoField)) {
-      return (
-        <ExtraSelectContainer>
-          <FKTargetPicker
-            field={field}
-            onChange={() => {}}
-            IDFields={IDFields}
-          />
-        </ExtraSelectContainer>
-      );
-    }
-
-    if (isCurrency(pseudoField)) {
-      return (
-        <ExtraSelectContainer>
-          <CurrencyPicker field={field} onChange={() => {}} />
-        </ExtraSelectContainer>
-      );
-    }
-
-    return null;
-  }, [field, IDFields]);
 
   const renderSelectButton = useCallback(
     ({ open }) => {
@@ -104,21 +74,18 @@ function SemanticTypePicker({
   );
 
   return (
-    <React.Fragment>
-      <Select
-        value={field.value}
-        options={options}
-        onChange={onSelectValue}
-        optionValueFn={o => o.id}
-        optionSectionFn={o => o.section}
-        placeholder={t`Select a semantic type`}
-        searchProp="name"
-        searchPlaceholder={t`Search for a special type`}
-        triggerElement={renderSelectButton}
-        onClose={focusSelectButton}
-      />
-      {renderExtraSelect()}
-    </React.Fragment>
+    <Select
+      value={field.value}
+      options={options}
+      onChange={onSelectValue}
+      optionValueFn={o => o.id}
+      optionSectionFn={o => o.section}
+      placeholder={t`Select a semantic type`}
+      searchProp="name"
+      searchPlaceholder={t`Search for a special type`}
+      triggerElement={renderSelectButton}
+      onClose={focusSelectButton}
+    />
   );
 }
 
