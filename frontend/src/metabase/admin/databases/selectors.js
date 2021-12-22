@@ -1,5 +1,4 @@
 // Database Edit
-
 export const getEditingDatabase = state =>
   state.admin.databases.editingDatabase;
 export const getDatabaseCreationStep = state =>
