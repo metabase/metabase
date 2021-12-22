@@ -1,9 +1,11 @@
 import { createSelector } from "reselect";
-import { Database } from "./types";
 import { createCandidatesQuery } from "./utils";
 
 export const getCandidatesQuery = createSelector(
-  (databases?: Database[]) => databases,
+  (state: any, props: any) => props.databases,
+  (state: any, props: any) => props.dashboards,
+  (state: any) => getShowXrays(state),
+  (state: any) => getEnableXrays(state),
   createCandidatesQuery,
 );
 
@@ -20,6 +22,11 @@ export const getShowData = createSelector(
 export const getShowXrays = createSelector(
   [getSettings],
   settings => settings["show-homepage-xrays"],
+);
+
+export const getEnableXrays = createSelector(
+  [getSettings],
+  settings => settings["enable-xrays"],
 );
 
 export const getShowPinMessage = createSelector(

@@ -5,12 +5,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Select, { Option } from "metabase/components/Select";
 import Tooltip from "metabase/components/Tooltip";
-import {
-  Dashboard,
-  DatabaseCandidate,
-  TableCandidate,
-  User,
-} from "../../types";
+import { DatabaseCandidate, TableCandidate, User } from "../../types";
 import Section, {
   SectionCloseIcon,
   SectionHeader,
@@ -28,20 +23,16 @@ import {
 
 export interface XraySectionProps {
   user: User;
-  dashboards: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
-  showXrays?: boolean;
   onHideXrays?: () => void;
 }
 
 const XraySection = ({
   user,
-  dashboards,
   databaseCandidates = [],
-  showXrays,
   onHideXrays,
 }: XraySectionProps): JSX.Element | null => {
-  if (!showXrays || dashboards.length || !databaseCandidates.length) {
+  if (!databaseCandidates.length) {
     return null;
   }
 

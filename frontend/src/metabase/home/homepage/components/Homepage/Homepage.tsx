@@ -66,9 +66,7 @@ const Homepage = ({
           />
           <XraySection
             user={user}
-            dashboards={dashboards}
             databaseCandidates={databaseCandidates}
-            showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
           <CollectionSection
