@@ -190,6 +190,7 @@ export default class TableInteractive extends Component {
               rowIndex: 0,
               key: "header",
               style: {},
+              isVirtual: true,
             })}
             {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
               this.cellRenderer({
@@ -546,7 +547,15 @@ export default class TableInteractive extends Component {
     return dimension;
   }
 
-  tableHeaderRenderer = ({ key, style, columnIndex }) => {
+  // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
+  // After the measurements are done, invisible columns get unmounted.
+  // Because table headers are wrapped into react-draggable, it can trigger
+  // https://github.com/react-grid-layout/react-draggable/issues/315
+  // (inputs loosing focus when draggable components unmount)
+  // We need to prevent that by passing `enableUserSelectHack={false}`
+  // to draggable components used in measurements
+  // We should maybe rethink the approach to measurements or render a very basic table header, without react-draggable
+  tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
       data,
       sort,
@@ -580,6 +589,7 @@ export default class TableInteractive extends Component {
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */
+        enableUserSelectHack={!isVirtual}
         key={columnIndex + column.name + DRAG_COUNTER}
         axis="x"
         disabled={!isDraggable}
@@ -683,6 +693,7 @@ export default class TableInteractive extends Component {
             )}
           </DimensionInfoPopover>
           <Draggable
+            enableUserSelectHack={!isVirtual}
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
             position={{
