@@ -34,7 +34,7 @@ const SyncDatabaseModal = ({
         </span>
         {sampleTable ? (
           <span>
-            {jt` In the meantime, you can take a look at the ${(
+            {jt`In the meantime, you can take a look at the ${(
               <strong key="name">{t`Sample Dataset`}</strong>
             )} if you want to get a head start. Want to explore?`}
           </span>
