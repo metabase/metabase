@@ -62,7 +62,6 @@ export default class ModalContent extends Component {
             {title}
           </ModalHeader>
         )}
-        x
         <ModalBody fullPageModal={fullPageModal} formModal={formModal}>
           {children}
         </ModalBody>
