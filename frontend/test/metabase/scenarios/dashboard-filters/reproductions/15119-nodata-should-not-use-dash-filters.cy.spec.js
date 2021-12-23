@@ -57,7 +57,7 @@ describe("issue 15119", () => {
       .contains("Category")
       .click();
 
-    cy.findByPlaceholderText("Search the list").type("Gizmo");
+    cy.findByText("Gizmo").click();
     cy.button("Add filter").click();
 
     cy.contains("Rustic Paper Wallet");
