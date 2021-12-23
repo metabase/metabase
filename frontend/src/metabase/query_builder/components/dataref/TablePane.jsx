@@ -59,8 +59,11 @@ export default class TablePane extends React.Component {
               <Icon name="table2" className="text-medium pr1" size={16} />
               <h3 className="text-wrap">{table.name}</h3>
             </div>
-            <TableInfo tableId={table.id} />
-            <div className="my2 Button-group Button-group--brand text-uppercase">
+            <TableInfo
+              tableId={table.id}
+              onConnectedTableClick={table => this.props.show("table", table)}
+            />
+            <div className="my2 text-uppercase">
               {
                 <ul>
                   {table.fields.map((item, index) => (

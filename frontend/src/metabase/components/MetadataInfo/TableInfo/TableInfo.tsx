@@ -21,6 +21,7 @@ import ConnectedTables from "./ConnectedTables";
 type OwnProps = {
   className?: string;
   tableId: number;
+  onConnectedTableClick?: (table: Table) => void;
 };
 
 const mapStateToProps = (state: any, props: OwnProps): { table?: Table } => {
@@ -56,7 +57,7 @@ function useDependentTableMetadata({
   table,
   fetchForeignKeys,
   fetchMetadata,
-}: Omit<AllProps, "className">) {
+}: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
   const isMissingFields = !table?.numFields();
   const isMissingFks = table?.fks == null;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
@@ -87,6 +88,7 @@ export function TableInfo({
   table,
   fetchForeignKeys,
   fetchMetadata,
+  onConnectedTableClick,
 }: AllProps): JSX.Element {
   const description = table?.description;
   const hasFetchedMetadata = useDependentTableMetadata({
@@ -113,7 +115,12 @@ export function TableInfo({
           {table && <ColumnCount table={table} />}
         </Fade>
         <Fade visible={hasFetchedMetadata}>
-          {table && <ConnectedTables table={table} />}
+          {table && (
+            <ConnectedTables
+              table={table}
+              onConnectedTableClick={onConnectedTableClick}
+            />
+          )}
         </Fade>
       </MetadataContainer>
     </InfoContainer>
