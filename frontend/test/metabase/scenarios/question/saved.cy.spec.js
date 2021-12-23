@@ -66,6 +66,7 @@ describe("scenarios > question > saved", () => {
     popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
+      cy.findByText("100").click();
       cy.findByText("Update filter").click();
     });
     cy.findByText("Quantity is equal to 100");

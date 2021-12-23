@@ -101,7 +101,7 @@ export class FieldValuesWidget extends Component {
     return this.props.parameter && this.props.parameter.id;
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     if (this.shouldList()) {
       if (this.useChainFilterEndpoints()) {
         this.fetchDashboardParamValues();
@@ -419,7 +419,9 @@ export class FieldValuesWidget extends Component {
       options = [];
     }
 
-    const shouldList = this.hasList();
+    const isLoading = loadingState === "LOADING";
+    const isFetchingList = this.shouldList() && isLoading;
+    const hasListData = this.hasList();
 
     return (
       <div
@@ -429,7 +431,8 @@ export class FieldValuesWidget extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        {shouldList && (
+        {isFetchingList && <LoadingState />}
+        {hasListData && (
           <ListField
             isDashboardFilter={parameter}
             placeholder={this.getTokenFieldPlaceholder()}
@@ -441,7 +444,7 @@ export class FieldValuesWidget extends Component {
             }
           />
         )}
-        {!shouldList && (
+        {!hasListData && !isFetchingList && (
           <TokenField
             value={value.filter(v => v != null)}
             onChange={onChange}

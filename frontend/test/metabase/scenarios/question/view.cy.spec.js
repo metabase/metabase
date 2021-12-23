@@ -146,14 +146,19 @@ describe("scenarios > question > view", () => {
 
     it("should give everyone view permissions", () => {});
 
-    it("should show filters by list for Category", () => {
+    it("should show filters by list for Category without a search box", () => {
       cy.visit("/question/4");
 
       cy.findAllByText("CATEGORY")
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search the list");
+        cy.findByText("Doohickey");
+        cy.findByText("Gizmo");
+        cy.findByText("Gadget");
+        cy.findByText("Widget");
+
+        cy.findByPlaceholderText("Search the list").should("not.exist");
         cy.findByPlaceholderText("Search by Category").should("not.exist");
       });
     });
@@ -213,7 +218,10 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor").type("Balistreri-Muller");
+        cy.findByPlaceholderText("Search by Vendor")
+          .focus()
+          .clear()
+          .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.get(".RunButton")

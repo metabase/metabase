@@ -64,7 +64,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.contains("Category").click();
       popover().within(() => {
-        cy.get("input").type("Gadget{enter}");
+        cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
       });
 
@@ -193,7 +193,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       cy.contains("Category").click();
       popover().within(() => {
-        cy.get("input").type("Gadget{enter}");
+        cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
       });
 

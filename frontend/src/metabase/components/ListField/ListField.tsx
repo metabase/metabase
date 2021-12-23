@@ -108,6 +108,7 @@ export const ListField = ({
         {filteredOptions.map(option => (
           <OptionContainer key={option[0]}>
             <Checkbox
+              data-testid={`${option[0]}-filter-value`}
               checkedColor={isDashboardFilter ? "brand" : "accent7"}
               checked={selectedValues.has(option[0])}
               label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}

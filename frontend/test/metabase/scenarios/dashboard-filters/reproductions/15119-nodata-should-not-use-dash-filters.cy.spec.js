@@ -1,4 +1,4 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
+import { restore, filterWidget, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
@@ -57,8 +57,10 @@ describe("issue 15119", () => {
       .contains("Category")
       .click();
 
-    cy.findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
 
     cy.contains("Rustic Paper Wallet");
   });
