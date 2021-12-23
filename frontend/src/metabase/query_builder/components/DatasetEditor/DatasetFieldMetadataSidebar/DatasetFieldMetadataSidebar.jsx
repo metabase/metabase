@@ -269,6 +269,15 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChangeDebounced],
   );
 
+  const onMappedDatabaseColumnChange = useCallback(
+    fieldId => {
+      onFieldMetadataChangeDebounced({
+        id: fieldId,
+      });
+    },
+    [onFieldMetadataChangeDebounced],
+  );
+
   const onSemanticTypeChange = useCallback(
     e => {
       onFieldMetadataChange({
@@ -333,6 +342,8 @@ function DatasetFieldMetadataSidebar({
                 {dataset.isNative() && (
                   <FormField
                     name="id"
+                    tableId={field.table_id}
+                    onChange={onMappedDatabaseColumnChange}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
                   />
                 )}
