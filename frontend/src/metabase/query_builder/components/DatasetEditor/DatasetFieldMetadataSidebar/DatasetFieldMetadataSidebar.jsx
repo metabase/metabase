@@ -182,8 +182,8 @@ function DatasetFieldMetadataSidebar({
       description: field.description,
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
-      visibility_type: field.visibility_type,
-      has_field_values: field.has_field_values,
+      visibility_type: field.visibility_type || "normal",
+      has_field_values: field.has_field_values || "search",
     };
     if (dataset.isNative()) {
       values.id = field.id;
