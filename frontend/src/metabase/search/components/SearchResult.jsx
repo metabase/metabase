@@ -7,6 +7,7 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import { PLUGIN_COLLECTIONS, PLUGIN_MODERATION } from "metabase/plugins";
 
@@ -98,14 +99,9 @@ export default function SearchResult({
   const active = isItemActive(result);
   const loading = isItemLoading(result);
 
-  return (
-    <ResultLink
-      active={active}
-      compact={compact}
-      to={!onClick ? result.getUrl() : ""}
-      onClick={onClick ? () => onClick(result) : undefined}
-      data-testid="search-result-item"
-    >
+  const linkContent = wrapInPopover(
+    result,
+    <div>
       <Flex align="start">
         <ItemIcon item={result} type={result.model} active={active} />
         <Box>
@@ -129,6 +125,18 @@ export default function SearchResult({
         {loading && <ResultSpinner size={24} borderWidth={3} />}
       </Flex>
       {compact || <Context context={result.context} />}
+    </div>,
+  );
+
+  return (
+    <ResultLink
+      active={active}
+      compact={compact}
+      to={!onClick ? result.getUrl() : ""}
+      onClick={onClick ? () => onClick(result) : undefined}
+      data-testid="search-result-item"
+    >
+      {linkContent}
     </ResultLink>
   );
 }
@@ -149,5 +157,22 @@ const isItemLoading = result => {
       return !isSyncCompleted(result);
     default:
       return false;
+  }
+};
+
+const wrapInPopover = (result, content) => {
+  switch (result.model) {
+    case "table":
+      return (
+        <TableInfoPopover
+          placement="right-start"
+          offset={[-10, 22]}
+          tableId={result.table_id}
+        >
+          {content}
+        </TableInfoPopover>
+      );
+    default:
+      return content;
   }
 };
