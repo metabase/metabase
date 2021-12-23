@@ -419,7 +419,7 @@ export class FieldValuesWidget extends Component {
       options = [];
     }
 
-    const shouldList = this.shouldList();
+    const shouldList = this.hasList();
 
     return (
       <div
