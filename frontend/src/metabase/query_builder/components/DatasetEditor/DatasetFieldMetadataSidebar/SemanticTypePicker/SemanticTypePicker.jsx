@@ -9,8 +9,6 @@ import { StyledSelectButton } from "./SemanticTypePicker.styled";
 const propTypes = {
   field: PropTypes.shape({
     value: PropTypes.any,
-    options: PropTypes.array.isRequired,
-    field_ref: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
   }).isRequired,
   formField: PropTypes.shape({
