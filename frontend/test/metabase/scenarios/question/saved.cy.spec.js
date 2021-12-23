@@ -149,4 +149,10 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
+
+  it("should show table name in header with a table info popover on hover", () => {
+    cy.visit("/question/1");
+    cy.findByTestId("question-table-badges").trigger("mouseenter");
+    cy.findByText("9 columns");
+  });
 });
