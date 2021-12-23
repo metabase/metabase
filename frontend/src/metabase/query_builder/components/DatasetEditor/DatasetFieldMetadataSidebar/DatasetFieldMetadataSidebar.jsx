@@ -20,7 +20,7 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { isSameField } from "metabase/lib/query/field_ref";
-import { isCurrency, isFK } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/Form";
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -33,10 +33,7 @@ import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, {
-  FKTargetPicker,
-  CurrencyPicker,
-} from "./SemanticTypePicker";
+import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 import {
   AnimatableContent,
   MainFormContainer,
@@ -122,11 +119,6 @@ function getFormFields({ dataset, IDFields }) {
         options: IDFields,
       },
       {
-        name: "settings_currency",
-        hidden: !isCurrency(fieldFormValues),
-        widget: CurrencyPicker,
-      },
-      {
         name: "visibility_type",
         title: t`This column should appear in…`,
         type: "radio",
@@ -191,7 +183,6 @@ function DatasetFieldMetadataSidebar({
       description: field.description,
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
-      settings_currency: field.settings?.currency || null,
       visibility_type: field.visibility_type,
       has_field_values: field.has_field_values,
     };
@@ -297,17 +288,6 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
-  const onCurrencyChange = useCallback(
-    e => {
-      onFieldMetadataChange({
-        settings: {
-          currency: e.target.value,
-        },
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
   const onVisibilityTypeChange = useCallback(
     value => {
       onFieldMetadataChange({
@@ -366,10 +346,6 @@ function DatasetFieldMetadataSidebar({
                 <FormField
                   name="fk_target_field_id"
                   onChange={onFKTargetFieldChange}
-                />
-                <FormField
-                  name="settings_currency"
-                  onChange={onCurrencyChange}
                 />
               </MainFormContainer>
               {hasColumnFormattingOptions && (
