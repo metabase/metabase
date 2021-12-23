@@ -13,7 +13,6 @@ import _ from "underscore";
 import Radio from "metabase/components/Radio";
 
 import Databases from "metabase/entities/databases";
-import Field from "metabase-lib/lib/metadata/Field";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -45,7 +44,7 @@ import {
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
-  field: PropTypes.instanceOf(Field),
+  field: PropTypes.object.isRequired,
   isLastField: PropTypes.bool.isRequired,
   IDFields: PropTypes.array.isRequired,
   handleFirstFieldFocus: PropTypes.func.isRequired,
