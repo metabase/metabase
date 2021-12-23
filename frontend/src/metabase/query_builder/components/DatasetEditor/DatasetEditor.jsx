@@ -42,6 +42,7 @@ import {
 const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
+  metadata: PropTypes.object,
   result: PropTypes.object,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
@@ -140,6 +141,7 @@ function DatasetEditor(props) {
     question: dataset,
     datasetEditorTab,
     result,
+    metadata,
     height,
     setQueryBuilderMode,
     setDatasetEditorTab,
@@ -158,36 +160,49 @@ function DatasetEditor(props) {
     isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
   );
 
-  const [focusedField, setFocusedField] = useState();
+  const [focusedFieldRef, setFocusedFieldRef] = useState();
+
+  const focusedFieldIndex = useMemo(() => {
+    if (!focusedFieldRef) {
+      return -1;
+    }
+    return fields.findIndex(field =>
+      isSameField(focusedFieldRef, field.field_ref),
+    );
+  }, [focusedFieldRef, fields]);
+
+  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
+
+  const focusedField = useMemo(() => {
+    const field = fields[focusedFieldIndex];
+    if (field) {
+      const fieldMetadata = metadata.field(field.id);
+      return {
+        ...fieldMetadata,
+        ...field,
+      };
+    }
+  }, [focusedFieldIndex, fields, metadata]);
 
   const focusFirstField = useCallback(() => {
     const [firstField] = fields;
-    setFocusedField(firstField);
-  }, [fields]);
+    setFocusedFieldRef(firstField.field_ref);
+  }, [fields, setFocusedFieldRef]);
 
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedField && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults) {
       focusFirstField();
     }
-  }, [result, focusedField, focusFirstField]);
-
-  useEffect(() => {
-    if (focusedField) {
-      const field = fields.find(f =>
-        isSameField(focusedField.field_ref, f.field_ref),
-      );
-      setFocusedField(field);
-    }
-  }, [focusedField, fields]);
+  }, [result, focusedFieldRef, focusFirstField]);
 
   const onFieldMetadataChange = useCallback(
     changes => {
-      setFieldMetadata({ field_ref: focusedField.field_ref, changes });
+      setFieldMetadata({ field_ref: focusedFieldRef, changes });
     },
-    [focusedField, setFieldMetadata],
+    [focusedFieldRef, setFieldMetadata],
   );
 
   const [
@@ -224,12 +239,9 @@ function DatasetEditor(props) {
 
   const handleColumnSelect = useCallback(
     column => {
-      const field = fields.find(f =>
-        isSameField(column?.field_ref, f?.field_ref),
-      );
-      setFocusedField(field);
+      setFocusedFieldRef(column.field_ref);
     },
-    [fields],
+    [setFocusedFieldRef],
   );
 
   const handleTableElementClick = useCallback(
@@ -238,19 +250,11 @@ function DatasetEditor(props) {
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        handleColumnSelect(clickedObject.column);
+        setFocusedFieldRef(clickedObject.column.field_ref);
       }
     },
-    [handleColumnSelect],
+    [setFocusedFieldRef],
   );
-
-  const focusedFieldIndex = useMemo(() => {
-    return fields.findIndex(f =>
-      isSameField(focusedField?.field_ref, f?.field_ref),
-    );
-  }, [fields, focusedField]);
-
-  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
   // This value together with focusedFieldIndex is used to
   // horizontally scroll the InteractiveTable to the focused column
