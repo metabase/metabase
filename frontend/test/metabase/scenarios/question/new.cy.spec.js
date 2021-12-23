@@ -444,6 +444,20 @@ describe("scenarios > question > new", () => {
       cy.contains("37.65");
     });
 
+    it("should show a table info popover when hovering over the table name in the header", () => {
+      cy.visit("/");
+      cy.contains("Ask a question").click();
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
+
+      visualize();
+
+      cy.findByTestId("question-table-badges").trigger("mouseenter");
+
+      cy.findByText("9 columns");
+    });
+
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Summarize").click();
