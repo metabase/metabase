@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useState, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -17,20 +17,36 @@ type CollapsedPickerProps = {
 };
 
 type MappedFieldPickerProps = {
+  field: {
+    value: number | null;
+    onChange: (fieldId: number) => void;
+  };
+  tableId?: number;
   dataset: Question;
   tabIndex?: number;
 };
 
-function MappedFieldPicker({ dataset, tabIndex }: MappedFieldPickerProps) {
+function MappedFieldPicker({
+  field,
+  tableId,
+  dataset,
+  tabIndex,
+}: MappedFieldPickerProps) {
+  const { value: selectedFieldId, onChange } = field;
+
   const selectButtonRef = useRef<HTMLDivElement>();
 
   const focusSelectButton = useCallback(() => {
     selectButtonRef.current?.focus();
   }, []);
 
-  const onFieldChange = useCallback(fieldId => {
-    selectButtonRef.current?.focus();
-  }, []);
+  const onFieldChange = useCallback(
+    fieldId => {
+      onChange(fieldId);
+      selectButtonRef.current?.focus();
+    },
+    [onChange],
+  );
 
   const renderTriggerElement = useCallback(
     ({ selectedField, open }: CollapsedPickerProps) => {
@@ -59,6 +75,8 @@ function MappedFieldPicker({ dataset, tabIndex }: MappedFieldPickerProps) {
     <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
       selectedDatabaseId={dataset.databaseId()}
+      selectedFieldId={selectedFieldId}
+      selectedTableId={tableId}
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
       triggerTabIndex={tabIndex}
