@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
@@ -14,36 +15,55 @@ import {
   InfoTitle,
 } from "./ResetPassword.styled";
 
+enum ViewType {
+  none,
+  form,
+  success,
+  expired,
+}
+
 export interface ResetPasswordProps {
   token: string;
   showScene: boolean;
   onResetPassword: (token: string, password: string) => void;
-  onValidateToken: (token: string) => void;
+  onValidatePassword: (password: string) => void;
+  onValidatePasswordToken: (token: string) => void;
 }
 
 const ResetPassword = ({
   token,
   showScene,
   onResetPassword,
-  onValidateToken,
+  onValidatePassword,
+  onValidatePasswordToken,
 }: ResetPasswordProps): JSX.Element | null => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isValid, setIsValid] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [view, setView] = useState(ViewType.none);
 
   const handleLoad = useCallback(async () => {
     try {
-      await onValidateToken(token);
-      setIsValid(true);
-    } finally {
-      setIsLoading(false);
+      await onValidatePasswordToken(token);
+      setView(ViewType.form);
+    } catch (error) {
+      setView(ViewType.expired);
     }
-  }, [token, onValidateToken]);
+  }, [token, onValidatePasswordToken]);
 
-  const handleSubmit = useCallback(
+  const handlePasswordChange = useCallback(
+    async ({ password }: PasswordInfo) => {
+      try {
+        await onValidatePassword(password);
+        return {};
+      } catch (error) {
+        return getPasswordError(error);
+      }
+    },
+    [onValidatePassword],
+  );
+
+  const handlePasswordSubmit = useCallback(
     async ({ password }: PasswordInfo) => {
       await onResetPassword(token, password);
-      setIsSubmitted(true);
+      setView(ViewType.success);
     },
     [token, onResetPassword],
   );
@@ -52,28 +72,32 @@ const ResetPassword = ({
     handleLoad();
   }, [handleLoad]);
 
-  if (isLoading) {
-    return null;
-  }
-
   return (
     <AuthLayout showScene={showScene}>
-      {isValid && !isSubmitted && <ResetPasswordForm onSubmit={handleSubmit} />}
-      {isValid && isSubmitted && <ResetPasswordSuccess />}
-      {!isValid && <ResetPasswordExpired />}
+      {view === ViewType.form && (
+        <ResetPasswordForm
+          onPasswordChange={handlePasswordChange}
+          onSubmit={handlePasswordSubmit}
+        />
+      )}
+      {view === ViewType.success && <ResetPasswordSuccess />}
+      {view === ViewType.expired && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
 
-export interface PasswordInfo {
+interface PasswordInfo {
   password: string;
+  password_confirm: string;
 }
 
 interface ResetPasswordFormProps {
+  onPasswordChange: (info: PasswordInfo) => void;
   onSubmit: (info: PasswordInfo) => void;
 }
 
 const ResetPasswordForm = ({
+  onPasswordChange,
   onSubmit,
 }: ResetPasswordFormProps): JSX.Element => {
   const passwordDescription = useMemo(
@@ -87,6 +111,8 @@ const ResetPasswordForm = ({
       <FormMessage>{t`To keep your data secure, passwords ${passwordDescription}`}</FormMessage>
       <Users.Form
         form={Users.forms.password_reset}
+        asyncValidate={onPasswordChange}
+        asyncBlurFields={["password"]}
         submitTitle={t`Save new password`}
         onSubmit={onSubmit}
       />
@@ -123,6 +149,10 @@ const ResetPasswordExpired = (): JSX.Element => {
       >{t`Request a new reset email`}</Link>
     </InfoBody>
   );
+};
+
+const getPasswordError = (error: unknown) => {
+  return getIn(error, ["data", "errors"]);
 };
 
 export default ResetPassword;

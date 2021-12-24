@@ -3,7 +3,8 @@ import { PLUGIN_SELECTORS } from "metabase/plugins";
 import ResetPassword from "../../components/ResetPassword";
 import {
   resetPassword,
-  validatePasswordResetToken,
+  validatePassword,
+  validatePasswordToken,
 } from "metabase/auth/actions";
 
 const mapStateToProps = (state: any, props: any) => ({
@@ -13,7 +14,8 @@ const mapStateToProps = (state: any, props: any) => ({
 
 const mapDispatchToProps = {
   onResetPassword: resetPassword,
-  onValidateToken: validatePasswordResetToken,
+  onValidatePassword: validatePassword,
+  onValidatePasswordToken: validatePasswordToken,
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(ResetPassword);
