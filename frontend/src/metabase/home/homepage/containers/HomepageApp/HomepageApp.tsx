@@ -61,7 +61,6 @@ const databaseCandidatesProps = {
 const mapStateToProps = (state: any) => ({
   user: getUser(state),
   showData: getShowData(state),
-  showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
   showSyncingModal: getShowSyncingModal(state),
   onCollectionClick: trackCollectionClick,

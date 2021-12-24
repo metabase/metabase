@@ -42,7 +42,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -195,9 +194,6 @@ export const getRoutes = store => (
           }}
         />
 
-        <Route path="/explore" component={PostSetupApp} />
-        <Route path="/explore/:databaseId" component={PostSetupApp} />
-
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
 
@@ -247,8 +243,6 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
         </Route>
-
-        <Route path="/ready" component={PostSetupApp} />
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />

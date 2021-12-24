@@ -8,7 +8,7 @@ export default class ModalContent extends Component {
   static propTypes = {
     id: PropTypes.string,
     title: PropTypes.string,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
     // takes over the entire screen
     fullPageModal: PropTypes.bool,
     // standard modal

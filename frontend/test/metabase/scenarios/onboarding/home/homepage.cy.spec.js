@@ -68,10 +68,11 @@ describe("scenarios > home > homepage", () => {
       mockSyncingDatabase();
       cy.visit("/");
 
-      cy.findByText("Great, we're taking a look at your database!");
+      cy.findByText("Start here");
       cy.findByText("Explore sample data").click();
-      cy.findByText("I'm done exploring for now").click();
+      cy.findByText("Orders table over time");
 
+      cy.visit("/");
       cy.findByText("Start here");
       cy.findByText("Explore sample data").should("not.exist");
     });
@@ -139,6 +140,7 @@ const mockSyncingDatabase = () => {
         const userDatabase = {
           ...sampleDatabase,
           id: sampleDatabase.id + 1,
+          name: "H2",
           creator_id: user.id,
           is_sample: false,
           initial_sync_status: "incomplete",
