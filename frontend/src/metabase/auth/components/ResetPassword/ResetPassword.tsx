@@ -5,16 +5,13 @@ import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
 import AuthLayout from "../AuthLayout/AuthLayout";
 import {
-  ExpiredBody,
-  ExpiredMessage,
-  ExpiredTitle,
   FormMessage,
   FormTitle,
-  SuccessBody,
-  SuccessIcon,
-  SuccessIconContainer,
-  SuccessMessage,
-  SuccessTitle,
+  InfoBody,
+  InfoIcon,
+  InfoIconContainer,
+  InfoMessage,
+  InfoTitle,
 } from "./ResetPassword.styled";
 
 export interface ResetPasswordProps {
@@ -61,9 +58,9 @@ const ResetPassword = ({
 
   return (
     <AuthLayout showScene={showScene}>
-      {!isValid && <ResetPasswordExpired />}
       {isValid && !isSubmitted && <ResetPasswordForm onSubmit={handleSubmit} />}
       {isValid && isSubmitted && <ResetPasswordSuccess />}
+      {!isValid && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
@@ -99,32 +96,32 @@ const ResetPasswordForm = ({
 
 const ResetPasswordSuccess = (): JSX.Element => {
   return (
-    <SuccessBody>
-      <SuccessIconContainer>
-        <SuccessIcon name="check" />
-      </SuccessIconContainer>
-      <SuccessTitle>{t`All done!`}</SuccessTitle>
-      <SuccessMessage>{t`Awesome, you've successfully updated your password.`}</SuccessMessage>
+    <InfoBody>
+      <InfoIconContainer>
+        <InfoIcon name="check" />
+      </InfoIconContainer>
+      <InfoTitle>{t`All done!`}</InfoTitle>
+      <InfoMessage>{t`Awesome, you've successfully updated your password.`}</InfoMessage>
       <Link
         className="Button Button--primary"
         to={"/"}
       >{t`Sign in with your new password`}</Link>
-    </SuccessBody>
+    </InfoBody>
   );
 };
 
 const ResetPasswordExpired = (): JSX.Element => {
   return (
-    <ExpiredBody>
-      <ExpiredTitle>{t`Whoops, that's an expired link`}</ExpiredTitle>
-      <ExpiredMessage>
+    <InfoBody>
+      <InfoTitle>{t`Whoops, that's an expired link`}</InfoTitle>
+      <InfoMessage>
         {t`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can request a new reset email.`}
-      </ExpiredMessage>
+      </InfoMessage>
       <Link
         className="Button Button--primary"
         to={"/auth/forgot_password"}
       >{t`Request a new reset email`}</Link>
-    </ExpiredBody>
+    </InfoBody>
   );
 };
 

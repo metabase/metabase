@@ -17,27 +17,27 @@ export const FormMessage = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-export const SuccessBody = styled.div`
+export const InfoBody = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
 `;
 
-export const SuccessIcon = styled(Icon)`
+export const InfoIcon = styled(Icon)`
   display: block;
   color: ${color("brand")};
   width: 1.5rem;
   height: 1.5rem;
 `;
 
-export const SuccessIconContainer = styled.div`
+export const InfoIconContainer = styled.div`
   padding: 1.25rem;
   border-radius: 50%;
   background-color: ${color("brand-light")};
   margin-bottom: 1.5rem;
 `;
 
-export const SuccessTitle = styled.div`
+export const InfoTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.25rem;
   font-weight: 700;
@@ -46,28 +46,7 @@ export const SuccessTitle = styled.div`
   margin-bottom: 1rem;
 `;
 
-export const SuccessMessage = styled.div`
-  color: ${color("text-dark")};
-  text-align: center;
-  margin-bottom: 2.5rem;
-`;
-
-export const ExpiredBody = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-`;
-
-export const ExpiredTitle = styled.div`
-  color: ${color("text-dark")};
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1.5rem;
-  text-align: center;
-  margin-bottom: 1rem;
-`;
-
-export const ExpiredMessage = styled.div`
+export const InfoMessage = styled.div`
   color: ${color("text-dark")};
   text-align: center;
   margin-bottom: 2.5rem;
