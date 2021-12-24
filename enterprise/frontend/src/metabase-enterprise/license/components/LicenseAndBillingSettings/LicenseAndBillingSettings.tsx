@@ -69,7 +69,7 @@ const LicenseAndBillingSettings = ({
   const isStoreManagedBilling = MetabaseSettings.isStoreManaged();
   const token = MetabaseSettings.token();
 
-  const isInvalid = !!error || !tokenStatus?.isValid;
+  const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
