@@ -16,6 +16,7 @@ import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
@@ -1482,6 +1483,15 @@ const TablePicker = ({
 };
 
 class FieldPicker extends Component {
+  renderItemWrapper = (itemContent, item) => {
+    const dimension = item.field?.dimension?.();
+    return (
+      <DimensionInfoPopover dimension={dimension}>
+        {itemContent}
+      </DimensionInfoPopover>
+    );
+  };
+
   render() {
     const {
       isLoading,
@@ -1543,6 +1553,7 @@ class FieldPicker extends Component {
               <Icon name={item.field.dimension().icon()} size={18} />
             ) : null
           }
+          renderItemWrapper={this.renderItemWrapper}
         />
       </div>
     );

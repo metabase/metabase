@@ -22,17 +22,10 @@ type Props = { dimension: Dimension } & Pick<
   "children" | "placement"
 >;
 
-function checkForMetadata(dimension: Dimension): boolean {
-  const query = dimension?.query?.();
-  if (dimension && query) {
-    return query.metadata() != null;
-  }
-
-  return false;
-}
-
 function DimensionInfoPopover({ dimension, children, placement }: Props) {
-  const hasMetadata = checkForMetadata(dimension);
+  // avoid a scenario where we may have a Dimension instance but not enough metadata
+  // to even show a display name (probably indicative of a bug)
+  const hasMetadata = !!(dimension && dimension.displayName());
 
   return hasMetadata ? (
     <TippyPopver
