@@ -3,13 +3,28 @@ import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import AuthLayout from "../AuthLayout/AuthLayout";
-import { FormMessage, FormTitle } from "./ResetPassword.styled";
+import {
+  FormMessage,
+  FormTitle,
+  SuccessBody,
+  SuccessIcon,
+  SuccessIconContainer,
+  SuccessMessage,
+  SuccessTitle,
+} from "./ResetPassword.styled";
 import { PasswordInfo } from "../../types";
+import Link from "metabase/components/Link";
 
-const ResetPassword = (): JSX.Element | null => {
+interface ResetPasswordProps {
+  showScene?: boolean;
+}
+
+const ResetPassword = ({
+  showScene,
+}: ResetPasswordProps): JSX.Element | null => {
   return (
-    <AuthLayout>
-      <ResetPasswordForm onSubmit={() => undefined} />
+    <AuthLayout showScene={showScene}>
+      <ResetPasswordSuccess />
     </AuthLayout>
   );
 };
@@ -36,6 +51,22 @@ const ResetPasswordForm = ({
         onSubmit={onSubmit}
       />
     </div>
+  );
+};
+
+const ResetPasswordSuccess = (): JSX.Element => {
+  return (
+    <SuccessBody>
+      <SuccessIconContainer>
+        <SuccessIcon name="check" />
+      </SuccessIconContainer>
+      <SuccessTitle>{t`All done!`}</SuccessTitle>
+      <SuccessMessage>{t`Awesome, you've successfully updated your password.`}</SuccessMessage>
+      <Link
+        className="Button Button--primary"
+        to={"/"}
+      >{t`Sign in with your new password`}</Link>
+    </SuccessBody>
   );
 };
 

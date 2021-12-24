@@ -1,16 +1,29 @@
 import React, { ReactNode } from "react";
-import { LayoutBody, LayoutCard, LayoutRoot } from "./AuthLayout.styled";
 import LogoIcon from "metabase/components/LogoIcon";
-import AuthScene from "../../containers/AuthScene";
+import {
+  LayoutBody,
+  LayoutCard,
+  LayoutRoot,
+  LayoutScene,
+  LayoutSceneImage,
+} from "./AuthLayout.styled";
 
 export interface AuthLayoutProps {
+  showScene?: boolean;
   children?: ReactNode;
 }
 
-const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
+const AuthLayout = ({ showScene, children }: AuthLayoutProps): JSX.Element => {
   return (
     <LayoutRoot>
-      <AuthScene />
+      {showScene && (
+        <LayoutScene>
+          <LayoutSceneImage
+            src="/app/img/bridge.png"
+            srcSet="/app/img/bridge.png 1x, /app/img/bridge@2x.png 2x, /app/img/bridge@3x.png 3x"
+          />
+        </LayoutScene>
+      )}
       <LayoutBody>
         <LogoIcon height={65} />
         <LayoutCard>{children}</LayoutCard>
