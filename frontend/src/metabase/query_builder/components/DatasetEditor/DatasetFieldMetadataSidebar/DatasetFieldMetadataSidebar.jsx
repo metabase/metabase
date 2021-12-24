@@ -5,14 +5,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Radio from "metabase/components/Radio";
 
-import Databases from "metabase/entities/databases";
 import {
   field_visibility_types,
   field_semantic_types,
@@ -46,17 +44,9 @@ const propTypes = {
   dataset: PropTypes.object.isRequired,
   field: PropTypes.object.isRequired,
   isLastField: PropTypes.bool.isRequired,
-  IDFields: PropTypes.array.isRequired,
   handleFirstFieldFocus: PropTypes.func.isRequired,
   onFieldMetadataChange: PropTypes.func.isRequired,
 };
-
-function mapStateToProps(state, { dataset }) {
-  const databaseId = dataset.databaseId();
-  return {
-    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
-  };
-}
 
 function getVisibilityTypeName(visibilityType) {
   if (visibilityType.id === "normal") {
@@ -79,17 +69,13 @@ function getSemanticTypeOptions() {
   ];
 }
 
-function getFormFields({ dataset, IDFields }) {
+function getFormFields({ dataset }) {
   const visibilityTypeOptions = field_visibility_types
     .filter(type => type.id !== "sensitive")
     .map(type => ({
       name: getVisibilityTypeName(type),
       value: type.id,
     }));
-
-  function MappedFieldWidget(formFieldProps) {
-    return <MappedFieldPicker {...formFieldProps} dataset={dataset} />;
-  }
 
   return fieldFormValues =>
     [
@@ -103,7 +89,8 @@ function getFormFields({ dataset, IDFields }) {
       dataset.isNative() && {
         name: "id",
         title: t`Database column this maps to`,
-        widget: MappedFieldWidget,
+        widget: MappedFieldPicker,
+        databaseId: dataset.databaseId(),
       },
       {
         name: "semantic_type",
@@ -115,7 +102,7 @@ function getFormFields({ dataset, IDFields }) {
         name: "fk_target_field_id",
         hidden: !isFK(fieldFormValues),
         widget: FKTargetPicker,
-        options: IDFields,
+        databaseId: dataset.databaseId(),
       },
       {
         name: "visibility_type",
@@ -156,7 +143,6 @@ function DatasetFieldMetadataSidebar({
   dataset,
   field,
   isLastField,
-  IDFields,
   handleFirstFieldFocus,
   onFieldMetadataChange,
 }) {
@@ -192,8 +178,10 @@ function DatasetFieldMetadataSidebar({
   }, [field, dataset]);
 
   const form = useMemo(
-    () => ({ fields: getFormFields({ dataset, IDFields }) }),
-    [dataset, IDFields],
+    () => ({
+      fields: getFormFields({ dataset }),
+    }),
+    [dataset],
   );
 
   const [tab, setTab] = useState(TAB.SETTINGS);
@@ -405,4 +393,4 @@ function DatasetFieldMetadataSidebar({
 
 DatasetFieldMetadataSidebar.propTypes = propTypes;
 
-export default connect(mapStateToProps)(DatasetFieldMetadataSidebar);
+export default DatasetFieldMetadataSidebar;

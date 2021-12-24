@@ -1,8 +1,11 @@
 import React, { useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/components/Select";
+
+import Databases from "metabase/entities/databases";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -15,15 +18,21 @@ type FieldObject = {
   };
 };
 
-type Props = {
+type StateProps = {
+  IDFields: Field[];
+};
+
+type OwnProps = {
   field: {
     value: number | null;
     onChange: (e: { target: { value: number } }) => void;
   };
   formField: {
-    options: Field[];
+    databaseId: number;
   };
 };
+
+type Props = OwnProps & StateProps;
 
 function getOptionValue(option: FieldObject) {
   return option.id;
@@ -43,20 +52,29 @@ const SEARCH_PROPERTIES = [
   "table.schema_name",
 ];
 
-function FKTargetPicker({ field, formField }: Props) {
-  const { value, onChange } = field;
-  const { options } = formField;
+function mapStateToProps(
+  state: Record<string, unknown>,
+  { formField }: OwnProps,
+) {
+  const { databaseId } = formField;
+  return {
+    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+  };
+}
 
-  const formattedOptions = useMemo(
-    () => _.sortBy(options, field => getFieldName(field)),
-    [options],
+function FKTargetPicker({ field, IDFields }: Props) {
+  const { value, onChange } = field;
+
+  const options = useMemo(
+    () => _.sortBy(IDFields, field => getFieldName(field)),
+    [IDFields],
   );
 
   return (
     <Select
       placeholder={t`Select a target`}
       value={value}
-      options={formattedOptions}
+      options={options}
       onChange={onChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
@@ -67,4 +85,4 @@ function FKTargetPicker({ field, formField }: Props) {
   );
 }
 
-export default FKTargetPicker;
+export default connect(mapStateToProps)(FKTargetPicker);
