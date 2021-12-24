@@ -30,6 +30,8 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  SAVE_DASHBOARD_AND_CARDS,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -253,6 +255,20 @@ const parameterValues = handleActions(
   {},
 );
 
+const parameterValuesSearchCache = handleActions(
+  {
+    [INITIALIZE]: { next: () => ({}) },
+    [SAVE_DASHBOARD_AND_CARDS]: {
+      next: () => ({}),
+    },
+    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES]: {
+      next: (state, { payload }) =>
+        payload ? assoc(state, payload.id, payload.results) : state,
+    },
+  },
+  {},
+);
+
 const loadingDashCards = handleActions(
   {
     [FETCH_DASHBOARD]: {
@@ -336,4 +352,5 @@ export default combineReducers({
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,
+  parameterValuesSearchCache,
 });

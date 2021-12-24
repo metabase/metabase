@@ -55,6 +55,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
+  getDashboardParameterValuesSearch,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -129,6 +130,9 @@ export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
+
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -1003,3 +1007,42 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 
   return dispatch(loadMetadataForQueries(queries));
 };
+
+export const fetchDashboardParameterValues = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  ({ dashboardId, parameter, parameters, query }) => async (
+    dispatch,
+    getState,
+  ) => {
+    const parameterValuesSearch = getDashboardParameterValuesSearch(getState());
+    const { id: paramId, filteringParameters = [] } = parameter;
+    const otherValues = _.chain(parameters)
+      .filter(p => filteringParameters.includes(p.id) && p.value != null)
+      .map(p => [p.id, p.value])
+      .object()
+      .value();
+
+    const args = {
+      paramId,
+      dashId: dashboardId,
+      ...otherValues,
+      ...(query != null ? { query } : {}),
+    };
+    const id = JSON.stringify(args);
+
+    if (parameterValuesSearch[id]) {
+      return;
+    }
+
+    const endpoint = query
+      ? DashboardApi.parameterSearch
+      : DashboardApi.parameterValues;
+
+    const results = await endpoint(args);
+
+    return {
+      id,
+      results: results.map(result => [].concat(result)),
+    };
+  },
+);

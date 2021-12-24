@@ -143,3 +143,30 @@ export const getDefaultParametersById = createSelector(
       return map;
     }, {}),
 );
+
+export const getDashboardParameterValuesSearch = state =>
+  state.dashboard.parameterValuesSearchCache;
+
+export const getDashboardParameterValuesCache = state => {
+  return {
+    get: ({ dashboardId, parameter, parameters, query }) => {
+      const { parameterValuesSearchCache } = state.dashboard;
+      const { id: paramId, filteringParameters = [] } = parameter;
+      const otherValues = _.chain(parameters)
+        .filter(p => filteringParameters.includes(p.id) && p.value != null)
+        .map(p => [p.id, p.value])
+        .object()
+        .value();
+
+      const args = {
+        paramId,
+        dashId: dashboardId,
+        ...otherValues,
+        ...(query != null ? { query } : {}),
+      };
+
+      const key = JSON.stringify(args);
+      return parameterValuesSearchCache[key];
+    },
+  };
+};
