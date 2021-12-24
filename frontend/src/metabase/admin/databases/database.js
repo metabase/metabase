@@ -1,16 +1,15 @@
 import { createAction } from "redux-actions";
 import {
+  handleActions,
   combineReducers,
   createThunkAction,
-  handleActions,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { MetabaseApi } from "metabase/services";
+import { MetabaseApi, SettingsApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
-import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
@@ -61,8 +60,6 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
-export const CLOSE_SYNCING_MODAL =
-  "metabase/admin/databases/CLOSE_SYNCING_MODAL";
 export const CLOSE_DEPRECATION_NOTICE =
   "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
 
@@ -164,7 +161,7 @@ export const createDatabase = function(database) {
       );
 
       dispatch.action(CREATE_DATABASE);
-      dispatch(push("/admin/databases?created=true"));
+      dispatch(push("/admin/databases"));
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
@@ -282,25 +279,18 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
-export const closeSyncingModal = createThunkAction(
-  CLOSE_SYNCING_MODAL,
-  function() {
-    return async function(dispatch) {
-      const setting = { key: "show-database-syncing-modal", value: false };
-      await dispatch(updateSetting(setting));
-    };
-  },
-);
-
 export const closeDeprecationNotice = createThunkAction(
   CLOSE_DEPRECATION_NOTICE,
   function() {
-    return async function(dispatch) {
-      const setting = {
-        key: "engine-deprecation-notice-version",
-        value: MetabaseSettings.currentVersion(),
-      };
-      await dispatch(updateSetting(setting));
+    return async function() {
+      try {
+        await SettingsApi.put({
+          key: "engine-deprecation-notice-version",
+          value: MetabaseSettings.currentVersion(),
+        });
+      } catch (error) {
+        console.log("error saving deprecation notice version", error);
+      }
     };
   },
 );
