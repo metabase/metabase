@@ -141,13 +141,9 @@ export default function DefaultPicker({
   let layout = null;
 
   if (isBetweenLayout) {
-    layout = (
-      <BetweenLayout className={className} fieldWidgets={fieldWidgets} />
-    );
+    layout = <BetweenLayout fieldWidgets={fieldWidgets} />;
   } else if (fieldWidgets.length > 0) {
-    layout = (
-      <DefaultLayout className={className} fieldWidgets={fieldWidgets} />
-    );
+    layout = <DefaultLayout fieldWidgets={fieldWidgets} />;
   }
 
   return (

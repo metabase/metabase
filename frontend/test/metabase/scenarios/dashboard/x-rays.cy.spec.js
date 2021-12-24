@@ -173,7 +173,8 @@ describe("scenarios > x-rays", () => {
     // add a parameter filter to the auto dashboard
     cy.findByText("State", timeout).click();
     popover().within(() => {
-      cy.get("input").type("GA{enter}");
+      cy.findByPlaceholderText("Search the list").type("GA{enter}");
+      cy.findByText("GA").click();
       cy.findByText("Add filter").click();
     });
 

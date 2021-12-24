@@ -33,6 +33,34 @@ export function addWidgetStringFilter(value) {
 }
 
 /**
+ * Selectes value from the field values list filter widget
+ *
+ * @param {string} value
+ */
+
+export function selectFilterValueFromList(value) {
+  popover().within(() => {
+    cy.findByText(value).click();
+    cy.button("Add filter").click();
+  });
+}
+
+/**
+ * Applies filter value by filter type
+ *
+ * @param {string} filter
+ * @param {string} value
+ */
+
+export function applyFilterByType(filter, value) {
+  if (["Dropdown", "Is not"].includes(filter)) {
+    selectFilterValueFromList(value);
+  } else {
+    addWidgetStringFilter(value);
+  }
+}
+
+/**
  * Adds default string filter value when the filter is marked as required.
  *
  * @param {string} value
