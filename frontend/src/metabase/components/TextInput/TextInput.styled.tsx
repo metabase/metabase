@@ -24,11 +24,20 @@ interface InputProps {
   padding: Size;
   hasClearButton?: boolean;
   hasIcon?: boolean;
+  invalid?: boolean;
 }
+
+const getBorderColor = (colorScheme: ColorScheme, invalid?: boolean) => {
+  if (invalid) {
+    return color("error");
+  }
+
+  return colorScheme === "transparent" ? "transparent" : color("border");
+};
 
 export const Input = styled.input<InputProps>`
   border: 1px solid ${props =>
-    props.colorScheme === "transparent" ? "transparent" : color("border")};
+    getBorderColor(props.colorScheme, props.invalid)};
   outline: none;
   width: 100%;
   font-size: 1.12em;

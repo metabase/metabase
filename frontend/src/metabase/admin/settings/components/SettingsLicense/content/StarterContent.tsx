@@ -30,7 +30,7 @@ export const StarterContent = () => {
 
       <SectionDescription>
         {jt`You can get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers with ${(
-          <ExternalLink href={MetabaseSettings.pricingUrl()}>
+          <ExternalLink href={MetabaseSettings.upgradeUrl()}>
             {t`our other paid plans.`}
           </ExternalLink>
         )}`}

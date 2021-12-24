@@ -25,7 +25,7 @@ export const UnlicensedContent = () => {
       <ExporePaidPlansContainer>
         <ExternalLink
           className="Button Button--primary"
-          href={MetabaseSettings.pricingUrl()}
+          href={MetabaseSettings.upgradeUrl()}
         >{t`Explore our paid plans`}</ExternalLink>
 
         <ExplorePlansIllustration />

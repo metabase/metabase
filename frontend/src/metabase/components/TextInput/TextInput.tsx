@@ -24,6 +24,7 @@ type TextInputProps = {
   padding?: Size;
   borderRadius?: Size;
   innerRef?: any;
+  invalid?: boolean;
 } & Omit<React.HTMLProps<HTMLInputElement>, "onChange">;
 
 function TextInput({
@@ -40,6 +41,7 @@ function TextInput({
   borderRadius = "md",
   innerRef,
   ref,
+  invalid,
   ...rest
 }: TextInputProps) {
   const handleClearClick = () => {
@@ -63,6 +65,7 @@ function TextInput({
         onChange={e => onChange(e.target.value)}
         padding={padding}
         borderRadius={borderRadius}
+        invalid={invalid}
         {...rest}
       />
 

@@ -5,6 +5,7 @@ import styled from "styled-components";
 export const LicenseInputContainer = styled.div`
   display: flex;
   flex-wrap: nowrap;
+  min-width: 680px;
 `;
 
 export const LicenseInput = styled(TextInput)`

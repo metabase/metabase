@@ -11,14 +11,13 @@ import {
   LicenseInputContainer,
 } from "./LicenseWidget.styled";
 
-const TOKEN_LENGTH = 64;
-
 export interface LicenseWidgetProps {
   token?: string;
   description: React.ReactNode;
   error?: string;
-  onUpdate?: (license: string) => void;
+  onUpdate: (license: string) => void;
   loading?: boolean;
+  invalid?: boolean;
 }
 
 export const LicenseWidget = ({
@@ -27,16 +26,15 @@ export const LicenseWidget = ({
   error,
   onUpdate,
   loading,
+  invalid,
 }: LicenseWidgetProps) => {
   const [value, setValue] = useState(token ?? "");
 
   const handleChange = (value: string) => setValue(value);
 
   const handleActivate = () => {
-    onUpdate?.(value);
+    onUpdate(value);
   };
-
-  const isDisabled = value.length !== TOKEN_LENGTH || loading;
 
   return (
     <>
@@ -46,23 +44,21 @@ export const LicenseWidget = ({
 
       <LicenseInputContainer>
         <LicenseInput
+          invalid={invalid}
           data-testid="license-input"
-          disabled={!onUpdate}
+          disabled={loading}
           onChange={handleChange}
           value={value}
-          placeholder={"XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"}
+          placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
         />
-        {onUpdate && (
-          <Button
-            primary={!isDisabled}
-            disabled={isDisabled}
-            data-testid="activate-button"
-            className="px2"
-            onClick={handleActivate}
-          >
-            {t`Activate`}
-          </Button>
-        )}
+        <Button
+          disabled={loading}
+          data-testid="activate-button"
+          className="px2"
+          onClick={handleActivate}
+        >
+          {t`Activate`}
+        </Button>
       </LicenseInputContainer>
 
       {error && <LicenseErrorMessage>{error}</LicenseErrorMessage>}

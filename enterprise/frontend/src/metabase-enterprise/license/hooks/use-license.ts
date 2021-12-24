@@ -8,12 +8,17 @@ export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
 const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
 
-export type LicenseStatus = "unlicensed" | "active" | "expired";
+export type TokenStatus = {
+  validUntil: Date;
+  isValid: boolean;
+  isTrial: boolean;
+  features: string[];
+};
 
 export const useLicense = (onActivated: () => void) => {
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>();
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [status, setStatus] = useState<LicenseStatus>();
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -23,17 +28,20 @@ export const useLicense = (onActivated: () => void) => {
     }
   }, [onActivated]);
 
-  const updateToken = useCallback(async (license: string) => {
+  const updateToken = useCallback(async (token: string) => {
     try {
       setError(undefined);
       setIsUpdating(true);
       await SettingsApi.put({
         key: "premium-embedding-token",
-        value: license,
+        value: token,
       });
 
       // In order to apply pro and enterprise features we need to perform a full reload
-      window.location.href += LICENSE_ACCEPTED_URL_HASH;
+      const isValidTokenAccepted = token.trim().length > 0;
+      if (isValidTokenAccepted) {
+        window.location.href += LICENSE_ACCEPTED_URL_HASH;
+      }
       window.location.reload();
     } catch {
       setError(INVALID_TOKEN_ERROR);
@@ -45,12 +53,15 @@ export const useLicense = (onActivated: () => void) => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
-        const { valid } = await StoreApi.tokenStatus();
-        setStatus(valid ? "active" : "expired");
+        const response = await StoreApi.tokenStatus();
+        setTokenStatus({
+          validUntil: new Date(response["valid-thru"]),
+          isValid: response.valid,
+          isTrial: response.trial,
+          features: response.features,
+        });
       } catch (e) {
-        if ((e as any).status === 404) {
-          setStatus("unlicensed");
-        } else {
+        if ((e as any).status !== 404) {
           setError(UNABLE_TO_VALIDATE_TOKEN);
         }
       } finally {
@@ -64,7 +75,7 @@ export const useLicense = (onActivated: () => void) => {
   return {
     isUpdating,
     error,
-    status,
+    tokenStatus,
     isLoading,
     updateToken,
   };

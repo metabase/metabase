@@ -267,8 +267,8 @@ class Settings {
     return `https://store.metabase.com/${path}`;
   }
 
-  pricingUrl() {
-    return "https://www.metabase.com/pricing/";
+  upgradeUrl() {
+    return "https://www.metabase.com/upgrade/";
   }
 
   newVersionAvailable() {
