@@ -51,3 +51,24 @@ export const SuccessMessage = styled.div`
   text-align: center;
   margin-bottom: 2.5rem;
 `;
+
+export const ExpiredBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+`;
+
+export const ExpiredTitle = styled.div`
+  color: ${color("text-dark")};
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+  text-align: center;
+  margin-bottom: 1rem;
+`;
+
+export const ExpiredMessage = styled.div`
+  color: ${color("text-dark")};
+  text-align: center;
+  margin-bottom: 2.5rem;
+`;
