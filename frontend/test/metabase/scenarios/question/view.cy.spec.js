@@ -72,18 +72,28 @@ describe("scenarios > question > view", () => {
     });
   });
 
-  // *** Test flaky/failing because of the .type() issue
-  describe.skip("filter sidebar", () => {
+  describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
       cy.contains("Filter").click();
       cy.contains("Vendor").click();
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
-        .type("Alfreda Konopelski II Group")
-        .blur();
+        .type("A");
+      cy.findByText("Alfreda Konopelski II Group").click();
+
       cy.contains("Add filter").click();
       cy.contains("Showing 91 rows");
+    });
+
+    // flaky test (#19454)
+    it.skip("should show info popover for dimension in the filter list", () => {
+      openOrdersTable();
+      cy.contains("Filter").click();
+
+      cy.contains("Name").trigger("mouseenter");
+      popover().contains("Name");
+      popover().contains("2,499 distinct values");
     });
   });
 

@@ -194,6 +194,29 @@ describe("scenarios > question > notebook", () => {
     cy.contains("Showing first 2000 rows");
   });
 
+  // flaky test (#19454)
+  it.skip("should show an info popover for dimensions listened by the custom expression editor", () => {
+    // start a custom question with orders
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
+    // type a dimension name
+    cy.findByText("Add filters to narrow your answer").click();
+    cy.findByText("Custom Expression").click();
+    enterCustomColumnDetails({ formula: "Total" });
+
+    // hover over option in the suggestion list
+    cy.findByTestId("expression-suggestions-list")
+      .findByText("Total")
+      .trigger("mouseenter");
+
+    // confirm that the popover is shown
+    popover().contains("The total billed amount.");
+    popover().contains("80.36");
+  });
+
   describe("joins", () => {
     it("should allow joins", () => {
       // start a custom question with orders
@@ -853,6 +876,66 @@ describe("scenarios > question > notebook", () => {
       });
     });
   });
+
+  // intentional simplification of "Select none" to quickly
+  // fix users' pain caused by the inability to unselect all columns
+  it("select no columns select the first one", () => {
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+    cy.findByTestId("fields-picker").click();
+
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByLabelText("ID").should("be.disabled");
+      cy.findByText("Tax").click();
+      cy.findByLabelText("ID")
+        .should("be.enabled")
+        .click();
+    });
+
+    visualize();
+
+    cy.findByText("Tax");
+    cy.findByText("ID").should("not.exist");
+  });
+
+  // flaky test
+  it.skip("should show an info popover when hovering over a field picker option for a table", () => {
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
+    cy.findByTestId("fields-picker").click();
+
+    cy.findByText("Total").trigger("mouseenter");
+
+    popover().contains("The total billed amount.");
+    popover().contains("80.36");
+  });
+
+  // flaky test
+  it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
+    cy.createNativeQuestion({
+      name: "question a",
+      native: { query: "select 'foo' as a_column" },
+    });
+
+    // start a custom question with question a
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("question a").click();
+
+    cy.findByTestId("fields-picker").click();
+
+    cy.findByText("A_COLUMN").trigger("mouseenter");
+
+    popover().contains("A_COLUMN");
+    popover().contains("No description");
+  });
 });
 
 // Extracted repro steps for #13000
@@ -900,30 +983,6 @@ function joinTwoSavedQuestions() {
       cy.icon("notebook").click();
       cy.url().should("contain", "/notebook");
     });
-  });
-
-  // intentional simplification of "Select none" to quickly
-  // fix users' pain caused by the inability to unselect all columns
-  it("select no columns select the first one", () => {
-    cy.visit("/question/new");
-    cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
-    cy.findByTestId("fields-picker").click();
-
-    cy.findByText("Select None").click();
-    cy.findByTestId("field-ID").should("be.disabled");
-
-    cy.findByTestId("field-Tax").click();
-
-    cy.findByTestId("field-ID")
-      .should("be.enabled")
-      .click();
-
-    visualize();
-
-    cy.findByText("Tax");
-    cy.findByText("ID").should("not.exist");
   });
 }
 

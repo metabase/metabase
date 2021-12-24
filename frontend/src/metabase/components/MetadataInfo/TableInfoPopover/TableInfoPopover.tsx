@@ -13,14 +13,15 @@ const propTypes = {
   tableId: PropTypes.number.isRequired,
   children: PropTypes.node,
   placement: PropTypes.string,
+  offset: PropTypes.arrayOf(PropTypes.number),
 };
 
 type Props = { tableId: number } & Pick<
   ITippyPopoverProps,
-  "children" | "placement"
+  "children" | "placement" | "offset"
 >;
 
-function TableInfoPopover({ tableId, children, placement }: Props) {
+function TableInfoPopover({ tableId, children, placement, offset }: Props) {
   placement = placement || "left-start";
 
   return tableId != null ? (
@@ -28,6 +29,7 @@ function TableInfoPopover({ tableId, children, placement }: Props) {
       interactive
       delay={POPOVER_DELAY}
       placement={placement}
+      offset={offset}
       content={<WidthBoundTableInfo tableId={tableId} />}
     >
       {children}

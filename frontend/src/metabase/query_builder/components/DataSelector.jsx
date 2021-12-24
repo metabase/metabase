@@ -18,6 +18,7 @@ import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
@@ -1433,6 +1434,17 @@ const TablePicker = ({
             item.table ? <Icon name="table2" size={18} /> : null
           }
           showItemArrows={hasNextStep}
+          renderItemWrapper={(itemContent, item) => {
+            if (item.table?.id != null) {
+              return (
+                <TableInfoPopover tableId={item.table.id}>
+                  {itemContent}
+                </TableInfoPopover>
+              );
+            }
+
+            return itemContent;
+          }}
         />
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">

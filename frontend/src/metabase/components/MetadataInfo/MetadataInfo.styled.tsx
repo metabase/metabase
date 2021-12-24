@@ -72,6 +72,7 @@ type FadeProps = {
 };
 
 export const Fade = styled.div<FadeProps>`
+  position: relative;
   width: 100%;
   transition: opacity ${TRANSITION_DURATION} linear;
   opacity: ${({ visible }) => (visible ? "1" : "0")};

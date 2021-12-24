@@ -123,7 +123,7 @@ describe("scenarios > question > saved", () => {
 
     cy.findByRole("button", { name: "Revert" }).click();
 
-    cy.findByText(/Reverted to an earlier revision/i);
+    cy.findByText(/This is a question/i).should("not.exist");
   });
 
   it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
@@ -148,5 +148,11 @@ describe("scenarios > question > saved", () => {
       .click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
+  });
+
+  it("should show table name in header with a table info popover on hover", () => {
+    cy.visit("/question/1");
+    cy.findByTestId("question-table-badges").trigger("mouseenter");
+    cy.findByText("9 columns");
   });
 });

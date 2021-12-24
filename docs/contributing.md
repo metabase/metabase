@@ -49,11 +49,11 @@ If all goes well, the feature gets coded up, verified and then the pull request 
 
 If there are tests missing, code style concerns or specific architectural issues in the pull request, they should be fixed before merging. We have a very high bar on both code and product quality and it's important that this be maintained going forward, so please be patient with us here.
 
-## Ways to help:
+## Ways to help
 
-The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, download the mac application or the jar and play around with it. Read the docs and generally get a feel for the flow of the product.
+The starting point would be to get familiar with Metabase the product, and know your way around. If you're using it at work, that's great! If not, [download Metabase](https://www.metabase.com/start/oss/) and play around with it. Read the docs and generally get a feel for the flow of the product.
 
-If you want to help out, there are lots of ways. In order of increasing coordination + interaction with us:
+Here are some ways you can help, in order of increasing coordination + interaction with us:
 
 ### Help with identifying needs and problems Metabase can solve
 
