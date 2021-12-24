@@ -87,8 +87,7 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-version"
-  | "show-database-syncing-modal";
+  | "engine-deprecation-notice-version";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
