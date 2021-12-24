@@ -20,7 +20,7 @@ import AuthApp from "metabase/auth/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import ResetPasswordApp from "metabase/auth/containers/ResetPasswordApp";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -177,7 +177,7 @@ export const getRoutes = store => (
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={PasswordResetApp} />
+        <Route path="reset_password/:token" component={ResetPasswordApp} />
       </Route>
 
       {/* MAIN */}
