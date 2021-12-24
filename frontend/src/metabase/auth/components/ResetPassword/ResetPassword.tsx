@@ -20,15 +20,15 @@ import {
 export interface ResetPasswordProps {
   token: string;
   showScene: boolean;
-  onValidateToken: (token: string) => void;
   onResetPassword: (token: string, password: string) => void;
+  onValidateToken: (token: string) => void;
 }
 
 const ResetPassword = ({
   token,
   showScene,
-  onValidateToken,
   onResetPassword,
+  onValidateToken,
 }: ResetPasswordProps): JSX.Element | null => {
   const [isLoading, setIsLoading] = useState(true);
   const [isValid, setIsValid] = useState(false);
