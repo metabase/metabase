@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 
-import Question from "metabase-lib/lib/Question";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
@@ -21,18 +20,19 @@ type MappedFieldPickerProps = {
     value: number | null;
     onChange: (fieldId: number) => void;
   };
-  tableId?: number;
-  dataset: Question;
+  formField: {
+    databaseId: number;
+  };
   tabIndex?: number;
 };
 
 function MappedFieldPicker({
   field,
-  tableId,
-  dataset,
+  formField,
   tabIndex,
 }: MappedFieldPickerProps) {
-  const { value: selectedFieldId, onChange } = field;
+  const { value: selectedFieldId = null, onChange } = field;
+  const { databaseId = null } = formField;
 
   const selectButtonRef = useRef<HTMLDivElement>();
 
@@ -74,9 +74,8 @@ function MappedFieldPicker({
   return (
     <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
-      selectedDatabaseId={dataset.databaseId()}
+      selectedDatabaseId={databaseId}
       selectedFieldId={selectedFieldId}
-      selectedTableId={tableId}
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
       triggerTabIndex={tabIndex}
