@@ -67,7 +67,9 @@ describe("scenarios > admin > databases > add", () => {
       .click();
 
     cy.wait("@createDatabase");
-    cy.url().should("match", /\/admin\/databases$/);
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByText("Explore sample data");
   });
 
   it("should trim fields needed to connect to the database", () => {
@@ -128,7 +130,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.url().should("match", /admin\/databases$/);
+    cy.url().should("match", /admin\/databases\?created=true$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -207,6 +209,9 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByLabelText("close icon").click();
 
     cy.findByRole("table").within(() => {
       cy.findByText(databaseName).click();
