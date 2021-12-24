@@ -412,17 +412,31 @@ export const initializeQB = (location, params, queryParams) => {
             card.dashboardId = dashboardId;
           }
         } else if (card.original_card_id) {
+          const deserializedCard = card;
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
-          if (
-            cardIsEquivalent(card, originalCard, { checkParameters: false }) &&
-            !cardIsEquivalent(card, originalCard, { checkParameters: true })
-          ) {
-            // if the cards are equal except for parameters, copy over the id to undirty the card
-            card.id = originalCard.id;
-          } else if (cardIsEquivalent(card, originalCard)) {
-            // if the cards are equal then show the original
+
+          if (cardIsEquivalent(deserializedCard, originalCard)) {
             card = Utils.copy(originalCard);
+
+            if (
+              !cardIsEquivalent(deserializedCard, originalCard, {
+                checkParameters: true,
+              })
+            ) {
+              const metadata = getMetadata(getState());
+              const { dashboardId, parameters } = deserializedCard;
+              verifyMatchingDashcardAndParameters({
+                dispatch,
+                dashboardId,
+                cardId: card.id,
+                parameters,
+                metadata,
+              });
+
+              card.parameters = parameters;
+              card.dashboardId = dashboardId;
+            }
           }
         }
         // if this card has any snippet tags we might need to fetch snippets pending permissions
