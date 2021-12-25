@@ -263,7 +263,7 @@ const parameterValuesSearchCache = handleActions(
     },
     [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES]: {
       next: (state, { payload }) =>
-        payload ? assoc(state, payload.id, payload.results) : state,
+        payload ? assoc(state, payload.cacheKey, payload.results) : state,
     },
   },
   {},

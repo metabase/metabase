@@ -19,6 +19,8 @@ import {
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
   getParametersMappedToDashcard,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { applyParameters } from "metabase/meta/Card";
 import {
@@ -55,7 +57,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
-  getDashboardParameterValuesSearch,
+  getDashboardParameterValuesSearchCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -1014,34 +1016,36 @@ export const fetchDashboardParameterValues = createThunkAction(
     dispatch,
     getState,
   ) => {
-    const parameterValuesSearch = getDashboardParameterValuesSearch(getState());
-    const { id: paramId, filteringParameters = [] } = parameter;
-    const otherValues = _.chain(parameters)
-      .filter(p => filteringParameters.includes(p.id) && p.value != null)
-      .map(p => [p.id, p.value])
-      .object()
-      .value();
+    const parameterValuesSearchCache = getDashboardParameterValuesSearchCache(
+      getState(),
+    );
+    const filteringParameterValues = getFilteringParameterValuesMap(
+      parameter,
+      parameters,
+    );
+    const cacheKey = getParameterValuesSearchKey({
+      dashboardId,
+      parameterId: parameter.id,
+      query,
+      filteringParameterValues,
+    });
 
-    const args = {
-      paramId,
-      dashId: dashboardId,
-      ...otherValues,
-      ...(query != null ? { query } : {}),
-    };
-    const id = JSON.stringify(args);
-
-    if (parameterValuesSearch[id]) {
+    if (parameterValuesSearchCache[cacheKey]) {
       return;
     }
 
     const endpoint = query
       ? DashboardApi.parameterSearch
       : DashboardApi.parameterValues;
-
-    const results = await endpoint(args);
+    const results = await endpoint({
+      paramId: parameter.id,
+      dashId: dashboardId,
+      query,
+      ...filteringParameterValues,
+    });
 
     return {
-      id,
+      cacheKey,
       results: results.map(result => [].concat(result)),
     };
   },

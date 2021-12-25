@@ -7,6 +7,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import {
   getMappingsByParameter as _getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
@@ -144,29 +146,30 @@ export const getDefaultParametersById = createSelector(
     }, {}),
 );
 
-export const getDashboardParameterValuesSearch = state =>
+export const getDashboardParameterValuesSearchCache = state =>
   state.dashboard.parameterValuesSearchCache;
 
 export const getDashboardParameterValuesCache = state => {
   return {
     get: ({ dashboardId, parameter, parameters, query }) => {
+      if (!parameter) {
+        return undefined;
+      }
+
       const { parameterValuesSearchCache } = state.dashboard;
-      const { id: paramId, filteringParameters = [] } = parameter;
-      const otherValues = _.chain(parameters)
-        .filter(p => filteringParameters.includes(p.id) && p.value != null)
-        .map(p => [p.id, p.value])
-        .object()
-        .value();
 
-      const args = {
-        paramId,
-        dashId: dashboardId,
-        ...otherValues,
-        ...(query != null ? { query } : {}),
-      };
+      const filteringParameterValues = getFilteringParameterValuesMap(
+        parameter,
+        parameters,
+      );
 
-      const key = JSON.stringify(args);
-      return parameterValuesSearchCache[key];
+      const cacheKey = getParameterValuesSearchKey({
+        dashboardId,
+        parameterId: parameter.id,
+        query,
+        filteringParameterValues,
+      });
+      return parameterValuesSearchCache[cacheKey];
     },
   };
 };
