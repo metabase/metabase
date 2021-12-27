@@ -9,7 +9,13 @@ export const FormTitle = styled.div`
   font-weight: 700;
   line-height: 1.5rem;
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+export const FormFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
 export const FormLink = styled(Link)`
@@ -48,8 +54,8 @@ export const InfoTitle = styled.div`
 export const InfoMessage = styled.div`
   color: ${color("text-dark")};
   text-align: center;
+`;
 
-  &:not:last-child {
-    margin-bottom: 2.5rem;
-  }
+export const InfoLink = styled(Link)`
+  margin-top: 2.5rem;
 `;

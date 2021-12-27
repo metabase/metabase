@@ -1,15 +1,16 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
-import Link from "metabase/components/Link";
 import AuthLayout from "../AuthLayout/AuthLayout";
 import { EmailData, ViewType } from "./types";
 import {
+  FormFooter,
   FormLink,
   FormTitle,
   InfoBody,
   InfoIcon,
   InfoIconContainer,
+  InfoLink,
   InfoMessage,
 } from "./ForgotPassword.styled";
 
@@ -81,10 +82,12 @@ const ForgotPasswordForm = ({
         initialValues={initialValues}
         onSubmit={handleSubmit}
       />
-      <FormLink
-        className="Button Button--borderless"
-        to={"/auth/login"}
-      >{t`Back to sign in`}</FormLink>
+      <FormFooter>
+        <FormLink
+          className="Button Button--borderless"
+          to={"/auth/login"}
+        >{t`Back to sign in`}</FormLink>
+      </FormFooter>
     </div>
   );
 };
@@ -98,10 +101,10 @@ const ForgotPasswordSuccess = (): JSX.Element => {
       <InfoMessage>
         {t`Check your email for instructions on how to reset your password.`}
       </InfoMessage>
-      <Link
+      <InfoLink
         className="Button Button--primary"
         to={"/auth/login"}
-      >{t`Back to sign in`}</Link>
+      >{t`Back to sign in`}</InfoLink>
     </InfoBody>
   );
 };
@@ -112,6 +115,10 @@ const ForgotPasswordDisabled = (): JSX.Element => {
       <InfoMessage>
         {t`Please contact an administrator to have them reset your password.`}
       </InfoMessage>
+      <InfoLink
+        className="Button Button--primary"
+        to={"/auth/login"}
+      >{t`Back to sign in`}</InfoLink>
     </InfoBody>
   );
 };

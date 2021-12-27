@@ -17,13 +17,14 @@ export const LayoutBody = styled.div`
 `;
 
 export const LayoutCard = styled.div`
+  width: 30.875rem;
   margin-top: 1.5rem;
   padding: 2.5rem 3.5rem;
-  max-width: 30.875rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 15px ${color("shadow")};
   border-radius: 6px;
 `;
+
 export const LayoutScene = styled.div`
   position: absolute;
   left: 0;
