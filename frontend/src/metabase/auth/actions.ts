@@ -1,7 +1,22 @@
+import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
-import { trackPasswordReset } from "./analytics";
+import { trackLogout, trackPasswordReset } from "./analytics";
+import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
+
+// logout
+export const LOGOUT = "metabase/auth/LOGOUT";
+export const logout = createThunkAction(LOGOUT, function() {
+  return async function(dispatch: any) {
+    await deleteSession();
+    await clearGoogleAuthCredentials();
+    trackLogout();
+
+    dispatch(push("/auth/login"));
+    window.location.reload();
+  };
+});
 
 export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
 export const forgotPassword = createThunkAction(
