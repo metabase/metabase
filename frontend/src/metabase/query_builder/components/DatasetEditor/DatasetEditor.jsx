@@ -352,6 +352,7 @@ function DatasetEditor(props) {
                 className="spread"
                 noHeader
                 queryBuilderMode="dataset"
+                hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}
