@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import Link from "metabase/components/Link";
 import Users from "metabase/entities/users";
+import Link from "metabase/components/Link";
 import AuthLayout from "../AuthLayout/AuthLayout";
-import { ForgotPasswordData, ForgotPasswordView } from "./types";
+import { EmailData, ViewType } from "./types";
 import {
+  FormLink,
   FormTitle,
   InfoBody,
   InfoIcon,
@@ -25,50 +26,65 @@ const ForgotPassword = ({
   initialEmail,
   onResetPassword,
 }: ForgotPasswordProps): JSX.Element => {
-  const [view, setView] = useState(
-    canResetPassword ? ForgotPasswordView.form : ForgotPasswordView.disabled,
+  const [view, setView] = useState<ViewType>(
+    canResetPassword ? "form" : "disabled",
   );
 
   const handleSubmit = useCallback(
-    async (data: ForgotPasswordData) => {
-      await onResetPassword(data.email);
-      setView(ForgotPasswordView.success);
+    async (email: string) => {
+      await onResetPassword(email);
+      setView("success");
     },
     [onResetPassword],
   );
 
   return (
     <AuthLayout showScene={showScene}>
-      {view === ForgotPasswordView.form && (
+      {view === "form" && (
         <ForgotPasswordForm
           initialEmail={initialEmail}
           onSubmit={handleSubmit}
         />
       )}
-      {view === ForgotPasswordView.success && <ForgotPasswordSuccess />}
-      {view === ForgotPasswordView.disabled && <ForgotPasswordDisabled />}
+      {view === "success" && <ForgotPasswordSuccess />}
+      {view === "disabled" && <ForgotPasswordDisabled />}
     </AuthLayout>
   );
 };
 
 interface ForgotPasswordFormProps {
   initialEmail?: string;
-  onSubmit: (data: ForgotPasswordData) => void;
+  onSubmit: (email: string) => void;
 }
 
 const ForgotPasswordForm = ({
   initialEmail,
   onSubmit,
 }: ForgotPasswordFormProps): JSX.Element => {
+  const initialValues = useMemo(() => {
+    return { email: initialEmail };
+  }, [initialEmail]);
+
+  const handleSubmit = useCallback(
+    async ({ email }: EmailData) => {
+      await onSubmit(email);
+    },
+    [onSubmit],
+  );
+
   return (
     <div>
       <FormTitle>{t`Forgot password`}</FormTitle>
       <Users.Form
         form={Users.forms.password_forgot}
         submitTitle={t`Send password reset email`}
-        initialValues={{ email: initialEmail }}
-        onSubmit={onSubmit}
+        initialValues={initialValues}
+        onSubmit={handleSubmit}
       />
+      <FormLink
+        className="Button Button--borderless"
+        to={"/auth/login"}
+      >{t`Back to sign in`}</FormLink>
     </div>
   );
 };

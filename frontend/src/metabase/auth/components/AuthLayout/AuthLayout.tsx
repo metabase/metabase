@@ -9,7 +9,7 @@ import {
 } from "./AuthLayout.styled";
 
 export interface AuthLayoutProps {
-  showScene?: boolean;
+  showScene: boolean;
   children?: ReactNode;
 }
 

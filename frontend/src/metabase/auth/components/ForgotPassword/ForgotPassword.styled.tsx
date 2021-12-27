@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 export const FormTitle = styled.div`
   color: ${color("text-dark")};
@@ -9,6 +10,10 @@ export const FormTitle = styled.div`
   line-height: 1.5rem;
   text-align: center;
   margin-bottom: 1rem;
+`;
+
+export const FormLink = styled(Link)`
+  margin-top: 1.5rem;
 `;
 
 export const InfoBody = styled.div`

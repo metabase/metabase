@@ -1,9 +1,5 @@
-export enum ForgotPasswordView {
-  form,
-  success,
-  disabled,
-}
+export type ViewType = "form" | "disabled" | "success";
 
-export interface ForgotPasswordData {
+export interface EmailData {
   email: string;
 }

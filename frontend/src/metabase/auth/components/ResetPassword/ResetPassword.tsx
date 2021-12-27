@@ -5,7 +5,7 @@ import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
 import AuthLayout from "../AuthLayout/AuthLayout";
-import { PasswordData, PasswordViewType } from "./types";
+import { PasswordData, ViewType } from "./types";
 import {
   FormMessage,
   FormTitle,
@@ -31,7 +31,7 @@ const ResetPassword = ({
   onValidatePassword,
   onValidatePasswordToken,
 }: ResetPasswordProps): JSX.Element | null => {
-  const [view, setView] = useState<PasswordViewType>("none");
+  const [view, setView] = useState<ViewType>("none");
 
   const handleLoad = useCallback(async () => {
     try {

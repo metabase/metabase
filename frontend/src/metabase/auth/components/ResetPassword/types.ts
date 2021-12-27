@@ -1,4 +1,4 @@
-export type PasswordViewType = "none" | "form" | "success" | "expired";
+export type ViewType = "none" | "form" | "success" | "expired";
 
 export interface PasswordData {
   password: string;
