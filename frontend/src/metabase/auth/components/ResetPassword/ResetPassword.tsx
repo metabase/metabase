@@ -5,6 +5,7 @@ import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
 import AuthLayout from "../AuthLayout/AuthLayout";
+import { PasswordData, PasswordViewType } from "./types";
 import {
   FormMessage,
   FormTitle,
@@ -14,13 +15,6 @@ import {
   InfoMessage,
   InfoTitle,
 } from "./ResetPassword.styled";
-
-enum ViewType {
-  none,
-  form,
-  success,
-  expired,
-}
 
 export interface ResetPasswordProps {
   token: string;
@@ -37,19 +31,19 @@ const ResetPassword = ({
   onValidatePassword,
   onValidatePasswordToken,
 }: ResetPasswordProps): JSX.Element | null => {
-  const [view, setView] = useState(ViewType.none);
+  const [view, setView] = useState<PasswordViewType>("none");
 
   const handleLoad = useCallback(async () => {
     try {
       await onValidatePasswordToken(token);
-      setView(ViewType.form);
+      setView("form");
     } catch (error) {
-      setView(ViewType.expired);
+      setView("expired");
     }
   }, [token, onValidatePasswordToken]);
 
   const handlePasswordChange = useCallback(
-    async ({ password }: PasswordInfo) => {
+    async ({ password }: PasswordData) => {
       try {
         await onValidatePassword(password);
         return {};
@@ -61,9 +55,9 @@ const ResetPassword = ({
   );
 
   const handlePasswordSubmit = useCallback(
-    async ({ password }: PasswordInfo) => {
+    async ({ password }: PasswordData) => {
       await onResetPassword(token, password);
-      setView(ViewType.success);
+      setView("success");
     },
     [token, onResetPassword],
   );
@@ -74,26 +68,21 @@ const ResetPassword = ({
 
   return (
     <AuthLayout showScene={showScene}>
-      {view === ViewType.form && (
+      {view === "form" && (
         <ResetPasswordForm
           onPasswordChange={handlePasswordChange}
           onSubmit={handlePasswordSubmit}
         />
       )}
-      {view === ViewType.success && <ResetPasswordSuccess />}
-      {view === ViewType.expired && <ResetPasswordExpired />}
+      {view === "success" && <ResetPasswordSuccess />}
+      {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };
 
-interface PasswordInfo {
-  password: string;
-  password_confirm: string;
-}
-
 interface ResetPasswordFormProps {
-  onPasswordChange: (info: PasswordInfo) => void;
-  onSubmit: (info: PasswordInfo) => void;
+  onPasswordChange: (data: PasswordData) => void;
+  onSubmit: (data: PasswordData) => void;
 }
 
 const ResetPasswordForm = ({
