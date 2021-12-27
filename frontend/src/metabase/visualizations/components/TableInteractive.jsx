@@ -80,6 +80,7 @@ export default class TableInteractive extends Component {
 
   static defaultProps = {
     isPivoted: false,
+    hasMetadataPopovers: true,
     renderTableHeaderWrapper: children => (
       <div className="cellData">{children}</div>
     ),
@@ -563,6 +564,7 @@ export default class TableInteractive extends Component {
       data,
       sort,
       isPivoted,
+      hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
     } = this.props;
@@ -670,7 +672,11 @@ export default class TableInteractive extends Component {
         >
           <DimensionInfoPopover
             placement="bottom-start"
-            dimension={this.getDimension(column, this.props.query)}
+            dimension={
+              hasMetadataPopovers
+                ? this.getDimension(column, this.props.query)
+                : null
+            }
             disabled={this.props.clicked != null}
           >
             {renderTableHeaderWrapper(

@@ -13,6 +13,7 @@ import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 const ALLOWED_VISUALIZATION_PROPS = [
   // Table Interactive
+  "hasMetadataPopovers",
   "tableHeaderHeight",
   "scrollToColumn",
   "renderTableHeaderWrapper",
