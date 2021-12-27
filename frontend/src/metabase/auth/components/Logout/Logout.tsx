@@ -5,7 +5,9 @@ interface LogoutProps {
 }
 
 const Logout = ({ onLogout }: LogoutProps): JSX.Element | null => {
-  useEffect(() => onLogout(), [onLogout]);
+  useEffect(() => {
+    onLogout();
+  }, [onLogout]);
   return null;
 };
 

@@ -20,7 +20,11 @@ export const FormFooter = styled.div`
 `;
 
 export const FormLink = styled(Link)`
-  display: block;
+  color: ${color("text-dark")};
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
 
 export const InfoBody = styled.div`
