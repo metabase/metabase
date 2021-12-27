@@ -19,6 +19,7 @@
 - [A word on Java versions](./operations-guide/java-versions.html)
 - [How to setup monitoring via JMX](./operations-guide/jmx-monitoring.html)
 - [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.html)
+- [Supported browsers](./administration-guide/supported-browsers.html)
 
 ## Asking questions
 
