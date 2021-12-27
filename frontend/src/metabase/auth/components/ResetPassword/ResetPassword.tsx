@@ -103,6 +103,7 @@ const ResetPasswordForm = ({
         asyncValidate={onPasswordChange}
         asyncBlurFields={["password"]}
         submitTitle={t`Save new password`}
+        submitFullWidth
         onSubmit={onSubmit}
       />
     </div>

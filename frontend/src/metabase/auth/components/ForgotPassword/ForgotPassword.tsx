@@ -80,7 +80,7 @@ const ForgotPasswordForm = ({
         form={Users.forms.password_forgot}
         initialValues={initialValues}
         submitTitle={t`Send password reset email`}
-        submitFullWidth={true}
+        submitFullWidth
         onSubmit={handleSubmit}
       />
       <FormFooter>
