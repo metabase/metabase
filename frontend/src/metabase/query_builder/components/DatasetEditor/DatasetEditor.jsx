@@ -295,6 +295,14 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
+  const canSaveChanges = useMemo(() => {
+    if (dataset.query().isEmpty()) {
+      return false;
+    }
+    const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
+    return !hasFieldWithoutDisplayName;
+  }, [dataset, fields]);
+
   const sidebar = getSidebar(props, {
     datasetEditorTab,
     focusedField,
@@ -325,6 +333,7 @@ function DatasetEditor(props) {
           >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
+            disabled={!canSaveChanges}
             actionFn={handleSave}
             normalText={t`Save changes`}
             activeText={t`Saving…`}
