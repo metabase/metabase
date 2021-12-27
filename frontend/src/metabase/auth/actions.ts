@@ -3,6 +3,14 @@ import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { trackPasswordReset } from "./analytics";
 
+export const FORGOT_PASSWORD = "metabase/auth/FORGOT_PASSWORD";
+export const forgotPassword = createThunkAction(
+  FORGOT_PASSWORD,
+  (email: string) => async () => {
+    await SessionApi.forgot_password({ email });
+  },
+);
+
 export const RESET_PASSWORD = "metabase/auth/RESET_PASSWORD";
 export const resetPassword = createThunkAction(
   RESET_PASSWORD,
