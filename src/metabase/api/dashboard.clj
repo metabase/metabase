@@ -148,7 +148,7 @@
 ;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the
 ;;    dashboard cards
 ;;
-;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector) ->
+;; 2. Fetch all matching entries from Query in the DB and build a map of hash (converted to a Clojure vector) ->
 ;;    average execution time
 ;;
 ;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash
