@@ -247,7 +247,7 @@ cache-key-metabase-core: &CacheKeyMetabaseCore
 
 # Key for the drivers built by build-uberjar-drivers
 cache-key-drivers: &CacheKeyDrivers
-  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}-<< parameters.edition >>
+  key: v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
 
 # This is also used by the uberjar-build-drivers step; this is a unique situation because the build-drivers script has
 # logic to determine whether to rebuild drivers or not that is quite a bit more sophisticated that the run-on-change
@@ -255,9 +255,9 @@ cache-key-drivers: &CacheKeyDrivers
 # redshift driver.
 cache-keys-drivers-with-fallback-keys: &CacheKeyDrivers_WithFallbackKeys
   keys:
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-{{ checksum ".MODULES-CHECKSUMS" }}
-    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-<< parameters.edition >>-
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-{{ checksum ".MODULES-CHECKSUMS" }}
+    - v5-{{ checksum ".CACHE-PREFIX" }}-drivers-
 
 # Key for frontend client built by uberjar-build-frontend step
 cache-key-frontend: &CacheKeyFrontend
@@ -1332,7 +1332,7 @@ workflows:
             - be-deps
 
       - build-uberjar-drivers:
-          name: build-uberjar-drivers-<< matrix.edition >>
+          name: build-uberjar-drivers
           requires:
             - be-deps
           <<: *Matrix
@@ -1346,7 +1346,7 @@ workflows:
       - build-uberjar:
           name: build-uberjar-<< matrix.edition >>
           requires:
-            - build-uberjar-drivers-<< matrix.edition >>
+            - build-uberjar-drivers
             - build-uberjar-frontend-<< matrix.edition >>
           <<: *Matrix
 
