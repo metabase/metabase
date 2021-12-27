@@ -7,7 +7,13 @@ version: 2.1
 executors:
   # CircleCI base Node + Headless browsers + Clojure CLI - big one
   # Maildev runs by default with all Cypress tests
-  clojure-and-node-and-browsers:
+
+  builder:
+  working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+
+  tester:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
@@ -537,7 +543,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - checkout
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
@@ -603,7 +609,7 @@ jobs:
 
   check-migrations:
     executor:
-      clojure-and-node-and-browsers
+      builder
     steps:
       - attach-workspace
       - create-checksum-file:
@@ -625,7 +631,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -665,7 +671,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       before-steps:
         type: steps
         default: []
@@ -702,7 +708,7 @@ jobs:
                 edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - run-on-change:
@@ -718,7 +724,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       driver:
         type: string
       timeout:
@@ -761,7 +767,7 @@ jobs:
             - steps: << parameters.after-steps >>
 
   test-build-scripts:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - run-on-change:
@@ -805,7 +811,7 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
@@ -827,7 +833,7 @@ jobs:
                   - /home/circleci/.cache/Cypress
 
   shared-tests-cljs:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - run-yarn-command:
           command-name: Run Cljs tests for shared/ code
@@ -837,7 +843,7 @@ jobs:
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -877,7 +883,7 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -902,7 +908,7 @@ jobs:
   build-uberjar:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -954,7 +960,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: tester
       cypress-group:
         type: string
       source-folder:
@@ -1009,7 +1015,7 @@ jobs:
 ########################################################################################################################
 
   snowplow-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - restore-snowplow-deps-cache
