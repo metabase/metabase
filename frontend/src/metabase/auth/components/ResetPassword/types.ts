@@ -1,11 +1,6 @@
-export enum ResetPasswordView {
-  none,
-  form,
-  success,
-  expired,
-}
+export type PasswordViewType = "none" | "form" | "success" | "expired";
 
-export interface ResetPasswordData {
+export interface PasswordData {
   password: string;
   password_confirm: string;
 }
