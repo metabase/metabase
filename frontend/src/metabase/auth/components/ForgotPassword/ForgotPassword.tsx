@@ -78,8 +78,9 @@ const ForgotPasswordForm = ({
       <FormTitle>{t`Forgot password`}</FormTitle>
       <Users.Form
         form={Users.forms.password_forgot}
-        submitTitle={t`Send password reset email`}
         initialValues={initialValues}
+        submitTitle={t`Send password reset email`}
+        submitFullWidth={true}
         onSubmit={handleSubmit}
       />
       <FormFooter>

@@ -16,10 +16,11 @@ export const FormFooter = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-top: 1.5rem;
 `;
 
 export const FormLink = styled(Link)`
-  margin-top: 1.5rem;
+  display: block;
 `;
 
 export const InfoBody = styled.div`
