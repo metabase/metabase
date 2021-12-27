@@ -18,7 +18,7 @@ jest.mock("metabase/entities/users", () => ({
 }));
 
 describe("ResetPassword", () => {
-  it("should show the form when token validations succeeds", async () => {
+  it("should show a form when token validations succeeds", async () => {
     const props = getProps({
       onValidatePasswordToken: jest.fn().mockResolvedValue({}),
     });

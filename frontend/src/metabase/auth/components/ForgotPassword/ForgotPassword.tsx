@@ -14,7 +14,7 @@ import {
   InfoMessage,
 } from "./ForgotPassword.styled";
 
-interface ForgotPasswordProps {
+export interface ForgotPasswordProps {
   showScene: boolean;
   canResetPassword: boolean;
   initialEmail?: string;
