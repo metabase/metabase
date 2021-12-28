@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import Login from "../../components/Login";
-import EmailButton from "../../components/EmailButton";
+import PasswordButton from "../../components/PasswordButton";
 import GoogleButton from "../../components/GoogleButton/GoogleButton";
 
 const mapStateToProps = () => ({
@@ -11,7 +11,7 @@ const mapStateToProps = () => ({
     },
     {
       name: "password",
-      Button: EmailButton,
+      Button: PasswordButton,
     },
   ],
 });
