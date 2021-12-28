@@ -5,7 +5,8 @@ import { createThunkAction } from "metabase/lib/redux";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { trackLogout, trackPasswordReset } from "./analytics";
+import { trackLogin, trackLogout, trackPasswordReset } from "./analytics";
+import { LoginData } from "./types";
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createThunkAction(
@@ -15,6 +16,19 @@ export const refreshSession = createThunkAction(
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
+  },
+);
+
+// login
+export const LOGIN = "metabase/auth/LOGIN";
+export const login = createThunkAction(
+  LOGIN,
+  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
+    await SessionApi.create(data);
+    trackLogin();
+
+    await dispatch(refreshSession());
+    dispatch(push(redirectUrl));
   },
 );
 

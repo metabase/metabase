@@ -115,6 +115,36 @@ export default {
       },
     ],
   }),
+  login: () => {
+    const ldap = MetabaseSettings.ldapEnabled();
+    const cookies = MetabaseSettings.get("session-cookies");
+
+    return {
+      fields: [
+        {
+          name: "username",
+          type: ldap ? "input" : "email",
+          title: ldap ? t`Username or email address` : t`Email address`,
+          validate: ldap ? validate.required() : validate.required().email(),
+        },
+        {
+          name: "password",
+          type: "password",
+          title: t`Password`,
+          placeholder: t`Shhh...`,
+          validate: validate.required(),
+        },
+        {
+          name: "remember",
+          type: "checkbox",
+          title: t`Remember me`,
+          initial: true,
+          hidden: cookies,
+          horizontal: true,
+        },
+      ],
+    };
+  },
   password: {
     fields: [
       {

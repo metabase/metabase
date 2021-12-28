@@ -27,7 +27,7 @@ const Login = ({
       <LoginTitle>{t`Sign in to Metabase`}</LoginTitle>
       {provider && provider.Panel && (
         <LoginPanel>
-          <provider.Panel />
+          <provider.Panel redirectUrl={redirectUrl} />
         </LoginPanel>
       )}
       {!provider && (
