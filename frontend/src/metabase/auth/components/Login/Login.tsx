@@ -16,7 +16,7 @@ const Login = ({ providers, redirectUrl }: LoginProps): JSX.Element => {
       <LoginList>
         {providers.map(provider => (
           <LoginListItem key={provider.name}>
-            <provider.Button card redirectUrl={redirectUrl} />
+            <provider.Button large={true} redirectUrl={redirectUrl} />
           </LoginListItem>
         ))}
       </LoginList>

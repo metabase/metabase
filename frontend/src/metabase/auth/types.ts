@@ -7,7 +7,7 @@ export interface AuthProvider {
 }
 
 export interface AuthProviderButtonProps {
-  card?: boolean;
+  large?: boolean;
   redirectUrl?: string;
 }
 

@@ -3,11 +3,13 @@ import { t } from "ttag";
 import AuthButton from "../AuthButton";
 
 export interface GoogleButtonProps {
-  card?: boolean;
+  large?: boolean;
 }
 
-const GoogleButton = ({ card }: GoogleButtonProps) => {
-  return <AuthButton text={t`Sign in with Google`} icon="google" card={card} />;
+const GoogleButton = ({ large }: GoogleButtonProps) => {
+  return (
+    <AuthButton text={t`Sign in with Google`} icon="google" card={large} />
+  );
 };
 
 export default GoogleButton;
