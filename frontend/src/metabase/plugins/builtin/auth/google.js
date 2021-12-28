@@ -9,20 +9,21 @@ import {
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import GoogleButton from "metabase/auth/containers/GoogleButton";
+
 import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogleForm";
 
-PLUGIN_AUTH_PROVIDERS.push(providers => {
-  const googleProvider = {
-    name: "google",
-    // circular dependencies
-    Button: require("metabase/auth/containers/GoogleButton").default,
-  };
+const GOOGLE_PROVIDER = {
+  name: "google",
+  Button: GoogleButton,
+};
 
-  return MetabaseSettings.googleAuthEnabled()
-    ? [googleProvider, ...providers]
-    : providers;
-});
+PLUGIN_AUTH_PROVIDERS.push(providers =>
+  MetabaseSettings.googleAuthEnabled()
+    ? [GOOGLE_PROVIDER, ...providers]
+    : providers,
+);
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [
