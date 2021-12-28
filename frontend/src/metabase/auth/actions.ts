@@ -7,9 +7,9 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { trackLogout, trackPasswordReset } from "./analytics";
 
-export const REFRESH = "metabase/auth/refresh";
-export const refresh = createThunkAction(
-  REFRESH,
+export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
+export const refreshSession = createThunkAction(
+  REFRESH_SESSION,
   () => async (dispatch: any) => {
     await Promise.all([
       dispatch(refreshCurrentUser()),
@@ -43,7 +43,7 @@ export const resetPassword = createThunkAction(
   RESET_PASSWORD,
   (token: string, password: string) => async (dispatch: any) => {
     await SessionApi.reset_password({ token, password });
-    await dispatch(refresh());
+    await dispatch(refreshSession());
     trackPasswordReset();
   },
 );
