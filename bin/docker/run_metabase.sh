@@ -16,21 +16,33 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
-# check for docker secrets file
-if [[ -n "${MB_DB_USER_FILE}" ]]; then
-  export MB_DB_USER=$(cat ${MB_DB_USER_FILE})
-  echo "metabase db username set from secrets file ${MB_DB_USER_FILE}"
-fi
+file_env() {
+	local var="$1"
+	local fileVar="${var}_FILE"
+	local def="${2:-}"
+	if [ "${!var:-}" ] && [ "${!fileVar:-}" ]; then
+		echo >&2 "error: both $var and $fileVar are set (but are exclusive)"
+		exit 1
+	fi
+	local val="$def"
+	if [ "${!var:-}" ]; then
+		val="${!var}"
+	elif [ "${!fileVar:-}" ]; then
+		val="$(< "${!fileVar}")"
+	fi
+	export "$var"="$val"
+	unset "$fileVar"
+}
 
-if [[  -n "${MB_DB_PASS_FILE}" ]]; then
-    export MB_DB_PASS=$(cat ${MB_DB_PASS_FILE})
-  echo "metabase db password set from secrets file ${MB_DB_PASS_FILE}"
-fi
-
-if [[  -n "${MB_DB_DBNAME_FILE}" ]]; then
-    export MB_DB_DBNAME=$(cat ${MB_DB_DBNAME_FILE})
-  echo "metabase db name set from secrets file ${MB_DB_DBNAME_FILE}"
-fi
+docker_setup_env() {
+    file_env 'MB_DB_USER'
+    file_env 'MB_DB_PASS'
+    file_env 'MB_DB_CONNECTION_URI'
+    file_env 'MB_EMAIL_SMTP_PASSWORD'
+    file_env 'MB_EMAIL_SMTP_USERNAME'
+    file_env 'MB_LDAP_PASSWORD'
+    file_env 'MB_LDAP_BIND_DN'
+}
 
 # detect if the container is started as root or not
 # if non-root, it's likely we run in a k8s environment with well maintained permissions
@@ -40,6 +52,7 @@ if [ $(id -u) -ne 0 ]; then
     # Launch the application
     # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
     # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit
+    docker_setup_env
     exec /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar $@"
 else
     # Avoid running metabase (or any server) as root where possible
@@ -120,6 +133,7 @@ else
 
     # next we tell metabase use the files we just moved into the directory
     # or create the files in that directory if they don't exist.
+    docker_setup_env
     export MB_DB_FILE=$new_db_dir/$(basename $db_file)
 
     # TODO: print big scary warning if they are configuring an ephemeral instance
