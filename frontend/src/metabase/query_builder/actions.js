@@ -773,6 +773,20 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+  const queryBuilderMode = getQueryBuilderMode(getState());
+  const datasetEditorTab = getDatasetEditorTab(getState());
+  const isEditingDatasetMetadata =
+    queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+  const changedSettings = Object.keys(settings);
+  const isColumnWidthResetEvent =
+    changedSettings.length === 1 &&
+    changedSettings.includes("table.column_widths") &&
+    settings["table.column_widths"] === undefined;
+
+  if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
+    return;
+  }
+
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
       run: "auto",
