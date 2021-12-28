@@ -40,7 +40,7 @@ const PasswordPanel = ({
         </ActionItem>
         {providers.map(provider => (
           <ActionItem key={provider.name}>
-            <provider.Button large={true} redirectUrl={redirectUrl} />
+            <provider.Button redirectUrl={redirectUrl} />
           </ActionItem>
         ))}
       </ActionList>
