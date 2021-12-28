@@ -86,7 +86,7 @@ describe("scenarios > auth > signin", () => {
       cy.url().should("contain", "auth/login");
       cy.findByText("I seem to have forgotten my password").click();
       cy.url().should("contain", "auth/forgot_password");
-      cy.findByText("Back to login").click();
+      cy.findByText("Back to sign in").click();
       cy.url().should("contain", "auth/login");
     });
   });
