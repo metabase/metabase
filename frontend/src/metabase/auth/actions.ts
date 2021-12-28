@@ -2,12 +2,25 @@ import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
-import { trackLogout, trackPasswordReset } from "./analytics";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
+import { refreshSiteSettings } from "metabase/redux/settings";
+import { refreshCurrentUser } from "metabase/redux/user";
+import { trackLogout, trackPasswordReset } from "./analytics";
+
+export const REFRESH = "metabase/auth/refresh";
+export const refresh = createThunkAction(
+  REFRESH,
+  () => async (dispatch: any) => {
+    await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings()),
+    ]);
+  },
+);
 
 export const LOGOUT = "metabase/auth/LOGOUT";
-export const logout = createThunkAction(LOGOUT, function() {
-  return async function(dispatch: any) {
+export const logout = createThunkAction(LOGOUT, () => {
+  return async (dispatch: any) => {
     await deleteSession();
     await clearGoogleAuthCredentials();
     trackLogout();
@@ -28,8 +41,9 @@ export const forgotPassword = createThunkAction(
 export const RESET_PASSWORD = "metabase/auth/RESET_PASSWORD";
 export const resetPassword = createThunkAction(
   RESET_PASSWORD,
-  (token: string, password: string) => async () => {
+  (token: string, password: string) => async (dispatch: any) => {
     await SessionApi.reset_password({ token, password });
+    await dispatch(refresh());
     trackPasswordReset();
   },
 );
