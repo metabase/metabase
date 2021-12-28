@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { forwardRef, ReactNode } from "react";
 import {
   CardIcon,
   CardLink,
@@ -10,30 +10,27 @@ import {
 export interface AuthButtonProps {
   link?: string;
   icon?: string;
-  card?: boolean;
-  children: ReactNode;
+  isCard?: boolean;
+  children?: ReactNode;
   onClick?: () => void;
 }
 
-const AuthButton = ({
-  link = "",
-  icon,
-  card,
-  children,
-  onClick,
-}: AuthButtonProps): JSX.Element => {
-  return card ? (
-    <CardLink to={link} onClick={onClick}>
+const AuthButton = (
+  { link = "", icon, isCard, children, onClick }: AuthButtonProps,
+  ref: any,
+): JSX.Element => {
+  return isCard ? (
+    <CardLink innerRef={ref} to={link} onClick={onClick}>
       {icon && <CardIcon name={icon} />}
       <CardText>{children}</CardText>
     </CardLink>
   ) : (
     <TextRoot>
-      <TextLink to={link} onClick={onClick}>
+      <TextLink innerRef={ref} to={link} onClick={onClick}>
         {children}
       </TextLink>
     </TextRoot>
   );
 };
 
-export default AuthButton;
+export default forwardRef(AuthButton);

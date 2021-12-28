@@ -40,11 +40,16 @@ export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(
   LOGIN_GOOGLE,
   (token: string, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.createWithGoogleAuth({ token });
-    trackLoginGoogle();
+    try {
+      await SessionApi.createWithGoogleAuth({ token });
+      trackLoginGoogle();
 
-    await dispatch(refreshSession());
-    dispatch(push(redirectUrl));
+      await dispatch(refreshSession());
+      dispatch(push(redirectUrl));
+    } catch (error) {
+      await clearGoogleAuthCredentials();
+      throw error;
+    }
   },
 );
 

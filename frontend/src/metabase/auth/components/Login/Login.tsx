@@ -29,7 +29,7 @@ const Login = ({
         <ActionList>
           {providers.map(provider => (
             <ActionItem key={provider.name}>
-              <provider.Button large={true} redirectUrl={redirectUrl} />
+              <provider.Button isCard={true} redirectUrl={redirectUrl} />
             </ActionItem>
           ))}
         </ActionList>

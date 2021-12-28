@@ -1,5 +1,5 @@
 /*global gapi*/
-
+import { t } from "ttag";
 import { SessionApi } from "metabase/services";
 import Settings from "metabase/lib/settings";
 
@@ -16,10 +16,15 @@ export const deleteSession = async () => {
   }
 };
 
-export const attachGoogleAuth = (element, onSuccess, onError) => {
+const GOOGLE_AUTH_ERRORS = {
+  generic: t`There was an issue signing in with Google. Please contact an administrator.`,
+  popup_closed_by_user: t`The window was closed before completing Google Authentication.`,
+};
+
+export const attachGoogleAuth = (element, onLogin, onError) => {
   // if gapi isn't loaded yet then wait 100ms and check again; keep doing this until we're ready
   if (!window.gapi) {
-    window.setTimeout(() => attachGoogleAuth(element, onSuccess, onError), 100);
+    window.setTimeout(() => attachGoogleAuth(element, onLogin, onError), 100);
     return;
   }
 
@@ -32,8 +37,12 @@ export const attachGoogleAuth = (element, onSuccess, onError) => {
     auth2.attachClickHandler(
       element,
       {},
-      user => onSuccess(user.getAuthResponse().id_token),
-      error => onError(error.error),
+      user => {
+        onLogin(user.getAuthResponse().id_token);
+      },
+      error => {
+        onError(GOOGLE_AUTH_ERRORS[error.error] ?? GOOGLE_AUTH_ERRORS.generic);
+      },
     );
   });
 };
