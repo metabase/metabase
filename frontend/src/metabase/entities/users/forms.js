@@ -125,7 +125,9 @@ export default {
           name: "username",
           type: ldap ? "input" : "email",
           title: ldap ? t`Username or email address` : t`Email address`,
+          placeholder: t`youlooknicetoday@email.com`,
           validate: ldap ? validate.required() : validate.required().email(),
+          autoFocus: true,
         },
         {
           name: "password",
