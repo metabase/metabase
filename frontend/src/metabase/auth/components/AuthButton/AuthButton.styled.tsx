@@ -8,6 +8,7 @@ export const TextRoot = styled.div`
 `;
 
 export const TextLink = styled(Link)`
+  cursor: pointer;
   color: ${color("text-dark")};
 
   &:hover {

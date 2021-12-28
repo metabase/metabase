@@ -2,12 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import AuthLayout from "../../containers/AuthLayout";
 import { AuthProvider } from "../../types";
-import {
-  LoginList,
-  LoginListItem,
-  LoginPanel,
-  LoginTitle,
-} from "./Login.styled";
+import { ActionList, ActionItem, LoginPanel, LoginTitle } from "./Login.styled";
 
 export interface LoginProps {
   providers: AuthProvider[];
@@ -31,13 +26,13 @@ const Login = ({
         </LoginPanel>
       )}
       {!provider && (
-        <LoginList>
+        <ActionList>
           {providers.map(provider => (
-            <LoginListItem key={provider.name}>
+            <ActionItem key={provider.name}>
               <provider.Button large={true} redirectUrl={redirectUrl} />
-            </LoginListItem>
+            </ActionItem>
           ))}
-        </LoginList>
+        </ActionList>
       )}
     </AuthLayout>
   );

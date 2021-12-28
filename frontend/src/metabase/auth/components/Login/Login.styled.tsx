@@ -9,14 +9,14 @@ export const LoginTitle = styled.div`
   text-align: center;
 `;
 
-export const LoginList = styled.div`
+export const LoginPanel = styled.div`
+  margin-top: 2.5rem;
+`;
+
+export const ActionList = styled.div`
   margin-top: 3.5rem;
 `;
 
-export const LoginListItem = styled.div`
+export const ActionItem = styled.div`
   margin-top: 2rem;
-`;
-
-export const LoginPanel = styled.div`
-  margin-top: 2.5rem;
 `;

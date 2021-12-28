@@ -1,9 +1,9 @@
 import { connect } from "react-redux";
 import Login from "../../components/Login";
-import { getProviders } from "../../selectors";
+import { getAuthProviders } from "../../selectors";
 
 const mapStateToProps = (state: any, props: any) => ({
-  providers: getProviders(state, props),
+  providers: getAuthProviders(),
   providerName: props.params.provider,
   redirectUrl: props.location.query.redirect,
 });
