@@ -1,21 +1,7 @@
-import React from "react";
+import React, { PropsWithChildren } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResetPassword, { ResetPasswordProps } from "./ResetPassword";
-
-interface FormMockProps {
-  submitTitle: string;
-  onSubmit: () => void;
-}
-
-const FormMock = ({ submitTitle, onSubmit }: FormMockProps) => {
-  return <button onClick={onSubmit}>{submitTitle}</button>;
-};
-
-jest.mock("metabase/entities/users", () => ({
-  forms: { password_reset: jest.fn() },
-  Form: FormMock,
-}));
 
 describe("ResetPassword", () => {
   it("should show a form when token validations succeeds", async () => {
@@ -59,10 +45,29 @@ describe("ResetPassword", () => {
 const getProps = (opts?: Partial<ResetPasswordProps>): ResetPasswordProps => {
   return {
     token: "token",
-    showScene: true,
     onResetPassword: jest.fn(),
     onValidatePassword: jest.fn(),
     onValidatePasswordToken: jest.fn(),
     ...opts,
   };
 };
+
+interface FormMockProps {
+  submitTitle: string;
+  onSubmit: () => void;
+}
+
+const FormMock = ({ submitTitle, onSubmit }: FormMockProps) => {
+  return <button onClick={onSubmit}>{submitTitle}</button>;
+};
+
+jest.mock("metabase/entities/users", () => ({
+  forms: { password_reset: jest.fn() },
+  Form: FormMock,
+}));
+
+const AuthLayoutMock = ({ children }: PropsWithChildren<unknown>) => {
+  return <div>{children}</div>;
+};
+
+jest.mock("../../containers/AuthLayout", () => AuthLayoutMock);

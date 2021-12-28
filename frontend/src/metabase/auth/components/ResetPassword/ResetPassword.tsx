@@ -4,7 +4,7 @@ import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
-import AuthLayout from "../AuthLayout/AuthLayout";
+import AuthLayout from "../../containers/AuthLayout";
 import { PasswordData, ViewType } from "./types";
 import {
   FormMessage,
@@ -18,7 +18,6 @@ import {
 
 export interface ResetPasswordProps {
   token: string;
-  showScene: boolean;
   onResetPassword: (token: string, password: string) => void;
   onValidatePassword: (password: string) => void;
   onValidatePasswordToken: (token: string) => void;
@@ -26,7 +25,6 @@ export interface ResetPasswordProps {
 
 const ResetPassword = ({
   token,
-  showScene,
   onResetPassword,
   onValidatePassword,
   onValidatePasswordToken,
@@ -67,7 +65,7 @@ const ResetPassword = ({
   }, [handleLoad]);
 
   return (
-    <AuthLayout showScene={showScene}>
+    <AuthLayout>
       {view === "form" && (
         <ResetPasswordForm
           onPasswordChange={handlePasswordChange}

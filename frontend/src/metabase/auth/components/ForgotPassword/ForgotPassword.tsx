@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
-import AuthLayout from "../AuthLayout/AuthLayout";
+import AuthLayout from "../../containers/AuthLayout";
 import { EmailData, ViewType } from "./types";
 import {
   FormFooter,
@@ -15,14 +15,12 @@ import {
 } from "./ForgotPassword.styled";
 
 export interface ForgotPasswordProps {
-  showScene: boolean;
   canResetPassword: boolean;
   initialEmail?: string;
   onResetPassword: (email: string) => void;
 }
 
 const ForgotPassword = ({
-  showScene,
   canResetPassword,
   initialEmail,
   onResetPassword,
@@ -40,7 +38,7 @@ const ForgotPassword = ({
   );
 
   return (
-    <AuthLayout showScene={showScene}>
+    <AuthLayout>
       {view === "form" && (
         <ForgotPasswordForm
           initialEmail={initialEmail}

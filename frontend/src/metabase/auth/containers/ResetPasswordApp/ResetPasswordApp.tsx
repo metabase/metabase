@@ -1,5 +1,4 @@
 import { connect } from "react-redux";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import ResetPassword from "../../components/ResetPassword";
 import {
   resetPassword,
@@ -9,7 +8,6 @@ import {
 
 const mapStateToProps = (state: any, props: any) => ({
   token: props.params.token,
-  showScene: PLUGIN_SELECTORS.getShowAuthScene(state, props),
 });
 
 const mapDispatchToProps = {
