@@ -1,16 +1,37 @@
 import React from "react";
-import { TextRoot, TextLink } from "./AuthButton.styled";
+import {
+  CardIcon,
+  CardLink,
+  CardText,
+  TextLink,
+  TextRoot,
+} from "./AuthButton.styled";
 
 export interface AuthButtonProps {
+  text: string;
+  link?: string;
   icon?: string;
-  text?: string;
-  href?: string;
+  card?: boolean;
+  onClick?: () => void;
 }
 
-const AuthButton = ({ text, href = "" }: AuthButtonProps): JSX.Element => {
-  return (
+const AuthButton = ({
+  text,
+  link = "",
+  icon,
+  card,
+  onClick,
+}: AuthButtonProps): JSX.Element => {
+  return card ? (
+    <CardLink to={link} onClick={onClick}>
+      {icon && <CardIcon name={icon} />}
+      <CardText>{text}</CardText>
+    </CardLink>
+  ) : (
     <TextRoot>
-      <TextLink to={href}>{text}</TextLink>
+      <TextLink to={link} onClick={onClick}>
+        {text}
+      </TextLink>
     </TextRoot>
   );
 };
