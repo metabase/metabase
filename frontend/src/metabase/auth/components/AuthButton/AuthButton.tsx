@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import {
   CardIcon,
   CardLink,
@@ -8,29 +8,29 @@ import {
 } from "./AuthButton.styled";
 
 export interface AuthButtonProps {
-  text: string;
   link?: string;
   icon?: string;
   card?: boolean;
+  children: ReactNode;
   onClick?: () => void;
 }
 
 const AuthButton = ({
-  text,
   link = "",
   icon,
   card,
+  children,
   onClick,
 }: AuthButtonProps): JSX.Element => {
   return card ? (
     <CardLink to={link} onClick={onClick}>
       {icon && <CardIcon name={icon} />}
-      <CardText>{text}</CardText>
+      <CardText>{children}</CardText>
     </CardLink>
   ) : (
     <TextRoot>
       <TextLink to={link} onClick={onClick}>
-        {text}
+        {children}
       </TextLink>
     </TextRoot>
   );

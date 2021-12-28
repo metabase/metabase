@@ -4,7 +4,7 @@ import AuthButton from "../AuthButton";
 
 const PasswordButton = () => {
   return (
-    <AuthButton text={t`Sign in with email`} link="/auth/login/password" />
+    <AuthButton link="/auth/login/password">{t`Sign in with email`}</AuthButton>
   );
 };
 

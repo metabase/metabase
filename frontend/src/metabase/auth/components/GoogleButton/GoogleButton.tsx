@@ -8,7 +8,9 @@ export interface GoogleButtonProps {
 
 const GoogleButton = ({ large }: GoogleButtonProps) => {
   return (
-    <AuthButton text={t`Sign in with Google`} icon="google" card={large} />
+    <AuthButton icon="google" card={large}>
+      {t`Sign in with Google`}
+    </AuthButton>
   );
 };
 

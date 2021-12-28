@@ -33,10 +33,9 @@ const PasswordPanel = ({
       />
       <ActionList>
         <ActionItem>
-          <AuthButton
-            text={t`I seem to have forgotten my password`}
-            link="/auth/forgot_password"
-          />
+          <AuthButton link="/auth/forgot_password">
+            {t`I seem to have forgotten my password`}
+          </AuthButton>
         </ActionItem>
         {providers.map(provider => (
           <ActionItem key={provider.name}>
