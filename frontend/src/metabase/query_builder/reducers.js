@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc } from "icepick";
+import { assoc, dissoc, merge } from "icepick";
 
 import {
   RESET_QB,
@@ -38,6 +38,7 @@ import {
   RESET_UI_CONTROLS,
   CANCEL_DATASET_CHANGES,
   SET_RESULTS_METADATA,
+  SET_METADATA_DIFF,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -375,6 +376,25 @@ export const queryResults = handleActions(
     [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
+);
+
+export const metadataDiff = handleActions(
+  {
+    [RESET_QB]: { next: () => ({}) },
+    [SET_METADATA_DIFF]: {
+      next: (state, { payload }) => {
+        const { field_ref, changes } = payload;
+        return {
+          ...state,
+          [field_ref]: state[field_ref]
+            ? merge(state[field_ref], changes)
+            : changes,
+        };
+      },
+    },
+    [CANCEL_DATASET_CHANGES]: { next: () => ({}) },
+  },
+  {},
 );
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
