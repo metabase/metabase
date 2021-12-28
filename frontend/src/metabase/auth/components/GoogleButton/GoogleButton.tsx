@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import AuthButton from "../AuthButton";
-import { AuthError } from "./GoogleButton.styled";
+import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
 
 export type AttachCallback = (
   element: HTMLElement,
@@ -38,7 +38,7 @@ const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
 
   useEffect(() => {
     ref.current && onAttach(ref.current, handleLogin, handleError);
-  }, [onAttach, handleLogin]);
+  }, [onAttach, handleLogin, handleError]);
 
   return (
     <div>
@@ -46,11 +46,11 @@ const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
         {t`Sign in with Google`}
       </AuthButton>
       {errors.length > 0 && (
-        <AuthError>
+        <AuthErrorContainer>
           {errors.map((error, index) => (
-            <div key={index}>{error}</div>
+            <AuthError key={index}>{error}</AuthError>
           ))}
-        </AuthError>
+        </AuthErrorContainer>
       )}
     </div>
   );
