@@ -52,7 +52,8 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id)))
+   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+                           :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
