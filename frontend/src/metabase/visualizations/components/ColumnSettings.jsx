@@ -19,6 +19,7 @@ function getWidgets({
   inheritedSettings,
   storedSettings,
   onChange,
+  onChangeSetting,
   allowlist,
   denylist,
 }) {
@@ -45,7 +46,12 @@ function getWidgets({
     computedSettings,
     column,
     changedSettings => {
-      onChange({ ...storedSettings, ...changedSettings });
+      if (onChange) {
+        onChange({ ...storedSettings, ...changedSettings });
+      }
+      if (onChangeSetting) {
+        onChangeSetting(changedSettings);
+      }
     },
     { series },
   );
