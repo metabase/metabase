@@ -16,3 +16,7 @@ export const LoginList = styled.div`
 export const LoginListItem = styled.div`
   margin-top: 2rem;
 `;
+
+export const LoginPanel = styled.div`
+  margin-top: 2.5rem;
+`;

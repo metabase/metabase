@@ -1,19 +1,11 @@
 import { connect } from "react-redux";
 import Login from "../../components/Login";
-import PasswordButton from "../../components/PasswordButton";
-import GoogleButton from "../../components/GoogleButton/GoogleButton";
+import { getProviders } from "../../selectors";
 
-const mapStateToProps = () => ({
-  providers: [
-    {
-      name: "google",
-      Button: GoogleButton,
-    },
-    {
-      name: "password",
-      Button: PasswordButton,
-    },
-  ],
+const mapStateToProps = (state: any, props: any) => ({
+  providers: getProviders(state, props),
+  providerName: props.params.provider,
+  redirectUrl: props.location.query.redirect,
 });
 
 export default connect(mapStateToProps)(Login);
