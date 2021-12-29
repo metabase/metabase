@@ -29,16 +29,16 @@
                 (when-not (str/ends-with? trimmed-client-id ".apps.googleusercontent.com")
                   (throw (ex-info (tru "Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\"")
                                   {:status-code 400})))
-                (setting/set-string! :google-auth-client-id trimmed-client-id))
-              (setting/set-string! :google-auth-client-id nil))))
+                (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
+              (setting/set-value-of-type! :string :google-auth-client-id nil))))
 
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
-  :getter (fn [] (setting/get-string :google-auth-auto-create-accounts-domain))
+  :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
                 ;; Multiple comma-separated domains is EE-only feature
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
-              (setting/set-string! :google-auth-auto-create-accounts-domain domain)))
+              (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
