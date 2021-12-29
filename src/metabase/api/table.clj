@@ -337,9 +337,12 @@
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
-  (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
-                                     (if (or (isa? semantic_type :type/PK)
-                                             (isa? semantic_type :type/FK))
+  (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
+                                     (if (and (or (isa? semantic_type :type/PK)
+                                                  (isa? semantic_type :type/FK))
+                                              ;; if they have a user entered id let it stay
+                                              (or (nil? id)
+                                                  (not (number? id))))
                                        (assoc field :semantic_type nil)
                                        field))))
 
