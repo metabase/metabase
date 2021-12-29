@@ -12,15 +12,14 @@
             [schema.core :as s]))
 
 (defsetting slack-token
-  (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot. Please use a new Slack app integration instead."))
+  (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
+       " "
+       (deferred-tru "Please use a new Slack app integration instead.")))
 
 (defsetting slack-app-token
   (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
        " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
-  :setter (fn [v]
-            (setting/set-value-of-type! :slack-token nil)
-            (setting/set-value-of-type! :slack-app-token v)))
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")
@@ -60,13 +59,13 @@
       (let [url     (str slack-api-base-url "/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (merge-with merge
-                      {:headers        {:authorization (str "Bearer\n" token)}
-                       :as             :stream
-                       ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
-                       ;; amounts of data -- see #11735
-                       :conn-timeout   10000
-                       :socket-timeout 10000}
-                      (m/dissoc-in request [:query-params :token]))]
+                                {:headers        {:authorization (str "Bearer\n" token)}
+                                 :as             :stream
+                                 ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
+                                 ;; amounts of data -- see #11735
+                                 :conn-timeout   10000
+                                 :socket-timeout 10000}
+                                (m/dissoc-in request [:query-params :token]))]
         (try
           (handle-response (request-fn url request))
           (catch Throwable e
@@ -176,7 +175,7 @@
   "Given a channel ID, calls Slack API `conversations.join` endpoint to join the channel as the Metabase Slack app.
   This must be done before uploading a file to the channel, if using a Slack app integration."
   [channel-id :- su/NonBlankString]
-  (if (slack-app-token)
+  (when (slack-app-token)
     (POST "conversations.join" {:channel channel-id})))
 
 (s/defn upload-file!
@@ -192,7 +191,7 @@
                              :as        :json})]
     (if (= 200 (:status response))
       (u/prog1 (get-in response [:body :file :url_private])
-        (log/debug (trs "Uploaded image") <>))
+               (log/debug (trs "Uploaded image") <>))
       (log/warn (trs "Error uploading file to Slack:") (u/pprint-to-str response)))))
 
 (s/defn post-chat-message!
@@ -201,14 +200,14 @@
   [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
-        {:channel     channel-id
-         :username    "MetaBot"
-         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-         :text        text-or-nil
-         :attachments (when (seq attachments)
-                        (json/generate-string attachments))}))
+    {:channel     channel-id
+     :username    "MetaBot"
+     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+     :text        text-or-nil
+     :attachments (when (seq attachments)
+                    (json/generate-string attachments))}))
 
 (def ^{:arglists '([& {:as params}])} websocket-url
   "Return a new WebSocket URL for [Slack's Real Time Messaging API](https://api.slack.com/rtm)
-   This makes an API request so don't call it more often than needed."
+  This makes an API request so don't call it more often than needed."
   (comp :url (partial GET :rtm.start)))

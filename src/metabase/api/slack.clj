@@ -4,7 +4,6 @@
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
-            [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
