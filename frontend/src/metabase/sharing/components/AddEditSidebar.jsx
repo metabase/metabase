@@ -290,6 +290,7 @@ function _AddEditSlackSidebar({
   setPulseParameters,
 }) {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+
   return (
     <Sidebar
       closeIsDisabled={!isValid}

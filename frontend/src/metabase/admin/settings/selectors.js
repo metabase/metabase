@@ -189,7 +189,7 @@ const SECTIONS = updateSectionsWithPlugins({
     component: SettingsSlackForm,
     settings: [
       {
-        key: "slack-token",
+        key: "slack-app-token",
         display_name: t`Slack API Token`,
         description: "",
         placeholder: t`Enter the token you received from Slack`,
