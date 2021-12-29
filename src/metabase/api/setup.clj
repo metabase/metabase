@@ -239,7 +239,7 @@
   {:title       (tru "Create metrics")
    :group       (tru "Curate your data")
    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
-   :link        "/admin/datamodel/database"
+   :link        "/admin/datamodel/metrics"
    :completed   (db/exists? Metric)
    :triggered   (>= (db/count Card) 30)})
 
@@ -248,7 +248,7 @@
   {:title       (tru "Create segments")
    :group       (tru "Curate your data")
    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
-   :link        "/admin/datamodel/database"
+   :link        "/admin/datamodel/segments"
    :completed   (db/exists? Segment)
    :triggered   (>= (db/count Card) 30)})
 

@@ -369,7 +369,7 @@
 
 (defmethod sql.qp/date [:bigquery :week]
   [_ _ expr]
-  (trunc (keyword (format "week(%s)" (name (setting/get-keyword :start-of-week)))) expr))
+  (trunc (keyword (format "week(%s)" (name (setting/get-value-of-type :keyword :start-of-week)))) expr))
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis

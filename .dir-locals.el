@@ -44,6 +44,7 @@
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
   (eval . (put-clojure-indent 'mt/dataset 1))
+  (eval . (put-clojure-indent 'mt/format-rows-by 1))
   (eval . (put-clojure-indent 'mt/query 1))
   (eval . (put-clojure-indent 'mt/test-drivers 1))
   (eval . (put-clojure-indent 'prop/for-all 1))

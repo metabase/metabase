@@ -62,7 +62,7 @@
                  :has_field_values "list"
                  :dimensions       []
                  :name_field       nil})
-               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
+               (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone] [:table :db :settings]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))))))
 

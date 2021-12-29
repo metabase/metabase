@@ -497,11 +497,6 @@
   (merge
    source-metadata-col
    col
-   (select-keys source-metadata-col preserved-keys)
-   ;; if there is a join involved, allow a possible "Question 5 → B Column" display name from the outer query to
-   ;; dominate
-   (when (:source_alias col)
-     (select-keys col [:display_name]))
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
@@ -519,11 +514,15 @@
 
 (defn- flow-field-metadata
   "Merge information about fields from `source-metadata` into the returned `cols`."
-  [source-metadata cols]
-  (let [ref->metadata (u/key-by (comp u/field-ref->key :field_ref) source-metadata)]
+  [source-metadata cols dataset?]
+  (let [index           (fn [col] (or (:id col) (:name col "")))
+        index->metadata (u/key-by index source-metadata)]
     (for [col cols]
-      (if-let [source-metadata-for-field (-> col :field_ref u/field-ref->key ref->metadata)]
-        (merge-source-metadata-col source-metadata-for-field col)
+      (if-let [source-metadata-for-field (-> col index index->metadata)]
+        (merge-source-metadata-col source-metadata-for-field
+                                   (merge col
+                                          (when dataset?
+                                            (select-keys source-metadata-for-field preserved-keys))))
         col))))
 
 (declare mbql-cols)
@@ -538,14 +537,14 @@
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
-  [{:keys [source-metadata source-query fields], :as inner-query}, results]
+  [{:keys [source-metadata source-query :source-query/dataset? fields], :as inner-query}, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
       (cols-for-source-query inner-query results)
 
       source-query
-      (flow-field-metadata (cols-for-source-query inner-query results) cols)
+      (flow-field-metadata (cols-for-source-query inner-query results) cols dataset?)
 
       (every? #(mbql.u/match-one % [:field (field-name :guard string?) _] field-name) fields)
       (maybe-merge-source-metadata source-metadata cols)

@@ -31,7 +31,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases$/);
+    cy.url().should("match", /\/admin\/databases\?created=true$/);
 
     cy.findByRole("table").within(() => {
       cy.findByText("QA Postgres12");
@@ -67,7 +67,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases$/);
+    cy.url().should("match", /\/admin\/databases\?created=true$/);
 
     cy.findByRole("table").within(() => {
       cy.findByText("QA Mongo4");
@@ -109,7 +109,7 @@ describe("admin > database > add > external databases", () => {
 
     cy.wait("@createDatabase");
 
-    cy.url().should("match", /\/admin\/databases$/);
+    cy.url().should("match", /\/admin\/databases\?created=true$/);
 
     cy.findByRole("table").within(() => {
       cy.findByText("QA MySQL8");

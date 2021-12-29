@@ -6,6 +6,7 @@ import { t, jt } from "ttag";
 import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
+import { ListField } from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -100,7 +101,7 @@ export class FieldValuesWidget extends Component {
     return this.props.parameter && this.props.parameter.id;
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     if (this.shouldList()) {
       if (this.useChainFilterEndpoints()) {
         this.fetchDashboardParamValues();
@@ -418,6 +419,10 @@ export class FieldValuesWidget extends Component {
       options = [];
     }
 
+    const isLoading = loadingState === "LOADING";
+    const isFetchingList = this.shouldList() && isLoading;
+    const hasListData = this.hasList();
+
     return (
       <div
         style={{
@@ -426,63 +431,78 @@ export class FieldValuesWidget extends Component {
           maxWidth: this.props.maxWidth,
         }}
       >
-        <TokenField
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          placeholder={placeholder}
-          updateOnInputChange
-          // forwarded props
-          multi={multi}
-          autoFocus={autoFocus}
-          color={color}
-          style={{ ...style, minWidth: "inherit" }}
-          className={className}
-          parameter={this.props.parameter}
-          optionsStyle={!parameter ? { maxHeight: "none" } : {}}
-          // end forwarded props
-          options={options}
-          valueKey={0}
-          valueRenderer={value =>
-            this.renderValue(value, { autoLoad: true, compact: false })
-          }
-          optionRenderer={option =>
-            this.renderValue(option[0], { autoLoad: false })
-          }
-          layoutRenderer={props => (
-            <div>
-              {props.valuesList}
-              {this.renderOptions(props)}
-            </div>
-          )}
-          filterOption={(option, filterString) => {
-            const lowerCaseFilterString = filterString.toLowerCase();
-            return option.some(
-              value =>
-                value != null &&
-                String(value)
-                  .toLowerCase()
-                  .includes(lowerCaseFilterString),
-            );
-          }}
-          onInputChange={this.onInputChange}
-          parseFreeformValue={v => {
-            // trim whitespace
-            v = String(v || "").trim();
-            // empty string is not valid
-            if (!v) {
-              return null;
+        {isFetchingList && <LoadingState />}
+        {hasListData && (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={this.getTokenFieldPlaceholder()}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
             }
-            // if the field is numeric we need to parse the string into an integer
-            if (fields[0].isNumeric()) {
-              if (/^-?\d+(\.\d+)?$/.test(v)) {
-                return parseFloat(v);
-              } else {
+          />
+        )}
+        {!hasListData && !isFetchingList && (
+          <TokenField
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={placeholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            parameter={this.props.parameter}
+            optionsStyle={!parameter ? { maxHeight: "none" } : {}}
+            // end forwarded props
+            options={options}
+            valueKey={0}
+            valueRenderer={value =>
+              this.renderValue(value, { autoLoad: true, compact: false })
+            }
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
+            }
+            layoutRenderer={props => (
+              <div>
+                {props.valuesList}
+                {this.renderOptions(props)}
+              </div>
+            )}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option.some(
+                value =>
+                  value != null &&
+                  String(value)
+                    .toLowerCase()
+                    .includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={this.onInputChange}
+            parseFreeformValue={v => {
+              // trim whitespace
+              v = String(v || "").trim();
+              // empty string is not valid
+              if (!v) {
                 return null;
               }
-            }
-            return v;
-          }}
-        />
+              // if the field is numeric we need to parse the string into an integer
+              if (fields[0].isNumeric()) {
+                if (/^-?\d+(\.\d+)?$/.test(v)) {
+                  return parseFloat(v);
+                } else {
+                  return null;
+                }
+              }
+              return v;
+            }}
+          />
+        )}
       </div>
     );
   }
