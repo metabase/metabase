@@ -18,9 +18,6 @@ export const ActionList = styled.div`
 `;
 
 export const ActionListItem = styled.div`
+  margin-top: 2rem;
   text-align: center;
-
-  &:not(:last-child) {
-    margin-bottom: 2rem;
-  }
 `;
