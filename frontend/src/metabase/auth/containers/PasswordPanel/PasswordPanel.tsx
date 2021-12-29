@@ -3,8 +3,8 @@ import { login } from "../../actions";
 import PasswordPanel from "../../components/PasswordPanel";
 import { getExternalAuthProviders } from "metabase/auth/selectors";
 
-const mapStateToProps = () => ({
-  providers: getExternalAuthProviders(),
+const mapStateToProps = (state: any) => ({
+  providers: getExternalAuthProviders(state),
 });
 
 const mapDispatchToProps = {

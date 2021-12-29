@@ -1,5 +1,7 @@
 import { createSelector } from "reselect";
 
+export const getSettings = state => state.settings.values;
+
 // NOTE: these are "public" settings
 export const getIsPublicSharingEnabled = state =>
   state.settings.values["enable-public-sharing"];
