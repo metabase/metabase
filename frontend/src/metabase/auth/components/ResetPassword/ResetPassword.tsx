@@ -5,7 +5,7 @@ import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
 import Link from "metabase/components/Link";
 import AuthLayout from "../../containers/AuthLayout";
-import { PasswordData, ViewType } from "./types";
+import { ResetPasswordData } from "../../types";
 import {
   FormMessage,
   FormTitle,
@@ -15,6 +15,8 @@ import {
   InfoMessage,
   InfoTitle,
 } from "./ResetPassword.styled";
+
+type ViewType = "none" | "form" | "success" | "expired";
 
 export interface ResetPasswordProps {
   token: string;
@@ -41,7 +43,7 @@ const ResetPassword = ({
   }, [token, onValidatePasswordToken]);
 
   const handlePasswordChange = useCallback(
-    async ({ password }: PasswordData) => {
+    async ({ password }: ResetPasswordData) => {
       try {
         await onValidatePassword(password);
         return {};
@@ -53,7 +55,7 @@ const ResetPassword = ({
   );
 
   const handlePasswordSubmit = useCallback(
-    async ({ password }: PasswordData) => {
+    async ({ password }: ResetPasswordData) => {
       await onResetPassword(token, password);
       setView("success");
     },
@@ -79,8 +81,8 @@ const ResetPassword = ({
 };
 
 interface ResetPasswordFormProps {
-  onPasswordChange: (data: PasswordData) => void;
-  onSubmit: (data: PasswordData) => void;
+  onPasswordChange: (data: ResetPasswordData) => void;
+  onSubmit: (data: ResetPasswordData) => void;
 }
 
 const ResetPasswordForm = ({

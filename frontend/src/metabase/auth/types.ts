@@ -1,11 +1,5 @@
 import { ComponentType } from "react";
 
-export interface LoginData {
-  username: string;
-  password: string;
-  remember?: boolean;
-}
-
 export interface AuthProvider {
   name: string;
   Button: ComponentType<AuthProviderButtonProps>;
@@ -19,4 +13,19 @@ export interface AuthProviderButtonProps {
 
 export interface AuthProviderPanelProps {
   redirectUrl?: string;
+}
+
+export interface LoginData {
+  username: string;
+  password: string;
+  remember?: boolean;
+}
+
+export interface ForgotPasswordData {
+  email: string;
+}
+
+export interface ResetPasswordData {
+  password: string;
+  password_confirm: string;
 }
