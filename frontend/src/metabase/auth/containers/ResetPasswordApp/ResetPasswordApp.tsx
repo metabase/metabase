@@ -4,7 +4,7 @@ import {
   resetPassword,
   validatePassword,
   validatePasswordToken,
-} from "metabase/auth/actions";
+} from "../../actions";
 
 const mapStateToProps = (state: any, props: any) => ({
   token: props.params.token,
