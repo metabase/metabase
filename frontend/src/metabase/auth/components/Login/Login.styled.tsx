@@ -14,18 +14,11 @@ export const LoginPanel = styled.div`
 `;
 
 export const ActionList = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   margin-top: 3.5rem;
 `;
 
-interface ActionItemProps {
-  isFullWidth?: boolean;
-}
-
-export const ActionItem = styled.div<ActionItemProps>`
-  align-self: ${props => (props.isFullWidth ? "stretch" : "")};
+export const ActionListItem = styled.div`
+  text-align: center;
 
   &:not(:last-child) {
     margin-bottom: 2rem;

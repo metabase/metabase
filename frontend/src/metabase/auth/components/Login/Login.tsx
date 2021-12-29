@@ -2,7 +2,12 @@ import React from "react";
 import { t } from "ttag";
 import AuthLayout from "../../containers/AuthLayout";
 import { AuthProvider } from "../../types";
-import { ActionList, ActionItem, LoginPanel, LoginTitle } from "./Login.styled";
+import {
+  ActionList,
+  ActionListItem,
+  LoginPanel,
+  LoginTitle,
+} from "./Login.styled";
 
 export interface LoginProps {
   providers: AuthProvider[];
@@ -15,22 +20,22 @@ const Login = ({
   providerName,
   redirectUrl,
 }: LoginProps): JSX.Element => {
-  const provider = getSelectedProvider(providers, providerName);
+  const selection = getSelectedProvider(providers, providerName);
 
   return (
     <AuthLayout>
       <LoginTitle>{t`Sign in to Metabase`}</LoginTitle>
-      {provider && provider.Panel && (
+      {selection && selection.Panel && (
         <LoginPanel>
-          <provider.Panel redirectUrl={redirectUrl} />
+          <selection.Panel redirectUrl={redirectUrl} />
         </LoginPanel>
       )}
-      {!provider && (
+      {!selection && (
         <ActionList>
           {providers.map(provider => (
-            <ActionItem key={provider.name} isFullWidth={!provider.Panel}>
+            <ActionListItem key={provider.name}>
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
-            </ActionItem>
+            </ActionListItem>
           ))}
         </ActionList>
       )}

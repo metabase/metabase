@@ -3,7 +3,7 @@ import { t } from "ttag";
 import Users from "metabase/entities/users";
 import AuthButton from "../AuthButton";
 import { AuthProvider, LoginData } from "../../types";
-import { ActionItem, ActionList } from "./PasswordPanel.styled";
+import { ActionListItem, ActionList } from "./PasswordPanel.styled";
 
 export interface PasswordPanelProps {
   providers?: AuthProvider[];
@@ -32,15 +32,15 @@ const PasswordPanel = ({
         onSubmit={handleSubmit}
       />
       <ActionList>
-        <ActionItem>
+        <ActionListItem>
           <AuthButton link="/auth/forgot_password">
             {t`I seem to have forgotten my password`}
           </AuthButton>
-        </ActionItem>
+        </ActionListItem>
         {providers.map(provider => (
-          <ActionItem key={provider.name}>
+          <ActionListItem key={provider.name}>
             <provider.Button redirectUrl={redirectUrl} />
-          </ActionItem>
+          </ActionListItem>
         ))}
       </ActionList>
     </div>

@@ -7,6 +7,6 @@ export const ActionList = styled.div`
   margin-top: 1.5rem;
 `;
 
-export const ActionItem = styled.div`
+export const ActionListItem = styled.div`
   margin-top: 1rem;
 `;
