@@ -291,20 +291,27 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)]
-    (for [col metadata]
-      (-> col
-          (update :base_type keyword)
-          (assoc
-           :table_id     (str "card__" card-id)
-           :id           (or (:id col)
-                             ;; TODO -- what????
-                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
-           ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
-           ;; the dimension options
-           :semantic_type (keyword (:semantic_type col)))
-          add-field-dimension-options))))
+  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
+        underlying (u/key-by :id (when-let [ids (seq (keep :id metadata))]
+                                   (db/select Field :id [:in ids])))
+        fields (for [{col-id :id :as col} metadata]
+                 (-> col
+                     (update :base_type keyword)
+                     (merge (select-keys (underlying col-id)
+                                         [:semantic_type]))
+                     (assoc
+                      :table_id     (str "card__" card-id)
+                      :id           (or col-id
+                                        ;; TODO -- what????
+                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
+                      ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+                      ;; the dimension options
+                      :semantic_type (keyword (:semantic_type col)))
+                     add-field-dimension-options))]
+    ;; TODO: dimension expects numeric keys, which seems pretty reasonable. Do we want to get rid of that wackiness
+    ;; above?
+    (hydrate fields [:target :has_field_values] #_:dimension :has_field_values)))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
