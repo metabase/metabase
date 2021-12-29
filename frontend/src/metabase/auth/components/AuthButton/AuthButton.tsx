@@ -1,11 +1,5 @@
 import React, { forwardRef, ReactNode } from "react";
-import {
-  CardIcon,
-  CardLink,
-  CardText,
-  TextLink,
-  TextRoot,
-} from "./AuthButton.styled";
+import { CardIcon, CardLink, CardText, TextLink } from "./AuthButton.styled";
 
 export interface AuthButtonProps {
   link?: string;
@@ -25,11 +19,9 @@ const AuthButton = (
       <CardText>{children}</CardText>
     </CardLink>
   ) : (
-    <TextRoot>
-      <TextLink innerRef={ref} to={link} onClick={onClick}>
-        {children}
-      </TextLink>
-    </TextRoot>
+    <TextLink innerRef={ref} to={link} onClick={onClick}>
+      {children}
+    </TextLink>
   );
 };
 

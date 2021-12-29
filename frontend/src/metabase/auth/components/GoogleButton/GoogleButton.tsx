@@ -17,7 +17,7 @@ export interface GoogleButtonProps {
 }
 
 const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
-  const ref = useRef<HTMLAnchorElement>();
+  const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
   const handleLogin = useCallback(
@@ -41,8 +41,8 @@ const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
   }, [onAttach, handleLogin, handleError]);
 
   return (
-    <div>
-      <AuthButton ref={ref} icon="google" isCard={isCard}>
+    <div ref={ref}>
+      <AuthButton icon="google" isCard={isCard}>
         {t`Sign in with Google`}
       </AuthButton>
       {errors.length > 0 && (

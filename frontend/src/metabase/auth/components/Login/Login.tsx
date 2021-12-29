@@ -28,7 +28,7 @@ const Login = ({
       {!provider && (
         <ActionList>
           {providers.map(provider => (
-            <ActionItem key={provider.name}>
+            <ActionItem key={provider.name} isFullWidth={!provider.Panel}>
               <provider.Button isCard={true} redirectUrl={redirectUrl} />
             </ActionItem>
           ))}
