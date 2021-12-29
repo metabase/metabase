@@ -1,6 +1,6 @@
-import React, { PropsWithChildren } from "react";
-import Login from "./Login";
+import React, { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import Login from "./Login";
 import { AuthProvider } from "../../types";
 
 describe("Login", () => {
@@ -55,7 +55,11 @@ const AuthButtonMock = () => <a href="/">Sign in</a>;
 
 const AuthPanelMock = () => <button>Sign in</button>;
 
-const AuthLayoutMock = ({ children }: PropsWithChildren<unknown>) => {
+interface AuthLayoutMockProps {
+  children?: ReactNode;
+}
+
+const AuthLayoutMock = ({ children }: AuthLayoutMockProps) => {
   return <div>{children}</div>;
 };
 

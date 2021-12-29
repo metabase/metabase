@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from "react";
+import React, { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ForgotPassword, { ForgotPasswordProps } from "./ForgotPassword";
@@ -56,7 +56,11 @@ jest.mock("metabase/entities/users", () => ({
   Form: FormMock,
 }));
 
-const AuthLayoutMock = ({ children }: PropsWithChildren<unknown>) => {
+interface AuthLayoutMockProps {
+  children?: ReactNode;
+}
+
+const AuthLayoutMock = ({ children }: AuthLayoutMockProps) => {
   return <div>{children}</div>;
 };
 
