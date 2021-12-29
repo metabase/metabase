@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+import { merge } from "icepick";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -136,6 +137,17 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
     : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
+const FIELDS = [
+  "id",
+  "display_name",
+  "description",
+  "semantic_type",
+  "fk_target_field_id",
+  "visibility_type",
+  "has_field_values",
+  "settings",
+];
+
 function DatasetEditor(props) {
   const {
     question: dataset,
@@ -198,11 +210,23 @@ function DatasetEditor(props) {
     }
   }, [result, focusedFieldRef, focusFirstField]);
 
-  const onFieldMetadataChange = useCallback(
+  const inheritMappedFieldProperties = useCallback(
     changes => {
+      const mappedField = metadata.field(changes.id).getPlainObject();
+      const inheritedProperties = _.pick(mappedField, ...FIELDS);
+      return mappedField ? merge(inheritedProperties, changes) : changes;
+    },
+    [metadata],
+  );
+
+  const onFieldMetadataChange = useCallback(
+    _changes => {
+      const changes = _changes.id
+        ? inheritMappedFieldProperties(_changes)
+        : _changes;
       setFieldMetadata({ field_ref: focusedFieldRef, changes });
     },
-    [focusedFieldRef, setFieldMetadata],
+    [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
   );
 
   const [
