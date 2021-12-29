@@ -26,3 +26,22 @@
       [:field 1 {:binning {:strategy :num-bins, :num-bins -1}}]               false
       [:field 1 {:binning {:strategy :default}}]                              true
       [:field 1 {:binning {:strategy :fake}}]                                 false)))
+
+(t/deftest validate-template-tag-names-test
+  (t/testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
+    (let [correct-query {:database 1
+                         :type     :native
+                         :native   {:query         "SELECT * FROM table WHERE id = {{foo}}"
+                                    :template-tags {"foo" {:id           "abc123"
+                                                           :name         "foo"
+                                                           :display-name "foo"
+                                                           :type         :text}}}}
+          bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
+      (t/testing (str "correct-query " (pr-str correct-query))
+        (t/is (= correct-query
+                 (mbql.s/validate-query correct-query))))
+      (t/testing (str "bad-query " (pr-str bad-query))
+        (t/is (thrown-with-msg?
+               #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
+               #"keys in template tag map must match the :name of their values"
+               (mbql.s/validate-query bad-query)))))))

@@ -23,7 +23,7 @@ describe(`search > recently viewed`, () => {
     cy.visit("/");
 
     cy.findByPlaceholderText("Search…").click();
-    cy.get(".LoadingSpinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
 
     assertRecentlyViewedItem(0, "Orders", "Question", "/question/1-orders");
     assertRecentlyViewedItem(

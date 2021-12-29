@@ -4,6 +4,7 @@ import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import { CardApi } from "metabase/services";
+import { b64hash_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
 
 export function createCard(name = null) {
   return {
@@ -82,6 +83,7 @@ export function serializeCardForUrl(card) {
     display: card.display,
     displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
+    dashboardId: card.dashboardId,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
   };
@@ -90,27 +92,7 @@ export function serializeCardForUrl(card) {
 }
 
 export function deserializeCardFromUrl(serialized) {
-  serialized = serialized.replace(/^#/, "");
-  return JSON.parse(b64url_to_utf8(serialized));
-}
-
-// escaping before base64 encoding is necessary for non-ASCII characters
-// https://developer.mozilla.org/en-US/docs/Web/API/WindowBase64/btoa
-export function utf8_to_b64(str) {
-  return window.btoa(unescape(encodeURIComponent(str)));
-}
-export function b64_to_utf8(b64) {
-  return decodeURIComponent(escape(window.atob(b64)));
-}
-
-// for "URL safe" base64, replace "+" with "-" and "/" with "_" as per RFC 4648
-export function utf8_to_b64url(str) {
-  return utf8_to_b64(str)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-}
-export function b64url_to_utf8(b64url) {
-  return b64_to_utf8(b64url.replace(/-/g, "+").replace(/_/g, "/"));
+  return JSON.parse(b64hash_to_utf8(serialized));
 }
 
 export function urlForCardState(state, dirty) {

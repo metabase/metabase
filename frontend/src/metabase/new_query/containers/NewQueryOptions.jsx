@@ -21,13 +21,7 @@ import {
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
 
-import type { NestedObjectKey } from "metabase/visualizations/lib/settings/nested";
-
-type Props = {
-  hasDataAccess: Boolean,
-  hasNativeWrite: Boolean,
-  initialKey?: NestedObjectKey,
-};
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = state => ({
   hasDataAccess: getHasDataAccess(state),
@@ -35,20 +29,21 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
+  prefetchDatabases: () => Database.actions.fetchList(),
   push,
 };
 
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class NewQueryOptions extends Component {
-  props: Props;
+  componentDidMount() {
+    // We need to check if any databases exist otherwise show an empty state.
+    // Be aware that the embedded version does not have the Navbar, which also
+    // loads databases, so we should not remove it.
+    this.props.prefetchDatabases();
 
-  UNSAFE_componentWillMount(props) {
     const { location, push } = this.props;
     if (Object.keys(location.query).length > 0) {
       const { database, table, ...options } = location.query;
@@ -89,7 +84,7 @@ export default class NewQueryOptions extends Component {
                 title={t`Simple question`}
                 description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
                 width={180}
-                to={Urls.newQuestion()}
+                to={Urls.newQuestion({ creationType: "simple_question" })}
                 data-metabase-event={`New Question; Simple Question Start`}
               />
             </GridItem>
@@ -101,7 +96,10 @@ export default class NewQueryOptions extends Component {
                 title={t`Custom question`}
                 description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
                 width={180}
-                to={Urls.newQuestion({ mode: "notebook" })}
+                to={Urls.newQuestion({
+                  mode: "notebook",
+                  creationType: "complex_question",
+                })}
                 data-metabase-event={`New Question; Custom Question Start`}
               />
             </GridItem>
@@ -112,7 +110,10 @@ export default class NewQueryOptions extends Component {
                 image="app/img/sql_illustration"
                 title={t`Native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
-                to={Urls.newQuestion({ type: "native" })}
+                to={Urls.newQuestion({
+                  type: "native",
+                  creationType: "native_question",
+                })}
                 width={180}
                 data-metabase-event={`New Question; Native Query Start`}
               />

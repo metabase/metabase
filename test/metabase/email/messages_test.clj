@@ -15,14 +15,15 @@
            (email-test/with-fake-inbox
              (messages/send-new-user-email! {:first_name "test" :email "test@test.com"}
                                             {:first_name "invitor" :email "invited_by@test.com"}
-                                            "http://localhost/some/url")
+                                            "http://localhost/some/url"
+                                            false)
              (-> (@email-test/inbox "test@test.com")
                  (update-in [0 :body 0] dissoc :content)))))))
 
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
     (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" false "http://localhost/some/url" true)
       (is (= [{:from    "notifications@metabase.com",
                :to      ["test@test.com"],
                :subject "[Metabase] Password Reset Request",
@@ -33,13 +34,13 @@
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
     (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" true "test.domain.com" "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" true  "http://localhost/some/url" true)
       (is (-> (@email-test/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
   (testing "password reset email tells user if their account is inactive"
     (email-test/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false "test.domain.com" "http://localhost/some/url" false)
+      (messages/send-password-reset-email! "test@test.com" false "http://localhost/some/url" false)
       (is (-> (@email-test/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))

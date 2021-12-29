@@ -1,14 +1,8 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import styled from "styled-components";
 
 import { color as c } from "metabase/lib/colors";
-
-type Props = {
-  percentage: number,
-  animated: boolean,
-  color: string,
-  height: number,
-};
 
 const ProgressWrapper = styled.div`
   position: relative;
@@ -43,8 +37,6 @@ const Progress = styled.div`
 
 // @Question - why is this separate from our progress Viz type?
 export default class ProgressBar extends Component {
-  props: Props;
-
   static defaultProps = {
     animated: false,
     height: 10,

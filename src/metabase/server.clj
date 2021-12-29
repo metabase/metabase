@@ -22,7 +22,9 @@
     :keystore       (config/config-str :mb-jetty-ssl-keystore)
     :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
     :truststore     (config/config-str :mb-jetty-ssl-truststore)
-    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)}))
+    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)
+    :client-auth    (when (config/config-bool :mb-jetty-ssl-client-auth)
+                      :need)}))
 
 (defn- jetty-config []
   (cond-> (m/filter-vals

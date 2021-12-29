@@ -33,7 +33,7 @@ function makeMongoQuery(query, templateTags) {
   );
 }
 
-const query: NativeQuery = makeQuery("");
+const query = makeQuery("");
 
 describe("NativeQuery", () => {
   describe("You can access the metadata for the database a query has been written against", () => {
@@ -185,30 +185,79 @@ describe("NativeQuery", () => {
         expect(tagMaps["max_price"]["display-name"]).toEqual("Max price");
       });
     });
-    describe("Invalid template tags prevent the query from running", () => {
+
+    describe("Invalid template tags should prevent the query from running", () => {
       let q = makeQuery().setQueryText("SELECT * from ORDERS where {{foo}}");
-      expect(q.canRun()).toBe(true);
 
-      // set template tag's type to dimension without setting field id
-      q = q.setDatasetQuery(
-        assocIn(
-          q.datasetQuery(),
-          ["native", "template-tags", "foo", "type"],
-          "dimension",
-        ),
-      );
-      expect(q.canRun()).toBe(false);
+      it("base case", () => {
+        expect(q.canRun()).toBe(true);
+      });
 
-      // now set the field
-      q = q.setDatasetQuery(
-        assocIn(
-          q.datasetQuery(),
-          ["native", "template-tags", "foo", "dimension"],
-          ["field", 123, null],
-        ),
-      );
-      expect(q.canRun()).toBe(true);
+      it("bad type", () => {
+        q = q.setDatasetQuery(
+          assocIn(
+            q.datasetQuery(),
+            ["native", "template-tags", "foo", "type"],
+            "type-that-does-not-exist",
+          ),
+        );
+        expect(q.canRun()).toBe(false);
+
+        q = q.setDatasetQuery(
+          assocIn(
+            q.datasetQuery(),
+            ["native", "template-tags", "foo", "type"],
+            "text",
+          ),
+        );
+        expect(q.canRun()).toBe(true);
+      });
+
+      it("dimension type without a widget-type", () => {
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            type: "dimension",
+            dimension: ["field", 123, null],
+          }),
+        );
+
+        expect(q.canRun()).toBe(false);
+      });
+
+      it("dimension type with a widget-type of none", () => {
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            type: "dimension",
+            "widget-type": "none",
+            dimension: ["field", 123, null],
+          }),
+        );
+
+        expect(q.canRun()).toBe(false);
+      });
+
+      it("dimension type without a dimension", () => {
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            type: "dimension",
+            "widget-type": "category",
+          }),
+        );
+
+        expect(q.canRun()).toBe(false);
+
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            type: "dimension",
+            "widget-type": "category",
+            dimension: ["field", 123, null],
+          }),
+        );
+
+        expect(q.canRun()).toBe(true);
+      });
     });
+
     describe("snippet template tags", () => {
       it("should parse snippet tags", () => {
         const q = makeQuery().setQueryText("{{ snippet: foo }}");

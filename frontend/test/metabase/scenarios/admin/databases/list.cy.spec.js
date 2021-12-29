@@ -73,4 +73,27 @@ describe("scenarios > admin > databases > list", () => {
     cy.contains("Sample Dataset").click();
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
+
+  it("should display a deprecated database warning", () => {
+    cy.intercept(/\/api\/database$/, req => {
+      req.reply(res => {
+        res.body.data = res.body.data.map(database => ({
+          ...database,
+          engine: "presto",
+        }));
+      });
+    });
+
+    cy.visit("/admin");
+
+    const message = `You’re using a database driver which is now deprecated and will be removed in the next release.`;
+    cy.findByText(message);
+    cy.findByText("Show me").click();
+    cy.findByText("Sample Dataset");
+    cy.findByText(message).should("not.exist");
+
+    cy.reload();
+    cy.findByText("Metabase Admin");
+    cy.findByText(message).should("not.exist");
+  });
 });

@@ -5,11 +5,13 @@ import { space } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 
 const COLOR_SCHEMES = {
-  admin: {
+  accent7: {
     main: () => color("accent7"),
+    button: () => color("accent7"),
   },
   default: {
     main: () => color("brand"),
+    button: () => color("brand"),
   },
 };
 
@@ -35,16 +37,33 @@ export const RadioButton = styled.div`
   width: 12px;
   height: 12px;
   border: 2px solid white;
-  box-shadow: 0 0 0 2px ${color("shadow")};
+  box-shadow: 0 0 0 2px
+    ${props => {
+      if (props.checked) {
+        return props.colorScheme
+          ? COLOR_SCHEMES[props.colorScheme].button()
+          : color("brand");
+      } else {
+        return color("text-medium");
+      }
+    }};
   border-radius: 12px;
-  background-color: ${props =>
-    props.checked ? color("brand") : "transparent"};
+  background-color: ${props => {
+    if (props.checked) {
+      return props.colorScheme
+        ? COLOR_SCHEMES[props.colorScheme].button()
+        : color("brand");
+    } else {
+      return "transparent";
+    }
+  }};
 `;
 
 // BASE
 const BaseList = styled.ul`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
+  font-weight: bold;
 `;
 
 const BaseItem = styled.label.attrs({

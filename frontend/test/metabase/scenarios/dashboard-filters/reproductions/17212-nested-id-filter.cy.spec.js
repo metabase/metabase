@@ -25,7 +25,10 @@ describe.skip("issue 17212", () => {
 
       cy.createQuestionAndDashboard({ questionDetails }).then(
         ({ body: { card_id, dashboard_id } }) => {
-          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          ).as("cardQuery");
 
           cy.visit(`/dashboard/${dashboard_id}`);
 
@@ -42,10 +45,7 @@ describe.skip("issue 17212", () => {
 
     cy.findByText("No valid fields").should("not.exist");
 
-    cy.findByText("Column to filter on")
-      .next("a")
-      .click();
-
+    cy.findByText("Select…").click();
     popover()
       .contains("ID")
       .click();

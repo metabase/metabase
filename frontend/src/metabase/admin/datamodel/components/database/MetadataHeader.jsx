@@ -29,11 +29,11 @@ export default class MetadataHeader extends Component {
     }
   }
 
-  componentDidUpdate() {
+  componentDidMount() {
     this.setDatabaseIdIfUnset();
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidUpdate() {
     this.setDatabaseIdIfUnset();
   }
 

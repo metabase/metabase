@@ -1,8 +1,4 @@
-import {
-  restore,
-  mockSessionProperty,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
@@ -16,8 +12,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery(
@@ -118,10 +112,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Relative Date":

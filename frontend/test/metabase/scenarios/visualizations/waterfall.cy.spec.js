@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   openNativeEditor,
+  visualize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -107,12 +108,13 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -126,7 +128,8 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 

@@ -1,8 +1,4 @@
-import {
-  createSelector,
-  createSelectorCreator,
-  defaultMemoize,
-} from "reselect";
+import { createSelector } from "reselect";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -13,10 +9,7 @@ import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
 import _ from "underscore";
-import shallowEqual from "./shallowEqual";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
-
-import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
@@ -90,7 +83,7 @@ export const getMetadata = createSelector(
     getNormalizedSegments,
     getNormalizedMetrics,
   ],
-  (databases, schemas, tables, fields, segments, metrics): Metadata => {
+  (databases, schemas, tables, fields, segments, metrics) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
@@ -170,15 +163,9 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-export const getTables = createSelector(
-  [getMetadata],
-  ({ tables }) => tables,
-);
+export const getTables = createSelector([getMetadata], ({ tables }) => tables);
 
-export const getFields = createSelector(
-  [getMetadata],
-  ({ fields }) => fields,
-);
+export const getFields = createSelector([getMetadata], ({ fields }) => fields);
 export const getMetrics = createSelector(
   [getMetadata],
   ({ metrics }) => metrics,
@@ -188,89 +175,6 @@ export const getSegments = createSelector(
   [getMetadata],
   ({ segments }) => segments,
 );
-
-// FIELD VALUES FOR DASHBOARD FILTERS / SQL QUESTION PARAMETERS
-
-// Returns a dictionary of field id:s mapped to matching field values
-// Currently this assumes that you are passing the props of <ParameterValueWidget> which contain the
-// `field_ids` array inside `parameter` prop.
-const getParameterFieldValuesByFieldId = (state, props) => {
-  // NOTE Atte Keinänen 9/14/17: Reading the state directly instead of using `getFields` selector
-  // because `getMetadata` doesn't currently work with fields of public dashboards
-  return (
-    _.chain(getIn(state, ["entities", "fields"]))
-      // SQL template tags provide `field_id` instead of `field_ids`
-      .pick(...(props.parameter.field_ids || [props.parameter.field_id]))
-      .mapObject(getFieldValues)
-      .value()
-  );
-};
-
-// Custom equality selector for checking if two field value dictionaries contain same fields and field values
-// Currently we simply check if fields match and the lengths of field value arrays are equal which makes the comparison fast
-// See https://github.com/reactjs/reselect#customize-equalitycheck-for-defaultmemoize
-const createFieldValuesEqualSelector = createSelectorCreator(
-  defaultMemoize,
-  (a, b) => {
-    // TODO: Why can't we use plain shallowEqual, i.e. why the field value arrays change very often?
-    return shallowEqual(
-      _.mapObject(a, values => values.length),
-      _.mapObject(b, values => values.length),
-    );
-  },
-);
-
-// HACK Atte Keinänen 7/27/17: Currently the field value analysis code only returns a single value for booleans,
-// this will be addressed in analysis sync refactor
-const patchBooleanFieldValues_HACK = valueArray => {
-  const isBooleanFieldValues =
-    valueArray &&
-    valueArray.length === 1 &&
-    valueArray[0] &&
-    typeof valueArray[0][0] === "boolean";
-
-  if (isBooleanFieldValues) {
-    return [[true], [false]];
-  } else {
-    return valueArray;
-  }
-};
-
-// Merges the field values of fields linked to a parameter and removes duplicates
-// We want that we have a distinct selector for each field id combination, and for that reason
-// we export a method that creates a new selector; see
-// https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
-// TODO Atte Keinänen 7/20/17: Should we have any thresholds if the count of field values is high or we have many (>2?) fields?
-export const makeGetMergedParameterFieldValues = () => {
-  return createFieldValuesEqualSelector(
-    getParameterFieldValuesByFieldId,
-    fieldValues => {
-      const fieldIds = Object.keys(fieldValues);
-
-      if (fieldIds.length === 0) {
-        // If we have no fields for the parameter, don't return any field values
-        return [];
-      } else if (fieldIds.length === 1) {
-        // We have just a single field so we can return the field values almost as-is,
-        // only address the boolean bug for now
-        const singleFieldValues = fieldValues[fieldIds[0]];
-        return patchBooleanFieldValues_HACK(singleFieldValues);
-      } else {
-        // We have multiple fields, so let's merge their values to a single array
-        const sortedMergedValues = _.chain(Object.values(fieldValues))
-          .flatten(true)
-          .sortBy(fieldValue => {
-            const valueIsRemapped = fieldValue.length === 2;
-            return valueIsRemapped ? fieldValue[1] : fieldValue[0];
-          })
-          .value();
-
-        // run the uniqueness comparision always against a non-remapped value
-        return _.uniq(sortedMergedValues, false, fieldValue => fieldValue[0]);
-      }
-    },
-  );
-};
 
 // UTILS:
 

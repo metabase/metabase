@@ -1,4 +1,4 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const {
@@ -111,7 +111,7 @@ describe("scenarios > x-rays", () => {
       cy.get(".DashCard");
     });
 
-    it.skip(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
+    it(`"${action.toUpperCase()}" should not show NULL in titles of generated dashboard cards (metabase#15737)`, () => {
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
       visitQuestionAdhoc({
         name: "15737",
@@ -141,7 +141,7 @@ describe("scenarios > x-rays", () => {
     cy.contains("A look at your Orders table").click();
 
     // There are a lot of spinners in this dashboard. Give them some time to disappear.
-    cy.get(".LoadingSpinner", { timeout: 10000 }).should("not.exist");
+    cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
 
     cy.button("Save this").click();
 
@@ -152,5 +152,38 @@ describe("scenarios > x-rays", () => {
 
     cy.get(".Card").contains("18,760");
     cy.findByText("How these transactions are distributed");
+  });
+
+  it("should be able to click the title of an x-ray dashcard to see it in the query builder", () => {
+    const timeout = { timeout: 10000 };
+
+    cy.visit("/");
+    cy.contains("A look at your Orders table").click();
+
+    // confirm results of "Total transactions" card are present
+    cy.findByText("18,760", timeout);
+    cy.findByText("Total transactions").click();
+
+    // confirm we're in the query builder with the same results
+    cy.url().should("contain", "/question");
+    cy.findByText("18,760");
+
+    cy.go("back");
+
+    // add a parameter filter to the auto dashboard
+    cy.findByText("State", timeout).click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type("GA{enter}");
+      cy.findByText("GA").click();
+      cy.findByText("Add filter").click();
+    });
+
+    // confirm results of "Total transactions" card were updated
+    cy.findByText("463", timeout);
+    cy.findByText("Total transactions").click();
+
+    // confirm parameter filter is applied as filter in query builder
+    cy.findByText("State is GA");
+    cy.findByText("463");
   });
 });

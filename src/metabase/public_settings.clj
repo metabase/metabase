@@ -1,5 +1,8 @@
 (ns metabase.public-settings
-  (:require [clojure.string :as str]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.config :as config]
@@ -57,6 +60,22 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
+;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
+(defmethod setting/get-value-of-type ::uuid-nonce
+  [_ setting]
+  (or (setting/get-value-of-type :string setting)
+      (let [value (str (UUID/randomUUID))]
+        (setting/set-value-of-type! :string setting value)
+        value)))
+
+(defmethod setting/set-value-of-type! ::uuid-nonce
+  [_ setting new-value]
+  (setting/set-value-of-type! :string setting new-value))
+
+(defmethod setting/default-tag-for-type ::uuid-nonce
+  [_]
+  `String)
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
@@ -64,11 +83,7 @@
   :visibility :internal
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :getter     (fn []
-                (or (setting/get-string :site-uuid)
-                    (let [value (str (UUID/randomUUID))]
-                      (setting/set-string! :site-uuid value)
-                      value))))
+  :type       ::uuid-nonce)
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -93,7 +108,7 @@
   :visibility :public
   :getter (fn []
             (try
-              (some-> (setting/get-string :site-url) normalize-site-url)
+              (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
               (catch clojure.lang.ExceptionInfo e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
@@ -102,7 +117,7 @@
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
                 (redirect-all-requests-to-https false))
-              (setting/set-string! :site-url new-value))))
+              (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
   (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
@@ -114,7 +129,7 @@
                 (when new-value
                   (when-not (i18n/available-locale? new-value)
                     (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
-                (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
+                (setting/set-value-of-type! :string :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
@@ -129,6 +144,13 @@
 (defsetting ga-code
   (deferred-tru "Google Analytics tracking code.")
   :default    "UA-60817802-1"
+  :visibility :public)
+
+(defsetting ga-enabled
+  (deferred-tru "Boolean indicating whether analytics data should be sent to Google Analytics on the frontend")
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (and config/is-prod? (anon-tracking-enabled)))
   :visibility :public)
 
 (defsetting map-tile-server-url
@@ -161,7 +183,8 @@
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
-  :default true)
+  :default true
+  :visibility :authenticated)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
@@ -193,7 +216,7 @@
                         " "
                         (tru "Values greater than {0} ({1}) are not allowed."
                              global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
-             (setting/set-integer! :query-caching-max-kb new-value)))
+             (setting/set-value-of-type! :integer :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
@@ -213,6 +236,10 @@
   :type    :integer
   :default 10)
 
+(defsetting engine-deprecation-notice-version
+  (deferred-tru "Metabase version for which a notice about usage of a deprecated driver has been shown.")
+  :visibility :admin)
+
 (defsetting application-name
   (deferred-tru "This will replace the word \"Metabase\" wherever it appears.")
   :visibility :public
@@ -228,12 +255,12 @@
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (setting/get-json :application-colors)) "#509EE3"))
+  (or (:brand (setting/get-value-of-type :json :application-colors)) "#509EE3"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
   []
-  (or (:accent3 (setting/get-json :application-colors)) "#EF8C8C"))
+  (or (:accent3 (setting/get-value-of-type :json :application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
@@ -255,7 +282,7 @@
   :getter     (fn []
                 ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
-                (let [v (setting/get-boolean :enable-password-login)]
+                (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
                            (sso-configured?))
                     v
@@ -295,10 +322,16 @@
   :default    true
   :visibility :authenticated)
 
+(defsetting show-homepage-pin-message
+  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"
-  :getter  (fn [] (some-> (setting/get-string :source-address-header)
+  :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
@@ -367,8 +400,8 @@
   :setter     :none
   :getter     (constantly config/mb-version-info))
 
-(defsetting premium-features
-  "Premium  features enabled for this instance."
+(defsetting token-features
+  "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     (fn [] {:embedding            (premium-features/hide-embed-branding?)
@@ -378,7 +411,8 @@
                       :sso                  (premium-features/enable-sso?)
                       :advanced_config      (premium-features/enable-advanced-config?)
                       :advanced_permissions (premium-features/enable-advanced-permissions?)
-                      :content_management   (premium-features/enable-content-management?)}))
+                      :content_management   (premium-features/enable-content-management?)
+                      :hosting              (premium-features/is-hosted?)}))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
@@ -392,7 +426,7 @@
                         new-value)
                   (assert (some-> (site-url) (str/starts-with? "https:"))
                           (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
-                (setting/set-boolean! :redirect-all-requests-to-https new-value)))
+                (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
   (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.
@@ -407,8 +441,41 @@
   :type       :integer
   :default    180)
 
-(defsetting redshift-fetch-size
-  (deferred-tru "Controls the fetch size used for Redshift queries (in PreparedStatement), via defaultRowFetchSize.")
+(defsetting cloud-gateway-ips-url
+  "Store URL for fetching the list of Cloud gateway IP addresses"
+  :visibility :internal
+  :setter     :none
+  :default    (str premium-features/store-url "/static/cloud_gateways.json"))
+
+(def ^:private fetch-cloud-gateway-ips-fn
+  (memoize/ttl
+   (fn []
+       (when (premium-features/is-hosted?)
+         (try
+           (-> (http/get (cloud-gateway-ips-url))
+               :body
+               (json/parse-string keyword)
+               :ip_addresses)
+           (catch Exception e
+             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+   :ttl/threshold (* 1000 60 60 24)))
+
+(defsetting cloud-gateway-ips
+  (deferred-tru "Metabase Cloud gateway IP addresses, to configure connections to DBs behind firewalls")
   :visibility :public
-  :type       :integer
-  :default    5000)
+  :type       :json
+  :setter     :none
+  :getter     fetch-cloud-gateway-ips-fn)
+
+(defsetting show-database-syncing-modal
+  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
+       " "
+       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
+  :visibility :admin
+  :type       :boolean
+  :getter     (fn []
+                (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
+                  (if (nil? v)
+                    (not (db/exists? 'Database :is_sample false, :initial_sync_status "complete"))
+                    ;; frontend should set this value to `true` after the modal has been shown once
+                    v))))

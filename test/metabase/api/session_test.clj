@@ -5,7 +5,6 @@
             [clojure.test :refer :all]
             [metabase.api.session :as session-api]
             [metabase.driver.h2 :as h2]
-            [metabase.email-test :as et]
             [metabase.http-client :as http-client]
             [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
@@ -215,31 +214,39 @@
     ;; deref forgot-password-impl for the tests since it returns a future
     (with-redefs [session-api/forgot-password-impl
                   (let [orig @#'session-api/forgot-password-impl]
-                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (testing "Test that we can initiate password reset"
-        (et/with-fake-inbox
+        (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
                     (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
-                                                                  :id (mt/user->id :rasta))]
+                                                                               :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
             (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
-                   (mt/user-http-request :rasta :post 204 "session/forgot_password" {:email (:username (mt/user->credentials :rasta))}))
+                   (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                         {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
             (is (= true
                    (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (= "[Metabase] Password Reset Request"
-                   (-> @et/inbox (get "rasta@metabase.com") first :subject))
+                   (-> @mt/inbox (get "rasta@metabase.com") first :subject))
                 "User should get a password reset email"))))
-
+      (testing "We use `site-url` in the email"
+        (let [my-url "abcdefghij"]
+          (mt/with-temporary-setting-values [site-url my-url]
+            (mt/with-fake-inbox
+              (mt/user-http-request :rasta :post 204 "session/forgot_password"
+                                    {:email (:username (mt/user->credentials :rasta))})
+              (let [rasta-emails (-> (mt/regex-email-bodies (re-pattern my-url))
+                                     (get (:username (mt/user->credentials :rasta))))]
+                (is (some #(get-in % [:body my-url]) rasta-emails)))))))
       (testing "test that email is required"
         (is (= {:errors {:email "value must be a valid email address."}}
                (mt/client :post 400 "session/forgot_password" {}))))
-
       (testing "Test that email not found also gives 200 as to not leak existence of user"
         (is (= nil
                (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"})))))))
@@ -265,7 +272,7 @@
 (deftest reset-password-test
   (testing "POST /api/session/reset_password"
     (testing "Test that we can reset password from token (AND after token is used it gets removed)"
-      (et/with-fake-inbox
+      (mt/with-fake-inbox
         (let [password {:old "password"
                         :new "whateverUP12!!"}]
           (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
@@ -340,20 +347,20 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/properties :public)))
+      (is (= (set (keys (setting/user-readable-values-map :public)))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated))))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
       (is (= (set (keys (merge
-                         (setting/properties :public)
-                         (setting/properties :authenticated)
-                         (setting/properties :admin))))
+                         (setting/user-readable-values-map :public)
+                         (setting/user-readable-values-map :authenticated)
+                         (setting/user-readable-values-map :admin))))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
@@ -369,11 +376,11 @@
 
 (deftest google-auth-test
   (testing "POST /google_auth"
-    (mt/with-temporary-setting-values [google-auth-client-id "PRETEND-GOOD-GOOGLE-CLIENT-ID"]
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
       (testing "Google auth works with an active account"
         (mt/with-temp User [user {:email "test@metabase.com" :is_active true}]
           (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                           "\"email_verified\":\"true\","
                                                           "\"first_name\":\"test\","
                                                           "\"last_name\":\"user\","
@@ -383,7 +390,7 @@
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp User [user {:email "test@metabase.com" :is_active false}]
           (with-redefs [http/post (fn [url] {:status 200
-                                             :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                                             :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
                                                           "\"email_verified\":\"true\","
                                                           "\"first_name\":\"test\","
                                                           "\"last_name\":\"user\","

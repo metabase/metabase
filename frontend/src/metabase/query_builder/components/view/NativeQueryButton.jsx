@@ -4,13 +4,13 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
-import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import Tooltip from "metabase/components/Tooltip";
 import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
-
 import { MetabaseApi } from "metabase/services";
+
+import { SqlIconButton } from "./NativeQueryButton.styled";
 
 const STRINGS = {
   "": {
@@ -80,12 +80,9 @@ export default class NativeQueryButton extends React.Component {
 
     return (
       <span {...props}>
-        <Icon
-          name="sql"
-          size={size}
-          tooltip={tooltip}
-          onClick={this.handleOpen}
-        />
+        <Tooltip tooltip={tooltip} placement="bottom">
+          <SqlIconButton iconSize={size} onClick={this.handleOpen} />
+        </Tooltip>
         <Modal
           isOpen={this.state.open}
           title={title}

@@ -61,7 +61,11 @@ describe("getClickHoverObject", () => {
       },
     };
     const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
-    const rows = [["2016-03", 1], ["2016-04", 2], ["2016-05", 3]];
+    const rows = [
+      ["2016-03", 1],
+      ["2016-04", 2],
+      ["2016-05", 3],
+    ];
     const otherArgs = {
       ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
@@ -155,7 +159,11 @@ describe("getClickHoverObject", () => {
   it("should show correct tooltip for nulls", () => {
     const d = { data: { key: "(empty)", value: "true" } };
     const cols = [StringColumn(), NumberColumn()];
-    const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
+    const rows = [
+      ["foobar", 1],
+      [null, 2],
+      ["barfoo", 3],
+    ];
     const otherArgs = {
       ...seriesAndData({
         cols,

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
@@ -34,37 +35,6 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import cx from "classnames";
 import _ from "underscore";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-import type { FieldId, Field } from "metabase-types/types/Field";
-import type Table from "metabase-lib/lib/metadata/Table";
-
-type ForeignKeyId = number;
-type ForeignKey = {
-  id: ForeignKeyId,
-  relationship: string,
-  origin: Field,
-  origin_id: FieldId,
-  destination: Field,
-  destination_id: FieldId,
-};
-
-type ForeignKeyCountInfo = {
-  status: number,
-  value: number,
-};
-
-type Props = VisualizationProps & {
-  table: ?Table,
-  tableForeignKeys: ?(ForeignKey[]),
-  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
-  fetchTableFks: () => void,
-  loadObjectDetailFKReferences: () => void,
-  fetchTableFks: (id: any) => void,
-  followForeignKey: (fk: any) => void,
-  viewNextObjectDetail: () => void,
-  viewPreviousObjectDetail: () => void,
-};
-
 const mapStateToProps = state => ({
   table: getTableMetadata(state),
   tableForeignKeys: getTableForeignKeys(state),
@@ -83,8 +53,6 @@ const mapDispatchToProps = dispatch => ({
 });
 
 export class ObjectDetail extends Component {
-  props: Props;
-
   static uiName = t`Object Detail`;
   static identifier = "object";
   static iconName = "document";
@@ -401,7 +369,4 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ObjectDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);

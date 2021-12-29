@@ -5,36 +5,12 @@ import { createSelector } from "reselect";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
-  getParameterMappingOptions as _getParameterMappingOptions,
   getMappingsByParameter as _getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
-} from "metabase/meta/Dashboard";
+} from "metabase/parameters/utils/dashboards";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-
-import type { CardId, Card } from "metabase-types/types/Card";
-import type { DashCardId } from "metabase-types/types/Dashboard";
-import type {
-  ParameterId,
-  Parameter,
-  ParameterMapping,
-  ParameterMappingUIOption,
-} from "metabase-types/types/Parameter";
-
-export type AugmentedParameterMapping = ParameterMapping & {
-  dashcard_id: DashCardId,
-  overlapMax?: number,
-  mappingsWithValues?: number,
-  values: Array<string>,
-};
-
-export type MappingsByParameter = {
-  [key: ParameterId]: {
-    [key: DashCardId]: {
-      [key: CardId]: AugmentedParameterMapping,
-    },
-  },
-};
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
@@ -99,14 +75,11 @@ export const getIsDirty = createSelector(
     ),
 );
 
-export const getEditingParameterId = createSelector(
-  [getSidebar],
-  sidebar => {
-    return sidebar.name === SIDEBAR_NAME.editParameter
-      ? sidebar.props?.parameterId
-      : null;
-  },
-);
+export const getEditingParameterId = createSelector([getSidebar], sidebar => {
+  return sidebar.name === SIDEBAR_NAME.editParameter
+    ? sidebar.props?.parameterId
+    : null;
+});
 
 export const getIsEditingParameter = createSelector(
   [getEditingParameterId],
@@ -152,11 +125,7 @@ export const getParameters = createSelector(
 export const makeGetParameterMappingOptions = () => {
   const getParameterMappingOptions = createSelector(
     [getMetadata, getEditingParameter, getCard],
-    (
-      metadata,
-      parameter: Parameter,
-      card: Card,
-    ): Array<ParameterMappingUIOption> => {
+    (metadata, parameter, card) => {
       return _getParameterMappingOptions(metadata, parameter, card);
     },
   );

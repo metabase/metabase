@@ -50,6 +50,6 @@ To make a dashboard or pulse, click the plus (+) icon in the top-right of the ma
 
 The search bar at the top of the screen helps you find tables, dashboards, collections, saved questions, metrics, segments, and pulses in an instant.
 
-## A primer on databases
+## Next: Exploring Metabase
 
-To fully understand how to use Metabase, it’s useful to have at least a high-level understanding of databases, so we'll discuss [the basics of databases](02-database-basics.md) next.
+Now that we've covered the basics of what Metabase is and can do, let's look at [dashboards and questions](03-basic-exploration.md) that your teammates have already made.

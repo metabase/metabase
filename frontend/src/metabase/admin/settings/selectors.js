@@ -5,6 +5,7 @@ import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -13,12 +14,12 @@ import {
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
-import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
+import { trackTrackingPermissionChanged } from "./tracking";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -85,6 +86,12 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
         type: "boolean",
+        onChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
+        onBeforeChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
       },
       {
         key: "humanization-strategy",
@@ -336,8 +343,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings => !settings["enable-embedding"],
       },
       {
-        widget: EmbeddingLevel,
-        getHidden: settings => !settings["enable-embedding"],
+        widget: EmbeddingCustomizationInfo,
+        getHidden: settings =>
+          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
       },
       {
         key: "embedding-secret-key",
@@ -404,52 +412,43 @@ export const getSettings = createSelector(
     ),
 );
 
-export const getSettingValues = createSelector(
-  getSettings,
-  settings => {
-    const settingValues = {};
-    for (const setting of settings) {
-      settingValues[setting.key] = setting.value;
-    }
-    return settingValues;
-  },
-);
+export const getSettingValues = createSelector(getSettings, settings => {
+  const settingValues = {};
+  for (const setting of settings) {
+    settingValues[setting.key] = setting.value;
+  }
+  return settingValues;
+});
 
-export const getNewVersionAvailable = createSelector(
-  getSettings,
-  settings => {
-    return MetabaseSettings.newVersionAvailable(settings);
-  },
-);
+export const getNewVersionAvailable = createSelector(getSettings, settings => {
+  return MetabaseSettings.newVersionAvailable(settings);
+});
 
-export const getSections = createSelector(
-  getSettings,
-  settings => {
-    if (!settings || _.isEmpty(settings)) {
-      return {};
-    }
+export const getSections = createSelector(getSettings, settings => {
+  if (!settings || _.isEmpty(settings)) {
+    return {};
+  }
 
-    const settingsByKey = _.groupBy(settings, "key");
-    const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
-      const settings = section.settings.map(function(setting) {
-        const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key][0];
-        if (apiSetting) {
-          return {
-            placeholder: apiSetting.default,
-            ...apiSetting,
-            ...setting,
-          };
-        } else {
-          return setting;
-        }
-      });
-      sectionsWithAPISettings[slug] = { ...section, settings };
-    }
-    return sectionsWithAPISettings;
-  },
-);
+  const settingsByKey = _.groupBy(settings, "key");
+  const sectionsWithAPISettings = {};
+  for (const [slug, section] of Object.entries(SECTIONS)) {
+    const settings = section.settings.map(function(setting) {
+      const apiSetting =
+        settingsByKey[setting.key] && settingsByKey[setting.key][0];
+      if (apiSetting) {
+        return {
+          placeholder: apiSetting.default,
+          ...apiSetting,
+          ...setting,
+        };
+      } else {
+        return setting;
+      }
+    });
+    sectionsWithAPISettings[slug] = { ...section, settings };
+  }
+  return sectionsWithAPISettings;
+});
 
 export const getActiveSectionName = (state, props) => props.params.splat;
 

@@ -5,32 +5,6 @@ import Button from "metabase/components/Button";
 
 import _ from "underscore";
 
-type Mapping = {
-  [key: string]: any,
-};
-
-type Style = {
-  [key: string]: any,
-};
-
-type Props = {
-  value: Mapping,
-  onChange: (mapping: Mapping) => void,
-  className?: string,
-  style?: Style,
-  keyPlaceholder?: string,
-  valuePlaceholder?: string,
-  keyHeader?: React.Element<any>,
-  valueHeader?: React.Element<any>,
-  divider?: React.Element<any>,
-  canAdd?: boolean,
-  canDelete?: boolean,
-  addText?: string,
-  swapKeyAndValue?: boolean,
-  renderKeyInput?: any, // FIXME
-  renderValueInput?: any, // FIXME
-};
-
 const DefaultRenderInput = ({ value, onChange, placeholder }) => (
   <input
     className="input"
@@ -56,7 +30,7 @@ const MappingEditor = ({
   canDelete = true,
   addText = "Add",
   swapKeyAndValue,
-}: Props) => {
+}) => {
   const mapping = value;
   const entries = Object.entries(mapping);
   return (

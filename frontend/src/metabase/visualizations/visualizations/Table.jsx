@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
@@ -33,24 +34,7 @@ import cx from "classnames";
 
 import { getIn } from "icepick";
 
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/types/Card";
-import type { Series } from "metabase-types/types/Visualization";
-import type { SettingDefs } from "metabase/visualizations/lib/settings";
-
-type Props = {
-  series: Series,
-  settings: VisualizationSettings,
-  isDashboard: boolean,
-};
-type State = {
-  data: ?DatasetData,
-};
-
 export default class Table extends Component {
-  props: Props;
-  state: State;
-
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
@@ -73,7 +57,30 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings: SettingDefs = {
+  static isPivoted(series, settings) {
+    const [{ data }] = series;
+
+    if (!settings["table.pivot"]) {
+      return false;
+    }
+
+    const pivotIndex = _.findIndex(
+      data.cols,
+      col => col.name === settings["table.pivot_column"],
+    );
+    const cellIndex = _.findIndex(
+      data.cols,
+      col => col.name === settings["table.cell_column"],
+    );
+    const normalIndex = _.findIndex(
+      data.cols,
+      (col, index) => index !== pivotIndex && index !== cellIndex,
+    );
+
+    return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
+  }
+
+  static settings = {
     ...columnSettings({ hidden: true }),
     "table.pivot": {
       section: t`Columns`,
@@ -193,17 +200,11 @@ export default class Table extends Component {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
-      getProps: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => ({
-        cols: cols.filter(isFormattable),
+      getProps: (series, settings) => ({
+        cols: series[0].data.cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
       }),
+
       getHidden: (
         [
           {
@@ -230,7 +231,7 @@ export default class Table extends Component {
   };
 
   static columnSettings = column => {
-    const settings: SettingDefs = {
+    const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -300,7 +301,7 @@ export default class Table extends Component {
     return settings;
   };
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -312,7 +313,7 @@ export default class Table extends Component {
     this._updateData(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
@@ -321,14 +322,10 @@ export default class Table extends Component {
     }
   }
 
-  _updateData({
-    series: [{ data }],
-    settings,
-  }: {
-    series: Series,
-    settings: VisualizationSettings,
-  }) {
-    if (settings["table.pivot"]) {
+  _updateData({ series, settings }) {
+    const [{ data }] = series;
+
+    if (Table.isPivoted(series, settings)) {
       const pivotIndex = _.findIndex(
         data.cols,
         col => col.name === settings["table.pivot_column"],
@@ -371,13 +368,13 @@ export default class Table extends Component {
 
   // shared helpers for table implementations
 
-  getColumnTitle = (columnIndex: number): ?string => {
+  getColumnTitle = columnIndex => {
     const cols = this.state.data && this.state.data.cols;
     if (!cols) {
       return null;
     }
-    const { settings } = this.props;
-    const isPivoted = settings["table.pivot"];
+    const { series, settings } = this.props;
+    const isPivoted = Table.isPivoted(series, settings);
     const column = cols[columnIndex];
     if (isPivoted) {
       return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
@@ -389,14 +386,11 @@ export default class Table extends Component {
   };
 
   render() {
-    const {
-      series: [{ card }],
-      isDashboard,
-      settings,
-    } = this.props;
+    const { series, isDashboard, settings } = this.props;
     const { data } = this.state;
+    const [{ card }] = series;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
-    const isPivoted = settings["table.pivot"];
+    const isPivoted = Table.isPivoted(series, settings);
     const columnSettings = settings["table.columns"] || [];
     const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
     const TableComponent = isDashboard ? TableSimple : TableInteractive;

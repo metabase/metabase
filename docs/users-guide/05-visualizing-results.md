@@ -152,7 +152,6 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 
 Pivot tables are not currently available for the following databases in Metabase:
 
-- BigQuery
 - Druid
 - Google Analytics
 - MongoDB

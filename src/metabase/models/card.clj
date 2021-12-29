@@ -82,6 +82,8 @@
       :Segment (extract-ids :segment inner-query)})))
 
 
+
+
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-instance
@@ -174,6 +176,7 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
+;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [{query :dataset_query, :as card}]
   (u/prog1 card
     ;; make sure this Card doesn't have circular source query references

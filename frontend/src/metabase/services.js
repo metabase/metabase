@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 
@@ -10,13 +9,6 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
-
-import type { Data, Options, APIMethod } from "metabase/lib/api";
-
-import type { Card } from "metabase-types/types/Card";
-import type { DatabaseId } from "metabase-types/types/Database";
-import type { DatabaseCandidates } from "metabase-types/types/Auto";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
 
 export const ActivityApi = {
   list: GET("/api/activity"),
@@ -35,11 +27,7 @@ export const GTAPApi = {
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
-export function maybeUsePivotEndpoint(
-  api: APIMethod,
-  card: Card,
-  metadata?: Metadata,
-): APIMethod {
+export function maybeUsePivotEndpoint(api, card, metadata) {
   function canonicalFieldRef(ref) {
     // Field refs between the query and setting might differ slightly.
     // This function trims binned dimensions to just the field-id
@@ -53,7 +41,7 @@ export function maybeUsePivotEndpoint(
   const question = new Question(card, metadata);
 
   function wrap(api) {
-    return (params: ?Data, ...rest: any) => {
+    return (params, ...rest) => {
       const setting = question.setting("pivot_table.column_split");
       const breakout =
         (question.isStructured() && question.query().breakouts()) || [];
@@ -82,6 +70,7 @@ export function maybeUsePivotEndpoint(
 
   const mapping = [
     [CardApi.query, CardApi.query_pivot],
+    [DashboardApi.cardQuery, DashboardApi.cardQueryPivot],
     [MetabaseApi.dataset, MetabaseApi.dataset_pivot],
     [PublicApi.cardQuery, PublicApi.cardQueryPivot],
     [PublicApi.dashboardCardQuery, PublicApi.dashboardCardQueryPivot],
@@ -145,6 +134,12 @@ export const DashboardApi = {
   listEmbeddable: GET("/api/dashboard/embeddable"),
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
+
+  cardQuery: POST("/api/dashboard/:dashboardId/card/:cardId/query"),
+  cardQueryPivot: POST("/api/dashboard/:dashboardId/card/pivot/:cardId/query"),
+  exportCardQuery: POST(
+    "/api/dashboard/:dashboardId/card/:cardId/query/:exportFormat",
+  ),
 };
 
 export const CollectionsApi = {
@@ -184,12 +179,7 @@ export const EmbedApi = {
   ),
 };
 
-type $AutoApi = {
-  dashboard: ({ subPath: string }) => DashboardWithCards,
-  db_candidates: ({ id: DatabaseId }) => DatabaseCandidates,
-};
-
-export const AutoApi: $AutoApi = {
+export const AutoApi = {
   dashboard: GET("/api/automagic-dashboards/:subPath", {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
@@ -393,6 +383,7 @@ export const SetupApi = {
   create: POST("/api/setup"),
   validate_db: POST("/api/setup/validate"),
   admin_checklist: GET("/api/setup/admin_checklist"),
+  user_defaults: GET("/api/setup/user_defaults"),
 };
 
 export const UserApi = {
@@ -402,7 +393,7 @@ export const UserApi = {
   // get:                         GET("/api/user/:userId"),
   update: PUT("/api/user/:id"),
   update_password: PUT("/api/user/:id/password"),
-  update_qbnewb: PUT("/api/user/:id/qbnewb"),
+  update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
   delete: DELETE("/api/user/:userId"),
   reactivate: PUT("/api/user/:userId/reactivate"),
   send_invite: POST("/api/user/:id/send_invite"),
@@ -431,13 +422,13 @@ export const TaskApi = {
   getJobsInfo: GET("/api/task/info"),
 };
 
-export function setPublicQuestionEndpoints(uuid: string) {
+export function setPublicQuestionEndpoints(uuid) {
   setFieldEndpoints("/api/public/card/:uuid", { uuid });
 }
 export function setPublicDashboardEndpoints() {
   setParamsEndpoints("/api/public");
 }
-export function setEmbedQuestionEndpoints(token: string) {
+export function setEmbedQuestionEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
     setFieldEndpoints("/api/embed/card/:token", { token });
   }
@@ -448,12 +439,11 @@ export function setEmbedDashboardEndpoints() {
   }
 }
 
-function GET_with(url: string, params: Data) {
-  return (data: Data, options?: Options) =>
-    GET(url)({ ...params, ...data }, options);
+function GET_with(url, params) {
+  return (data, options) => GET(url)({ ...params, ...data }, options);
 }
 
-function setFieldEndpoints(prefix: string, params: Data) {
+function setFieldEndpoints(prefix, params) {
   MetabaseApi.field_values = GET_with(
     prefix + "/field/:fieldId/values",
     params,
@@ -468,7 +458,7 @@ function setFieldEndpoints(prefix: string, params: Data) {
   );
 }
 
-function setParamsEndpoints(prefix: string) {
+function setParamsEndpoints(prefix) {
   DashboardApi.parameterValues = GET(
     prefix + "/dashboard/:dashId/params/:paramId/values",
   );

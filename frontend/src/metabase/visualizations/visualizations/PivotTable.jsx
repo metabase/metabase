@@ -24,7 +24,6 @@ import {
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
 const getBgLightColor = () => lighten(color("brand"), 0.65);
@@ -62,7 +61,6 @@ const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
 
 export default class PivotTable extends Component {
-  props: VisualizationProps;
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
   static iconName = "pivot_table";
@@ -619,9 +617,9 @@ function Cell({
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
-  );
+  const currentSettingFieldRefs = Object.values(
+    storedValue,
+  ).flatMap(fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)));
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 

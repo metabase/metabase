@@ -1,64 +1,50 @@
-// combine compile/suggest/syntax so we only need to parse once
-export function processSource(options) {
-  // Lazily load all these parser-related stuff, because parser construction is expensive
-  // https://github.com/metabase/metabase/issues/13472
-  const parse = require("./parser").parse;
-  const compile = require("./compile").compile;
-  const suggest = require("./suggest").suggest;
-  const syntax = require("./syntax").syntax;
+import { parse } from "metabase/lib/expressions/recursive-parser";
+import { resolve } from "metabase/lib/expressions/resolver";
 
-  const { source, targetOffset } = options;
+import {
+  parseDimension,
+  parseMetric,
+  parseSegment,
+} from "metabase/lib/expressions/";
+
+export function processSource(options) {
+  const resolveMBQLField = (kind, name) => {
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        throw new Error(`Unknown Metric: ${name}`);
+      }
+      return ["metric", metric.id];
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new Error(`Unknown Segment: ${name}`);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${name}`);
+      }
+      return dimension.mbql();
+    }
+  };
+
+  const { source, startRule } = options;
 
   let expression;
-  let suggestions = [];
-  let helpText;
-  let syntaxTree;
   let compileError;
-
-  // PARSE
-  const { cst, tokenVector, parserErrors, typeErrors } = parse({
-    ...options,
-    recover: true,
-  });
-
-  // COMPILE
-  if (typeErrors.length > 0 || parserErrors.length > 0) {
-    compileError = typeErrors.concat(parserErrors);
-  } else {
-    try {
-      expression = compile({ cst, tokenVector, ...options });
-    } catch (e) {
-      console.warn("compile error", e);
-      compileError = e;
-    }
-  }
-
-  // SUGGEST
-  if (targetOffset != null) {
-    try {
-      ({ suggestions = [], helpText } = suggest({
-        cst,
-        tokenVector,
-        ...options,
-      }));
-    } catch (e) {
-      console.warn("suggest error", e);
-    }
-  }
-
-  // SYNTAX
   try {
-    syntaxTree = syntax({ cst, tokenVector, ...options });
+    expression = resolve(parse(source), startRule, resolveMBQLField);
   } catch (e) {
-    console.warn("syntax error", e);
+    console.warn("compile error", e);
+    compileError = e;
   }
 
   return {
     source,
     expression,
-    helpText,
-    suggestions,
-    syntaxTree,
     compileError,
   };
 }

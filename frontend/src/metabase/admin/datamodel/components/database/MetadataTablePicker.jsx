@@ -1,19 +1,22 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import _ from "underscore";
+import Tables from "metabase/entities/tables";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import MetadataTableList from "./MetadataTableList";
 import MetadataSchemaList from "./MetadataSchemaList";
 
-import Tables from "metabase/entities/tables";
-
-import _ from "underscore";
+const RELOAD_INTERVAL = 2000;
 
 @Tables.loadList({
   query: (state, { databaseId }) => ({
     dbId: databaseId,
     include_hidden: true,
   }),
+  reloadInterval: (state, props, tables = []) => {
+    return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;
+  },
   selectorName: "getListUnfiltered",
 })
 export default class MetadataTablePicker extends Component {

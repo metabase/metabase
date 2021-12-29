@@ -9,7 +9,6 @@ on:
     - 'frontend/**'
     - 'shared/**'
     - 'enterprise/frontend/**'
-    - 'docs/**'
     - '**/package.json'
     - '**/yarn.lock'
     - '**/.eslintrc'
@@ -31,6 +30,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn run lint-prettier
       name: Run Prettier formatting linter
@@ -54,11 +58,16 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
-  fe-linter-docs-links:
+  fe-type-check:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -72,13 +81,18 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run lint-docs-links
-      name: Run docs links checker
+    - run: yarn type-check
+      name: Check types
 
   fe-tests-unit:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 12
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
@@ -95,6 +109,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
@@ -105,8 +124,8 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    runs-on: buildjet-2vcpu-ubuntu-2004
+    timeout-minutes: 14
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
@@ -123,6 +142,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn run test-timezones
       name: Run frontend timezones tests

@@ -154,18 +154,11 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || t`Question`)
 @titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
-  timeout: any;
-
-  forceUpdateDebounced: () => void;
-
   constructor(props, context) {
     super(props, context);
 

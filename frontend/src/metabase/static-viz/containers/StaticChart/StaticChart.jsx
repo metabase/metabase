@@ -4,9 +4,14 @@ import CategoricalAreaChart from "../../components/CategoricalAreaChart";
 import CategoricalBarChart from "../../components/CategoricalBarChart";
 import CategoricalDonutChart from "../../components/CategoricalDonutChart";
 import CategoricalLineChart from "../../components/CategoricalLineChart";
+import CategoricalWaterfallChart from "../../components/CategoricalWaterfallChart";
 import TimeSeriesAreaChart from "../../components/TimeSeriesAreaChart";
 import TimeSeriesBarChart from "../../components/TimeSeriesBarChart";
 import TimeSeriesLineChart from "../../components/TimeSeriesLineChart";
+import ProgressBar from "../../components/ProgressBar";
+import Funnel from "../../components/FunnelChart";
+import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
+import LineAreaBarChart from "../../components/LineAreaBarChart";
 
 const propTypes = {
   type: PropTypes.oneOf([
@@ -14,9 +19,14 @@ const propTypes = {
     "categorical/bar",
     "categorical/donut",
     "categorical/line",
+    "categorical/waterfall",
     "timeseries/area",
     "timeseries/bar",
     "timeseries/line",
+    "timeseries/waterfall",
+    "progress",
+    "combo-chart",
+    "funnel",
   ]).isRequired,
   options: PropTypes.object.isRequired,
 };
@@ -31,12 +41,22 @@ const StaticChart = ({ type, options }) => {
       return <CategoricalDonutChart {...options} />;
     case "categorical/line":
       return <CategoricalLineChart {...options} />;
+    case "categorical/waterfall":
+      return <CategoricalWaterfallChart {...options} />;
     case "timeseries/area":
       return <TimeSeriesAreaChart {...options} />;
     case "timeseries/bar":
       return <TimeSeriesBarChart {...options} />;
     case "timeseries/line":
       return <TimeSeriesLineChart {...options} />;
+    case "timeseries/waterfall":
+      return <TimeSeriesWaterfallChart {...options} />;
+    case "progress":
+      return <ProgressBar {...options} />;
+    case "combo-chart":
+      return <LineAreaBarChart {...options} />;
+    case "funnel":
+      return <Funnel {...options} />;
   }
 };
 

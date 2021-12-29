@@ -4,6 +4,7 @@
   `metabase.models.collection.graph`. `metabase.models.collection.graph`"
   (:refer-clojure :exclude [ancestors descendants])
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -861,6 +862,8 @@
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+    ;;
+    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (settings.premium-features/enable-enhancements?)))
       #{}
@@ -1038,20 +1041,50 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
 
+(defn annotate-collections
+  "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
+  in the collection at that level."
+  [{:keys [dataset card] :as _coll-type-ids} collections]
+  (let [parent-info (reduce (fn [m {:keys [location id] :as _collection}]
+                              (let [parent-ids (set (location-path->ids location))]
+                                (cond-> m
+                                  (contains? dataset id)
+                                  (update :dataset set/union parent-ids)
+                                  (contains? card id)
+                                  (update :card set/union parent-ids))))
+                            {:dataset #{} :card #{}}
+                            collections)]
+    (map (fn [{:keys [id] :as collection}]
+           (let [types (cond-> #{}
+                         (contains? (:dataset parent-info) id)
+                         (conj :dataset)
+                         (contains? (:card parent-info) id)
+                         (conj :card))]
+             (cond-> collection
+               (seq types) (assoc :below types)
+               (contains? dataset id) (update :here (fnil conj #{}) :dataset)
+               (contains? card id) (update :here (fnil conj #{}) :card))))
+         collections)))
+
 (defn collections->tree
   "Convert a flat sequence of Collections into a tree structure e.g.
 
-    (collections->tree [A B C D E F G])
+    (collections->tree {:dataset #{C D} :card #{F C} [A B C D E F G])
     ;; ->
     [{:name     \"A\"
+      :below    #{:card :dataset}
       :children [{:name \"B\"}
                  {:name     \"C\"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     \"D\"
+                              :here     #{:dataset}
                               :children [{:name \"E\"}]}
                              {:name     \"F\"
+                              :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  [collections]
+  [coll-type-ids collections]
   (let [all-visible-ids (set (map :id collections))]
     (transduce
      identity
@@ -1087,4 +1120,4 @@
              (map #(update % :children ->tree))
              (sort-by (fn [{coll-name :name, coll-id :id}]
                         [((fnil u/lower-case-en "") coll-name) coll-id])))))
-     collections)))
+     (annotate-collections coll-type-ids collections))))

@@ -159,4 +159,46 @@ describe("visual tests > visualizations > line", () => {
 
     cy.percySnapshot();
   });
+
+  it("with missing values and duplicate x (metabase#11076)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `
+            SELECT CAST('2010-10-01' AS DATE) as d, null as v1, 1 as v2
+            UNION ALL
+            SELECT CAST('2010-10-01' AS DATE), 2, null
+            UNION ALL
+            SELECT CAST('2010-10-02' AS DATE), 3, null
+            UNION ALL
+            SELECT CAST('2010-10-02' AS DATE), null, 4
+            UNION ALL
+            SELECT CAST('2010-10-03' AS DATE), null, 5
+            UNION ALL
+            SELECT CAST('2010-10-03' AS DATE), 6, null
+          `,
+        },
+        database: 1,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["D"],
+        "graph.show_values": true,
+        "graph.metrics": ["V1", "V2"],
+        series_settings: {
+          V1: {
+            "line.missing": "zero",
+          },
+          V2: {
+            "line.missing": "none",
+          },
+        },
+      },
+    });
+
+    cy.wait("@dataset");
+
+    cy.percySnapshot();
+  });
 });

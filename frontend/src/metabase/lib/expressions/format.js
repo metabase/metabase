@@ -18,20 +18,11 @@ import {
   formatStringLiteral,
   hasOptions,
 } from ".";
-import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 
-type QuotesConfig = {};
-
-type FormatterOptions = {
-  query: StructuredQuery,
-  quotes: QuotesConfig,
-  parens: Boolean,
-};
-
 // convert a MBQL expression back into an expression string
-export function format(mbql: any, options: FormatterOptions = {}) {
+export function format(mbql, options = {}) {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {
@@ -88,10 +79,28 @@ function formatSegment([, segmentId], options) {
   return formatSegmentName(segment, options);
 }
 
+// HACK: very specific to some string/time functions for now
+function formatFunctionOptions(fnOptions) {
+  if (Object.prototype.hasOwnProperty.call(fnOptions, "case-sensitive")) {
+    const caseSensitive = fnOptions["case-sensitive"];
+    if (!caseSensitive) {
+      return "case-insensitive";
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(fnOptions, "include-current")) {
+    const includeCurrent = fnOptions["include-current"];
+    if (includeCurrent) {
+      return "include-current";
+    }
+  }
+}
+
 function formatFunction([fn, ...args], options) {
   if (hasOptions(args)) {
-    // FIXME: how should we format args?
-    args = args.slice(0, -1);
+    const fnOptions = formatFunctionOptions(args.pop());
+    if (fnOptions) {
+      args = [...args, fnOptions];
+    }
   }
   const formattedName = getExpressionName(fn);
   const formattedArgs = args.map(arg => format(arg, options));

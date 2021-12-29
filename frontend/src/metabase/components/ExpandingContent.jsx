@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+
 class ExpandingContent extends Component {
   constructor({ isInitiallyOpen }) {
     super();
@@ -49,6 +51,9 @@ class ExpandingContent extends Component {
 
   render() {
     const { children, duration, animateHeight, animateOpacity } = this.props;
+    const transition = isReducedMotionPreferred()
+      ? `none`
+      : `all ${duration}ms ease`;
     const { isOpen, isTransitioning } = this.state;
     // get the actual content height (after the first render)
     const maxHeight = isTransitioning
@@ -58,7 +63,7 @@ class ExpandingContent extends Component {
       <div
         ref={ref => (this._ref = ref)}
         style={{
-          transition: `all ${duration}ms ease`,
+          transition,
           maxHeight: !animateHeight || isOpen ? maxHeight : 0,
           opacity: !animateOpacity || isOpen ? 1 : 0,
         }}

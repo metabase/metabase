@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
+import Databases from "metabase/entities/databases";
 
 import { getIsDirty, getDiff } from "../../selectors/data-permissions";
 import {
@@ -90,8 +91,6 @@ DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Groups.loadList(),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  Databases.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

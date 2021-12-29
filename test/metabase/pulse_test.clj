@@ -11,6 +11,7 @@
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -92,7 +93,9 @@
           :when        f]
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
-      (mt/with-temp* [Card          [{card-id :id} (merge {:name card-name} card)]]
+      (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
+                                                           :display :line}
+                                                          card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
                                :pulse      pulse
@@ -380,7 +383,8 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp* [Card [{card-id-2 :id} (assoc (checkins-query-card {:breakout [!month.date]})
-                                                     :name "card 2")]
+                                                     :name "card 2"
+                                                     :display :line)]
                         PulseCard [_ {:pulse_id pulse-id
                                       :card_id  card-id-2
                                       :position 1}]]
@@ -554,7 +558,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -597,7 +601,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest native-query-with-user-specified-axes-test
@@ -747,7 +751,7 @@
                                               :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
-                   (pulse/execute-card {:creator_id (mt/user->id :rasta)} card))))))
+                   (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
@@ -15,19 +16,8 @@ const mapDispatchToProps = {
   fetchTableMetadata,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 export default class Formula extends Component {
-  props: {
-    type: string,
-    entity: Object,
-    isExpanded: boolean,
-    expandFormula: any,
-    collapseFormula: any,
-  };
-
   render() {
     const {
       type,

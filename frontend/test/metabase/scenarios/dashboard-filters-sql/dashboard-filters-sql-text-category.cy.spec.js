@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -9,7 +8,7 @@ import {
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_SQL_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -21,8 +20,6 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         const questionDetails = getQuestionDetails(sqlFilter);
 
@@ -41,10 +38,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         editDashboard();
         setFilter("Text or Category", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();
@@ -54,7 +48,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value);
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
@@ -66,7 +60,7 @@ Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
           .next()
           .click();
 
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value);
 
         saveDashboard();
 

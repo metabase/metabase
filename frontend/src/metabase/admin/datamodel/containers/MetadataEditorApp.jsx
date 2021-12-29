@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 
 import { t } from "ttag";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import AdminEmptyText from "metabase/components/AdminEmptyText";
 import MetadataHeader from "../components/database/MetadataHeader";
@@ -53,10 +53,7 @@ const mapDispatchToProps = {
     Metrics.actions.setArchived({ id }, true, rest),
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @Databases.load({
   id: (state, props) => props.databaseId,
   loadingAndErrorWrapper: false,
@@ -73,7 +70,7 @@ class MetadataEditor extends Component {
 
   toggleShowSchema() {
     this.setState({ isShowingSchema: !this.state.isShowingSchema });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "Data Model",
       "Show OG Schema",
       !this.state.isShowingSchema,

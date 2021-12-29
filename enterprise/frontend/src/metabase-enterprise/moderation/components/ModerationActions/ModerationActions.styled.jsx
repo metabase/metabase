@@ -35,4 +35,7 @@ export const VerifyButton = styled(Button).attrs({
   &:disabled {
     color: ${color("text-medium")};
   }
+
+  position: relative;
+  right: 8px;
 `;

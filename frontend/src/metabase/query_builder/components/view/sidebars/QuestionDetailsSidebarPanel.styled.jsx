@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
   height: 100%;
@@ -7,9 +8,22 @@ export const Container = styled.div`
   flex-direction: column;
 `;
 
+const SECTION_ROW_GAP = "1rem";
+
 export const SidebarPaddedContent = styled.div`
   display: flex;
   flex-direction: column;
-  row-gap: 1rem;
+  row-gap: ${SECTION_ROW_GAP};
   padding: 0.5rem 1.5rem 1rem 1.5rem;
+`;
+
+export const BorderedSectionContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  row-gap: ${SECTION_ROW_GAP};
+  padding-top: ${SECTION_ROW_GAP};
+
+  &:not(:empty) {
+    border-top: 1px solid ${color("border")};
+  }
 `;

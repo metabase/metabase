@@ -1,6 +1,6 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-describe.skip("admin > database > add > Presto", () => {
+describe("admin > database > add > Presto", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -19,7 +19,7 @@ describe.skip("admin > database > add > Presto", () => {
       cy.findByText("Presto").click();
     });
 
-    cy.findByLabelText("Name").type("Foo");
+    cy.findByLabelText("Display name").type("Foo");
 
     /**
      *  No need to fill out all these fields, because we can't connect to Presto from Cypress.
@@ -32,18 +32,23 @@ describe.skip("admin > database > add > Presto", () => {
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
     // Implicit assertion - reproduces metabase#18351
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Additional JDBC options");
 
-    cy.findByLabelText("Use a secure connection (SSL)?");
-    cy.findByLabelText("Authenticate with Kerberos?");
+    cy.findByLabelText("Use a secure connection (SSL)");
+    cy.findByLabelText("Authenticate with Kerberos");
     // Turned on by default
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    ).should("have.attr", "aria-checked", "");
+    cy.findByLabelText("Choose when syncs and scans happen").should(
+      "have.attr",
+      "aria-checked",
+      "",
+    );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",
@@ -75,8 +80,8 @@ describe.skip("admin > database > add > Presto", () => {
 
     cy.findByLabelText("Host");
     cy.findByLabelText("Port");
-    cy.findByLabelText("Database name");
-    cy.findByLabelText("Catalog").should("not.exist");
+    cy.findByLabelText("Catalog");
+    cy.findByLabelText("Database name").should("not.exist");
     cy.findByLabelText("Schema (optional)").should("not.exist");
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
@@ -84,16 +89,20 @@ describe.skip("admin > database > add > Presto", () => {
     // Reproduces metabase#18351
     cy.findByLabelText("Additional JDBC options").should("not.exist");
 
-    cy.findByLabelText("Use a secure connection (SSL)?");
-    cy.findByLabelText("Use an SSH-tunnel for database connections");
+    cy.findByLabelText("Use a secure connection (SSL)");
+    cy.findByLabelText("Use an SSH-tunnel");
 
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    ).should("have.attr", "aria-checked", "");
+    cy.findByLabelText("Choose when syncs and scans happen").should(
+      "have.attr",
+      "aria-checked",
+      "",
+    );
 
     cy.findByLabelText("Periodically refingerprint tables").should(
       "have.attr",

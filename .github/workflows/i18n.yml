@@ -9,6 +9,8 @@ on:
     - '**.clj*'
     - '**.js'
     - '**.jsx'
+    - '**.ts'
+    - '**.tsx'
     - '.github/workflows/**'
     - 'bin/**'
 
@@ -28,6 +30,11 @@ jobs:
       with:
         path: ~/.cache/yarn
         key: ${{ runner.os }}-i18n-${{ hashFiles('**/yarn.lock') }}
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
 
     - run: sudo apt install gettext
@@ -36,6 +43,13 @@ jobs:
       run: |
         curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
         sudo bash ./linux-install-1.10.3.933.sh
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-i18n-${{ hashFiles('**/deps.edn') }}
 
     - run: ./bin/i18n/update-translation-template
       name: Check i18n tags/make sure template can be built

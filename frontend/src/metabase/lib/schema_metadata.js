@@ -73,8 +73,8 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL],
-    exclude: [ENTITY, LOCATION],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    exclude: [LOCATION],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
@@ -275,7 +275,10 @@ function equivalentArgument(field, table) {
   if (isBoolean(field)) {
     return {
       type: "select",
-      values: [{ key: true, name: t`True` }, { key: false, name: t`False` }],
+      values: [
+        { key: true, name: t`True` },
+        { key: false, name: t`False` },
+      ],
       default: true,
     };
   }

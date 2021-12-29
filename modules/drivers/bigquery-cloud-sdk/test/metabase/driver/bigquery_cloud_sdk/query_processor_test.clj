@@ -544,6 +544,7 @@
                                        :template-tags {"d" {:name         "d"
                                                             :display-name "Date"
                                                             :type         :dimension
+                                                            :widget-type  :date/all-options
                                                             :dimension    [:field (mt/id :attempts field) nil]}}}
                           :parameters [{:type   value-type
                                         :name   "d"
@@ -836,3 +837,19 @@
                                                   [:percentile $orders.quantity 0.5]
                                                   {:name "CE", :display-name "CE"}]]
                                    :limit       10}))))))))
+
+
+(deftest no-qualify-breakout-field-name-with-subquery-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Breakout field name is not qualified if the source query is not a table (#18742)"
+      (is (= {:query      (str "SELECT `source`.`source` AS `source`, count(*) AS `count` FROM"
+                               " (select 1 as `val`, '2' as `source`) `source`"
+                               " GROUP BY `source` ORDER BY `source` ASC")
+              :params     nil
+              :table-name "source"
+              :mbql?      true}
+            (qp/query->native
+              (mt/mbql-query checkins
+                {:aggregation  [[:count]],
+                 :breakout     [[:field "source" {:base-type :type/Text}]],
+                 :source-query {:native "select 1 as `val`, '2' as `source`"}})))))))

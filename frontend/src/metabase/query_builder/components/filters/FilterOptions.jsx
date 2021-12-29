@@ -5,9 +5,7 @@ import { t, jt } from "ttag";
 import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 
 import CheckBox from "metabase/components/CheckBox";
-import MetabaseAnalytics from "metabase/lib/analytics";
-
-import type { FieldFilter } from "metabase-types/types/Query";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const OPTION_NAMES = {
   "include-current": filter => {
@@ -30,7 +28,7 @@ const CURRENT_INTERVAL_NAME = {
   hour: t`this hour`,
 };
 
-function getCurrentIntervalName(filter: FieldFilter): ?string {
+function getCurrentIntervalName(filter) {
   if (filter[0] === "time-interval") {
     return CURRENT_INTERVAL_NAME[filter[3]];
   }
@@ -79,7 +77,12 @@ export default class FilterOptions extends Component {
         [name]: !options[name],
       }),
     );
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Filter", "SetOption", name);
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Filter",
+      "SetOption",
+      name,
+    );
   }
 
   toggleOptionValue(name) {

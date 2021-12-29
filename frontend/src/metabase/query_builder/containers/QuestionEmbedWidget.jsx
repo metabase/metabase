@@ -10,9 +10,9 @@ import EmbedModalContent from "metabase/public/components/widgets/EmbedModalCont
 
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { getParametersFromCard } from "metabase/parameters/utils/cards";
 
-import { getParametersFromCard } from "metabase/meta/Card";
 import {
   createPublicLink,
   deletePublicLink,
@@ -40,10 +40,7 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 export default class QuestionEmbedWidget extends Component {
   render() {
     const {
@@ -99,7 +96,7 @@ export function QuestionEmbedWidgetTrigger({ onClick }) {
       tooltip={t`Sharing`}
       className="mx1 hide sm-show text-brand-hover cursor-pointer"
       onClick={() => {
-        MetabaseAnalytics.trackEvent(
+        MetabaseAnalytics.trackStructEvent(
           "Sharing / Embedding",
           "question",
           "Sharing Link Clicked",

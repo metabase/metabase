@@ -15,8 +15,7 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { getErrorMessage } from "metabase/components/form/FormMessage";
-import { AlertModalFooter, AlertModalError } from "./AlertModals.styled";
+import { AlertModalFooter } from "./AlertModals.styled";
 
 import User from "metabase/entities/users";
 
@@ -46,10 +45,10 @@ import {
   getDefaultAlert,
 } from "metabase-lib/lib/Alert";
 import MetabaseCookies from "metabase/lib/cookies";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
-import type { AlertType } from "metabase-lib/lib/Alert";
+import { alertIsValid } from "metabase/lib/alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -76,11 +75,6 @@ const textStyle = {
   { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
 )
 export class CreateAlertModalContent extends Component {
-  props: {
-    onCancel: () => void,
-    onAlertCreated: () => void,
-  };
-
   constructor(props) {
     super();
 
@@ -89,7 +83,6 @@ export class CreateAlertModalContent extends Component {
     this.state = {
       hasSeenEducationalScreen: MetabaseCookies.getHasSeenAlertSplash(),
       alert: getDefaultAlert(question, user, visualizationSettings),
-      formError: null,
     };
   }
 
@@ -125,19 +118,16 @@ export class CreateAlertModalContent extends Component {
     } = this.props;
     const { alert } = this.state;
 
-    try {
-      this.setState({ formError: null });
+    await apiUpdateQuestion(question);
+    await createAlert(alert);
+    await updateUrl(question.card(), { dirty: false });
 
-      await apiUpdateQuestion(question);
-      await createAlert(alert);
-      await updateUrl(question.card(), { dirty: false });
-
-      onAlertCreated();
-      MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
-    } catch (e) {
-      this.setState({ formError: e });
-      throw e;
-    }
+    onAlertCreated();
+    MetabaseAnalytics.trackStructEvent(
+      "Alert",
+      "Create",
+      alert.alert_condition,
+    );
   };
 
   proceedFromEducationalScreen = () => {
@@ -156,11 +146,12 @@ export class CreateAlertModalContent extends Component {
       user,
       hasLoadedChannelInfo,
     } = this.props;
-    const { alert, hasSeenEducationalScreen, formError } = this.state;
+    const { alert, hasSeenEducationalScreen } = this.state;
 
     const channelRequirementsMet = isAdmin
       ? hasConfiguredAnyChannel
       : hasConfiguredEmailChannel;
+    const isValid = alertIsValid(alert);
 
     if (hasLoadedChannelInfo && !channelRequirementsMet) {
       return (
@@ -197,12 +188,10 @@ export class CreateAlertModalContent extends Component {
             onAlertChange={this.onAlertChange}
           />
           <AlertModalFooter>
-            {formError && (
-              <AlertModalError>{getErrorMessage(formError)}</AlertModalError>
-            )}
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Done` }}
+              disabled={!isValid}
               onClickOperation={this.onCreateAlert}
             />
           </AlertModalFooter>
@@ -213,10 +202,6 @@ export class CreateAlertModalContent extends Component {
 }
 
 export class AlertEducationalScreen extends Component {
-  props: {
-    onProceed: () => void,
-  };
-
   render() {
     const { onProceed } = this.props;
 
@@ -305,20 +290,10 @@ export class AlertEducationalScreen extends Component {
   { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
 )
 export class UpdateAlertModalContent extends Component {
-  props: {
-    alert: any,
-    onCancel: boolean,
-    onAlertUpdated: any => void,
-    updateAlert: any => void,
-    deleteAlert: any => void,
-    isAdmin: boolean,
-  };
-
   constructor(props) {
     super();
     this.state = {
       modifiedAlert: props.alert,
-      formError: null,
     };
   }
 
@@ -334,24 +309,16 @@ export class UpdateAlertModalContent extends Component {
     } = this.props;
     const { modifiedAlert } = this.state;
 
-    try {
-      this.setState({ formError: null });
+    await apiUpdateQuestion();
+    await updateAlert(modifiedAlert);
+    await updateUrl(question.card(), { dirty: false });
+    onAlertUpdated();
 
-      await apiUpdateQuestion();
-      await updateAlert(modifiedAlert);
-      await updateUrl(question.card(), { dirty: false });
-
-      onAlertUpdated();
-
-      MetabaseAnalytics.trackEvent(
-        "Alert",
-        "Update",
-        modifiedAlert.alert_condition,
-      );
-    } catch (e) {
-      this.setState({ formError: e });
-      throw e;
-    }
+    MetabaseAnalytics.trackStructEvent(
+      "Alert",
+      "Update",
+      modifiedAlert.alert_condition,
+    );
   };
 
   onDeleteAlert = async () => {
@@ -369,10 +336,12 @@ export class UpdateAlertModalContent extends Component {
       user,
       isAdmin,
     } = this.props;
-    const { modifiedAlert, formError } = this.state;
+    const { modifiedAlert } = this.state;
 
     const isCurrentUser = alert.creator.id === user.id;
     const title = isCurrentUser ? t`Edit your alert` : t`Edit alert`;
+    const isValid = alertIsValid(alert);
+
     // TODO: Remove PulseEdit css hack
     return (
       <ModalContent onClose={onCancel}>
@@ -394,12 +363,10 @@ export class UpdateAlertModalContent extends Component {
           )}
 
           <AlertModalFooter>
-            {formError && (
-              <AlertModalError>{getErrorMessage(formError)}</AlertModalError>
-            )}
             <Button onClick={onCancel} className="mr2">{t`Cancel`}</Button>
             <ButtonWithStatus
               titleForState={{ default: t`Save changes` }}
+              disabled={!isValid}
               onClickOperation={this.onUpdateAlert}
             />
           </AlertModalFooter>
@@ -410,8 +377,6 @@ export class UpdateAlertModalContent extends Component {
 }
 
 export class DeleteAlertSection extends Component {
-  deleteModal: any;
-
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
     return this.props.alert.channels.map(c =>
@@ -482,18 +447,8 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
-  null,
-)
+@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
 export class AlertEditForm extends Component {
-  props: {
-    alertType: AlertType,
-    alert: any,
-    onAlertChange: any => void,
-    isAdmin: boolean,
-  };
-
   onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
@@ -637,15 +592,6 @@ export class AlertEditSchedule extends Component {
   },
 )
 export class AlertEditChannels extends Component {
-  props: {
-    onChannelsChange: any => void,
-    user: any,
-    users: any[],
-    // this stupidly named property contains different channel options, nothing else
-    formInput: any,
-    fetchPulseFormInput: () => Promise<void>,
-  };
-
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }
@@ -680,6 +626,9 @@ export class AlertEditChannels extends Component {
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
+            invalidRecipientText={domains =>
+              t`You're only allowed to email alerts to addresses ending in ${domains}`
+            }
           />
         </div>
       </div>

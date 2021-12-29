@@ -16,9 +16,10 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardGrid from "../DashboardGrid";
-import ParametersWidget from "./ParametersWidget/ParametersWidget";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
@@ -46,8 +47,10 @@ export default class Dashboard extends Component {
     dashboardId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
+    editingParameter: PropTypes.object,
 
-    addCardOnLoad: PropTypes.func,
+    editingOnLoad: PropTypes.bool,
+    addCardOnLoad: PropTypes.number,
     addCardToDashboard: PropTypes.func.isRequired,
     addParameter: PropTypes.func,
     archiveDashboard: PropTypes.func.isRequired,
@@ -61,6 +64,9 @@ export default class Dashboard extends Component {
     setEditingDashboard: PropTypes.func.isRequired,
     setErrorPage: PropTypes.func,
     setSharing: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
+    setEditingParameter: PropTypes.func.isRequired,
+    setParameterIndex: PropTypes.func.isRequired,
 
     onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
     onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
@@ -126,6 +132,7 @@ export default class Dashboard extends Component {
 
   async loadDashboard(dashboardId) {
     const {
+      editingOnLoad,
       addCardOnLoad,
       addCardToDashboard,
       fetchDashboard,
@@ -141,10 +148,10 @@ export default class Dashboard extends Component {
 
     try {
       await fetchDashboard(dashboardId, location.query);
-      if (addCardOnLoad != null) {
-        // if we destructure this.props.dashboard, for some reason
-        // if will render dashboards as empty
+      if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
+      }
+      if (addCardOnLoad != null) {
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
     } catch (error) {
@@ -196,6 +203,11 @@ export default class Dashboard extends Component {
       isSharing,
       parameters,
       showAddQuestionSidebar,
+      parameterValues,
+      editingParameter,
+      setParameterValue,
+      setParameterIndex,
+      setEditingParameter,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -204,9 +216,16 @@ export default class Dashboard extends Component {
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     const parametersWidget = (
-      <ParametersWidget
-        shouldRenderAsNightMode={shouldRenderAsNightMode}
-        {...this.props}
+      <SyncedParametersList
+        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        editingParameter={editingParameter}
+        dashboard={dashboard}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
+        isEditing={isEditing}
+        setParameterValue={setParameterValue}
+        setParameterIndex={setParameterIndex}
+        setEditingParameter={setEditingParameter}
       />
     );
 

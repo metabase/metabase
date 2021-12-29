@@ -95,9 +95,9 @@
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
                     new-strategy (keys (methods name->human-readable-name))))))
-    (let [old-strategy (setting/get-keyword :humanization-strategy)]
+    (let [old-strategy (setting/get-value-of-type :keyword :humanization-strategy)]
       ;; ok, now set the new value
-      (setting/set-keyword! :humanization-strategy new-value)
+      (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
       (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"

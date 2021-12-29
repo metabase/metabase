@@ -1,24 +1,25 @@
-export alerts from "./alerts";
-export collections from "./collections";
-export snippetCollections from "./snippet-collections";
-export dashboards from "./dashboards";
-export pulses from "./pulses";
-export questions from "./questions";
+export { default as alerts } from "./alerts";
+export { default as collections } from "./collections";
+export { default as snippetCollections } from "./snippet-collections";
+export { default as dashboards } from "./dashboards";
+export { default as databaseCandidates } from "./database-candidates";
+export { default as pulses } from "./pulses";
+export { default as questions } from "./questions";
 
-export revisions from "./revisions";
+export { default as revisions } from "./revisions";
 
-export databases from "./databases";
-export schemas from "./schemas";
-export tables from "./tables";
-export fields from "./fields";
-export metrics from "./metrics";
-export segments from "./segments";
-export tasks from "./tasks";
+export { default as databases } from "./databases";
+export { default as schemas } from "./schemas";
+export { default as tables } from "./tables";
+export { default as fields } from "./fields";
+export { default as metrics } from "./metrics";
+export { default as segments } from "./segments";
+export { default as tasks } from "./tasks";
 
-export loginHistory from "./loginHistory";
-export users from "./users";
-export groups from "./groups";
+export { default as loginHistory } from "./loginHistory";
+export { default as users } from "./users";
+export { default as groups } from "./groups";
 
-export search from "./search";
-export recents from "./recents";
-export snippets from "./snippets";
+export { default as search } from "./search";
+export { default as recents } from "./recents";
+export { default as snippets } from "./snippets";

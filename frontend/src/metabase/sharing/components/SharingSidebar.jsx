@@ -13,14 +13,12 @@ import {
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import User from "metabase/entities/users";
-import { normalizeParameterValue } from "metabase/meta/Parameter";
 
 import { connect } from "react-redux";
 
 import {
   cleanPulse,
   createChannel,
-  getPulseParameters,
   NEW_PULSE_TEMPLATE,
 } from "metabase/lib/pulse";
 
@@ -110,17 +108,13 @@ const mapDispatchToProps = {
   query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
 })
 @User.loadList({ loadingAndErrorWrapper: false })
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 class SharingSidebar extends React.Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
     returnMode: [],
     isSaving: false,
-    formError: null,
   };
 
   static propTypes = {
@@ -208,35 +202,12 @@ class SharingSidebar extends React.Component {
 
     const cleanedPulse = cleanPulse(pulse, formInput.channels);
     cleanedPulse.name = dashboard.name;
-    cleanedPulse.parameters = getPulseParameters(cleanedPulse).map(
-      parameter => {
-        const {
-          default: defaultValue,
-          name,
-          slug,
-          type,
-          value,
-          id,
-        } = parameter;
-        const normalizedValue = normalizeParameterValue(type, value);
-        return {
-          default: defaultValue,
-          id,
-          name,
-          slug,
-          type,
-          value: normalizedValue,
-        };
-      },
-    );
 
     try {
-      this.setState({ isSaving: true, formError: null });
+      this.setState({ isSaving: true });
       await this.props.updateEditingPulse(cleanedPulse);
       await this.props.saveEditingPulse();
       this.setState({ editingMode: "list-pulses", returnMode: [] });
-    } catch (e) {
-      this.setState({ formError: e });
     } finally {
       this.setState({ isSaving: false });
     }
@@ -283,7 +254,7 @@ class SharingSidebar extends React.Component {
   };
 
   render() {
-    const { editingMode, formError } = this.state;
+    const { editingMode } = this.state;
     const {
       pulse,
       pulses,
@@ -312,7 +283,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-email" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
@@ -329,7 +301,6 @@ class SharingSidebar extends React.Component {
         <AddEditEmailSidebar
           pulse={pulse}
           formInput={formInput}
-          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}
@@ -355,7 +326,8 @@ class SharingSidebar extends React.Component {
 
     if (
       editingMode === "add-edit-slack" &&
-      (pulse.channels && pulse.channels.length > 0)
+      pulse.channels &&
+      pulse.channels.length > 0
     ) {
       const channelDetails = pulse.channels
         .map((c, i) => [c, i])
@@ -372,7 +344,6 @@ class SharingSidebar extends React.Component {
         <AddEditSlackSidebar
           pulse={pulse}
           formInput={formInput}
-          formError={formError}
           channel={channel}
           channelSpec={channelSpec}
           handleSave={this.handleSave}

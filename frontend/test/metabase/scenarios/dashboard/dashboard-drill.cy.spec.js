@@ -3,7 +3,6 @@ import {
   modal,
   popover,
   filterWidget,
-  createNativeQuestion,
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
@@ -65,77 +64,55 @@ describe("scenarios > dashboard > dashboard drill", () => {
   });
 
   it("should insert values from hidden column on custom destination URL click through (metabase#13927)", () => {
-    cy.log("Create a question");
+    const questionDetails = {
+      name: "13927",
+      native: { query: "SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;" },
+    };
 
-    createNativeQuestion(
-      "13927",
-      `SELECT PEOPLE.STATE, PEOPLE.CITY from PEOPLE;`,
-    ).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        cy.log("Add question to the dashboard");
+    const clickBehavior = {
+      "table.cell_column": "CITY",
+      "table.pivot_column": "STATE",
+      column_settings: {
+        '["name","CITY"]': {
+          click_behavior: {
+            type: "link",
+            linkType: "url",
+            linkTextTemplate:
+              "Click to find out which state does {{CITY}} belong to.",
+            linkTemplate: "/test/{{STATE}}",
+          },
+        },
+      },
+      "table.columns": [
+        {
+          name: "STATE",
+          fieldRef: ["field", "STATE", { "base-type": "type/Text" }],
+          enabled: false,
+        },
+        {
+          name: "CITY",
+          fieldRef: ["field", "CITY", { "base-type": "type/Text" }],
+          enabled: true,
+        },
+      ],
+    };
 
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("Set card parameters");
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: dashboardCard }) => {
+        const { dashboard_id } = dashboardCard;
 
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                sizeX: 6,
-                sizeY: 8,
-                series: [],
-                visualization_settings: {
-                  "table.cell_column": "CITY",
-                  "table.pivot_column": "STATE",
-                  column_settings: {
-                    '["name","CITY"]': {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "url",
-                        linkTextTemplate:
-                          "Click to find out which state does {{CITY}} belong to.",
-                        linkTemplate: "/test/{{STATE}}",
-                      },
-                    },
-                  },
-                  "table.columns": [
-                    {
-                      name: "STATE",
-                      fieldRef: [
-                        "field",
-                        "STATE",
-                        { "base-type": "type/Text" },
-                      ],
-                      enabled: false,
-                    },
-                    {
-                      name: "CITY",
-                      fieldRef: ["field", "CITY", { "base-type": "type/Text" }],
-                      enabled: true,
-                    },
-                  ],
-                },
-                parameter_mappings: [],
-              },
-            ],
-          });
+        cy.editDashboardCard(dashboardCard, {
+          visualization_settings: clickBehavior,
         });
 
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
-        cy.findByText(
-          "Click to find out which state does Rye belong to.",
-        ).click();
+    cy.findByText("Click to find out which state does Rye belong to.").click();
 
-        cy.log("Reported failing on v0.37.2");
-        cy.location("pathname").should("eq", "/test/CO");
-      });
-    });
+    cy.log("Reported failing on v0.37.2");
+    cy.location("pathname").should("eq", "/test/CO");
   });
 
   it("should insert data from the correct row in the URL for pivot tables (metabase#17920)", () => {
@@ -196,10 +173,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("My Param").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "num: {{my_number}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("num: {{my_number}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // wait to leave editing mode and set a param value
@@ -250,10 +226,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
     popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
-    cy.findByPlaceholderText("E.x. Details for {{Column Name}}").type(
-      "text: {{my_string}}",
-      { parseSpecialCharSequences: false },
-    );
+    cy.findByPlaceholderText(
+      "E.x. Details for {{Column Name}}",
+    ).type("text: {{my_string}}", { parseSpecialCharSequences: false });
     cy.findByText("Save").click();
 
     // click on table value
@@ -506,7 +481,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
         });
         cy.server();
-        cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+        cy.route(
+          "POST",
+          `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+        ).as("cardQuery");
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
@@ -748,9 +726,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
               ],
             });
           });
-          cy.intercept("POST", `/api/card/${QUESTION2_ID}/query`).as(
-            "secondCardQuery",
-          );
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION2_ID}/query`,
+          ).as("secondCardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);
           cy.wait("@secondCardQuery");

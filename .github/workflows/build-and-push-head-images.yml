@@ -1,4 +1,4 @@
-name: Build and push head branch container images
+name: Build and push to Dockerhub
 
 on:
   push:
