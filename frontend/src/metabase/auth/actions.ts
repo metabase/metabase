@@ -4,7 +4,7 @@ import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { refreshCurrentUser } from "metabase/redux/user";
+import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -58,6 +58,7 @@ export const logout = createThunkAction(LOGOUT, () => {
   return async (dispatch: any) => {
     await deleteSession();
     await clearGoogleAuthCredentials();
+    await dispatch(clearCurrentUser());
     trackLogout();
 
     dispatch(push("/auth/login"));
