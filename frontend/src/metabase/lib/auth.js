@@ -3,13 +3,10 @@ import { t } from "ttag";
 import { SessionApi } from "metabase/services";
 import Settings from "metabase/lib/settings";
 
-// actively delete the session and remove the cookie
 export const deleteSession = async () => {
   try {
     await SessionApi.delete();
   } catch (error) {
-    // there are cases when the session is deleted automatically, e.g when the password has been updated
-    // in that case the BE would respond with 404
     if (error.status !== 404) {
       console.error("Problem clearing session", error);
     }
@@ -22,7 +19,6 @@ const GOOGLE_AUTH_ERRORS = {
 };
 
 export const attachGoogleAuth = (element, onLogin, onError) => {
-  // if gapi isn't loaded yet then wait 100ms and check again; keep doing this until we're ready
   if (!window.gapi) {
     window.setTimeout(() => attachGoogleAuth(element, onLogin, onError), 100);
     return;
@@ -47,7 +43,6 @@ export const attachGoogleAuth = (element, onLogin, onError) => {
   });
 };
 
-/// clear out Google Auth credentials in browser if present
 export const clearGoogleAuthCredentials = async () => {
   const googleAuth =
     typeof gapi !== "undefined" && gapi && gapi.auth2
