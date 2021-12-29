@@ -298,7 +298,7 @@
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type]))
+                                         [:semantic_type :fk_target_field_id :has_field_values]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -309,9 +309,7 @@
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
                      add-field-dimension-options))]
-    ;; TODO: dimension expects numeric keys, which seems pretty reasonable. Do we want to get rid of that wackiness
-    ;; above?
-    (hydrate fields [:target :has_field_values] #_:dimension :has_field_values)))
+    (hydrate fields [:target :has_field_values] :has_field_values)))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
