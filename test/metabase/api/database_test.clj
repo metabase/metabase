@@ -583,6 +583,7 @@
                           :base_type                nil
                           :default_dimension_option nil
                           :target                   nil
+                          :has_field_values         "none"
                           :dimension_options        []}]))))
 
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
