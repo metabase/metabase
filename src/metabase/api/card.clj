@@ -310,7 +310,8 @@
   (if (and query
            (not= query (:dataset_query card)))
     (result-metadata-async query metadata)
-    (doto (a/chan) (a/onto-chan! [metadata]))))
+    (doto (a/chan)
+      (a/onto-chan! (when (seq metadata) [metadata])))))
 
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
