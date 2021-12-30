@@ -98,3 +98,9 @@
   "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
   [x-axis-fn y-axis-fn rows]
   (filter (every-pred x-axis-fn y-axis-fn) rows))
+
+(defn non-nil-combo-rows
+  "Remove any rows that have a nil value for the entire row because
+  the row-function-generating functions themselves choke on nil values, for combo rowfuncs"
+  [rows]
+  (filter #(every? some? %) rows))

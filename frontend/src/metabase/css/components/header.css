@@ -16,7 +16,7 @@
 .Header-buttonSection {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid color(var(--color-accent2) alpha(-80%));
+  border-right: 1px solid color-mod(var(--color-accent2) alpha(-80%));
 }
 
 .Header-buttonSection:last-child {
@@ -26,7 +26,7 @@
 }
 
 .EditHeader {
-  background-color: color(var(--color-bg-white) alpha(-85%));
+  background-color: color-mod(var(--color-bg-white) alpha(-85%));
   position: relative;
 }
 
@@ -52,14 +52,14 @@
 }
 
 .EditHeader-subtitle {
-  color: color(var(--color-text-white) alpha(-50%));
+  color: color-mod(var(--color-text-white) alpha(-50%));
 }
 
 .EditHeader .Button {
   color: white;
   border: none;
   font-size: 1em;
-  background-color: color(var(--color-bg-white) alpha(-90%));
+  background-color: color-mod(var(--color-bg-white) alpha(-90%));
   margin-left: 0.75em;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .EditHeader.EditHeader--admin .Button:hover {
-  background-color: color(
-    var(--color-accent7) saturation(+20%) blackness(+20%)
+  background-color: color-mod(
+    var(--color-accent7) saturation(20%) blackness(20%)
   );
 }

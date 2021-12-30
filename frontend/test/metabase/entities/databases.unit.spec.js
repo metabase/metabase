@@ -26,7 +26,11 @@ describe("database entity", () => {
     );
     const { databases, schemas, tables } = store.getState().entities;
     expect(databases).toEqual({
-      "123": { id: 123, tables: [234], is_saved_questions: false },
+      "123": {
+        id: 123,
+        tables: [234],
+        is_saved_questions: false,
+      },
     });
     expect(schemas).toEqual({
       "123:public": {

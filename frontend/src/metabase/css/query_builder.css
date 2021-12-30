@@ -24,7 +24,7 @@
 .QueryHeader-section {
   padding-right: 1em;
   margin-right: 1em;
-  border-right: 1px solid color(var(--filter-color) alpha(-80%));
+  border-right: 1px solid color-mod(var(--filter-color) alpha(-80%));
 }
 
 .QueryHeader-section:last-child {
@@ -218,14 +218,14 @@
 }
 
 .Loading {
-  background-color: color(var(--color-bg-white) alpha(-28%));
+  background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
 .Loading.Loading--hidden {
   background-color: transparent;
 }
 .Dirty {
-  background-color: color(var(--color-bg-white) alpha(-28%));
+  background-color: color-mod(var(--color-bg-white) alpha(-28%));
   transition: opacity 0.5s;
 }
 .Dirty.Loading--hidden {
@@ -488,7 +488,7 @@
 }
 
 .NativeQueryEditorDragHandle {
-  background: color(var(--color-border) blackness(+ 3%));
+  background: color-mod(var(--color-border) blackness(3%));
   width: 100px;
   height: 5px;
   border-radius: 4px;
@@ -540,6 +540,14 @@
 .RunButton.RunButton--hidden {
   transform: translateY(-20px);
   opacity: 0;
+}
+
+@media (prefers-reduced-motion) {
+  .RunButton,
+  .RunButton.RunButton--compact,
+  .RunButton.RunButton--hidden {
+    transition-duration: 10ms;
+  }
 }
 
 /* DATA REFERENCE */
@@ -599,8 +607,8 @@
 .FieldList-grouping-trigger {
   display: flex;
   visibility: hidden;
-  border-left: 2px solid color(var(--filter-color) alpha(-90%));
-  color: color(var(--color-text-white) alpha(-50%));
+  border-left: 2px solid color-mod(var(--filter-color) alpha(-90%));
+  color: color-mod(var(--color-text-white) alpha(-50%));
 }
 
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,

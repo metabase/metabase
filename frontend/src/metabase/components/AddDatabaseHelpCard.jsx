@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 
 import { t, jt } from "ttag";
@@ -32,22 +32,23 @@ export const GENERAL_DB_DOC = MetabaseSettings.docsUrl(
 export const CLOUD_HELP_URL = "https://www.metabase.com/help/cloud";
 
 const propTypes = {
-  engine: PropTypes.string.isRequired,
+  engine: PropTypes.string,
   hasCircle: PropTypes.bool,
 };
 
 function AddDatabaseHelpCard({ engine, hasCircle = true, ...props }) {
-  const displayName = useMemo(() => {
-    const hasEngineDoc = !!ENGINE_DOCS[engine];
-    if (!hasEngineDoc) {
-      return "your database";
-    }
-    const engines = MetabaseSettings.get("engines");
-    return (engines[engine] || {})["driver-name"];
-  }, [engine]);
-
   const docsLink = ENGINE_DOCS[engine] || GENERAL_DB_DOC;
+  const hasDocLink = ENGINE_DOCS[engine] != null;
   const shouldDisplayHelpLink = MetabaseSettings.isHosted();
+
+  const engines = MetabaseSettings.get("engines", {});
+  const engineInfo = engines[engine] || {};
+  const displayName = hasDocLink ? engineInfo["driver-name"] : t`your database`;
+  const supersededBy = engineInfo["superseded-by"];
+
+  if (supersededBy) {
+    return null;
+  }
 
   return (
     <HelpCardContainer p={2} {...props}>

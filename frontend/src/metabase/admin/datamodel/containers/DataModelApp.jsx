@@ -10,10 +10,7 @@ const mapDispatchToProps = {
   onChangeTab: tab => push(`/admin/datamodel/${tab}`),
 };
 
-@connect(
-  null,
-  mapDispatchToProps,
-)
+@connect(null, mapDispatchToProps)
 export default class DataModelApp extends React.Component {
   render() {
     const {

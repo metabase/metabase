@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  openOrdersTable,
+  popover,
+  restore,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("issue 6239", () => {
   beforeEach(() => {
@@ -10,9 +15,10 @@ describe("issue 6239", () => {
     cy.findByText("Summarize").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
+    cy.get(".ace_text-input")
       .type("CountIf([Total] > 0)")
       .blur();
+
     cy.findByPlaceholderText("Name (required)").type("CE");
     cy.button("Done").click();
 
@@ -29,7 +35,7 @@ describe("issue 6239", () => {
       .contains(/^CE$/)
       .click();
 
-    cy.button("Visualize").click();
+    visualize();
 
     // Line chart renders initially. Switch to the table view.
     cy.icon("table2").click();
@@ -52,7 +58,7 @@ describe("issue 6239", () => {
     cy.icon("arrow_up").should("not.exist");
     cy.icon("arrow_down");
 
-    cy.button("Visualize").click();
+    visualize();
 
     cy.get(".cellData")
       .eq(1)

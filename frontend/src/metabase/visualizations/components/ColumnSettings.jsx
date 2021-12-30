@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import { t } from "ttag";
@@ -13,18 +14,6 @@ import {
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import NoResults from "assets/img/no_results.svg";
 
-type SettingId = string;
-type Settings = { [id: SettingId]: any };
-
-type Props = {
-  value: Settings,
-  onChange: (settings: Settings) => void,
-  column: any,
-  allowlist?: Set<SettingId>,
-  denylist?: Set<SettingId>,
-  inheritedSettings?: Settings,
-};
-
 const ColumnSettings = ({
   value,
   onChange,
@@ -32,7 +21,7 @@ const ColumnSettings = ({
   allowlist,
   denylist,
   inheritedSettings = {},
-}: Props) => {
+}) => {
   const storedSettings = value || {};
 
   // fake series

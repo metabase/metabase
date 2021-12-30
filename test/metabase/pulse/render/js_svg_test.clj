@@ -17,6 +17,12 @@
 
 (def parse-svg #'js-svg/parse-svg-string)
 
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+      (thunk))))
+
 (deftest post-process-test
   (let [svg   "<svg ><g><line/></g><g><rect/></g><g><circle/></g></svg>"
         nodes (atom [])]
@@ -140,6 +146,77 @@
           (is (= true (s/valid? spec text-nodes))
               text-nodes))))))
 
+(deftest area-test
+  (let [tl-rows    [[#t "2020" 2]
+                    [#t "2021" 3]]
+        cat-rows   [["bob" 2]
+                    ["dobbs" 3]]
+        tl-labels  {:left "count" :bottom "year"}
+        cat-labels {:left "count" :bottom "string stuff"}
+        settings   (json/generate-string {:y {:prefix   "prefix"
+                                              :decimals 4}})]
+    (testing "It returns bytes"
+      (let [tl-svg-bytes  (js-svg/timelineseries-area tl-rows tl-labels settings)
+            cat-svg-bytes (js-svg/categorical-area cat-rows cat-labels settings)]
+        (is (bytes? tl-svg-bytes))
+        (is (bytes? cat-svg-bytes))))
+    (let [tl-svg-string (.asString (js/execute-fn-name @context "timeseries_area" tl-rows tl-labels settings))
+          tl-svg-hiccup (-> tl-svg-string parse-svg document-tag-hiccup)
+          cat-svg-string (.asString (js/execute-fn-name @context "categorical_area" cat-rows cat-labels settings))
+          cat-svg-hiccup (-> cat-svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :timelineseries-area tl-svg-string)
+        (validate-svg-string :categorical-area cat-svg-string)))))
+
+(deftest timelineseries-waterfall-test
+  (let [rows     [[#t "2020" 2]
+                  [#t "2021" 3]]
+        labels   {:left "count" :bottom "year"}
+        settings (json/generate-string {:y {:prefix   "prefix"
+                                            :decimals 4}})]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/timelineseries-waterfall rows labels settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString (js/execute-fn-name @context "timeseries_waterfall" rows labels settings))
+          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :timelineseries-waterfall svg-string)))))
+
+(deftest combo-test
+  (let [rows1    [[#t "1998-03-01T00:00:00Z" 2]
+                  [#t "1999-03-01T00:00:00Z" 3]]
+        rows2    [[#t "2000-03-01T00:00:00Z" 3]
+                  [#t "2002-03-01T00:00:00Z" 4]]
+        ;; this one needs more stuff because of stricter ts types
+        series   [{:name          "bob"
+                   :color         "#cccccc"
+                   :type          "area"
+                   :data          rows1
+                   :yAxisPosition "left"}
+                  {:name          "bob2"
+                   :color         "#cccccc"
+                   :type          "line"
+                   :data          rows2
+                   :yAxisPosition "right"}]
+        labels   {:left "count" :bottom "year" :right "something"}
+        settings {:x {:type "timeseries"
+                      :format {:date_style "YYYY"}}
+                  :y {:type "linear"
+                      :format {:number_style "decimal" :decimals 4}}
+                  :colors {}
+                  :labels labels}]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/combo-chart series settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString (js/execute-fn-name @context "combo_chart"
+                                                    (json/generate-string series)
+                                                    (json/generate-string settings)
+                                                    (json/generate-string {})))
+          svg-hiccup (-> svg-string parse-svg document-tag-hiccup)]
+      (testing "it returns a valid svg string (no html in it)"
+        (validate-svg-string :combo-chart svg-string)))))
+
+
 (deftest categorical-donut-test
   (let [rows [["apples" 2]
               ["bananas" 3]]
@@ -149,3 +226,29 @@
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_donut" rows (seq colors)))]
       (validate-svg-string :categorical/donut svg-string))))
+
+(deftest progress-test
+  (let [value    1234
+        goal     1337
+        settings {:color "#333333"}]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/progress value goal settings)]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString ^Value
+                                (js/execute-fn-name
+                                  @context
+                                  "progress"
+                                  (json/generate-string {:value value :goal goal})
+                                  (json/generate-string settings)))]
+      (validate-svg-string :progress svg-string))))
+
+(deftest categorical-waterfall-test
+  (let [rows     [["apples" 2]
+                  ["bananas" 3]]
+        labels   {:left "bob" :right "dobbs"}
+        settings (json/generate-string {})]
+    (testing "It returns bytes"
+      (let [svg-bytes (js-svg/categorical-waterfall rows labels {})]
+        (is (bytes? svg-bytes))))
+    (let [svg-string (.asString ^Value (js/execute-fn-name @context "categorical_waterfall" rows labels settings))]
+      (validate-svg-string :categorical/waterfall svg-string))))

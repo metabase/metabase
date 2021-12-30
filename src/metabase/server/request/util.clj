@@ -36,6 +36,8 @@
         ;; match requests that are js/css and have a cache-busting query string
         (and query-string
              (re-matches #"^/app/dist/.*\.(js|css)$" uri))
+        ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
+        (re-matches #"^/app/dist/[a-f0-9]{20}+.*$" uri)
         ;; GeoJSON proxy requests should also be cached
         (re-matches #"^/api/geojson/.*" uri))))
 
@@ -101,7 +103,7 @@
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
-                        (log/warn (trs "Login in request is missing device ID information")))
+                        (log/warn (trs "Login request is missing device ID information")))
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")))
         ip-address  (or (ip-address request)

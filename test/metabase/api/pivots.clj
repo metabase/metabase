@@ -4,7 +4,9 @@
 (defn applicable-drivers
   "Drivers that these pivot table tests should run on"
   []
-  (mt/normal-drivers-with-feature :expressions :left-join))
+  (disj (mt/normal-drivers-with-feature :expressions :left-join)
+        ;; Disable on Redshift due to OutOfMemory issue (see #18834)
+        :redshift))
 
 (defn pivot-query
   "A basic pivot table query"

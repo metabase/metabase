@@ -1,5 +1,6 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
+import xhrMock from "xhr-mock";
 
 import _ from "underscore";
 
@@ -18,6 +19,23 @@ import {
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 
 describe("DataSelector", () => {
+  beforeEach(() => {
+    xhrMock.setup();
+    xhrMock.get("/api/search?models=dataset&limit=1", {
+      body: JSON.stringify({
+        data: [],
+        limit: 1,
+        models: ["dataset"],
+        offset: 0,
+        total: 0,
+      }),
+    });
+  });
+
+  afterEach(() => {
+    xhrMock.teardown();
+  });
+
   const emptyMetadata = {
     databases: {},
     schemas: {},

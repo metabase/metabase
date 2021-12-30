@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -22,8 +21,6 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
         restore();
         cy.signInAsAdmin();
 
-        mockSessionProperty("field-filter-operators-enabled?", true);
-
         const questionDetails = getQuestionDetails(sqlFilter);
 
         cy.createNativeQuestionAndDashboard({ questionDetails }).then(
@@ -41,10 +38,7 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
         editDashboard();
         setFilter("Location", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();

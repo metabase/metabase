@@ -25,6 +25,8 @@ Cypress.Commands.add(
  *
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
+ * @param {string} questionDetails.description
+ * @param {boolean} questionDetails.dataset
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
@@ -41,6 +43,8 @@ function question(
   type,
   {
     name = "test question",
+    description,
+    dataset = false,
     native,
     query,
     database = 1,
@@ -53,6 +57,7 @@ function question(
 ) {
   cy.request("POST", "/api/card", {
     name,
+    description,
     dataset_query: {
       type,
       [type]: type === "native" ? native : query,
@@ -63,9 +68,14 @@ function question(
     collection_id,
     collection_position,
   }).then(({ body }) => {
+    if (dataset) {
+      cy.request("PUT", `/api/card/${body.id}`, { dataset });
+    }
+
     if (loadMetadata || visitQuestion) {
       cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-      cy.visit(`/question/${body.id}`);
+      const url = dataset ? `/dataset/${body.id}` : `/question/${body.id}`;
+      cy.visit(url);
 
       // Wait for `result_metadata` to load
       cy.wait("@cardQuery");

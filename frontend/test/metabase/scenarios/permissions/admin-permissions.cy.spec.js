@@ -292,7 +292,7 @@ describe("scenarios > admin > permissions", () => {
         assertPermissionTable([["Sample Dataset", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
-        cy.findByText("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
 
         assertPermissionTable([
           ["Orders", "Unrestricted", "Yes"],
@@ -310,7 +310,7 @@ describe("scenarios > admin > permissions", () => {
         assertPermissionTable([["Sample Dataset", "No self-service", "No"]]);
 
         // Drill down to tables permissions
-        cy.findByText("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
 
         assertPermissionTable([
           ["Orders", "No self-service", "No"],
@@ -356,7 +356,7 @@ describe("scenarios > admin > permissions", () => {
         assertPermissionTable([["Sample Dataset", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
-        cy.findByText("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
 
         assertPermissionTable([
           ["Orders", "Unrestricted", "Yes"],

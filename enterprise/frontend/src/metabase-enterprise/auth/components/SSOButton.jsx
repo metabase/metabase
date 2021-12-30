@@ -2,7 +2,7 @@
 import React from "react";
 
 import { IFRAMED } from "metabase/lib/dom";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
 import AuthProviderButton from "metabase/auth/components/AuthProviderButton";
@@ -17,7 +17,7 @@ export default class SSOButton extends React.Component {
 
   handleClick = () => {
     const { redirect } = this.props.location.query;
-    MetabaseAnalytics.trackEvent("Auth", "SSO Login Start");
+    MetabaseAnalytics.trackStructEvent("Auth", "SSO Login Start");
     // use `window.location` instead of `push` since it's not a frontend route
     window.location =
       MetabaseSettings.get("site-url") +

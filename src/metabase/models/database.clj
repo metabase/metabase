@@ -1,6 +1,7 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
@@ -9,6 +10,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group]
+            [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -58,21 +60,93 @@
           (driver/normalize-db-details driver db*)
           db*))))
 
-(defn- pre-delete [{id :id, driver :engine, :as database}]
+(defn- delete-orphaned-secrets!
+  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
+  simply delete any Secret whose ID appears in the details blob, since every Secret instance that is currently created
+  is exclusively associated with a single Database.
+
+  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
+  change and become more complicated (likely by consulting a many-to-many join table)."
+  [{:keys [id details] :as database}]
+  (when-let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (let [conn-props                 (conn-props-fn (driver.u/database->driver database))
+          possible-secret-prop-names (keys (secret/conn-props->secret-props-by-name conn-props))]
+      (doseq [secret-id (reduce (fn [acc prop-name]
+                                  (if-let [secret-id (get details (keyword (str prop-name "-id")))]
+                                    (conj acc secret-id)
+                                    acc))
+                                []
+                                possible-secret-prop-names)]
+        (log/info (trs "Deleting secret ID {0} from app DB because the owning database ({1}) is being deleted"
+                       secret-id
+                       id))
+        (db/delete! Secret :id secret-id)))))
+
+(defn- pre-delete [{id :id, driver :engine, details :details :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
                 :where       [:or
                               [:like :object (str (perms/data-perms-path id) "%")]
                               [:= :object (perms/database-block-perms-path id)]]})
+  (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
       (log/error e (trs "Error sending database deletion notification")))))
 
-;; TODO - this logic would make more sense in post-update if such a method existed
+(defn- handle-db-details-secret-prop!
+  "Helper fn for reducing over a map of all the secret connection-properties, keyed by name. This is side effecting. At
+  each iteration step, if there is a -value suffixed property set in the details to be persisted, then we instead insert
+  (or update an existing) Secret instance and point to the inserted -id instead."
+  [database details conn-prop-nm conn-prop]
+  (let [sub-prop   (fn [suffix]
+                     (keyword (str conn-prop-nm suffix)))
+        id-kw      (sub-prop "-id")
+        value-kw   (sub-prop "-value")
+        new-name   (format "%s for %s" (:display-name conn-prop) (:name database))
+        kind       (:secret-kind conn-prop)
+        ;; in the future, when secret values can simply be changed by passing
+        ;; in a new ID (as opposed to a new value), this behavior will change,
+        ;; but for now, we should simply look for the value
+        secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
+        value      (:value secret-map)
+        source     (:source secret-map)]                     ; set the :source due to the -path suffix (see above)
+    (if (nil? value) ;; secret value for this conn prop was not changed
+      details
+      (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
+                                                 (id-kw details)
+                                                 new-name
+                                                 kind
+                                                 source
+                                                 value)]
+        ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
+        (-> details
+          (dissoc value-kw (sub-prop "-path"))
+          (assoc id-kw id)
+          (assoc (sub-prop "-source") source) ; TODO: figure out why this is needed
+          (assoc (sub-prop "-creator-id") creator_id)
+          (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
+
+(defn- handle-secrets-changes [{:keys [details] :as database}]
+  (let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
+    (cond (nil? conn-props-fn)
+          database ; no connection-properties multimethod defined; can't check secret types so do nothing
+
+          details ; we have details populated in this Database instance, so handle them
+          (let [conn-props            (conn-props-fn (driver.u/database->driver database))
+                conn-secrets-by-name  (secret/conn-props->secret-props-by-name conn-props)
+                updated-details       (reduce-kv (partial handle-db-details-secret-prop! database)
+                                                 details
+                                                 conn-secrets-by-name)]
+           (assoc database :details updated-details))
+
+          :else ; no details populated; do nothing
+          database)))
+
 (defn- pre-update
   [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
-  (u/prog1 database
+  (u/prog1 (handle-secrets-changes database)
+    ;; TODO - this logic would make more sense in post-update if such a method existed
     ;; if the sync operation schedules have changed, we need to reschedule this DB
     (when (or new-metadata-schedule new-fieldvalues-schedule)
       (let [{old-metadata-schedule    :metadata_sync_schedule
@@ -101,6 +175,10 @@
              :metadata_sync_schedule      new-metadata-schedule
              :cache_field_values_schedule new-fieldvalues-schedule)))))))
 
+(defn- pre-insert [database]
+  (-> database
+   handle-secrets-changes
+   (assoc :initial_sync_status "incomplete")))
 
 (defn- perms-objects-set [database _]
   #{(perms/data-perms-path (u/the-id database))})
@@ -114,10 +192,12 @@
                                        :engine                      :keyword
                                        :metadata_sync_schedule      :cron-string
                                        :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword})
+                                       :start_of_week               :keyword
+                                       :settings                    :encrypted-json})
           :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select
+          :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
   i/IObjectPermissions
@@ -174,14 +254,14 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
-;; the `details` but remove anything resembling a password. No one gets to see this in an API response!
+;; when encoding a Database as JSON remove the `details` and `settings` for any non-admin User. For admin users they can
+;; still see the `details` but remove anything resembling a password. No one gets to see this in an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
     (if (not (:is_superuser @*current-user*))
-      (dissoc db :details)
+      (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce
                              #(m/update-existing %1 %2 (constantly protected-password))

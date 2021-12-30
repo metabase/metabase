@@ -7,13 +7,16 @@ import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
+import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
+import Modal from "metabase/components/Modal";
+import SyncingModal from "metabase/containers/SyncingModal";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -23,7 +26,17 @@ import {
   getIsAddingSampleDataset,
   getAddSampleDatasetError,
 } from "../selectors";
-import { deleteDatabase, addSampleDataset } from "../database";
+import {
+  deleteDatabase,
+  addSampleDataset,
+  closeSyncingModal,
+} from "../database";
+
+const RELOAD_INTERVAL = 2000;
+
+const getReloadInterval = (state, props, databases = []) => {
+  return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
+};
 
 const mapStateToProps = (state, props) => ({
   hasSampleDataset: Database.selectors.getHasSampleDataset(state),
@@ -32,6 +45,7 @@ const mapStateToProps = (state, props) => ({
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
+  showSyncingModal: MetabaseSettings.get("show-database-syncing-modal"),
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
@@ -42,22 +56,35 @@ const mapDispatchToProps = {
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
   addSampleDataset: addSampleDataset,
+  closeSyncingModal,
 };
 
-@Database.loadList()
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@Database.loadList({
+  reloadInterval: getReloadInterval,
+})
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
-    this.createdDatabaseModal = React.createRef();
     props.databases.map(database => {
       this["deleteDatabaseModal_" + database.id] = React.createRef();
     });
+
+    this.state = {
+      isSyncingModalOpened: (props.created && props.showSyncingModal) || false,
+    };
   }
+
+  componentDidMount() {
+    if (this.state.isSyncingModalOpened) {
+      this.props.closeSyncingModal();
+    }
+  }
+
+  onSyncingModalClose = () => {
+    this.setState({ isSyncingModalOpened: false });
+  };
 
   static propTypes = {
     databases: PropTypes.array,
@@ -65,13 +92,10 @@ export default class DatabaseList extends Component {
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
+    created: PropTypes.string,
+    showSyncingModal: PropTypes.bool,
+    closeSyncingModal: PropTypes.func,
   };
-
-  componentDidUpdate(oldProps) {
-    if (!oldProps.created && this.props.created) {
-      this.createdDatabaseModal.current.open();
-    }
-  }
 
   render() {
     const {
@@ -79,10 +103,10 @@ export default class DatabaseList extends Component {
       hasSampleDataset,
       isAddingSampleDataset,
       addSampleDatasetError,
-      created,
       engines,
       deletionError,
     } = this.props;
+    const { isSyncingModalOpened } = this.state;
 
     const error = deletionError || addSampleDatasetError;
 
@@ -121,12 +145,17 @@ export default class DatabaseList extends Component {
                         className={cx({ disabled: isDeleting })}
                       >
                         <td>
-                          <Link
-                            to={"/admin/databases/" + database.id}
-                            className="text-bold link"
-                          >
-                            {database.name}
-                          </Link>
+                          <TableCellContent>
+                            {!isSyncCompleted(database) && (
+                              <TableCellSpinner size={16} borderWidth={2} />
+                            )}
+                            <Link
+                              to={"/admin/databases/" + database.id}
+                              className="text-bold link"
+                            >
+                              {database.name}
+                            </Link>
+                          </TableCellContent>
                         </td>
                         <td>
                           {engines && engines[database.engine]
@@ -193,16 +222,13 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
-        <ModalWithTrigger
-          ref={this.createdDatabaseModal}
-          isInitiallyOpen={created}
+        <Modal
+          small
+          isOpen={isSyncingModalOpened}
+          onClose={this.onSyncingModalClose}
         >
-          <CreatedDatabaseModal
-            databaseId={parseInt(created)}
-            onDone={() => this.createdDatabaseModal.current.toggle()}
-            onClose={() => this.createdDatabaseModal.current.toggle()}
-          />
-        </ModalWithTrigger>
+          <SyncingModal onClose={this.onSyncingModalClose} />
+        </Modal>
       </div>
     );
   }

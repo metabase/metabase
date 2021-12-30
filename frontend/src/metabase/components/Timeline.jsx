@@ -21,7 +21,7 @@ Timeline.propTypes = {
       timestamp: PropTypes.number.isRequired,
       icon: PropTypes.oneOfType([PropTypes.string, PropTypes.object])
         .isRequired,
-      title: PropTypes.string.isRequired,
+      title: PropTypes.node.isRequired,
       description: PropTypes.string,
       renderFooter: PropTypes.bool,
     }),

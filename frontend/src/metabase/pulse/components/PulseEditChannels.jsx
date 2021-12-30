@@ -15,7 +15,7 @@ import Icon from "metabase/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import TextInput from "metabase/components/TextInput";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
 
@@ -62,7 +62,7 @@ export default class PulseEditChannels extends Component {
 
     this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       "AddChannel",
       type,
@@ -89,7 +89,7 @@ export default class PulseEditChannels extends Component {
     const { pulse } = this.props;
     const channels = [...pulse.channels];
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       channels[index].channel_type + ":" + changedProp.name,
       changedProp.value,
@@ -126,7 +126,7 @@ export default class PulseEditChannels extends Component {
         ),
       );
 
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         this.props.pulseId ? "PulseEdit" : "PulseCreate",
         "RemoveChannel",
         type,

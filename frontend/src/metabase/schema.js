@@ -1,6 +1,7 @@
 // normalizr schema for use in actions/reducers
 
 import { schema } from "normalizr";
+import { generateSchemaId, entityTypeForObject } from "metabase/lib/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 export const QuestionSchema = new schema.Entity("questions");
@@ -35,6 +36,7 @@ export const TableSchema = new schema.Entity(
           },
         };
       }
+
       return table;
     },
   },
@@ -80,13 +82,6 @@ MetricSchema.define({
   table: TableSchema,
 });
 
-// backend returns model = "card" instead of "question"
-export const entityTypeForModel = model =>
-  model === "card" ? "questions" : `${model}s`;
-
-export const entityTypeForObject = object =>
-  object && entityTypeForModel(object.model);
-
 export const ENTITIES_SCHEMA_MAP = {
   questions: QuestionSchema,
   dashboards: DashboardSchema,
@@ -106,18 +101,6 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
-
-export const getSchemaName = id => parseSchemaId(id)[1];
-export const parseSchemaId = id => {
-  const schemaId = String(id || "");
-  const firstColonIndex = schemaId.indexOf(":");
-  const dbId = schemaId.substring(0, firstColonIndex);
-  const schemaName = schemaId.substring(firstColonIndex + 1);
-
-  return [dbId, schemaName];
-};
-export const generateSchemaId = (dbId, schemaName) =>
-  `${dbId}:${schemaName || ""}`;
 
 export const RecentsSchema = new schema.Entity("recents", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,

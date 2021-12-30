@@ -29,7 +29,7 @@ import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-import { getParameterValuesBySlug } from "metabase/meta/Parameter";
+import { getParameterValuesBySlug } from "metabase/parameters/utils/parameter-values";
 import Utils from "metabase/lib/utils";
 
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -43,10 +43,7 @@ const HEADER_ACTION_STYLE = {
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
 const WrappedVisualization = WithVizSettingsData(
-  connect(
-    null,
-    dispatch => ({ dispatch }),
-  )(Visualization),
+  connect(null, dispatch => ({ dispatch }))(Visualization),
 );
 
 export default class DashCard extends Component {

@@ -38,7 +38,7 @@
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
-    (setting/set-string! :report-timezone new-value)
+    (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)))
 
 
@@ -275,6 +275,9 @@
 
     ;; Human-readable name that should be displayed to the User in UI for editing this field.
     :display-name su/NonBlankString
+
+    ;; Human-readable text that gives context about a field's input.
+    (s/optional-key :helper-text) s/Str
 
     ;; Type of this property. Defaults to `:string` if unspecified.
     ;; `:select` is a `String` in the backend.

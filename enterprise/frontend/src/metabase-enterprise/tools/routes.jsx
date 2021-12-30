@@ -7,7 +7,7 @@ import ToolsApp from "./containers/ToolsApp";
 import ErrorOverview from "./containers/ErrorOverview";
 import ErrorDetail from "./containers/ErrorDetail";
 
-const getRoutes = (store: any) => (
+const getRoutes = store => (
   <Route path="tools" title={t`Tools`} component={ToolsApp}>
     <IndexRedirect to="errors" />
     <Route

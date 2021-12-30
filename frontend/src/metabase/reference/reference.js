@@ -2,7 +2,7 @@ import { assoc } from "icepick";
 
 import { handleActions, createAction } from "metabase/lib/redux";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
@@ -26,11 +26,11 @@ export const startLoading = createAction(START_LOADING);
 export const endLoading = createAction(END_LOADING);
 
 export const startEditing = createAction(START_EDITING, () => {
-  MetabaseAnalytics.trackEvent("Data Reference", "Started Editing");
+  MetabaseAnalytics.trackStructEvent("Data Reference", "Started Editing");
 });
 
 export const endEditing = createAction(END_EDITING, () => {
-  MetabaseAnalytics.trackEvent("Data Reference", "Ended Editing");
+  MetabaseAnalytics.trackStructEvent("Data Reference", "Ended Editing");
 });
 
 export const expandFormula = createAction(EXPAND_FORMULA);

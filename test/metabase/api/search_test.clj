@@ -1,24 +1,14 @@
 (ns metabase.api.search-test
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase.api.search :as api.search]
             [metabase.models
              :refer
-             [Card
-              CardFavorite
-              Collection
-              Dashboard
-              DashboardCard
-              DashboardFavorite
-              Database
-              Metric
-              PermissionsGroup
-              PermissionsGroupMembership
-              Pulse
-              PulseCard
-              Segment
-              Table]]
+             [Card CardFavorite Collection Dashboard DashboardCard DashboardFavorite
+              Database Metric PermissionsGroup PermissionsGroupMembership Pulse PulseCard
+              Segment Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.search.config :as search-config]
@@ -44,7 +34,8 @@
    :table_schema               nil
    :table_name                 nil
    :table_description          nil
-   :updated_at                 true})
+   :updated_at                 true
+   :initial_sync_status        nil})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -77,6 +68,7 @@
    [(make-result "dashboard test dashboard", :model "dashboard", :favorite false)
     test-collection
     (make-result "card test card", :model "card", :favorite false, :dataset_query nil, :dashboardcard_count 0)
+    (make-result "dataset test dataset", :model "dataset", :favorite false, :dataset_query nil, :dashboardcard_count 0)
     (make-result "pulse test pulse", :model "pulse", :archived nil, :updated_at false)
     (merge
      (make-result "metric test metric", :model "metric", :description "Lookin' for a blueberry")
@@ -100,7 +92,7 @@
       search-item)))
 
 (defn- default-results-with-collection []
-  (on-search-types #{"dashboard" "pulse" "card"}
+  (on-search-types #{"dashboard" "pulse" "card" "dataset"}
                    #(assoc % :collection {:id true, :name true :authority_level nil})
                    (default-search-results)))
 
@@ -113,12 +105,15 @@
                                  {:collection_id (u/the-id collection)})))]
     (mt/with-temp* [Collection [coll      (data-map "collection %s collection")]
                     Card       [card      (coll-data-map "card %s card" coll)]
+                    Card       [dataset   (assoc (coll-data-map "dataset %s dataset" coll)
+                                                 :dataset true)]
                     Dashboard  [dashboard (coll-data-map "dashboard %s dashboard" coll)]
                     Pulse      [pulse     (coll-data-map "pulse %s pulse" coll)]
                     Metric     [metric    (data-map "metric %s metric")]
                     Segment    [segment   (data-map "segment %s segment")]]
       (f {:collection coll
           :card       card
+          :dataset    dataset
           :dashboard  dashboard
           :pulse      pulse
           :metric     metric
@@ -151,7 +146,7 @@
         (dissoc :scores))))
 
 (defn- make-search-request [user-kwd params]
-  (apply (partial mt/user-http-request user-kwd) :get 200 "search" params))
+  (apply mt/user-http-request user-kwd :get 200 "search" params))
 
 (defn- search-request-data-with [xf user-kwd & params]
   (let [raw-results-data (:data (make-search-request user-kwd params))
@@ -225,7 +220,7 @@
       (is (<= 4 (count (search-request-data :crowberto :q "test" :limit "100" :offset "2"))))))
   (testing "It offsets without limit properly"
     (with-search-items-in-root-collection "test"
-      (is (= 4 (count (search-request-data :crowberto :q "test" :offset "2"))))))
+      (is (= 5 (count (search-request-data :crowberto :q "test" :offset "2"))))))
   (testing "It limits without offset properly"
     (with-search-items-in-root-collection "test"
       (is (= 2 (count (search-request-data :crowberto :q "test" :limit "2"))))))
@@ -233,6 +228,14 @@
     (with-search-items-in-root-collection "test"
       (is (= 0 (count (search-request-data :crowberto :q "test" :models "database"))))
       (is (= 1 (count (search-request-data :crowberto :q "test" :models "database" :models "card"))))))
+  (testing "It distinguishes datasets from cards"
+    (with-search-items-in-root-collection "test"
+      (let [results (search-request-data :crowberto :q "test" :models "dataset")]
+        (is (= 1 (count results)))
+        (is (= "dataset" (-> results first :model))))
+      (let [results (search-request-data :crowberto :q "test" :models "card")]
+        (is (= 1 (count results)))
+        (is (= "card" (-> results first :model))))))
   (testing "It returns limit and offset params in return result"
     (with-search-items-in-root-collection "test"
       (is (= 2 (:limit (search-request :crowberto :q "test" :limit "2" :offset "3"))))
@@ -241,8 +244,11 @@
 (deftest query-model-set
   (testing "It returns some stuff when you get results"
     (with-search-items-in-root-collection "test"
-      (is (contains? (apply hash-set (:available_models
-                       (mt/user-http-request :crowberto :get 200 "search?q=test"))) "dashboard"))))
+      ;; sometimes there is a "table" in these responses. might be do to garbage in CI
+      (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "pulse" "database" "metric" "card"}
+                       (-> (mt/user-http-request :crowberto :get 200 "search?q=test")
+                           :available_models
+                           set)))))
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
       (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
@@ -419,6 +425,7 @@
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
       (mt/with-temp* [Card       [_ (archived {:name "card test card 2"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard 2"})]
                       Collection [_ (archived {:name "collection test collection 2"})]
                       Metric     [_ (archived {:name "metric test metric 2"})]
@@ -430,6 +437,7 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
                       Card       [_ (archived {:name "card that will not appear in results"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
@@ -439,6 +447,7 @@
   (testing "Should return archived results when specified without a search query"
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card       [_ (archived {:name "card test card"})]
+                      Card       [_ (archived {:name "dataset test dataset" :dataset true})]
                       Dashboard  [_ (archived {:name "dashboard test dashboard"})]
                       Collection [_ (archived {:name "collection test collection"})]
                       Metric     [_ (archived {:name "metric test metric"})]
@@ -462,12 +471,13 @@
 (defn- default-table-search-row [table-name]
   (merge
    default-search-row
-   {:name         table-name
-    :table_name   table-name
-    :table_id     true
-    :archived     nil
-    :model        "table"
-    :database_id  true}))
+   {:name                table-name
+    :table_name          table-name
+    :table_id            true
+    :archived            nil
+    :model               "table"
+    :database_id         true
+    :initial_sync_status "incomplete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
   `(doseq [user# ~users

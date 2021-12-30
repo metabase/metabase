@@ -3,8 +3,8 @@ import {
   setupSMTP,
   describeWithToken,
   popover,
-  mockSessionProperty,
   sidebar,
+  mockSlackConfigured,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -15,7 +15,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow sharing if there are no dashboard cards", () => {
+  it.skip("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
@@ -154,9 +154,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      // In order to reproduce this test, we need to use the old syntac for dashboard filters
-      mockSessionProperty("field-filter-operators-enabled?", false);
-
       cy.createNativeQuestion({
         name: "15705",
         native: {
@@ -434,37 +431,4 @@ function addParametersToDashboard() {
   cy.findByText("Save").click();
   // wait for dashboard to save
   cy.contains("You're editing this dashboard.").should("not.exist");
-}
-
-function mockSlackConfigured() {
-  // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
-  cy.server();
-  cy.route("GET", "/api/pulse/form_input", {
-    channels: {
-      email: {
-        type: "email",
-        name: "Email",
-        allows_recipients: false,
-        recipients: ["user", "email"],
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        configured: false,
-      },
-      slack: {
-        type: "slack",
-        name: "Slack",
-        allows_recipients: true,
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        fields: [
-          {
-            name: "channel",
-            type: "select",
-            displayName: "Post to",
-            options: ["#work", "#play"],
-            required: true,
-          },
-        ],
-        configured: true,
-      },
-    },
-  });
 }

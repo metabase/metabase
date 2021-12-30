@@ -129,9 +129,6 @@ export function tokenize(expression) {
       }
       ++index;
     }
-    if (index <= start) {
-      return null;
-    }
     const dot = source[index];
     if (dot === ".") {
       ++index;
@@ -142,6 +139,13 @@ export function tokenize(expression) {
         }
         ++index;
       }
+      // just a dot?
+      if (index - start <= 1) {
+        index = start;
+        return null;
+      }
+    } else if (index <= start) {
+      return null;
     }
     const exp = source[index];
     if (exp === "e" || exp === "E") {
@@ -215,10 +219,17 @@ export function tokenize(expression) {
       }
     }
     const type = TOKEN.String;
-    const end = index;
-    const terminated = quote === source[end - 1];
-    const error = terminated ? null : t`Missing closing quotes`;
-    return { type, value, start, end, error };
+    let error = null;
+
+    const terminated = quote === source[index - 1];
+    if (!terminated) {
+      // unterminated string, rewind after the opening quote
+      index = start + 1;
+      value = quote;
+      error = t`Missing closing quotes`;
+    }
+
+    return { type, value, start, end: index, error };
   };
 
   const scanBracketIdentifier = () => {
@@ -340,13 +351,4 @@ export function tokenize(expression) {
   };
 
   return main();
-}
-
-// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(tokens) {
-  const isOpen = t => t.op === OPERATOR.OpenParenthesis;
-  const isClose = t => t.op === OPERATOR.CloseParenthesis;
-  const count = (c, token) =>
-    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
-  return tokens.reduce(count, 0);
 }

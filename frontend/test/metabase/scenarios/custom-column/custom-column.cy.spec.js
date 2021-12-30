@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  visualize,
   openOrdersTable,
   visitQuestionAdhoc,
   enterCustomColumnDetails,
@@ -25,11 +26,32 @@ describe("scenarios > question > custom column", () => {
     enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.findByText("There was a problem with your question").should("not.exist");
     cy.get(".Visualization").contains("Math");
+  });
+
+  // flaky test (#19454)
+  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Math")
+      .trigger("mouseenter");
+
+    popover().contains("Math");
+    popover().contains("No description");
   });
 
   it("can create a custom column with an existing column name", () => {
@@ -51,8 +73,7 @@ describe("scenarios > question > custom column", () => {
       enterCustomColumnDetails({ formula, name });
       cy.button("Done").click();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      visualize();
 
       cy.get(".Visualization").contains(name);
     });
@@ -92,8 +113,7 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
-    cy.wait("@dataset");
+    visualize();
 
     cy.findByText("There was a problem with your question").should("not.exist");
     // This is a pre-save state of the question but the column name should appear
@@ -112,11 +132,7 @@ describe("scenarios > question > custom column", () => {
     enterCustomColumnDetails({ formula: "1 + 1", name: "x" });
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
-
-    // wait for results to load
-    cy.get(".LoadingSpinner").should("not.exist");
-    cy.button("Visualize").should("not.exist");
+    visualize();
 
     cy.log(
       "**Fails in 0.35.0, 0.35.1, 0.35.2, 0.35.4 and the latest master (2020-10-21)**",
@@ -328,11 +344,11 @@ describe("scenarios > question > custom column", () => {
     cy.get("[class*=NotebookCellItem]")
       .contains(CE_NAME)
       .should("not.exist");
-    cy.button("Visualize").click();
 
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).to.not.exist;
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
+
     cy.contains("37.65");
   });
 
@@ -401,14 +417,6 @@ describe("scenarios > question > custom column", () => {
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
   });
 
-  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
-    cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.button("Done").should("not.be.disabled");
-  });
-
   it.skip("should work with `isNull` function (metabase#15922)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
@@ -417,10 +425,11 @@ describe("scenarios > question > custom column", () => {
       name: "No discount",
     });
     cy.button("Done").click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).to.not.exist;
+
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
+
     cy.contains("37.65");
     cy.findByText("No discount");
   });
@@ -446,10 +455,11 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.button("Add filter").click();
-    cy.button("Visualize").click();
-    cy.wait("@dataset").then(interception => {
-      expect(interception.response.body.error).not.to.exist;
+
+    visualize(response => {
+      expect(response.body.error).to.not.exist;
     });
+
     cy.findByText("MiscDate");
   });
 });

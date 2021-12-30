@@ -35,32 +35,10 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
-type GTAP = {
-  table_id: ?number,
-  group_id: ?number,
-  card_id: ?number,
-  attribute_remappings: { [attribute: string]: any },
-};
-
-type Props = {
-  params: { [name: string]: string },
-  push: (url: string) => void,
-};
-type State = {
-  gtap: ?GTAP,
-  attributesOptions: ?(string[]),
-  simple: boolean,
-  error: ?string,
-};
-
 @withRouter
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class GTAPModal extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     gtap: null,
     attributesOptions: null,
     simple: true,
@@ -331,7 +309,7 @@ const SummaryRow = ({ icon, content }) => (
   </div>
 );
 
-const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
+const GTAPSummary = ({ gtap }) => {
   return (
     <div>
       <div className="px1 pb2 text-uppercase text-small text-grey-4">
@@ -339,7 +317,9 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
       </div>
       <SummaryRow
         icon="group"
-        content={jt`Users in ${<GroupName groupId={gtap.group_id} />} can view`}
+        content={jt`Users in ${(
+          <GroupName groupId={gtap.group_id} />
+        )} can view`}
       />
       <SummaryRow
         icon="table"
@@ -348,7 +328,7 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
             ? jt`rows in the ${(
                 <QuestionName questionId={gtap.card_id} />
               )} question`
-            : jt`rows in the ${<TableName tableId={gtap.table_id} />} table`
+            : jt`rows in the ${(<TableName tableId={gtap.table_id} />)} table`
         }
       />
       {Object.entries(gtap.attribute_remappings).map(
@@ -360,10 +340,10 @@ const GTAPSummary = ({ gtap }: { gtap: GTAP }) => {
               index === 0
                 ? jt`where ${(
                     <TargetName gtap={gtap} target={target} />
-                  )} equals ${<span className="text-code">{attribute}</span>}`
+                  )} equals ${(<span className="text-code">{attribute}</span>)}`
                 : jt`and ${(
                     <TargetName gtap={gtap} target={target} />
-                  )} equals ${<span className="text-code">{attribute}</span>}`
+                  )} equals ${(<span className="text-code">{attribute}</span>)}`
             }
           />
         ),
@@ -408,7 +388,7 @@ const TableName = ({ tableId }) => (
   </EntityObjectLoader>
 );
 
-const TargetName = ({ gtap, target }: { gtap: GTAP, target: any }) => {
+const TargetName = ({ gtap, target }) => {
   if (Array.isArray(target)) {
     if (
       (target[0] === "variable" || target[0] === "dimension") &&

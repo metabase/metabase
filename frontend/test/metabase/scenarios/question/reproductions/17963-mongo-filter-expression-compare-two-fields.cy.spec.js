@@ -1,6 +1,6 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, visualize } from "__support__/e2e/cypress";
 
-describe.skip("issue 17963", () => {
+describe("issue 17963", () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();
@@ -30,7 +30,7 @@ describe.skip("issue 17963", () => {
     cy.findByText("Pick the metric you want to see").click();
     cy.findByText("Count of rows").click();
 
-    cy.button("Visualize").click();
+    visualize();
 
     cy.get(".ScalarValue").contains("1,337");
   });
@@ -38,7 +38,7 @@ describe.skip("issue 17963", () => {
 
 function typeAndSelect(arr) {
   arr.forEach(({ string, field }) => {
-    cy.get("[contenteditable=true]").type(string);
+    cy.get(".ace_text-input").type(string);
 
     popover()
       .contains(field)

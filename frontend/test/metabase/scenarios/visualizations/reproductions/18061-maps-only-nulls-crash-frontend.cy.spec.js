@@ -1,6 +1,5 @@
 import {
   restore,
-  mockSessionProperty,
   visitAlias,
   popover,
   filterWidget,
@@ -54,14 +53,29 @@ const dashboardDetails = { name: "18061D", parameters: [filter] };
 
 describe("issue 18061", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: dashboardCard }) => {
         const { dashboard_id, card_id } = dashboardCard;
+
+        // Enable sharing
+        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(`/public/dashboard/${uuid}`).as("publicLink");
+          },
+        );
+
+        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
+        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
+
+        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+        ).as("dashCardQuery");
+        cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
 
         const mapFilterToCard = {
           parameter_mappings: [
@@ -74,15 +88,6 @@ describe("issue 18061", () => {
         };
 
         cy.editDashboardCard(dashboardCard, mapFilterToCard);
-
-        cy.wrap(`/question/${card_id}`).as(`questionUrl`);
-        cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
-
-        cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
-        cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
-
-        // Enable sharing
-        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
       },
     );
   });
@@ -121,11 +126,11 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-2)", () => {
       visitAlias("@dashboardUrl");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
 
       addFilter("Twitter");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -134,19 +139,7 @@ describe("issue 18061", () => {
 
   context("scenario 3: publicly shared dashboard with a filter", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
-      visitAlias("@dashboardUrl");
-      cy.wait("@cardQuery");
-
-      cy.icon("share").click();
-      cy.findByText("Sharing and embedding").click();
-
-      cy.findByText("Public link")
-        .parent()
-        .find("input")
-        .invoke("val")
-        .then($value => {
-          cy.visit($value);
-        });
+      visitAlias("@publicLink");
 
       cy.get(".PinMap");
 

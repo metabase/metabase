@@ -152,3 +152,42 @@
            :changes
            [{:sql {:dbms "h2", :sql "1"}}
             {:sql {:dbms "postgresql,h2", :sql "2"}}]))))))
+
+(deftest validate-id-test
+  (letfn [(validate-id [id]
+            (validate (mock-change-set :id id)))]
+    (testing "Valid new-style ID"
+      (is (= :ok
+             (validate-id "v42.00-000"))))
+    (testing "ID that's missing a zero should fail"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"new-style-id"
+           (validate-id "v42.01-01"))))
+    (testing "ID with an extra zero should fail"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"new-style-id"
+           (validate-id "v42.01-0001"))))
+    (testing "Has to start with v"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"new-style-id"
+           (validate-id "42.01-001"))))))
+
+(deftest prevent-text-types-test
+  (testing "should allow \"${text.type}\" columns from being added"
+    (is (= :ok
+          (validate
+           (mock-change-set
+             :id "v42.00-001"
+             :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type")])]))))
+    (doseq [problem-type ["blob" "text"]]
+      (testing (format "should prevent \"%s\" columns from being added after ID 320" problem-type)
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"(?s)^.*no-bare-blob-or-text-types\\?.*$"
+              (validate
+                (mock-change-set
+                  :id "v42.00-001"
+                  :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))

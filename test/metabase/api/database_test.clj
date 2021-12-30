@@ -1,6 +1,7 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.database :as database-api]
             [metabase.api.table :as table-api]
@@ -44,19 +45,21 @@
 (defn- db-details
   "Return default column values for a database (either the test database, via `(mt/db)`, or optionally passed in)."
   ([]
-   (db-details (mt/db)))
+   (-> (db-details (mt/db))
+       (assoc :initial_sync_status "complete")))
 
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults Database)
     (select-keys db [:created_at :id :details :updated_at :timezone :name])
-    {:engine   (u/qualified-name (:engine db))
-     :features (map u/qualified-name (driver.u/features driver db))})))
+    {:engine (u/qualified-name (:engine db))
+     :features (map u/qualified-name (driver.u/features driver db))
+     :initial_sync_status "complete"})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults Table))
-             (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type
-                                 :id :name :rows :schema :updated_at :visibility_type]))
+             (select-keys table [:active :created_at :db_id :description :display_name :entity_type
+                                 :id :name :rows :schema :updated_at :visibility_type :initial_sync_status]))
       (update :entity_type #(when % (str "entity/" (name %))))
       (update :visibility_type #(when % (name %)))))
 
@@ -79,7 +82,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules))
+                   (dissoc :details :schedules :settings))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules)))))
 
@@ -148,7 +151,8 @@
                      :details    (s/eq {:db "my_db"})
                      :updated_at java.time.temporal.Temporal
                      :name       su/NonBlankString
-                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))})
+                     :features   (s/eq (driver.u/features ::test-driver (mt/db)))
+                     :creator_id (s/eq (mt/user->id :crowberto))})
                    (create-db-via-api!))))
 
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
@@ -234,42 +238,43 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details)
-                  (select-keys (mt/db) [:created_at :id :updated_at :timezone])
+    (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
                                     (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
-                                    {:schema       "PUBLIC"
-                                     :name         "CATEGORIES"
-                                     :display_name "Categories"
-                                     :entity_type  "entity/GenericTable"
-                                     :fields       [(merge
-                                                     (field-details (Field (mt/id :categories :id)))
-                                                     {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/PK"
-                                                      :name              "ID"
-                                                      :display_name      "ID"
-                                                      :database_type     "BIGINT"
-                                                      :base_type         "type/BigInteger"
-                                                      :effective_type    "type/BigInteger"
-                                                      :visibility_type   "normal"
-                                                      :has_field_values  "none"
-                                                      :database_position 0})
-                                                    (merge
-                                                     (field-details (Field (mt/id :categories :name)))
-                                                     {:table_id          (mt/id :categories)
-                                                      :semantic_type     "type/Name"
-                                                      :name              "NAME"
-                                                      :display_name      "Name"
-                                                      :database_type     "VARCHAR"
-                                                      :base_type         "type/Text"
-                                                      :effective_type    "type/Text"
-                                                      :visibility_type   "normal"
-                                                      :has_field_values  "list"
-                                                      :database_position 1})]
+                                    {:schema              "PUBLIC"
+                                     :name                "CATEGORIES"
+                                     :display_name        "Categories"
+                                     :entity_type         "entity/GenericTable"
+                                     :initial_sync_status "complete"
+                                     :fields              [(merge
+                                                            (field-details (Field (mt/id :categories :id)))
+                                                            {:table_id          (mt/id :categories)
+                                                             :semantic_type     "type/PK"
+                                                             :name              "ID"
+                                                             :display_name      "ID"
+                                                             :database_type     "BIGINT"
+                                                             :base_type         "type/BigInteger"
+                                                             :effective_type    "type/BigInteger"
+                                                             :visibility_type   "normal"
+                                                             :has_field_values  "none"
+                                                             :database_position 0})
+                                                           (merge
+                                                            (field-details (Field (mt/id :categories :name)))
+                                                            {:table_id          (mt/id :categories)
+                                                             :semantic_type     "type/Name"
+                                                             :name              "NAME"
+                                                             :display_name      "Name"
+                                                             :database_type     "VARCHAR"
+                                                             :base_type         "type/Text"
+                                                             :effective_type    "type/Text"
+                                                             :visibility_type   "normal"
+                                                             :has_field_values  "list"
+                                                             :database_position 1})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
@@ -302,16 +307,37 @@
                         (some (partial = "PRICE"))))))))))
 
 (deftest autocomplete-suggestions-test
-  (testing "GET /api/database/:id/autocomplete_suggestions"
-    (doseq [[prefix expected] {"u"   [["USERS" "Table"]
-                                      ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
-                               "c"   [["CATEGORIES" "Table"]
-                                      ["CHECKINS" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-                               "cat" [["CATEGORIES" "Table"]
-                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
-      (is (= expected
-             (mt/user-http-request :rasta :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))))))
+  (let [suggest-fn (fn [db-id prefix]
+                     (mt/user-http-request :rasta :get 200
+                                           (format "database/%d/autocomplete_suggestions" db-id)
+                                           :prefix prefix))]
+    (testing "GET /api/database/:id/autocomplete_suggestions"
+      (doseq [[prefix expected] {"u"   [["USERS" "Table"]
+                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                                 "c"   [["CATEGORIES" "Table"]
+                                        ["CHECKINS" "Table"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                                 "cat" [["CATEGORIES" "Table"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
+        (is (= expected (suggest-fn (mt/id) prefix))))
+      (testing " handles large numbers of tables and fields sensibly"
+        (mt/with-model-cleanup [Field Table Database]
+          (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
+            ;; insert more than 50 temporary tables and fields
+            (doseq [i (range 60)]
+              (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
+                (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
+            ;; for each type-specific prefix, we should get 50 fields
+            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Field"))))
+            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Table"))))
+            (let [my-results (suggest-fn (u/the-id tmp-db) "My")]
+              ;; for this prefix, we should a mixture of 25 fields and 25 tables
+              (is (= 50 (count my-results)))
+              (is (= 25 (-> (filter #(str/starts-with? % "My Field") (map first my-results))
+                            count)))
+              (is (= 25 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
+                          count))))))))))
+
 
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
   (merge
@@ -353,9 +379,9 @@
 (deftest databases-list-test
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
-      (testing "Database details *should not* come back for Rasta since she's not a superuser"
+      (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
-                                (disj :details))]
+                                (disj :details :settings))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -828,7 +854,6 @@
         (let [schemas (set (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id)))]
           (is (contains? schemas "Everything else"))
           (is (contains? schemas "My Collection")))))
-
     (testing "null and empty schemas should both come back as blank strings"
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [_ {:db_id db-id, :schema ""}]
@@ -956,6 +981,51 @@
         (testing "Should be able to get saved questions in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
                                                (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
+            (is (schema= [{:id               #"^card__\d+$"
+                           :db_id            s/Int
+                           :display_name     s/Str
+                           :moderated_status (s/enum nil "verified")
+                           :schema           (s/eq (table-api/root-collection-schema-name))
+                           :description      (s/maybe s/Str)}]
+                         response))
+            (is (contains? (set response)
+                           {:id               (format "card__%d" (:id card-2))
+                            :db_id            (mt/id)
+                            :display_name     "Card 2"
+                            :moderated_status nil
+                            :schema           (table-api/root-collection-schema-name)
+                            :description      nil}))))
+
+        (testing "Should throw 404 if the schema/Collection doesn't exist"
+          (is (= "Not found."
+                 (mt/user-http-request :lucky :get 404
+                                       (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
+    (testing "should work for the datasets in the 'virtual' database"
+      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
+                      Card       [card-1 (assoc (card-with-native-query "Card 1")
+                                                :collection_id (:id coll)
+                                                :dataset true)]
+                      Card       [card-2 (assoc (card-with-native-query "Card 2")
+                                                :dataset true)]
+                      Card       [card-3 (assoc (card-with-native-query "error")
+                                                ;; regular saved question should not be in the results
+                                                :dataset false)]]
+        ;; run the cards to populate their result_metadata columns
+        (doseq [card [card-1 card-2]]
+          (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))
+        (testing "Should be able to get datasets in a specific collection"
+          (is (= [{:id               (format "card__%d" (:id card-1))
+                   :db_id            (mt/id)
+                   :moderated_status nil
+                   :display_name     "Card 1"
+                   :schema           "My Collection"
+                   :description      nil}]
+                 (mt/user-http-request :lucky :get 200
+                                       (format "database/%d/datasets/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+
+        (testing "Should be able to get datasets in the root collection"
+          (let [response (mt/user-http-request :lucky :get 200
+                                               (format "database/%d/datasets/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name)))]
             (is (schema= [{:id               #"^card__\d+$"
                            :db_id            s/Int
                            :display_name     s/Str

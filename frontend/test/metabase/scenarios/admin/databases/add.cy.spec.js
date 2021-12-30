@@ -19,6 +19,16 @@ function toggleFieldWithDisplayName(displayName) {
     .click();
 }
 
+function selectFieldOption(fieldName, option) {
+  cy.contains(fieldName)
+    .parents(".Form-field")
+    .find(".AdminSelect")
+    .click();
+  popover()
+    .contains(option)
+    .click({ force: true });
+}
+
 describe("scenarios > admin > databases > add", () => {
   beforeEach(() => {
     restore();
@@ -40,11 +50,14 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
-    cy.findByLabelText(
-      "Automatically run queries when doing simple filtering and summarizing",
-    ).should("have.attr", "aria-checked", "true");
+    cy.findByText("Show advanced options").click();
+    cy.findByLabelText("Rerun queries for simple explorations").should(
+      "have.attr",
+      "aria-checked",
+      "true",
+    );
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Host", "localhost");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
@@ -54,7 +67,9 @@ describe("scenarios > admin > databases > add", () => {
       .click();
 
     cy.wait("@createDatabase");
-    cy.url().should("match", /\/admin\/databases\?created=42$/);
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByText("Explore sample data");
   });
 
   it("should trim fields needed to connect to the database", () => {
@@ -62,7 +77,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Host", "localhost  \n  ");
     typeField("Database name", " test_postgres_db");
     typeField("Username", "   uberadmin   ");
@@ -78,47 +93,32 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.route("POST", "/api/database").as("createDatabase");
-
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
-    typeField("Database name", "test_postgres_db");
-    typeField("Username", "uberadmin");
+    chooseDatabase("H2");
+    typeField("Display name", "Test db name");
+    typeField("Connection String", "invalid");
 
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Show advanced options").click();
+    toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
+    cy.button("Save").click();
     cy.wait("@createDatabase");
-
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
-
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
-
-    cy.findByText(
-      "Couldn't connect to the database. Please check the connection details.",
-    );
+    cy.findByText(/Hmm, we couldn't connect to the database/);
   });
 
-  it("should direct you to scheduling settings if you enable the toggle", () => {
+  it("should show scheduling settings if you enable the toggle", () => {
     cy.route("POST", "/api/database", { id: 42 }).as("createDatabase");
     cy.route("POST", "/api/database/validate", { valid: true });
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save").should("not.be.disabled");
-
-    toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
-
-    cy.button("Next")
-      .should("not.be.disabled")
-      .click();
+    cy.findByText("Show advanced options").click();
+    toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.findByText("Never, I'll do this manually if I need to").click();
 
@@ -130,8 +130,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.url().should("match", /\/admin\/databases\?created=42$/);
-    cy.findByText("Your database has been added!");
+    cy.url().should("match", /admin\/databases\?created=true$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -145,7 +144,7 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("Name", "Test db name");
+    typeField("Display name", "Test db name");
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
@@ -199,24 +198,24 @@ describe("scenarios > admin > databases > add", () => {
 
     chooseDatabase("H2");
 
-    typeField("Name", databaseName);
+    typeField("Display name", databaseName);
     typeField("Connection String", H2_CONNECTION_STRING);
 
-    cy.findByLabelText(
-      "This is a large database, so let me choose when Metabase syncs and scans",
-    )
+    cy.findByText("Show advanced options").click();
+    cy.findByLabelText("Choose when syncs and scans happen")
       .click()
       .should("have.attr", "aria-checked", "true");
-
-    cy.button("Next").click();
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
-    cy.findByText("I'm good thanks").click();
 
-    cy.findByText(databaseName).click();
-    cy.findByText("Scheduling").click();
+    cy.findByText("We're taking a look at your database!");
+    cy.findByLabelText("close icon").click();
+
+    cy.findByRole("table").within(() => {
+      cy.findByText(databaseName).click();
+    });
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
   });
@@ -227,13 +226,8 @@ describe("scenarios > admin > databases > add", () => {
 
       chooseDatabase("BigQuery");
 
-      //Ensure deprecation warning is shown
-      cy.findByTestId("database-setup-driver-warning").within(() => {
-        cy.contains("The old driver has been deprecated");
-      });
-
       // enter text
-      typeField("Name", "bq db");
+      typeField("Display name", "bq db");
       typeField("Dataset ID", "some-dataset");
 
       // create blob to act as selected file
@@ -291,6 +285,21 @@ describe("scenarios > admin > databases > add", () => {
       cy.contains("Connect to a Service Account instead");
       cy.contains("generate a Client ID and Client Secret for your project");
     });
+
+    it("should display driver deprecation messages", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("BigQuery");
+
+      cy.findByText("BigQuery");
+      cy.findByText("Need help setting up your database?");
+      cy.findByText("The old driver has been deprecated", { exact: false });
+
+      cy.findByText("find it here").click();
+      cy.findByText("BigQuery (Deprecated Driver)");
+      cy.findByText("Need help setting up your database?").should("not.exist");
+      cy.findByText("This driver has been deprecated", { exact: false });
+    });
   });
 
   describe("Google Analytics ", () => {
@@ -319,11 +328,12 @@ describe("scenarios > admin > databases > add", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Name", "Test db name");
+      typeField("Display name", "Test db name");
       typeField("Host", "localhost");
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.button("Save").click();
 
       cy.wait("@createDatabase").then(({ request }) => {
@@ -335,11 +345,12 @@ describe("scenarios > admin > databases > add", () => {
       cy.intercept("POST", "/api/database", { id: 42 }).as("createDatabase");
       cy.visit("/admin/databases/create");
 
-      typeField("Name", "Test db name");
+      typeField("Display name", "Test db name");
       typeField("Host", "localhost");
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover()
         .findByText("Custom")
@@ -356,16 +367,53 @@ describe("scenarios > admin > databases > add", () => {
       });
     });
   });
+
+  it("should show the various Postgres SSL options correctly", () => {
+    const confirmSSLFields = (visible, hidden) => {
+      visible.forEach(field => cy.findByText(field));
+      hidden.forEach(field => cy.findByText(field).should("not.exist"));
+    };
+
+    const ssl = "Use a secure connection (SSL)",
+      sslMode = "SSL Mode",
+      useClientCert = "Authenticate client certificate?",
+      clientPemCert = "SSL Client Certificate (PEM)",
+      clientPkcsCert = "SSL Client Key (PKCS-8/DER or PKCS-12)",
+      sslRootCert = "SSL Root Certificate (PEM)";
+
+    cy.visit("/admin/databases/create");
+    chooseDatabase("PostgreSQL");
+    // initially, all SSL sub-properties should be hidden
+    confirmSSLFields(
+      [ssl],
+      [sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
+    );
+
+    toggleFieldWithDisplayName(ssl);
+    // when ssl is enabled, the mode and "enable client cert" options should be shown
+    confirmSSLFields(
+      [ssl, sslMode, useClientCert],
+      [clientPemCert, clientPkcsCert, sslRootCert],
+    );
+
+    toggleFieldWithDisplayName(useClientCert);
+    // when the "enable client cert" option is enabled, its sub-properties should be shown
+    confirmSSLFields(
+      [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert],
+      [sslRootCert],
+    );
+
+    selectFieldOption(sslMode, "verify-ca");
+    // when the ssl mode is set to "verify-ca", then the root cert option should be shown
+    confirmSSLFields(
+      [ssl, sslMode, useClientCert, clientPemCert, clientPkcsCert, sslRootCert],
+      [],
+    );
+  });
 });
 
 function chooseDatabase(database) {
-  cy.contains("Database type")
-    .parents(".Form-field")
-    .find(".AdminSelect")
-    .click();
-  popover()
-    .contains(database)
-    .click({ force: true });
+  selectFieldOption("Database type", database);
 }
 
 function isSyncOptionSelected(option) {

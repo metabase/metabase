@@ -15,7 +15,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";
 import Subhead from "metabase/components/type/Subhead";
@@ -62,7 +62,7 @@ export default class PulseEdit extends Component {
     );
     this.props.fetchPulseFormInput();
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       "Start",
     );
@@ -73,7 +73,7 @@ export default class PulseEdit extends Component {
     await this.props.updateEditingPulse(pulse);
     await this.props.saveEditingPulse();
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       "Complete",
       this.props.pulse.cards.length,
@@ -88,7 +88,7 @@ export default class PulseEdit extends Component {
   handleArchive = async () => {
     await this.props.setPulseArchived(this.props.pulse, true);
 
-    MetabaseAnalytics.trackEvent("PulseArchive", "Complete");
+    MetabaseAnalytics.trackStructEvent("PulseArchive", "Complete");
 
     this.props.onChangeLocation(Urls.collection(this.props.collection));
   };
@@ -97,7 +97,7 @@ export default class PulseEdit extends Component {
     await this.props.setPulseArchived(this.props.pulse, false);
     this.setPulse({ ...this.props.pulse, archived: false });
 
-    MetabaseAnalytics.trackEvent("PulseUnarchive", "Complete");
+    MetabaseAnalytics.trackStructEvent("PulseUnarchive", "Complete");
   };
 
   setPulse = pulse => {
@@ -114,7 +114,7 @@ export default class PulseEdit extends Component {
                 c.recipients.length,
               )}
             </strong>
-          )} ${<strong>{c.schedule_type}</strong>}`}
+          )} ${(<strong>{c.schedule_type}</strong>)}`}
           .
         </span>
       ) : c.channel_type === "slack" ? (

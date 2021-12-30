@@ -20,7 +20,7 @@ Although connection details differ database to database, in general you'll need 
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
-- Google Analytics (version 3; if you're interested in support for version 4, let us know by adding your [+1 to this issue (#12905)](https://github.com/metabase/metabase/issues/12905))
+- [Google Analytics](databases/google-analytics.md) (version 3; if you're interested in support for version 4, let us know by adding your [+1 to this issue (#12905)](https://github.com/metabase/metabase/issues/12905))
 - H2
 - [MongoDB (version 3.6 or higher)](databases/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)

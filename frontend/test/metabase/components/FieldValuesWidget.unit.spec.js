@@ -47,8 +47,15 @@ describe("FieldValuesWidget", () => {
         expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY.id);
       });
 
-      it("should have 'Search the list' as the placeholder text", () => {
+      it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", () => {
         renderFieldValuesWidget({ ...props });
+        expect(screen.queryByLabelText("Search the list")).toBeNull();
+      });
+
+      it("should have 'Search the list' as the placeholder text for fields with less than 10 values", () => {
+        renderFieldValuesWidget({
+          fields: [mock(PRODUCTS.TITLE, { has_field_values: "list" })],
+        });
         screen.findByLabelText("Search the list");
       });
     });

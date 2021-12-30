@@ -1,6 +1,6 @@
 # About the Information we collect:
 
-Metabase uses Google Analytics to collect anonymous usage information from the installed servers that enable this feature. Below are the events we have instrumented, as well as the information we collect about the user performing the action and the instance being used.
+Metabase uses Google Analytics and Snowplow to collect anonymous usage information from the installed servers that enable this feature. Below is a representative list of the events we have instrumented, as well as the information we collect about the user performing the action and the instance being used.
 
 We also will phone home some anonymized metrics from the metabase application server on a nightly basis. Note that we don't collect any usernames, any emails, the server IP, database details of any kind or any personally identifiable information in this process.
 
@@ -8,9 +8,11 @@ While this list of anonymous information we collect might seem long, it’s usef
 
 We collect this information to improve your experience and the quality of Metabase. We use the information you voluntarily share to understand how our users are actually using our product, what kinds of features to prioritize, and how many items to target in our design process. For example, without knowing what the distribution of the number of accounts on each instance in our install base is, we can't know whether the tools we provide can't scale until someone complains. And even then, we only hear complaints and not the people who are quietly happily using us. We're striving to create the best product possible.
 
-In the list below, we spell out exactly why we collect each bit of information.
+If you prefer not to provide us with this anonymous usage data, you can always go to your instance’s admin section and toggle off the option for `Anonymous Tracking`.
 
-If you prefer not to provide us with this anonymous usage data, please go to your instance’s admin section and toggle off the option for `Anonymous Tracking`.
+If you're in the process of setting up your Metabase, an admin can also toggle off tracking during the `Usage Data Preferences` onboarding step. We collect a few anonymous events before that point, but won't do so anymore if you choose to opt out.
+
+In the list below, we spell out exactly why we collect each bit of information.
 
 ### Example questions we want to answer:
 
@@ -54,6 +56,15 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | Databases            | We simply capture when databases are created or removed and what types of databases are being used                                                                       | This helps Metabase ensure that we spend the most time and attention on the types of databases that are most popular to users.                                                                                                                        |
 | Data Model           | The saving and updates on tables, fields, segments, and metrics are all counted, along with a few other details such as what types of special metadata choices are made. | We use this data to help ensure that Metabase provides an appropriate set of options for users to describe their data and also gives us a sense for how much time users spend marking up their schemas.                                               |
 
+### Snowplow Events
+
+| Category               | Action                                                                                                                                                            | Why we collect this                                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Set up                 | General clickthrough tracking of what steps are completed vs. abandoned                                                                                           | This provides us with a better understanding of how we can improve the on-ramp for new Metabase users.                                      |
+| Database configuration | Whether your database connection attempt is successful vs. unsuccessful, which database you connect with. We don't collect any of your database credentials here. | Helps us understand which databases are most popular and performing as expected so we can invest in improving how Metabase works with them. |
+| Dashboard              | When you create a new dashboard or add a new question to a dashboard.                                                                                             | We can use this to determine if Metabase is adding value to your organization, and therefore if we're doing our jobs correctly.             |
+| Account                | When a new user is created or a new instance is set up.                                                                                                           | This powers basic reporting to help us understand how your Metabase team is growing.                                                        |
+
 ### Server-side Analytics
 
 | Metric                                            | An example of why we collect this                                                                                                                       |
@@ -80,4 +91,4 @@ NOTE: We never capture any specific details in any of our tracking methodology s
 | Language                                          | How many non-English speaking users do we have? How fast should we be pushing internationalization?                                                     |
 | OS and JVM Version                                | Can we deprecate Java 7 yet?                                                                                                                        |
 
-Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj](https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj).
+Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/analytics/](https://github.com/metabase/metabase/blob/master/src/metabase/analytics).

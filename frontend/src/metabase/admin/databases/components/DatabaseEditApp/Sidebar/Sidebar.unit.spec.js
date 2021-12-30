@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 
 it("syncs database schema", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const syncDatabaseSchema = jest.fn();
 
   render(
@@ -22,7 +22,7 @@ it("syncs database schema", () => {
 
 it("rescans database field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const rescanDatabaseFields = jest.fn();
 
   render(
@@ -38,7 +38,7 @@ it("rescans database field values", () => {
 
 it("discards saved field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId };
+  const database = { id: databaseId, initial_sync_status: "complete" };
   const discardSavedFieldValues = jest.fn();
 
   render(
@@ -96,4 +96,21 @@ it("removes database", () => {
   fireEvent.click(deleteButton);
 
   expect(deleteDatabase).toHaveBeenCalled();
+});
+
+it("hides syncing actions until the initial sync", () => {
+  const databaseId = 1;
+  const database = { id: databaseId, initial_sync_status: "incomplete" };
+
+  render(<Sidebar database={database} />);
+
+  const statusButton = screen.getByText("Syncing database…");
+  const syncButton = screen.queryByText("Sync database schema now");
+  const rescanButton = screen.queryByText("Re-scan field values now");
+  const discardButton = screen.queryByText("Discard saved field values");
+
+  expect(statusButton).toBeInTheDocument();
+  expect(syncButton).not.toBeInTheDocument();
+  expect(rescanButton).not.toBeInTheDocument();
+  expect(discardButton).not.toBeInTheDocument();
 });

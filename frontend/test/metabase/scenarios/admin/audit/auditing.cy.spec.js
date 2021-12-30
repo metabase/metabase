@@ -66,7 +66,7 @@ describeWithToken("audit > auditing", () => {
     cy.log("View newly created admin's question");
     cy.visit("/collection/root?type");
     cy.findByText(ADMIN_QUESTION).click();
-    cy.findByPlaceholderText(/ID/i);
+    cy.findByText(/ID/i);
   });
 
   beforeEach(cy.signInAsAdmin);

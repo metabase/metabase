@@ -265,12 +265,22 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
   );
 
 export const CustomFormFooter = (
-  { submitTitle, cancelTitle = t`Cancel`, onCancel, footerExtraButtons },
+  {
+    submitTitle,
+    cancelTitle = t`Cancel`,
+    onCancel,
+    footerExtraButtons,
+    fullWidth,
+  },
   { isModal },
 ) => {
   return (
-    <div className={cx("flex align-center", { "flex-reverse": isModal })}>
-      <CustomFormSubmit>{submitTitle}</CustomFormSubmit>
+    <div
+      className={cx("flex align-center", {
+        "flex-reverse": isModal,
+      })}
+    >
+      <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
         <Button className="mx1" onClick={onCancel}>
           {cancelTitle}

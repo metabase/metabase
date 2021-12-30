@@ -4,6 +4,8 @@ import {
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestionAdhoc,
+  visualize,
+  getDimensionByName,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -383,7 +385,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+  it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
@@ -421,13 +423,11 @@ describe("scenarios > question > nested", () => {
      *  Extract it if we have the need for it anywhere else
      */
     function isSelected(text) {
-      cy.findByText(text)
-        .closest(".List-item")
-        .should($el => {
-          const className = $el[0].className;
-
-          expect(className).to.contain("selected");
-        });
+      getDimensionByName({ name: text }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     }
   });
 
@@ -571,7 +571,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.get("@consoleWarn").should(
         "not.be.calledWith",
         "Removing invalid MBQL clause",
@@ -583,12 +584,12 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      visualize();
+
       cy.findAllByRole("button")
         .contains("Summarize")
         .click();
-      cy.findByText("Add a metric").click();
+      cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
       popover()
         .findByText("VAL")

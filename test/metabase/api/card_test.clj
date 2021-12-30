@@ -11,16 +11,16 @@
             [metabase.api.pivots :as pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as http]
-            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview
-                                     Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
+            [metabase.models :refer [Card CardFavorite Collection Dashboard Database ModerationReview Pulse PulseCard
+                                     PulseChannel PulseChannelRecipient Table ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
@@ -48,6 +48,7 @@
    :collection_id       nil
    :collection_position nil
    :dataset_query       {}
+   :dataset             false
    :description         nil
    :display             "scalar"
    :enable_embedding    false
@@ -137,7 +138,7 @@
                         {:database (u/the-id db)
                          :type     :native
                          :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
-                                    :template-tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                    :template-tags {:category {:id           "_CATEGORY_ID_"
                                                                :name         "category"
                                                                :display_name "Category"
                                                                :type         "number"
@@ -146,6 +147,21 @@
 
 (defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
   `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
+
+(deftest run-query-with-parameters-test
+  (testing "POST /api/card/:id/query"
+    (testing "should respect `:parameters`"
+      (with-temp-native-card-with-params [{db-id :id} {card-id :id}]
+        (is (schema= {:database_id (s/eq db-id)
+                      :row_count   (s/eq 1)
+                      :data        {:rows     (s/eq [[8]])
+                                    s/Keyword s/Any}
+                      s/Keyword    s/Any}
+                     (mt/user-http-request
+                      :rasta :post 202 (format "card/%d/query" card-id)
+                      {:parameters [{:type   :number
+                                     :target [:variable [:template-tag :category]]
+                                     :value  2}]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -417,9 +433,9 @@
       (mt/with-temp Card [card]
         (is (= nil
                (do
-               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
-               (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
-               (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
+                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+                (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:cache_ttl nil})
+                (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1277,7 +1293,7 @@
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
-  (json/generate-string [{:type   :category
+  (json/generate-string [{:type   :number
                           :target [:variable [:template-tag :category]]
                           :value  2}]))
 
@@ -1290,7 +1306,7 @@
                (str/split-lines
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv"
                                                                (u/the-id card)))))))))
-  (testing "with-paramters"
+  (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= ["COUNT(*)"
@@ -1343,8 +1359,8 @@
                                             :middleware {:add-default-userland-constraints? true
                                                          :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
-      (let [orig card-api/run-query-for-card-async]
-        (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
+      (let [orig qp.card/run-query-for-card-async]
+        (with-redefs [qp.card/run-query-for-card-async (fn [card-id export-format & options]
                                                           (apply orig card-id export-format
                                                                  :run (fn [{:keys [constraints]} _]
                                                                         {:constraints constraints})
@@ -1363,28 +1379,6 @@
                           "check to make sure the `with-redefs` in the test above actually works)")
               (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
                      (mt/user-http-request :rasta :post 200 (format "card/%d/query" (u/the-id card))))))))))))
-
-(deftest query-cache-ttl-hierarchy-test
-  (mt/discard-setting-changes [enable-query-caching]
-    (public-settings/enable-query-caching true)
-    (testing "card ttl only"
-      (mt/with-temp* [Card [card {:cache_ttl 1337}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {}))))))
-    (testing "multiple ttl, dash wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash {:cache_ttl 1338}]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1338) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "multiple ttl, db wins"
-      (mt/with-temp* [Database [db {:cache_ttl 1337}]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= (* 3600 1337) (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))
-    (testing "no ttl, nil res"
-      (mt/with-temp* [Database [db]
-                      Dashboard [dash]
-                      Card [card {:database_id (u/the-id db)}]]
-        (is (= nil (:cache-ttl (card-api/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
 (defn- test-download-response-headers
   [url]
@@ -1417,6 +1411,7 @@
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |
@@ -1516,21 +1511,23 @@
 
 (deftest changed?-test
   (letfn [(changed? [before after]
-            (#'card-api/changed? before after {:ignore card-api/card-compare-ignores}))]
+            (#'card-api/changed? card-api/card-compare-keys before after))]
    (testing "Ignores keyword/string"
      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties passed in `card-api/card-compare-ignores"
+   (testing "Ignores properties not in `card-api/card-compare-keys"
      (is (false? (changed? {:collection_id 1
                             :collection_position 0}
                            {:collection_id 2
                             :collection_position 1}))))
    (testing "Sees changes"
-     (is (true? (changed? {:description "foo"} {:description "diff"})))
-     (testing "But only when they are different in the after"
-       (is (false? (changed? {:description "foo" :title "something" :collection_id 1}
+     (is (true? (changed? {:dataset_query {:type :query}}
+                          {:dataset_query {:type :query
+                                           :query {}}})))
+     (testing "But only when they are different in the after, not just omitted"
+       (is (false? (changed? {:dataset_query {} :collection_id 1}
                              {:collection_id 1})))
-       (is (true? (changed? {:description "foo" :title "something" :collection_id 1}
-                            {:description nil :title nil :collection_id 1})))))))
+       (is (true? (changed? {:dataset_query {} :collection_id 1}
+                            {:dataset_query nil :collection_id 1})))))))
 
 (deftest update-verified-card-test
   (tools.macro/macrolet
@@ -1562,7 +1559,7 @@
         (testing "Changing core attributes un-verifies the card"
           (with-card :verified
             (is (verified? card))
-            (update-card card {:description "a new description"})
+            (update-card card (update-in card [:dataset_query :query :source-table] inc))
             (is (not (verified? card)))
             (testing "The unverification edit has explanatory text"
               (is (= "Unverified due to edit"
@@ -1582,7 +1579,22 @@
             (testing "making public"
               (remains-verified
                (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                  :public_uuid (UUID/randomUUID)})))))
+                                  :public_uuid (UUID/randomUUID)})))
+            (testing "Changing description"
+              (remains-verified
+               (update-card card {:description "foo"})))
+            (testing "Changing name"
+              (remains-verified
+               (update-card card {:name "foo"})))
+            (testing "Changing archived"
+              (remains-verified
+               (update-card card {:archived true})))
+            (testing "Changing display"
+              (remains-verified
+               (update-card card {:display :line})))
+            (testing "Changing visualization settings"
+              (remains-verified
+               (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
         (testing "Does not add a new nil moderation review when not verified"
           (with-card :not-verified
             (is (empty? (reviews card)))
@@ -1821,3 +1833,76 @@
             (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
+
+(deftest dataset-card
+  (testing "Setting a question to a dataset makes it viz type table"
+    (mt/with-temp Card [card {:display       :bar
+                              :dataset_query (mbql-count-query)}]
+      (is (= {:display "table" :dataset true}
+             (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                       (assoc card :dataset true))
+                 (select-keys [:display :dataset]))))))
+  (testing "Cards preserve their edited metadata"
+    (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+            (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
+            (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                       :type/Integer :type/Quantity
+                                       :type/Float :type/Cost
+                                       :type/Text :type/Name
+                                       base-type))
+            (add-preserved [cols] (map merge
+                                       cols
+                                       (repeat {:description "user description"
+                                                :display_name "user display name"})
+                                       (map (comp
+                                             (fn [x] {:semantic_type x})
+                                             refine-type
+                                             :base_type)
+                                            cols)))]
+      (mt/with-temp* [Card [mbql-ds {:dataset_query
+                                     {:database (mt/id)
+                                      :type     :query
+                                      :query    {:source-table (mt/id :venues)}}
+                                     :dataset true}]
+                      Card [mbql-nested {:dataset_query
+                                         {:database (mt/id)
+                                          :type     :query
+                                          :query    {:source-table
+                                                     (str "card__" (u/the-id mbql-ds))}}}]
+                      Card [native-ds {:dataset true
+                                       :dataset_query
+                                       {:database (mt/id)
+                                        :type :native
+                                        :native
+                                        {:query
+                                         "select * from venues"
+                                         :template-tags {}}}}]
+                      Card [native-nested {:dataset_query
+                                           {:database (mt/id)
+                                            :type :query
+                                            :query {:source-table
+                                                    (str "card__" (u/the-id native-ds))}}}]]
+        (doseq [[query-type card-id nested-id] [[:mbql
+                                                 (u/the-id mbql-ds) (u/the-id mbql-nested)]
+                                                [:native
+                                                 (u/the-id native-ds) (u/the-id native-nested)]]]
+          (query! card-id) ;; populate metadata
+          (let [metadata (db/select-one-field :result_metadata Card :id card-id)
+                ;; simulate updating metadat with user changed stuff
+                user-edited (add-preserved metadata)]
+            (db/update! Card card-id :result_metadata user-edited)
+            (testing "Saved metadata preserves user edits"
+              (is (= (map only-user-edits user-edited)
+                     (map only-user-edits (db/select-one-field :result_metadata Card :id card-id)))))
+            (testing "API response includes user edits"
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! card-id)
+                          :data :results_metadata :columns
+                          (map only-user-edits)
+                          (map #(update % :semantic_type keyword))))))
+            (testing "Nested queries have metadata"
+              (is (= (map only-user-edits user-edited)
+                     (->> (query! nested-id)
+                          :data :results_metadata :columns
+                          (map only-user-edits)
+                          (map #(update % :semantic_type keyword))))))))))))

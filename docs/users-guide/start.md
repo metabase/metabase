@@ -3,8 +3,8 @@
 ## Some basics
 
 - [An overview of Metabase](01-what-is-metabase.md)
-- [The basics of databases](02-database-basics.md)
 - [Basic exploration in Metabase](03-basic-exploration.md)
+- [Field types in Metabase](field-types.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 
 ## Asking questions with the query builder
@@ -12,6 +12,7 @@
 - [Asking questions in Metabase](04-asking-questions.md)
 - [Using the notebook editor to ask custom questions](custom-questions.md)
 - [Writing custom expressions in the notebook editor](expressions.md)
+- [Full list of expressions: aggregations and functions](expressions-list.md)
 - [How to visualize the answers to questions](05-visualizing-results.md)
 - [Referencing saved question in queries](referencing-saved-questions-in-queries.md)
 
@@ -27,7 +28,7 @@
 - [Making dashboards interactive](interactive-dashboards.md)
 - [Creating dashboard charts with multiple series](09-multi-series-charting.md)
 
-## Set up subscriptions and alerts
+## Setting up subscriptions and alerts
 
 - [Setting up dashboard subscriptions](dashboard-subscriptions.md)
 - [Setting and getting alerts](15-alerts.md)

@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -26,79 +27,11 @@ const defaultStyleValue = {
   fontWeight: 700,
 };
 
-type Value = any;
-type Option = any;
-
-export type LayoutRendererProps = {
-  valuesList: React.Element,
-  optionsList: ?React.Element,
-  isFocused: boolean,
-  isAllSelected: boolean,
-  isFiltered: boolean,
-  onClose: () => void,
-};
-
-type Props = {
-  value: Value[],
-  onChange: (value: Value[]) => void,
-
-  options: Option[],
-
-  placeholder?: string,
-  autoFocus?: boolean,
-  multi?: boolean,
-
-  style: { [key: string]: string | number },
-  color: string,
-
-  idKey: string | number | (() => string),
-  valueKey: string | number | (() => any),
-  labelKey: string | number | (() => string),
-
-  removeSelected?: boolean,
-  filterOption: (option: Option, searchValue: string) => boolean,
-
-  onInputChange?: string => string,
-  onInputKeyDown?: event => void,
-  onFocus?: () => void,
-  onBlur?: () => void,
-
-  validateValue: (value: Value) => boolean,
-  updateOnInputChange?: boolean,
-  updateOnInputBlur?: boolean,
-  // if provided, parseFreeformValue parses the input string into a value,
-  // or returns null to indicate an invalid value
-  parseFreeformValue: (value: string) => ?Value,
-
-  valueRenderer: (value: Value) => React.Element,
-  optionRenderer: (option: Option) => React.Element,
-  layoutRenderer: (props: LayoutRendererProps) => React.Element,
-
-  style?: any,
-  className?: string,
-  valueStyle?: any,
-  optionsStyle?: any,
-  optionsClassName?: string,
-};
-
-type State = {
-  inputValue: string,
-  searchValue: string,
-  filteredOptions: Option[],
-  selectedOptionValue: ?Value,
-  isFocused: boolean,
-  isAllSelected: boolean,
-  listIsHovered: boolean,
-};
-
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
-  props: Props;
-  state: State;
+  scrollElement = null;
 
-  scrollElement: ?HTMLDivElement = null;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -136,12 +69,12 @@ export default class TokenField extends Component {
     this._updateFilteredValues(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    this._updateFilteredValues((nextProps: Props));
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    this._updateFilteredValues(nextProps);
   }
 
-  setInputValue(inputValue: string, setSearchValue: boolean = true) {
-    const newState: { inputValue: string, searchValue?: string } = {
+  setInputValue(inputValue, setSearchValue = true) {
+    const newState = {
       inputValue,
     };
     if (setSearchValue) {
@@ -150,11 +83,11 @@ export default class TokenField extends Component {
     this.setState(newState, () => this._updateFilteredValues(this.props));
   }
 
-  clearInputValue(clearSearchValue: boolean = true) {
+  clearInputValue(clearSearchValue = true) {
     this.setInputValue("", clearSearchValue);
   }
 
-  _id(value: Value) {
+  _id(value) {
     const { idKey } = this.props;
 
     if (typeof idKey === "function") {
@@ -166,21 +99,21 @@ export default class TokenField extends Component {
     }
   }
 
-  _value(option: Option) {
+  _value(option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
   }
 
-  _label(option: Option) {
+  _label(option) {
     const { labelKey } = this.props;
     return typeof labelKey === "function" ? labelKey(option) : option[labelKey];
   }
 
-  _key(option: Option) {
+  _key(option) {
     return JSON.stringify(this._value(option));
   }
 
-  _isLastFreeformValue(inputValue: string) {
+  _isLastFreeformValue(inputValue) {
     const { value, parseFreeformValue, updateOnInputChange } = this.props;
     if (parseFreeformValue && updateOnInputChange) {
       const freeformValue = parseFreeformValue(inputValue);
@@ -190,7 +123,7 @@ export default class TokenField extends Component {
     }
   }
 
-  _updateFilteredValues = (props: Props) => {
+  _updateFilteredValues = props => {
     let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
     const selectedValueIds = new Set(
@@ -432,13 +365,13 @@ export default class TokenField extends Component {
     }
   }
 
-  addOption = (option: Option) => {
+  addOption = option => {
     const replaceLast = this._isLastFreeformValue(this.state.inputValue);
     // add the option's value to the current value
     this.addValue(this._value(option), replaceLast);
   };
 
-  addValue(valueToAdd: Value, replaceLast: boolean = false) {
+  addValue(valueToAdd, replaceLast = false) {
     const { value, onChange, multi } = this.props;
     if (!Array.isArray(valueToAdd)) {
       valueToAdd = [valueToAdd];
@@ -458,7 +391,7 @@ export default class TokenField extends Component {
     // )
   }
 
-  removeValue(valueToRemove: Value) {
+  removeValue(valueToRemove) {
     const { value, onChange } = this.props;
     const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
@@ -466,11 +399,11 @@ export default class TokenField extends Component {
     // this.setInputValue("");
   }
 
-  _valueIsEqual(v1: any, v2: any) {
+  _valueIsEqual(v1, v2) {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps: Props, prevState: State) {
+  componentDidUpdate(prevProps, prevState) {
     const input = this.inputRef.current;
 
     if (

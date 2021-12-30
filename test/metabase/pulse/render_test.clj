@@ -1,11 +1,12 @@
 (ns metabase.pulse.render-test
   (:require [clojure.test :refer :all]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.card :refer [Card]]
+            [metabase.models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
             [metabase.pulse :as pulse]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.util :as u]))
 
 ;; Let's make sure rendering Pulses actually works
 
@@ -32,10 +33,12 @@
 (deftest detect-pulse-chart-type-test
   (is (= :scalar
          (render/detect-pulse-chart-type {:display :anything}
+                                         {}
                                          {:cols [{:base_type :type/Number}]
                                           :rows [[6]]})))
   (is (= :smartscalar
          (render/detect-pulse-chart-type {:display :smartscalar}
+                                         {}
                                          {:cols     [{:base_type :type/Temporal
                                                       :name      "month"}
                                                      {:base_type :type/Number
@@ -48,6 +51,34 @@
                                                       :last-change    50.0}]})))
   (is (= :bar
          (render/detect-pulse-chart-type {:display :bar}
+                                         {}
+                                         {:cols [{:base_type :type/Text}
+                                                 {:base_type :type/Number}]
+                                          :rows [["A" 2]]})))
+  (is (= :combo
+         (render/detect-pulse-chart-type {:display :combo}
+                                         {}
+                                         {:cols [{:base_type :type/Temporal}
+                                                 {:base_type :type/Number}]
+                                          :rows [[#t "2020" 2]
+                                                 [#t "2021" 3]]})))
+
+  (is (= :multiple
+         (mt/with-temp* [Card                [card1 {:display :something}]
+                         Card                [card2 {:display :whatever}]
+                         Dashboard           [dashboard]
+                         DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
+                         DashboardCardSeries [dcs1 {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+           (render/detect-pulse-chart-type card1
+                                           dc1
+                                           {:cols [{:base_type :type/Temporal}
+                                                   {:base_type :type/Number}]
+                                            :rows [[#t "2020" 2]
+                                                   [#t "2021" 3]]}))))
+
+  (is (= :funnel
+         (render/detect-pulse-chart-type {:display :funnel}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["A" 2]]})))
@@ -55,6 +86,7 @@
   ;; timeseries line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}
+                                         {}
                                          {:cols [{:base_type :type/Temporal}
                                                  {:base_type :type/Number}]
                                           :rows [[#t "2020" 2]
@@ -62,12 +94,14 @@
   ;; Category line chart
   (is (= :sparkline
          (render/detect-pulse-chart-type {:display :line}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["Red" 2]
                                                  ["Blue" 3]]})))
   (is (= :categorical/donut
          (render/detect-pulse-chart-type {:display :pie}
+                                         {}
                                          {:cols [{:base_type :type/Text}
                                                  {:base_type :type/Number}]
                                           :rows [["apple" 3]

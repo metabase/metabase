@@ -3,7 +3,10 @@
     "strict": [2, "never"],
     "no-undef": 2,
     "no-var": 1,
-    "no-unused-vars": [1, { "vars": "all", "args": "none" }],
+    "no-unused-vars": [
+      1,
+      { "vars": "all", "args": "none", "varsIgnorePattern": "^_" }
+    ],
     "no-empty": [1, { "allowEmptyCatch": true }],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
@@ -22,6 +25,10 @@
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
     "react/forbid-component-props": [2, { "forbid": ["w", "h"] }],
+    "react-hooks/exhaustive-deps": [
+      "warn",
+      { "additionalHooks": "(useSyncedQueryString|useAsyncFunction)" }
+    ],
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": "error",
@@ -69,13 +76,12 @@
       },
       "plugins": ["@typescript-eslint"],
       "rules": {
+        "prefer-rest-params": "off",
         "@typescript-eslint/explicit-module-boundary-types": "off",
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/no-use-before-define": [
-          "error",
-          { "functions": false }
-        ]
+        "@typescript-eslint/no-this-alias": "off",
+        "@typescript-eslint/no-unused-vars": "off"
       }
     }
   ]

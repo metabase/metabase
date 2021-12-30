@@ -108,9 +108,9 @@ export const table = (
       "table.columns": [
         { name: "card_id", enabled: true },
         { name: "query_runs", enabled: true },
-        { name: "avg_exec_time", enabled: true },
+        { name: "avg_exec_time_45", enabled: true },
         { name: "cache_ttl", enabled: true },
-        { name: "total_runtime", enabled: true },
+        { name: "total_runtime_45", enabled: true },
         { name: "database_id", enabled: true },
         { name: "table_id", enabled: true },
         { name: "collection_id", enabled: true },

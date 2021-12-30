@@ -11,6 +11,7 @@
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -557,7 +558,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has reached its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest below-goal-alert-test
@@ -600,7 +601,7 @@
        {:email
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
-                                    [test-card-result png-attachment])
+                                    [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
 (deftest native-query-with-user-specified-axes-test
@@ -750,7 +751,7 @@
                                               :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
-                   (pulse/execute-card {:creator_id (mt/user->id :rasta)} card))))))
+                   (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."

@@ -1,19 +1,21 @@
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-declare var ace: any;
+/*global ace*/
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
 import { getIn, assocIn, updateIn } from "icepick";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
-import { loadMetadataForQuery } from "metabase/redux/metadata";
+import { loadMetadataForQueries } from "metabase/redux/metadata";
+import { addUndo } from "metabase/redux/undo";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import {
   loadCard,
@@ -27,20 +29,21 @@ import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
+
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-  getValueAndFieldIdPopulatedParametersFromCard,
-} from "metabase/meta/Card";
-import { getParameterValuesByIdFromQueryParams } from "metabase/meta/Parameter";
+import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
+import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
+
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import {
   getCard,
   getQuestion,
   getOriginalQuestion,
+  getOriginalCard,
   getIsEditing,
   getTransformedSeries,
   getRawSeries,
@@ -55,9 +58,11 @@ import {
   getNativeEditorSelectedText,
   getSnippetCollectionId,
   getQueryResults,
+  isBasedOnExistingQuestion,
 } from "./selectors";
+import { trackNewQuestionSaved } from "./tracking";
 
-import { MetabaseApi, CardApi, UserApi } from "metabase/services";
+import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
@@ -75,19 +80,15 @@ import Snippets from "metabase/entities/snippets";
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
 
-import type { Card } from "metabase-types/types/Card";
-
-type UiControls = {
-  isEditing?: boolean,
-  isShowingTemplateTagsEditor?: boolean,
-  isShowingNewbModal?: boolean,
-  queryBuilderMode?: "view" | "notebook",
-  isShowingSummarySidebar?: boolean,
-};
+import {
+  getQueryBuilderModeFromLocation,
+  getPathNameFromQueryBuilderMode,
+  isAdHocDatasetQuestion,
+} from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagWithoutSnippetsCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = question => {
   const query = question.query();
   return query instanceof NativeQuery
     ? query.templateTagsWithoutSnippets().length
@@ -148,10 +149,6 @@ export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
 
-function getQueryBuilderModeFromLocation(location) {
-  return location.pathname.endsWith("/notebook") ? "notebook" : "view";
-}
-
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
@@ -160,17 +157,16 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
-        await dispatch(setCardAndRun(location.state.card, false));
+        const shouldRefreshUrl = location.state.card.dataset;
+        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
         await dispatch(setCurrentState(location.state));
       }
     }
-    if (
-      getQueryBuilderMode(getState()) !==
-      getQueryBuilderModeFromLocation(location)
-    ) {
+    const queryBuilderModeFromURL = getQueryBuilderModeFromLocation(location);
+    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
-        setQueryBuilderMode(getQueryBuilderModeFromLocation(location), {
-          shouldUpdateUrl: false,
+        setQueryBuilderMode(queryBuilderModeFromURL, {
+          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
         }),
       );
     }
@@ -246,11 +242,18 @@ export const updateUrl = createThunkAction(
     } else {
       question = new Question(card, getMetadata(getState()));
     }
+
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
         (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    }
+
+    // prevent clobbering of hash when there are fake parameters on the question
+    // consider handling this in a more general way, somehow
+    if (question.isStructured() && question.parameters().length > 0) {
+      dirty = true;
     }
 
     if (!queryBuilderMode) {
@@ -270,9 +273,10 @@ export const updateUrl = createThunkAction(
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
-      pathname:
-        (urlParsed.pathname || "") +
-        (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
+      pathname: getPathNameFromQueryBuilderMode({
+        pathname: urlParsed.pathname || "",
+        queryBuilderMode,
+      }),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
       state: newState,
@@ -318,6 +322,23 @@ export const redirectToNewQuestionFlow = createThunkAction(
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
 
+async function verifyMatchingDashcardAndParameters({
+  dispatch,
+  dashboardId,
+  cardId,
+  parameters,
+  metadata,
+}) {
+  try {
+    const dashboard = await DashboardApi.get({ dashId: dashboardId });
+    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+      dispatch(setErrorPage({ status: 403 }));
+    }
+  } catch (error) {
+    dispatch(setErrorPage(error));
+  }
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params, queryParams) => {
   return async (dispatch, getState) => {
@@ -329,7 +350,7 @@ export const initializeQB = (location, params, queryParams) => {
 
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
-    const uiControls: UiControls = {
+    const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
@@ -356,7 +377,6 @@ export const initializeQB = (location, params, queryParams) => {
         // if we have a serialized card then unpack and use it
         if (serializedCard) {
           card = deserializeCardFromUrl(serializedCard);
-
           // if serialized query has database we normalize syntax to support older mbql
           if (card.dataset_query.database != null) {
             card.dataset_query = normalize(card.dataset_query);
@@ -364,6 +384,8 @@ export const initializeQB = (location, params, queryParams) => {
         } else {
           card = {};
         }
+
+        const deserializedCard = card;
 
         // load the card either from `cardId` parameter or the serialized card
         if (cardId) {
@@ -373,18 +395,48 @@ export const initializeQB = (location, params, queryParams) => {
           // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
           // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
           card.original_card_id = card.id;
+
+          // if there's a card in the url, it may have parameters from a dashboard
+          if (deserializedCard && deserializedCard.parameters) {
+            const metadata = getMetadata(getState());
+            const { dashboardId, parameters } = deserializedCard;
+            verifyMatchingDashcardAndParameters({
+              dispatch,
+              dashboardId,
+              cardId,
+              parameters,
+              metadata,
+            });
+
+            card.parameters = parameters;
+            card.dashboardId = dashboardId;
+          }
         } else if (card.original_card_id) {
+          const deserializedCard = card;
           // deserialized card contains the card id, so just populate originalCard
           originalCard = await loadCard(card.original_card_id);
-          if (
-            cardIsEquivalent(card, originalCard, { checkParameters: false }) &&
-            !cardIsEquivalent(card, originalCard, { checkParameters: true })
-          ) {
-            // if the cards are equal except for parameters, copy over the id to undirty the card
-            card.id = originalCard.id;
-          } else if (cardIsEquivalent(card, originalCard)) {
-            // if the cards are equal then show the original
+
+          if (cardIsEquivalent(deserializedCard, originalCard)) {
             card = Utils.copy(originalCard);
+
+            if (
+              !cardIsEquivalent(deserializedCard, originalCard, {
+                checkParameters: true,
+              })
+            ) {
+              const metadata = getMetadata(getState());
+              const { dashboardId, parameters } = deserializedCard;
+              verifyMatchingDashcardAndParameters({
+                dispatch,
+                dashboardId,
+                cardId: card.id,
+                parameters,
+                metadata,
+              });
+
+              card.parameters = parameters;
+              card.dashboardId = dashboardId;
+            }
           }
         }
         // if this card has any snippet tags we might need to fetch snippets pending permissions
@@ -412,7 +464,7 @@ export const initializeQB = (location, params, queryParams) => {
           }
         }
 
-        MetabaseAnalytics.trackEvent(
+        MetabaseAnalytics.trackStructEvent(
           "QueryBuilder",
           "Query Loaded",
           card.dataset_query.type,
@@ -424,7 +476,7 @@ export const initializeQB = (location, params, queryParams) => {
         // if this is the users first time loading a saved card on the QB then show them the newb modal
         if (cardId && currentUser.is_qbnewb) {
           uiControls.isShowingNewbModal = true;
-          MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
+          MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
         }
 
         if (card.archived) {
@@ -433,6 +485,18 @@ export const initializeQB = (location, params, queryParams) => {
             setErrorPage({
               data: {
                 error_code: "archived",
+              },
+              context: "query-builder",
+            }),
+          );
+          card = null;
+        }
+
+        if (!card.dataset && location.pathname.startsWith("/dataset")) {
+          dispatch(
+            setErrorPage({
+              data: {
+                error_code: "not-found",
               },
               context: "query-builder",
             }),
@@ -483,7 +547,7 @@ export const initializeQB = (location, params, queryParams) => {
         }
       }
 
-      MetabaseAnalytics.trackEvent(
+      MetabaseAnalytics.trackStructEvent(
         "QueryBuilder",
         "Query Started",
         card.dataset_query.type,
@@ -515,15 +579,12 @@ export const initializeQB = (location, params, queryParams) => {
       );
     }
 
-    for (const [paramId, value] of Object.entries(
-      (card && card.parameterValues) || {},
-    )) {
-      dispatch(setParameterValue(paramId, value));
-    }
-
     card = question && question.card();
     const metadata = getMetadata(getState());
-    const parameters = getValueAndFieldIdPopulatedParametersFromCard(card);
+    const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+      card,
+      metadata,
+    );
     const parameterValues = getParameterValuesByIdFromQueryParams(
       parameters,
       queryParams,
@@ -564,7 +625,7 @@ export const initializeQB = (location, params, queryParams) => {
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
+  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Data Reference");
 });
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR =
@@ -572,7 +633,10 @@ export const TOGGLE_TEMPLATE_TAGS_EDITOR =
 export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   () => {
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Toggle Template Tags Editor",
+    );
   },
 );
 
@@ -585,7 +649,7 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
 
 export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Snippet Sidebar");
+  MetabaseAnalytics.trackStructEvent("QueryBuilder", "Toggle Snippet Sidebar");
 });
 
 export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
@@ -654,14 +718,19 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
     await UserApi.update_qbnewb({ id: currentUser.id });
-    MetabaseAnalytics.trackEvent("QueryBuilder", "Close Newb Modal");
+    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Close Newb Modal");
   };
 });
 
-export const loadMetadataForCard = card => (dispatch, getState) =>
-  dispatch(
-    loadMetadataForQuery(new Question(card, getMetadata(getState())).query()),
-  );
+export const loadMetadataForCard = card => (dispatch, getState) => {
+  const metadata = getMetadata(getState());
+  const question = new Question(card, metadata);
+  const queries = [question.query()];
+  if (question.isDataset()) {
+    queries.push(question.composeDataset().query());
+  }
+  return dispatch(loadMetadataForQueries(queries));
+};
 
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
@@ -712,7 +781,11 @@ export const setTemplateTag = createThunkAction(
       const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (!uiControls.isEditing && updatedCard.id) {
+      if (
+        !uiControls.isEditing &&
+        uiControls.queryBuilderMode !== "dataset" &&
+        updatedCard.id
+      ) {
         delete updatedCard.id;
         delete updatedCard.name;
         delete updatedCard.description;
@@ -831,13 +904,15 @@ export const navigateToNewCardInsideQB = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard }) => {
     return async (dispatch, getState) => {
-      if (cardIsEquivalent(previousCard, nextCard)) {
+      if (previousCard === nextCard) {
+        // Do not reload questions with breakouts when clicked on a legend item
+      } else if (cardIsEquivalent(previousCard, nextCard)) {
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(setCardAndRun(await loadCard(nextCard.id)));
       } else {
         const card = getCardAfterVisualizationClick(nextCard, previousCard);
         const url = Urls.question(null, card);
-        if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
+        if (shouldOpenInBlankWindow(url, { blankOnMetaOrCtrlKey: true })) {
           open(url);
         } else {
           dispatch(onCloseSidebars());
@@ -845,7 +920,9 @@ export const navigateToNewCardInsideQB = createThunkAction(
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
-          dispatch(setCardAndRun(card));
+          // When the dataset query changes, we should loose the dataset flag,
+          // to start building a new ad-hoc question based on a dataset
+          dispatch(setCardAndRun({ ...card, dataset: false }));
         }
       }
     };
@@ -866,15 +943,23 @@ export const updateQuestion = (
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
+    const mode = getQueryBuilderMode(getState());
 
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
       !doNotClearNameAndId &&
       !getIsEditing(getState()) &&
-      newQuestion.isSaved()
+      newQuestion.isSaved() &&
+      mode !== "dataset"
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+
+      // When the dataset query changes, we should loose the dataset flag,
+      // to start building a new ad-hoc question based on a dataset
+      if (newQuestion.isDataset()) {
+        newQuestion = newQuestion.setDataset(false);
+      }
     }
 
     const queryResult = getFirstQueryResult(getState());
@@ -931,7 +1016,10 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (getQueryBuilderMode(getState()) !== "view" && newQuestion.isNative()) {
+    if (
+      getQueryBuilderMode(getState()) === "notebook" &&
+      newQuestion.isNative()
+    ) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
@@ -965,7 +1053,7 @@ export const updateQuestion = (
           newQuestion.query().dependentMetadata(),
         )
       ) {
-        await dispatch(loadMetadataForQuery(newQuestion.query()));
+        await dispatch(loadMetadataForCard(newQuestion.card()));
       }
 
       // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
@@ -1018,10 +1106,15 @@ export const apiCreateQuestion = question => {
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
       createdQuestion.query().datasetQuery().type,
+    );
+    trackNewQuestionSaved(
+      question,
+      createdQuestion,
+      isBasedOnExistingQuestion(getState()),
     );
 
     // Saving a card, locks in the current display as though it had been
@@ -1033,8 +1126,9 @@ export const apiCreateQuestion = question => {
 };
 
 export const API_UPDATE_QUESTION = "metabase/qb/API_UPDATE_QUESTION";
-export const apiUpdateQuestion = question => {
+export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
   return async (dispatch, getState) => {
+    const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
@@ -1047,7 +1141,12 @@ export const apiUpdateQuestion = question => {
     const updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
-      .reduxUpdate(dispatch);
+      // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+      // (it's necessary for datasets to behave like tables opened in simple mode)
+      // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
+      .reduxUpdate(dispatch, {
+        excludeDatasetQuery: isAdHocDatasetQuestion(question, originalQuestion),
+      });
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
@@ -1058,13 +1157,18 @@ export const apiUpdateQuestion = question => {
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
     dispatch(setRequestUnloaded(["entities", "databases"]));
 
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Update Card",
       updatedQuestion.query().datasetQuery().type,
     );
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+
+    if (rerunQuery) {
+      await dispatch(loadMetadataForCard(question.card()));
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -1072,28 +1176,33 @@ export const apiUpdateQuestion = question => {
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
  */
-export type RunQueryParams = {
-  shouldUpdateUrl?: boolean,
-  ignoreCache?: boolean, // currently only implemented for saved cards
-  overrideWithCard?: Card, // override the current question with the provided card
-};
 export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithCard,
-}: RunQueryParams = {}) => {
+} = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (card: Card): Question =>
+    const questionFromCard = card =>
       card && new Question(card, getMetadata(getState()));
 
-    let question: Question = overrideWithCard
+    let question = overrideWithCard
       ? questionFromCard(overrideWithCard)
       : getQuestion(getState());
-    const originalQuestion: ?Question = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestion(getState());
+
+    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // This ensures we still run the underlying query instead of a nested one if there are not extra clauses
+    // Otherwise, when turning a dataset into a saved question, some things can go wrong
+    // (like "join-aliases" will appear in field refs and some QB parts will behave as if we're running a completely different question)
+    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+    if (isAdHocDatasetQuestion(question, originalQuestion)) {
+      question = originalQuestion;
+    }
 
     const cardIsDirty = originalQuestion
-      ? question.isDirtyComparedToWithoutParameters(originalQuestion)
+      ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
+        question.card().id == null
       : true;
 
     if (shouldUpdateUrl) {
@@ -1123,7 +1232,7 @@ export const runQuestionQuery = ({
       })
       .then(queryResults => {
         queryTimer(duration =>
-          MetabaseAnalytics.trackEvent(
+          MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
             question.query().datasetQuery().type,
@@ -1402,3 +1511,38 @@ export const revertToRevision = createThunkAction(
     };
   },
 );
+
+export const CANCEL_DATASET_CHANGES = "metabase/qb/CANCEL_DATASET_CHANGES";
+export const onCancelDatasetChanges = () => (dispatch, getState) => {
+  const cardBeforeChanges = getOriginalCard(getState());
+  dispatch.action(CANCEL_DATASET_CHANGES, {
+    card: cardBeforeChanges,
+  });
+  dispatch(runQuestionQuery());
+};
+
+export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const dataset = question.setDataset(true);
+  await dispatch(apiUpdateQuestion(dataset, { rerunQuery: true }));
+
+  dispatch(
+    addUndo({
+      message: t`This is a dataset now.`,
+      actions: [apiUpdateQuestion(question, { rerunQuery: true })],
+    }),
+  );
+};
+
+export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
+  const dataset = getQuestion(getState());
+  const question = dataset.setDataset(false);
+  await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
+
+  dispatch(
+    addUndo({
+      message: t`This is a question now.`,
+      actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
+    }),
+  );
+};

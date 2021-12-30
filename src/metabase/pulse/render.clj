@@ -1,6 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
+            [metabase.models.dashboard-card :as dc-model]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -62,7 +63,7 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} {:keys [cols rows insights], :as data}]
+  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows insights], :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
         row-sample-count          (delay (count (take 2 rows)))
         [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
@@ -83,6 +84,9 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
+        (#{:progress :waterfall :combo :funnel :area} display-type)
+        (chart-type display-type "display-type is %s" display-type)
+
         (= @col-sample-count @row-sample-count 1)
         (chart-type :scalar "result has one row and one column")
 
@@ -90,6 +94,11 @@
              (= @col-sample-count 2)
              (seq insights))
         (chart-type :smartscalar "result has two columns and insights")
+
+        (and (some? maybe-dashcard)
+             (> (count (dc-model/dashcard->multi-cards maybe-dashcard)) 0)
+             (not (#{:combo} display-type)))
+        (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)
@@ -99,7 +108,7 @@
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
-             (not (#{:waterfall :pie :table} display-type)))
+             (not (#{:waterfall :pie :table :area} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
 
         (and (= @col-sample-count 2)
@@ -115,19 +124,19 @@
   ((some-fn :include_csv :include_xls) card))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
-  [render-type timezone-id :- (s/maybe s/Str) card {:keys [data error], :as results}]
+  [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) results)))
-    (let [chart-type (or (detect-pulse-chart-type card data)
+    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
                          (when (is-attached? card)
                            :attached)
                          :unknown)]
       (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
-      (body/render chart-type render-type timezone-id card data))
+      (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      (body/render :error nil nil nil nil))))
+      (body/render :error nil nil nil nil nil))))
 
 (defn- card-href
   [card]
@@ -145,7 +154,7 @@
         {description :content}                           (make-description-if-needed dashcard)
         {pulse-body       :content
          body-attachments :attachments
-         text             :render/text}                  (render-pulse-card-body render-type timezone-id card results)]
+         text             :render/text}                  (render-pulse-card-body render-type timezone-id card dashcard results)]
     (cond-> {:attachments (merge title-attachments body-attachments)
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.

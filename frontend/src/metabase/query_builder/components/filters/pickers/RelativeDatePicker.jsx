@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import cx from "classnames";
 
@@ -6,38 +7,14 @@ import DateUnitSelector from "../DateUnitSelector";
 
 import { assoc } from "icepick";
 
-import type {
-  TimeIntervalFilter,
-  RelativeDatetimeUnit,
-} from "metabase-types/types/Query";
+export const DATE_PERIODS = ["day", "week", "month", "quarter", "year"];
 
-export const DATE_PERIODS: RelativeDatetimeUnit[] = [
-  "day",
-  "week",
-  "month",
-  "year",
-];
-
-const TIME_PERIODS: RelativeDatetimeUnit[] = ["minute", "hour"];
+const TIME_PERIODS = ["minute", "hour"];
 
 // define ALL_PERIODS in increasing order of duration
 const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS);
 
-type Props = {
-  filter: TimeIntervalFilter,
-  onFilterChange: (filter: TimeIntervalFilter) => void,
-  formatter: (value: any) => any,
-  className?: string,
-};
-
-type State = {
-  showUnits: boolean,
-};
-
 export default class RelativeDatePicker extends Component {
-  props: Props;
-  state: State;
-
   state = {
     showUnits: false,
   };

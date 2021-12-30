@@ -9,6 +9,7 @@
 
     {:source-query    {...} ; Query for Card 1
      :source-metadata [...] ; metadata about columns in Card 1
+     :source-card-id  1     ; Original Card ID
      ...}
 
   This middleware resolves Card ID `:source-table`s at all levels of the query, but the top-level query often uses the
@@ -17,7 +18,7 @@
 
     {:database <virtual-id>, :type :query, :query {:source-table \"card__1\"}}
     ->
-    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
+    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}, :source-card-id 1}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require [clojure.set :as set]
@@ -28,6 +29,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
@@ -42,13 +44,16 @@
 (def ^:private SourceQueryAndMetadata
   {:source-query    mbql.s/SourceQuery
    :database        mbql.s/DatabaseID
-   :source-metadata [mbql.s/SourceQueryMetadata]})
+   :source-metadata [mbql.s/SourceQueryMetadata]
+
+   (s/optional-key :source-query/dataset?) s/Bool})
 
 (def ^:private MapWithResolvedSourceQuery
   (s/constrained
    {:database        mbql.s/DatabaseID
     :source-metadata [mbql.s/SourceQueryMetadata]
     :source-query    mbql.s/SourceQuery
+    :source-card-id  su/IntGreaterThanZero
     s/Keyword        s/Any}
    (complement :source-table)
    "`:source-table` should be removed"))
@@ -94,7 +99,8 @@
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
-        (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
+        (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
+                           :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
 
@@ -102,7 +108,8 @@
           database-id                  :database
           {template-tags :template-tags
            :as           native-query} :native} :dataset_query
-         result-metadata                        :result_metadata}
+         result-metadata                        :result_metadata
+         dataset?                               :dataset}
         card
 
         source-query
@@ -124,9 +131,10 @@
       (log/info (trs "Fetched source query from Card {0}:" card-id)
                 "\n"
                 (u/pprint-to-str 'yellow source-query)))
-    {:source-query    source-query
-     :database        database-id
-     :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}))
+    (cond-> {:source-query    source-query
+             :database        database-id
+             :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}
+      dataset? (assoc :source-query/dataset? dataset?))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]
@@ -151,8 +159,8 @@
         source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
     (merge
      (dissoc m :source-table)
-     ;; record the `::card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
-     {::card-id card-id}
+     ;; record the `card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
+     {:source-card-id card-id}
      source-query-and-metadata)))
 
 (defn- resolve-all*
@@ -161,7 +169,10 @@
     map-with-card-id-source-table?
     ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
     ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
-    (let [resolved (resolve-one &match)]
+    (let [resolved (if (public-settings/enable-nested-queries)
+                     (resolve-one &match)
+                     (throw (ex-info (trs "Nested queries are disabled")
+                                     {:clause &match})))]
       ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
       ;; resolution that were we in the process of
       (try
@@ -225,14 +236,11 @@
 
 (s/defn ^:private extract-resolved-card-id :- {:card-id (s/maybe su/IntGreaterThanZero)
                                                :query   su/Map}
-  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, remove it from `query`, and add it
+  "If the ID of the Card we've resolved (`:source-card-id`) was added by a previous step, add it
   to `:query` `:info` (so it can be included in the QueryExecution log), then return a map with the resolved
   `:card-id` and updated `:query`."
   [query :- su/Map]
-  (let [card-id (get-in query [:query ::card-id])
-        query   (mbql.u/replace-in query [:query]
-                  (&match :guard (every-pred map? ::card-id))
-                  (recur (dissoc &match ::card-id)))]
+  (let [card-id (get-in query [:query :source-card-id])]
     {:query   (cond-> query
                 card-id (update-in [:info :card-id] #(or % card-id)))
      :card-id card-id}))
@@ -242,9 +250,9 @@
   "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
-  ;; if a `::card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
+  ;; if a `:source-card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
   ;; allowing someone to bypass permissions
-  (-> (m/dissoc-in query [:query ::card-id])
+  (-> (m/dissoc-in query [:query :source-card-id])
       check-for-circular-references
       resolve-all*
       copy-source-query-database-ids
@@ -269,6 +277,10 @@
   (fn [query rff context]
     (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
       (if card-id
-        (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
-          (qp query rff context))
+        (let [dataset? (db/select-one-field :dataset Card :id card-id)]
+          (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
+            (qp query
+                (fn [metadata]
+                  (rff (cond-> metadata dataset? (assoc :dataset dataset?))))
+                context)))
         (qp query rff context)))))

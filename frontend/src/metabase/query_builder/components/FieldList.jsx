@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import DimensionList from "./DimensionList";
@@ -5,49 +6,11 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type { ConcreteField } from "metabase-types/types/Query";
-import type Metadata from "metabase-lib/lib/metadata/Metadata";
-import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 // import type { Section } from "metabase/components/AccordionList";
-export type AccordionListItem = {};
-
-export type AccordionListSection = {
-  name: ?string,
-  items: AccordionListItem[],
-};
-
-type Props = {
-  field: ?ConcreteField,
-  onFieldChange: (field: ConcreteField) => void,
-  fieldOptions: any,
-
-  // HACK: for segments
-  onFilterChange?: (filter: any) => void,
-
-  // query should be included otherwise FieldList may not display field-literal display name correctly
-  query?: StructuredQuery,
-  metadata?: Metadata,
-
-  // AccordionList props:
-  className?: string,
-  maxHeight?: number,
-  width?: number,
-  alwaysExpanded?: boolean,
-
-  // DimensionList props:
-  enableSubDimensions?: boolean,
-  useOriginalDimension?: boolean,
-};
-
-type State = {
-  sections: AccordionListSection[],
-};
 
 // DEPRECATED: use DimensionList directly
 export default class FieldList extends Component {
-  props: Props;
-  state: State = {
+  state = {
     sections: [],
   };
 
@@ -103,6 +66,9 @@ export default class FieldList extends Component {
         // forward DimensionList props
         useOriginalDimension={this.props.useOriginalDimension}
         enableSubDimensions={this.props.enableSubDimensions}
+        preventNumberSubDimensions={
+          this.props.fieldOptions.preventNumberSubDimensions
+        }
       />
     );
   }

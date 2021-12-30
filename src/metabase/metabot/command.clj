@@ -12,6 +12,7 @@
             [metabase.models.permissions :refer [Permissions]]
             [metabase.models.permissions-group :as perms-group]
             [metabase.pulse :as pulse]
+            [metabase.pulse.util :as pu]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.urls :as urls]
@@ -166,7 +167,7 @@
        (metabot.slack/async
          (let [attachments (pulse/create-and-upload-slack-attachments!
                             (pulse/create-slack-attachment-data
-                             [(pulse/execute-card {} card-id, :context :metabot)]))]
+                             [(pu/execute-card {} card-id, :context :metabot)]))]
            (metabot.slack/post-chat-message! nil attachments))))
      (tru "Ok, just a second...")))
 

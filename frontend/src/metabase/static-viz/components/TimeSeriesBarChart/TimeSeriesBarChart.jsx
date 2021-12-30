@@ -5,12 +5,14 @@ import { GridRows } from "@visx/grid";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import {
+  getLabelProps,
   getXTickLabelProps,
   getYTickLabelProps,
   getYTickWidth,
 } from "../../lib/axes";
 import { formatDate } from "../../lib/dates";
 import { formatNumber } from "../../lib/numbers";
+import { sortTimeSeries } from "../../lib/sort";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -49,13 +51,15 @@ const layout = {
   },
   numTicks: 5,
   barPadding: 0.2,
+  labelFontWeight: 700,
   labelPadding: 12,
   strokeDasharray: "4",
 };
 
 const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
+  data = sortTimeSeries(data);
   const colors = settings?.colors;
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right;
@@ -106,6 +110,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         labelOffset={yLabelOffset}
         hideTicks
         hideAxisLine
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatNumber(value, settings?.y)}
         tickLabelProps={() => getYTickLabelProps(layout)}
       />
@@ -116,6 +121,7 @@ const TimeSeriesBarChart = ({ data, accessors, settings, labels }) => {
         numTicks={layout.numTicks}
         stroke={palette.textLight}
         tickStroke={palette.textLight}
+        labelProps={getLabelProps(layout)}
         tickFormat={value => formatDate(value, settings?.x)}
         tickLabelProps={() => getXTickLabelProps(layout)}
       />

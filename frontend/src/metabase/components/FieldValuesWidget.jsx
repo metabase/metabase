@@ -1,11 +1,12 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
+import { ListField } from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -18,20 +19,11 @@ import { stripId } from "metabase/lib/formatting";
 
 import Fields from "metabase/entities/fields";
 
-import type Field from "metabase-lib/lib/metadata/Field";
-import type { FieldId } from "metabase-types/types/Field";
-import type { Value } from "metabase-types/types/Dataset";
-import type { FormattingOptions } from "metabase/lib/formatting";
-import type { LayoutRendererProps } from "metabase/components/TokenField";
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
-
 const MAX_SEARCH_RESULTS = 100;
 
 const fieldValuesWidgetPropTypes = {
   addRemappings: PropTypes.func,
   expand: PropTypes.bool,
-  isSidebar: PropTypes.bool,
 };
 
 const optionsMessagePropTypes = {
@@ -78,45 +70,9 @@ function mapStateToProps(state, { fields = [] }) {
   };
 }
 
-type Props = {
-  value: Value[],
-  onChange: (value: Value[]) => void,
-  fields: Field[],
-  disablePKRemappingForSearch?: boolean,
-  multi?: boolean,
-  autoFocus?: boolean,
-  color?: string,
-  fetchFieldValues: (id: FieldId) => void,
-  maxResults: number,
-  style?: { [key: string]: string | number },
-  placeholder?: string,
-  formatOptions?: FormattingOptions,
-  maxWidth?: number,
-  minWidth?: number,
-  alwaysShowOptions?: boolean,
-  disableSearch?: boolean,
-
-  dashboard?: DashboardWithCards,
-  parameter?: Parameter,
-  parameters?: Parameter[],
-
-  className?: string,
-};
-
-type State = {
-  loadingState: "INIT" | "LOADING" | "LOADED",
-  options: [Value, ?string][],
-  lastValue: string,
-};
-
 @AutoExpanding
 export class FieldValuesWidget extends Component {
-  props: Props;
-  state: State;
-
-  _cancel: ?() => void;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       options: [],
@@ -145,7 +101,7 @@ export class FieldValuesWidget extends Component {
     return this.props.parameter && this.props.parameter.id;
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     if (this.shouldList()) {
       if (this.useChainFilterEndpoints()) {
         this.fetchDashboardParamValues();
@@ -273,7 +229,7 @@ export class FieldValuesWidget extends Component {
     );
   }
 
-  onInputChange = (value: string) => {
+  onInputChange = value => {
     if (value && this.isSearchable()) {
       this._search(value);
     }
@@ -281,7 +237,7 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  searchField = (field: Field) => {
+  searchField = field => {
     if (this.props.disablePKRemappingForSearch && field.isPK()) {
       return field.isSearchable() ? field : null;
     }
@@ -295,7 +251,7 @@ export class FieldValuesWidget extends Component {
 
   showRemapping = () => this.props.fields.length === 1;
 
-  search = async (value: string, cancelled: Promise<void>) => {
+  search = async (value, cancelled) => {
     if (!value) {
       return;
     }
@@ -341,7 +297,7 @@ export class FieldValuesWidget extends Component {
     return results;
   };
 
-  _search = (value: string) => {
+  _search = value => {
     const { lastValue, options } = this.state;
 
     // if this search is just an extension of the previous search, and the previous search
@@ -366,7 +322,7 @@ export class FieldValuesWidget extends Component {
     this._searchDebounced(value);
   };
 
-  _searchDebounced = _.debounce(async (value): void => {
+  _searchDebounced = _.debounce(async value => {
     this.setState({
       loadingState: "LOADING",
     });
@@ -401,12 +357,7 @@ export class FieldValuesWidget extends Component {
     }
   }, 500);
 
-  renderOptions({
-    optionsList,
-    isFocused,
-    isAllSelected,
-    isFiltered,
-  }: LayoutRendererProps) {
+  renderOptions({ optionsList, isFocused, isAllSelected, isFiltered }) {
     const { alwaysShowOptions, fields } = this.props;
     const { loadingState } = this.state;
     if (alwaysShowOptions || isFocused) {
@@ -426,7 +377,7 @@ export class FieldValuesWidget extends Component {
     }
   }
 
-  renderValue = (value: Value, options: FormattingOptions) => {
+  renderValue = (value, options) => {
     const { fields, formatOptions } = this.props;
     return (
       <ValueComponent
@@ -468,72 +419,90 @@ export class FieldValuesWidget extends Component {
       options = [];
     }
 
+    const isLoading = loadingState === "LOADING";
+    const isFetchingList = this.shouldList() && isLoading;
+    const hasListData = this.hasList();
+
     return (
       <div
-        className={cx({ "PopoverBody--marginBottom": !this.props.isSidebar })}
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
         }}
       >
-        <TokenField
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          placeholder={placeholder}
-          updateOnInputChange
-          // forwarded props
-          multi={multi}
-          autoFocus={autoFocus}
-          color={color}
-          style={{ ...style, minWidth: "inherit" }}
-          className={className}
-          parameter={this.props.parameter}
-          optionsStyle={!parameter ? { maxHeight: "none" } : {}}
-          // end forwarded props
-          options={options}
-          valueKey={0}
-          valueRenderer={value =>
-            this.renderValue(value, { autoLoad: true, compact: false })
-          }
-          optionRenderer={option =>
-            this.renderValue(option[0], { autoLoad: false })
-          }
-          layoutRenderer={props => (
-            <div>
-              {props.valuesList}
-              {this.renderOptions(props)}
-            </div>
-          )}
-          filterOption={(option, filterString) => {
-            const lowerCaseFilterString = filterString.toLowerCase();
-            return option.some(
-              value =>
-                value != null &&
-                String(value)
-                  .toLowerCase()
-                  .includes(lowerCaseFilterString),
-            );
-          }}
-          onInputChange={this.onInputChange}
-          parseFreeformValue={v => {
-            // trim whitespace
-            v = String(v || "").trim();
-            // empty string is not valid
-            if (!v) {
-              return null;
+        {isFetchingList && <LoadingState />}
+        {hasListData && (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={this.getTokenFieldPlaceholder()}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
             }
-            // if the field is numeric we need to parse the string into an integer
-            if (fields[0].isNumeric()) {
-              if (/^-?\d+(\.\d+)?$/.test(v)) {
-                return parseFloat(v);
-              } else {
+          />
+        )}
+        {!hasListData && !isFetchingList && (
+          <TokenField
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={placeholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            parameter={this.props.parameter}
+            optionsStyle={!parameter ? { maxHeight: "none" } : {}}
+            // end forwarded props
+            options={options}
+            valueKey={0}
+            valueRenderer={value =>
+              this.renderValue(value, { autoLoad: true, compact: false })
+            }
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
+            }
+            layoutRenderer={props => (
+              <div>
+                {props.valuesList}
+                {this.renderOptions(props)}
+              </div>
+            )}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option.some(
+                value =>
+                  value != null &&
+                  String(value)
+                    .toLowerCase()
+                    .includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={this.onInputChange}
+            parseFreeformValue={v => {
+              // trim whitespace
+              v = String(v || "").trim();
+              // empty string is not valid
+              if (!v) {
                 return null;
               }
-            }
-            return v;
-          }}
-        />
+              // if the field is numeric we need to parse the string into an integer
+              if (fields[0].isNumeric()) {
+                if (/^-?\d+(\.\d+)?$/.test(v)) {
+                  return parseFloat(v);
+                } else {
+                  return null;
+                }
+              }
+              return v;
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -555,7 +524,7 @@ const LoadingState = () => (
   </div>
 );
 
-const NoMatchState = ({ fields }: { fields: Field[] }) => {
+const NoMatchState = ({ fields }) => {
   if (fields.length > 1) {
     // if there is more than one field, don't name them
     return <OptionsMessage message={t`No matching result`} />;
@@ -582,7 +551,4 @@ const OptionsMessage = ({ message }) => (
 
 OptionsMessage.propTypes = optionsMessagePropTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(FieldValuesWidget);
+export default connect(mapStateToProps, mapDispatchToProps)(FieldValuesWidget);

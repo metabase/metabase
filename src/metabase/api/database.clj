@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.table :as table-api]
             [metabase.config :as config]
@@ -121,8 +122,9 @@
                (db/select-ids Database))))
 
 (defn- source-query-cards
-  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [& {:keys [additional-constraints xform], :or {xform identity}}]
+  "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables). Since Cards can be either `dataset` or `card`, pass in the `question-type` of `:dataset` or `:card`"
+  [question-type & {:keys [additional-constraints xform], :or {xform identity}}]
+  {:pre [(#{:card :dataset} question-type)]}
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial models/do-post-select Card))
@@ -144,6 +146,7 @@
                           :where    (into [:and
                                            [:not= :result_metadata nil]
                                            [:= :archived false]
+                                           [:= :dataset (= question-type :dataset)]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
                                            (collection/visible-collection-ids->honeysql-filter-clause
                                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
@@ -152,31 +155,32 @@
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
-  []
-  (seq (source-query-cards :xform (take 1))))
+  [question-type]
+  (seq (source-query-cards question-type :xform (take 1))))
 
 (defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
-  [& {:keys [include-fields?]}]
-  (for [card (source-query-cards)]
+  [question-type & {:keys [include-fields?]}]
+  (for [card (source-query-cards question-type)]
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
+(defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 mbql.s/saved-questions-virtual-database-id
              :features           #{:basic-aggregations}
              :is_saved_questions true}
-      include-tables? (assoc :tables (cards-virtual-tables :include-fields? include-fields?)))))
+      include-tables? (assoc :tables (cards-virtual-tables question-type
+                                                           :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata :card options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
@@ -285,7 +289,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
+  (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden?]
   (-> (api/read-check Database id)
@@ -314,15 +318,16 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id prefix]
+(defn- autocomplete-tables [db-id prefix limit]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
                      [:like :%lower.name (str (str/lower-case prefix) "%")]
                      [:= :visibility_type nil]]
-     :order-by [[:%lower.name :asc]]}))
+     :order-by [[:%lower.name :asc]]
+     :limit    limit}))
 
-(defn- autocomplete-fields [db-id prefix]
+(defn- autocomplete-fields [db-id prefix limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
     :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
@@ -330,22 +335,28 @@
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
                  [:%lower.table.name :asc]]
-     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]}))
+     :left-join [[:metabase_table :table] [:= :table.id :metabase_field.table_id]]
+     :limit     limit}))
 
-(defn- autocomplete-results [tables fields]
-  (concat (for [{table-name :name} tables]
-            [table-name "Table"])
-          (for [{:keys [table_name base_type semantic_type name]} fields]
-            [name (str table_name
-                       " "
-                       base_type
-                       (when semantic_type
-                         (str " " semantic_type)))])))
+(defn- autocomplete-results [tables fields limit]
+  (let [tbl-count   (count tables)
+        fld-count   (count fields)
+        take-tables (min tbl-count (- limit (/ fld-count 2)))
+        take-fields (- limit take-tables)]
+    (concat (for [{table-name :name} (take take-tables tables)]
+              [table-name "Table"])
+            (for [{:keys [table_name base_type semantic_type name]} (take take-fields fields)]
+              [name (str table_name
+                         " "
+                         base_type
+                         (when semantic_type
+                           (str " " semantic_type)))]))))
 
 (defn- autocomplete-suggestions [db-id prefix]
-  (let [tables (filter mi/can-read? (autocomplete-tables db-id prefix))
-        fields (readable-fields-only (autocomplete-fields db-id prefix))]
-    (autocomplete-results tables fields)))
+  (let [limit  50
+        tables (filter mi/can-read? (autocomplete-tables db-id prefix limit))
+        fields (readable-fields-only (autocomplete-fields db-id prefix limit))]
+    (autocomplete-results tables fields limit)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
   "Return a list of autocomplete suggestions for a given `prefix`.
@@ -490,17 +501,25 @@
                                    :details      details-or-error
                                    :is_full_sync is-full-sync?
                                    :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl}
+                                   :cache_ttl    cache_ttl
+                                   :creator_id   api/*current-user-id*}
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)
                                       (sync.schedules/default-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
-        (events/publish-event! :database-create <>))
+        (events/publish-event! :database-create <>)
+        (snowplow/track-event! ::snowplow/database-connection-successful
+                               api/*current-user-id*
+                               {:database engine, :database-id (u/the-id <>), :source :admin}))
       ;; failed to connect, return error
-      {:status 400
-       :body   details-or-error})))
+      (do
+        (snowplow/track-event! ::snowplow/database-connection-failed
+                               api/*current-user-id*
+                               {:database engine, :source :setup})
+        {:status 400
+         :body   details-or-error}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."
@@ -555,7 +574,8 @@
   (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (api/let-404 [existing-database (Database id)]
-    (let [details    (upsert-sensitive-fields existing-database details)
+    (let [details    (driver.u/db-details-client->server engine details)
+          details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
                        (assert (some? engine))
                        (test-database-connection engine details))
@@ -712,7 +732,17 @@
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
-    (->> (cards-virtual-tables)
+    (->> (cards-virtual-tables :card)
+         (map :schema)
+         distinct
+         (sort-by str/lower-case))))
+
+(api/defendpoint GET ["/:virtual-db/datasets"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of all the datasets found for the saved questions virtual database."
+  []
+  (when (public-settings/enable-nested-queries)
+    (->> (cards-virtual-tables :dataset)
          (map :schema)
          distinct
          (sort-by str/lower-case))))
@@ -748,6 +778,19 @@
   [schema]
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
+          :card
+          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+                                      [:= :collection_id nil]
+                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+         (map table-api/card->virtual-table))))
+
+(api/defendpoint GET ["/:virtual-db/datasets/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of Tables for the datasets virtual database."
+  [schema]
+  (when (public-settings/enable-nested-queries)
+    (->> (source-query-cards
+          :dataset
           :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])

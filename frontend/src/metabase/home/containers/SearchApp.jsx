@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
@@ -20,7 +20,6 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 
 const PAGE_PADDING = [1, 2, 4];
-
 const PAGE_SIZE = 50;
 
 const SEARCH_FILTERS = [
@@ -40,7 +39,12 @@ const SEARCH_FILTERS = [
     icon: "database",
   },
   {
-    name: t`Tables`,
+    name: t`Datasets`,
+    filter: "dataset",
+    icon: "dataset",
+  },
+  {
+    name: t`Raw Tables`,
     filter: "table",
     icon: "table",
   },
@@ -164,7 +168,7 @@ export default function SearchApp({ location }) {
                           query: { ...location.query, type: f.filter },
                         }}
                       >
-                        <Icon mr={1} name={f.icon} />
+                        <Icon mr={1} name={f.icon} size={16} />
                         <h4>{f.name}</h4>
                       </Link>
                     );

@@ -2,18 +2,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
-
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import cx from "classnames";
 import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -25,6 +21,7 @@ import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import { AdminNavbar } from "../components/AdminNavbar";
 
 import { getPath, getContext, getUser } from "../selectors";
 import {
@@ -44,25 +41,10 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
-import StoreLink from "metabase/nav/components/StoreLink";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
 };
-
-const AdminNavItem = ({ name, path, currentPath }) => (
-  <li>
-    <Link
-      to={path}
-      data-metabase-event={`NavBar;${name}`}
-      className={cx("NavItem py1 px2 no-decoration", {
-        "is--selected": currentPath.startsWith(path),
-      })}
-    >
-      {name}
-    </Link>
-  </li>
-);
 
 // TODO
 const NavHover = {
@@ -76,10 +58,7 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
   state = {
     modal: null,
@@ -103,67 +82,10 @@ export default class Navbar extends Component {
   }
   renderAdminNav() {
     return (
-      // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
-      // TODO: hide nav using state in redux instead?
-      <nav className={"Nav AdminNav sm-py1"}>
-        <div className="sm-pl4 flex align-center pr1">
-          <div className="NavTitle flex align-center">
-            <Icon name={"gear"} className="AdminGear" size={22} />
-            <span className="NavItem-text ml1 hide sm-show text-bold">{t`Metabase Admin`}</span>
-          </div>
-
-          <ul className="sm-ml4 flex flex-full">
-            <AdminNavItem
-              name={t`Settings`}
-              path="/admin/settings"
-              currentPath={this.props.path}
-              key="admin-nav-settings"
-            />
-            <AdminNavItem
-              name={t`People`}
-              path="/admin/people"
-              currentPath={this.props.path}
-              key="admin-nav-people"
-            />
-            <AdminNavItem
-              name={t`Data Model`}
-              path="/admin/datamodel"
-              currentPath={this.props.path}
-              key="admin-nav-datamodel"
-            />
-            <AdminNavItem
-              name={t`Databases`}
-              path="/admin/databases"
-              currentPath={this.props.path}
-              key="admin-nav-databases"
-            />
-            <AdminNavItem
-              name={t`Permissions`}
-              path="/admin/permissions"
-              currentPath={this.props.path}
-              key="admin-nav-permissions"
-            />
-            {PLUGIN_ADMIN_NAV_ITEMS.map(({ name, path }) => (
-              <AdminNavItem
-                name={name}
-                path={path}
-                currentPath={this.props.path}
-                key={`admin-nav-${name}`}
-              />
-            ))}
-            <AdminNavItem
-              name={t`Troubleshooting`}
-              path="/admin/troubleshooting"
-              currentPath={this.props.path}
-              key="admin-nav-troubleshooting"
-            />
-          </ul>
-
-          {!MetabaseSettings.isPaidPlan() && <StoreLink />}
-          <ProfileLink {...this.props} />
-        </div>
+      <>
+        <AdminNavbar path={this.props.path} />
         {this.renderModal()}
-      </nav>
+      </>
     );
   }
 
@@ -252,13 +174,9 @@ export default class Navbar extends Component {
                 to="browse"
                 className="flex align-center rounded transition-background"
                 data-metabase-event={`NavBar;Data Browse`}
+                tooltip={t`Browse data`}
               >
-                <Icon
-                  name="table_spaced"
-                  size={14}
-                  p={"11px"}
-                  tooltip={t`Browse data`}
-                />
+                <Icon name="table_spaced" size={14} p={"11px"} />
               </Link>
             </IconWrapper>
           )}
@@ -291,8 +209,9 @@ export default class Navbar extends Component {
                 to={this.props.plainNativeQuery.question().getUrl()}
                 className="flex align-center"
                 data-metabase-event={`NavBar;SQL`}
+                tooltip={t`Write SQL`}
               >
-                <Icon size={18} p={"11px"} name="sql" tooltip={t`Write SQL`} />
+                <Icon size={18} p={"11px"} name="sql" />
               </Link>
             </IconWrapper>
           )}
