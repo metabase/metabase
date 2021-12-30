@@ -202,7 +202,7 @@
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "build-static-viz": "yarn && webpack --config webpack.static-viz.config.js",
-    "precommit": "lint-staged",
+    "precommit": "echo 'Skipping pre-commit hooks in a fork'",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write '{enterprise/,}frontend/**/*.{js,jsx,ts,tsx,css}'",
     "eslint-fix": "yarn && eslint --fix --ext .js,.jsx,.ts,.tsx --rulesdir frontend/lint/eslint-rules {enterprise/,}frontend/{src,test}",
