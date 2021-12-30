@@ -16,6 +16,12 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
+# usage: file_env VAR [DEFAULT]
+#    ie: file_env 'XYZ_DB_PASSWORD' 'example'
+# (will allow for "$XYZ_DB_PASSWORD_FILE" to fill in the value of
+#  "$XYZ_DB_PASSWORD" from a file, especially for Docker's secrets feature)
+# taken from https://github.com/docker-library/postgres/blob/master/docker-entrypoint.sh
+# This is the specific function that takes the env var which has a "_FILE" at the end and transforms that into a normal env var.
 file_env() {
 	local var="$1"
 	local fileVar="${var}_FILE"
@@ -34,6 +40,7 @@ file_env() {
 	unset "$fileVar"
 }
 
+# Here we define which env vars are the ones that will be supported with a "_FILE" ending. We started with the ones that would contain sensitive data
 docker_setup_env() {
     file_env 'MB_DB_USER'
     file_env 'MB_DB_PASS'
@@ -48,6 +55,7 @@ docker_setup_env() {
 # if non-root, it's likely we run in a k8s environment with well maintained permissions
 # if root, we need to check some permissions in order to exec metabase with a non-root user
 # In that case, the container is run as root, metabase is run as a non-root user
+# Also, we call the docker_setup_env function before Metabase starts so it takes the Docker secrets in case there are any
 if [ $(id -u) -ne 0 ]; then
     # Launch the application
     # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
