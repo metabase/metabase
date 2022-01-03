@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clojure.test :refer :all]
+  (:require [clj-time.core :as time]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.test :as mt]))
 
@@ -157,6 +158,6 @@
                     :filter      [:and
                                   [:= $user_id->people.source "Facebook" "Google"]
                                   [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                  [:time-interval $created_at -3 :year]]
+                                  [:time-interval $created_at (- 2019 (.getYear (time/now))) :year]]
                     :expressions {:pivot-grouping [:abs 0]}
                     :limit       5}))))))))
