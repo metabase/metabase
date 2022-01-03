@@ -116,15 +116,18 @@
   {url su/NonBlankString}
   (api/check-superuser)
   (let [decoded-url (rc/url-decode url)]
-    (if (valid-geojson-url? decoded-url)
+    (try
+      (when-not (valid-geojson-url? decoded-url)
+        (throw (ex-info (invalid-location-msg) {:status-code 400})))
       (try
         (with-open [reader (io/reader (or (io/resource decoded-url)
                                           decoded-url))
                     is     (ReaderInputStream. reader)]
           (respond (-> (rr/response is)
                        (rr/content-type "application/json"))))
-        (catch Throwable e
-          (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
-      (raise (ex-info (invalid-location-msg) {:status-code 400})))))
+        (catch Throwable _
+          (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
+      (catch Throwable e
+        (raise e)))))
 
 (api/define-routes)
