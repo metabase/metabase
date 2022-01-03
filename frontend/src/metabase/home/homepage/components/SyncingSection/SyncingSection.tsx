@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
-import SyncDatabaseModal from "metabase/admin/databases/components/SyncDatabaseModal";
+import SyncingModal from "metabase/containers/SyncingModal";
 import { Database, User } from "../../types";
 
-interface Props {
+export interface SyncingSectionProps {
   user: User;
   databases: Database[];
-  showXrays?: boolean;
   showSyncingModal?: boolean;
   onHideSyncingModal?: () => void;
 }
@@ -15,13 +14,11 @@ interface Props {
 const SyncingSection = ({
   user,
   databases,
-  showXrays,
   showSyncingModal,
   onHideSyncingModal,
-}: Props) => {
+}: SyncingSectionProps): JSX.Element => {
   const isSyncing = isUserSyncingDatabase(user, databases);
   const [isOpened, setIsOpened] = useState(isSyncing && showSyncingModal);
-  const sampleDatabase = databases.find(d => d.is_sample);
 
   const handleClose = useCallback(() => {
     setIsOpened(false);
@@ -34,12 +31,8 @@ const SyncingSection = ({
   }, [isOpened, onHideSyncingModal]);
 
   return (
-    <Modal isOpen={isOpened} full={false} onClose={handleClose}>
-      <SyncDatabaseModal
-        sampleDatabase={sampleDatabase}
-        showXrays={showXrays}
-        onClose={handleClose}
-      />
+    <Modal isOpen={isOpened} small full={false} onClose={handleClose}>
+      <SyncingModal onClose={handleClose} />
     </Modal>
   );
 };

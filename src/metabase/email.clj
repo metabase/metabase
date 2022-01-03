@@ -40,7 +40,7 @@
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-             (setting/set-keyword! :email-smtp-security new-value)))
+             (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 

@@ -42,14 +42,17 @@
                   :password (tx/db-test-env-var-or-throw :oracle :password)
                   :sid      (tx/db-test-env-var-or-throw :oracle :sid)
                   :ssl      (tx/db-test-env-var :oracle :ssl false)}
-        ssl-keys [:ssl-use-truststore :ssl-truststore-path :ssl-truststore-value :ssl-truststore-password-value
-                  :ssl-use-keystore :ssl-keystore-path :ssl-keystore-value :ssl-keystore-password-value]]
+        ssl-keys [:ssl-use-truststore :ssl-truststore-options :ssl-truststore-path :ssl-truststore-value
+                  :ssl-truststore-password-value
+                  :ssl-use-keystore :ssl-use-keystore-options :ssl-keystore-path :ssl-keystore-value
+                  :ssl-keystore-password-value]]
     (merge details*
-           (m/filter-vals some?
-                          (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
+      (m/filter-vals some?
+        (zipmap ssl-keys (map #(tx/db-test-env-var :oracle % nil) ssl-keys))))))
 
 (defmethod tx/dbdef->connection-details :oracle [& _]
-  (connection-details))
+  (let [conn-details (connection-details)]
+    (identity conn-details)))
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
@@ -179,7 +182,8 @@
            "INTO")))))))
 
 (defn- dbspec [& _]
-  (sql-jdbc.conn/connection-details->spec :oracle (connection-details)))
+  (let [conn-details  (connection-details)]
+    (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
 
 (defn- non-session-schemas
   "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should

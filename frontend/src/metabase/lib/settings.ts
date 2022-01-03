@@ -55,6 +55,7 @@ export type SettingName =
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
+  | "user-locale"
   | "available-locales"
   | "available-timezones"
   | "custom-formatting"
@@ -86,7 +87,8 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-version";
+  | "engine-deprecation-notice-version"
+  | "show-database-syncing-modal";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 

@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import SyncingSection from "./SyncingSection";
 import { User, Database } from "../../types";
 
+const SyncingModal = () => <div>Explore sample data</div>;
+jest.mock("metabase/containers/SyncingModal", () => SyncingModal);
+
 describe("SyncingSection", () => {
   it("should display a modal for a syncing database", () => {
     const user = getUser({ id: 1 });
@@ -16,7 +19,6 @@ describe("SyncingSection", () => {
       <SyncingSection
         user={user}
         databases={databases}
-        showXrays={true}
         showSyncingModal={true}
         onHideSyncingModal={onHideSyncingModal}
       />,
@@ -38,7 +40,6 @@ describe("SyncingSection", () => {
       <SyncingSection
         user={user}
         databases={databases}
-        showXrays={true}
         showSyncingModal={false}
         onHideSyncingModal={onHideSyncingModal}
       />,
@@ -60,7 +61,6 @@ describe("SyncingSection", () => {
       <SyncingSection
         user={user}
         databases={databases}
-        showXrays={true}
         showSyncingModal={true}
         onHideSyncingModal={onHideSyncingModal}
       />,
@@ -75,6 +75,7 @@ const getUser = (opts?: Partial<User>): User => ({
   id: 1,
   first_name: "John",
   is_superuser: false,
+  has_invited_second_user: false,
   personal_collection_id: "personal",
   ...opts,
 });

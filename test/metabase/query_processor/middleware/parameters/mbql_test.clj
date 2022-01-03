@@ -2,10 +2,8 @@
   "Tests for *MBQL* parameter substitution."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as params]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
             [metabase.test :as mt]))
 
@@ -161,18 +159,7 @@
                        :parameters [{:name   "name"
                                      :type   :string/starts-with
                                      :target $name
-                                     :value ["B"]}]})))))
-        (with-redefs [params/field-filter-operators-enabled? (constantly false)]
-          (testing "Throws if not enabled (#15488)"
-            (is (= {:type     qp.error-type/invalid-parameter
-                    :operator :number/between}
-                   (try (f (mt/query venues
-                             {:query      {:aggregation [[:count]]}
-                              :parameters [{:name   "price"
-                                            :type   :number/between
-                                            :target $price
-                                            :value  [2 5]}]}))
-                        (catch Exception e (ex-data e)))))))))))
+                                     :value ["B"]}]})))))))))
 
 (deftest basic-where-test
   (mt/test-drivers (params-test-drivers)

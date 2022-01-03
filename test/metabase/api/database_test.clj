@@ -82,7 +82,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules))
+                   (dissoc :details :schedules :settings))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules)))))
 
@@ -238,7 +238,7 @@
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details)
+    (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status])
                   {:engine        "h2"
                    :name          "test-data"
@@ -379,9 +379,9 @@
 (deftest databases-list-test
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
-      (testing "Database details *should not* come back for Rasta since she's not a superuser"
+      (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
-                                (disj :details))]
+                                (disj :details :settings))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys

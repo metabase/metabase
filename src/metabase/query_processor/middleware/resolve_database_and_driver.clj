@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-database-and-driver
   (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.setting :as setting]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -19,13 +19,17 @@
   (fn [{database-id :database, :as query} rff context]
     (when-not ((every-pred integer? pos?) database-id)
       (throw (ex-info (tru "Unable to resolve database for query: missing or invalid `:database` ID.")
-               {:database database-id
-                :type     error-type/invalid-query})))
+                      {:database database-id
+                       :type     error-type/invalid-query})))
     (resolve-database* query)
-    (driver/with-driver (try
-                          (driver/the-initialized-driver (driver.u/database->driver (qp.store/database)))
-                          (catch Throwable e
-                            (throw (ex-info (tru "Unable to resolve driver for query")
-                                            {:type error-type/invalid-query}
-                                            e))))
-      (qp query rff context))))
+    (let [{:keys [settings], driver :engine} (qp.store/database)]
+      ;; make sure the driver is initialized.
+      (try
+        (driver/the-initialized-driver driver)
+        (catch Throwable e
+          (throw (ex-info (tru "Unable to resolve driver for query")
+                          {:type error-type/invalid-query}
+                          e))))
+      (binding [setting/*database-local-values* settings]
+        (driver/with-driver driver
+          (qp query rff context))))))

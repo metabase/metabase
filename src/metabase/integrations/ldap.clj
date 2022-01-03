@@ -33,7 +33,7 @@
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (#{:none :ssl :starttls} (keyword new-value))))
-             (setting/set-keyword! :ldap-security new-value)))
+             (setting/set-value-of-type! :keyword :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
   (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
@@ -52,17 +52,17 @@
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user''s email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail"
-  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
+  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-email))))
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName"
-  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-firstname))))
+  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-firstname))))
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn"
-  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-lastname))))
+  :getter (fn [] (u/lower-case-en (setting/get-value-of-type :string :ldap-attribute-lastname))))
 
 (defsetting ldap-group-sync
   (deferred-tru "Enable group membership synchronization with LDAP.")
@@ -79,7 +79,7 @@
   :type    :json
   :default {}
   :getter  (fn []
-             (json/parse-string (setting/get-string :ldap-group-mappings) #(DN. (str %))))
+             (json/parse-string (setting/get-value-of-type :string :ldap-group-mappings) #(DN. (str %))))
   :setter  (fn [new-value]
              (cond
                (string? new-value)
@@ -89,7 +89,7 @@
                (do (doseq [k (keys new-value)]
                      (when-not (DN/isValidDN (name k))
                        (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
-                   (setting/set-json! :ldap-group-mappings new-value)))))
+                   (setting/set-value-of-type! :json :ldap-group-mappings new-value)))))
 
 (defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."

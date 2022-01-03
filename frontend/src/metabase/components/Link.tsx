@@ -6,7 +6,7 @@ import { color, display, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
 import { stripLayoutProps } from "metabase/lib/utils";
 
-interface Props extends HTMLProps<HTMLAnchorElement> {
+export interface LinkProps extends HTMLProps<HTMLAnchorElement> {
   to: string;
   disabled?: boolean;
   className?: string;
@@ -24,7 +24,7 @@ function BaseLink({
   disabled,
   tooltip,
   ...props
-}: Props) {
+}: LinkProps) {
   const link = (
     <ReactRouterLink
       to={to}

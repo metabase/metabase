@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminNavItem } from "./AdminNavItem";
-import Link from "metabase/components/Link";
 import StoreLink from "../StoreLink";
 import LogoIcon from "metabase/components/LogoIcon";
 import {

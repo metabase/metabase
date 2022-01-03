@@ -15,7 +15,9 @@ driver:
         - display-name: Broker node port
           default: 8082
     - cloud-ip-address-info
-  connection-properties-include-tunnel-config: true
+    - ssh-tunnel
+    - advanced-options-start
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.druid

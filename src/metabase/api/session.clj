@@ -265,11 +265,11 @@
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (merge
-   (setting/properties :public)
+   (setting/user-readable-values-map :public)
    (when @api/*current-user*
-     (setting/properties :authenticated))
+     (setting/user-readable-values-map :authenticated))
    (when api/*is-superuser?*
-     (setting/properties :admin))))
+     (setting/user-readable-values-map :admin))))
 
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."

@@ -1,6 +1,7 @@
 import React from "react";
 import cx from "classnames";
 import Link from "metabase/components/Link";
+import { AdminNavLink } from "./AdminNavItem.styled";
 
 interface AdminNavItem {
   name: string;
@@ -10,14 +11,12 @@ interface AdminNavItem {
 
 export const AdminNavItem = ({ name, path, currentPath }: AdminNavItem) => (
   <li>
-    <Link
+    <AdminNavLink
       to={path}
       data-metabase-event={`NavBar;${name}`}
-      className={cx("NavItem py1 px2 no-decoration", {
-        "is--selected": currentPath.startsWith(path),
-      })}
+      isSelected={currentPath.startsWith(path)}
     >
       {name}
-    </Link>
+    </AdminNavLink>
   </li>
 );

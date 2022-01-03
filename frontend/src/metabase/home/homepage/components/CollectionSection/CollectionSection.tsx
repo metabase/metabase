@@ -15,13 +15,17 @@ import {
   EmptyStateTitle,
 } from "./CollectionSection.styled";
 
-interface Props {
+export interface CollectionSectionProps {
   user: User;
   collections: Collection[];
   onCollectionClick?: () => void;
 }
 
-const CollectionSection = ({ user, collections, onCollectionClick }: Props) => {
+const CollectionSection = ({
+  user,
+  collections,
+  onCollectionClick,
+}: CollectionSectionProps): JSX.Element => {
   const showList = collections.some(c => c.id !== user.personal_collection_id);
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
@@ -52,11 +56,13 @@ interface EmptyStateProps {
   user: User;
 }
 
-const EmptyState = ({ user }: EmptyStateProps) => {
+const EmptyState = ({ user }: EmptyStateProps): JSX.Element => {
   return (
     <EmptyStateRoot>
       <EmptyStateImage
         src="app/img/empty.png"
+        width={124}
+        height={130}
         srcSet="app/img/empty.png 1x, app/img/empty@2x.png 2x"
       />
       <EmptyStateTitle>

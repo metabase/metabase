@@ -9,6 +9,7 @@
     (loop []
       (let [version                    (u/read-line-with-prompt "What version are we building (e.g. 0.36.0)?")
             branch                     current-branch
+            latest-release?            (u/yes-or-no-prompt "Should this be set as the \"latest\" release on GitHub?")
             [github-milestone edition] (case (first version)
                                          \0 [version :oss]
                                          ;; always query GitHub milestone on the basis of OSS form of version
@@ -22,4 +23,5 @@
             (c/set-version! version)
             (c/set-branch! branch)
             (c/set-edition! edition)
+            (c/set-force-latest-release?! latest-release?)
             (c/set-github-milestone! github-milestone)))))))

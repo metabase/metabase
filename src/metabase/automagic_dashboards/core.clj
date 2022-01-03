@@ -1328,7 +1328,7 @@
                  (let [tables (->> tables
                                    (sort-by :score >)
                                    (take max-candidate-tables))]
-                   {:id     (u/the-id database)
+                   {:id     (format "%s/%s" (u/the-id database) schema)
                     :tables tables
                     :schema schema
                     :score  (+ (math/sq (transduce (m/distinct-by :rule)

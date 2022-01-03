@@ -9,6 +9,8 @@ import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import { Grid, GridItem } from "metabase/components/Grid";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
 import { TableActionLink, TableCard, TableLink } from "./TableBrowser.styled";
@@ -44,18 +46,22 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <GridItem key={table.id} width={ITEM_WIDTHS}>
-            <TableCard hoverable={isSyncCompleted(table)}>
-              <TableLink
-                to={isSyncCompleted(table) ? getTableUrl(table, metadata) : ""}
-                data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
-              >
-                <TableBrowserItem
-                  table={table}
-                  dbId={dbId}
-                  xraysEnabled={xraysEnabled}
-                />
-              </TableLink>
-            </TableCard>
+            <TableInfoPopover tableId={table.id} placement="bottom-start">
+              <TableCard hoverable={isSyncCompleted(table)}>
+                <TableLink
+                  to={
+                    isSyncCompleted(table) ? getTableUrl(table, metadata) : ""
+                  }
+                  data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                >
+                  <TableBrowserItem
+                    table={table}
+                    dbId={dbId}
+                    xraysEnabled={xraysEnabled}
+                  />
+                </TableLink>
+              </TableCard>
+            </TableInfoPopover>
           </GridItem>
         ))}
       </Grid>

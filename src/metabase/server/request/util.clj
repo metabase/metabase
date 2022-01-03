@@ -103,7 +103,7 @@
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
   [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
   (let [id          (or browser-id
-                        (log/warn (trs "Login in request is missing device ID information")))
+                        (log/warn (trs "Login request is missing device ID information")))
         description (or user-agent
                         (log/warn (trs "Login request is missing user-agent information")))
         ip-address  (or (ip-address request)

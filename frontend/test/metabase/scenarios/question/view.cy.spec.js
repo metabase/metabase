@@ -72,18 +72,28 @@ describe("scenarios > question > view", () => {
     });
   });
 
-  // *** Test flaky/failing because of the .type() issue
-  describe.skip("filter sidebar", () => {
+  describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
       cy.contains("Filter").click();
       cy.contains("Vendor").click();
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
-        .type("Alfreda Konopelski II Group")
-        .blur();
+        .type("A");
+      cy.findByText("Alfreda Konopelski II Group").click();
+
       cy.contains("Add filter").click();
       cy.contains("Showing 91 rows");
+    });
+
+    // flaky test (#19454)
+    it.skip("should show info popover for dimension in the filter list", () => {
+      openOrdersTable();
+      cy.contains("Filter").click();
+
+      cy.contains("Name").trigger("mouseenter");
+      popover().contains("Name");
+      popover().contains("2,499 distinct values");
     });
   });
 
@@ -136,14 +146,19 @@ describe("scenarios > question > view", () => {
 
     it("should give everyone view permissions", () => {});
 
-    it("should show filters by list for Category", () => {
+    it("should show filters by list for Category without a search box", () => {
       cy.visit("/question/4");
 
       cy.findAllByText("CATEGORY")
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search the list");
+        cy.findByText("Doohickey");
+        cy.findByText("Gizmo");
+        cy.findByText("Gadget");
+        cy.findByText("Widget");
+
+        cy.findByPlaceholderText("Search the list").should("not.exist");
         cy.findByPlaceholderText("Search by Category").should("not.exist");
       });
     });
@@ -203,7 +218,10 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor").type("Balistreri-Muller");
+        cy.findByPlaceholderText("Search by Vendor")
+          .focus()
+          .clear()
+          .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.get(".RunButton")
