@@ -1,12 +1,11 @@
 import Settings from "metabase/lib/settings";
 
 export const getSSOUrl = (redirectUrl?: string): string => {
-  const url = new URL(Settings.get("site-url"));
-  url.pathname = "/auth/sso";
+  const siteUrl = Settings.get("site-url");
 
   if (redirectUrl) {
-    url.searchParams.set("redirect", redirectUrl);
+    return `${siteUrl}/auth/sso?redirect=${encodeURIComponent(redirectUrl)}`;
+  } else {
+    return `${siteUrl}/auth/sso`;
   }
-
-  return url.href;
 };
