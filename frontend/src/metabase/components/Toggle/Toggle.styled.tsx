@@ -28,6 +28,7 @@ export const ToggleRoot = styled.a<ToggleRootProps>`
   border: 1px solid ${color("border")};
   background-color: ${color("bg-medium")};
   transition: all 0.3s;
+  text-decoration: none;
 
   &:after {
     content: "";
