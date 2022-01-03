@@ -31,8 +31,9 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
       <FormInputContainer>
         <Input
           type="email"
-          placeholder={t`Email address`}
           defaultValue={initialEmail}
+          placeholder={t`Email address`}
+          fullWidth
         />
         <FormButton type="submit">{t`Subscribe`}</FormButton>
       </FormInputContainer>

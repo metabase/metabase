@@ -50,5 +50,5 @@ export const FormInputContainer = styled.div`
 
 export const FormButton = styled(Button)`
   flex: 0 0 auto;
-  margin-left: 0.5rem;
+  margin-left: 1rem;
 `;
