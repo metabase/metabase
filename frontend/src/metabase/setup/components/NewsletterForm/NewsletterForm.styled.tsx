@@ -11,10 +11,12 @@ export const FormRoot = styled.form`
 
 export const FormLabel = styled.div`
   position: absolute;
+  top: 0;
   left: 0;
   right: 0;
   display: flex;
   justify-content: center;
+  transform: translateY(-50%);
 `;
 
 export const FormLabelCard = styled.div`
@@ -37,5 +39,6 @@ export const FormLabelText = styled.div`
 export const FormMessage = styled.div`
   color: ${color("text-medium")};
   font-size: 1rem;
+  font-weight: 700;
   margin-bottom: 1.5rem;
 `;
