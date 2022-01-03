@@ -92,8 +92,11 @@
         col-indices (map #(column-name->index % results) metrics)]
     (when (seq? col-indices)
       (fn [row]
-        (vec (for [idx col-indices]
-               (get row idx)))))))
+        (let [res (vec (for [idx col-indices]
+                         (get row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
 
 (defn mult-x-axis-rowfn
   "This is used as the X-axis column in the UI
@@ -104,8 +107,11 @@
         col-indices (map #(column-name->index % results) dimensions)]
     (when (seq? col-indices)
       (fn [row]
-        (vec (for [idx col-indices]
-               (get row idx)))))))
+        (let [res (vec (for [idx col-indices]
+                         (get row idx)))]
+          (if (every? some? res)
+            res
+            nil))))))
 
 (defn make-goal-comparison-rowfn
   "For a given resultset, return the index of the column that should be used for the goal comparison. This can come
