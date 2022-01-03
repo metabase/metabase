@@ -36,5 +36,5 @@ export const subscribeToNewsletter = async (email: string): Promise<void> => {
   body.append("EMAIL", email);
   body.append(SUBSCRIBE_TOKEN, "");
 
-  await fetch(SUBSCRIBE_URL, { method: "POST", body });
+  await fetch(SUBSCRIBE_URL, { method: "POST", mode: "no-cors", body });
 };
