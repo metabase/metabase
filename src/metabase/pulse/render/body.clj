@@ -566,7 +566,9 @@
          :yAxisPosition y-axis-pos}))))
 
 (defn- lab-image-bundle
-  "Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way"
+  "Generate an image-bundle for a Line Area Bar chart (LAB)
+
+  Use the combo charts for every chart-type in line area bar because we get multiple chart series for cheaper this way."
   [chart-type render-type _timezone-id card _dashcard {:keys [cols rows viz-settings] :as data}]
   (let [x-axis-rowfn     (ui-logic/mult-x-axis-rowfn card data)
         y-axis-rowfn     (ui-logic/mult-y-axis-rowfn card data)
