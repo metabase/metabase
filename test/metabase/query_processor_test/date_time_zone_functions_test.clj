@@ -4,7 +4,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.interface :as tx])
-  (:import (java.time ZonedDateTime)))
+  (:import java.time.ZonedDateTime))
 
 (defn- test-date-extract
   [expr & [{:keys [:fields :filter :breakout :aggregation :limit]
@@ -177,4 +177,3 @@
                            :breakout    [[:expression "review-second"]]})
                         mt/rows
                         (into {})))))))))
-
