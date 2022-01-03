@@ -15,6 +15,10 @@ export const getUser = (state: any): UserInfo | undefined => {
   return state.setup.user;
 };
 
+export const getUserEmail = (state: any): string | undefined => {
+  return getUser(state)?.email;
+};
+
 export const getDatabase = (state: any): DatabaseInfo | undefined => {
   return state.setup.database;
 };
