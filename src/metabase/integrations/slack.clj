@@ -14,7 +14,8 @@
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
        " "
-       (deferred-tru "Please use a new Slack app integration instead.")))
+       (deferred-tru "Please use a new Slack app integration instead."))
+  :deprecated "0.42.0")
 
 (defsetting slack-app-token
   (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
