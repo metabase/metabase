@@ -369,7 +369,8 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         widget: PremiumEmbeddingLinkWidget,
-        getHidden: settings => !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+        getHidden: settings =>
+          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
       },
     ],
   },
