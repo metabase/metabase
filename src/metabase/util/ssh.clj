@@ -2,8 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.public-settings :as public-settings]
-            [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [deferred-tru]])
+            [metabase.util :as u])
   (:import java.io.ByteArrayInputStream
            java.util.concurrent.TimeUnit
            org.apache.sshd.client.future.ConnectFuture
@@ -69,62 +68,6 @@
     (log/trace (u/format-color 'cyan "creating ssh tunnel (heartbeating every %d seconds) %s@%s:%s -L %s:%s:%s"
                                hb-sec tunnel-user tunnel-host tunnel-port input-port host port))
     [session tracker]))
-
-(def ssh-tunnel-preferences
-  "Configuration parameters to include in the add driver page on drivers that
-  support ssh tunnels"
-  [{:name         "tunnel-enabled"
-    :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
-    :type         :boolean
-    :default      false}
-   {:name         "tunnel-host"
-    :display-name (deferred-tru "SSH tunnel host")
-    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
-    :placeholder  "hostname"
-    :required     true
-    :visible-if   {"tunnel-enabled" true}}
-   {:name         "tunnel-port"
-    :display-name (deferred-tru "SSH tunnel port")
-    :type         :integer
-    :default      22
-    :required     false
-    :visible-if   {"tunnel-enabled" true}}
-   {:name         "tunnel-user"
-    :display-name (deferred-tru "SSH tunnel username")
-    :helper-text  (deferred-tru "The username you use to login to your SSH tunnel.")
-    :placeholder  "username"
-    :required     true
-    :visible-if   {"tunnel-enabled" true}}
-   ;; this is entirely a UI flag
-   {:name         "tunnel-auth-option"
-    :display-name (deferred-tru "SSH Authentication")
-    :type         :select
-    :options      [{:name (deferred-tru "SSH Key") :value "ssh-key"}
-                   {:name (deferred-tru "Password") :value "password"}]
-    :default      "ssh-key"
-    :visible-if   {"tunnel-enabled" true}}
-   {:name         "tunnel-pass"
-    :display-name (deferred-tru "SSH tunnel password")
-    :type         :password
-    :placeholder  "******"
-    :visible-if   {"tunnel-auth-option" "password"}}
-   {:name         "tunnel-private-key"
-    :display-name (deferred-tru "SSH private key to connect to the tunnel")
-    :type         :string
-    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
-    :required     true
-    :visible-if   {"tunnel-auth-option" "ssh-key"}}
-   {:name         "tunnel-private-key-passphrase"
-    :display-name (deferred-tru "Passphrase for SSH private key")
-    :type         :password
-    :placeholder  "******"
-    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
-
-(defn with-tunnel-config
-  "Add preferences for ssh tunnels to a drivers :connection-properties"
-  [driver-options]
-  (concat driver-options ssh-tunnel-preferences))
 
 (defn use-ssh-tunnel?
   "Is the SSH tunnel currently turned on for these connection details"

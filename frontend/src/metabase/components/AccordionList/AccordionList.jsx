@@ -518,9 +518,7 @@ const AccordionListCell = ({
               {icon}
             </span>
           )}
-          {name && (
-            <h3 className="List-section-title flex-full text-wrap">{name}</h3>
-          )}
+          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
           {extra}
           {sections.length > 1 && section.items && section.items.length > 0 && (
             <span className="flex-align-right ml1 hover-child">

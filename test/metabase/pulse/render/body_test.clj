@@ -406,6 +406,10 @@
    {:name         "NumKazoos",
     :display_name "NumKazoos",
     :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "ExtraneousColumn",
+    :display_name "ExtraneousColumn",
+    :base_type    :type/BigInteger
     :semantic_type nil}])
 
 (defn has-inline-image? [rendered]
@@ -484,15 +488,15 @@
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
           (render-combo {:cols default-combo-columns
-                         :rows [[10.0 1 123] [5.0 10 12] [2.50 20 1337] [1.25 30 -22]]}))))
+                         :rows [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]}))))
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
           (render-combo-multi-x {:cols default-combo-columns
-                                 :rows [[10.0 "Bob" 123] [5.0 "Dobbs" 12] [2.50 "Robbs" 1337] [1.25 "Mobbs" -22]]}))))
+                                 :rows [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
           (render-combo {:cols default-combo-columns
-                         :rows [[nil 1 1] [10.0 1 nil] [5.0 10 22] [2.50 nil 22] [1.25 nil nil]]})))))
+                         :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
 
 ;; Test rendering a sparkline
 ;;
@@ -594,6 +598,9 @@
                                 html-tree))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Renders negative value without error"
+      (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
 
 (def donut-info #'body/donut-info)

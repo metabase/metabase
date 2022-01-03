@@ -25,9 +25,9 @@ __Granular access__ allows administrators to explicitly set access to tables or 
 
 __No self-service__ prevents people in a group from creating new ad hoc queries or questions based on this data, or from seeing this data in the Browse Data screen. Groups with this level of access can still see saved questions and charts based on this data in Collections they have access to.
 
-### Block
+### Block access
 
-{% include plans-blockquote.html %}
+{% include plans-blockquote.html feature="Block access" %}
 
 __Block__ ensures people can’t ever see the data from this database, regardless of their permissions at the Collection level. So if they want to see a question in a collection that have access to, but that question uses data from a database that's been blocked for that person's group, then they won't be able to see that question.
 

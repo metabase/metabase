@@ -9,16 +9,21 @@ import Homepage from "../../components/Homepage";
 import {
   hideData,
   hidePinMessage,
-  hideXrays,
   hideSyncingModal,
+  hideXrays,
 } from "../../actions";
 import {
+  getCandidatesQuery,
   getShowData,
   getShowPinMessage,
-  getShowXrays,
   getShowSyncingModal,
+  getShowXrays,
 } from "../../selectors";
-import { Database } from "../../types";
+import {
+  trackCollectionClick,
+  trackDashboardClick,
+  trackDatabaseClick,
+} from "../../analytics";
 
 const databasesProps = {
   loadingAndErrorWrapper: false,
@@ -49,27 +54,18 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state: any, { databases = [] }: { databases: Database[] }) => {
-    const [sampleDatabases, userDatabases] = _.partition(
-      databases,
-      d => d.is_sample,
-    );
-
-    if (userDatabases.length) {
-      return { id: userDatabases[0].id };
-    } else if (sampleDatabases.length) {
-      return { id: sampleDatabases[0].id };
-    }
-  },
+  query: getCandidatesQuery,
   loadingAndErrorWrapper: false,
 };
 
 const mapStateToProps = (state: any) => ({
   user: getUser(state),
   showData: getShowData(state),
-  showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
   showSyncingModal: getShowSyncingModal(state),
+  onCollectionClick: trackCollectionClick,
+  onDashboardClick: trackDashboardClick,
+  onDatabaseClick: trackDatabaseClick,
 });
 
 const mapDispatchToProps = {

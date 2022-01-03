@@ -32,6 +32,28 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
+  // flaky test (#19454)
+  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Math")
+      .trigger("mouseenter");
+
+    popover().contains("Math");
+    popover().contains("No description");
+  });
+
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
       {
@@ -393,14 +415,6 @@ describe("scenarios > question > custom column", () => {
       cy.findByText("Custom Expression").click();
     });
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
-  });
-
-  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
-    cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.button("Done").should("not.be.disabled");
   });
 
   it.skip("should work with `isNull` function (metabase#15922)", () => {

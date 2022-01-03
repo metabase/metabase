@@ -30,8 +30,8 @@ describe("scenarios > question > joined questions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Products").click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Products").click();
 
     cy.icon("join_left_outer").click();
 

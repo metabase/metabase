@@ -1,6 +1,5 @@
 import {
   restore,
-  mockSessionProperty,
   visitAlias,
   popover,
   filterWidget,
@@ -54,8 +53,6 @@ const dashboardDetails = { name: "18061D", parameters: [filter] };
 
 describe("issue 18061", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 

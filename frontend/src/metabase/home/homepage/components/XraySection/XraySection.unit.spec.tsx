@@ -1,12 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import {
-  Dashboard,
-  DatabaseCandidate,
-  TableCandidate,
-  User,
-} from "../../types";
+import { DatabaseCandidate, TableCandidate, User } from "../../types";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {
@@ -18,14 +13,7 @@ describe("XraySection", () => {
       }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
 
     expect(
       screen.getByText("Try these x-rays based on your data"),
@@ -45,9 +33,7 @@ describe("XraySection", () => {
     render(
       <XraySection
         user={user}
-        dashboards={[]}
         databaseCandidates={databaseCandidates}
-        showXrays
         onHideXrays={onHideXrays}
       />,
     );
@@ -66,57 +52,34 @@ describe("XraySection", () => {
       }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
 
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
-  it("should not be visible when hidden by the setting", () => {
+  it("should allow changing database schema for table candidates", () => {
     const user = getUser();
     const databaseCandidates = [
-      getDatabaseCandidate({ tables: [getTableCandidate()] }),
+      getDatabaseCandidate({
+        schema: "public",
+        tables: [getTableCandidate({ title: "Public table" })],
+      }),
+      getDatabaseCandidate({
+        schema: "admin",
+        tables: [getTableCandidate({ title: "Admin table" })],
+      }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays={false}
-      />,
-    );
-  });
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
 
-  it("should not be visible when there are pinned dashboards", () => {
-    const user = getUser();
-    const dashboards = [getDashboard()];
+    expect(screen.getByText("Public table")).toBeInTheDocument();
+    expect(screen.queryByText("Admin table")).not.toBeInTheDocument();
 
-    render(<XraySection user={user} dashboards={dashboards} showXrays />);
+    userEvent.click(screen.getByText("public"));
+    userEvent.click(screen.getByText("admin"));
 
-    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
-  });
-
-  it("should not be visible when there are no table candidates", () => {
-    const user = getUser();
-    const databaseCandidates = [getDatabaseCandidate()];
-
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
-
-    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Public table")).not.toBeInTheDocument();
+    expect(screen.getByText("Admin table")).toBeInTheDocument();
   });
 });
 
@@ -124,13 +87,8 @@ const getUser = (opts?: Partial<User>): User => ({
   id: 1,
   first_name: "John",
   is_superuser: false,
+  has_invited_second_user: false,
   personal_collection_id: "personal",
-  ...opts,
-});
-
-const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
-  id: 1,
-  name: "Our dashboard",
   ...opts,
 });
 
@@ -143,6 +101,7 @@ const getTableCandidate = (opts?: Partial<TableCandidate>): TableCandidate => ({
 const getDatabaseCandidate = (
   opts?: Partial<DatabaseCandidate>,
 ): DatabaseCandidate => ({
+  schema: "public",
   tables: [],
   ...opts,
 });

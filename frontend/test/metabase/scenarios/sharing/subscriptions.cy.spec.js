@@ -3,7 +3,6 @@ import {
   setupSMTP,
   describeWithToken,
   popover,
-  mockSessionProperty,
   sidebar,
   mockSlackConfigured,
 } from "__support__/e2e/cypress";
@@ -16,7 +15,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow sharing if there are no dashboard cards", () => {
+  it.skip("should not allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
@@ -155,9 +154,6 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
 
     it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      // In order to reproduce this test, we need to use the old syntac for dashboard filters
-      mockSessionProperty("field-filter-operators-enabled?", false);
-
       cy.createNativeQuestion({
         name: "15705",
         native: {

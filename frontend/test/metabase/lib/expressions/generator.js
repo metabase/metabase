@@ -252,10 +252,34 @@ export function generateExpression(seed, resultType, depth = 13) {
   };
 
   const comparison = () => {
+    const isNumberValue = value =>
+      typeof value === "number" ||
+      (typeof value === "string" && value[0] !== '"');
+
+    const isValidLHS = node => {
+      const { type, value, op, child } = node;
+      if (type === NODE.Literal && isNumberValue(value)) {
+        return false;
+      }
+      if (type === NODE.Unary && op === "-") {
+        return false;
+      }
+      if (type === NODE.Group) {
+        return isValidLHS(child);
+      }
+      return true;
+    };
+
+    // LIMITATION: no number literal on the left-hand side
+    let left = numberExpression();
+    if (!isValidLHS(left)) {
+      left = field();
+    }
+
     return {
       type: NODE.Binary,
       op: randomItem(["=", "!=", "<", ">", "<=", ">="]),
-      left: numberExpression(),
+      left,
       right: numberExpression(),
     };
   };

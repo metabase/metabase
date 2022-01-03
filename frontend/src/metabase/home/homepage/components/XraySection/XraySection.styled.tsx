@@ -59,3 +59,14 @@ export const CardTitle = styled.span`
   margin-left: 1rem;
   overflow: hidden;
 `;
+
+export const SelectRoot = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+export const SelectTitle = styled.div`
+  color: ${color("text-medium")};
+  margin-right: 0.5rem;
+`;

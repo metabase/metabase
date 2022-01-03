@@ -38,7 +38,7 @@
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
-    (setting/set-string! :report-timezone new-value)
+    (setting/set-value-of-type! :string :report-timezone new-value)
     (notify-all-databases-updated)))
 
 

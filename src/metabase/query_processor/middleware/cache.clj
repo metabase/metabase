@@ -42,10 +42,10 @@
 
 (defn- purge! [backend]
   (try
-    (log/tracef "Purging cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
+    (log/tracef "Purging cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
     (catch Throwable e
-      (log/error e (trs "Error purging old cache entires")))))
+      (log/error e (trs "Error purging old cache entries")))))
 
 (defn- min-duration-ms
   "Minimum duration it must take a query to complete in order for it to be eligible for caching."

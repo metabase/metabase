@@ -40,4 +40,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Create container image
-        run: docker buildx build . --build-arg MB_EDITION=ee -t metabase/metabase-enteprise-head:latest --push --compress --no-cache
+        run: docker buildx build . --build-arg MB_EDITION=ee -t metabase/metabase-enterprise-head:latest --push --compress --no-cache

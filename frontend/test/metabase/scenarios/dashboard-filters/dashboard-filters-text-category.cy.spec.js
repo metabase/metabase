@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -9,7 +8,7 @@ import {
 } from "__support__/e2e/cypress";
 
 import { DASHBOARD_TEXT_FILTERS } from "./helpers/e2e-dashboard-filter-data-objects";
-import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
   ([filter, { value, representativeResult }]) => {
@@ -17,8 +16,6 @@ Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         cy.visit("/dashboard/1");
 
@@ -35,7 +32,8 @@ Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
         saveDashboard();
 
         filterWidget().click();
-        addWidgetStringFilter(value);
+
+        applyFilterByType(filter, value);
 
         cy.get(".Card").within(() => {
           cy.contains(representativeResult);
@@ -47,7 +45,7 @@ Object.entries(DASHBOARD_TEXT_FILTERS).forEach(
           .next()
           .click();
 
-        addWidgetStringFilter(value);
+        applyFilterByType(filter, value);
 
         saveDashboard();
 

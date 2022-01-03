@@ -12,6 +12,8 @@ import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
+import Modal from "metabase/components/Modal";
+import SyncingModal from "metabase/containers/SyncingModal";
 
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
@@ -24,7 +26,11 @@ import {
   getIsAddingSampleDataset,
   getAddSampleDatasetError,
 } from "../selectors";
-import { deleteDatabase, addSampleDataset } from "../database";
+import {
+  deleteDatabase,
+  addSampleDataset,
+  closeSyncingModal,
+} from "../database";
 
 const RELOAD_INTERVAL = 2000;
 
@@ -39,6 +45,7 @@ const mapStateToProps = (state, props) => ({
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
+  showSyncingModal: MetabaseSettings.get("show-database-syncing-modal"),
 
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
@@ -49,6 +56,7 @@ const mapDispatchToProps = {
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
   addSampleDataset: addSampleDataset,
+  closeSyncingModal,
 };
 
 @Database.loadList({
@@ -62,7 +70,21 @@ export default class DatabaseList extends Component {
     props.databases.map(database => {
       this["deleteDatabaseModal_" + database.id] = React.createRef();
     });
+
+    this.state = {
+      isSyncingModalOpened: (props.created && props.showSyncingModal) || false,
+    };
   }
+
+  componentDidMount() {
+    if (this.state.isSyncingModalOpened) {
+      this.props.closeSyncingModal();
+    }
+  }
+
+  onSyncingModalClose = () => {
+    this.setState({ isSyncingModalOpened: false });
+  };
 
   static propTypes = {
     databases: PropTypes.array,
@@ -70,6 +92,9 @@ export default class DatabaseList extends Component {
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
+    created: PropTypes.string,
+    showSyncingModal: PropTypes.bool,
+    closeSyncingModal: PropTypes.func,
   };
 
   render() {
@@ -81,6 +106,7 @@ export default class DatabaseList extends Component {
       engines,
       deletionError,
     } = this.props;
+    const { isSyncingModalOpened } = this.state;
 
     const error = deletionError || addSampleDatasetError;
 
@@ -196,6 +222,13 @@ export default class DatabaseList extends Component {
             </div>
           ) : null}
         </section>
+        <Modal
+          small
+          isOpen={isSyncingModalOpened}
+          onClose={this.onSyncingModalClose}
+        >
+          <SyncingModal onClose={this.onSyncingModalClose} />
+        </Modal>
       </div>
     );
   }

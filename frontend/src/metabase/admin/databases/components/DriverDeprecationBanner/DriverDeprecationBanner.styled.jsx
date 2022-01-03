@@ -29,7 +29,8 @@ export const BannerWarningIcon = styled(Icon)`
 
 export const BannerCloseIcon = styled(Icon)`
   color: ${color("bg-dark")};
-  width: 1.5rem;
-  height: 1.5rem;
   cursor: pointer;
+  &:hover {
+    color: ${color("admin-navbar")};
+  }
 `;

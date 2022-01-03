@@ -4,6 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
+import MetabaseSettings from "metabase/lib/settings";
 
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
@@ -441,6 +442,8 @@ function ViewTitleHeaderRightSide(props) {
     setQueryBuilderMode,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
+  const hasExploreResultsLink =
+    isNative && isSaved && MetabaseSettings.get("enable-nested-queries");
 
   return (
     <div
@@ -501,7 +504,7 @@ function ViewTitleHeaderRightSide(props) {
           data-metabase-event={`Notebook Mode; Convert to SQL Click`}
         />
       )}
-      {isNative && isSaved && <ExploreResultsLink question={question} />}
+      {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {isRunnable && !isNativeEditorOpen && (
         <RunButtonWithTooltip
           className={cx("text-brand-hover hide", {

@@ -12,9 +12,7 @@ describe("postgres > user > query", () => {
     cy.findByText(PG_DB_NAME)
       .should("be.visible")
       .click();
-    cy.findByText("Orders")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Orders").click();
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {

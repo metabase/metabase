@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -19,8 +18,6 @@ Object.entries(DASHBOARD_DATE_FILTERS).forEach(
 
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         cy.visit("/dashboard/1");
 
@@ -81,10 +78,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Relative Date":

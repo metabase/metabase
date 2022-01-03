@@ -41,6 +41,7 @@ const getUser = (opts?: Partial<User>): User => ({
   first_name: "John",
   is_superuser: false,
   personal_collection_id: "personal",
+  has_invited_second_user: false,
   ...opts,
 });
 

@@ -192,7 +192,8 @@
                                        :engine                      :keyword
                                        :metadata_sync_schedule      :cron-string
                                        :cache_field_values_schedule :cron-string
-                                       :start_of_week               :keyword})
+                                       :start_of_week               :keyword
+                                       :settings                    :encrypted-json})
           :properties     (constantly {:timestamped? true})
           :post-insert    post-insert
           :post-select    post-select
@@ -253,14 +254,14 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` for any non-admin User. For admin users they can still see
-;; the `details` but remove anything resembling a password. No one gets to see this in an API response!
+;; when encoding a Database as JSON remove the `details` and `settings` for any non-admin User. For admin users they can
+;; still see the `details` but remove anything resembling a password. No one gets to see this in an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
     (if (not (:is_superuser @*current-user*))
-      (dissoc db :details)
+      (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce
                              #(m/update-existing %1 %2 (constantly protected-password))

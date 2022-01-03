@@ -1,5 +1,7 @@
 # Setting up SAML with Auth0
 
+{% include plans-blockquote.html feature="SAML authentication" %}
+
 If you haven't already, check out our guide for [authenticating with SAML](authenticating-with-saml.html)
 
 ## Create an Application

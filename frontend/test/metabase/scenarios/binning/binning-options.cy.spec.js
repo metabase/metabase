@@ -286,9 +286,7 @@ function chooseInitialBinningOptionForExplicitJoin({
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
   cy.wait("@dataset");
-  cy.findByText("Summarize")
-    .should("be.visible")
-    .click();
+  cy.findByTextEnsureVisible("Summarize").click();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition

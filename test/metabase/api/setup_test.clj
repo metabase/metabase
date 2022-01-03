@@ -90,6 +90,36 @@
                             s/Keyword s/Any}
                            (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
+(deftest invite-user-test
+  (testing "POST /api/setup"
+    (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully"
+      (mt/with-fake-inbox
+        (let [email (mt/random-email)
+              first-name (mt/random-name)
+              last-name (mt/random-name)
+              invitor-first-name (mt/random-name)]
+          (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
+                       :user {:first_name invitor-first-name}
+                       :site_name "Metabase"}
+            (let [invited-user (User :email email)]
+              (is (= (:first_name invited-user) first-name))
+              (is (= (:last_name invited-user) last-name))
+              (is (:is_superuser invited-user)))
+            (let [invite-email (-> (mt/regex-email-bodies
+                                    (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
+                                   (get email)
+                                   first)]
+             (is (= {(str invitor-first-name " could use your help setting up Metabase.*") true}
+                    (:body invite-email))))))))
+
+    (testing "No second user is created if email is not set up"
+      (mt/with-temporary-setting-values [email-smtp-host nil]
+        (let [email (mt/random-email)
+              first-name (mt/random-name)
+              last-name (mt/random-name)]
+          (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}}
+            (is (not (db/exists? User :email email)))))))))
+
 (deftest setup-settings-test
   (testing "POST /api/setup"
     (testing "check that we can set various Settings during setup"

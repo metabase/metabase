@@ -81,12 +81,12 @@
                                              :exclusions  [org.slf4j/slf4j-api]}
   org.apache.commons/commons-compress       {:mvn/version "1.21"}               ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.12.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.15.0"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.15.0"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.15.0"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.15.0"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.15.0"}             ; liquibase logging via log4j 2
-  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.15.0"}             ; allows the slf4j API to work with log4j 2
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.17.0"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.17.0"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core       {:mvn/version "2.17.0"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.17.0"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-liquibase  {:mvn/version "2.17.0"}             ; liquibase logging via log4j 2
+  org.apache.logging.log4j/log4j-slf4j-impl {:mvn/version "2.17.0"}             ; allows the slf4j API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.0.0"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.0.0"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -399,7 +399,7 @@
   ;; clojure -T:build uberjar
   ;; clojure -T:build uberjar :edition :ee
   :build
-  {:deps       {io.github.clojure/tools.build   {:git/tag "v0.1.6", :git/sha "5636e61"}
+  {:deps       {io.github.clojure/tools.build   {:git/tag "v0.7.4" :git/sha "ac442da"}
                 com.github.seancorfield/depstar {:mvn/version "2.1.278"}
                 metabase/build.common           {:local/root "bin/common"}
                 metabase/buid-mb                {:local/root "bin/build-mb"}}

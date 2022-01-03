@@ -1,4 +1,12 @@
 import React, { Fragment } from "react";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CollectionSection from "../CollectionSection";
+import DatabaseSection from "../DatabaseSection";
+import GreetingSection from "../GreetingSection";
+import StartSection from "../StartSection";
+import XraySection from "../XraySection";
+import SyncingSection from "../SyncingSection/SyncingSection";
+import { HomepageRoot } from "./Homepage.styled";
 import {
   Collection,
   Dashboard,
@@ -6,28 +14,23 @@ import {
   DatabaseCandidate,
   User,
 } from "../../types";
-import CollectionSection from "../CollectionSection";
-import DatabaseSection from "../DatabaseSection";
-import GreetingSection from "../GreetingSection";
-import StartSection from "../StartSection";
-import XraySection from "../XraySection";
-import { LandingRoot } from "./Homepage.styled";
-import SyncingSection from "../SyncingSection/SyncingSection";
 
-interface Props {
+export interface HomepageProps {
   user: User;
   databases?: Database[];
   collections?: Collection[];
   dashboards?: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
   showData?: boolean;
-  showXrays?: boolean;
   showPinMessage?: boolean;
   showSyncingModal?: boolean;
   onHideData?: () => void;
   onHideXrays?: () => void;
   onHidePinMessage?: () => void;
   onHideSyncingModal?: () => void;
+  onCollectionClick?: () => void;
+  onDashboardClick?: (dashboard: Dashboard) => void;
+  onDatabaseClick?: (database: Database) => void;
 }
 
 const Homepage = ({
@@ -37,18 +40,20 @@ const Homepage = ({
   dashboards,
   databaseCandidates,
   showData,
-  showXrays,
   showPinMessage,
   showSyncingModal,
   onHideData,
   onHideXrays,
   onHidePinMessage,
   onHideSyncingModal,
-}: Props) => {
+  onCollectionClick,
+  onDashboardClick,
+  onDatabaseClick,
+}: HomepageProps): JSX.Element => {
   return (
-    <LandingRoot>
+    <HomepageRoot>
       <GreetingSection user={user} />
-      {databases && collections && dashboards && (
+      {databases && collections && dashboards ? (
         <Fragment>
           <StartSection
             user={user}
@@ -56,31 +61,36 @@ const Homepage = ({
             dashboards={dashboards}
             showPinMessage={showPinMessage}
             onHidePinMessage={onHidePinMessage}
+            onDashboardClick={onDashboardClick}
           />
           <XraySection
             user={user}
-            dashboards={dashboards}
             databaseCandidates={databaseCandidates}
-            showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
-          <CollectionSection user={user} collections={collections} />
+          <CollectionSection
+            user={user}
+            collections={collections}
+            onCollectionClick={onCollectionClick}
+          />
           <DatabaseSection
             user={user}
             databases={databases}
             showData={showData}
             onHideData={onHideData}
+            onDatabaseClick={onDatabaseClick}
           />
           <SyncingSection
             user={user}
             databases={databases}
-            showXrays={showXrays}
             showSyncingModal={showSyncingModal}
             onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
+      ) : (
+        <LoadingAndErrorWrapper loading />
       )}
-    </LandingRoot>
+    </HomepageRoot>
   );
 };
 
