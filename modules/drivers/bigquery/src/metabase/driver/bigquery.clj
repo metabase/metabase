@@ -309,7 +309,9 @@
 
 (defmethod driver/supports? [:bigquery :foreign-keys] [_ _] true)
 
-(defmethod driver/supports? [:bigquery :date-functions] [_ _] false)
+;; advanced date/time/zone handling not supported in legacy BigQuery driver
+(defmethod driver/database-supports? [:bigquery :date-functions] [& more]
+  false)
 
 ;; BigQuery is always in UTC
 (defmethod driver/db-default-timezone :bigquery [_ _]

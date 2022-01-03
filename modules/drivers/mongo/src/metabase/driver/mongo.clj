@@ -217,6 +217,10 @@
                  :native-parameters]]
   (defmethod driver/supports? [:mongo feature] [_ _] true))
 
+;; TODO: figure out how to support this for MongoDB, which doesn't extend :sql (and hence doesn't get sql.qp stuff)
+(defmethod driver/database-supports? [:mongo :date-functions] [& more]
+  false)
+
 (defmethod driver/database-supports? [:mongo :expressions] [_ _ db]
   (let [version (some-> (get-in db [:details :version])
                         (str/split #"\.")
