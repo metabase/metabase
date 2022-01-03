@@ -12,6 +12,7 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
+import MetabaseSettings from "metabase/lib/settings";
 import { ViewTitleHeader } from "./ViewHeader";
 
 const BASE_GUI_QUESTION = {
@@ -84,7 +85,18 @@ function getSavedNativeQuestion(overrides) {
   });
 }
 
-function setup({ question, isRunnable = true, ...props } = {}) {
+function mockSettings({ enableNestedQueries = true } = {}) {
+  MetabaseSettings.get = jest.fn().mockImplementation(key => {
+    if (key === "enable-nested-queries") {
+      return enableNestedQueries;
+    }
+    return false;
+  });
+}
+
+function setup({ question, isRunnable = true, settings, ...props } = {}) {
+  mockSettings(settings);
+
   const callbacks = {
     runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
@@ -484,5 +496,10 @@ describe("View Header | Saved native question", () => {
   it("offers to explore query results", () => {
     setupSavedNative();
     expect(screen.queryByText("Explore results")).toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results if nested queries are disabled", () => {
+    setupSavedNative({ settings: { enableNestedQueries: false } });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 });

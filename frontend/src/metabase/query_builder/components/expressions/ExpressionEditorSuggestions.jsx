@@ -6,6 +6,8 @@ import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+
 import { ListItemStyled, UlStyled } from "./ExpressionEditorSuggestions.styled";
 
 import { isObscured } from "metabase/lib/dom";
@@ -88,6 +90,7 @@ export default class ExpressionEditorSuggestions extends React.Component {
           attachment: "top left",
           targetAttachment: "bottom left",
         }}
+        targetOffsetY={0}
         sizeToFit
       >
         <UlStyled data-testid="expression-suggestions-list">
@@ -96,25 +99,32 @@ export default class ExpressionEditorSuggestions extends React.Component {
             const { icon } = suggestion;
             const { normal, highlighted } = colorForIcon(icon);
 
-            return (
-              <React.Fragment key={`suggestion-${i}`}>
-                <ListItemStyled
-                  onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
+            const key = `$suggstion-${i}`;
+            const listItem = (
+              <ListItemStyled
+                onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
+                isHighlighted={isHighlighted}
+                className="flex align-center"
+              >
+                <Icon
+                  name={icon}
+                  color={isHighlighted ? highlighted : normal}
+                  size="14"
+                  className="mr1"
+                />
+                <SuggestionSpan
+                  suggestion={suggestion}
                   isHighlighted={isHighlighted}
-                  className="flex align-center"
-                >
-                  <Icon
-                    name={icon}
-                    color={isHighlighted ? highlighted : normal}
-                    size="14"
-                    className="mr1"
-                  />
-                  <SuggestionSpan
-                    suggestion={suggestion}
-                    isHighlighted={isHighlighted}
-                  />
-                </ListItemStyled>
-              </React.Fragment>
+                />
+              </ListItemStyled>
+            );
+
+            return suggestion.dimension ? (
+              <DimensionInfoPopover key={key} dimension={suggestion.dimension}>
+                {listItem}
+              </DimensionInfoPopover>
+            ) : (
+              <React.Fragment key={key}>{listItem}</React.Fragment>
             );
           })}
         </UlStyled>

@@ -1,4 +1,11 @@
-import { restore, openPeopleTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openPeopleTable,
+  openNativeEditor,
+  popover,
+  enterCustomColumnDetails,
+  visualize,
+} from "__support__/e2e/cypress";
 
 describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
@@ -42,6 +49,123 @@ describe("scenarios > visualizations > table", () => {
       "href",
       "http://metabase.com/people/1",
     );
+  });
+
+  it("should show field metadata in a popover when hovering over a table column header", () => {
+    openPeopleTable();
+    cy.wait("@dataset");
+
+    cy.icon("notebook").click();
+    cy.findByTestId("fields-picker").click();
+    popover().within(() => {
+      cy.findByText("Select none").click();
+      cy.findByText("City").click();
+      cy.findByText("State").click();
+      cy.findByText("Birth Date").click();
+      cy.findByText("Latitude").click();
+    });
+
+    cy.findByText("Custom column").click();
+
+    popover().within(() => {
+      enterCustomColumnDetails({
+        formula: "concat([Name], [Name])",
+        name: "CustomColumn",
+      });
+
+      cy.findByText("Done").click();
+    });
+
+    visualize();
+
+    [
+      [
+        "ID",
+        () => {
+          cy.contains("A unique identifier given to each user.");
+        },
+      ],
+      [
+        "City",
+        () => {
+          cy.contains("The city of the account’s billing address");
+          cy.findByText("1,966 distinct values");
+        },
+      ],
+      [
+        "State",
+        () => {
+          cy.findByText("49 distinct values");
+          cy.contains("AK, AL, AR");
+        },
+      ],
+      [
+        "Birth Date",
+        () => {
+          cy.findByText("America/Los_Angeles");
+          cy.findByText("April 26, 1958, 12:00 AM");
+          cy.findByText("April 3, 2000, 12:00 AM");
+        },
+      ],
+      [
+        "Latitude",
+        () => {
+          cy.contains("39.88");
+          cy.findByText("25.78");
+          cy.findByText("70.64");
+        },
+      ],
+      [
+        "CustomColumn",
+        () => {
+          cy.findByText("No description");
+        },
+      ],
+    ].forEach(([column, test]) => {
+      cy.get(".cellData")
+        .contains(column)
+        .trigger("mouseenter");
+
+      popover().within(() => {
+        cy.contains(column);
+        test();
+      });
+
+      cy.get(".cellData")
+        .contains(column)
+        .trigger("mouseleave");
+    });
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findAllByTestId("dimension-list-item-name")
+      .first()
+      .click();
+
+    cy.icon("table2").click();
+
+    cy.get(".cellData")
+      .contains("Count")
+      .trigger("mouseenter");
+
+    popover().within(() => {
+      cy.contains("Count");
+      cy.findByText("No description");
+    });
+  });
+
+  it("should show field metadata popovers for native query tables", () => {
+    openNativeEditor().type("select * from products");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+
+    cy.get(".cellData")
+      .contains("CATEGORY")
+      .trigger("mouseenter");
+    popover().within(() => {
+      cy.contains("CATEGORY");
+      cy.findByText("No description");
+    });
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {

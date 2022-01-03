@@ -25,14 +25,20 @@ driver:
       required: true
       placeholder: dataset_id
     - cloud-ip-address-info
+    - advanced-options-start
     - name: use-jvm-timezone
       display-name: Use JVM Time Zone
       default: false
       type: boolean
+      visible-if:
+        advanced-options: true
     - name: include-user-id-and-hash
       display-name: Include User ID and query hash in queries
       default: true
       type: boolean
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery-cloud-sdk

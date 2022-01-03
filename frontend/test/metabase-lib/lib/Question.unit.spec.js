@@ -709,6 +709,9 @@ describe("Question", () => {
   });
 
   describe("URLs", () => {
+    const adhocUrl =
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjF9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==";
+
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
     describe("getUrl(originalQuestion?)", () => {
@@ -721,10 +724,17 @@ describe("Question", () => {
       });
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);
-        expect(question.getUrl()).toBe(
-          "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjF9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==",
-        );
+        expect(question.getUrl()).toBe(adhocUrl);
       });
+    });
+
+    it("should avoid generating URLs with transient IDs", () => {
+      const question = new Question(
+        assoc(orders_raw_card, "id", "foo"),
+        metadata,
+      );
+
+      expect(question.getUrl()).toBe(adhocUrl);
     });
   });
 
@@ -1334,6 +1344,47 @@ describe("Question", () => {
           card: null,
         });
       });
+    });
+  });
+
+  describe("Question.prototype.omitTransientCardIds", () => {
+    it("should return a question without a transient ids", () => {
+      const cardWithTransientId = {
+        ...card,
+        id: "foo",
+        original_card_id: 123,
+      };
+
+      const question = new Question(cardWithTransientId, metadata);
+      const newQuestion = question.omitTransientCardIds();
+      expect(newQuestion.id()).toBeUndefined();
+      expect(newQuestion.card().original_card_id).toBe(123);
+    });
+
+    it("should return a question without a transient original_card_id", () => {
+      const cardWithTransientId = {
+        ...card,
+        id: 123,
+        original_card_id: "bar",
+      };
+
+      const question = new Question(cardWithTransientId, metadata);
+      const newQuestion = question.omitTransientCardIds();
+      expect(newQuestion.card().original_card_id).toBeUndefined();
+      expect(newQuestion.id()).toBe(123);
+    });
+
+    it("should do nothing if id and original_card_id are both not transient", () => {
+      const cardWithoutTransientId = {
+        ...card,
+        id: 123,
+        original_card_id: undefined,
+      };
+
+      const question = new Question(cardWithoutTransientId, metadata);
+      const newQuestion = question.omitTransientCardIds();
+
+      expect(newQuestion).toBe(question);
     });
   });
 });

@@ -125,7 +125,7 @@ const unselectedStyle = css`
   }
 `;
 
-export const DimensionListItemRoot = styled.li`
+export const DimensionListItemRoot = forwardRefToInnerRef(styled.li`
   display: flex;
   align-items: stretch;
   cursor: pointer;
@@ -133,4 +133,4 @@ export const DimensionListItemRoot = styled.li`
   min-height: 34px;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
-`;
+`);

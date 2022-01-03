@@ -81,7 +81,11 @@ export const MBQL_CLAUSES = {
     type: "aggregation",
     args: ["number"],
   },
-  distinct: { displayName: `Distinct`, type: "aggregation", args: ["number"] },
+  distinct: {
+    displayName: `Distinct`,
+    type: "aggregation",
+    args: ["expression"],
+  },
   stddev: {
     displayName: `StandardDeviation`,
     type: "aggregation",
@@ -89,8 +93,8 @@ export const MBQL_CLAUSES = {
     requiresFeature: "standard-deviation-aggregations",
   },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
-  min: { displayName: `Min`, type: "aggregation", args: ["number"] },
-  max: { displayName: `Max`, type: "aggregation", args: ["number"] },
+  min: { displayName: `Min`, type: "aggregation", args: ["expression"] },
+  max: { displayName: `Max`, type: "aggregation", args: ["expression"] },
   share: { displayName: `Share`, type: "aggregation", args: ["boolean"] },
   "count-where": {
     displayName: `CountIf`,

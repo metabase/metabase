@@ -228,6 +228,21 @@ export default class Question {
     );
   }
 
+  omitTransientCardIds() {
+    let question = this;
+
+    const card = question.card();
+    const { id, original_card_id } = card;
+    if (isTransientId(id)) {
+      question = question.setCard(_.omit(question.card(), "id"));
+    }
+    if (isTransientId(original_card_id)) {
+      question = question.setCard(_.omit(question.card(), "original_card_id"));
+    }
+
+    return question;
+  }
+
   /**
    * A question contains either a:
    * - StructuredQuery for queries written in MBQL
@@ -900,13 +915,15 @@ export default class Question {
     includeDisplayIsLocked?: boolean;
     creationType: string;
   } = {}): string {
+    const question = this.omitTransientCardIds();
+
     if (
-      !this.id() ||
-      (originalQuestion && this.isDirtyComparedTo(originalQuestion))
+      !question.id() ||
+      (originalQuestion && question.isDirtyComparedTo(originalQuestion))
     ) {
       return Urls.question(
         null,
-        this._serializeForUrl({
+        question._serializeForUrl({
           clean,
           includeDisplayIsLocked,
           creationType,
@@ -914,7 +931,7 @@ export default class Question {
         query,
       );
     } else {
-      return Urls.question(this.card(), "", query);
+      return Urls.question(question.card(), "", query);
     }
   }
 

@@ -22,12 +22,13 @@ import {
   ListRoot,
 } from "./StartSection.styled";
 
-interface Props {
+export interface StartSectionProps {
   user: User;
   databases: Database[];
   dashboards: Dashboard[];
   showPinMessage?: boolean;
   onHidePinMessage?: () => void;
+  onDashboardClick?: (dashboard: Dashboard) => void;
 }
 
 const StartSection = ({
@@ -36,7 +37,8 @@ const StartSection = ({
   dashboards,
   showPinMessage,
   onHidePinMessage,
-}: Props) => {
+  onDashboardClick,
+}: StartSectionProps): JSX.Element | null => {
   const showDatabaseBanner =
     user.is_superuser && !databases.some(d => !d.is_sample);
   const showDashboardBanner =
@@ -52,14 +54,18 @@ const StartSection = ({
       <SectionHeader>
         <SectionTitle>{t`Start here`}</SectionTitle>
       </SectionHeader>
-      {showDatabaseBanner && <DatabaseBanner />}
+      {showDatabaseBanner && <DatabaseBanner user={user} />}
       {showDashboardBanner && (
         <DashboardBanner user={user} onHidePinMessage={onHidePinMessage} />
       )}
       {showDashboardList && (
         <ListRoot hasMargin={showDatabaseBanner}>
           {dashboards.map(dashboard => (
-            <DashboardCard key={dashboard.id} dashboard={dashboard} />
+            <DashboardCard
+              key={dashboard.id}
+              dashboard={dashboard}
+              onDashboardClick={onDashboardClick}
+            />
           ))}
         </ListRoot>
       )}
@@ -69,13 +75,17 @@ const StartSection = ({
 
 interface DashboardCardProps {
   dashboard: Dashboard;
+  onDashboardClick?: (dashboard: Dashboard) => void;
 }
 
-const DashboardCard = ({ dashboard }: DashboardCardProps) => {
+const DashboardCard = ({
+  dashboard,
+  onDashboardClick,
+}: DashboardCardProps): JSX.Element => {
   const dashboardUrl = Urls.dashboard(dashboard);
 
   return (
-    <CardRoot to={dashboardUrl}>
+    <CardRoot to={dashboardUrl} onClick={() => onDashboardClick?.(dashboard)}>
       <CardIcon name="dashboard" />
       <CardTitle>
         <Ellipsified>{dashboard.name}</Ellipsified>
@@ -84,8 +94,15 @@ const DashboardCard = ({ dashboard }: DashboardCardProps) => {
   );
 };
 
-const DatabaseBanner = () => {
+export interface DatabaseBannerProps {
+  user: User;
+}
+
+const DatabaseBanner = ({ user }: DatabaseBannerProps): JSX.Element => {
   const userUrl = Urls.newUser();
+  const userLabel = user.has_invited_second_user
+    ? t`invite another teammate`
+    : t`invite a teammate`;
   const databaseUrl = Urls.newDatabase();
   const docsUrl = Settings.docsUrl(
     "administration-guide/01-managing-databases",
@@ -100,7 +117,7 @@ const DatabaseBanner = () => {
         <BannerTitle>{t`Connect your data to get the most out of Metabase`}</BannerTitle>
         <BannerDescription>
           {jt`If you need help, you can ${(
-            <ExternalLink href={userUrl}>{t`invite a teammate`}</ExternalLink>
+            <ExternalLink href={userUrl}>{userLabel}</ExternalLink>
           )} or ${(
             <ExternalLink href={docsUrl}>
               {t`check out our setup guides`}
@@ -121,7 +138,10 @@ interface DashboardBannerProps {
   onHidePinMessage?: () => void;
 }
 
-const DashboardBanner = ({ user, onHidePinMessage }: DashboardBannerProps) => {
+const DashboardBanner = ({
+  user,
+  onHidePinMessage,
+}: DashboardBannerProps): JSX.Element => {
   const collectionUrl = Urls.collection(ROOT_COLLECTION);
 
   return (

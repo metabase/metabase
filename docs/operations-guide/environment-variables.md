@@ -140,13 +140,6 @@ Default: `true`
 
 Identify when new versions of Metabase are available.
 
-### `MB_CLIENT`
-
-Type: string<br>
-Default: `null`
-
-Used to recognize the Mac App client, which then defaults to `"OSX"`.
-
 ### `MB_COLORIZE_LOGS`
 
 Type: boolean<br>

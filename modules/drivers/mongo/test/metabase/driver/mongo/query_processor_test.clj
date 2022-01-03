@@ -1,9 +1,13 @@
 (ns metabase.driver.mongo.query-processor-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [metabase.driver.mongo.query-processor :as mongo.qp]
+            [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [schema.core :as s]))
+            [metabase.util :as u]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (deftest query->collection-name-test
   (testing "query->collection-name"
@@ -134,7 +138,20 @@
                  (mongo.qp/mbql->native
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
-                     :breakout    [$tips.source.username]})))))))))
+                     :breakout    [$tips.source.username]}))))
+          (testing "Parent fields are removed from projections when child fields are included (#19135)"
+            (let [table       (Table :db_id (mt/id))
+                  fields      (db/select Field :table_id (u/the-id table))
+                  projections (-> (mongo.qp/mbql->native
+                                    (mt/mbql-query tips {:fields (mapv (fn [f]
+                                                                         [:field (u/the-id f) nil])
+                                                                       fields)}))
+                                  :projections
+                                  set)]
+              ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
+              ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
+              ;; see docstring on mongo.qp/remove-parent-fields for full details
+              (is (empty? (set/intersection projections #{"source" "url" "venue"}))))))))))
 
 (deftest multiple-distinct-count-test
   (mt/test-driver :mongo
@@ -170,7 +187,7 @@
                                  :limit       5}))))))
     (testing "Should be able to deal with 1-arity functions"
       (is (= {"cobb" {"$toUpper" "$name"},
-              "bob" {"$abs" "$latitude"} }
+              "bob" {"$abs" "$latitude"}}
              (extract-projections
                ["bob" "cobb"]
                (qp/query->native

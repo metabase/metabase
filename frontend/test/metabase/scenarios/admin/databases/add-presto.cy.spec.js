@@ -32,6 +32,7 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
     // Implicit assertion - reproduces metabase#18351
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Additional JDBC options");
 
     cy.findByLabelText("Use a secure connection (SSL)");

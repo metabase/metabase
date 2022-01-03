@@ -764,8 +764,8 @@
   [path context]
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)
           :when (or (= context :update)
-                    (nil? (setting/get-string k)))]
-    (setting/set-string! k v)))
+                    (nil? (setting/get-value-of-type :string k)))]
+    (setting/set-value-of-type! :string k v)))
 
 (defn- log-or-die
   [on-error message]

@@ -52,7 +52,8 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id)))
+   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+                           :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
@@ -687,4 +688,32 @@
                       {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
                      (->> (:cols (add-column-info base-query {}))
                           (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref]))))))))))))
+                          (map #(select-keys % [:display_name :field_ref])))))))))))
+
+  (testing "Has the correct display names for joined fields from cards"
+    (letfn [(native [query] {:type :native
+                             :native {:query query :template-tags {}}
+                             :database (mt/id)})]
+      (mt/with-temp* [Card [{card1-id :id} {:dataset_query
+                                            (native "select 'foo' as A_COLUMN")}]
+                      Card [{card2-id :id} {:dataset_query
+                                            (native "select 'foo' as B_COLUMN")}]]
+        (doseq [card-id [card1-id card2-id]]
+          ;; populate metadata
+          (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+        (let [query {:database (mt/id)
+                     :type :query
+                     :query {:source-table (str "card__" card1-id)
+                             :joins [{:fields "all"
+                                      :source-table (str "card__" card2-id)
+                                      :condition [:=
+                                                  [:field "A_COLUMN" {:base-type :type/Text}]
+                                                  [:field "B_COLUMN" {:base-type :type/Text
+                                                                      :join-alias "alias"}]]
+                                      :alias "alias"}]}}
+              results (qp/process-query query)]
+          (is (= "alias → B Column" (-> results :data :cols second :display_name))
+              "cols has wrong display name")
+          (is (= "alias → B Column" (-> results :data :results_metadata
+                                        :columns second :display_name))
+              "Results metadata cols has wrong display name"))))))

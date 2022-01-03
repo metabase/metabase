@@ -60,13 +60,21 @@
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
-(defn uuid-nonce
-  "Getter for settings that should be set to a UUID the first time they are fetched."
-  [setting]
-  (or (setting/get-string setting)
+;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
+(defmethod setting/get-value-of-type ::uuid-nonce
+  [_ setting]
+  (or (setting/get-value-of-type :string setting)
       (let [value (str (UUID/randomUUID))]
-        (setting/set-string! setting value)
+        (setting/set-value-of-type! :string setting value)
         value)))
+
+(defmethod setting/set-value-of-type! ::uuid-nonce
+  [_ setting new-value]
+  (setting/set-value-of-type! :string setting new-value))
+
+(defmethod setting/default-tag-for-type ::uuid-nonce
+  [_]
+  `String)
 
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
@@ -75,7 +83,7 @@
   :visibility :internal
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :getter     #(uuid-nonce :site-uuid))
+  :type       ::uuid-nonce)
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -100,7 +108,7 @@
   :visibility :public
   :getter (fn []
             (try
-              (some-> (setting/get-string :site-url) normalize-site-url)
+              (some-> (setting/get-value-of-type :string :site-url) normalize-site-url)
               (catch clojure.lang.ExceptionInfo e
                 (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
@@ -109,7 +117,7 @@
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
                 (redirect-all-requests-to-https false))
-              (setting/set-string! :site-url new-value))))
+              (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
   (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
@@ -121,7 +129,7 @@
                 (when new-value
                   (when-not (i18n/available-locale? new-value)
                     (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
-                (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
+                (setting/set-value-of-type! :string :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
@@ -175,7 +183,8 @@
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
-  :default true)
+  :default true
+  :visibility :authenticated)
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
@@ -207,7 +216,7 @@
                         " "
                         (tru "Values greater than {0} ({1}) are not allowed."
                              global-max-caching-kb (u/format-bytes (* global-max-caching-kb 1024)))))))
-             (setting/set-integer! :query-caching-max-kb new-value)))
+             (setting/set-value-of-type! :integer :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
@@ -246,12 +255,12 @@
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (setting/get-json :application-colors)) "#509EE3"))
+  (or (:brand (setting/get-value-of-type :json :application-colors)) "#509EE3"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
   []
-  (or (:accent3 (setting/get-json :application-colors)) "#EF8C8C"))
+  (or (:accent3 (setting/get-value-of-type :json :application-colors)) "#EF8C8C"))
 
 (defsetting application-logo-url
   (deferred-tru "For best results, use an SVG file with a transparent background.")
@@ -273,7 +282,7 @@
   :getter     (fn []
                 ;; if `:enable-password-login` has an *explict* (non-default) value, and SSO is configured, use that;
                 ;; otherwise this always returns true.
-                (let [v (setting/get-boolean :enable-password-login)]
+                (let [v (setting/get-value-of-type :boolean :enable-password-login)]
                   (if (and (some? v)
                            (sso-configured?))
                     v
@@ -322,7 +331,7 @@
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :default "X-Forwarded-For"
-  :getter  (fn [] (some-> (setting/get-string :source-address-header)
+  :getter  (fn [] (some-> (setting/get-value-of-type :string :source-address-header)
                           u/lower-case-en)))
 
 (defn remove-public-uuid-if-public-sharing-is-disabled
@@ -417,7 +426,7 @@
                         new-value)
                   (assert (some-> (site-url) (str/starts-with? "https:"))
                           (tru "Cannot redirect requests to HTTPS unless `site-url` is HTTPS.")))
-                (setting/set-boolean! :redirect-all-requests-to-https new-value)))
+                (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
   (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.
@@ -458,15 +467,15 @@
   :setter     :none
   :getter     fetch-cloud-gateway-ips-fn)
 
-(defsetting enable-database-syncing-modal
+(defsetting show-database-syncing-modal
   (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
        " "
-       (deferred-tru "Defaults to false if any non-default database connections already exist for this instance."))
+       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []
-                (let [v (setting/get-boolean :enable-database-syncing-modal)]
+                (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (db/exists? 'Database :is_sample false))
+                    (not (db/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))

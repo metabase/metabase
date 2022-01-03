@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { space } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import Link from "metabase/components/Link";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const TableLink = styled(Link)`
   display: block;
@@ -14,7 +15,7 @@ export const TableActionLink = styled(Link)`
   margin-left: ${space(1)};
 `;
 
-export const TableCard = styled(Card)`
+export const TableCard = forwardRefToInnerRef(styled(Card)`
   padding-left: ${space(1)};
   padding-right: ${space(1)};
 
@@ -25,4 +26,4 @@ export const TableCard = styled(Card)`
   &:hover ${TableActionLink} {
     visibility: visible;
   }
-`;
+`);

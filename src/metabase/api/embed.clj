@@ -23,7 +23,6 @@
             [metabase.api.dashboard :as dashboard-api]
             [metabase.api.dataset :as dataset-api]
             [metabase.api.public :as public-api]
-            [metabase.driver.common.parameters :as params]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.query-processor :as qp]
@@ -137,8 +136,8 @@
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
      :type    (or widget-type (cond (= tag-type :date)                                                  :date/single
-                                    (and (params/field-filter-operators-enabled?) (= tag-type :string)) :string/=
-                                    (and (params/field-filter-operators-enabled?) (= tag-type :number)) :number/=
+                                    (= tag-type :string) :string/=
+                                    (= tag-type :number) :number/=
                                     :else                                                               :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]

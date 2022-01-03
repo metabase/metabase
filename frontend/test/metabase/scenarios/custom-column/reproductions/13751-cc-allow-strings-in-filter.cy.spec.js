@@ -15,8 +15,10 @@ describe("issue 13751", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText(PG_DB_NAME).click();
-    cy.findByText("People").click();
+    cy.findByText(PG_DB_NAME)
+      .should("be.visible")
+      .click();
+    cy.findByTextEnsureVisible("People").click();
   });
 
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {

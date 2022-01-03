@@ -459,7 +459,8 @@
   [_ render-type timezone-id card _ {:keys [cols rows viz-settings] :as data}]
   (let [value        (ffirst rows)
         goal         (:progress.goal viz-settings)
-        color        (or (:progress.color viz-settings) (first colors))
+        ;; See issue #19248 on GH for why it's the second color
+        color        (or (:progress.color viz-settings) (second colors))
         settings     (assoc
                        (->js-viz (first cols) (first cols) viz-settings)
                        :color color)
@@ -594,7 +595,7 @@
         x-rows           (map x-axis-rowfn clean-rows)
         y-rows           (map y-axis-rowfn clean-rows)
         joined-rows      (map vector x-rows y-rows)
-        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
@@ -710,6 +711,34 @@
         [:td {:style (style/style {:color     style/color-gray-3
                                    :font-size :16px})}
          (second labels)]]]]}))
+
+(s/defmethod render :area :- common/RenderedPulseCard
+  [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
+        rows           (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
+        last-rows      (reverse (take-last 2 rows))
+        labels         (datetime/format-temporal-string-pair timezone-id
+                                                             (map x-axis-rowfn last-rows)
+                                                             (x-axis-rowfn cols))
+        render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
+                         js-svg/timelineseries-area
+                         js-svg/categorical-area)
+        image-bundle   (image-bundle/make-image-bundle
+                        render-type
+                        (render-fn (mapv (juxt x-axis-rowfn y-axis-rowfn) rows)
+                                   (x-and-y-axis-label-info x-col y-col viz-settings)
+                                   (->js-viz x-col y-col viz-settings)))]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]

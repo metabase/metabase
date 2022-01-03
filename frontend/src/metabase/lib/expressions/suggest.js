@@ -94,6 +94,7 @@ export function suggest({
           index: targetOffset,
           icon: dimension.icon(),
           order: 2,
+          dimension,
         })),
     );
     suggestions.push(

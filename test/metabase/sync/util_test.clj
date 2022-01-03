@@ -32,6 +32,8 @@
 
 (defmethod driver/describe-table ::concurrent-sync-test [& _] nil)
 
+(defmethod driver/table-rows-seq ::concurrent-sync-test [& _] [])
+
 (deftest concurrent-sync-test
   (testing "only one sync process be going on at a time"
     ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for

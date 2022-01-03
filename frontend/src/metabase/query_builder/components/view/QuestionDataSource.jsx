@@ -7,6 +7,8 @@ import {
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
@@ -202,7 +204,9 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       to={hasLink ? getTableURL(table) : ""}
       inactiveColor={badgeInactiveColor}
     >
-      {table.displayName()}
+      <TableInfoPopover tableId={table.id} placement="bottom-start">
+        <span>{table.displayName()}</span>
+      </TableInfoPopover>
     </HeadBreadcrumbs.Badge>
   ));
 
