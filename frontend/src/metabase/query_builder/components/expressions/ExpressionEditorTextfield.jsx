@@ -307,7 +307,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   handleExpressionChange(source) {
-    this.setState({ source });
+    this.setState({ source, errorMessage: null });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
@@ -400,7 +400,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
-        <ErrorMessage error={errorMessage} />
+        {!isFocused && <ErrorMessage error={errorMessage} />}
         <HelpText helpText={this.state.helpText} width={this.props.width} />
       </React.Fragment>
     );
