@@ -95,7 +95,7 @@
                       :filter       [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at -2 :year {}]]}
+                                     [:time-interval $created_at -3 :year {}]]}
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
