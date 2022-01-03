@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 
 export const FormRoot = styled.form`
   position: relative;
@@ -41,4 +42,13 @@ export const FormMessage = styled.div`
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
+`;
+
+export const FormInputContainer = styled.div`
+  display: flex;
+`;
+
+export const FormButton = styled(Button)`
+  flex: 0 0 auto;
+  margin-left: 0.5rem;
 `;

@@ -1,6 +1,9 @@
 import React from "react";
 import { t } from "ttag";
+import Input from "metabase/components/Input";
 import {
+  FormButton,
+  FormInputContainer,
   FormLabel,
   FormLabelCard,
   FormLabelIcon,
@@ -14,8 +17,6 @@ export interface NewsletterFormProps {
 }
 
 const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
-  console.log(initialEmail);
-
   return (
     <FormRoot>
       <FormLabel>
@@ -27,6 +28,14 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
       <FormMessage>
         {t`Get infrequent emails about new releases and feature updates.`}
       </FormMessage>
+      <FormInputContainer>
+        <Input
+          type="email"
+          placeholder={t`Email address`}
+          defaultValue={initialEmail}
+        />
+        <FormButton type="submit">{t`Subscribe`}</FormButton>
+      </FormInputContainer>
     </FormRoot>
   );
 };
