@@ -2,32 +2,28 @@ import React, { useState } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
 import {
-  SectionDescription,
-  SectionHeader,
-} from "metabase/admin/settings/components/SettingsLicense/SettingsLicense.styled";
-import {
   LicenseErrorMessage,
-  LicenseInput,
+  LicenseTextInput,
   LicenseInputContainer,
-} from "./LicenseWidget.styled";
+} from "./LicenseInput.styled";
 
-export interface LicenseWidgetProps {
+export interface LicenseInputProps {
   token?: string;
-  description: React.ReactNode;
   error?: string;
   onUpdate: (license: string) => void;
   loading?: boolean;
   invalid?: boolean;
+  placeholder?: string;
 }
 
-export const LicenseWidget = ({
+export const LicenseInput = ({
   token,
-  description,
   error,
   onUpdate,
   loading,
   invalid,
-}: LicenseWidgetProps) => {
+  placeholder,
+}: LicenseInputProps) => {
   const [value, setValue] = useState(token ?? "");
 
   const handleChange = (value: string) => setValue(value);
@@ -38,18 +34,17 @@ export const LicenseWidget = ({
 
   return (
     <>
-      <SectionHeader>{t`License`}</SectionHeader>
-
-      <SectionDescription>{description}</SectionDescription>
-
       <LicenseInputContainer>
-        <LicenseInput
+        <LicenseTextInput
           invalid={invalid}
           data-testid="license-input"
           disabled={loading}
           onChange={handleChange}
           value={value}
-          placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+          placeholder={
+            placeholder ??
+            "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+          }
         />
         <Button
           disabled={loading}

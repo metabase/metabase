@@ -1,7 +1,6 @@
-import { SettingsApi } from "metabase/services";
+import { SettingsApi, StoreApi } from "metabase/services";
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
-import { StoreApi } from "../services";
 
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 
@@ -15,7 +14,7 @@ export type TokenStatus = {
   features: string[];
 };
 
-export const useLicense = (onActivated: () => void) => {
+export const useLicense = (onActivated?: () => void) => {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus>();
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -24,7 +23,7 @@ export const useLicense = (onActivated: () => void) => {
   useEffect(() => {
     if (window.location.hash === LICENSE_ACCEPTED_URL_HASH) {
       history.pushState("", document.title, window.location.pathname);
-      onActivated();
+      onActivated?.();
     }
   }, [onActivated]);
 

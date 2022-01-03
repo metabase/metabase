@@ -16,6 +16,7 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
+import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
@@ -365,6 +366,10 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Embedded Questions`,
         widget: EmbeddedQuestionListing,
         getHidden: settings => !settings["enable-embedding"],
+      },
+      {
+        widget: PremiumEmbeddingLinkWidget,
+        getHidden: settings => !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
       },
     ],
   },

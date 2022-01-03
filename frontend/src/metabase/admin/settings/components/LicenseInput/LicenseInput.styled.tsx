@@ -5,10 +5,11 @@ import styled from "styled-components";
 export const LicenseInputContainer = styled.div`
   display: flex;
   flex-wrap: nowrap;
-  min-width: 680px;
+  // min-width: 680px;
+  width: 680px;
 `;
 
-export const LicenseInput = styled(TextInput)`
+export const LicenseTextInput = styled(TextInput)`
   flex-grow: 1;
   margin-right: 8px;
 `;

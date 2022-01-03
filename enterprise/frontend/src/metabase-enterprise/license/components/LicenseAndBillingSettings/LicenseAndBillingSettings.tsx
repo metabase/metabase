@@ -6,8 +6,7 @@ import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
 import {
   TokenStatus,
   useLicense,
-} from "metabase-enterprise/license/hooks/use-license";
-import { LicenseWidget } from "metabase-enterprise/license/components/LicenseWidget";
+} from "metabase/admin/settings/hooks/use-license";
 import {
   LoaderContainer,
   SectionDescription,
@@ -17,6 +16,7 @@ import {
 import ExternalLink from "metabase/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 
 const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   if (!hasToken) {
@@ -36,12 +36,13 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
     );
   }
 
-  const validUntil = moment(tokenStatus.validUntil).format("MMM D, YYYY");
+  const daysRemaining = moment(tokenStatus.validUntil).diff(moment(), "days");
 
   if (tokenStatus.isValid && tokenStatus.isTrial) {
-    return t`Your trial is active until ${validUntil}.`;
+    return t`Your trial ends in ${daysRemaining} days. If you already have a license, please enter it below.`;
   }
 
+  const validUntil = moment(tokenStatus.validUntil).format("MMM D, YYYY");
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
@@ -70,6 +71,7 @@ const LicenseAndBillingSettings = ({
   const token = MetabaseSettings.token();
 
   const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
+  const description = getDescription(tokenStatus, !!token);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
@@ -102,10 +104,13 @@ const LicenseAndBillingSettings = ({
         )}
       </>
 
-      <LicenseWidget
+      <SectionHeader>{t`License`}</SectionHeader>
+
+      <SectionDescription>{description}</SectionDescription>
+
+      <LicenseInput
         invalid={isInvalid}
         loading={isUpdating}
-        description={getDescription(tokenStatus, !!token)}
         error={error}
         token={token}
         onUpdate={updateToken}

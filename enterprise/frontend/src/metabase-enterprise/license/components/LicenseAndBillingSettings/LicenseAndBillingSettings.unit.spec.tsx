@@ -12,10 +12,17 @@ import { renderWithProviders } from "__support__/ui";
 import LicenseAndBillingSettings from ".";
 import MetabaseSettings from "metabase/lib/settings";
 
-const mockStoreManagedKey = (isStoreManaged = true) => {
+const mockSettings = (
+  isStoreManaged = true,
+  premiumEmbeddingToken?: string,
+) => {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
+    if (key === "premium-embedding-token") {
+      return premiumEmbeddingToken;
+    }
+
     if (key === "metabase-store-managed") {
       return isStoreManaged;
     }
@@ -28,6 +35,7 @@ const mockTokenStatus = (valid: boolean) => {
   xhrMock.get("/api/premium-features/token/status", {
     body: JSON.stringify({
       valid,
+      "valid-thru": "2099-12-30T23:00:00Z",
     }),
   });
 };
@@ -72,7 +80,7 @@ describe("LicenseAndBilling", () => {
 
   it("renders settings for store managed billing with a valid token", async () => {
     mockTokenStatus(true);
-    mockStoreManagedKey(true);
+    mockSettings(true, "token");
 
     renderWithProviders(<LicenseAndBillingSettings />);
 
@@ -83,15 +91,16 @@ describe("LicenseAndBilling", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Go to the Metabase Store")).toBeInTheDocument();
 
-    expect(screen.getByTestId("license-input")).toBeDisabled();
     expect(
-      screen.getByText("Your license is active! Hope you’re enjoying it."),
+      screen.getByText(
+        "Your license is active until Dec 31, 2099! Hope you’re enjoying it.",
+      ),
     ).toBeInTheDocument();
   });
 
   it("renders settings for non-store-managed billing with a valid token", async () => {
     mockTokenStatus(true);
-    mockStoreManagedKey(false);
+    mockSettings(false, "token");
 
     renderWithProviders(<LicenseAndBillingSettings />);
 
@@ -106,25 +115,21 @@ describe("LicenseAndBilling", () => {
     );
 
     expect(
-      screen.getByText("Your license is active! Hope you’re enjoying it."),
+      screen.getByText(
+        "Your license is active until Dec 31, 2099! Hope you’re enjoying it.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("license-input")).toBeDisabled();
   });
 
   it("renders settings for unlicensed instances", async () => {
     mockTokenNotExist();
     renderWithProviders(<LicenseAndBillingSettings />);
 
-    expect(await screen.findByText("Looking for more?")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
+      await screen.findByText(
+        "Bought a license to unlock advanced functionality? Please enter it below.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Explore our paid plans")).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/pricing/",
-    );
   });
 
   it("shows an error when entered license is not valid", async () => {
@@ -132,12 +137,16 @@ describe("LicenseAndBilling", () => {
     mockUpdateToken(false);
     renderWithProviders(<LicenseAndBillingSettings />);
 
-    expect(await screen.findByText("Looking for more?")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Bought a license to unlock advanced functionality? Please enter it below.",
+      ),
+    ).toBeInTheDocument();
 
     const licenseInput = screen.getByTestId("license-input");
     const activateButton = screen.getByTestId("activate-button");
 
-    const token = "a".repeat(64);
+    const token = "invalid";
     await act(async () => {
       await fireEvent.change(licenseInput, { target: { value: token } });
       await fireEvent.click(activateButton);
@@ -157,12 +166,16 @@ describe("LicenseAndBilling", () => {
     mockUpdateToken(true);
     renderWithProviders(<LicenseAndBillingSettings />);
 
-    expect(await screen.findByText("Looking for more?")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Bought a license to unlock advanced functionality? Please enter it below.",
+      ),
+    ).toBeInTheDocument();
 
     const licenseInput = screen.getByTestId("license-input");
     const activateButton = screen.getByTestId("activate-button");
 
-    const token = "a".repeat(64);
+    const token = "valid";
     await act(async () => {
       await fireEvent.change(licenseInput, { target: { value: token } });
       await fireEvent.click(activateButton);
