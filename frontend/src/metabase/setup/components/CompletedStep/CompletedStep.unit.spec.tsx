@@ -2,6 +2,9 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import CompletedStep, { CompletedStepProps } from "./CompletedStep";
 
+const NewsletterFormMock = () => <div>Metabase Newsletter</div>;
+jest.mock("../../containers/NewsletterForm", () => NewsletterFormMock);
+
 describe("CompletedStep", () => {
   it("should render in inactive state", () => {
     const props = getProps({
