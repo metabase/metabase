@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import Input from "metabase/components/Input";
 import {
-  FormButton,
+  FormInputButton,
   FormInputContainer,
   FormLabel,
   FormLabelCard,
   FormLabelIcon,
   FormLabelText,
-  FormMessage,
+  FormHeader,
   FormRoot,
+  FormSuccessContainer,
+  FormSuccessIcon,
+  FormSuccessText,
 } from "./NewsletterForm.styled";
 
 export interface NewsletterFormProps {
@@ -17,6 +20,8 @@ export interface NewsletterFormProps {
 }
 
 const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
+  const [isSubmitted] = useState(false);
+
   return (
     <FormRoot>
       <FormLabel>
@@ -25,18 +30,28 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
           <FormLabelText>{t`Metabase Newsletter`}</FormLabelText>
         </FormLabelCard>
       </FormLabel>
-      <FormMessage>
+      <FormHeader>
         {t`Get infrequent emails about new releases and feature updates.`}
-      </FormMessage>
-      <FormInputContainer>
-        <Input
-          type="email"
-          defaultValue={initialEmail}
-          placeholder={t`Email address`}
-          fullWidth
-        />
-        <FormButton type="submit">{t`Subscribe`}</FormButton>
-      </FormInputContainer>
+      </FormHeader>
+      {!isSubmitted && (
+        <FormInputContainer>
+          <Input
+            type="email"
+            defaultValue={initialEmail}
+            placeholder={t`Email address`}
+            fullWidth
+          />
+          <FormInputButton type="submit">{t`Subscribe`}</FormInputButton>
+        </FormInputContainer>
+      )}
+      {isSubmitted && (
+        <FormSuccessContainer>
+          <FormSuccessIcon name="check" />
+          <FormSuccessText>
+            {t`You're subscribed. Thanks for using Metabase!`}
+          </FormSuccessText>
+        </FormSuccessContainer>
+      )}
     </FormRoot>
   );
 };

@@ -28,6 +28,8 @@ export const FormLabelCard = styled.div`
 `;
 
 export const FormLabelIcon = styled(Icon)`
+  width: 1rem;
+  height: 1rem;
   margin-right: 0.5rem;
 `;
 
@@ -37,7 +39,7 @@ export const FormLabelText = styled.div`
   text-transform: uppercase;
 `;
 
-export const FormMessage = styled.div`
+export const FormHeader = styled.div`
   color: ${color("text-medium")};
   font-size: 1rem;
   font-weight: 700;
@@ -48,7 +50,26 @@ export const FormInputContainer = styled.div`
   display: flex;
 `;
 
-export const FormButton = styled(Button)`
+export const FormInputButton = styled(Button)`
   flex: 0 0 auto;
   margin-left: 1rem;
+`;
+
+export const FormSuccessContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem;
+`;
+
+export const FormSuccessIcon = styled(Icon)`
+  color: ${color("success")};
+  width: 1rem;
+  height: 1rem;
+  margin-right: 1rem;
+`;
+
+export const FormSuccessText = styled.div`
+  color: ${color("success")};
+  font-size: 1rem;
+  font-weight: bold;
 `;
