@@ -12,6 +12,12 @@ import ExternalLink from "metabase/components/ExternalLink";
 
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
+  constructor() {
+    super();
+    this.nameInput = React.createRef();
+    this.expressionEditorInput = React.createRef();
+  }
+
   static propTypes = {
     expression: PropTypes.array,
     name: PropTypes.string,
@@ -61,10 +67,12 @@ export default class ExpressionWidget extends Component {
             <ExpressionEditorTextfield
               expression={expression}
               query={query}
+              onBlurWithTab={() => this.nameInput.current.focus()}
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }
               onError={errorMessage => this.setState({ error: errorMessage })}
+              ref={this.expressionEditorInput}
             />
             <p className="h5 text-medium">
               {t`Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost.`}
@@ -85,12 +93,15 @@ export default class ExpressionWidget extends Component {
             <input
               className="my1 input block full"
               type="text"
+              ref={this.nameInput}
               value={this.state.name}
               placeholder={t`Something nice and descriptive`}
               onChange={event => this.setState({ name: event.target.value })}
-              onKeyPress={e => {
+              onKeyDown={e => {
                 if (e.key === "Enter" && this.isValid()) {
                   this.handleCommit();
+                } else if (e.key === "Tab") {
+                  this.expressionEditorInput.current.editor.focus();
                 }
               }}
             />

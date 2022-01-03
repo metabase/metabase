@@ -6,10 +6,11 @@ interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   target?: string;
   className?: string;
   children?: ReactNode;
+  tabIndex?: number;
 }
 
 const ExternalLink = forwardRef(function ExternalLink(
-  { href, target = getUrlTarget(href), className, children, ...props }: Props,
+  { href, target = getUrlTarget(href), className, tabIndex = 0, children, ...props }: Props,
   ref: Ref<HTMLAnchorElement>,
 ) {
   return (
@@ -22,6 +23,7 @@ const ExternalLink = forwardRef(function ExternalLink(
       rel="noopener noreferrer"
       // disables quickfilter in tables
       onClickCapture={e => e.stopPropagation()}
+      tabIndex={tabIndex}
       {...props}
     >
       {children}

@@ -65,6 +65,7 @@ const HelpText = ({ helpText, width }) =>
             className="link text-bold block my1"
             target="_blank"
             href={MetabaseSettings.docsUrl("users-guide/expressions")}
+            tabIndex={-1}
           >
             <Icon name="reference" size={12} className="mr1" />
             {t`Learn more`}
@@ -87,18 +88,14 @@ const ErrorMessage = ({ error }) => {
 };
 
 @ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
-  constructor() {
-    super();
-    this.input = React.createRef();
-  }
-
+class ExpressionEditorTextfield extends React.Component {
   static propTypes = {
     expression: PropTypes.array, // should be an array like [expressionObj, source]
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
     onBlankChange: PropTypes.func,
+    onBlurWithTab: PropTypes.func,
   };
 
   static defaultProps = {
@@ -114,17 +111,20 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    // we only refresh our state if we had no previous state OR if our expression changed
     const { expression, query, startRule } = newProps;
-    if (!this.state || !_.isEqual(this.props.expression, expression)) {
-      const source = format(expression, { query, startRule });
-      this.setState({ source, expression });
-      this.clearSuggestions();
+    const source = format(expression, { query, startRule });
+
+    this.setState({ source, expression });
+
+    if (source) {
+      this.setCaretPosition(source.length, source.length === 0);
     }
+
+    this.clearSuggestions();
   }
 
   componentDidMount() {
-    const { editor } = this.input.current;
+    const { editor } = this.props.inputRef.current;
     editor.getSession().setMode(new ExpressionMode());
 
     editor.setOptions({
@@ -144,7 +144,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
 
-    const { editor } = this.input.current;
+    const { editor } = this.props.inputRef.current;
 
     if (suggestion) {
       const { tokens } = tokenize(source);
@@ -186,7 +186,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   // Occurrences of this bug were rare and non-deterministic wrt to browser.
   handleEditorLoaded = () => {
     setTimeout(() => {
-      this.input.current.editor.focus();
+      this.props.inputRef.current.editor.focus();
     }, 10);
   };
 
@@ -200,7 +200,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           suggestions.length,
       });
     } else {
-      this.input.current.editor.navigateLineEnd();
+      this.props.inputRef.current.editor.navigateLineEnd();
     }
   };
 
@@ -214,7 +214,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           suggestions.length,
       });
     } else {
-      this.input.current.editor.navigateLineEnd();
+      this.props.inputRef.current.editor.navigateLineEnd();
     }
   };
 
@@ -230,12 +230,11 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   handleTab = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
-    const { editor } = this.input.current;
 
     if (suggestions.length) {
       this.onSuggestionSelected(highlightedSuggestionIndex);
     } else {
-      editor.commands.byName.tab();
+      this.props.onBlurWithTab();
     }
   };
 
@@ -307,6 +306,8 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   setCaretPosition = (position, autosuggest) => {
     // FIXME setCaretPosition(this.input.current, position);
+    const { editor } = this.props.inputRef.current;
+    editor.moveCursorTo(0, position);
     if (autosuggest) {
       setTimeout(() => this.triggerAutosuggest());
     }
@@ -397,7 +398,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor
             commands={this.commands}
-            ref={this.input}
+            ref={this.props.inputRef}
             value={source}
             markers={this.errorAsMarkers(errorMessage)}
             focus={true}
@@ -435,3 +436,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 }
+
+export default React.forwardRef((props, ref) => (
+  <ExpressionEditorTextfield inputRef={ref} {...props} />
+));
