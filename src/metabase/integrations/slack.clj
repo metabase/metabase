@@ -60,13 +60,13 @@
       (let [url     (str slack-api-base-url "/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
             request (merge-with merge
-                                {:headers        {:authorization (str "Bearer\n" token)}
-                                 :as             :stream
-                                 ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
-                                 ;; amounts of data -- see #11735
-                                 :conn-timeout   10000
-                                 :socket-timeout 10000}
-                                (m/dissoc-in request [:query-params :token]))]
+                      {:headers        {:authorization (str "Bearer\n" token)}
+                       :as             :stream
+                       ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
+                       ;; amounts of data -- see #11735
+                       :conn-timeout   10000
+                       :socket-timeout 10000}
+                      (m/dissoc-in request [:query-params :token]))]
         (try
           (handle-response (request-fn url request))
           (catch Throwable e
@@ -192,7 +192,7 @@
                              :as        :json})]
     (if (= 200 (:status response))
       (u/prog1 (get-in response [:body :file :url_private])
-               (log/debug (trs "Uploaded image") <>))
+        (log/debug (trs "Uploaded image") <>))
       (log/warn (trs "Error uploading file to Slack:") (u/pprint-to-str response)))))
 
 (s/defn post-chat-message!
@@ -201,12 +201,12 @@
   [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
-    {:channel     channel-id
-     :username    "MetaBot"
-     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-     :text        text-or-nil
-     :attachments (when (seq attachments)
-                    (json/generate-string attachments))}))
+        {:channel     channel-id
+         :username    "MetaBot"
+         :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+         :text        text-or-nil
+         :attachments (when (seq attachments)
+                        (json/generate-string attachments))}))
 
 (def ^{:arglists '([& {:as params}])} websocket-url
   "Return a new WebSocket URL for [Slack's Real Time Messaging API](https://api.slack.com/rtm)
