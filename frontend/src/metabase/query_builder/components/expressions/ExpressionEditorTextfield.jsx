@@ -239,12 +239,6 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  handleFocus = () => {
-    this.setState({ isFocused: true });
-    const { editor } = this.input.current;
-    this.handleCursorChange(editor.selection);
-  };
-
   handleInputBlur = e => {
     this.setState({ isFocused: false });
 
@@ -387,7 +381,6 @@ export default class ExpressionEditorTextfield extends React.Component {
             wrapEnabled={true}
             fontSize={12}
             onBlur={this.handleInputBlur}
-            onFocus={this.handleFocus}
             // onLoad circumvents a buggy onFocus,
             // see declaration of `handleEditorLoaded`
             onLoad={this.handleEditorLoaded}
