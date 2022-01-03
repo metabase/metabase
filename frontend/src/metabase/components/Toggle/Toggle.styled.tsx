@@ -17,6 +17,17 @@ const getLeft = ({ isSmall, isSelected }: ToggleRootProps): string => {
   }
 };
 
+const getBackgroundColor = ({
+  isSelected,
+  currentColor,
+}: ToggleRootProps): string => {
+  if (isSelected) {
+    return currentColor ?? color("brand");
+  } else {
+    return color("white");
+  }
+};
+
 export const ToggleRoot = styled.a<ToggleRootProps>`
   position: relative;
   display: inline-block;
@@ -27,6 +38,7 @@ export const ToggleRoot = styled.a<ToggleRootProps>`
   border-radius: 99px;
   border: 1px solid ${color("border")};
   background-color: ${color("bg-medium")};
+  background-color: ${getBackgroundColor};
   transition: all 0.3s;
   text-decoration: none;
 
@@ -38,8 +50,7 @@ export const ToggleRoot = styled.a<ToggleRootProps>`
     position: absolute;
     top: 1px;
     left: ${getLeft};
-    background-color: ${props =>
-      props.isSelected ? "currentColor" : color("white")};
+    background-color: ${color("white")};
     transition: all 0.3s;
     box-shadow: 2px 2px 6px ${color("shadow")};
   }
