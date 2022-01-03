@@ -185,6 +185,45 @@
   ;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
   (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
+(defn- col-or-ts [driver arg]
+  (if (string? arg)
+      (hx/->timestamp arg)
+      (sql.qp/->honeysql driver arg)))
+
+;; date extraction functions
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-year]
+  [driver [_ arg]]
+  ;; TODO: figure out if ->timestamp here is really the proper way
+  (sql.qp/->honeysql :sql [:get-year (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-quarter]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-quarter (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-month]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-month (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-day]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-day (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-day-of-week]
+  [driver [_ arg]]
+  (sql.qp/date :presto-jdbc :day-of-week (col-or-ts driver arg)))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-hour]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-hour (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-minute]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-minute (col-or-ts driver arg)]))
+
+(defmethod sql.qp/->honeysql [:presto-jdbc :get-second]
+  [driver [_ arg]]
+  (sql.qp/->honeysql :sql [:get-second (col-or-ts driver arg)]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Connectivity                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
