@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { ChangeEvent, SyntheticEvent, useState } from "react";
 import { t } from "ttag";
 import Input from "metabase/components/Input";
 import {
@@ -17,13 +17,28 @@ import {
 
 export interface NewsletterFormProps {
   initialEmail?: string;
+  onSubscribe: (email: string) => void;
 }
 
-const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
-  const [isSubmitted] = useState(false);
+const NewsletterForm = ({
+  initialEmail = "",
+  onSubscribe,
+}: NewsletterFormProps): JSX.Element => {
+  const [email, setEmail] = useState(initialEmail);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setEmail(event.currentTarget.value);
+  };
+
+  const onSubmit = (event: SyntheticEvent) => {
+    event.preventDefault();
+    onSubscribe(email);
+    setIsSubscribed(true);
+  };
 
   return (
-    <FormRoot>
+    <FormRoot onSubmit={onSubmit}>
       <FormLabel>
         <FormLabelCard>
           <FormLabelIcon name="mail" />
@@ -33,7 +48,7 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
       <FormHeader>
         {t`Get infrequent emails about new releases and feature updates.`}
       </FormHeader>
-      {!isSubmitted && (
+      {!isSubscribed && (
         <FormInputContainer>
           <Input
             name="email"
@@ -41,11 +56,12 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
             defaultValue={initialEmail}
             placeholder={t`Email address`}
             fullWidth
+            onChange={onChange}
           />
           <FormInputButton type="submit">{t`Subscribe`}</FormInputButton>
         </FormInputContainer>
       )}
-      {isSubmitted && (
+      {isSubscribed && (
         <FormSuccessContainer>
           <FormSuccessIcon name="check" />
           <FormSuccessText>
