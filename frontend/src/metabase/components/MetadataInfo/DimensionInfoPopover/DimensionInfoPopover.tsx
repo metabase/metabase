@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { hideAll } from "tippy.js";
 
 import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopver, {
@@ -22,6 +23,8 @@ type Props = { dimension: Dimension } & Pick<
   "children" | "placement"
 >;
 
+const className = "dimension-info-popover";
+
 function DimensionInfoPopover({ dimension, children, placement }: Props) {
   // avoid a scenario where we may have a Dimension instance but not enough metadata
   // to even show a display name (probably indicative of a bug)
@@ -29,10 +32,24 @@ function DimensionInfoPopover({ dimension, children, placement }: Props) {
 
   return hasMetadata ? (
     <TippyPopver
+      className={className}
       delay={isCypressActive ? 0 : POPOVER_DELAY}
       interactive
       placement={placement || "left-start"}
       content={<WidthBoundDimensionInfo dimension={dimension} />}
+      onTrigger={instance => {
+        const dimensionInfoPopovers = document.querySelectorAll(
+          `.${className}[data-state~='visible']`,
+        );
+
+        // if a dimension info popovers are already visible, hide them and show this popover immediately
+        if (dimensionInfoPopovers.length > 0) {
+          hideAll({
+            exclude: instance,
+          });
+          instance.show();
+        }
+      }}
     >
       {children}
     </TippyPopver>
