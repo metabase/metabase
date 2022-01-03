@@ -3,6 +3,12 @@
 - [Getting started][getting-started]
 - [A tour of Metabase][tour]
 
+## Troubleshooting and getting help
+
+- [Troubleshooting guides][troubleshooting] 
+- [Metabase forum][forum]. 
+- [Configuring logging](./operations-guide/log-configuration.html)
+
 ## Tutorials and guides
 
 - [Learn Metabase][learn] has a ton of articles on how to use Metabase and level up as a data analyst.
@@ -112,12 +118,6 @@
 
 - [API reference][api-documentation]
 - [API tutorial][api-tutorial]
-
-## Troubleshooting and getting help
-
-- [Troubleshooting guide][troubleshooting] 
-- [Metabase forum][forum]
-- [Configuring logging](./operations-guide/log-configuration.html)
 
 ## Enterprise and Pro editions
 
