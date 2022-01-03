@@ -145,7 +145,6 @@
 ## Reference
 
 - [Anonymous Information Collection Reference][info-collection]
-- [FAQs][faq]
 - [Glossary][glossary]
 
 [api-documentation]: ./api-documentation.html
