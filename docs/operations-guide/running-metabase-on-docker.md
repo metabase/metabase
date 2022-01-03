@@ -161,7 +161,7 @@ Note that Metabase will use this directory to extract plugins bundled with the d
 
 In order to keep your connection parameters hidden from plain sight, you can use Docker Secrets to put all parameters in files so Docker can read and load them in memory before the container is started.
 
-This is an example of a `docker-compose.yml` file to start a Metabase container with secrets to connect to a PostgreSQL database. Create 2 files (db_user.txt and db_password.txt) in the same directory as this `yml` and fill them with any username and a secure password:
+This is an example of a `docker-compose.yml` file to start a Metabase container with secrets to connect to a PostgreSQL database. Create 2 files (db_user.txt and db_password.txt) in the same directory as this `yml` and fill them with any username and a secure password (notice the "_FILE" on the environment variables that have a secret):
 
 ```
 version: '3.9'
@@ -178,8 +178,8 @@ services:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabase
       MB_DB_PORT: 5432
-      MB_DB_USER: /run/secrets/db_user
-      MB_DB_PASS: /run/secrets/db_password
+      MB_DB_USER_FILE: /run/secrets/db_user
+      MB_DB_PASS_FILE: /run/secrets/db_password
       MB_DB_HOST: postgres-secrets
     networks: 
       - metanet1-secrets
@@ -193,9 +193,9 @@ services:
     container_name: postgres-secrets
     hostname: postgres-secrets
     environment:
-      POSTGRES_USER: /run/secrets/db_user
+      POSTGRES_USER_FILE: /run/secrets/db_user
       POSTGRES_DB: metabase
-      POSTGRES_PASSWORD: /run/secrets/db_password
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
     networks: 
       - metanet1-secrets
     secrets:
@@ -210,3 +210,15 @@ secrets:
    db_user:
      file: db_user.txt
 ```
+
+We currently support the following [environment variables](environment-variables.html) to be used as secrets:
+
+* MB_DB_USER
+* MB_DB_PASS
+* MB_DB_CONNECTION_URI
+* MB_EMAIL_SMTP_PASSWORD
+* MB_EMAIL_SMTP_USERNAME
+* MB_LDAP_PASSWORD
+* MB_LDAP_BIND_DN
+
+In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "_FILE" as explained above.
