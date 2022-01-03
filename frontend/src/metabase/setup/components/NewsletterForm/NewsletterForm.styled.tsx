@@ -58,6 +58,7 @@ export const FormInputButton = styled(Button)`
 export const FormSuccessContainer = styled.div`
   display: flex;
   justify-content: center;
+  align-items: center;
   padding: 0.5rem;
 `;
 
