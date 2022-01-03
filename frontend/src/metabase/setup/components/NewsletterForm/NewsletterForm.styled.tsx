@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const FormRoot = styled.div`
+export const FormRoot = styled.form`
   position: relative;
   padding: 2rem;
   border: 1px solid ${color("border")};
@@ -29,7 +29,13 @@ export const FormLabelIcon = styled(Icon)`
 `;
 
 export const FormLabelText = styled.div`
-  font-size: 0.83em;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
+`;
+
+export const FormMessage = styled.div`
+  color: ${color("text-medium")};
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
 `;

@@ -5,10 +5,17 @@ import {
   FormLabelCard,
   FormLabelIcon,
   FormLabelText,
+  FormMessage,
   FormRoot,
 } from "./NewsletterForm.styled";
 
-const NewsletterForm = (): JSX.Element => {
+export interface NewsletterFormProps {
+  initialEmail?: string;
+}
+
+const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
+  console.log(initialEmail);
+
   return (
     <FormRoot>
       <FormLabel>
@@ -17,6 +24,9 @@ const NewsletterForm = (): JSX.Element => {
           <FormLabelText>{t`Metabase Newsletter`}</FormLabelText>
         </FormLabelCard>
       </FormLabel>
+      <FormMessage>
+        {t`Get infrequent emails about new releases and feature updates.`}
+      </FormMessage>
     </FormRoot>
   );
 };

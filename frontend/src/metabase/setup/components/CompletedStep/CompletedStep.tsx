@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import NewsletterForm from "metabase/components/NewsletterForm";
+import NewsletterForm from "../NewsletterForm";
 import {
   StepRoot,
   StepTitle,
