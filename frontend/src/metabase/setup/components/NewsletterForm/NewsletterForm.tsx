@@ -36,6 +36,7 @@ const NewsletterForm = ({ initialEmail }: NewsletterFormProps): JSX.Element => {
       {!isSubmitted && (
         <FormInputContainer>
           <Input
+            name="email"
             type="email"
             defaultValue={initialEmail}
             placeholder={t`Email address`}
