@@ -5,11 +5,6 @@
 
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"
-    (with-redefs [slack/valid-token? (constantly false)]
-      (testing "A 400 error is returned when setting an invalid Slack app token"
-        (mt/user-http-request :crowberto :put 400 "slack/settings"
-                              {:slack-app-token "fake-token"})))
-
     (testing "An admin can set a valid Slack app token to the slack-app-token setting, and any value in the
              `slack-token` setting is cleared"
       (with-redefs [slack/valid-token? (constantly true)]
