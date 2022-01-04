@@ -11,6 +11,11 @@ import "./ExpressionPopover.css";
 
 // TODO: combine with ExpressionWidget
 export default class ExpressionPopover extends React.Component {
+  constructor() {
+    super();
+    this.expressionEditorInput = React.createRef();
+  }
+
   state = {
     error: null,
     isBlank: true,
@@ -61,6 +66,7 @@ export default class ExpressionPopover extends React.Component {
             onBlankChange={newBlank => {
               this.setState({ isBlank: newBlank });
             }}
+            ref={this.expressionEditorInput}
           />
           {onChangeName && (
             <input
