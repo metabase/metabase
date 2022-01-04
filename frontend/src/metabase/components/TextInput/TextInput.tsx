@@ -1,5 +1,4 @@
 import React, { forwardRef } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
@@ -11,21 +10,22 @@ import {
   Input,
 } from "./TextInput.styled";
 
-TextInput.propTypes = {
-  onChange: PropTypes.func.isRequired,
-  placeholder: PropTypes.string,
-  value: PropTypes.string,
-  type: PropTypes.string,
-  autoFocus: PropTypes.bool,
-  className: PropTypes.string,
-  hasClearButton: PropTypes.bool,
-  icon: PropTypes.node,
-  padding: PropTypes.oneOf(["sm", "md"]),
-  borderRadius: PropTypes.oneOf(["sm", "md"]),
-  colorScheme: PropTypes.oneOf(["default", "admin", "transparent"]),
-  hasBorder: PropTypes.bool,
-  innerRef: PropTypes.object,
-};
+export type ColorScheme = "default" | "admin" | "transparent";
+export type Size = "sm" | "md";
+
+type TextInputProps = {
+  value?: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  hasClearButton?: boolean;
+  icon?: React.ReactNode;
+  colorScheme?: ColorScheme;
+  autoFocus?: boolean;
+  padding?: Size;
+  borderRadius?: Size;
+  innerRef?: any;
+  invalid?: boolean;
+} & Omit<React.HTMLProps<HTMLInputElement>, "onChange">;
 
 function TextInput({
   value = "",
@@ -40,8 +40,10 @@ function TextInput({
   padding = "md",
   borderRadius = "md",
   innerRef,
+  ref,
+  invalid,
   ...rest
-}) {
+}: TextInputProps) {
   const handleClearClick = () => {
     onChange("");
   };
@@ -63,6 +65,7 @@ function TextInput({
         onChange={e => onChange(e.target.value)}
         padding={padding}
         borderRadius={borderRadius}
+        invalid={invalid}
         {...rest}
       />
 
@@ -75,6 +78,8 @@ function TextInput({
   );
 }
 
-export default forwardRef(function TextInputForwardRef(props, ref) {
-  return <TextInput {...props} innerRef={ref} />;
-});
+export default forwardRef<HTMLInputElement, TextInputProps>(
+  function TextInputForwardRef(props, ref) {
+    return <TextInput {...props} innerRef={ref} />;
+  },
+);
