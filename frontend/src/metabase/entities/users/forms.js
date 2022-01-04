@@ -164,7 +164,7 @@ export default {
       {
         name: "email",
         title: t`Email address`,
-        placeholder: "The email you use for your Metabase account",
+        placeholder: t`The email you use for your Metabase account`,
         validate: validate.required().email(),
       },
     ],
