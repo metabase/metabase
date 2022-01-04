@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { hideAll } from "tippy.js";
 
-import TippyPopver, {
+import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
 
@@ -28,7 +28,7 @@ function TableInfoPopover({ tableId, children, placement, offset }: Props) {
   placement = placement || "left-start";
 
   return tableId != null ? (
-    <TippyPopver
+    <TippyPopover
       className={className}
       interactive
       delay={POPOVER_DELAY}
@@ -50,7 +50,7 @@ function TableInfoPopover({ tableId, children, placement, offset }: Props) {
       }}
     >
       {children}
-    </TippyPopver>
+    </TippyPopover>
   ) : (
     children
   );

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { hideAll } from "tippy.js";
 
 import Dimension from "metabase-lib/lib/Dimension";
-import TippyPopver, {
+import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
 import { isCypressActive } from "metabase/env";
@@ -31,7 +31,7 @@ function DimensionInfoPopover({ dimension, children, placement }: Props) {
   const hasMetadata = !!(dimension && dimension.displayName());
 
   return hasMetadata ? (
-    <TippyPopver
+    <TippyPopover
       className={className}
       delay={isCypressActive ? 0 : POPOVER_DELAY}
       interactive
@@ -52,7 +52,7 @@ function DimensionInfoPopover({ dimension, children, placement }: Props) {
       }}
     >
       {children}
-    </TippyPopver>
+    </TippyPopover>
   ) : (
     children
   );
