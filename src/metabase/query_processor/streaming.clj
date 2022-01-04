@@ -40,6 +40,7 @@
   Otherwise returns `table-columns`."
   [table-columns cols]
   (let [col-field-refs (set (remove nil? (map :field_ref cols)))]
+    ;; If there are no field refs in `cols` (e.g. for native queries), we should use `table-columns` as-is
     (when (or (empty? col-field-refs)
               (every? (fn [table-col] (col-field-refs (::mb.viz/table-column-field-ref table-col))) table-columns))
       table-columns)))
