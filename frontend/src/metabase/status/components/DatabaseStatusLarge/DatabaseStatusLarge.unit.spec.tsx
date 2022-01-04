@@ -1,15 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { createDatabase } from "metabase-types/api/database";
 import DatabaseStatusLarge from "./DatabaseStatusLarge";
-import { Database } from "../../types";
 
 describe("DatabaseStatusLarge", () => {
   it("should render in-progress status", () => {
     const databases = [
-      getDatabase({
+      createDatabase({
         initial_sync_status: "incomplete",
       }),
-      getDatabase({
+      createDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -22,22 +22,22 @@ describe("DatabaseStatusLarge", () => {
 
   it("should render complete status", () => {
     const before = [
-      getDatabase({
+      createDatabase({
         id: 1,
         initial_sync_status: "incomplete",
       }),
-      getDatabase({
+      createDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
     ];
 
     const after = [
-      getDatabase({
+      createDatabase({
         id: 1,
         initial_sync_status: "complete",
       }),
-      getDatabase({
+      createDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
@@ -52,22 +52,22 @@ describe("DatabaseStatusLarge", () => {
 
   it("should render error status", () => {
     const before = [
-      getDatabase({
+      createDatabase({
         id: 1,
         initial_sync_status: "incomplete",
       }),
-      getDatabase({
+      createDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
     ];
 
     const after = [
-      getDatabase({
+      createDatabase({
         id: 1,
         initial_sync_status: "aborted",
       }),
-      getDatabase({
+      createDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
@@ -79,12 +79,4 @@ describe("DatabaseStatusLarge", () => {
     expect(screen.getByText("Error syncing")).toBeInTheDocument();
     expect(screen.getByText("Sync failed")).toBeInTheDocument();
   });
-});
-
-const getDatabase = (opts?: Partial<Database>): Database => ({
-  id: 1,
-  name: "Our database",
-  is_sample: false,
-  initial_sync_status: "complete",
-  ...opts,
 });
