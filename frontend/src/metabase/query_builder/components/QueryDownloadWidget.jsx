@@ -13,6 +13,7 @@ import DownloadButton from "metabase/components/DownloadButton";
 import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
+import * as Dataset from "metabase/lib/dataset";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -104,7 +105,10 @@ const UnsavedQueryButton = ({
   <DownloadButton
     url={`api/dataset/${type}`}
     params={{
-      query: JSON.stringify(_.omit(json_query, "constraints")),
+      query: JSON.stringify(_.omit(json_query, "constraints")).replace(
+        /QPTitle/i,
+        Dataset.getDatsetTitle(),
+      ),
       visualization_settings: JSON.stringify(visualizationSettings),
     }}
     extensions={[type]}

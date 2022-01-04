@@ -253,7 +253,8 @@
    (process-userland-query (assoc query :info info) context)))
 
 (defn- add-default-constraints [query]
-  (assoc-in query [:middleware :add-default-userland-constraints?] true))
+  (assoc-in query [:middleware :add-default-userland-constraints?] true)
+  (assoc-in query [:title] "QPTitle"))
 
 (s/defn process-query-and-save-with-max-results-constraints!
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This

@@ -60,7 +60,7 @@
                         :card-id     source-card-id
                         :nested?     (boolean source-card-id)}]
     (binding [qp.perms/*card-id* source-card-id]
-      (qp.streaming/streaming-response [context export-format]
+      (qp.streaming/streaming-response [context export-format (get query :title)]
         (qp-runner query info context)))))
 
 (api/defendpoint ^:streaming POST "/"

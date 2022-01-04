@@ -146,6 +146,10 @@ export function findColumnSettingIndexForColumn(columnSettings, column) {
   return index;
 }
 
+export function getDatsetTitle() {
+  return document.getElementById("viewName").textContent;
+}
+
 export function syncTableColumnsToQuery(question: Question): Question {
   let query = question.query();
   const columnSettings = question.settings()["table.columns"];
