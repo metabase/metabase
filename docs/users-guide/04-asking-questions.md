@@ -16,7 +16,13 @@ This page will cover the simple mode.
 
 ## Asking a simple question
 
-After you select the Simple Question option, you'll need to pick some data that you have a question about. Just pick one of the databases that's connected to Metabase, and you'll see a list of all the tables inside of it. Pick the one that you have a question about; it could be a Users table, or maybe it's something like Events, Orders, or Downloads.
+After you select the Simple Question option, you'll need to pick some data that you have a question about.
+
+### Picking data
+
+Just pick one of the databases that's connected to Metabase, and you'll see a list of all the tables inside of it. Pick the one that you have a question about; it could be a Users table, or maybe it's something like Events, Orders, or Downloads.
+
+Metabase doesn't support joining tables _across_ multiple databases, and for good reason: it's generally better to bring related data into a single database.
 
 To ask a question about a table of data, we usually do some **filtering** and/or **summarizing**.
 

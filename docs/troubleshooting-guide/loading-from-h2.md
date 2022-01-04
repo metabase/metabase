@@ -10,7 +10,7 @@ You have installed Metabase, but:
 
 ## Are you currently using H2 as your application database?
 
-**Root cause:** Metabase stores information about users, questions, and so on in a database of its own called the "application database", or "app database" for short. By default Metabase uses [H2][what-is-h2] for the app database, but we don't recommended it for production---because it's an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly.
+**Root cause:** Metabase stores information about users, questions, and so on in a database of its own called the "application database", or "app database" for short. By default Metabase uses H2 for the application database, but we don't recommended it for production---because it's an on-disk database, it's sensitive to filesystem errors, such as a drive being corrupted or a file not being flushed properly.
 
 **Steps to take:**
 
@@ -130,4 +130,3 @@ Exception in thread "main" java.lang.AssertionError: Assert failed: Unable to co
 [migrate]: ../operations-guide/migrating-from-h2.md
 [serialization-docs]: ../enterprise-guide/serialization.md
 [serialization-learn]: /learn/administration/serialization.html
-[what-is-h2]: ../faq/setup/what-is-h2.md
