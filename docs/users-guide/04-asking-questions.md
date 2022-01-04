@@ -79,7 +79,7 @@ To do this in Metabase, click the Summarize button in the top-right of the scree
 
 The sidebar has two main parts: the top is where you pick the number ("metric") you want to see, and the part below it is where you pick how to group that number (or how to "break it out").
 
-By default the "count of rows" metric will be selected, since it's super common, but you can change it to something else by clicking on it. You can also select more than one metric to view: just click the "add a metric" button. You can remove any selected metric by clicking on the X icon. The different basic metrics are:
+By default the "count of rows" metric will be selected, since it's super common, but you can change it to something else by clicking on it. You can also select more than one metric to view: just click the plus (+) icon next to your current metric. You can remove any selected metric by clicking on the X icon. The different basic metrics are:
 
 - **Count of rows:** the total of number of rows in the table, after any filters have been applied. If you're looking at your `Orders` table and want to know how many orders were placed with a price greater than \$40, you’d filter by “Price greater than 40,” and then select `Count of rows`, because you want Metabase to count how many orders matched your filter.
 - **Sum of …:** the sum of all the values in a specific column.
@@ -119,11 +119,11 @@ Click on a record's ID number (or primary key) to see more information about a g
 
 ## Starting new explorations from saved questions
 
-Each time you start modifying a saved question, Metabase will create a new question for you. It'll give the new question a placeholder title, and let you know which question you started from.
+Each time you start modifying a saved question, Metabase will create a new question for you. The query builder will display the name of your starting question under **Data**.
 
 ![Starting from a saved question](./images/notebook/started-from-saved-question.png)
 
-So feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
+Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
 ## Editing and sharing questions
 
