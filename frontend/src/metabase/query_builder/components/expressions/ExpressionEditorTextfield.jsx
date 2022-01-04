@@ -311,9 +311,11 @@ class ExpressionEditorTextfield extends React.Component {
   };
 
   setCaretPosition = (position, autosuggest) => {
-    // FIXME setCaretPosition(this.input.current, position);
-    const { editor } = this.props.inputRef.current;
-    editor.moveCursorTo(0, position);
+    const editor = this.props.inputRef?.current?.editor;
+    if (editor) {
+      editor.moveCursorTo(0, position);
+    }
+
     if (autosuggest) {
       setTimeout(() => this.triggerAutosuggest());
     }
