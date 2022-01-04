@@ -16,14 +16,17 @@ const Template: ComponentStory<typeof DatabaseStatusLarge> = args => {
 export const Incomplete = Template.bind({});
 Incomplete.args = {
   databases: [createDatabase({ initial_sync_status: "incomplete" })],
+  isActive: true,
 };
 
 export const Complete = Template.bind({});
 Complete.args = {
   databases: [createDatabase({ initial_sync_status: "complete" })],
+  isActive: true,
 };
 
 export const Aborted = Template.bind({});
 Aborted.args = {
   databases: [createDatabase({ initial_sync_status: "aborted" })],
+  isActive: true,
 };
