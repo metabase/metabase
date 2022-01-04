@@ -66,8 +66,6 @@ This default command will work for most LDAP servers, since `inetOrgPerson` is a
 
 ### LDAP Group mapping
 
-{% include plans-blockquote.html feature="LDAP group mapping" %}
-
 Manually assigning people to [groups](05-setting-permissions.html#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management).
 
 Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
