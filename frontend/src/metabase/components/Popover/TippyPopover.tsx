@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import * as Tippy from "@tippyjs/react";
+import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -22,6 +23,7 @@ const propTypes = {
 };
 
 function TippyPopover({
+  className,
   disableContentSandbox,
   lazy = true,
   content,
@@ -55,7 +57,7 @@ function TippyPopover({
 
   return (
     <TippyComponent
-      className="popover"
+      className={cx("popover", className)}
       theme="popover"
       arrow={false}
       offset={OFFSET}
