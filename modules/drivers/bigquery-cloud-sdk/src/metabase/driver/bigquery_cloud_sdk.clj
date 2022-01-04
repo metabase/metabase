@@ -17,9 +17,10 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryException BigQueryOptions DatasetId Field Field$Mode FieldValue
-                                      FieldValueList QueryJobConfiguration Schema Table TableId TableResult]
+  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$DatasetListOption BigQuery$JobOption
+                                      BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions
+                                      DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
+                                      Table TableId TableResult Dataset]
            java.util.Collections))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
@@ -48,28 +49,31 @@
 
 (defn- ^Iterable list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [{{:keys [project-id dataset-id]} :details, :as database}]
-    (let [bq (database->client database)]
-      (list-tables bq project-id dataset-id)))
+  (^Iterable [{{:keys [project-id]} :details, :as database}]
+    (list-tables (database->client database) project-id))
 
-  (^Iterable [^BigQuery client, ^String project-id ^String dataset-id]
-    {:pre [client (not (str/blank? dataset-id))]}
-    (.iterateAll (.listTables client (DatasetId/of project-id dataset-id) (u/varargs BigQuery$TableListOption)))))
+  (^Iterable [^BigQuery client, ^String project-id]
+    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))]
+      (concat (for [^Dataset dataset datasets]
+                (.iterateAll (.listTables client
+                                          (.getDatasetId dataset)
+                                          (u/varargs BigQuery$TableListOption))))))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
   (let [tables (list-tables database)]
-    {:tables (set (for [^Table table tables]
-                    {:schema nil, :name (.. table getTableId getTable)}))}))
+    {:tables (set (for [^Table table tables
+                        :let [^String table-id (.getTableId table)]]
+                    {:schema (.getDataset table-id), :name (.getTable table-id)}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ {:keys [project-id dataset-id] :as details-map}]
+  [_ {:keys [project-id] :as details-map}]
   ;; check whether we can connect by seeing whether we have at least one Table in the iterator
   (let [^BigQuery bq     (database->client {:details details-map})
         ^DatasetId ds-id (if (some? project-id)
                            (DatasetId/of project-id dataset-id)
                            (DatasetId/of dataset-id))]
-    (some? (.getDataset bq ds-id (u/varargs BigQuery$DatasetOption)))))
+    (.. (list-tables bq project-id) iterator hasNext)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))

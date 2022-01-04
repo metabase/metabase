@@ -9,7 +9,8 @@
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql Connection DatabaseMetaData ResultSet]))
+  (:import [java.sql Connection DatabaseMetaData ResultSet]
+           (java.util.regex Pattern)))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
@@ -123,3 +124,29 @@
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
              (into #{} (i/active-tables driver conn)))})
+
+(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
+  (re-pattern (-> (str/replace schema-pattern #"\*" ".*")
+                  (str/replace #"," "|"))))
+
+(defn- schema-patterns->filter-fn*
+  [inclusion-patterns exclusion-patterns]
+  (if (and (str/blank? inclusion-patterns) (str/blank? exclusion-patterns))
+      (constantly true)
+      (let [inclusion? (str/blank? exclusion-patterns)
+            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
+        (fn [s]
+          (let [m        (.matcher pattern s)
+                matches? (.matches m)]
+            (if inclusion? matches? (not matches?)))))))
+
+(def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
+
+(defn include-schema?
+  ;; TODO: add more docstring details here
+  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
+  `exclusion-patterns`."
+  [schema-name inclusion-patterns exclusion-patterns]
+  (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
+    (filter-fn schema-name)))
+

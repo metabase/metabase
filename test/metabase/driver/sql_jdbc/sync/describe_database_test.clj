@@ -102,3 +102,33 @@
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
+
+(deftest schema-filter-test
+  (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]
+          [["nil filters" true "foo" nil nil]
+           ["blank filters" true "foo" "" ""]
+           ["simple inclusion filter (include)" true "foo" "foo" ""]
+           ["simple inclusion filter (exclude)" false "bar" "foo" ""]
+           ["wildcard inclusion filter" true "foo" "f*" ""]
+           ["simple exclusion filter (include)" true "bar" "" "foo"]
+           ["simple exclusion filter (exclude)" false "foo" "" "foo"]
+           ["wildcard exclusion filter" true "foo" "" "b*"]
+           ["inclusion filter with commas and wildcards (include)" true "foo" "bar,f*,baz" ""]
+           ["inclusion filter with commas and wildcards (exclude)" false "ban" "bar,f*,baz" ""]
+           ["exclusion filter with commas and wildcards (include)" true "foo" "" "ba*,fob"]
+           ["exclusion filter with commas and wildcards (exclude)" false "foo" "" "bar,baz,fo*"]]]
+    (testing (str "include-schema? works as expected for " test-kind)
+      (is (= expect-match? (describe-database/include-schema? schema-name inclusion-filters exclusion-filters))))
+    (testing "include-schema? memoizes as expected"
+      (let [call-count (atom 0)
+            orig-fn    #'describe-database/schema-patterns->filter-fn*
+            wrapper-fn (fn [& more]
+                         (swap! call-count inc)
+                         (apply orig-fn more))]
+        (with-redefs [describe-database/schema-patterns->filter-fn* wrapper-fn]
+          (is (= true (describe-database/include-schema? "foo" "foo,bar,baz" "")))
+          (is (= true (describe-database/include-schema? "baz" "foo,bar,baz" "")))
+          (is (= false (describe-database/include-schema? "nope" "foo,bar,baz" "")))
+          ;; TODO: fix this
+          (is (= 1 @call-count)))))))
+
