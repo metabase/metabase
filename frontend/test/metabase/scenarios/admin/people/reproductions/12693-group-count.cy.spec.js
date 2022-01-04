@@ -23,6 +23,19 @@ describe("should update group count after editing a group", () => {
     cy.findByText("Groups").click();
     findRow(GROUP).within(() => cy.findByText("4"));
   });
+
+  it("should update the group count after removing a user from a group (metabase#12693)", () => {
+    cy.visit("/admin/people/groups");
+
+    findRow(GROUP).within(() => cy.findByText("3"));
+    cy.findByText(GROUP).click();
+
+    findRow("User 1").within(() => cy.findByLabelText("close icon").click());
+    cy.findByText("2 members");
+
+    cy.findByText("Groups").click();
+    findRow(GROUP).within(() => cy.findByText("2"));
+  });
 });
 
 const findRow = text => {
