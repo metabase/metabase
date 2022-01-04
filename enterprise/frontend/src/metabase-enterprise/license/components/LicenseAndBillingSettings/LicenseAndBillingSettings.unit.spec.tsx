@@ -1,11 +1,4 @@
-import {
-  act,
-  fireEvent,
-  screen,
-  waitForElement,
-  waitForElementToBeRemoved,
-} from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import xhrMock from "xhr-mock";
 import { renderWithProviders } from "__support__/ui";
@@ -35,7 +28,7 @@ const mockTokenStatus = (valid: boolean) => {
   xhrMock.get("/api/premium-features/token/status", {
     body: JSON.stringify({
       valid,
-      "valid-thru": "2099-12-30T23:00:00Z",
+      "valid-thru": "2099-12-31T12:00:00",
     }),
   });
 };
