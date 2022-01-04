@@ -108,7 +108,7 @@ For obvious reasons, regular users can't reactivate deactivated accounts. If you
 3.  Make sure Metabase has the correct host, port, and login credentials for your LDAP server. You can test this by logging into LDAP directly using some other application, such as [Apache Directory Studio][ads].
 
 [ads]: https://directory.apache.org/studio/
-[auth]: ../faq/setup/how-do-i-integrate-with-sso.html
+[auth]: ../administration-guide/sso.html
 [reset-password]: ../faq/using-metabase/how-do-i-reset-my-password.html
 [saml]: ../enterprise-guide/authenticating-with-saml.html
 [sandboxing]: ./sandboxing.html

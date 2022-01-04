@@ -1,13 +1,18 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const StepRoot = styled.section`
   position: relative;
-  padding: 4rem;
+  padding: 2rem;
   margin-bottom: 1.75rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
+
+  ${breakpointMinSmall} {
+    padding: 4rem;
+  }
 `;
 
 export const StepTitle = styled.div`

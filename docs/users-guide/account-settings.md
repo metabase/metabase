@@ -8,7 +8,7 @@ You can view your account settings by clicking on the **gears** icon in the uppe
 
 ## Account profile
 
-You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../faq/general/what-languages-can-be-used-with-metabase.md#currently-available-languages).
+You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../administration-guide/localization.md).
 
 ## Account password
 

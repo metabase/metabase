@@ -84,7 +84,13 @@
         (#{:pin_map :state :country} display-type)
         (chart-type nil "display-type is %s" display-type)
 
-        (#{:progress :waterfall :combo :funnel :area} display-type)
+        (#{:area
+           :bar
+           :combo
+           :funnel
+           :progress
+           :table
+           :waterfall} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= @col-sample-count @row-sample-count 1)
@@ -100,16 +106,16 @@
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
-        (and (= @col-sample-count 2)
-             (number-field? @col-2)
-             (= display-type :bar))
-        (chart-type :bar "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
-
+        ;; Default behavior of these to be sparkline, unless the columns and rows don't behave and display type is correct,
+        ;; upon which they're lines
         (and (= @col-sample-count 2)
              (> @row-sample-count 1)
              (number-field? @col-2)
              (not (#{:waterfall :pie :table :area} display-type)))
         (chart-type :sparkline "result has 2 cols (%s and %s (number)) and > 1 row" (col-description @col-1) (col-description @col-2))
+
+        (= display-type :line)
+        (chart-type display-type "display-type is %s" display-type)
 
         (and (= @col-sample-count 2)
              (number-field? @col-2)

@@ -16,7 +16,7 @@ import App from "metabase/App.jsx";
 import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/AuthApp";
+import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
