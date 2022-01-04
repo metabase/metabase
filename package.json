@@ -196,6 +196,7 @@
     "babel-loader": "^8.2.2",
     "babel-plugin-styled-components": "^1.10.7",
     "babel-plugin-ttag": "^1.7.26",
+    "chromatic": "^6.3.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
     "cypress": "^6.8.0",
@@ -299,7 +300,8 @@
     "test-visual-open": "percy exec -- yarn test-cypress-open --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "prepare": "husky install",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "chromatic": "chromatic"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,ts,tsx,css}": [
