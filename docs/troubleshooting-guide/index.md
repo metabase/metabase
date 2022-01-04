@@ -91,7 +91,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
-[feature-request]: requesting-new-feature.html
+[feature-request]: requesting-new-features.html
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
