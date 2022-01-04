@@ -40,10 +40,9 @@
   Otherwise returns `table-columns`."
   [table-columns cols]
   (let [col-field-refs (set (remove nil? (map :field_ref cols)))]
-    (if (or (empty? col-field-refs)
-            (every? (fn [table-col] (col-field-refs (::mb.viz/table-column-field-ref table-col))) table-columns))
-      table-columns
-      nil)))
+    (when (or (empty? col-field-refs)
+              (every? (fn [table-col] (col-field-refs (::mb.viz/table-column-field-ref table-col))) table-columns))
+      table-columns)))
 
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
