@@ -5,6 +5,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
+import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
@@ -156,19 +157,23 @@ export default class TagEditorParam extends Component {
 
             {(!hasSelectedDimensionField ||
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
-              <SchemaTableAndFieldDataSelector
-                databases={databases}
-                selectedDatabaseId={database ? database.id : null}
-                selectedTableId={table ? table.id : null}
-                selectedFieldId={
-                  hasSelectedDimensionField ? tag.dimension[1] : null
-                }
-                setFieldFn={fieldId => this.setDimension(fieldId)}
-                className="AdminSelect flex align-center"
-                isInitiallyOpen={!tag.dimension}
-                triggerIconSize={12}
-                renderAsSelect={true}
-              />
+              <Schemas.Loader id={table?.schema?.id}>
+                {() => (
+                  <SchemaTableAndFieldDataSelector
+                    databases={databases}
+                    selectedDatabaseId={database ? database.id : null}
+                    selectedTableId={table ? table.id : null}
+                    selectedFieldId={
+                      hasSelectedDimensionField ? tag.dimension[1] : null
+                    }
+                    setFieldFn={fieldId => this.setDimension(fieldId)}
+                    className="AdminSelect flex align-center"
+                    isInitiallyOpen={!tag.dimension}
+                    triggerIconSize={12}
+                    renderAsSelect={true}
+                  />
+                )}
+              </Schemas.Loader>
             )}
           </div>
         )}
