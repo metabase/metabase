@@ -142,6 +142,14 @@
 - [Troubleshooting guide][troubleshooting] 
 - [Developers guide][developers]
 
+## Metabase Cloud
+
+- [Docs specific to our hosted version][cloud]
+
+## Privacy
+
+- [Some info on privacy and GDPR][privacy]
+
 ## Reference
 
 - [Anonymous Information Collection Reference][info-collection]
@@ -152,6 +160,7 @@
 [admin-guide]: administration-guide/start.html
 [blog]: /blog
 [case-studies]: https://www.metabase.com/case_studies/
+[cloud]: /cloud/docs/
 [embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
 [enterprise]: enterprise-guide/start.html
 [enterprise-landing]: /enterprise
@@ -165,8 +174,8 @@
 [info-collection]: information-collection.html
 [learn]: /learn
 [operations-guide]: operations-guide/start.html
+[privacy]: privacy.html 
 [source-code]: https://github.com/metabase/metabase
 [tour]: /learn/getting-started/tour-of-metabase.html
 [troubleshooting]: troubleshooting-guide/index.html
 [users-guide]: users-guide/start.html
-
