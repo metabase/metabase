@@ -470,12 +470,13 @@
              {:id 1, :name "Col2", :remapped_from "Col1", :field_ref ["field" 1 nil]}]
             [{::mb.viz/table-column-field-ref ["field" 0 nil], ::mb.viz/table-column-enabled true}]))))
 
-  (testing "entries in table-columns without corresponding entries in cols are ignored"
+  (testing "if table-columns contains a column without a corresponding entry in cols, table-columns is ignored and
+           cols is used as the source of truth for column order (#19465)"
     (is (= [0]
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
-            [{::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}]))))
+            [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}]))))
 
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
