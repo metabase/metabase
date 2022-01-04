@@ -48,17 +48,7 @@ If your LDAP setup uses other attributes for these, you can edit this under the 
 
 Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](../users-guide/account-settings.md).
 
-## LDAP advanced features
-
-Metabase Pro and Enterprise Editions ship with more advanced LDAP features.
-
-- [User schema](#ldap-user-schema)
-- [Syncing user attributes](#ldap-syncing-user-attributes)
-- [Group mapping](#ldap-group-mapping)
-
 ### LDAP user schema
-
-{% include plans-blockquote.html feature="LDAP user schema" %}
 
 The **User Schema** section on this same page is where you can adjust settings related to where and how Metabase connects to your LDAP server to authenticate users.
 
@@ -73,12 +63,6 @@ You'll see the following grayed-out default value in the **User filter** field:
 When a person logs into Metabase, this command confirms that the login they supplied matches either a UID _or_ email field in your LDAP server, _and_ that the matching entry has an objectClass of `inetOrgPerson`.
 
 This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
-
-### LDAP syncing user attributes
-
-{% include plans-blockquote.html feature="LDAP user attribute syncing" %}
-
-If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can utilize existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
 
 ### LDAP Group mapping
 
@@ -95,6 +79,28 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 Note that updates to a person's group membership based on LDAP mappings will only take effect once they have logged into Metabase again after the update.
 
 For a tutorial on setting up LDAP in Metabase, check out this [Learn lesson](/learn/permissions/ldap-auth-access-control.html). If you run into an issue, our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md) can help.
+
+## LDAP advanced features
+
+Metabase Pro and Enterprise Editions ship with more advanced LDAP features.
+
+### LDAP syncing user attributes
+
+{% include plans-blockquote.html feature="LDAP user attribute syncing" %}
+
+If you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can use existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
+
+### LDAP group membership filter
+
+{% include plans-blockquote.html feature="LDAP group membership filter" %}
+
+Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
+
+### LDAP sync administrator group
+
+{% include plans-blockquote.html feature="LDAP administrator group syncing" %}
+
+You can also enable administrator group syncing.
 
 ---
 
