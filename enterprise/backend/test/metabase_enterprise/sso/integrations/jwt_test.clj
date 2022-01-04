@@ -79,7 +79,7 @@
             redirect-url (get-in result [:headers "Location"])]
         (is (str/starts-with? redirect-url default-idp-uri)))))
   (testing (str "JWT configured with a redirect-uri containing query params, "
-                "a GET request should result in a redirect to the IdP as a correctly formatted URL")
+                "a GET request should result in a redirect to the IdP as a correctly formatted URL (#13078)")
     (with-jwt-default-setup
       (mt/with-temporary-setting-values [jwt-identity-provider-uri "http://test.idp.metabase.com/login?some_param=yes"]
         (let [result       (saml-test/client-full-response :get 302 "/auth/sso"
