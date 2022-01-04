@@ -1,16 +1,16 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { createDatabase } from "metabase-types/api/database";
-import DatabaseStatusSmall from "./DatabaseStatusSmall";
+import DatabaseStatusLarge from "./DatabaseStatusLarge";
 
 export default {
-  title: "Status/DatabaseStatusSmall",
-  component: DatabaseStatusSmall,
-  argTypes: { onExpand: { action: "onExpand" } },
+  title: "Status/DatabaseStatusLarge",
+  component: DatabaseStatusLarge,
+  argTypes: { onCollapse: { action: "onCollapse" } },
 };
 
-const Template: ComponentStory<typeof DatabaseStatusSmall> = args => {
-  return <DatabaseStatusSmall {...args} />;
+const Template: ComponentStory<typeof DatabaseStatusLarge> = args => {
+  return <DatabaseStatusLarge {...args} />;
 };
 
 export const Incomplete = Template.bind({});
