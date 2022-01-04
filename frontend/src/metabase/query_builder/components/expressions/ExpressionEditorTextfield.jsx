@@ -334,6 +334,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   errorAsMarkers(errorMessage = null) {
     if (errorMessage) {
       const { pos, len } = errorMessage;
+      // Because not every error message offers location info (yet)
       if (typeof pos === "number") {
         return [
           {
