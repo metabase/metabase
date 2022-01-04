@@ -40,7 +40,7 @@ export const ExporePaidPlansContainer = styled.div<
 
 export const SettingsLicenseContainer = styled.div`
   width: 580px;
-  padding: 0 52px;
+  padding: 16px;
 `;
 
 export const LoaderContainer = styled.div`
