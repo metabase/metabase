@@ -112,15 +112,21 @@ class ExpressionEditorTextfield extends React.Component {
 
   UNSAFE_componentWillReceiveProps(newProps) {
     const { expression, query, startRule } = newProps;
-    const source = format(expression, { query, startRule });
+    if (
+      !this.state ||
+      !_.isEqual(this.props.expression, expression) ||
+      !this.props.onBlankChange
+    ) {
+      const source = format(expression, { query, startRule });
 
-    this.setState({ source, expression });
+      this.setState({ source, expression });
 
-    if (source) {
-      this.setCaretPosition(source.length, source.length === 0);
+      if (source) {
+        this.setCaretPosition(source.length, source.length === 0);
+      }
+
+      this.clearSuggestions();
     }
-
-    this.clearSuggestions();
   }
 
   componentDidMount() {
