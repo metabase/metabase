@@ -1,7 +1,13 @@
 import React from "react";
 import { jt, t } from "ttag";
 import SlackSection from "../SlackSection";
-import { SectionLink, SectionMessage } from "./CreateAppSection.styled";
+import {
+  SectionButton,
+  SectionButtonIcon,
+  SectionButtonText,
+  SectionLink,
+  SectionMessage,
+} from "./CreateAppSection.styled";
 
 const CreateAppSection = (): JSX.Element => {
   return (
@@ -14,6 +20,10 @@ const CreateAppSection = (): JSX.Element => {
           <strong>{t`From an app manifest`}</strong>
         )}”.`}
       </SectionMessage>
+      <SectionButton className="Button Button--primary">
+        <SectionButtonText>{`Open Slack Apps`}</SectionButtonText>
+        <SectionButtonIcon name="external" />
+      </SectionButton>
     </SlackSection>
   );
 };
