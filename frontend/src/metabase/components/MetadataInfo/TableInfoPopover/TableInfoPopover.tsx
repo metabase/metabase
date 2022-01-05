@@ -5,6 +5,7 @@ import { hideAll } from "tippy.js";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
+import { isCypressActive } from "metabase/env";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
@@ -19,19 +20,25 @@ const propTypes = {
 
 type Props = { tableId: number } & Pick<
   ITippyPopoverProps,
-  "children" | "placement" | "offset"
+  "children" | "placement" | "offset" | "delay"
 >;
 
 const className = "table-info-popover";
 
-function TableInfoPopover({ tableId, children, placement, offset }: Props) {
+function TableInfoPopover({
+  tableId,
+  children,
+  placement,
+  offset,
+  delay = POPOVER_DELAY,
+}: Props) {
   placement = placement || "left-start";
 
   return tableId != null ? (
     <TippyPopover
       className={className}
       interactive
-      delay={POPOVER_DELAY}
+      delay={isCypressActive ? 0 : delay}
       placement={placement}
       offset={offset}
       content={<WidthBoundTableInfo tableId={tableId} />}
