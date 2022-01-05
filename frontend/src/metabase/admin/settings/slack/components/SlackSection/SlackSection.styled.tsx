@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 import Button from "metabase/components/Button";
 
 export const SectionRoot = styled.div`
+  margin-bottom: 2rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
 `;

@@ -1,0 +1,21 @@
+import React from "react";
+import { jt, t } from "ttag";
+import SlackSection from "../SlackSection";
+import { SectionLink, SectionMessage } from "./CreateAppSection.styled";
+
+const CreateAppSection = (): JSX.Element => {
+  return (
+    <SlackSection title={t`1. Create your Slack App`}>
+      <SectionMessage>
+        {t`To create your Metabase integration on Slack you’ll need to set up some things.`}{" "}
+        {jt`First, go to ${(
+          <SectionLink href="https://api.slack.com/apps">{t`Slack Apps`}</SectionLink>
+        )}, hit “${(<strong>{t`Create New App`}</strong>)}” and pick “${(
+          <strong>{t`From an app manifest`}</strong>
+        )}”.`}
+      </SectionMessage>
+    </SlackSection>
+  );
+};
+
+export default CreateAppSection;
