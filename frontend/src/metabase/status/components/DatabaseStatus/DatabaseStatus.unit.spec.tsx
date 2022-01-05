@@ -1,15 +1,14 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createDatabase } from "metabase-types/api/database";
-import { createUser } from "metabase-types/api/user";
+import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import DatabaseStatus from "./DatabaseStatus";
 
 describe("DatabaseStatus", () => {
   it("should toggle between small and large versions", () => {
-    const user = createUser({ id: 1 });
+    const user = createMockUser({ id: 1 });
     const databases = [
-      createDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
+      createMockDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
     ];
 
     render(<DatabaseStatus user={user} databases={databases} />);
@@ -29,9 +28,9 @@ describe("DatabaseStatus", () => {
   });
 
   it("should not render when databases are created by another user", () => {
-    const user = createUser({ id: 1 });
+    const user = createMockUser({ id: 1 });
     const databases = [
-      createDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
+      createMockDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
     ];
 
     render(<DatabaseStatus user={user} databases={databases} />);

@@ -1,15 +1,19 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { DatabaseCandidate, TableCandidate, User } from "../../types";
+import {
+  createMockDatabaseCandidate,
+  createMockTableCandidate,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {
   it("should display table candidates", () => {
-    const user = getUser();
+    const user = createMockUser();
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
@@ -22,10 +26,10 @@ describe("XraySection", () => {
   });
 
   it("should allow admins to hide the section", () => {
-    const user = getUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
     const onHideXrays = jest.fn();
@@ -45,10 +49,10 @@ describe("XraySection", () => {
   });
 
   it("should not allow non-admins to hide the section", () => {
-    const user = getUser({ is_superuser: false });
+    const user = createMockUser({ is_superuser: false });
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
@@ -58,15 +62,15 @@ describe("XraySection", () => {
   });
 
   it("should allow changing database schema for table candidates", () => {
-    const user = getUser();
+    const user = createMockUser();
     const databaseCandidates = [
-      getDatabaseCandidate({
+      createMockDatabaseCandidate({
         schema: "public",
-        tables: [getTableCandidate({ title: "Public table" })],
+        tables: [createMockTableCandidate({ title: "Public table" })],
       }),
-      getDatabaseCandidate({
+      createMockDatabaseCandidate({
         schema: "admin",
-        tables: [getTableCandidate({ title: "Admin table" })],
+        tables: [createMockTableCandidate({ title: "Admin table" })],
       }),
     ];
 
@@ -81,27 +85,4 @@ describe("XraySection", () => {
     expect(screen.queryByText("Public table")).not.toBeInTheDocument();
     expect(screen.getByText("Admin table")).toBeInTheDocument();
   });
-});
-
-const getUser = (opts?: Partial<User>): User => ({
-  id: 1,
-  first_name: "John",
-  is_superuser: false,
-  has_invited_second_user: false,
-  personal_collection_id: "personal",
-  ...opts,
-});
-
-const getTableCandidate = (opts?: Partial<TableCandidate>): TableCandidate => ({
-  title: "Our table",
-  url: "/auto",
-  ...opts,
-});
-
-const getDatabaseCandidate = (
-  opts?: Partial<DatabaseCandidate>,
-): DatabaseCandidate => ({
-  schema: "public",
-  tables: [],
-  ...opts,
 });
