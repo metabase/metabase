@@ -987,8 +987,8 @@ function joinTwoSavedQuestions() {
 }
 
 function addSimpleCustomColumn(name) {
-  enterCustomColumnDetails({ formula: "C" });
-  cy.findByText("ategory").click();
+  enterCustomColumnDetails({ formula: "Ca" });
+  cy.findByText("tegory").click();
   cy.findByPlaceholderText("Something nice and descriptive")
     .click()
     .type(name);

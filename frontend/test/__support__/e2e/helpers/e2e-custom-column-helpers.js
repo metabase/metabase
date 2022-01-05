@@ -4,6 +4,7 @@ export function enterCustomColumnDetails({ formula, name } = {}) {
     .as("formula")
     .should("exist")
     .focus()
+    .wait(150)
     .type(formula);
 
   if (name) {
