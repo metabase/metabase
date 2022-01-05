@@ -105,6 +105,6 @@
   []
   (merge
    (font-style)
-   {:font-size   :16px
+   {:font-size   :24px
     :font-weight 700
     :color       color-text-dark}))
