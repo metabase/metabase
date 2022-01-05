@@ -26,4 +26,6 @@ export const SectionButtonText = styled.div`
 export const SectionButtonIcon = styled(Icon)`
   color: ${color("white")};
   margin-left: 0.5rem;
+  width: 0.75rem;
+  height: 0.75rem;
 `;
