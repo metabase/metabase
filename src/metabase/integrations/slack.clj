@@ -59,8 +59,7 @@
     (when token
       (let [url     (str slack-api-base-url "/" (name endpoint))
             _       (log/trace "Slack API request: %s %s" (pr-str url) (pr-str request))
-            request (merge-with
-                     (fn [a b] (if (and (map? a) (map? b)) (merge a b) b))
+            request (m/deep-merge
                      {:headers        {:authorization (str "Bearer\n" token)}
                       :as             :stream
                       ;; use a relatively long connection timeout (10 seconds) in cases where we're fetching big
