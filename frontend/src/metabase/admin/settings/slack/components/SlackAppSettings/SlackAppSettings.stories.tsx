@@ -5,11 +5,16 @@ import SlackAppSettings from "./SlackAppSettings";
 export default {
   title: "Admin/Settings/Slack/SlackAppSettings",
   component: SlackAppSettings,
+  argTypes: {
+    Form: { table: { disable: true } },
+    onSubmit: { action: "onSubmit" },
+  },
 };
 
-const Template: ComponentStory<typeof SlackAppSettings> = () => {
-  return <SlackAppSettings />;
+export const Default: ComponentStory<typeof SlackAppSettings> = args => {
+  return <SlackAppSettings {...args} />;
 };
 
-export const Default = Template.bind({});
-Default.args = {};
+Default.args = {
+  Form: () => <div />,
+};

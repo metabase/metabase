@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from "react";
+import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
 import {
   HeaderMessage,
@@ -17,13 +17,25 @@ import {
   SectionToggle,
 } from "./SlackAppSettings.styled";
 
-const SlackAppSettings = (): JSX.Element => {
+export interface SlackAppSettingsProps {
+  Form: ComponentType<SlackAppFormProps>;
+  onSubmit: () => void;
+}
+
+export interface SlackAppFormProps {
+  onSubmit: () => void;
+}
+
+const SlackAppSettings = ({
+  Form,
+  onSubmit,
+}: SlackAppSettingsProps): JSX.Element => {
   return (
     <div>
       <SettingsHeader />
       <CreateAppSection />
       <CopyManifestSection />
-      <ActivateTokenSection />
+      <ActivateAppSection Form={Form} onSubmit={onSubmit} />
     </div>
   );
 };
@@ -73,9 +85,14 @@ const CreateAppSection = (): JSX.Element => {
       <SectionMessage>
         {t`To create your Metabase integration on Slack you’ll need to set up some things.`}{" "}
         {jt`First, go to ${(
-          <SectionLink href="https://api.slack.com/apps">{t`Slack Apps`}</SectionLink>
-        )}, hit “${(<strong>{t`Create New App`}</strong>)}” and pick “${(
-          <strong>{t`From an app manifest`}</strong>
+          <SectionLink
+            key="message"
+            href="https://api.slack.com/apps"
+          >{t`Slack Apps`}</SectionLink>
+        )}, hit “${(
+          <strong key="app">{t`Create New App`}</strong>
+        )}” and pick “${(
+          <strong key="manifest">{t`From an app manifest`}</strong>
         )}”.`}
       </SectionMessage>
       <SectionButton
@@ -94,9 +111,9 @@ const CopyManifestSection = (): JSX.Element => {
     <SettingsSection title={t`2. Copy the Metabase manifest`}>
       <SectionMessage>
         {jt`Copy our ${(
-          <strong>{t`Slack Manifest`}</strong>
+          <strong key="manifest">{t`Slack Manifest`}</strong>
         )} below and paste it in to create the app. In the following screen, click “${(
-          <strong>{t`Install to workspace`}</strong>
+          <strong key="install">{t`Install to workspace`}</strong>
         )}” and authorize it.`}
       </SectionMessage>
       <SectionCode />
@@ -104,18 +121,27 @@ const CopyManifestSection = (): JSX.Element => {
   );
 };
 
-const ActivateTokenSection = (): JSX.Element => {
+interface ActivateAppSectionProps {
+  Form: ComponentType<SlackAppFormProps>;
+  onSubmit: () => void;
+}
+
+const ActivateAppSection = ({
+  Form,
+  onSubmit,
+}: ActivateAppSectionProps): JSX.Element => {
   return (
     <SettingsSection
       title={t`3. Activate the OAuth Token and create a new slack channel`}
     >
       <SectionMessage>{jt`Click on "${(
-        <strong>{t`OAuth and Permissions`}</strong>
+        <strong key="click">{t`OAuth and Permissions`}</strong>
       )}" in the sidebar, copy the “${(
-        <strong>{t`Bot User OAuth Token`}</strong>
+        <strong key="token">{t`Bot User OAuth Token`}</strong>
       )}” and paste it here. Finally, open Slack and create a public channel named “${(
-        <strong>{t`metabase_files`}</strong>
+        <strong key="channel">{t`metabase_files`}</strong>
       )}”.`}</SectionMessage>
+      <Form onSubmit={onSubmit} />
     </SettingsSection>
   );
 };
