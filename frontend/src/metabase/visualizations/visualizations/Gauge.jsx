@@ -203,7 +203,7 @@ export default class Gauge extends Component {
       ])
       .clamp(true);
 
-    const value = rows[0][0];
+    const value = rows[0][0] || 0;
     const column = cols[0];
 
     const valuePosition = (value, distance) => {
