@@ -5,6 +5,7 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
+import { State } from "metabase-types/store";
 import Homepage from "../../components/Homepage";
 import {
   hideData,
@@ -17,7 +18,6 @@ import {
   getShowData,
   getShowPinMessage,
   getShowSyncingModal,
-  getShowXrays,
 } from "../../selectors";
 import {
   trackCollectionClick,
@@ -58,7 +58,7 @@ const databaseCandidatesProps = {
   loadingAndErrorWrapper: false,
 };
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: State) => ({
   user: getUser(state),
   showData: getShowData(state),
   showPinMessage: getShowPinMessage(state),

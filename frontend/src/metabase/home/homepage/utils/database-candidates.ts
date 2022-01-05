@@ -1,5 +1,5 @@
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Dashboard, Database } from "../types";
+import { Dashboard, Database } from "metabase-types/api";
 
 export const createCandidatesQuery = (
   databases: Database[] = [],

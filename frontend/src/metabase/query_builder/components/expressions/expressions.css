@@ -27,3 +27,10 @@
 .expression-editor-textfield .ace_hidden-cursors .ace_cursor {
   opacity: 0;
 }
+
+.expression-editor-textfield .ace_content .error {
+  position: absolute;
+  border-bottom: 2px solid var(--color-error);
+  border-radius: 0px;
+  background-color: var(--color-error-background);
+}

@@ -1,9 +1,6 @@
-export interface Database {
-  id: number;
-  is_sample: boolean;
-}
-
 export interface DatabaseCandidate {
+  id: string;
+  schema: string;
   tables: TableCandidate[];
 }
 

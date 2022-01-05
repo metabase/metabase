@@ -6,7 +6,7 @@
 ## Troubleshooting and getting help
 
 - [Troubleshooting guides][troubleshooting] 
-- [Metabase forum][forum]. 
+- [Metabase forum][forum] 
 - [Configuring logging](./operations-guide/log-configuration.html)
 
 ## Tutorials and guides

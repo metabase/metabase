@@ -1,15 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createDatabase } from "metabase-types/api/database";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
 
 describe("DatabaseStatusSmall", () => {
   it("should render in-progress status", () => {
     const databases = [
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "incomplete",
       }),
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -21,10 +21,10 @@ describe("DatabaseStatusSmall", () => {
 
   it("should render complete status", () => {
     const databases = [
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -36,10 +36,10 @@ describe("DatabaseStatusSmall", () => {
 
   it("should render error status", () => {
     const databases = [
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "aborted",
       }),
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];

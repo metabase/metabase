@@ -1,15 +1,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createDatabase } from "metabase-types/api/database";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusLarge from "./DatabaseStatusLarge";
 
 describe("DatabaseStatusLarge", () => {
   it("should render in-progress status", () => {
     const databases = [
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "incomplete",
       }),
-      createDatabase({
+      createMockDatabase({
         initial_sync_status: "complete",
       }),
     ];
@@ -22,22 +22,22 @@ describe("DatabaseStatusLarge", () => {
 
   it("should render complete status", () => {
     const before = [
-      createDatabase({
+      createMockDatabase({
         id: 1,
         initial_sync_status: "incomplete",
       }),
-      createDatabase({
+      createMockDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
     ];
 
     const after = [
-      createDatabase({
+      createMockDatabase({
         id: 1,
         initial_sync_status: "complete",
       }),
-      createDatabase({
+      createMockDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
@@ -52,22 +52,22 @@ describe("DatabaseStatusLarge", () => {
 
   it("should render error status", () => {
     const before = [
-      createDatabase({
+      createMockDatabase({
         id: 1,
         initial_sync_status: "incomplete",
       }),
-      createDatabase({
+      createMockDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),
     ];
 
     const after = [
-      createDatabase({
+      createMockDatabase({
         id: 1,
         initial_sync_status: "aborted",
       }),
-      createDatabase({
+      createMockDatabase({
         id: 2,
         initial_sync_status: "complete",
       }),

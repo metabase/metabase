@@ -1,5 +1,6 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
+import { State } from "metabase-types/store";
 import LanguageStep from "../../components/LanguageStep";
 import { setLocale, setStep } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
@@ -11,7 +12,7 @@ import {
 } from "../../selectors";
 import { Locale } from "../../types";
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: State) => ({
   locale: getLocale(state),
   localeData: Settings.get("available-locales"),
   isStepActive: isStepActive(state, LANGUAGE_STEP),
