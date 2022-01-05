@@ -11,6 +11,7 @@ export const HeaderRoot = styled.div`
 export const HeaderTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.5rem;
+  font-weight: bold;
   line-height: 1.875rem;
   margin-bottom: 0.25rem;
 `;
@@ -39,7 +40,7 @@ export const SectionTitle = styled.div`
   margin-right: 1rem;
   color: ${color("brand")};
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: bold;
   line-height: 1.5rem;
 `;
 
@@ -63,7 +64,7 @@ export const SectionMessage = styled.div`
 
 export const SectionLink = styled(ExternalLink)`
   color: ${color("brand")};
-  font-weight: 700;
+  font-weight: bold;
 `;
 
 export const SectionButton = styled(ExternalLink)`
@@ -73,7 +74,7 @@ export const SectionButton = styled(ExternalLink)`
 `;
 
 export const SectionButtonText = styled.div`
-  font-weight: 700;
+  font-weight: bold;
 `;
 
 export const SectionButtonIcon = styled(Icon)`
