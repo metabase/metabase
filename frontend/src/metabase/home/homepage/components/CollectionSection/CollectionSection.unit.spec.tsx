@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createCollection, createUser } from "metabase-types/api";
+import { createCollection, createUser } from "metabase-types/api/mocks";
 import CollectionSection from "./CollectionSection";
 
 const CollectionListMock = () => <div>CollectionList</div>;

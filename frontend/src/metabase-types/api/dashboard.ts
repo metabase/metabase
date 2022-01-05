@@ -3,9 +3,3 @@ export interface Dashboard {
   name: string;
   model?: string;
 }
-
-export const createDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
-  id: 1,
-  name: "Dashboard",
-  ...opts,
-});

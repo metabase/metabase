@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createUser } from "metabase-types/api";
+import { createUser } from "metabase-types/api/mocks";
 import GreetingSection from "./GreetingSection";
 
 describe("GreetingSection", () => {

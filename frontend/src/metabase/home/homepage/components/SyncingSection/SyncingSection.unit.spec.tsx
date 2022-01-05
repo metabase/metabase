@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import SyncingSection from "./SyncingSection";
-import { createDatabase, createUser } from "metabase-types/api";
+import { createDatabase, createUser } from "metabase-types/api/mocks";
 
 const SyncingModal = () => <div>Explore sample data</div>;
 jest.mock("metabase/containers/SyncingModal", () => SyncingModal);

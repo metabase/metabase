@@ -5,7 +5,7 @@ import {
   createDatabaseCandidate,
   createTableCandidate,
   createUser,
-} from "metabase-types/api";
+} from "metabase-types/api/mocks";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {

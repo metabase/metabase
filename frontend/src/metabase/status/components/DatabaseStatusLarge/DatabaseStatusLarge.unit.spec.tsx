@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createDatabase } from "metabase-types/api";
+import { createDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusLarge from "./DatabaseStatusLarge";
 
 describe("DatabaseStatusLarge", () => {

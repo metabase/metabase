@@ -5,7 +5,7 @@ import {
   createDashboard,
   createDatabase,
   createUser,
-} from "metabase-types/api";
+} from "metabase-types/api/mocks";
 import StartSection from "./StartSection";
 
 describe("StartSection", () => {

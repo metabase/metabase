@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createDatabase, createUser } from "metabase-types/api";
+import { createDatabase, createUser } from "metabase-types/api/mocks";
 import DatabaseSection from "./DatabaseSection";
 
 describe("DatabaseSection", () => {
