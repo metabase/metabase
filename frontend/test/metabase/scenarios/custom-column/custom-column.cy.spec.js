@@ -420,18 +420,17 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("No discount");
   });
 
-  it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
+  it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type("case([Discount] >0, [Created At], [Product → Created At])")
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "MiscDate",
-      );
-      cy.button("Done").click();
+
+    enterCustomColumnDetails({
+      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      name: "MiscDate",
     });
+
+    cy.button("Done").click();
+
     cy.findByText("Filter").click();
     popover()
       .contains("MiscDate")
@@ -442,10 +441,11 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Years").click();
     cy.button("Add filter").click();
 
-    visualize(response => {
-      expect(response.body.error).to.not.exist;
+    visualize(({ body }) => {
+      expect(body.error).to.not.exist;
     });
 
-    cy.findByText("MiscDate");
+    cy.findByText("MiscDate Previous 30 Years"); // Filter name
+    cy.findByText("MiscDate"); // Column name
   });
 });
