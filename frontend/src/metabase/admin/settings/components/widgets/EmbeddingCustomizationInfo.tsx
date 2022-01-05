@@ -11,7 +11,7 @@ export const EmbeddingCustomizationInfo = () => {
       <p style={{ maxWidth: "460px" }}>
         {jt`Looking to remove the “Powered by Metabase” logo, customize colors
         and make it your own? ${(
-          <ExternalLink href={MetabaseSettings.pricingUrl()}>
+          <ExternalLink href={MetabaseSettings.upgradeUrl()}>
             Explore our paid plans.
           </ExternalLink>
         )}`}

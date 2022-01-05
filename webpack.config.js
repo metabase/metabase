@@ -26,6 +26,7 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
+const useFilesystemCache = process.env.FS_CACHE === "true";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -133,7 +134,7 @@ const config = (module.exports = {
           : SRC_PATH + "/lib/noop",
     },
   },
-  cache: devMode
+  cache: useFilesystemCache
     ? {
         type: "filesystem",
         buildDependencies: {
@@ -141,7 +142,7 @@ const config = (module.exports = {
           config: [__filename],
         },
       }
-    : false,
+    : undefined,
   optimization: {
     splitChunks: {
       cacheGroups: {

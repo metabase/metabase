@@ -10,6 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
@@ -241,6 +242,7 @@ export const syncDatabaseSchema = createThunkAction(
     return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
+        dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {

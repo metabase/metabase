@@ -1,14 +1,14 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import DatabaseStatus from "./DatabaseStatus";
-import { Database, User } from "../../types";
 
 describe("DatabaseStatus", () => {
   it("should toggle between small and large versions", () => {
-    const user = getUser({ id: 1 });
+    const user = createMockUser({ id: 1 });
     const databases = [
-      getDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
+      createMockDatabase({ creator_id: 1, initial_sync_status: "incomplete" }),
     ];
 
     render(<DatabaseStatus user={user} databases={databases} />);
@@ -28,25 +28,13 @@ describe("DatabaseStatus", () => {
   });
 
   it("should not render when databases are created by another user", () => {
-    const user = getUser({ id: 1 });
+    const user = createMockUser({ id: 1 });
     const databases = [
-      getDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
+      createMockDatabase({ creator_id: 2, initial_sync_status: "incomplete" }),
     ];
 
     render(<DatabaseStatus user={user} databases={databases} />);
 
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
-});
-
-const getUser = (opts?: Partial<User>): User => ({
-  id: 1,
-});
-
-const getDatabase = (opts?: Partial<Database>): Database => ({
-  id: 1,
-  name: "Our database",
-  is_sample: false,
-  initial_sync_status: "complete",
-  ...opts,
 });

@@ -13,7 +13,7 @@ import {
   Database,
   DatabaseCandidate,
   User,
-} from "../../types";
+} from "metabase-types/api";
 
 export interface HomepageProps {
   user: User;

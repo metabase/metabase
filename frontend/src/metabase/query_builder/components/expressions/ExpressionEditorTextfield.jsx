@@ -255,16 +255,18 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    const expression = this.compileExpression();
-    if (expression) {
-      if (!isExpression(expression)) {
-        console.warn("isExpression=false", expression);
-      }
-      this.props.onChange(expression);
-    } else if (errorMessage) {
+    if (errorMessage) {
       this.props.onError(errorMessage);
     } else {
-      this.props.onError({ message: t`Invalid expression` });
+      const expression = this.compileExpression();
+      if (expression) {
+        if (!isExpression(expression)) {
+          console.warn("isExpression=false", expression);
+        }
+        this.props.onChange(expression);
+      } else {
+        this.props.onError({ message: t`Invalid expression` });
+      }
     }
   };
 

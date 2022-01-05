@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
-import { Database, User } from "../../types";
+import { Database, User } from "metabase-types/api";
 
 export interface SyncingSectionProps {
   user: User;

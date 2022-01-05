@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
 import Tooltip from "metabase/components/Tooltip";
-import { Database, InitialSyncStatus } from "../../types";
+import { Database, InitialSyncStatus } from "metabase-types/api";
 import {
   StatusRoot,
   StatusIconContainer,

@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import { State } from "metabase-types/store";
 import PreferencesStep from "../../components/PreferencesStep";
 import { setTracking, submitSetup, setStep } from "../../actions";
 import {
@@ -14,7 +15,7 @@ import {
   isSetupCompleted,
 } from "../../selectors";
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: State) => ({
   isTrackingAllowed: isTrackingAllowed(state),
   isStepActive: isStepActive(state, PREFERENCES_STEP),
   isStepCompleted: isStepCompleted(state, PREFERENCES_STEP),
