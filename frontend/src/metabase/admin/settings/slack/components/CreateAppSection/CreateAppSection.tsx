@@ -20,7 +20,10 @@ const CreateAppSection = (): JSX.Element => {
           <strong>{t`From an app manifest`}</strong>
         )}”.`}
       </SectionMessage>
-      <SectionButton className="Button Button--primary">
+      <SectionButton
+        className="Button Button--primary"
+        href="https://api.slack.com/apps"
+      >
         <SectionButtonText>{`Open Slack Apps`}</SectionButtonText>
         <SectionButtonIcon name="external" />
       </SectionButton>

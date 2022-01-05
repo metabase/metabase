@@ -10,6 +10,7 @@ export const SectionMessage = styled.div`
 `;
 
 export const SectionLink = styled(ExternalLink)`
+  color: ${color("brand")};
   font-weight: 700;
 `;
 
