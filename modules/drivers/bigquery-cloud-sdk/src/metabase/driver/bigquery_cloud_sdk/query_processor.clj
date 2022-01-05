@@ -738,6 +738,7 @@
    {database-id                                                 :database
     {source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
+  ;; TODO: figure out how to rip dataset-id out of here (since it's no longer a thing), maybe table schema?
   (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))

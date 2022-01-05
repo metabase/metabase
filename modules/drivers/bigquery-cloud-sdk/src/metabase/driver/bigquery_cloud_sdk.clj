@@ -8,6 +8,7 @@
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
+            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -49,37 +50,42 @@
 
 (defn- ^Iterable list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [{{:keys [project-id]} :details, :as database}]
-    (list-tables (database->client database) project-id))
+  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database}]
+    (list-tables (database->client database)
+                 (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
+                 dataset-filters-type
+                 dataset-filters-patterns))
 
-  (^Iterable [^BigQuery client, ^String project-id]
-    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))]
-      (concat (for [^Dataset dataset datasets]
-                (.iterateAll (.listTables client
-                                          (.getDatasetId dataset)
-                                          (u/varargs BigQuery$TableListOption))))))))
+  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns]
+    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+          inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
+          exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
+      (apply concat (for [^Dataset dataset (.iterateAll datasets)
+                          :let [dataset-id (.. dataset getDatasetId getDataset)]
+                          :when (describe-database/include-schema? dataset-id inclusion-patterns exclusion-patterns)]
+                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
+                          .iterateAll
+                          .iterator
+                          iterator-seq))))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
-  (let [tables (list-tables database)]
+  (let [tables             (list-tables database)]
     {:tables (set (for [^Table table tables
-                        :let [^String table-id (.getTableId table)]]
-                    {:schema (.getDataset table-id), :name (.getTable table-id)}))}))
+                        :let  [^String table-id   (.getTableId table)
+                               ^String dataset-id (.getDataset table-id)]]
+                    {:schema dataset-id, :name (.getTable table-id)}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ {:keys [project-id] :as details-map}]
+  [_ {:keys [project-id schema-filters-type schema-filters-patterns] :as details-map}]
   ;; check whether we can connect by seeing whether we have at least one Table in the iterator
-  (let [^BigQuery bq     (database->client {:details details-map})
-        ^DatasetId ds-id (if (some? project-id)
-                           (DatasetId/of project-id dataset-id)
-                           (DatasetId/of dataset-id))]
-    (.. (list-tables bq project-id) iterator hasNext)))
+  (.. (list-tables {:details details-map}) iterator hasNext))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
 (s/defn get-table :- Table
-  ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
+  ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
   ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
@@ -122,10 +128,10 @@
        :database-position idx})))
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
-  [_ database {table-name :name}]
+  [_ database {table-name :name, dataset-id :schema}]
   {:schema nil
    :name   table-name
-   :fields (set (table-schema->metabase-field-info (.. (get-table database table-name) getDefinition getSchema)))})
+   :fields (set (table-schema->metabase-field-info (.. (get-table database dataset-id table-name) getDefinition getSchema)))})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -295,7 +301,6 @@
 (defmethod driver/db-start-of-week :bigquery-cloud-sdk
   [_]
   :sunday)
-
 
 (defmethod driver/notify-database-updated :bigquery-cloud-sdk
   [_ database]
