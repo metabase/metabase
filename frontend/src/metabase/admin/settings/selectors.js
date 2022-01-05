@@ -21,7 +21,7 @@ import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdate
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SettingsSlackForm from "./components/SettingsSlackForm";
-import { trackTrackingPermissionChanged } from "./tracking";
+import { trackTrackingPermissionChanged } from "./analytics";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
