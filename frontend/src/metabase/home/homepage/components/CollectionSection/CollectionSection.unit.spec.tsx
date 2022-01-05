@@ -9,8 +9,8 @@ jest.mock("metabase/components/CollectionList", () => CollectionListMock);
 
 describe("CollectionSection", () => {
   it("should display the list when there are non-personal collections", () => {
-    const user = createUser();
-    const collections = [createCollection()];
+    const user = createUser({ personal_collection_id: 1 });
+    const collections = [createCollection({ id: 2 })];
 
     render(<CollectionSection user={user} collections={collections} />);
 
