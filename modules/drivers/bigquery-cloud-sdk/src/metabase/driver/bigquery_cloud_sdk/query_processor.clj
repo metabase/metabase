@@ -79,8 +79,9 @@
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
   `BigQueryIdentifier` record type; see its definition for more details."
   []
-  (when (qp.store/initialized?)
-    (some-> (qp.store/database) :details :dataset-id)))
+  "dummy-dataset-id"
+  #_(when (qp.store/initialized?)
+      (some-> (qp.store/database) :details :dataset-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Running Queries & Parsing Results                                        |
@@ -502,10 +503,10 @@
   (if-not (should-qualify-identifier? identifier)
     identifier
     (-> identifier
-        (update :components (fn [[table & more]]
+        (update :components (fn [[dataset-id table & more]]
                               (cons (str (when-let [proj-id (project-id-for-current-query)]
                                            (str proj-id \.))
-                                         (dataset-id-for-current-query)
+                                         dataset-id
                                          \.
                                          table)
                                     more)))
@@ -738,9 +739,7 @@
    {database-id                                                 :database
     {source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
-  ;; TODO: figure out how to rip dataset-id out of here (since it's no longer a thing), maybe table schema?
-  (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
-        {table-name :name} (some-> source-table-id qp.store/table)]
+  (let [{table-name :name, dataset-id :schema} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
