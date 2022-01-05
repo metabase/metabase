@@ -23,6 +23,7 @@ const SlackAppSettings = (): JSX.Element => {
       <SettingsHeader />
       <CreateAppSection />
       <CopyManifestSection />
+      <ActivateTokenSection />
     </div>
   );
 };
@@ -99,6 +100,22 @@ const CopyManifestSection = (): JSX.Element => {
         )}” and authorize it.`}
       </SectionMessage>
       <SectionCode />
+    </SettingsSection>
+  );
+};
+
+const ActivateTokenSection = (): JSX.Element => {
+  return (
+    <SettingsSection
+      title={t`3. Activate the OAuth Token and create a new slack channel`}
+    >
+      <SectionMessage>{jt`Click on "${(
+        <strong>{t`OAuth and Permissions`}</strong>
+      )}" in the sidebar, copy the “${(
+        <strong>{t`Bot User OAuth Token`}</strong>
+      )}” and paste it here. Finally, open Slack and create a public channel named “${(
+        <strong>{t`metabase_files`}</strong>
+      )}”.`}</SectionMessage>
     </SettingsSection>
   );
 };
