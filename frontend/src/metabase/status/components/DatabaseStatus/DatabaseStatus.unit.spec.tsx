@@ -1,8 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createDatabase } from "metabase-types/api/database";
-import { createUser } from "metabase-types/api/user";
+import { createDatabase, createUser } from "metabase-types/api";
 import DatabaseStatus from "./DatabaseStatus";
 
 describe("DatabaseStatus", () => {

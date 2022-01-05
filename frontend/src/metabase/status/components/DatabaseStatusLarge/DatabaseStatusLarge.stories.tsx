@@ -1,6 +1,6 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import { createDatabase } from "metabase-types/api/database";
+import { createDatabase } from "metabase-types/api";
 import DatabaseStatusLarge from "./DatabaseStatusLarge";
 
 export default {

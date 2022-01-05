@@ -5,7 +5,7 @@ import {
 } from "metabase/lib/syncing";
 import React from "react";
 import { t } from "ttag";
-import { Database } from "metabase-types/api/database";
+import { Database } from "metabase-types/api";
 import Icon from "../../../components/Icon";
 import {
   StatusCardRoot,
