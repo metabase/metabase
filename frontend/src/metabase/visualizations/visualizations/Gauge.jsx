@@ -111,7 +111,7 @@ export default class Gauge extends Component {
       getDefault(series) {
         let value = 100;
         try {
-          value = series[0].data.rows[0][0];
+          value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
         return [
           { min: 0, max: value / 2, color: color("error"), label: "" },
