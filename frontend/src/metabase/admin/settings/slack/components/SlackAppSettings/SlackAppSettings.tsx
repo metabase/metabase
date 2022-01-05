@@ -1,6 +1,9 @@
 import React, { ReactNode, useState } from "react";
 import { jt, t } from "ttag";
 import {
+  HeaderMessage,
+  HeaderRoot,
+  HeaderTitle,
   SectionBody,
   SectionButton,
   SectionButtonIcon,
@@ -13,6 +16,28 @@ import {
   SectionTitle,
   SectionToggle,
 } from "./SlackAppSettings.styled";
+
+const SlackAppSettings = (): JSX.Element => {
+  return (
+    <div>
+      <SettingsHeader />
+      <CreateAppSection />
+      <CopyManifestSection />
+    </div>
+  );
+};
+
+const SettingsHeader = (): JSX.Element => {
+  return (
+    <HeaderRoot>
+      <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
+      <HeaderMessage>
+        {t`Bring the power of Metabase to your Slack #channels.`}{" "}
+        {t`Follow these steps to connect your bot to Slack:`}
+      </HeaderMessage>
+    </HeaderRoot>
+  );
+};
 
 interface SettingsSectionProps {
   title: string;
@@ -77,3 +102,5 @@ const CopyManifestSection = (): JSX.Element => {
     </SettingsSection>
   );
 };
+
+export default SlackAppSettings;

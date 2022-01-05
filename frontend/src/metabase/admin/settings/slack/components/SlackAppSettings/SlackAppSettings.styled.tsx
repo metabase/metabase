@@ -4,6 +4,22 @@ import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
+export const HeaderRoot = styled.div`
+  margin-bottom: 1.5rem;
+`;
+
+export const HeaderTitle = styled.div`
+  color: ${color("text-dark")};
+  font-size: 1.5rem;
+  line-height: 1.875rem;
+  margin-bottom: 0.25rem;
+`;
+
+export const HeaderMessage = styled.div`
+  color: ${color("text-medium")};
+  line-height: 1.5rem;
+`;
+
 export const SectionRoot = styled.div`
   margin-bottom: 2rem;
   border: 1px solid ${color("border")};
