@@ -2,17 +2,17 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  createDashboard,
-  createDatabase,
-  createUser,
+  createMockDashboard,
+  createMockDatabase,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import StartSection from "./StartSection";
 
 describe("StartSection", () => {
   it("should show pinned dashboards", () => {
-    const user = createUser();
-    const databases = [createDatabase()];
-    const dashboards = [createDashboard({ name: "Our dashboard" })];
+    const user = createMockUser();
+    const databases = [createMockDatabase()];
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -30,9 +30,9 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for admins when there are no user databases", () => {
-    const user = createUser({ is_superuser: true });
-    const databases = [createDatabase({ is_sample: true })];
-    const dashboards = [createDashboard({ name: "Our dashboard" })];
+    const user = createMockUser({ is_superuser: true });
+    const databases = [createMockDatabase({ is_sample: true })];
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -50,8 +50,8 @@ describe("StartSection", () => {
   });
 
   it("should not show a banner for regular users when there are no user databases", () => {
-    const user = createUser();
-    const dashboards = [createDashboard({ name: "Our dashboard" })];
+    const user = createMockUser();
+    const dashboards = [createMockDashboard({ name: "Our dashboard" })];
 
     render(
       <StartSection
@@ -69,7 +69,7 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for admins when there are no pinned dashboards", () => {
-    const user = createUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
 
     render(
       <StartSection
@@ -86,7 +86,7 @@ describe("StartSection", () => {
   });
 
   it("should show a banner for regular users when there are no pinned dashboards", () => {
-    const user = createUser();
+    const user = createMockUser();
 
     render(
       <StartSection
@@ -103,7 +103,7 @@ describe("StartSection", () => {
   });
 
   it("should not hide the section for admins when there is no content", () => {
-    const user = createUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
 
     render(
       <StartSection
@@ -119,7 +119,7 @@ describe("StartSection", () => {
   });
 
   it("should hide the section for regular users when there is no content", () => {
-    const user = createUser();
+    const user = createMockUser();
 
     render(
       <StartSection
@@ -134,8 +134,8 @@ describe("StartSection", () => {
   });
 
   it("should allow admins to hide the dashboard banner", () => {
-    const user = createUser({ is_superuser: true });
-    const databases = [createDatabase()];
+    const user = createMockUser({ is_superuser: true });
+    const databases = [createMockDatabase()];
     const onHidePinMessage = jest.fn();
 
     render(
@@ -153,8 +153,8 @@ describe("StartSection", () => {
   });
 
   it("should not allow regular users to hide the dashboard banner", () => {
-    const user = createUser();
-    const databases = [createDatabase()];
+    const user = createMockUser();
+    const databases = [createMockDatabase()];
     const onHidePinMessage = jest.fn();
 
     render(

@@ -2,18 +2,18 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  createDatabaseCandidate,
-  createTableCandidate,
-  createUser,
+  createMockDatabaseCandidate,
+  createMockTableCandidate,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {
   it("should display table candidates", () => {
-    const user = createUser();
+    const user = createMockUser();
     const databaseCandidates = [
-      createDatabaseCandidate({
-        tables: [createTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
@@ -26,10 +26,10 @@ describe("XraySection", () => {
   });
 
   it("should allow admins to hide the section", () => {
-    const user = createUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
     const databaseCandidates = [
-      createDatabaseCandidate({
-        tables: [createTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
     const onHideXrays = jest.fn();
@@ -49,10 +49,10 @@ describe("XraySection", () => {
   });
 
   it("should not allow non-admins to hide the section", () => {
-    const user = createUser({ is_superuser: false });
+    const user = createMockUser({ is_superuser: false });
     const databaseCandidates = [
-      createDatabaseCandidate({
-        tables: [createTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
@@ -62,15 +62,15 @@ describe("XraySection", () => {
   });
 
   it("should allow changing database schema for table candidates", () => {
-    const user = createUser();
+    const user = createMockUser();
     const databaseCandidates = [
-      createDatabaseCandidate({
+      createMockDatabaseCandidate({
         schema: "public",
-        tables: [createTableCandidate({ title: "Public table" })],
+        tables: [createMockTableCandidate({ title: "Public table" })],
       }),
-      createDatabaseCandidate({
+      createMockDatabaseCandidate({
         schema: "admin",
-        tables: [createTableCandidate({ title: "Admin table" })],
+        tables: [createMockTableCandidate({ title: "Admin table" })],
       }),
     ];
 

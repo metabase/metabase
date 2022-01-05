@@ -1,6 +1,6 @@
 import { DatabaseCandidate, TableCandidate } from "metabase-types/api";
 
-export const createDatabaseCandidate = (
+export const createMockDatabaseCandidate = (
   opts?: Partial<DatabaseCandidate>,
 ): DatabaseCandidate => ({
   id: "1/public",
@@ -9,7 +9,7 @@ export const createDatabaseCandidate = (
   ...opts,
 });
 
-export const createTableCandidate = (
+export const createMockTableCandidate = (
   opts?: Partial<TableCandidate>,
 ): TableCandidate => ({
   title: "Sample table",

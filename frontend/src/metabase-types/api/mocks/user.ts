@@ -1,6 +1,6 @@
 import { User } from "metabase-types/api";
 
-export const createUser = (opts?: Partial<User>): User => ({
+export const createMockUser = (opts?: Partial<User>): User => ({
   id: 1,
   first_name: "Testy",
   is_superuser: false,

@@ -1,7 +1,7 @@
 import { State } from "metabase-types/store";
-import { createSettingsState } from "metabase-types/store/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
-export const createState = (opts?: Partial<State>): State => ({
-  settings: createSettingsState(),
+export const createMockState = (opts?: Partial<State>): State => ({
+  settings: createMockSettingsState(),
   ...opts,
 });

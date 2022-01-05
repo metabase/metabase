@@ -1,11 +1,11 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { createUser } from "metabase-types/api/mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import GreetingSection from "./GreetingSection";
 
 describe("GreetingSection", () => {
   it("should display a personal greeting", () => {
-    const user = createUser({ first_name: "John" });
+    const user = createMockUser({ first_name: "John" });
 
     render(<GreetingSection user={user} />);
 

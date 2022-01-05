@@ -1,6 +1,6 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import { createDatabase } from "metabase-types/api";
+import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
 
 export default {
@@ -15,15 +15,15 @@ const Template: ComponentStory<typeof DatabaseStatusSmall> = args => {
 
 export const Incomplete = Template.bind({});
 Incomplete.args = {
-  databases: [createDatabase({ initial_sync_status: "incomplete" })],
+  databases: [createMockDatabase({ initial_sync_status: "incomplete" })],
 };
 
 export const Complete = Template.bind({});
 Complete.args = {
-  databases: [createDatabase({ initial_sync_status: "complete" })],
+  databases: [createMockDatabase({ initial_sync_status: "complete" })],
 };
 
 export const Aborted = Template.bind({});
 Aborted.args = {
-  databases: [createDatabase({ initial_sync_status: "aborted" })],
+  databases: [createMockDatabase({ initial_sync_status: "aborted" })],
 };
