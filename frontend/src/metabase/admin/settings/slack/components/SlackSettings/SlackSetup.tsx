@@ -14,9 +14,9 @@ import {
   SectionRoot,
   SectionTitle,
   SectionToggle,
-} from "./SlackSettings.styled";
+} from "./SlackSetup.styled";
 
-export interface SlackSettingsProps {
+export interface SlackSetupProps {
   Form: ComponentType<SlackFormProps>;
   isBot: boolean;
   isError: boolean;
@@ -27,12 +27,12 @@ export interface SlackFormProps {
   onSubmit: () => void;
 }
 
-const SlackSettings = ({
+const SlackSetup = ({
   Form,
   isBot,
   isError,
   onSubmit,
-}: SlackSettingsProps): JSX.Element => {
+}: SlackSetupProps): JSX.Element => {
   return (
     <div>
       <SettingsHeader isBot={isBot} isError={isError} />
@@ -160,4 +160,4 @@ const ActivateAppSection = ({
   );
 };
 
-export default SlackSettings;
+export default SlackSetup;
