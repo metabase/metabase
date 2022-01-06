@@ -16,5 +16,5 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 };
 
 Default.args = {
-  isError: false,
+  hasError: false,
 };

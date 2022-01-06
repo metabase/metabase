@@ -18,8 +18,8 @@ import {
 
 export interface SlackSetupProps {
   Form: ComponentType<SlackSetupFormProps>;
-  isBot: boolean;
-  isError: boolean;
+  hasBot: boolean;
+  hasError: boolean;
   onSubmit: () => void;
 }
 
@@ -29,13 +29,13 @@ export interface SlackSetupFormProps {
 
 const SlackSetup = ({
   Form,
-  isBot,
-  isError,
+  hasBot,
+  hasError,
   onSubmit,
 }: SlackSetupProps): JSX.Element => {
   return (
     <div>
-      <SetupHeader isBot={isBot} isError={isError} />
+      <SetupHeader hasBot={hasBot} hasError={hasError} />
       <CreateAppSection />
       <CopyManifestSection />
       <ActivateAppSection Form={Form} onSubmit={onSubmit} />
@@ -44,17 +44,17 @@ const SlackSetup = ({
 };
 
 interface SetupHeaderProps {
-  isBot: boolean;
-  isError: boolean;
+  hasBot: boolean;
+  hasError: boolean;
 }
 
-const SetupHeader = ({ isBot, isError }: SetupHeaderProps): JSX.Element => {
+const SetupHeader = ({ hasBot, hasError }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
-      {isBot ? (
+      {hasBot ? (
         <HeaderMessage>
-          <SlackBadge isBot={isBot} isError={isError} />{" "}
+          <SlackBadge hasBot={hasBot} hasError={hasError} />{" "}
           {jt`We recommend you ${(
             <strong key="apps">{t`upgrade to Slack Apps`}</strong>
           )}, see the instructions below:`}
