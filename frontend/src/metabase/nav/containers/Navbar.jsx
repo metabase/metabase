@@ -162,10 +162,15 @@ export default class Navbar extends Component {
               <ol>
                 <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer">
                   <Link
+                    className="flex align-center"
                     to={Urls.newQuestion({
                       mode: "notebook",
                       creationType: "complex_question",
-                    })}>Visual question</Link>
+                    })}
+                  >
+                    <Icon name="insight" mr={1} />
+                    Visual question
+                  </Link>
                 </li>
                 <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointerr">
                   <Link
@@ -173,21 +178,37 @@ export default class Navbar extends Component {
                     to={Urls.newQuestion({
                       type: "native",
                       creationType: "native_question",
-                    })}>
+                    })}
+                  >
+                    <Icon name="sql" mr={1} />
                     Sql query
                   </Link>
                 </li>
               </ol>
               <ol className="border-top">
-                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}>
+                <li
+                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
+                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
+                >
+                  <Icon name="dashboard" mr={1} />
                   New dashboard
                 </li>
-                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal()}>
+                <li
+                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
+                  onClick={() => this.setModal()}
+                >
+                  <Icon name="dataset" mr={1} size={18} />
                   New dataset
                 </li>
-                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal()}>
-                  <Link to={Urls.newCollection("root")} className="flex align-center">
-                    <Icon name="collection" />
+                <li
+                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer"
+                  onClick={() => this.setModal()}
+                >
+                  <Link
+                    to={Urls.newCollection("root")}
+                    className="flex align-center"
+                  >
+                    <Icon name="all" mr={1} />
                     New collection
                   </Link>
                 </li>
@@ -207,7 +228,7 @@ export default class Navbar extends Component {
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}
-      </Flex >
+      </Flex>
     );
   }
 
