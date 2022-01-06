@@ -62,7 +62,7 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export default class Navbar extends Component {
   state = {
     modal: null,
-    createOpen: false
+    createOpen: false,
   };
 
   static propTypes = {
@@ -154,7 +154,10 @@ export default class Navbar extends Component {
           <PopoverWithTrigger
             isOpen={this.state.createOpen}
             triggerElement={
-              <div className="flex align-center transition-background mr2" onClick={() => this.setState({ createOpen: true })}>
+              <div
+                className="flex align-center transition-background mr2"
+                onClick={() => this.setState({ createOpen: true })}
+              >
                 <Icon name="add" size={14} p={"8px"} />
                 <h4 className="hide sm-show text-nowrap">{t`Create`}</h4>
               </div>
@@ -189,7 +192,6 @@ export default class Navbar extends Component {
                       Sql query
                     </Link>
                   </li>
-
                 )}
               </ol>
               <ol className="border-top">
