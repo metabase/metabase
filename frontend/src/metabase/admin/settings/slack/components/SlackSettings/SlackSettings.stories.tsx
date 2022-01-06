@@ -17,4 +17,6 @@ export const Default: ComponentStory<typeof SlackSettings> = args => {
 
 Default.args = {
   Form: () => <div />,
+  isBot: false,
+  isError: false,
 };

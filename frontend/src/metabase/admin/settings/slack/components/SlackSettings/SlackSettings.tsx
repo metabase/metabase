@@ -1,5 +1,6 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
+import SlackBadge from "../SlackBadge";
 import {
   HeaderMessage,
   HeaderRoot,
@@ -19,6 +20,8 @@ import {
 
 export interface SlackSettingsProps {
   Form: ComponentType<SlackFormProps>;
+  isBot: boolean;
+  isError: boolean;
   onSubmit: () => void;
 }
 
@@ -26,10 +29,15 @@ export interface SlackFormProps {
   onSubmit: () => void;
 }
 
-const SlackSettings = ({ Form, onSubmit }: SlackSettingsProps): JSX.Element => {
+const SlackSettings = ({
+  Form,
+  isBot,
+  isError,
+  onSubmit,
+}: SlackSettingsProps): JSX.Element => {
   return (
     <div>
-      <SettingsHeader />
+      <SettingsHeader isBot={isBot} isError={isError} />
       <CreateAppSection />
       <CopyManifestSection />
       <ActivateAppSection Form={Form} onSubmit={onSubmit} />
@@ -37,14 +45,31 @@ const SlackSettings = ({ Form, onSubmit }: SlackSettingsProps): JSX.Element => {
   );
 };
 
-const SettingsHeader = (): JSX.Element => {
+interface SettingsHeaderProps {
+  isBot: boolean;
+  isError: boolean;
+}
+
+const SettingsHeader = ({
+  isBot,
+  isError,
+}: SettingsHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
-      <HeaderMessage>
-        {t`Bring the power of Metabase to your Slack #channels.`}{" "}
-        {t`Follow these steps to connect your bot to Slack:`}
-      </HeaderMessage>
+      {isBot ? (
+        <HeaderMessage>
+          <SlackBadge isBot={isBot} isError={isError} />{" "}
+          {jt`We recommend you ${(
+            <strong key="apps">{t`upgrade to Slack Apps`}</strong>
+          )}, see the instructions below:`}
+        </HeaderMessage>
+      ) : (
+        <HeaderMessage>
+          {t`Bring the power of Metabase to your Slack #channels.`}{" "}
+          {t`Follow these steps to connect your bot to Slack:`}
+        </HeaderMessage>
+      )}
     </HeaderRoot>
   );
 };

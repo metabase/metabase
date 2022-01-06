@@ -13,12 +13,11 @@ export const HeaderTitle = styled.div`
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
 `;
 
 export const HeaderMessage = styled.div`
   color: ${color("text-medium")};
-  line-height: 1.5rem;
 `;
 
 export const SectionRoot = styled.div`
