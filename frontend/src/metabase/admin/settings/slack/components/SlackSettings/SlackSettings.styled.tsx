@@ -66,23 +66,6 @@ export const SectionLink = styled(ExternalLink)`
   font-weight: bold;
 `;
 
-export const SectionButton = styled(ExternalLink)`
-  display: inline-flex;
-  align-items: center;
-  padding: 0.75rem 1.25rem;
-`;
-
-export const SectionButtonText = styled.div`
-  font-weight: bold;
-`;
-
-export const SectionButtonIcon = styled(Icon)`
-  color: ${color("white")};
-  margin-left: 0.5rem;
-  width: 0.75rem;
-  height: 0.75rem;
-`;
-
 export const SectionCode = styled.div`
   min-height: 10rem;
   max-height: 19rem;

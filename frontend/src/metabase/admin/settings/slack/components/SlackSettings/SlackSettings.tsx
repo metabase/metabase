@@ -1,14 +1,12 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
 import SlackBadge from "../SlackBadge";
+import SlackButton from "../SlackButton";
 import {
   HeaderMessage,
   HeaderRoot,
   HeaderTitle,
   SectionBody,
-  SectionButton,
-  SectionButtonIcon,
-  SectionButtonText,
   SectionCode,
   SectionHeader,
   SectionLink,
@@ -117,13 +115,7 @@ const CreateAppSection = (): JSX.Element => {
           <strong key="manifest">{t`From an app manifest`}</strong>
         )}”.`}
       </SectionMessage>
-      <SectionButton
-        className="Button Button--primary"
-        href="https://api.slack.com/apps"
-      >
-        <SectionButtonText>{`Open Slack Apps`}</SectionButtonText>
-        <SectionButtonIcon name="external" />
-      </SectionButton>
+      <SlackButton />
     </SettingsSection>
   );
 };
