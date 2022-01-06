@@ -6,6 +6,7 @@ export default {
   title: "Admin/Settings/Slack/SlackStatus",
   component: SlackStatus,
   argTypes: {
+    Form: { table: { disable: true } },
     onDelete: { action: "onDelete" },
   },
 };
@@ -15,7 +16,5 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 };
 
 Default.args = {
-  token: "48192472398748923789423789JSAL",
-  channel: "#metabase_files",
   isError: false,
 };

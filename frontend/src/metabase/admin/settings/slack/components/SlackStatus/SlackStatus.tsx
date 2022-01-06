@@ -1,5 +1,5 @@
-import React from "react";
-import { t, jt } from "ttag";
+import React, { ComponentType } from "react";
+import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import SlackBadge from "../SlackBadge";
@@ -15,8 +15,7 @@ import {
 } from "./SlackStatus.styled";
 
 export interface SlackStatusProps {
-  token: string;
-  channel: string;
+  Form: ComponentType;
   isError: boolean;
   onDelete: () => void;
 }

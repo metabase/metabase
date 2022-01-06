@@ -17,13 +17,13 @@ import {
 } from "./SlackSetup.styled";
 
 export interface SlackSetupProps {
-  Form: ComponentType<SlackFormProps>;
+  Form: ComponentType<SlackSetupFormProps>;
   isBot: boolean;
   isError: boolean;
   onSubmit: () => void;
 }
 
-export interface SlackFormProps {
+export interface SlackSetupFormProps {
   onSubmit: () => void;
 }
 
@@ -130,7 +130,7 @@ const CopyManifestSection = (): JSX.Element => {
 };
 
 interface ActivateAppSectionProps {
-  Form: ComponentType<SlackFormProps>;
+  Form: ComponentType<SlackSetupFormProps>;
   onSubmit: () => void;
 }
 

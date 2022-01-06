@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 export const StatusHeader = styled.header`
   display: flex;
   align-items: center;
+  margin-bottom: 2.5rem;
 `;
 
 export const StatusPrimary = styled.div`
@@ -30,4 +31,6 @@ export const StatusMessageText = styled.span`
   color: ${color("text-medium")};
 `;
 
-export const StatusFooter = styled.footer``;
+export const StatusFooter = styled.footer`
+  margin-top: 4rem;
+`;
