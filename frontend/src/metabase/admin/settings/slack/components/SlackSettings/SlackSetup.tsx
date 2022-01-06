@@ -35,7 +35,7 @@ const SlackSetup = ({
 }: SlackSetupProps): JSX.Element => {
   return (
     <div>
-      <SettingsHeader isBot={isBot} isError={isError} />
+      <SetupHeader isBot={isBot} isError={isError} />
       <CreateAppSection />
       <CopyManifestSection />
       <ActivateAppSection Form={Form} onSubmit={onSubmit} />
@@ -43,15 +43,12 @@ const SlackSetup = ({
   );
 };
 
-interface SettingsHeaderProps {
+interface SetupHeaderProps {
   isBot: boolean;
   isError: boolean;
 }
 
-const SettingsHeader = ({
-  isBot,
-  isError,
-}: SettingsHeaderProps): JSX.Element => {
+const SetupHeader = ({ isBot, isError }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
@@ -72,15 +69,12 @@ const SettingsHeader = ({
   );
 };
 
-interface SettingsSectionProps {
+interface SetupSectionProps {
   title: string;
   children?: ReactNode;
 }
 
-const SettingsSection = ({
-  title,
-  children,
-}: SettingsSectionProps): JSX.Element => {
+const SetupSection = ({ title, children }: SetupSectionProps): JSX.Element => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -101,7 +95,7 @@ const SettingsSection = ({
 
 const CreateAppSection = (): JSX.Element => {
   return (
-    <SettingsSection title={t`1. Create your Slack App`}>
+    <SetupSection title={t`1. Create your Slack App`}>
       <SectionMessage>
         {t`To create your Metabase integration on Slack you’ll need to set up some things.`}{" "}
         {jt`First, go to ${(
@@ -116,13 +110,13 @@ const CreateAppSection = (): JSX.Element => {
         )}”.`}
       </SectionMessage>
       <SlackButton />
-    </SettingsSection>
+    </SetupSection>
   );
 };
 
 const CopyManifestSection = (): JSX.Element => {
   return (
-    <SettingsSection title={t`2. Copy the Metabase manifest`}>
+    <SetupSection title={t`2. Copy the Metabase manifest`}>
       <SectionMessage>
         {jt`Copy our ${(
           <strong key="manifest">{t`Slack Manifest`}</strong>
@@ -131,7 +125,7 @@ const CopyManifestSection = (): JSX.Element => {
         )}” and authorize it.`}
       </SectionMessage>
       <SectionCode />
-    </SettingsSection>
+    </SetupSection>
   );
 };
 
@@ -145,7 +139,7 @@ const ActivateAppSection = ({
   onSubmit,
 }: ActivateAppSectionProps): JSX.Element => {
   return (
-    <SettingsSection
+    <SetupSection
       title={t`3. Activate the OAuth Token and create a new slack channel`}
     >
       <SectionMessage>{jt`Click on "${(
@@ -156,7 +150,7 @@ const ActivateAppSection = ({
         <strong key="channel">{t`metabase_files`}</strong>
       )}”.`}</SectionMessage>
       <Form onSubmit={onSubmit} />
-    </SettingsSection>
+    </SetupSection>
   );
 };
 
