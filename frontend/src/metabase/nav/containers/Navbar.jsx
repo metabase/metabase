@@ -62,6 +62,7 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export default class Navbar extends Component {
   state = {
     modal: null,
+    createOpen: false
   };
 
   static propTypes = {
@@ -75,7 +76,7 @@ export default class Navbar extends Component {
   }
 
   setModal(modal) {
-    this.setState({ modal });
+    this.setState({ modal, createOpen: false });
     if (this._newPopover) {
       this._newPopover.close();
     }
@@ -151,8 +152,9 @@ export default class Navbar extends Component {
         </Flex>
         <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
           <PopoverWithTrigger
+            isOpen={this.state.createOpen}
             triggerElement={
-              <div className="flex align-center transition-background mr2">
+              <div className="flex align-center transition-background mr2" onClick={() => this.setState({ createOpen: true })}>
                 <Icon name="add" size={14} p={"8px"} />
                 <h4 className="hide sm-show text-nowrap">{t`Create`}</h4>
               </div>
@@ -160,9 +162,10 @@ export default class Navbar extends Component {
           >
             <>
               <ol>
-                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer">
+                <li>
                   <Link
-                    className="flex align-center"
+                    onClick={() => this.setState({ createOpen: false })}
+                    className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
                     to={Urls.newQuestion({
                       mode: "notebook",
                       creationType: "complex_question",
@@ -172,18 +175,22 @@ export default class Navbar extends Component {
                     Visual question
                   </Link>
                 </li>
-                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointerr">
-                  <Link
-                    className="flex align-center"
-                    to={Urls.newQuestion({
-                      type: "native",
-                      creationType: "native_question",
-                    })}
-                  >
-                    <Icon name="sql" mr={1} />
-                    Sql query
-                  </Link>
-                </li>
+                {hasNativeWrite && (
+                  <li>
+                    <Link
+                      onClick={() => this.setState({ createOpen: false })}
+                      className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
+                      to={Urls.newQuestion({
+                        type: "native",
+                        creationType: "native_question",
+                      })}
+                    >
+                      <Icon name="sql" mr={1} />
+                      Sql query
+                    </Link>
+                  </li>
+
+                )}
               </ol>
               <ol className="border-top">
                 <li
