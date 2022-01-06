@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { BadgeRoot, BadgeIcon, BadgeText } from "./SlackBadge.styled";
 
 export interface SlackBadgeProps {
-  isBot: boolean;
-  isError: boolean;
+  isBot?: boolean;
+  isError?: boolean;
 }
 
 const SlackBadge = ({ isBot, isError }: SlackBadgeProps): JSX.Element => {
@@ -16,7 +16,7 @@ const SlackBadge = ({ isBot, isError }: SlackBadgeProps): JSX.Element => {
   );
 };
 
-const getMessage = (isBot: boolean, isError: boolean): string => {
+const getMessage = (isBot?: boolean, isError?: boolean): string => {
   if (isBot) {
     return isError ? t`Slack bot is not working.` : t`Slack bot is working.`;
   } else {

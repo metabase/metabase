@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 export interface BadgeProps {
-  isError: boolean;
+  isError?: boolean;
 }
 
 const getColor = ({ isError }: BadgeProps): string => {
