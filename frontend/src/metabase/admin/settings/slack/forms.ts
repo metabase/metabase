@@ -11,7 +11,7 @@ export const getSlackForm = () => ({
     {
       name: "channel",
       type: "input",
-      title: t`Slack Channel`,
+      title: t`Slack channel name`,
       placeholder: "#metabase_files",
     },
   ],
