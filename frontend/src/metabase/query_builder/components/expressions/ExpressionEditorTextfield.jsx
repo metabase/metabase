@@ -333,6 +333,26 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
+  errorAsMarkers(errorMessage = null) {
+    if (errorMessage) {
+      const { pos, len } = errorMessage;
+      // Because not every error message offers location info (yet)
+      if (typeof pos === "number") {
+        return [
+          {
+            startRow: 0,
+            startCol: pos,
+            endRow: 0,
+            endCol: pos + len,
+            className: "error",
+            type: "text",
+          },
+        ];
+      }
+    }
+    return [];
+  }
+
   commands = [
     {
       name: "arrowDown",
@@ -375,6 +395,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             commands={this.commands}
             ref={this.input}
             value={source}
+            markers={this.errorAsMarkers(errorMessage)}
             focus={true}
             highlightActiveLine={false}
             wrapEnabled={true}
