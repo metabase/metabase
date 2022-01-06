@@ -97,6 +97,8 @@
 (defn coerce-bignum-to-int
   "Graal polyglot system (not the JS machine itself, the polyglot system)
   is not happy with BigInts or BigDecimals.
+  For more information, this is the GraalVM issue, open a while
+  https://github.com/oracle/graal/issues/2737
   Because of this unfortunately they all have to get smushed into normal ints and decimals in JS land."
   [row]
   (for [member row]
