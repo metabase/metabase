@@ -12,11 +12,17 @@ export type AttachCallback = (
 
 export interface GoogleButtonProps {
   isCard?: boolean;
+  redirectUrl?: string;
   onAttach: AttachCallback;
-  onLogin: (token: string) => void;
+  onLogin: (token: string, redirectUrl?: string) => void;
 }
 
-const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
+const GoogleButton = ({
+  isCard,
+  redirectUrl,
+  onAttach,
+  onLogin,
+}: GoogleButtonProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
@@ -24,7 +30,7 @@ const GoogleButton = ({ isCard, onAttach, onLogin }: GoogleButtonProps) => {
     async (token: string) => {
       try {
         setErrors([]);
-        await onLogin(token);
+        await onLogin(token, redirectUrl);
       } catch (error) {
         setErrors(getErrors(error));
       }
