@@ -1,8 +1,8 @@
 (ns dev.debug-qp
+  "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
   (:require [clojure.data :as data]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
-            [clojure.test :refer :all]
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
@@ -10,16 +10,61 @@
             [metabase.models :refer [Field Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
 
-;; see docstring for `process-query-debug` for descriptions of what these do.
+;;;; [[add-names]]
+
+(defn- field-and-table-name [field-id]
+  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)]
+    [(db/select-one-field :name Table :id table-id) field-name]))
+
+(defn add-names
+  "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
+  encountered. Helpful for debugging!"
+  [x]
+  (walk/postwalk
+   (fn add-names* [form]
+     (letfn [(add-name-to-field-id [id]
+               (when id
+                 (let [[field-name table-name] (field-and-table-name id)]
+                   (symbol (format "#_\"%s.%s\"" field-name table-name)))))
+             (field-id->name-form [field-id]
+               (list 'do (add-name-to-field-id field-id) field-id))]
+       (mbql.u/replace form
+         [:field (id :guard integer?) opts]
+         [:field id (add-name-to-field-id id) (cond-> opts
+                                                (integer? (:source-field opts))
+                                                (update :source-field field-id->name-form))]
+
+         (m :guard (every-pred map? (comp integer? :source-table)))
+         (-> m
+             (update :source-table (fn [table-id]
+                                     (list 'do
+                                           (symbol (format "#_%s" (pr-str (db/select-one-field :name Table :id table-id))))
+                                           table-id)))
+             add-names*)
+
+         (m :guard (every-pred map? (comp integer? :fk-field-id)))
+         (-> m
+             (update :fk-field-id field-id->name-form)
+             add-names*)
+
+         ;; don't recursively replace the `do` lists above, other we'll get vectors.
+         (_ :guard (every-pred list? #(= (first %) 'do)))
+         &match)))
+   x))
+
+
+;;;; [[process-query-debug]]
+
+;; see docstring for [[process-query-debug]] for descriptions of what these do.
 
 (def ^:private ^:dynamic *print-full?*     true)
 (def ^:private ^:dynamic *print-metadata?* false)
 (def ^:private ^:dynamic *print-names?*    true)
 (def ^:private ^:dynamic *validate-query?* false)
+
 
 (defn- remove-metadata
   "Replace field metadata in `x` with `...`."
@@ -33,37 +78,6 @@
         form
         [:cols :results_metadata :source-metadata])
        form))
-   x))
-
-(defn- field-and-table-name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)]
-    [(db/select-one-field :name Table :id table-id) field-name]))
-
-(defn- add-name-to-field-id [id]
-  (when id
-    (let [[field-name table-name] (field-and-table-name id)]
-      (symbol (format "#_\"%s.%s\"" field-name table-name)))))
-
-(defn add-names
-  "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
-  encountered. Helpful for debugging!"
-  [x]
-  (walk/postwalk
-   (fn [form]
-     (mbql.u/replace form
-       [:field (id :guard integer?) opts]
-       [:field id (add-name-to-field-id id) (cond-> opts
-                                              (integer? (:source-field opts))
-                                              (update :source-field (fn [source-field]
-                                                                      (symbol (format "(do %s %d)"
-                                                                                      (add-name-to-field-id source-field)
-                                                                                      source-field)))))]
-
-       (m :guard (every-pred map? (comp integer? :source-table)))
-       (update m :source-table (fn [table-id]
-                                 (symbol (format "(do #_%s %d)"
-                                                 (db/select-one-field :name Table :id table-id)
-                                                 table-id))))))
    x))
 
 (defn- format-output [x]
@@ -274,8 +288,13 @@
         (qp query context)
         (qp query)))))
 
+
+;;;; [[to-mbql-shorthand]]
+
 (defn- strip-$ [coll]
-  (vec (remove (partial = ::$) coll)))
+  (into []
+        (map (fn [x] (if (= x ::$) ::no-$ x)))
+        coll))
 
 (defn- can-symbolize? [x]
   (mbql.u/match-one x
@@ -304,9 +323,9 @@
     _
     false))
 
-(defn- expand [x table]
+(defn- expand [form table]
   (try
-    (mbql.u/replace x
+    (mbql.u/replace form
       ([:field (id :guard integer?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (str/lower-case field-name)
@@ -321,7 +340,7 @@
       ([:field _ (opts :guard :temporal-unit)] :guard can-symbolize?)
       (let [without-unit (mbql.u/update-field-options &match dissoc :temporal-unit)
             expansion    (expand without-unit table)]
-        (into [::! (name (:temporal-unit opts))] (strip-$ expansion)))
+        [::! (name (:temporal-unit opts)) (strip-$ expansion)])
 
       ([:field _ (opts :guard :source-field)] :guard can-symbolize?)
       (let [without-source-field   (mbql.u/update-field-options &match dissoc :source-field)
@@ -340,22 +359,77 @@
             expansion    (expand without-opts table)]
         (if (= expansion without-opts)
           &match
-          [:field (into [::%] (strip-$ expansion)) opts]))
+          [:field [::% (strip-$ expansion)] opts]))
 
       (m :guard (every-pred map? (comp integer? :source-table)))
       (-> (update m :source-table (fn [table-id]
                                     [::$$ (str/lower-case (db/select-one-field :name Table :id table-id))]))
+          (expand table))
+
+      (m :guard (every-pred map? (comp integer? :fk-field-id)))
+      (-> (update m :fk-field-id (fn [fk-field-id]
+                                   (let [[table-name field-name] (field-and-table-name fk-field-id)
+                                         field-name              (str/lower-case field-name)
+                                         table-name              (str/lower-case table-name)]
+                                     (if (= table-name table)
+                                       [::% field-name]
+                                       [::% table-name field-name]))))
+          (expand table))
+
+      ;; expand the keys in `:qp/refs` and add metadata to the map so we don't end up trying to expand it again
+      (m :guard (every-pred map? :qp/refs #(not (-> % :qp/refs meta ::expanded?))))
+      (-> (update m :qp/refs (partial into
+                                      (with-meta {} {::expanded? true})
+                                      (map (fn [[clause info]]
+                                             [(expand clause table) info]))))
           (expand table)))
     (catch Throwable e
-      (throw (ex-info (format "Error expanding %s: %s" (pr-str x) (ex-message e))
-                      {:x x, :table table}
+      (throw (ex-info (format "Error expanding %s: %s" (pr-str form) (ex-message e))
+                      {:form form, :table table}
                       e)))))
 
 (defn- no-$ [x]
   (mbql.u/replace x [::$ & args] (into [::no-$] args)))
 
-(defn- symbolize [query]
-  (mbql.u/replace query
+(def ^:private mbql-clause->sort-order
+  (into {}
+        (map-indexed (fn [i k]
+                       [k i]))
+        [;; top-level keys
+         :database
+         :type
+         :query
+         :native
+         ;; inner-query keys
+         :source-table
+         :source-query
+         :source-metadata
+         :joins
+         :breakout
+         :aggregation
+         :fields
+         :filter
+         :order-by
+         :page
+         :limit
+         :qp/refs
+         ;; join keys
+         :alias
+         :condition
+         :strategy]))
+
+(defn- sorted-mbql-query-map []
+  (sorted-map-by (fn [x y]
+                   (let [x-order (mbql-clause->sort-order x)
+                         y-order (mbql-clause->sort-order y)]
+                     (cond
+                       (and x-order y-order) (compare x-order y-order)
+                       x-order               -1
+                       y-order               1
+                       :else                 (compare (pr-str x) (pr-str y)))))))
+
+(defn- symbolize [form]
+  (mbql.u/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 
@@ -369,7 +443,15 @@
     (symbol (format "*%s/%s" field-name base-type))
 
     [::$$ table-name]
-    (symbol (format "$$%s" table-name))))
+    (symbol (format "$$%s" table-name))
+
+    ;; normally [[mbql.u/replace]] doesn't match map keys, but we need to do it for `:qp/refs`
+    (m :guard map?)
+    (into
+     (sorted-mbql-query-map)
+     (map (fn [[k v]]
+            [(symbolize k) (symbolize v)]))
+     m)))
 
 (defn- query-table-name [{:keys [source-table source-query]}]
   (cond
@@ -394,39 +476,4 @@
 (defn expand-symbolize [x]
   (-> x (expand "orders") symbolize))
 
-(deftest to-mbql-shorthand-test
-  (mt/dataset sample-dataset
-    (testing "Normal Field ID clause"
-      (is (= '$user_id
-             (expand-symbolize [:field (mt/id :orders :user_id) nil])))
-      (is (= '$products.id
-             (expand-symbolize [:field (mt/id :products :id) nil]))))
-    (testing "Field literal name"
-      (is (= '*wow/Text
-             (expand-symbolize [:field "wow" {:base-type :type/Text}])))
-      (is (= [:field "w o w" {:base-type :type/Text}]
-             (expand-symbolize [:field "w o w" {:base-type :type/Text}]))))
-    (testing "Field with join alias"
-      (is (= '&P.people.source
-             (expand-symbolize [:field (mt/id :people :source) {:join-alias "P"}])))
-      (is (= [:field '%people.id {:join-alias "People - User"}]
-             (expand-symbolize [:field (mt/id :people :id) {:join-alias "People - User"}])))
-      (is (= '&Q.*ID/BigInteger
-             (expand-symbolize [:field "ID" {:base-type :type/BigInteger, :join-alias "Q"}]))))
-    (testing "Field with source-field"
-      (is (= '$product_id->products.id
-             (expand-symbolize [:field (mt/id :products :id) {:source-field (mt/id :orders :product_id)}])))
-      (is (= '$product_id->*wow/Text
-             (expand-symbolize [:field "wow" {:base-type :type/Text, :source-field (mt/id :orders :product_id)}]))))
-    (testing "Binned field - no expansion (%id only)"
-      (is (= [:field '%people.source {:binning {:strategy :default}}]
-             (expand-symbolize [:field (mt/id :people :source) {:binning {:strategy :default}}]))))
-
-    (testing "source table"
-      (is (= '(mt/mbql-query orders
-                {:joins [{:source-table $$people}]})
-             (to-mbql-shorthand
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :orders)
-                          :joins        [{:source-table (mt/id :people)}]}}))))))
+;; tests are in [[dev.debug-qp-test]] (in `./dev/test/dev` dir)
