@@ -11,12 +11,12 @@ import { Flex, Box } from "grid-styled";
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
-import Icon, { IconWrapper } from "metabase/components/Icon";
-import EntityMenu from "metabase/components/EntityMenu";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 
@@ -150,75 +150,64 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
+          <PopoverWithTrigger
+            triggerElement={
+              <div className="flex align-center transition-background mr2">
+                <Icon name="add" size={14} p={"8px"} />
+                <h4 className="hide sm-show text-nowrap">{t`Create`}</h4>
+              </div>
+            }
+          >
+            <>
+              <ol>
+                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer">
+                  <Link
+                    to={Urls.newQuestion({
+                      mode: "notebook",
+                      creationType: "complex_question",
+                    })}>Visual question</Link>
+                </li>
+                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointerr">
+                  <Link
+                    className="flex align-center"
+                    to={Urls.newQuestion({
+                      type: "native",
+                      creationType: "native_question",
+                    })}>
+                    Sql query
+                  </Link>
+                </li>
+              </ol>
+              <ol className="border-top">
+                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}>
+                  New dashboard
+                </li>
+                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal()}>
+                  New dataset
+                </li>
+                <li className="px3 py2 bg-brand-hover text-white-hover cursor-pointer" onClick={() => this.setModal()}>
+                  <Link to={Urls.newCollection("root")} className="flex align-center">
+                    <Icon name="collection" />
+                    New collection
+                  </Link>
+                </li>
+              </ol>
+            </>
+          </PopoverWithTrigger>
           {hasDataAccess && (
             <Link
-              mr={[1, 2]}
-              to={Urls.newQuestionFlow()}
-              p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;New Question`}
+              to="browse"
+              className="flex align-center rounded transition-background mr3"
+              data-metabase-event={`NavBar;Data Browse`}
             >
-              <Icon name="insight" size={18} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Ask a question`}</h4>
+              <Icon name="table_spaced" size={14} p={"11px"} />
+              <h4 className="hide sm-show text-nowrap">{t`Browse data`}</h4>
             </Link>
-          )}
-          {hasDataAccess && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
-            >
-              <Link
-                to="browse"
-                className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Data Browse`}
-                tooltip={t`Browse data`}
-              >
-                <Icon name="table_spaced" size={14} p={"11px"} />
-              </Link>
-            </IconWrapper>
-          )}
-          <EntityMenu
-            tooltip={t`Create`}
-            className="hide sm-show mr1"
-            triggerIcon="add"
-            triggerProps={{ hover: NavHover }}
-            items={[
-              {
-                title: t`New dashboard`,
-                icon: `dashboard`,
-                action: () => this.setModal(MODAL_NEW_DASHBOARD),
-                event: `NavBar;New Dashboard Click;`,
-              },
-              {
-                title: t`New pulse`,
-                icon: `pulse`,
-                link: Urls.newPulse(),
-                event: `NavBar;New Pulse Click;`,
-              },
-            ]}
-          />
-          {hasNativeWrite && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
-            >
-              <Link
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center"
-                data-metabase-event={`NavBar;SQL`}
-                tooltip={t`Write SQL`}
-              >
-                <Icon size={18} p={"11px"} name="sql" />
-              </Link>
-            </IconWrapper>
           )}
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}
-      </Flex>
+      </Flex >
     );
   }
 
