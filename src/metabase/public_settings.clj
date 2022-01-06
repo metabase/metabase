@@ -450,14 +450,13 @@
 (def ^:private fetch-cloud-gateway-ips-fn
   (memoize/ttl
    (fn []
-       (when (premium-features/is-hosted?)
-         (try
-           (-> (http/get (cloud-gateway-ips-url))
-               :body
-               (json/parse-string keyword)
-               :ip_addresses)
-           (catch Exception e
-             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+     (try
+       (-> (http/get (cloud-gateway-ips-url))
+           :body
+           (json/parse-string keyword)
+           :ip_addresses)
+       (catch Exception e
+         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
    :ttl/threshold (* 1000 60 60 24)))
 
 (defsetting cloud-gateway-ips
@@ -465,7 +464,9 @@
   :visibility :public
   :type       :json
   :setter     :none
-  :getter     fetch-cloud-gateway-ips-fn)
+  :getter     (fn []
+                (when (premium-features/is-hosted?)
+                  (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
   (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
