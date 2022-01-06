@@ -1438,7 +1438,7 @@ const TablePicker = ({
           renderItemWrapper={(itemContent, item) => {
             if (item.table?.id != null) {
               return (
-                <TableInfoPopover tableId={item.table.id}>
+                <TableInfoPopover table={item.table}>
                   {itemContent}
                 </TableInfoPopover>
               );

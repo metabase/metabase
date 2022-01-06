@@ -204,7 +204,7 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       to={hasLink ? getTableURL(table) : ""}
       inactiveColor={badgeInactiveColor}
     >
-      <TableInfoPopover tableId={table.id} placement="bottom-start">
+      <TableInfoPopover table={table} placement="bottom-start">
         <span>{table.displayName()}</span>
       </TableInfoPopover>
     </HeadBreadcrumbs.Badge>
