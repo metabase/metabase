@@ -14,6 +14,7 @@ import {
   SectionRoot,
   SectionTitle,
   SectionToggle,
+  SetupRoot,
 } from "./SlackSetup.styled";
 
 export interface SlackSetupProps {
@@ -34,12 +35,12 @@ const SlackSetup = ({
   onSubmit,
 }: SlackSetupProps): JSX.Element => {
   return (
-    <div>
+    <SetupRoot>
       <SetupHeader hasBot={hasBot} hasError={hasError} />
       <CreateAppSection />
       <CopyManifestSection />
       <ActivateAppSection Form={Form} onSubmit={onSubmit} />
-    </div>
+    </SetupRoot>
   );
 };
 

@@ -10,6 +10,7 @@ import {
   StatusMessage,
   StatusMessageText,
   StatusPrimary,
+  StatusRoot,
   StatusSecondary,
   StatusTitle,
 } from "./SlackStatus.styled";
@@ -22,7 +23,7 @@ export interface SlackStatusProps {
 
 const SlackStatus = ({ hasError, onDelete }: SlackStatusProps): JSX.Element => {
   return (
-    <section>
+    <StatusRoot>
       <StatusHeader>
         <StatusPrimary>
           <StatusTitle>{t`Metabase on Slack`}</StatusTitle>
@@ -46,7 +47,7 @@ const SlackStatus = ({ hasError, onDelete }: SlackStatusProps): JSX.Element => {
       <StatusFooter>
         <Button onClick={onDelete}>{t`Delete Slack App`}</Button>
       </StatusFooter>
-    </section>
+    </StatusRoot>
   );
 };
 

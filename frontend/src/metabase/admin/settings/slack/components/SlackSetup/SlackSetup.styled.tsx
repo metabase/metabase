@@ -4,24 +4,29 @@ import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
-export const HeaderRoot = styled.div`
+export const SetupRoot = styled.div`
+  padding-left: 1rem;
+`;
+
+export const HeaderRoot = styled.header`
   margin-bottom: 1.5rem;
 `;
 
-export const HeaderTitle = styled.div`
+export const HeaderTitle = styled.h2`
   color: ${color("text-dark")};
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem;
 `;
 
 export const HeaderMessage = styled.div`
   color: ${color("text-medium")};
 `;
 
-export const SectionRoot = styled.div`
+export const SectionRoot = styled.section`
   margin-bottom: 2rem;
+  max-width: 42rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
 `;
@@ -34,9 +39,9 @@ export const SectionHeader = styled.div`
   cursor: pointer;
 `;
 
-export const SectionTitle = styled.div`
+export const SectionTitle = styled.h3`
   flex: 1 1 auto;
-  margin-right: 1rem;
+  margin: 0 1rem 0 0;
   color: ${color("brand")};
   font-size: 1rem;
   font-weight: bold;

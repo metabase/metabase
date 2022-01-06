@@ -1,6 +1,10 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
+export const StatusRoot = styled.div`
+  padding-left: 1rem;
+`;
+
 export const StatusHeader = styled.header`
   display: flex;
   align-items: center;
