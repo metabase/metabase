@@ -17,7 +17,12 @@ export interface GoogleButtonProps {
   onLogin: (token: string, redirectUrl?: string) => void;
 }
 
-const GoogleButton = ({ isCard, redirectUrl, onAttach, onLogin }: GoogleButtonProps) => {
+const GoogleButton = ({
+  isCard,
+  redirectUrl,
+  onAttach,
+  onLogin,
+}: GoogleButtonProps) => {
   const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
