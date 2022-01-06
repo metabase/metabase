@@ -143,13 +143,13 @@ const ActivateAppSection = ({
     <SetupSection
       title={t`3. Activate the OAuth Token and create a new slack channel`}
     >
-      <SectionMessage>{jt`Click on "${(
-        <strong key="click">{t`OAuth and Permissions`}</strong>
-      )}" in the sidebar, copy the “${(
-        <strong key="token">{t`Bot User OAuth Token`}</strong>
-      )}” and paste it here. Finally, open Slack and create a public channel named “${(
-        <strong key="channel">{t`metabase_files`}</strong>
-      )}”.`}</SectionMessage>
+      <SectionMessage>
+        {jt`Click on "${(
+          <strong key="click">{t`OAuth and Permissions`}</strong>
+        )}" in the sidebar, copy the “${(
+          <strong key="token">{t`Bot User OAuth Token`}</strong>
+        )}” and paste it here.`}
+      </SectionMessage>
       <Form onSubmit={onSubmit} />
     </SetupSection>
   );
