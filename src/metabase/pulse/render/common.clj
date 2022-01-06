@@ -94,13 +94,26 @@
    (or (ui-logic/y-axis-rowfn card data)
        second)])
 
-(defn non-nil-rows
+(defn coerce-bignum-to-int
+  "Graal polyglot system (not the JS machine itself, the polyglot system)
+  is not happy with BigInts or BigDecimals.
+  Because of this unfortunately they all have to get smushed into normal ints and decimals in JS land."
+  [row]
+  (for [member row]
+    (cond
+      ;; this returns true for bigint only, not normal int or long
+      (and (not (int? member)) (integer? member))
+      (int member)
+
+      ;; this returns true for bigdec only, not actual normal decimals
+      ;; not the clearest clojure native function in the world
+      (decimal? member)
+      (double member)
+
+      :else
+      member)))
+
+(defn row-preprocess
   "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
   [x-axis-fn y-axis-fn rows]
-  (filter (every-pred x-axis-fn y-axis-fn) rows))
-
-(defn non-nil-combo-rows
-  "Remove any rows that have a nil value for the entire row because
-  the row-function-generating functions themselves choke on nil values, for combo rowfuncs"
-  [rows]
-  (filter #(every? some? %) rows))
+  (map coerce-bignum-to-int (filter (every-pred x-axis-fn y-axis-fn) rows)))
