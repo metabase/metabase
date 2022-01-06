@@ -15,21 +15,18 @@ import {
   SectionRoot,
   SectionTitle,
   SectionToggle,
-} from "./SlackAppSettings.styled";
+} from "./SlackSettings.styled";
 
-export interface SlackAppSettingsProps {
-  Form: ComponentType<SlackAppFormProps>;
+export interface SlackSettingsProps {
+  Form: ComponentType<SlackFormProps>;
   onSubmit: () => void;
 }
 
-export interface SlackAppFormProps {
+export interface SlackFormProps {
   onSubmit: () => void;
 }
 
-const SlackAppSettings = ({
-  Form,
-  onSubmit,
-}: SlackAppSettingsProps): JSX.Element => {
+const SlackSettings = ({ Form, onSubmit }: SlackSettingsProps): JSX.Element => {
   return (
     <div>
       <SettingsHeader />
@@ -122,7 +119,7 @@ const CopyManifestSection = (): JSX.Element => {
 };
 
 interface ActivateAppSectionProps {
-  Form: ComponentType<SlackAppFormProps>;
+  Form: ComponentType<SlackFormProps>;
   onSubmit: () => void;
 }
 
@@ -146,4 +143,4 @@ const ActivateAppSection = ({
   );
 };
 
-export default SlackAppSettings;
+export default SlackSettings;
