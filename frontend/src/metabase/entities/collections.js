@@ -11,6 +11,7 @@ import { GET } from "metabase/lib/api";
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
 import { isPersonalCollection } from "metabase/collections/utils";
 
+import { findLast } from "lodash";
 import { t } from "ttag";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -249,9 +250,11 @@ export function getExpandedCollectionsById(
       // move personal collections into PERSONAL_COLLECTIONS fake collection
       if (c.personal_owner_id != null) {
         parentId = PERSONAL_COLLECTIONS.id;
-      } else if (c.path[c.path.length - 1]) {
-        parentId = c.path[c.path.length - 1];
       } else {
+        // Find the closest parent that the user has permissions for
+        parentId = findLast(c.path, p => collectionsById[p]);
+      }
+      if (!parentId) {
         parentId = ROOT_COLLECTION.id;
       }
 
