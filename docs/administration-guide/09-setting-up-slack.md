@@ -6,7 +6,7 @@ If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent
 
 For Metabase to post to your Slack channels, you’ll need to create a Slack App and make it available to Metabase.
 
-From any Metabase page, go to **Admin settings** > **Settings** > **Slack**. 
+From any Metabase page, go to **Admin settings** > **Settings** > **Slack**.
 
 Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to Slack to create the App.
 
@@ -20,11 +20,11 @@ To get the manifest, head back to Metabase, copy the manifest, and return to the
 
 ### The Bot User OAuth Token
 
-Almost there! We just need a couple things from you to help Slack talk to Metabase. Click on **OAuth and Permissions** in the Slack Apps sidebar and copy the **Bot User OAuth Token**. Paste this token in the Metabase field with the same name:
+Almost there! We just need a couple things from you to help Slack talk to Metabase. Click on **OAuth and Permissions** in the Slack Apps sidebar and copy the **Bot User OAuth Token**. Paste this token in the Metabase field with the same name.
 
 ## Create a dedicated Metabase channel in your Slack
 
-In your Slack workspace, create a public channel named whatever you want — we think something like "Metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Due to the way the Slack API is set up, we’ll need this channel to attach charts Dashboard Subscriptions. 
+In your Slack workspace, create a public channel named whatever you want — we think something like "Metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Due to the way the Slack API is set up, we’ll need this channel to attach charts Dashboard Subscriptions.
 
 ## Save your changes in Metabase
 
@@ -33,6 +33,7 @@ In Metabase, click on the **Save changes** button and that’s it! Metabase will
 ---
 
 ## Next: configuring Metabase
+
 There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings.md).
 
 [dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.html
