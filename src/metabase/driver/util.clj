@@ -169,7 +169,7 @@
 
 (defn- expand-schema-filters-prop [prop]
   (let [prop-name (:name prop)
-        disp-name (:display-name prop)
+        disp-name (or (:display-name prop) "")
         type-prop-nm (str prop-name "-type")]
     [{:name type-prop-nm
       :display-name disp-name

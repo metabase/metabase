@@ -399,3 +399,57 @@
                   (is (= "metabase-bigquery-driver" (get-in (Database db-id)
                                                             [:details :project-id-from-credentials]))))))))))))
 
+(defn- sync-and-assert-filtered-tables [database assert-table-fn]
+  (mt/with-temp Database [db-filtered database]
+    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
+          tables       (Table :db_id (u/the-id db-filtered))]
+      (is (not (empty? tables)))
+      (doseq [table (Table :db_id (u/the-id db-filtered))]
+        (assert-table-fn table)))))
+
+(deftest dataset-filtering-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Filtering BigQuery connections for datasets works as expected"
+      (testing " with an inclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "inclusion"
+                                                              :dataset-filters-patterns "a*,t*"))}
+                                         (fn [{dataset-id :schema}]
+                                           (is (not (contains? #{\a \t} (first dataset-id)))))))
+      (testing " with an exclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "exclusion"
+                                                              :dataset-filters-patterns "v*"))}
+          (fn [{dataset-id :schema}]
+            (is (not= \v (first dataset-id)))))))))
+
+(deftest normalize-away-dataset-id-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
+      ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
+      ;; temp DB will cause driver/normalize-db-details to fire
+      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
+                                    :engine  :bigquery-cloud-sdk,
+                                    :details {:dataset-id "my-dataset"
+                                              :service-account-json "{}"}}]
+                      Table    [table1 {:name "Table 1"
+                                        :db_id (u/the-id db)}]
+                      Table    [table2 {:name "Table 2"
+                                        :db_id (u/the-id db)}]]
+        ;; so we need to manually update the temp DB again here, to force the "old" structure
+        (let [updated? (db/update! Database (u/the-id db) :details {:dataset-id "my-dataset"})]
+          (is updated?)
+          (let [updated (Database (u/the-id db))]
+            (is (nil? (get-in updated [:details :dataset-id])))
+            ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
+            (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
+            (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
+            (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
+              ;; and the existing tables should have been updated with that schema
+              (is (= "my-dataset" (:schema table))))))))))

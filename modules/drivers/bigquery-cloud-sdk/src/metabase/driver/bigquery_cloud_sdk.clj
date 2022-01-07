@@ -9,15 +9,17 @@
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
+            [metabase.models :refer [Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$DatasetListOption BigQuery$JobOption
                                       BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions
                                       DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
@@ -305,3 +307,20 @@
 (defmethod driver/notify-database-updated :bigquery-cloud-sdk
   [_ database]
   (bigquery.common/populate-project-id-from-credentials! database))
+
+(defmethod driver/normalize-db-details :bigquery-cloud-sdk
+  [_ database]
+  (if-let [dataset-id (get-in database [:details :dataset-id])]
+    (if-not (str/blank? dataset-id)
+      (let [db-id (u/the-id database)]
+        (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
+                        db-id))
+        (doseq [table (db/select MetabaseTable :db_id db-id)]
+          (let [table-id (u/the-id table)]
+            (log/infof (trs "Updating table {0} to set schema to dataset-id of {1}" table-id dataset-id))
+            (db/update! MetabaseTable table-id :schema dataset-id)))
+        (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
+            (assoc-in [:details :dataset-filters-patterns] dataset-id)
+            (m/dissoc-in [:details :dataset-id])))
+      database)
+    database))
