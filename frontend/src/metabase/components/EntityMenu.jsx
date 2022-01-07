@@ -107,8 +107,7 @@ class EntityMenu extends Component {
                             return null;
                           } else if (item.content) {
                             return (
-                              <li key={item.title} className={"border-top"}>
-                                kek
+                              <li key={item.title}>
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}

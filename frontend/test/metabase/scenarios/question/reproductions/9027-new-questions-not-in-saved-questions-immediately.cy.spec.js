@@ -14,7 +14,8 @@ describe("issue 9027", () => {
     // Wait for the existing questions to load
     cy.findByText("Orders");
 
-    cy.icon("sql").click();
+    cy.findByText("Create").click();
+    cy.findByText("SQL query").click();
 
     cy.get(".ace_content").type("select 0");
     cy.get(".NativeQueryEditor .Icon-play").click();

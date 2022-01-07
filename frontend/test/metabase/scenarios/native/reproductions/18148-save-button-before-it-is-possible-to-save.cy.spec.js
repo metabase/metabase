@@ -12,7 +12,8 @@ describe("issue 18148", () => {
     });
 
     cy.visit("/");
-    cy.icon("sql").click();
+    cy.findByText("Create").click();
+    cy.findByText("SQL query").click();
   });
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {

@@ -12,7 +12,8 @@ describe("issue 17490", () => {
 
   it.skip("nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)", () => {
     cy.visit("/");
-    cy.icon("sql").click();
+    cy.findByText("Create").click();
+    cy.findByText("SQL query").click();
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery("{{f}}");

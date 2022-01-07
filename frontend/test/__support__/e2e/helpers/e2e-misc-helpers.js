@@ -26,7 +26,8 @@ export function visitAlias(alias) {
  */
 export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
   cy.visit("/");
-  cy.icon("sql").click();
+  cy.findByText("Create").click();
+  cy.findByText("SQL query").click();
 
   databaseName && cy.findByText(databaseName).click();
 
