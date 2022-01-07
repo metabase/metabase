@@ -9880,6 +9880,193 @@ databaseChangeLog:
                   name: settings
                   type: ${text.type}
                   remarks: "Serialized JSON containing Database-local Settings for this Database"
+  - changeSet:
+      id: v42.00-071
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Add a temporary column on dashboards to aid in migrating pulses to dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: source_pulse_id
+                  type: int
+                  remarks: "The pulse id that creates a new dashboard for the dashboard subscription"
+  - changeSet:
+      id: v42.00-072
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Add a temporary column on dashboard_card to aid in migrating pulses to dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: source_pulse_card_id
+                  type: int
+                  remarks: "The pulse_card id that creates a new dashboard card for the dashboard subscription"
+  - changeSet:
+      id: v42.00-073
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Add a temporary column on pulse to aid in migrating pulses to dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: source_pulse_channel_id
+                  type: int
+                  remarks: "The pulse_channel id that creates a new pulse for the dashboard subscription. Each channel becomes of a previous pulse becomes a new pulse."
+  - changeSet:
+      id: v42.00-074
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Add a temporary column on pulse_channel to aid in migrating pulses to dashboard subscriptions
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: source_pulse_channel_id
+                  type: int
+                  remarks: "The pulse_channel id that creates a new pulse_channel for the dashboard subscription."
+  - changeSet:
+      id: v42.00-075
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create a new dashboard for each pulse
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO report_dashboard
+                (created_at, updated_at, name, archived, collection_id, collection_position,
+                 creator_id, parameters, source_pulse_id)
+              SELECT p.created_at, p.updated_at, COALESCE(p.name, 'migrated pulse'),
+                     p.archived, p.collection_id, p.collection_position,
+                     p.creator_id, '[]' as parameters, p.id as source_pulse_id
+              FROM pulse p WHERE p.dashboard_id IS NULL AND alert_condition IS NULL;
+  - changeSet:
+      id: v42.00-076
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create dashboard cards
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO report_dashboardcard
+                   (created_at, updated_at, "sizeX", "sizeY", row, col, card_id, dashboard_id,
+                    parameter_mappings, visualization_settings, source_pulse_card_id)
+              SELECT d.created_at, d.updated_at, 8 as "sizeX", 4 as "sizeY",
+                     (pc.position * 4) as row, 0 as col, pc.card_id, d.id,
+                     '[]' as parameter_mappings, '{}' as visualization_settings, pc.id
+              FROM report_dashboard d
+              INNER JOIN pulse_card pc ON d.source_pulse_id = pc.pulse_id;
+  - changeSet:
+      id: v42.00-077
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create pulses for each pulse_channel (dash subscriptions put each channel in a single pulse
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO pulse
+                   (creator_id, name, created_at, updated_at,
+                    skip_if_empty, collection_id, collection_position,
+                    archived, dashboard_id, parameters, source_pulse_channel_id)
+              SELECT p.creator_id, p.name, p.created_at, p.updated_at,
+                     p.skip_if_empty, p.collection_id, p.collection_position,
+                     p.archived, d.id, p.parameters, pc.id
+              FROM report_dashboard d
+              INNER JOIN pulse p ON d.source_pulse_id = p.id
+              INNER JOIN pulse_channel pc ON p.id = pc.pulse_id;
+  - changeSet:
+      id: v42.00-078
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create pulse cards for each new dash card
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO pulse_card
+                   (pulse_id, card_id, position, include_csv, include_xls, dashboard_card_id)
+              SELECT p.id, pc.card_id, pc.position, pc.include_csv, pc.include_xls,
+                     dc.id as dashboard_card_id
+              FROM pulse_card pc
+              INNER JOIN report_dashboard d ON pc.pulse_id = d.source_pulse_id
+              INNER JOIN pulse p ON d.id = p.dashboard_id
+              INNER JOIN report_dashboardcard dc ON dc.source_pulse_card_id = pc.id;
+  - changeSet:
+      id: v42.00-079
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create pulse channels for each pulse channel
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO pulse_channel
+                   (pulse_id, channel_type, details, schedule_type, schedule_hour,
+                    created_at, updated_at, schedule_frame, enabled, source_pulse_channel_id)
+              SELECT p.id, pc.channel_type, pc.details, pc.schedule_type, pc.schedule_hour,
+                     pc.created_at, pc.updated_at, pc.schedule_frame, pc.enabled, pc.id
+              FROM pulse_channel pc
+              INNER JOIN pulse p ON p.source_pulse_channel_id = pc.id;
+  - changeSet:
+      id: v42.00-080
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Create pulse channel recipients for new pulse channels
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO pulse_channel_recipient
+                   (pulse_channel_id, user_id)
+              SELECT pc.id, pcr.user_id
+              FROM pulse_channel_recipient pcr
+              INNER JOIN pulse_channel pc ON pcr.pulse_channel_id = pc.source_pulse_channel_id;
+  - changeSet:
+      id: v42.00-081
+      author: dpsutton
+      comment: Added 0.42.0 - Drop temporary column on pulse_channel
+      changes:
+        - dropColumn:
+            tableName: pulse_channel
+            columnName: source_pulse_channel_id
+  - changeSet:
+      id: v42.00-082
+      author: dpsutton
+      comment: Added 0.42.0 - Drop temporary column on pulse
+      changes:
+        - dropColumn:
+            tableName: pulse
+            columnName: source_pulse_channel_id
+  - changeSet:
+      id: v42.00-083
+      author: dpsutton
+      comment: Added 0.42.0 - Drop temporary column on report_dashboardcard
+      changes:
+        - dropColumn:
+            tableName: report_dashboardcard
+            columnName: source_pulse_card_id
+  - changeSet:
+      id: v42.00-084
+      author: dpsutton
+      comment: Added 0.42.0 - Drop temporary column on report_dashboard
+      changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: source_pulse_id
+  - changeSet:
+      id: v42.00-085
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Delete old-style pulses now that they are dashboards
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM pulse WHERE dashboard_id IS NULL AND alert_condition IS NULL;
+
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
