@@ -41,8 +41,9 @@ function TableInfoPopover({
 }: Props) {
   placement = placement || "left-start";
 
-  const hasDescription = !!table.description;
-  const isVirtualTable = typeof table.id === "string";
+  const { id, description } = table;
+  const hasDescription = !!description;
+  const isVirtualTable = typeof id === "string";
   const showPopover = hasDescription && !isVirtualTable;
 
   return showPopover ? (
@@ -52,7 +53,7 @@ function TableInfoPopover({
       delay={delay}
       placement={placement}
       offset={offset}
-      content={<WidthBoundTableInfo tableId={table.id} />}
+      content={<WidthBoundTableInfo tableId={id} />}
       onTrigger={instance => {
         const dimensionInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,
