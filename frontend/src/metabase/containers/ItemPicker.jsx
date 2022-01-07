@@ -60,10 +60,12 @@ export default class ItemPicker extends React.Component {
   getCrumbs(collection, collectionsById) {
     if (collection && collection.path) {
       return [
-        ...collection.path.filter(id => collectionsById[id]).map(id => [
-          collectionsById[id].name,
-          () => this.setState({ parentId: id }),
-        ]),
+        ...collection.path
+          .filter(id => collectionsById[id])
+          .map(id => [
+            collectionsById[id].name,
+            () => this.setState({ parentId: id }),
+          ]),
         [collection.name],
       ];
     } else {
