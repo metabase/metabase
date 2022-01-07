@@ -126,16 +126,16 @@ executors:
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
   mongo-4-0:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-       - image: circleci/mongo:4.0
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: circleci/mongo:4.0
 
   mongo-latest:
-     working_directory: /home/circleci/metabase/metabase/
-     docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-       - image: circleci/mongo:latest
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -185,12 +185,12 @@ executors:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
-          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+          MB_SQLSERVER_TEST_PASSWORD: "P@ssw0rd"
           MB_SQLSERVER_TEST_USER: SA
       - image: mcr.microsoft.com/mssql/server:2017-latest
         environment:
           ACCEPT_EULA: Y
-          SA_PASSWORD: 'P@ssw0rd'
+          SA_PASSWORD: "P@ssw0rd"
           MSSQL_MEMORY_LIMIT_MB: 1024
 
   druid:
@@ -269,7 +269,6 @@ cache-key-uberjar: &CacheKeyUberjar
 
 cache-key-snowplow-deps: &CacheKeySnowplowDeps
   key: v5-{{ checksum ".CACHE-PREFIX" }}-snowplow-deps
-
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -531,10 +530,9 @@ commands:
           port: 9090
 
 jobs:
-
-########################################################################################################################
-#                                                    CHECKOUT ETC.                                                     #
-########################################################################################################################
+  ########################################################################################################################
+  #                                                    CHECKOUT ETC.                                                     #
+  ########################################################################################################################
 
   checkout:
     executor: clojure-and-node-and-browsers
@@ -578,7 +576,7 @@ jobs:
           command: rm -rf /home/circleci/metabase/metabase/OSX
       # .CACHE-PREFIX is described above in the Cache Keys section of this file
       - run:
-          name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
+          name: "Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]"
           command: |
             if [[ `cat .COMMIT` == *"[ci nocache]"* ]]; then
                 echo 'Commit message includes [ci nocache]; using cache-busting prefix'
@@ -587,7 +585,7 @@ jobs:
                echo '' > .CACHE-PREFIX
             fi
       - run:
-          name: 'Check for branch name to bust caches if it is a release branch'
+          name: "Check for branch name to bust caches if it is a release branch"
           command: |
             if [[ $CIRCLE_BRANCH == release* || $CIRCLE_BRANCH == master  ]]; then
               echo 'This is a release or master branch; using cache-busting prefix'
@@ -602,8 +600,7 @@ jobs:
             - metabase/metabase
 
   check-migrations:
-    executor:
-      clojure-and-node-and-browsers
+    executor: clojure-and-node-and-browsers
     steps:
       - attach-workspace
       - create-checksum-file:
@@ -620,9 +617,9 @@ jobs:
                 command: ./bin/lint-migrations-file.sh
                 no_output_timeout: 15m
 
-########################################################################################################################
-#                                                       BACKEND                                                        #
-########################################################################################################################
+  ########################################################################################################################
+  #                                                       BACKEND                                                        #
+  ########################################################################################################################
 
   be-deps:
     executor: clojure-and-node-and-browsers
@@ -799,10 +796,9 @@ jobs:
                   cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
                 no_output_timeout: 15m
 
-
-########################################################################################################################
-#                                                       FRONTEND                                                       #
-########################################################################################################################
+  ########################################################################################################################
+  #                                                       FRONTEND                                                       #
+  ########################################################################################################################
 
   fe-deps:
     executor: clojure-and-node-and-browsers
@@ -852,7 +848,7 @@ jobs:
           # need to rebuild them.
           checksum: '{{ checksum ".MODULES-CHECKSUMS" }}-{{ checksum ".BACKEND-CHECKSUMS" }}'
           steps:
-            - restore-be-deps-cache            #
+            - restore-be-deps-cache #
             - restore_cache:
                 <<: *CacheKeyMetabaseCore
             - restore_cache:
@@ -915,9 +911,9 @@ jobs:
             - run:
                 name: Skip rest of job if uberjar already exists
                 command: |
-                   if [ -f './target/uberjar/metabase.jar' ]; then
-                       circleci-agent step halt
-                   fi
+                  if [ -f './target/uberjar/metabase.jar' ]; then
+                      circleci-agent step halt
+                  fi
             - restore-be-deps-cache
             - restore_cache:
                 name: Restore cached drivers built by previous step
@@ -979,7 +975,7 @@ jobs:
     executor: << parameters.e >>
     environment:
       MB_EDITION: << parameters.edition >>
-      CYPRESS_GROUP:  << parameters.cypress-group >>
+      CYPRESS_GROUP: << parameters.cypress-group >>
       QA_DB_ENABLED: << parameters.qa-db >>
       DISPLAY: ""
       MB_SNOWPLOW_AVAILABLE: << parameters.snowplow >>
@@ -997,16 +993,16 @@ jobs:
                   - steps: << parameters.before-steps >>
                 # Make both `test-files` and `source-folder` parameters optional. Translates to: if `parameter` => run associated flag (`--spec` and `--folder`, respectively)
                 command: |
-                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
+                  run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >> | ts '[%Y-%m-%d %H:%M:%S]'
                 after-steps:
                   - store_artifacts:
                       path: /home/circleci/metabase/metabase/cypress
                   - store_test_results:
                       path: cypress/results
 
-########################################################################################################################
-#                                                       SNOWPLOW                                                       #
-########################################################################################################################
+  ########################################################################################################################
+  #                                                       SNOWPLOW                                                       #
+  ########################################################################################################################
 
   snowplow-deps:
     executor: clojure-and-node-and-browsers
