@@ -196,7 +196,6 @@ function sharedParametersTests(visitUrl) {
   it("should show values for PEOPLE.SOURCE", () => {
     visitUrl();
     cy.contains("Source").click();
-    popover().find('[placeholder="Search the list"]');
     popover().contains("Affiliate");
   });
 

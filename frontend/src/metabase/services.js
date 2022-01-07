@@ -23,6 +23,10 @@ export const GTAPApi = {
   attributes: GET("/api/mt/user/attributes"),
 };
 
+export const StoreApi = {
+  tokenStatus: GET("/api/premium-features/token/status"),
+};
+
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
 // Those endpoints take the query along with `pivot_rows` and `pivot_cols` to return the subtotal data.

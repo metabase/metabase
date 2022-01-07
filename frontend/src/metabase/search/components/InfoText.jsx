@@ -66,7 +66,7 @@ function getCollectionInfoText(collection) {
 
 function TablePath({ result }) {
   return jt`Table in ${(
-    <span>
+    <span key="table-path">
       <Database.Link id={result.database_id} />{" "}
       {result.table_schema && (
         <Schema.ListLoader

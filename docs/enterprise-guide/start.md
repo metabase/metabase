@@ -20,7 +20,7 @@ Paid plans include more ways to authenticate people and manage groups.
 Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](data-sandboxes.md)
-- [Block permissions](../administration-guide/data-permissions.html#block)
+- [Block permissions](../administration-guide/data-permissions.html#block-access)
 - [SQL snippet controls](sql-snippets.md)
 
 ## Embedding
@@ -35,6 +35,12 @@ You can embed all of Metabase in your app.
 Send different groups of people the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
 
 - [Customizing filter values for each dashboard subscription](dashboard-subscriptions.md)
+
+## Question moderation
+
+People can ask administrators to verify their questions.
+
+- [Question moderation](../users-guide/06-sharing-answers.html#question-moderation)
 
 ## Advanced caching controls
 

@@ -181,6 +181,13 @@ describe("metabase/lib/expressions/resolve", () => {
       // PERCENTILE(A, 0.5)
       expect(() => aggregation(["percentile", A, 0.5])).not.toThrow();
     });
+
+    it("should handle Distinct/Min/Max aggregating over non-numbers", () => {
+      // DISTINCT(COALESCE("F")) also for MIN and MAX
+      expect(() => aggregation(["distinct", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["min", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["max", ["coalesce", "F"]]).not.toThrow());
+    });
   });
 
   describe("for CASE expressions", () => {

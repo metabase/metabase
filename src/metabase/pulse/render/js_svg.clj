@@ -119,7 +119,7 @@
     (svg-string->bytes svg-string)))
 
 (defn funnel
-  "Clojure entrypoint to render a timeseries waterfall chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
+  "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is {:name name :format format-options} and Measure is {:format format-options} and you go and look to frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options.
   Returns a byte array of a png file."
   [data settings]
   (let [svg-string (.asString (js/execute-fn-name @context "funnel" (json/generate-string data)

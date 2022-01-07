@@ -17,9 +17,7 @@ describe("metabase-smoketest > admin", () => {
       cy.visit("/");
       cy.findByText("Welcome to Metabase");
       cy.url().should("not.include", "login");
-      cy.findByText("Let's get started")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Let's get started").click();
 
       // Language
 
@@ -47,7 +45,7 @@ describe("metabase-smoketest > admin", () => {
       // Database
 
       cy.findByText("Add your data");
-      cy.findByText("Skip");
+      cy.findByText("I'll add my data later");
 
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
@@ -56,7 +54,7 @@ describe("metabase-smoketest > admin", () => {
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Connect database").click();
+      cy.findByText("Next").click();
 
       // Turns off anonymous data collection
       cy.findByLabelText(
@@ -65,7 +63,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
-      cy.findByText("Next").click();
+      cy.findByText("Finish").click();
 
       // Finish & Subscribe
 
@@ -91,8 +89,8 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Native query");
 
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("People").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("People").click();
 
       cy.findByText("Save");
 
@@ -156,8 +154,8 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
 
       // Join tables
       cy.icon("notebook").click();
@@ -199,8 +197,8 @@ describe("metabase-smoketest > admin", () => {
 
       cy.findByText("Ask a question").click();
       cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Orders").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Orders").click();
 
       cy.findByText("Product ID");
       cy.findByText("Pick your data").should("not.exist");
@@ -336,8 +334,8 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Native query");
 
         cy.findByText("Simple question").click();
-        cy.findByText("Sample Dataset").click();
-        cy.findByText("Reviews").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Reviews").click();
 
         cy.get(".Button")
           .findByText("Summarize")

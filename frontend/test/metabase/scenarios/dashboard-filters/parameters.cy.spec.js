@@ -3,7 +3,6 @@ import {
   popover,
   restore,
   openNativeEditor,
-  mockSessionProperty,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -370,7 +369,6 @@ describe("scenarios > dashboard > parameters", () => {
   });
 
   it("should render other categories filter that allows selecting multiple values (metabase#18113)", () => {
-    mockSessionProperty("field-filter-operators-enabled?", false);
     const filter = {
       id: "c2967a17",
       name: "Category",

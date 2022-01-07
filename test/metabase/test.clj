@@ -175,6 +175,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  file->bytes
   is-uuid-string?
   obj->json->obj
   postwalk-pred
@@ -208,7 +209,6 @@
   ns-log-level
   set-ns-log-level!
   suppress-output
-  with-log-messages
   with-log-messages-for-level
   with-log-level]
 

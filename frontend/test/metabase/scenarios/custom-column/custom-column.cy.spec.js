@@ -32,6 +32,28 @@ describe("scenarios > question > custom column", () => {
     cy.get(".Visualization").contains("Math");
   });
 
+  // flaky test (#19454)
+  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+    cy.button("Done").click();
+
+    visualize();
+
+    cy.findAllByText("Summarize")
+      .first()
+      .click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Math")
+      .trigger("mouseenter");
+
+    popover().contains("Math");
+    popover().contains("No description");
+  });
+
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
       {
@@ -395,14 +417,6 @@ describe("scenarios > question > custom column", () => {
     cy.get("[contenteditable='true']").contains("Sum([MyCC [2021]])");
   });
 
-  it.skip("should handle floating point numbers with '0' omitted (metabase#15741)", () => {
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Custom column").click();
-    enterCustomColumnDetails({ formula: ".5 * [Discount]", name: "Foo" });
-    cy.findByText("Unknown Field: .5").should("not.exist");
-    cy.button("Done").should("not.be.disabled");
-  });
-
   it.skip("should work with `isNull` function (metabase#15922)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
@@ -420,18 +434,17 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("No discount");
   });
 
-  it.skip("should work with relative date filter applied to a custom column (metabase#16273)", () => {
+  it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
-    popover().within(() => {
-      cy.get("[contenteditable='true']")
-        .type("case([Discount] >0, [Created At], [Product → Created At])")
-        .blur();
-      cy.findByPlaceholderText("Something nice and descriptive").type(
-        "MiscDate",
-      );
-      cy.button("Done").click();
+
+    enterCustomColumnDetails({
+      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      name: "MiscDate",
     });
+
+    cy.button("Done").click();
+
     cy.findByText("Filter").click();
     popover()
       .contains("MiscDate")
@@ -442,10 +455,11 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Years").click();
     cy.button("Add filter").click();
 
-    visualize(response => {
-      expect(response.body.error).to.not.exist;
+    visualize(({ body }) => {
+      expect(body.error).to.not.exist;
     });
 
-    cy.findByText("MiscDate");
+    cy.findByText("MiscDate Previous 30 Years"); // Filter name
+    cy.findByText("MiscDate"); // Column name
   });
 });

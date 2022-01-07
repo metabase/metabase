@@ -6,7 +6,10 @@ import {
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
   getParametersMappedToDashcard,
+  hasMatchingParameters,
 } from "metabase/parameters/utils/dashboards";
+import { metadata } from "__support__/sample_dataset_fixture";
+
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -434,6 +437,105 @@ describe("meta/Dashboard", () => {
           target: ["dimension", ["field", 123, null]],
         },
       ]);
+    });
+  });
+
+  describe("hasMatchingParameters", () => {
+    it("should return false when the given card is not found on the dashboard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 456,
+          parameters: [],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return false when a given parameter is not found in the dashcard mappings", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+          {
+            card_id: 456,
+            parameter_mappings: [
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return true when all given parameters are found mapped to the dashcard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(true);
     });
   });
 });

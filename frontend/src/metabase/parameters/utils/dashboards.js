@@ -183,3 +183,24 @@ export function getParametersMappedToDashcard(dashboard, dashcard) {
     })
     .filter(Boolean);
 }
+
+export function hasMatchingParameters({
+  dashboard,
+  cardId,
+  parameters,
+  metadata,
+}) {
+  const dashcard = _.findWhere(dashboard.ordered_cards, { card_id: cardId });
+  if (!dashcard) {
+    return false;
+  }
+
+  const dashcardMappingsByParameterId = _.indexBy(
+    getMapping(dashcard, metadata),
+    "parameter_id",
+  );
+
+  return parameters.every(parameter => {
+    return dashcardMappingsByParameterId[parameter.id] != null;
+  });
+}

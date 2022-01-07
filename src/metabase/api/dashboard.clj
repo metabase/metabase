@@ -148,7 +148,7 @@
 ;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the
 ;;    dashboard cards
 ;;
-;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector) ->
+;; 2. Fetch all matching entries from Query in the DB and build a map of hash (converted to a Clojure vector) ->
 ;;    average execution time
 ;;
 ;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash
@@ -408,7 +408,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [[mapping]         (dashboard-card/normalize-parameter-mappings [mapping])
+                                         (let [[mapping]         (mi/normalize-parameters-list [mapping])
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards

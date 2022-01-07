@@ -32,6 +32,9 @@ describe("metabase/lib/expressions/tokenizer", () => {
   });
 
   it("should tokenize numeric literals", () => {
+    expect(types(".0")).toEqual([T.Number]);
+    expect(types(".5")).toEqual([T.Number]);
+    expect(types("9.")).toEqual([T.Number]);
     expect(types("42")).toEqual([T.Number]);
     expect(types("0")).toEqual([T.Number]);
     expect(types("123456789")).toEqual([T.Number]);
@@ -47,6 +50,12 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("2e")[0].message).toEqual("Missing exponent");
     expect(errors("3e+")[0].message).toEqual("Missing exponent");
     expect(errors("4E-")[0].message).toEqual("Missing exponent");
+    expect(errors("4E-")[0].len).toEqual(3);
+  });
+
+  it("should catch a lone decimal point", () => {
+    expect(errors(".")[0].message).toEqual("Invalid character: .");
+    expect(errors(".")[0].len).toEqual(1);
   });
 
   it("should tokenize string literals", () => {
@@ -150,5 +159,6 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(errors("!")[0].message).toEqual("Invalid character: !");
     expect(errors(" % @")[1].message).toEqual("Invalid character: @");
     expect(errors("    #")[0].pos).toEqual(4);
+    expect(errors("    #")[0].len).toEqual(1);
   });
 });

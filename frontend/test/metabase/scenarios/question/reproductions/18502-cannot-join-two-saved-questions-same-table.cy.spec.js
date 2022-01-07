@@ -25,8 +25,8 @@ describe.skip("issue 18502", () => {
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Saved Questions").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18502#2").click();
     });
 

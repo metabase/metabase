@@ -1,6 +1,5 @@
 import {
   restore,
-  mockSessionProperty,
   openNativeEditor,
   filterWidget,
 } from "__support__/e2e/cypress";
@@ -14,8 +13,6 @@ describe("scenarios > filters > sql filters > field filter > None", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardless of the environment where this is running
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery("SELECT * FROM people WHERE {{filter}}");

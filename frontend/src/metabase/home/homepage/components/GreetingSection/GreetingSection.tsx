@@ -3,15 +3,17 @@ import { t } from "ttag";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import Tooltip from "metabase/components/Tooltip";
 import Greeting from "metabase/lib/greeting";
-import { User } from "../../types";
+import { User } from "metabase-types/api";
 import Section from "../Section";
 import { GreetingContent, GreetingTitle } from "./GreetingSection.styled";
 
-interface Props {
+export interface GreetingSectionProps {
   user: User;
 }
 
-const GreetingSection = ({ user: { first_name } }: Props) => {
+const GreetingSection = ({
+  user: { first_name },
+}: GreetingSectionProps): JSX.Element => {
   const greeting = useMemo(() => Greeting.sayHello(first_name), [first_name]);
 
   return (

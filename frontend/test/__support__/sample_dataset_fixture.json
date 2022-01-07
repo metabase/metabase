@@ -1010,7 +1010,7 @@
         "values": []
       },
       "21": {
-        "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+        "description": "The type of product, valid values include: Doohickey, Gadget, Gizmo and Widget",
         "table_id": 3,
         "semantic_type": "type/Category",
         "name": "CATEGORY",

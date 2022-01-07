@@ -415,6 +415,20 @@ describe("scenarios > question > new", () => {
         .contains(/All Time/i);
       cy.get("@select").contains(/Month/i);
     });
+
+    // flaky test (#19454)
+    it.skip("should show an info popover when hovering over summarize dimension options", () => {
+      openReviewsTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Title")
+        .trigger("mouseenter");
+
+      popover().contains("Title");
+      popover().contains("199 distinct values");
+    });
   });
 
   describe("ask a (custom) question", () => {
@@ -428,6 +442,20 @@ describe("scenarios > question > new", () => {
       visualize();
 
       cy.contains("37.65");
+    });
+
+    it("should show a table info popover when hovering over the table name in the header", () => {
+      cy.visit("/");
+      cy.contains("Ask a question").click();
+      cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
+
+      visualize();
+
+      cy.findByTestId("question-table-badges").trigger("mouseenter");
+
+      cy.findByText("9 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {

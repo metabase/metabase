@@ -5,6 +5,7 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
+import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
@@ -95,6 +96,19 @@ export default class TagEditorParam extends Component {
     }
   }
 
+  getFilterWidgetTypeValue = (tag, widgetOptions) => {
+    // avoid `undefined` value because it makes the component "uncontrollable"
+    // (see Uncontrollable.jsx, metabase#13825)
+    const widgetType = tag["widget-type"] || "none";
+
+    const isOldWidgetType =
+      widgetType.startsWith("location") || widgetType === "category";
+
+    // old parameters with widget-type of `location/state` etc. need be remapped to string/= so that the
+    // dropdown is correctly populated with a set option
+    return isOldWidgetType ? "string/=" : widgetType;
+  };
+
   render() {
     const { tag, database, databases, metadata, parameter } = this.props;
     let widgetOptions = [],
@@ -150,19 +164,23 @@ export default class TagEditorParam extends Component {
 
             {(!hasSelectedDimensionField ||
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
-              <SchemaTableAndFieldDataSelector
-                databases={databases}
-                selectedDatabaseId={database ? database.id : null}
-                selectedTableId={table ? table.id : null}
-                selectedFieldId={
-                  hasSelectedDimensionField ? tag.dimension[1] : null
-                }
-                setFieldFn={fieldId => this.setDimension(fieldId)}
-                className="AdminSelect flex align-center"
-                isInitiallyOpen={!tag.dimension}
-                triggerIconSize={12}
-                renderAsSelect={true}
-              />
+              <Schemas.Loader id={table?.schema?.id}>
+                {() => (
+                  <SchemaTableAndFieldDataSelector
+                    databases={databases}
+                    selectedDatabaseId={database ? database.id : null}
+                    selectedTableId={table ? table.id : null}
+                    selectedFieldId={
+                      hasSelectedDimensionField ? tag.dimension[1] : null
+                    }
+                    setFieldFn={fieldId => this.setDimension(fieldId)}
+                    className="AdminSelect flex align-center"
+                    isInitiallyOpen={!tag.dimension}
+                    triggerIconSize={12}
+                    renderAsSelect={true}
+                  />
+                )}
+              </Schemas.Loader>
             )}
           </div>
         )}
@@ -177,9 +195,7 @@ export default class TagEditorParam extends Component {
             </h4>
             <Select
               className="block"
-              // avoid `undefined` value because it makes the component "uncontrollable"
-              // (see Uncontrollable.jsx, metabase#13825)
-              value={tag["widget-type"] || "none"}
+              value={this.getFilterWidgetTypeValue(tag, widgetOptions)}
               onChange={e =>
                 this.setWidgetType(
                   e.target.value === "none" ? undefined : e.target.value,

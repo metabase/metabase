@@ -3,6 +3,12 @@
 - [Getting started][getting-started]
 - [A tour of Metabase][tour]
 
+## Troubleshooting and getting help
+
+- [Troubleshooting guides][troubleshooting] 
+- [Metabase forum][forum] 
+- [Configuring logging](./operations-guide/log-configuration.html)
+
 ## Tutorials and guides
 
 - [Learn Metabase][learn] has a ton of articles on how to use Metabase and level up as a data analyst.
@@ -10,6 +16,7 @@
 ## Installation and operation
 
 - [Installing Metabase](./operations-guide/installing-metabase.html)
+- [Setting up Metabase](setting-up-metabase.html)
 - [How to upgrade Metabase](./operations-guide/upgrading-metabase.html)
 - [Application database](./operations-guide/configuring-application-database.html)
 - [Backing up Metabase](./operations-guide/backing-up-metabase-application-data.html)
@@ -18,6 +25,7 @@
 - [A word on Java versions](./operations-guide/java-versions.html)
 - [How to setup monitoring via JMX](./operations-guide/jmx-monitoring.html)
 - [Serialization: copying one Metabase instance to another](./enterprise-guide/serialization.html)
+- [Supported browsers](./administration-guide/supported-browsers.html)
 
 ## Asking questions
 
@@ -59,6 +67,7 @@
 
 - [Editing your account settings](./users-guide/account-settings.html)
 - [Managing people and groups](./administration-guide/04-managing-users.html)
+- [Single Sign-on (SSO)](./administration-guide/sso.html)
 - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
 - [SAML](./enterprise-guide/authenticating-with-saml.html)
 - [JWT](./enterprise-guide/authenticating-with-jwt.html)
@@ -112,12 +121,6 @@
 - [API reference][api-documentation]
 - [API tutorial][api-tutorial]
 
-## Troubleshooting and getting help
-
-- [Troubleshooting guide][troubleshooting] 
-- [Metabase forum][forum]
-- [Configuring logging](./operations-guide/log-configuration.html)
-
 ## Enterprise and Pro editions
 
 - [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.html)
@@ -139,10 +142,17 @@
 - [Troubleshooting guide][troubleshooting] 
 - [Developers guide][developers]
 
+## Metabase Cloud
+
+- [Docs specific to our hosted version][cloud]
+
+## Privacy
+
+- [Some info on privacy and GDPR][privacy]
+
 ## Reference
 
 - [Anonymous Information Collection Reference][info-collection]
-- [FAQs][faq]
 - [Glossary][glossary]
 
 [api-documentation]: ./api-documentation.html
@@ -150,6 +160,7 @@
 [admin-guide]: administration-guide/start.html
 [blog]: /blog
 [case-studies]: https://www.metabase.com/case_studies/
+[cloud]: /cloud/docs/
 [embedding-ref-apps]: https://github.com/metabase/embedding-reference-apps
 [enterprise]: enterprise-guide/start.html
 [enterprise-landing]: /enterprise
@@ -163,8 +174,8 @@
 [info-collection]: information-collection.html
 [learn]: /learn
 [operations-guide]: operations-guide/start.html
+[privacy]: privacy.html 
 [source-code]: https://github.com/metabase/metabase
 [tour]: /learn/getting-started/tour-of-metabase.html
 [troubleshooting]: troubleshooting-guide/index.html
 [users-guide]: users-guide/start.html
-

@@ -29,6 +29,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
@@ -43,7 +44,9 @@
 (def ^:private SourceQueryAndMetadata
   {:source-query    mbql.s/SourceQuery
    :database        mbql.s/DatabaseID
-   :source-metadata [mbql.s/SourceQueryMetadata]})
+   :source-metadata [mbql.s/SourceQueryMetadata]
+
+   (s/optional-key :source-query/dataset?) s/Bool})
 
 (def ^:private MapWithResolvedSourceQuery
   (s/constrained
@@ -96,7 +99,8 @@
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
-        (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
+        (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
+                           :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
 
@@ -104,7 +108,8 @@
           database-id                  :database
           {template-tags :template-tags
            :as           native-query} :native} :dataset_query
-         result-metadata                        :result_metadata}
+         result-metadata                        :result_metadata
+         dataset?                               :dataset}
         card
 
         source-query
@@ -126,9 +131,10 @@
       (log/info (trs "Fetched source query from Card {0}:" card-id)
                 "\n"
                 (u/pprint-to-str 'yellow source-query)))
-    {:source-query    source-query
-     :database        database-id
-     :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}))
+    (cond-> {:source-query    source-query
+             :database        database-id
+             :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}
+      dataset? (assoc :source-query/dataset? dataset?))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
   [source-table-str :- mbql.s/source-table-card-id-regex]
@@ -163,7 +169,10 @@
     map-with-card-id-source-table?
     ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
     ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
-    (let [resolved (resolve-one &match)]
+    (let [resolved (if (public-settings/enable-nested-queries)
+                     (resolve-one &match)
+                     (throw (ex-info (trs "Nested queries are disabled")
+                                     {:clause &match})))]
       ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
       ;; resolution that were we in the process of
       (try

@@ -2,30 +2,22 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  Dashboard,
-  DatabaseCandidate,
-  TableCandidate,
-  User,
-} from "../../types";
+  createMockDatabaseCandidate,
+  createMockTableCandidate,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import XraySection from "./XraySection";
 
 describe("XraySection", () => {
   it("should display table candidates", () => {
-    const user = getUser();
+    const user = createMockUser();
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
 
     expect(
       screen.getByText("Try these x-rays based on your data"),
@@ -34,10 +26,10 @@ describe("XraySection", () => {
   });
 
   it("should allow admins to hide the section", () => {
-    const user = getUser({ is_superuser: true });
+    const user = createMockUser({ is_superuser: true });
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
     const onHideXrays = jest.fn();
@@ -45,9 +37,7 @@ describe("XraySection", () => {
     render(
       <XraySection
         user={user}
-        dashboards={[]}
         databaseCandidates={databaseCandidates}
-        showXrays
         onHideXrays={onHideXrays}
       />,
     );
@@ -59,90 +49,40 @@ describe("XraySection", () => {
   });
 
   it("should not allow non-admins to hide the section", () => {
-    const user = getUser({ is_superuser: false });
+    const user = createMockUser({ is_superuser: false });
     const databaseCandidates = [
-      getDatabaseCandidate({
-        tables: [getTableCandidate({ title: "Orders table" })],
+      createMockDatabaseCandidate({
+        tables: [createMockTableCandidate({ title: "Orders table" })],
       }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
 
     expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
-  it("should not be visible when hidden by the setting", () => {
-    const user = getUser();
+  it("should allow changing database schema for table candidates", () => {
+    const user = createMockUser();
     const databaseCandidates = [
-      getDatabaseCandidate({ tables: [getTableCandidate()] }),
+      createMockDatabaseCandidate({
+        schema: "public",
+        tables: [createMockTableCandidate({ title: "Public table" })],
+      }),
+      createMockDatabaseCandidate({
+        schema: "admin",
+        tables: [createMockTableCandidate({ title: "Admin table" })],
+      }),
     ];
 
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays={false}
-      />,
-    );
+    render(<XraySection user={user} databaseCandidates={databaseCandidates} />);
+
+    expect(screen.getByText("Public table")).toBeInTheDocument();
+    expect(screen.queryByText("Admin table")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByText("public"));
+    userEvent.click(screen.getByText("admin"));
+
+    expect(screen.queryByText("Public table")).not.toBeInTheDocument();
+    expect(screen.getByText("Admin table")).toBeInTheDocument();
   });
-
-  it("should not be visible when there are pinned dashboards", () => {
-    const user = getUser();
-    const dashboards = [getDashboard()];
-
-    render(<XraySection user={user} dashboards={dashboards} showXrays />);
-
-    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
-  });
-
-  it("should not be visible when there are no table candidates", () => {
-    const user = getUser();
-    const databaseCandidates = [getDatabaseCandidate()];
-
-    render(
-      <XraySection
-        user={user}
-        dashboards={[]}
-        databaseCandidates={databaseCandidates}
-        showXrays
-      />,
-    );
-
-    expect(screen.queryByText(/x-rays/)).not.toBeInTheDocument();
-  });
-});
-
-const getUser = (opts?: Partial<User>): User => ({
-  id: 1,
-  first_name: "John",
-  is_superuser: false,
-  personal_collection_id: "personal",
-  ...opts,
-});
-
-const getDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
-  id: 1,
-  name: "Our dashboard",
-  ...opts,
-});
-
-const getTableCandidate = (opts?: Partial<TableCandidate>): TableCandidate => ({
-  title: "Our table",
-  url: "/auto",
-  ...opts,
-});
-
-const getDatabaseCandidate = (
-  opts?: Partial<DatabaseCandidate>,
-): DatabaseCandidate => ({
-  tables: [],
-  ...opts,
 });

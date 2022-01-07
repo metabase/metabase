@@ -406,6 +406,10 @@
    {:name         "NumKazoos",
     :display_name "NumKazoos",
     :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "ExtraneousColumn",
+    :display_name "ExtraneousColumn",
+    :base_type    :type/BigInteger
     :semantic_type nil}])
 
 (defn has-inline-image? [rendered]
@@ -413,6 +417,9 @@
 
 (defn- render-bar-graph [results]
   (body/render :bar :inline pacific-tz render.tu/test-card nil results))
+
+(defn- render-multiseries-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-combo-card nil results))
 
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
@@ -430,28 +437,41 @@
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-bar-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
 
+(defn- render-multiseries-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
+
 (deftest render-area-graph-tet
   (testing "Render an area graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-area-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -484,15 +504,15 @@
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
           (render-combo {:cols default-combo-columns
-                         :rows [[10.0 1 123] [5.0 10 12] [2.50 20 1337] [1.25 30 -22]]}))))
+                         :rows [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]}))))
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
           (render-combo-multi-x {:cols default-combo-columns
-                                 :rows [[10.0 "Bob" 123] [5.0 "Dobbs" 12] [2.50 "Robbs" 1337] [1.25 "Mobbs" -22]]}))))
+                                 :rows [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
           (render-combo {:cols default-combo-columns
-                         :rows [[nil 1 1] [10.0 1 nil] [5.0 10 22] [2.50 nil 22] [1.25 nil nil]]})))))
+                         :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
 
 ;; Test rendering a sparkline
 ;;
@@ -594,6 +614,9 @@
                                 html-tree))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Renders negative value without error"
+      (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
 
 (def donut-info #'body/donut-info)

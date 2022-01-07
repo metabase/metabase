@@ -130,18 +130,19 @@
 
 (defn send-new-user-email!
   "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
-  [invited invitor join-url]
+  [invited invitor join-url sent-from-setup?]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
-                                                 {:emailType    "new_user_invite"
-                                                  :invitedName  (:first_name invited)
-                                                  :invitorName  (:first_name invitor)
-                                                  :invitorEmail (:email invitor)
-                                                  :company      company
-                                                  :joinUrl      join-url
-                                                  :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                                                  :logoHeader   true}))]
+                                                 {:emailType     "new_user_invite"
+                                                  :invitedName   (:first_name invited)
+                                                  :invitorName   (:first_name invitor)
+                                                  :invitorEmail  (:email invitor)
+                                                  :company       company
+                                                  :joinUrl       join-url
+                                                  :today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+                                                  :logoHeader    true
+                                                  :sentFromSetup sent-from-setup?}))]
     (email/send-message!
      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
      :recipients   [(:email invited)]
@@ -181,16 +182,14 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url is-active?]
+  [email google-auth? password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
-         (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :hostname         hostname
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true

@@ -50,6 +50,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
       "aria-checked",
@@ -66,7 +67,9 @@ describe("scenarios > admin > databases > add", () => {
       .click();
 
     cy.wait("@createDatabase");
-    cy.url().should("match", /\/admin\/databases$/);
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByText("Explore sample data");
   });
 
   it("should trim fields needed to connect to the database", () => {
@@ -95,6 +98,8 @@ describe("scenarios > admin > databases > add", () => {
     chooseDatabase("H2");
     typeField("Display name", "Test db name");
     typeField("Connection String", "invalid");
+
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Save").click();
@@ -112,6 +117,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.findByText("Never, I'll do this manually if I need to").click();
@@ -124,7 +130,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.url().should("match", /admin\/databases$/);
+    cy.url().should("match", /admin\/databases\?created=true$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -195,6 +201,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Display name", databaseName);
     typeField("Connection String", H2_CONNECTION_STRING);
 
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Choose when syncs and scans happen")
       .click()
       .should("have.attr", "aria-checked", "true");
@@ -203,7 +210,12 @@ describe("scenarios > admin > databases > add", () => {
 
     cy.button("Save").click();
 
-    cy.findByText(databaseName).click();
+    cy.findByText("We're taking a look at your database!");
+    cy.findByLabelText("close icon").click();
+
+    cy.findByRole("table").within(() => {
+      cy.findByText(databaseName).click();
+    });
 
     isSyncOptionSelected("Never, I'll do this manually if I need to");
   });
@@ -321,6 +333,7 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.button("Save").click();
 
       cy.wait("@createDatabase").then(({ request }) => {
@@ -337,6 +350,7 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover()
         .findByText("Custom")

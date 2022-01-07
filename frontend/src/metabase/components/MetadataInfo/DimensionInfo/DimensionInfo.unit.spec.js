@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import DimensionInfo from "./DimensionInfo";
+import { DimensionInfo } from "./DimensionInfo";
 
 const fieldDimension = Dimension.parseMBQL(
   ["field", PRODUCTS.CREATED_AT.id, null],
@@ -16,7 +16,7 @@ const expressionDimension = Dimension.parseMBQL(
   metadata,
 );
 
-function setup(dimension) {
+function setup(dimension, fieldValues) {
   return render(<DimensionInfo dimension={dimension} />);
 }
 
