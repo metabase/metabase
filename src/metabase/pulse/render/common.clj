@@ -6,7 +6,9 @@
             [metabase.util.ui-logic :as ui-logic]
             [potemkin.types :as p.types]
             [schema.core :as s])
-  (:import java.net.URL
+  (:import java.awt Font FontMetrics
+           java.awt.image.BufferedImage
+           java.net.URL
            (java.text DecimalFormat DecimalFormatSymbols)))
 
 ;; Fool Eastwood into thinking this namespace is used
@@ -104,3 +106,12 @@
   the row-function-generating functions themselves choke on nil values, for combo rowfuncs"
   [rows]
   (filter #(every? some? %) rows))
+
+(defn string-width
+  "Measures width of text with font. This can't be done in the GraalVM polyglot bit
+  so we're passing stuff in"
+  [text font-name font-size]
+  (let [img  (BufferedImage. 1 1 BufferedImage/TYPE_INT_ARGB)
+        font (Font. font-name 0 font-size)
+        fm   (.. img (getGraphics) (getFontMetrics font))]
+    (. fm stringWidth text)))
