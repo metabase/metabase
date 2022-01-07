@@ -24,9 +24,16 @@ export function visitAlias(alias) {
  * @example
  * openNativeEditor({ databaseName: "QA Postgres12" }).type("SELECT 123");
  */
-export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
-  cy.visit("/");
-  cy.icon("sql").click();
+export function openNativeEditor({
+  databaseName,
+  alias = "editor",
+  fromCurrentPage,
+} = {}) {
+  if (!fromCurrentPage) {
+    cy.visit("/");
+  }
+  cy.findByText("Create").click();
+  cy.findByText("SQL query").click();
 
   databaseName && cy.findByText(databaseName).click();
 
@@ -34,6 +41,23 @@ export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
     .get(".ace_content")
     .as(alias)
     .should("be.visible");
+}
+
+/**
+ * Open notebook editor.
+ *
+ * @param {object} options
+ * @param {boolean} [options.fromCurrentPage] - Open notebook editor from current location
+ * @example
+ * openNotebookEditor({ fromCurrentPage: true })
+ */
+export function openNotebookEditor({ fromCurrentPage } = {}) {
+  if (!fromCurrentPage) {
+    cy.visit("/");
+  }
+
+  cy.findByText("Create").click();
+  cy.findByText("Visual question").click();
 }
 
 /**
