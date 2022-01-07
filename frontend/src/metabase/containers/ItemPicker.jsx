@@ -54,7 +54,7 @@ class ItemPicker extends React.Component {
   getCrumbs(collection, collectionsById) {
     if (collection && collection.path) {
       return [
-        ...collection.path.map(id => [
+        ...collection.path.filter(id => collectionsById[id]).map(id => [
           collectionsById[id].name,
           () => this.setState({ parentId: id }),
         ]),
