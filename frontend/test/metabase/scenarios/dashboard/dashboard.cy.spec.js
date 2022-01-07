@@ -412,7 +412,7 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
-    cy.intercept("GET", "/api/search").as("search");
+    cy.intercept("GET", "/api/search?*").as("search");
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
     cy.icon("add")

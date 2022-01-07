@@ -37,7 +37,7 @@ describe("scenarios > admin > settings > map settings", () => {
   });
 
   it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
-    cy.intercept("GET", "/api/geojson").as("load");
+    cy.intercept("GET", "/api/geojson?*").as("load");
     cy.visit("/admin/settings/maps");
     cy.findByText("Add a map").click();
     cy.findByPlaceholderText(

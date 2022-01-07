@@ -7,7 +7,9 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("home", () => {
-    cy.intercept("GET", `/api/automagic-dashboards`).as("automagic-dashboards");
+    cy.intercept("GET", `/api/automagic-dashboards/database/1/candidates`).as(
+      "automagic-dashboards",
+    );
 
     cy.visit("/", {
       // to give predictable messages based on randomization
@@ -26,7 +28,7 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("root collection", () => {
-    cy.intercept("GET", `api/collection/root/items`).as("collection-items");
+    cy.intercept("GET", `api/collection/root/items?*`).as("collection-items");
     cy.visit("/collection/root");
 
     // Twice, one for pinned items and another for dashboard
