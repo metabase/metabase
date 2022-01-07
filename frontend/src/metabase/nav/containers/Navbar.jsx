@@ -11,12 +11,12 @@ import { Flex, Box } from "grid-styled";
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
+import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 
@@ -151,87 +151,73 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
-          <PopoverWithTrigger
-            isOpen={this.state.createOpen}
-            triggerElement={
-              <div
-                className="flex align-center transition-background mr2"
-                onClick={() => this.setState({ createOpen: true })}
+          <EntityMenu
+            className="hide sm-show mr1"
+            trigger={
+              <Link
+                mr={1}
+                p={1}
+                hover={{
+                  backgroundColor: darken(color("brand")),
+                }}
+                className="flex align-center rounded transition-background"
+                data-metabase-event={`NavBar;New Question`}
               >
-                <Icon name="add" size={14} p={"8px"} />
-                <h4 className="hide sm-show text-nowrap">{t`Create`}</h4>
-              </div>
+                <Icon name="add" size={14} />
+                <h4 className="hide sm-show ml1 text-nowrap">{t`Create`}</h4>
+              </Link>
             }
-          >
-            <>
-              <ol>
-                <li>
-                  <Link
-                    onClick={() => this.setState({ createOpen: false })}
-                    className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
-                    to={Urls.newQuestion({
-                      mode: "notebook",
-                      creationType: "complex_question",
-                    })}
-                  >
-                    <Icon name="insight" mr={1} />
-                    Visual question
-                  </Link>
-                </li>
-                {hasNativeWrite && (
-                  <li>
-                    <Link
-                      onClick={() => this.setState({ createOpen: false })}
-                      className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
-                      to={Urls.newQuestion({
+            items={[
+              {
+                title: t`Visual question`,
+                icon: `insight`,
+                link: Urls.newQuestion({
+                  mode: "notebook",
+                  creationType: "complex_question",
+                }),
+                event: `NavBar;New Dashboard Click;`,
+              },
+              ...(hasNativeWrite
+                ? [
+                    {
+                      title: t`SQL query`,
+                      icon: `sql`,
+                      link: Urls.newQuestion({
                         type: "native",
                         creationType: "native_question",
-                      })}
-                    >
-                      <Icon name="sql" mr={1} />
-                      Sql query
-                    </Link>
-                  </li>
-                )}
-              </ol>
-              <ol className="border-top">
-                <li
-                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
-                  onClick={() => this.setModal(MODAL_NEW_DASHBOARD)}
-                >
-                  <Icon name="dashboard" mr={1} />
-                  New dashboard
-                </li>
-                <li
-                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer flex align-center"
-                  onClick={() => this.setModal()}
-                >
-                  <Icon name="dataset" mr={1} size={18} />
-                  New dataset
-                </li>
-                <li
-                  className="px3 py2 bg-brand-hover text-white-hover cursor-pointer"
-                  onClick={() => this.setModal()}
-                >
-                  <Link
-                    to={Urls.newCollection("root")}
-                    className="flex align-center"
-                  >
-                    <Icon name="all" mr={1} />
-                    New collection
-                  </Link>
-                </li>
-              </ol>
-            </>
-          </PopoverWithTrigger>
+                      }),
+                      event: `NavBar;New Dashboard Click;`,
+                    },
+                  ]
+                : []),
+              {
+                title: t`New dashboard`,
+                icon: `dashboard`,
+                action: () => this.setModal(MODAL_NEW_DASHBOARD),
+                event: `NavBar;New Dashboard Click;`,
+              },
+              {
+                title: t`New collection`,
+                icon: `all`,
+                link: Urls.newCollection("root"),
+                event: `NavBar;New Collection Click;`,
+              },
+            ]}
+          />
+
           {hasDataAccess && (
             <Link
+              mr={[1, 2]}
               to="browse"
-              className="flex align-center rounded transition-background mr3"
-              data-metabase-event={`NavBar;Data Browse`}
+              p={1}
+              hover={{
+                backgroundColor: darken(color("brand")),
+              }}
+              className="flex align-center rounded transition-background"
+              data-metabase-event={`NavBar;New Question`}
             >
-              <Icon name="table_spaced" size={14} p={"11px"} />
-              <h4 className="hide sm-show text-nowrap">{t`Browse data`}</h4>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
             </Link>
           )}
           <ProfileLink {...this.props} />

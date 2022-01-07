@@ -39,11 +39,19 @@ class EntityMenu extends Component {
   render() {
     const preferReducedMotion = isReducedMotionPreferred();
 
-    const { items, triggerIcon, triggerProps, className, tooltip } = this.props;
+    const {
+      items,
+      triggerIcon,
+      triggerProps,
+      className,
+      tooltip,
+      trigger,
+    } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <div className={cx("relative", className)}>
         <EntityMenuTrigger
+          trigger={trigger}
           icon={triggerIcon}
           onClick={this.toggleMenu}
           open={open}
@@ -99,7 +107,8 @@ class EntityMenu extends Component {
                             return null;
                           } else if (item.content) {
                             return (
-                              <li key={item.title}>
+                              <li key={item.title} className={"border-top"}>
+                                kek
                                 <EntityMenuItem
                                   icon={item.icon}
                                   title={item.title}
