@@ -259,12 +259,10 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
-      openNotebookEditor();
       cy.visit("/question/new");
       cy.contains("Simple question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
-      visualize();
       cy.contains("37.65");
     });
 
@@ -374,7 +372,8 @@ describe("scenarios > question > new", () => {
       openNotebookEditor();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
-      cy.findByText("Summarize").click();
+      visualize();
+      cy.findByTestId("toggle-summarize-sidebar-button").click();
       cy.findByText("Group by")
         .parent()
         .within(() => {
