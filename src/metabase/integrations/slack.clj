@@ -59,7 +59,6 @@
   true)
 
 (defn- handle-error [body]
-  (def my-body body)
   (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
                          (tru "Invalid token")
