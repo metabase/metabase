@@ -13,17 +13,11 @@
   [:as {{slack-app-token :slack-app-token} :body}]
   {slack-app-token     (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (if-not slack-app-token
-    (slack/slack-app-token nil)
-    (try
-      (when-not config/is-test?
-        (when-not (slack/valid-token? slack-app-token)
-          (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
-      ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-      (slack/slack-token nil)
-      (slack/slack-app-token slack-app-token)
-      {:ok true}
-      (catch clojure.lang.ExceptionInfo info
-        {:status 400, :body (ex-data info)}))))
+  (try
+    (slack/slack-app-token slack-app-token)
+    {:ok true}
+    (catch clojure.lang.ExceptionInfo info
+      (throw (ex-info (ex-message info)
+                      (assoc (ex-data info) :status-code 400))))))
 
 (api/define-routes)

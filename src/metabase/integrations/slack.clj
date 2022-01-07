@@ -5,6 +5,8 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.config :as config]
+            [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -20,7 +22,22 @@
 (defsetting slack-app-token
   (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
        " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
+  :setter (fn [new-value]
+            (when (and new-value
+                       (not config/is-test?)
+                       (not (valid-token? new-value)))
+                (throw (ex-info (tru "Invalid Slack token") {})))
+            (setting/set-value-of-type! :string :slack-app-token new-value)
+            (slack-token-valid? true)
+            ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
+            (slack-token nil)))
+
+(defsetting slack-token-valid?
+  (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
+       " "
+       (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
+  :type :boolean)
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")
@@ -30,8 +47,20 @@
   []
   (boolean (or (seq (slack-app-token)) (seq (slack-token)))))
 
+(def ^:private slack-token-error-codes
+  "List of error codes that indicate an invalid or revoked Slack token."
+  ;; If any of these error codes are received from the Slack API, we send an email to all admins indicating that the
+  ;; Slack integration is broken. In practice, the "account_inactive" error code is the one that is most likely to be
+  ;; received. This would happen if access to the Slack workspace is manually revoked via the Slack UI.
+  #{"invalid_auth", "account_inactive", "token_revoked", "token_expired"})
+
+(def ^:private ^:dynamic *send-token-error-emails?*
+  "Whether to send an email to all admins when an invalid or revoked token error is received. (Default `true`)"
+  true)
+
 (defn- handle-error [body]
-  (let [invalid-token? (= (:error body) "invalid_auth")
+  (def my-body body)
+  (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
                          (tru "Invalid token")
                          (tru "Slack API error: {0}" (:error body)))
@@ -41,6 +70,9 @@
                          {:error-code (:error body)
                           :message    message
                           :response   body})]
+    (when (and invalid-token? *send-token-error-emails?*)
+      (if (slack-token-valid?) (messages/send-slack-token-error-emails!))
+      (slack-token-valid? false))
     (log/warn (u/pprint-to-str 'red error))
     (throw (ex-info message error))))
 
@@ -129,7 +161,8 @@
   "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
   [token :- su/NonBlankString]
   (try
-    (boolean (take 1 (conversations-list :limit 1, :token token)))
+    (binding [*send-token-error-emails?* false]
+      (boolean (take 1 (conversations-list :limit 1, :token token))))
     (catch Throwable e
       (if (= (:error-code (ex-data e)) "invalid_auth")
         false
