@@ -8513,6 +8513,8 @@ databaseChangeLog:
       validCheckSum:
         - 8:d60aa66f5909d37393ee711dea6996c7 # original checksum under #17649
         - 8:98f3ccbb3e8efc46f5766fcd51f39d0e # changed creator_id to nullable in #19398
+        - 8:ccfed82cd5d09891c7a380b428e5fbc5 # no idea where these two values come from :(
+        - 8:b4864fb1516837c753bf3a607a8ed655
       changes:
         - createTable:
             tableName: secret
