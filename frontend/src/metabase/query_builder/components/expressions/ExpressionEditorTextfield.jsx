@@ -231,8 +231,10 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   handleFocus = () => {
     this.setState({ isFocused: true });
-    const { editor } = this.input.current;
-    this.handleCursorChange(editor.selection);
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      this.handleCursorChange(editor.selection);
+    }
   };
 
   handleInputBlur = e => {
