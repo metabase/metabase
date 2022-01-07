@@ -290,10 +290,19 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   commitExpression() {
-    const expression = this.compileExpression();
+    const { query, startRule } = this.props;
+    const { source } = this.state;
+    const errorMessage = diagnose(source, startRule, query);
+    this.setState({ errorMessage });
 
-    if (isExpression(expression)) {
-      this.props.onCommit(expression);
+    if (errorMessage) {
+      this.props.onError(errorMessage);
+    } else {
+      const expression = this.compileExpression();
+
+      if (isExpression(expression)) {
+        this.props.onCommit(expression);
+      }
     }
   }
 
@@ -423,7 +432,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             highlightedIndex={this.state.highlightedSuggestionIndex}
           />
         </EditorContainer>
-        {!isFocused && <ErrorMessage error={errorMessage} />}
+        <ErrorMessage error={errorMessage} />
         <HelpText helpText={this.state.helpText} width={this.props.width} />
       </React.Fragment>
     );
