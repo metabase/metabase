@@ -56,7 +56,6 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 export default class Navbar extends Component {
   state = {
     modal: null,
-    createOpen: false,
   };
 
   static propTypes = {
@@ -70,7 +69,7 @@ export default class Navbar extends Component {
   }
 
   setModal(modal) {
-    this.setState({ modal, createOpen: false });
+    this.setState({ modal });
     if (this._newPopover) {
       this._newPopover.close();
     }
@@ -155,7 +154,7 @@ export default class Navbar extends Component {
                   backgroundColor: darken(color("brand")),
                 }}
                 className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;New Question`}
+                data-metabase-event={`NavBar;Create Menu Click`}
               >
                 <Icon name="add" size={14} />
                 <h4 className="hide sm-show ml1 text-nowrap">{t`Create`}</h4>
@@ -208,7 +207,7 @@ export default class Navbar extends Component {
                 backgroundColor: darken(color("brand")),
               }}
               className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;New Question`}
+              data-metabase-event={`NavBar;Data Browse`}
             >
               <Icon name="table_spaced" size={14} />
               <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
