@@ -91,4 +91,4 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2021 Metabase, Inc.
+Unless otherwise noted, all files © 2022 Metabase, Inc.
