@@ -5,6 +5,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 
 export const SetupRoot = styled.div`
+  max-width: 42rem;
   padding-left: 1rem;
 `;
 
@@ -26,7 +27,6 @@ export const HeaderMessage = styled.div`
 
 export const SectionRoot = styled.section`
   margin-bottom: 2rem;
-  max-width: 42rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
 `;

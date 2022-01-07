@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import { getSlackForm } from "../../forms";
@@ -11,7 +11,7 @@ export interface SlackSetupFormProps {
 }
 
 const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
-  const form = useMemo(() => getSlackForm(), []);
+  const form = getSlackForm();
 
   return (
     <Form form={form} onSubmit={onSubmit}>

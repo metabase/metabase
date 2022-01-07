@@ -2,6 +2,7 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 export const StatusRoot = styled.div`
+  max-width: 42rem;
   padding-left: 1rem;
 `;
 

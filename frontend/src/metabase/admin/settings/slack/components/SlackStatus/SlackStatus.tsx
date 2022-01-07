@@ -21,7 +21,11 @@ export interface SlackStatusProps {
   onDelete: () => void;
 }
 
-const SlackStatus = ({ hasError, onDelete }: SlackStatusProps): JSX.Element => {
+const SlackStatus = ({
+  Form,
+  hasError,
+  onDelete,
+}: SlackStatusProps): JSX.Element => {
   return (
     <StatusRoot>
       <StatusHeader>
@@ -44,6 +48,7 @@ const SlackStatus = ({ hasError, onDelete }: SlackStatusProps): JSX.Element => {
           <SlackButton />
         </StatusSecondary>
       </StatusHeader>
+      <Form />
       <StatusFooter>
         <Button onClick={onDelete}>{t`Delete Slack App`}</Button>
       </StatusFooter>
