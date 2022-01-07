@@ -102,13 +102,12 @@ describe("scenarios > question > new", () => {
 
   describe("data picker search", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Create").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
       beforeEach(() => {
-        cy.findByText("Visual question").click();
+        cy.findByText("Simple question").click();
         cy.findByPlaceholderText("Search for a table…").type("Ord");
       });
 
@@ -170,8 +169,7 @@ describe("scenarios > question > new", () => {
 
   describe("saved question picker", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Create").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {

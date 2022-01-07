@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
+  visualize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > native", () => {
@@ -110,6 +111,8 @@ describe("scenarios > question > native", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText(QUESTION).click();
     });
+
+    visualize();
 
     cy.url("should.contain", "/question/notebook#");
     cy.findByText("This has a value");
