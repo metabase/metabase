@@ -7,8 +7,8 @@ describe("smoketest > user", () => {
 
   it("should be able to ask a custom question", () => {
     cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Custom question").click();
+    cy.findByText("Create").click();
+    cy.findByText("Visual question").click();
     cy.findByTextEnsureVisible("Sample Dataset").click();
     cy.findByTextEnsureVisible("Products").click();
     cy.findByText("Add filters to narrow your answer").click();

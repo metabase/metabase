@@ -83,12 +83,12 @@ describe("metabase-smoketest > admin", () => {
 
       // Following section is repeated-- turn into callback function?
       // Also, selecting Metabase H2 doesn't do anything
-      cy.findByText("Ask a question").click();
+      cy.findByText("Create").click();
 
-      cy.findByText("Custom question");
-      cy.findByText("Native query");
+      cy.findByText("Visual question");
+      cy.findByText("SQL query");
 
-      cy.findByText("Simple question").click();
+      cy.findByText("Visual question").click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("People").click();
 
@@ -150,15 +150,11 @@ describe("metabase-smoketest > admin", () => {
 
     it.skip("should add a simple JOINed question as admin", () => {
       cy.visit("/");
-      cy.findByText("Ask a question");
 
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      cy.findByText("Create").click();
+      cy.findByText("Visual question").click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
-
-      // Join tables
-      cy.icon("notebook").click();
 
       cy.findByText("Data");
       cy.findByText("Showing").should("not.exist");
@@ -191,14 +187,12 @@ describe("metabase-smoketest > admin", () => {
 
     it("should add a question with a default line visualization as admin", () => {
       cy.visit("/");
-      cy.findByText("Ask a question").click();
-
-      cy.findByText("Native query");
-
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      cy.findByText("Create").click();
+      cy.findByText("Visual question").click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
+
+      visualize();
 
       cy.findByText("Product ID");
       cy.findByText("Pick your data").should("not.exist");
@@ -329,9 +323,9 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should create my own question as user
         // =================
-        cy.findByText("Ask a question").click();
+        cy.findByText("Create").click();
 
-        cy.findByText("Native query");
+        cy.findByText("SQL query");
 
         cy.findByText("Simple question").click();
         cy.findByTextEnsureVisible("Sample Dataset").click();

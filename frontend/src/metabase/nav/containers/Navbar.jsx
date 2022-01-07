@@ -175,7 +175,7 @@ export default class Navbar extends Component {
                   mode: "notebook",
                   creationType: "complex_question",
                 }),
-                event: `NavBar;New Dashboard Click;`,
+                event: `NavBar;New Visual Question Click;`,
               },
               ...(hasNativeWrite
                 ? [
@@ -186,7 +186,7 @@ export default class Navbar extends Component {
                         type: "native",
                         creationType: "native_question",
                       }),
-                      event: `NavBar;New Dashboard Click;`,
+                      event: `NavBar;New SQL Query Click;`,
                     },
                   ]
                 : []),

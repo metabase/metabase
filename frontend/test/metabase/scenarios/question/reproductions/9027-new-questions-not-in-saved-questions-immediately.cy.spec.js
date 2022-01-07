@@ -32,8 +32,8 @@ describe("issue 9027", () => {
 });
 
 function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
-  cy.findByText("Ask a question").click();
-  cy.findByText("Custom question").click();
+  cy.findByText("Create").click();
+  cy.findByText("Visual question").click();
   cy.findByText("Saved Questions").click();
 
   cy.findByText(questionName).should(exists ? "exist" : "not.exist");

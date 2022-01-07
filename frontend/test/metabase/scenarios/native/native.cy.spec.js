@@ -104,14 +104,14 @@ describe("scenarios > question > native", () => {
     cy.findByText("Not now").click();
 
     cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Simple question").click();
+    cy.findByText("Create").click();
+    cy.findByText("Visual question").click();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
       cy.findByText(QUESTION).click();
     });
 
-    cy.url("should.contain", "/question#");
+    cy.url("should.contain", "/question/notebook#");
     cy.findByText("This has a value");
 
     FILTERS.forEach(filter => {

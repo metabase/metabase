@@ -471,8 +471,8 @@ describe("scenarios > question > notebook", () => {
 
       // Join two previously saved questions
       cy.visit("/");
-      cy.findByText("Ask a question").click();
-      cy.findByText("Custom question").click();
+      cy.findByText("Create").click();
+      cy.findByText("Visual question").click();
       cy.findByText("Saved Questions").click();
 
       cy.findByText("12928_Q1").click();
