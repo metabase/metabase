@@ -46,12 +46,6 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// TODO
-const NavHover = {
-  backgroundColor: darken(color("nav")),
-  color: "white",
-};
-
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
 @Database.loadList({
