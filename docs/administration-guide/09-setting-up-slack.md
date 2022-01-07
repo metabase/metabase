@@ -1,33 +1,38 @@
+# Setting up Slack
 
-## Setting up Slack
+If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent to Slack channels (or people), then you’ll first need to integrate your Metabase instance with Slack.
 
-If you are using Slack for team communication and would like to have your Pulses be sent to Slack channels (or users) then you'll need to integrate your Metabase instance with Slack.  Luckily, this is really easy!
+## Creating your Slack App
 
-### Generating a Slack API Token
+For Metabase to post to your Slack channels, you’ll need to create a Slack App and make it available to Metabase.
 
-For Metabase to post to your Slack channels, you'll need to generate a Slack API token and make it available to Metabase.
+From any Metabase page, go to **Admin settings** > **Settings** > **Slack**. 
 
-To start, go to the Admin Panel from the dropdown menu in the top right of Metabase, then from the Settings page, click on **Slack** in the left menu.
+Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to Slack to create the App.
 
-You should see this form:
+On the Slack website, click **Create an App**.
 
-![Slack Settings](images/SlackSettings.png)
+### The app manifest
 
-Then just click on the large and conveniently placed button `Create a Slack Bot User for Metabot` which will open a new browser tab and send you over to Slack to create the Bot user account.
+Select **From an app manifest** and and select the Slack workspace you want Metabase to post to.
 
-Click over to the tab that was opened and you'll now be on the Slack Bot creation page.
+To get the manifest, head back to Metabase, copy the manifest, and return to the Slack website to paste in the manifest. The manifest will take care of settings for your app and help speed things along. Once you've pasted the manifest in Slack Apps, click the **Next** button and then **Create** to set up your Slack App.
 
-![Slack API Auth](images/SlackAPIAuth.png)
+### The Bot User OAuth Token
 
-Now give the Bot user a helpful name (we suggest `Metabot`) and click the `Add bot integration` button and a bot user will be generated for you.  Look for the Bot's API token in the next page. It will look like `xoxp-etc-etc-etc` and all you need to do is copy that value and head back to Metabase.
+Almost there! We just need a couple things from you to help Slack talk to Metabase. Click on **OAuth and Permissions** in the Slack Apps sidebar and copy the **Bot User OAuth Token**. Paste this token in the Metabase field with the same name:
 
-Paste the value into the text box for `Slack API Token` and click the button to save your changes.
+## Create a dedicated Metabase channel in your Slack
 
-Now go to Slack and create a new channel named `metabase_files`. Due to the Slack api, we'll need this to attach graphs to pulses and Metabot answers.
+In your Slack workspace, create a public channel named whatever you want — we think something like "Metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Due to the way the Slack API is set up, we’ll need this channel to attach charts Dashboard Subscriptions. 
 
-That's it!  Metabase will automatically run a quick test to check that the API token is working properly and if not you'll get an error message.
+## Save your changes in Metabase
+
+In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token is working properly. If something goes wrong, it'll give you an error message.
 
 ---
 
 ## Next: configuring Metabase
 There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings.md).
+
+[dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.html
