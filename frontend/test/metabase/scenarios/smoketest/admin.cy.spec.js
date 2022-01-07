@@ -1,4 +1,9 @@
-import { restore, sidebar, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  sidebar,
+  visualize,
+  openNotebookEditor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -149,10 +154,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it.skip("should add a simple JOINed question as admin", () => {
-      cy.visit("/");
-
-      cy.findByText("Create").click();
-      cy.findByText("Visual question").click();
+      openNotebookEditor();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -186,9 +188,7 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it("should add a question with a default line visualization as admin", () => {
-      cy.visit("/");
-      cy.findByText("Create").click();
-      cy.findByText("Visual question").click();
+      openNotebookEditor();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
 
@@ -327,7 +327,7 @@ describe("metabase-smoketest > admin", () => {
 
         cy.findByText("SQL query");
 
-        cy.findByText("Simple question").click();
+        cy.findByText("Visual question").click();
         cy.findByTextEnsureVisible("Sample Dataset").click();
         cy.findByTextEnsureVisible("Reviews").click();
 

@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 const dbName = "Sample2";
 
@@ -11,9 +11,7 @@ describe("issue 18148", () => {
       name: dbName,
     });
 
-    cy.visit("/");
-    cy.findByText("Create").click();
-    cy.findByText("SQL query").click();
+    openNativeEditor();
   });
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {

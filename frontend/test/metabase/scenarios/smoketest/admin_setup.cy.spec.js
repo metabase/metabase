@@ -5,6 +5,7 @@ import {
   modal,
   openPeopleTable,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -793,9 +794,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user cannot make an SQL query
 
-      cy.findByText("Create").click();
-
-      cy.findByText("Visual question");
+      openNotebookEditor({ fromCurrentPage: true });
 
       cy.signOut();
       cy.signIn("nocollection");
@@ -886,8 +885,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("pencil");
 
-      cy.findByText("Create").click();
-      cy.findByText("Visual question").click();
+      openNotebookEditor({ fromCurrentPage: true });
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();

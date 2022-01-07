@@ -5,6 +5,7 @@ import {
   modal,
   openOrdersTable,
   openProductsTable,
+  openNotebookEditor,
   popover,
   restore,
   visitQuestionAdhoc,
@@ -470,9 +471,7 @@ describe("scenarios > question > notebook", () => {
       });
 
       // Join two previously saved questions
-      cy.visit("/");
-      cy.findByText("Create").click();
-      cy.findByText("Visual question").click();
+      openNotebookEditor();
       cy.findByText("Saved Questions").click();
 
       cy.findByText("12928_Q1").click();

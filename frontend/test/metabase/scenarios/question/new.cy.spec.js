@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -258,9 +259,9 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Create").click();
-      cy.contains("Visual question").click();
+      openNotebookEditor();
+      cy.visit("/question/new");
+      cy.contains("Simple question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       visualize();
@@ -370,9 +371,7 @@ describe("scenarios > question > new", () => {
 
       // it is essential for this repro to find question following these exact steps
       // (for example, visiting `/collection/root` would yield different result)
-      cy.visit("/");
-      cy.findByText("Create").click();
-      cy.findByText("Visual question").click();
+      openNotebookEditor();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
       cy.findByText("Summarize").click();
@@ -432,9 +431,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Create").click();
-      cy.contains("Visual question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 
@@ -444,9 +441,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show a table info popover when hovering over the table name in the header", () => {
-      cy.visit("/");
-      cy.contains("Create").click();
-      cy.contains("Visual question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 

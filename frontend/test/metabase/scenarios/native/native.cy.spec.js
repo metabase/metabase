@@ -3,6 +3,7 @@ import {
   popover,
   modal,
   openNativeEditor,
+  openNotebookEditor,
   visualize,
 } from "__support__/e2e/cypress";
 
@@ -104,9 +105,7 @@ describe("scenarios > question > native", () => {
     });
     cy.findByText("Not now").click();
 
-    cy.visit("/");
-    cy.findByText("Create").click();
-    cy.findByText("Visual question").click();
+    openNotebookEditor();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
       cy.findByText(QUESTION).click();

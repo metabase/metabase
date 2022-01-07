@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, openNativeEditor } from "__support__/e2e/cypress";
 
 const questionDetails = {
   name: "REVIEWS SQL",
@@ -26,8 +26,7 @@ describe("issue 18418", () => {
 
     cy.button("Not now").click();
 
-    cy.findByText("Create").click();
-    cy.findByText("SQL query").click();
+    openNativeEditor({ fromCurrentPage: true });
 
     // Clicking native question's database picker usually opens a popover with a list of databases
     // As default Cypress environment has only the sample dataset available, we expect no popup to appear
