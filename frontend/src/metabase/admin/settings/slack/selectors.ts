@@ -1,12 +1,17 @@
-import { createSelector } from "reselect";
 import { State } from "metabase-types/store";
 
-export const getSettings = createSelector(
-  (state: State) => state.settings,
-  settings => settings.values,
-);
+export const getSlackBotToken = (state: State): string | undefined => {
+  return state.settings.values["slack-token"];
+};
 
-export const getSlackAppToken = createSelector(
-  [getSettings],
-  settings => settings["slack-app-token"],
-);
+export const hasSlackBotToken = (state: State): boolean => {
+  return getSlackBotToken(state) != null;
+};
+
+export const getSlackAppToken = (state: State): string | undefined => {
+  return state.settings.values["slack-app-token"];
+};
+
+export const hasSlackAppToken = (state: State): boolean => {
+  return getSlackAppToken(state) != null;
+};
