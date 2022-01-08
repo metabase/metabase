@@ -15,3 +15,7 @@ export const getSlackAppToken = (state: State): string | undefined => {
 export const hasSlackAppToken = (state: State): boolean => {
   return getSlackAppToken(state) != null;
 };
+
+export const getSlackFilesChannel = (state: State): string | undefined => {
+  return state.settings.values["slack-files-channel"];
+};

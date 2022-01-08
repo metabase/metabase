@@ -7,4 +7,5 @@ export interface Properties {
   "show-homepage-pin-message": boolean;
   "slack-token": string | undefined;
   "slack-app-token": string | undefined;
+  "slack-files-channel": string | undefined;
 }

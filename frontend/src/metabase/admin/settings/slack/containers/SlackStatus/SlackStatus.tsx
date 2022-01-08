@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import SlackStatus from "../../components/SlackStatus";
-import SlackStatusForm from "../../components/SlackStatusForm";
+import SlackStatusForm from "../../containers/SlackStatusForm";
 
 const mapStateToProps = () => ({
   Form: SlackStatusForm,

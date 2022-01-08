@@ -3,12 +3,21 @@ import Form from "metabase/containers/Form";
 import { getSlackForm } from "../../forms";
 import { FormProps } from "./types";
 
-const SlackStatusForm = (): JSX.Element => {
+export interface SlackStatusFormProps {
+  token?: string;
+  channel?: string;
+}
+
+const SlackStatusForm = ({
+  token,
+  channel,
+}: SlackStatusFormProps): JSX.Element => {
   const form = getSlackForm(true);
+  const values = { token, channel };
   const onSubmit = () => undefined;
 
   return (
-    <Form form={form} onSubmit={onSubmit}>
+    <Form form={form} initialValues={values} onSubmit={onSubmit}>
       {({ Form, FormField }: FormProps) => (
         <Form>
           <FormField name="token" />
