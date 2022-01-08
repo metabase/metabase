@@ -3,6 +3,9 @@ import { jt, t } from "ttag";
 import SlackBadge from "../SlackBadge";
 import SlackButton from "../SlackButton";
 import {
+  BannerIcon,
+  BannerRoot,
+  BannerText,
   HeaderMessage,
   HeaderRoot,
   HeaderTitle,
@@ -67,6 +70,15 @@ const SetupHeader = ({ hasBot, hasError }: SetupHeaderProps): JSX.Element => {
         </HeaderMessage>
       )}
     </HeaderRoot>
+  );
+};
+
+const SetupBanner = (): JSX.Element => {
+  return (
+    <BannerRoot>
+      <BannerIcon name="warning" />
+      <BannerText>{t`Looks like your slack channel name is incorrect. Please check your settings and try again.`}</BannerText>
+    </BannerRoot>
   );
 };
 
