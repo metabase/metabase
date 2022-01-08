@@ -6,9 +6,9 @@ import { updateSettings } from "../../actions";
 import { hasSlackBotToken } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
-  Form: SlackSetupForm,
-  hasBot: hasSlackBotToken(state),
-  hasError: false,
+  SetupForm: SlackSetupForm,
+  hasSlackBot: hasSlackBotToken(state),
+  hasSlackError: false,
 });
 
 const mapDispatchToProps = {

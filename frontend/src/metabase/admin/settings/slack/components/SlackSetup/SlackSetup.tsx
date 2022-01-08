@@ -21,9 +21,9 @@ import {
 } from "./SlackSetup.styled";
 
 export interface SlackSetupProps {
-  Form: ComponentType<SlackSetupFormProps>;
-  hasBot: boolean;
-  hasError: boolean;
+  SetupForm: ComponentType<SlackSetupFormProps>;
+  hasSlackBot: boolean;
+  hasSlackError: boolean;
   onSubmit: () => void;
 }
 
@@ -32,33 +32,36 @@ export interface SlackSetupFormProps {
 }
 
 const SlackSetup = ({
-  Form,
-  hasBot,
-  hasError,
+  SetupForm,
+  hasSlackBot,
+  hasSlackError,
   onSubmit,
 }: SlackSetupProps): JSX.Element => {
   return (
     <SetupRoot>
-      <SetupHeader hasBot={hasBot} hasError={hasError} />
+      <SetupHeader hasSlackBot={hasSlackBot} hasSlackError={hasSlackError} />
       <CreateAppSection />
       <CopyManifestSection />
-      <ActivateAppSection Form={Form} onSubmit={onSubmit} />
+      <ActivateAppSection SetupForm={SetupForm} onSubmit={onSubmit} />
     </SetupRoot>
   );
 };
 
 interface SetupHeaderProps {
-  hasBot: boolean;
-  hasError: boolean;
+  hasSlackBot: boolean;
+  hasSlackError: boolean;
 }
 
-const SetupHeader = ({ hasBot, hasError }: SetupHeaderProps): JSX.Element => {
+const SetupHeader = ({
+  hasSlackBot,
+  hasSlackError,
+}: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
-      {hasBot ? (
+      {hasSlackBot ? (
         <HeaderMessage>
-          <SlackBadge hasBot={hasBot} hasError={hasError} />{" "}
+          <SlackBadge hasSlackBot={hasSlackBot} hasSlackError={hasSlackError} />{" "}
           {jt`We recommend you ${(
             <strong key="apps">{t`upgrade to Slack Apps`}</strong>
           )}, see the instructions below:`}
@@ -143,12 +146,12 @@ const CopyManifestSection = (): JSX.Element => {
 };
 
 interface ActivateAppSectionProps {
-  Form: ComponentType<SlackSetupFormProps>;
+  SetupForm: ComponentType<SlackSetupFormProps>;
   onSubmit: () => void;
 }
 
 const ActivateAppSection = ({
-  Form,
+  SetupForm,
   onSubmit,
 }: ActivateAppSectionProps): JSX.Element => {
   return (
@@ -162,7 +165,7 @@ const ActivateAppSection = ({
           <strong key="token">{t`Bot User OAuth Token`}</strong>
         )}” and paste it here.`}
       </SectionMessage>
-      <Form onSubmit={onSubmit} />
+      <SetupForm onSubmit={onSubmit} />
     </SetupSection>
   );
 };

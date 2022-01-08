@@ -18,14 +18,14 @@ import {
 } from "./SlackStatus.styled";
 
 export interface SlackStatusProps {
-  Form: ComponentType;
-  hasError: boolean;
+  StatusForm: ComponentType;
+  hasSlackError: boolean;
   onDelete: () => void;
 }
 
 const SlackStatus = ({
-  Form,
-  hasError,
+  StatusForm,
+  hasSlackError,
   onDelete,
 }: SlackStatusProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false);
@@ -38,8 +38,8 @@ const SlackStatus = ({
         <StatusPrimary>
           <StatusTitle>{t`Metabase on Slack`}</StatusTitle>
           <StatusMessage>
-            <SlackBadge hasError={hasError} />{" "}
-            {hasError && (
+            <SlackBadge hasSlackError={hasSlackError} />{" "}
+            {hasSlackError && (
               <StatusMessageText>
                 {jt`Need help? ${(
                   <ExternalLink href="https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html">
@@ -54,7 +54,7 @@ const SlackStatus = ({
           <SlackButton />
         </StatusSecondary>
       </StatusHeader>
-      <Form />
+      <StatusForm />
       <StatusFooter>
         <Button onClick={handleOpen}>{t`Delete Slack App`}</Button>
       </StatusFooter>

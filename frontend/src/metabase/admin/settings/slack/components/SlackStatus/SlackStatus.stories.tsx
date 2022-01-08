@@ -6,7 +6,7 @@ export default {
   title: "Admin/Settings/Slack/SlackStatus",
   component: SlackStatus,
   argTypes: {
-    Form: { table: { disable: true } },
+    StatusForm: { table: { disable: true } },
     onDelete: { action: "onDelete" },
   },
 };
@@ -16,5 +16,6 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 };
 
 Default.args = {
-  hasError: false,
+  StatusForm: () => <div />,
+  hasSlackError: false,
 };
