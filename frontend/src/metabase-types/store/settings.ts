@@ -1,5 +1,5 @@
-import { Properties } from "metabase-types/api";
+import { Settings } from "metabase-types/api";
 
 export interface SettingsState {
-  values: Properties;
+  values: Settings;
 }

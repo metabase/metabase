@@ -1,13 +1,13 @@
 import React from "react";
 import { t } from "ttag";
 import Form from "metabase/containers/Form";
+import { SlackSettings } from "metabase-types/api";
 import { getSlackForm } from "../../forms";
-import { SlackData } from "../../types";
 import { FormProps } from "./types";
 import { FormMessage } from "./SlackSetupForm.styled";
 
 export interface SlackSetupFormProps {
-  onSubmit: (data: SlackData) => void;
+  onSubmit: (data: SlackSettings) => void;
 }
 
 const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
