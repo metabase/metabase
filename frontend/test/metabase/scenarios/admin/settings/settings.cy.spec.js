@@ -200,7 +200,7 @@ describe("scenarios > admin > settings", () => {
       .find(".AdminSelect")
       .first()
       .click();
-    cy.findByText("2018/1/7").click();
+    cy.findByText("2018/1/7").click({ force: true });
     cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 

@@ -177,6 +177,44 @@
                  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
                    (run-query)))))))))
 
+(deftest week-start-test
+  (mt/test-driver :snowflake
+    (testing "The WEEK_START session setting is correctly incorporated"
+      (letfn [(invalidate-pool! []
+                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))
+              (run-dayofweek-query [date-str]
+                (-> (mt/rows
+                      (qp/process-query {:database   (mt/id)
+                                         :type       :native
+                                         :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
+                                                      :template-tags {:filter_date {:name         "filter_date"
+                                                                                    :display_name "Just A Date"
+                                                                                    :type         "date"}}}
+                                         :parameters [{:type   "date/single"
+                                                       :target ["variable" ["template-tag" "filter_date"]]
+                                                       :value  date-str}]}))
+                    ffirst))]
+        (try
+          (testing " under the default value of 7 (Sunday)"
+            (is (= 1 (run-dayofweek-query "2021-01-10"))) ; Sunday (first day of the week)
+            (is (= 2 (run-dayofweek-query "2021-01-11")))) ; Monday (second day of the week)
+          (testing " when we control it via the Metabase setting value"
+            (mt/with-temporary-setting-values [start-of-week :monday]
+              (invalidate-pool!) ; have to invalidate pool to force new connection creation to pick up changed setting
+              (is (= 7 (run-dayofweek-query "2021-01-10"))) ; Sunday (last day of week now)
+              (is (= 1 (run-dayofweek-query "2021-01-11"))) ; Monday (first day of week now)
+              (testing " when we put it in the additional-options (connection string)"
+                (mt/with-temp Database [db (-> (select-keys (mt/db) [:details :engine])
+                                               (assoc :name "Test WEEK_START Connection String")
+                                               ;; set WEEK_START as 3 (Wednesday) in connection string
+                                               ;; this should take precedence over the start-of-week setting in effect
+                                               (update :details assoc :additional-options "WEEK_START=3"))]
+                  (mt/with-db db
+                    (is (= 7 (run-dayofweek-query "2021-01-12"))) ; Tuesday (last day of week now)
+                    (is (= 1 (run-dayofweek-query "2021-01-13")))))))) ; Wednesday (first day of week now)
+          ;; invalidate pool again after the test to ensure the connection cache forgets the temp setting version
+          (finally (invalidate-pool!)))))))
+
 (deftest normalize-test
   (mt/test-driver :snowflake
     (testing "details should be normalized coming out of the DB"

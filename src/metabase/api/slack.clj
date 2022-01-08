@@ -4,24 +4,24 @@
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
-            [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
-  [:as {{slack-token :slack-token, metabot-enabled :metabot-enabled, :as slack-settings} :body}]
-  {slack-token     (s/maybe su/NonBlankString)
-   metabot-enabled s/Bool}
+  [:as {{slack-app-token :slack-app-token} :body}]
+  {slack-app-token     (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (if-not slack-token
-    (setting/set-many! {:slack-token nil, :metabot-enabled false})
+  (if-not slack-app-token
+    (slack/slack-app-token nil)
     (try
       (when-not config/is-test?
-        (when-not (slack/valid-token? slack-token)
+        (when-not (slack/valid-token? slack-app-token)
           (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
-      (setting/set-many! slack-settings)
+      ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
+      (slack/slack-token nil)
+      (slack/slack-app-token slack-app-token)
       {:ok true}
       (catch clojure.lang.ExceptionInfo info
         {:status 400, :body (ex-data info)}))))

@@ -1,6 +1,7 @@
 import {
   restore,
   openPeopleTable,
+  openOrdersTable,
   openNativeEditor,
   popover,
   enterCustomColumnDetails,
@@ -152,6 +153,18 @@ describe("scenarios > visualizations > table", () => {
     popover().within(() => {
       cy.contains("Count");
       cy.findByText("No description");
+    });
+  });
+
+  it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
+    openOrdersTable();
+    cy.wait("@dataset");
+
+    cy.findByText("Product ID").trigger("mouseenter");
+
+    popover().within(() => {
+      cy.contains("Product ID");
+      cy.contains("The product ID.");
     });
   });
 

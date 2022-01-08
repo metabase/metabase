@@ -5,13 +5,20 @@ import { act, render, screen } from "@testing-library/react";
 describe("GoogleButton", () => {
   it("should login successfully", async () => {
     const token = "oauth";
+    const redirectUrl = "/url";
     const onAttach = jest.fn();
     const onLogin = jest.fn().mockResolvedValue({});
 
-    render(<GoogleButton onAttach={onAttach} onLogin={onLogin} />);
+    render(
+      <GoogleButton
+        redirectUrl={redirectUrl}
+        onAttach={onAttach}
+        onLogin={onLogin}
+      />,
+    );
     await act(() => onAttach.mock.calls[0][1](token));
 
-    expect(onLogin).toHaveBeenCalledWith(token);
+    expect(onLogin).toHaveBeenCalledWith(token, redirectUrl);
   });
 
   it("should render api errors", async () => {
