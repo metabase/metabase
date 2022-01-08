@@ -19,13 +19,13 @@ import {
 
 export interface SlackStatusProps {
   Form: ComponentType;
-  hasError: boolean;
+  hasTokenError: boolean;
   onDelete: () => void;
 }
 
 const SlackStatus = ({
   Form,
-  hasError,
+  hasTokenError,
   onDelete,
 }: SlackStatusProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false);
@@ -38,8 +38,8 @@ const SlackStatus = ({
         <StatusPrimary>
           <StatusTitle>{t`Metabase on Slack`}</StatusTitle>
           <StatusMessage>
-            <SlackBadge hasError={hasError} />{" "}
-            {hasError && (
+            <SlackBadge hasError={hasTokenError} />{" "}
+            {hasTokenError && (
               <StatusMessageText>
                 {jt`Need help? ${(
                   <ExternalLink href="https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html">
