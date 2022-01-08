@@ -474,6 +474,7 @@
             :color         card-color
             :type          card-type
             :data          rows
+            :xTickWidths   invalid
             :yAxisPosition y-axis-position}))))
 
 
@@ -536,6 +537,7 @@
      :color         card-color
      :type          card-type
      :data          selected-rows
+     :xTickWidths   invalid
      :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
@@ -563,6 +565,7 @@
          :color         card-color
          :type          card-type
          :data          selected-row-group
+         :xTickWidths   invalid
          :yAxisPosition y-axis-pos}))))
 
 (defn- lab-image-bundle
