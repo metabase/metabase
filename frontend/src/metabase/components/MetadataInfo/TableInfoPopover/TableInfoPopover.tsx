@@ -5,6 +5,7 @@ import { hideAll } from "tippy.js";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
@@ -32,6 +33,10 @@ type Props = { table: TableSubset } & Pick<
 
 const className = "table-info-popover";
 
+function isRealTable(id: number | string): id is number {
+  return !isVirtualCardId(id);
+}
+
 function TableInfoPopover({
   table,
   children,
@@ -43,8 +48,7 @@ function TableInfoPopover({
 
   const { id, description } = table;
   const hasDescription = !!description;
-  const isVirtualTable = typeof id === "string";
-  const showPopover = hasDescription && !isVirtualTable;
+  const showPopover = hasDescription && isRealTable(id);
 
   return showPopover ? (
     <TippyPopover
