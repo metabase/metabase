@@ -1,21 +1,14 @@
 import { State } from "metabase-types/store";
+import { SlackSettings } from "metabase-types/api";
 
-export const getSlackBotToken = (state: State): string | undefined => {
-  return state.settings.values["slack-token"];
+export const getSlackSettings = (state: State): SlackSettings => {
+  return state.settings.values;
 };
 
 export const hasSlackBotToken = (state: State): boolean => {
-  return getSlackBotToken(state) != null;
-};
-
-export const getSlackAppToken = (state: State): string | undefined => {
-  return state.settings.values["slack-app-token"];
+  return state.settings.values["slack-token"] != null;
 };
 
 export const hasSlackAppToken = (state: State): boolean => {
-  return getSlackAppToken(state) != null;
-};
-
-export const getSlackFilesChannel = (state: State): string | undefined => {
-  return state.settings.values["slack-files-channel"];
+  return state.settings.values["slack-app-token"] != null;
 };
