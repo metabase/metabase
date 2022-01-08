@@ -17,6 +17,7 @@ export const Default: ComponentStory<typeof SlackSetup> = args => {
 
 Default.args = {
   Form: () => <div />,
+  manifest: "app: token",
   hasBot: false,
   hasError: false,
 };

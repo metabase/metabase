@@ -7,7 +7,7 @@ export interface UseCopyTooltipResult {
   handleClick: (event: MouseEvent<HTMLElement>) => void;
 }
 
-export const useCopyTooltip = (data: string): UseCopyTooltipResult => {
+export const useCopyTooltip = (data?: string): UseCopyTooltipResult => {
   const [element, setElement] = useState<HTMLElement>();
 
   useEffect(() => {
@@ -18,7 +18,7 @@ export const useCopyTooltip = (data: string): UseCopyTooltipResult => {
   }, [element]);
 
   const handleClick = useCallback((event: MouseEvent<HTMLElement>) => {
-    navigator.clipboard.writeText(data);
+    data && navigator.clipboard.writeText(data);
     setElement(event.currentTarget);
   }, []);
 

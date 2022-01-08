@@ -81,6 +81,8 @@ export const SectionCode = styled.div`
 
 export const SectionCodeContent = styled.div`
   padding: 1rem;
+  font-size: 0.75rem;
+  font-family: Monaco, monospace;
   white-space: pre;
 `;
 

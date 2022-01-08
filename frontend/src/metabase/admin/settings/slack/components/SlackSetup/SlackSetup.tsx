@@ -23,12 +23,14 @@ import {
 
 export interface SlackSetupProps {
   Form: ComponentType;
+  manifest?: string;
   hasBot: boolean;
   hasError: boolean;
 }
 
 const SlackSetup = ({
   Form,
+  manifest,
   hasBot,
   hasError,
 }: SlackSetupProps): JSX.Element => {
@@ -36,7 +38,7 @@ const SlackSetup = ({
     <SetupRoot>
       <SetupHeader hasBot={hasBot} hasError={hasError} />
       <CreateAppSection />
-      <CopyManifestSection manifest="" />
+      <CopyManifestSection manifest={manifest} />
       <ActivateAppSection Form={Form} />
     </SetupRoot>
   );
@@ -114,7 +116,7 @@ const CreateAppSection = (): JSX.Element => {
 };
 
 export interface CopyManifestSectionProps {
-  manifest: string;
+  manifest?: string;
 }
 
 const CopyManifestSection = ({
