@@ -1,5 +1,6 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
+import { SlackSettings } from "metabase-types/api";
 import SlackBadge from "../SlackBadge";
 import SlackButton from "../SlackButton";
 import {
@@ -24,11 +25,11 @@ export interface SlackSetupProps {
   SetupForm: ComponentType<SlackSetupFormProps>;
   hasSlackBot: boolean;
   hasSlackError: boolean;
-  onSubmit: () => void;
+  onSubmit: (settings?: SlackSettings) => void;
 }
 
 export interface SlackSetupFormProps {
-  onSubmit: () => void;
+  onSubmit: (settings?: SlackSettings) => void;
 }
 
 const SlackSetup = ({
@@ -37,12 +38,27 @@ const SlackSetup = ({
   hasSlackError,
   onSubmit,
 }: SlackSetupProps): JSX.Element => {
+  const [hasSubmitError, setHasSubmitError] = useState(false);
+
+  const handleSubmit = async (settings?: SlackSettings) => {
+    try {
+      await onSubmit(settings);
+    } catch (error) {
+      setHasSubmitError(true);
+      throw error;
+    }
+  };
+
   return (
     <SetupRoot>
-      <SetupHeader hasSlackBot={hasSlackBot} hasSlackError={hasSlackError} />
+      <SetupHeader
+        hasSlackBot={hasSlackBot}
+        hasSlackError={hasSlackError}
+        hasSubmitError={hasSubmitError}
+      />
       <CreateAppSection />
       <CopyManifestSection />
-      <ActivateAppSection SetupForm={SetupForm} onSubmit={onSubmit} />
+      <ActivateAppSection SetupForm={SetupForm} onSubmit={handleSubmit} />
     </SetupRoot>
   );
 };
@@ -50,11 +66,13 @@ const SlackSetup = ({
 interface SetupHeaderProps {
   hasSlackBot: boolean;
   hasSlackError: boolean;
+  hasSubmitError: boolean;
 }
 
 const SetupHeader = ({
   hasSlackBot,
   hasSlackError,
+  hasSubmitError,
 }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
@@ -72,16 +90,13 @@ const SetupHeader = ({
           {t`Follow these steps to connect your bot to Slack:`}
         </HeaderMessage>
       )}
+      {hasSubmitError && (
+        <BannerRoot>
+          <BannerIcon name="warning" />
+          <BannerText>{t`Looks like your slack channel name is incorrect. Please check your settings and try again.`}</BannerText>
+        </BannerRoot>
+      )}
     </HeaderRoot>
-  );
-};
-
-const SetupBanner = (): JSX.Element => {
-  return (
-    <BannerRoot>
-      <BannerIcon name="warning" />
-      <BannerText>{t`Looks like your slack channel name is incorrect. Please check your settings and try again.`}</BannerText>
-    </BannerRoot>
   );
 };
 
@@ -147,7 +162,7 @@ const CopyManifestSection = (): JSX.Element => {
 
 interface ActivateAppSectionProps {
   SetupForm: ComponentType<SlackSetupFormProps>;
-  onSubmit: () => void;
+  onSubmit: (settings?: SlackSettings) => void;
 }
 
 const ActivateAppSection = ({

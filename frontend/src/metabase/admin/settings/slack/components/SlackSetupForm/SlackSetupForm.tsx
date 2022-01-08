@@ -7,7 +7,7 @@ import { FormProps } from "./types";
 import { FormMessage } from "./SlackSetupForm.styled";
 
 export interface SlackSetupFormProps {
-  onSubmit: (data: SlackSettings) => void;
+  onSubmit: (settings: SlackSettings) => void;
 }
 
 const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {

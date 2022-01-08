@@ -6,8 +6,8 @@ import { SlackSettings } from "metabase-types/api/slack";
 export const UPDATE_SETTINGS = "metabase/admin/settings/slack/UPDATE_SETTINGS";
 export const updateSettings = createThunkAction(
   UPDATE_SETTINGS,
-  (props?: SlackSettings) => async (dispatch: any) => {
-    await SlackApi.updateSettings(props);
+  (settings?: SlackSettings) => async (dispatch: any) => {
+    await SlackApi.updateSettings(settings);
     await dispatch(reloadSettings());
   },
 );

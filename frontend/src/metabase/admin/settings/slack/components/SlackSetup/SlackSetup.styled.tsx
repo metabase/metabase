@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { color, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
@@ -27,16 +27,18 @@ export const HeaderMessage = styled.div`
 
 export const BannerRoot = styled.div`
   display: flex;
+  align-items: center;
+  margin-top: 1rem;
   padding: 1rem 1.5rem;
   border: 1px solid ${color("error")};
   border-radius: 0.5rem;
-  background-color: ${lighten("error", 0.12)};
+  background-color: ${alpha("error", 0.12)};
 `;
 
 export const BannerIcon = styled(Icon)`
   flex: 0 0 auto;
   color: ${color("error")};
-  margin-right: 1.5rem;
+  margin-right: 1rem;
 `;
 
 export const BannerText = styled.div`
