@@ -99,7 +99,6 @@ export const SectionCode = styled.div`
   border-radius: 0.5rem;
   background-color: ${lighten("brand", 0.6)};
   overflow: auto;
-  cursor: pointer;
 `;
 
 export const SectionCodeContent = styled.div`
