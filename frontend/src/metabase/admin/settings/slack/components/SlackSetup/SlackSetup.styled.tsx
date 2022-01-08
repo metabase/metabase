@@ -72,8 +72,7 @@ export const SectionLink = styled(ExternalLink)`
 
 export const SectionCode = styled.div`
   position: relative;
-  min-height: 10rem;
-  max-height: 19rem;
+  height: 19rem;
   border: 1px solid ${color("brand")};
   border-radius: 0.5rem;
   background-color: ${lighten("brand", 0.6)};
