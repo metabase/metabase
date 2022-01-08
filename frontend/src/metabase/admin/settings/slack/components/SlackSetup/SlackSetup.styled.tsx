@@ -1,8 +1,7 @@
 import styled from "styled-components";
-import { alpha, color, darken, lighten } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
@@ -23,26 +22,6 @@ export const HeaderTitle = styled.h2`
 
 export const HeaderMessage = styled.div`
   color: ${color("text-medium")};
-`;
-
-export const BannerRoot = styled.div`
-  display: flex;
-  align-items: center;
-  margin-top: 1rem;
-  padding: 1rem 1.5rem;
-  border: 1px solid ${color("error")};
-  border-radius: 0.5rem;
-  background-color: ${alpha("error", 0.12)};
-`;
-
-export const BannerIcon = styled(Icon)`
-  flex: 0 0 auto;
-  color: ${color("error")};
-  margin-right: 1rem;
-`;
-
-export const BannerText = styled.div`
-  color: ${color("text-dark")};
 `;
 
 export const SectionRoot = styled.section`

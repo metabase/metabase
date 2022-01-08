@@ -8,17 +8,13 @@ import { FormMessage } from "./SlackSetupForm.styled";
 
 export interface SlackSetupFormProps {
   onSubmit: (settings: SlackSettings) => void;
-  onSubmitFail?: () => void;
 }
 
-const SlackSetupForm = ({
-  onSubmit,
-  onSubmitFail,
-}: SlackSetupFormProps): JSX.Element => {
+const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
   const form = getSlackForm();
 
   return (
-    <Form form={form} onSubmit={onSubmit} onSubmitFail={onSubmitFail}>
+    <Form form={form} onSubmit={onSubmit}>
       {({ Form, FormField, FormFooter }: FormProps) => (
         <Form>
           <FormField name="slack-app-token" />

@@ -5,7 +5,7 @@ import { updateSettings } from "../../actions";
 
 const mapStateToProps = () => ({
   Form: SlackStatusForm,
-  hasTokenError: false,
+  hasError: false,
 });
 
 const mapDispatchToProps = {
