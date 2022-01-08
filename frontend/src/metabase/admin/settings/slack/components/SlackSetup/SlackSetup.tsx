@@ -12,6 +12,8 @@ import {
   HeaderTitle,
   SectionBody,
   SectionCode,
+  SectionCodeButton,
+  SectionCodeContent,
   SectionHeader,
   SectionLink,
   SectionMessage,
@@ -155,7 +157,10 @@ const CopyManifestSection = (): JSX.Element => {
           <strong key="install">{t`Install to workspace`}</strong>
         )}” and authorize it.`}
       </SectionMessage>
-      <SectionCode />
+      <SectionCode>
+        <SectionCodeContent />
+        <SectionCodeButton small>{t`Copy`}</SectionCodeButton>
+      </SectionCode>
     </SetupSection>
   );
 };

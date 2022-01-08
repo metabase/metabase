@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha, color, darken, lighten } from "metabase/lib/colors";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
@@ -92,12 +92,23 @@ export const SectionLink = styled(ExternalLink)`
 `;
 
 export const SectionCode = styled.div`
+  position: relative;
   min-height: 10rem;
   max-height: 19rem;
-  padding: 1rem;
   border: 1px solid ${color("brand")};
   border-radius: 0.5rem;
-  background-color: ${color("brand-light")};
+  background-color: ${lighten("brand", 0.6)};
   overflow: auto;
+`;
+
+export const SectionCodeContent = styled.div`
+  padding: 1rem;
   white-space: pre;
+`;
+
+export const SectionCodeButton = styled(Button)`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background-color: ${color("white")};
 `;
