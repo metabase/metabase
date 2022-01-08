@@ -5,7 +5,7 @@ export const getSlackSettings = (state: State): SlackSettings => {
   return state.settings.values;
 };
 
-export const hasSlackBotToken = (state: State): boolean => {
+export const hasBotToken = (state: State): boolean => {
   return state.settings.values["slack-token"] != null;
 };
 

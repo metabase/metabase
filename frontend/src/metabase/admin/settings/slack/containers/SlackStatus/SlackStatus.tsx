@@ -4,8 +4,8 @@ import SlackStatusForm from "../../containers/SlackStatusForm";
 import { updateSettings } from "../../actions";
 
 const mapStateToProps = () => ({
-  StatusForm: SlackStatusForm,
-  hasSlackError: false,
+  Form: SlackStatusForm,
+  hasError: false,
 });
 
 const mapDispatchToProps = {

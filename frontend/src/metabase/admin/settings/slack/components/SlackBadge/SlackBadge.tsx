@@ -3,33 +3,24 @@ import { t } from "ttag";
 import { BadgeRoot, BadgeIcon, BadgeText } from "./SlackBadge.styled";
 
 export interface SlackBadgeProps {
-  hasSlackBot?: boolean;
-  hasSlackError?: boolean;
+  hasBot?: boolean;
+  hasError?: boolean;
 }
 
-const SlackBadge = ({
-  hasSlackBot,
-  hasSlackError,
-}: SlackBadgeProps): JSX.Element => {
+const SlackBadge = ({ hasBot, hasError }: SlackBadgeProps): JSX.Element => {
   return (
     <BadgeRoot>
-      <BadgeIcon hasSlackError={hasSlackError} />
-      <BadgeText hasSlackError={hasSlackError}>
-        {getMessage(hasSlackBot, hasSlackError)}
-      </BadgeText>
+      <BadgeIcon hasError={hasError} />
+      <BadgeText hasError={hasError}>{getMessage(hasBot, hasError)}</BadgeText>
     </BadgeRoot>
   );
 };
 
-const getMessage = (hasSlackBot?: boolean, hasSlackError?: boolean): string => {
-  if (hasSlackBot) {
-    return hasSlackError
-      ? t`Slack bot is not working.`
-      : t`Slack bot is working.`;
+const getMessage = (hasBot?: boolean, hasError?: boolean): string => {
+  if (hasBot) {
+    return hasError ? t`Slack bot is not working.` : t`Slack bot is working.`;
   } else {
-    return hasSlackError
-      ? t`Slack app is not working.`
-      : t`Slack app is working`;
+    return hasError ? t`Slack app is not working.` : t`Slack app is working`;
   }
 };
 

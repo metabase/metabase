@@ -4,7 +4,7 @@ import SlackSettings from "../../components/SlackSettings";
 import { hasSlackAppToken } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
-  hasSlackApp: hasSlackAppToken(state),
+  hasApp: hasSlackAppToken(state),
 });
 
 export default connect(mapStateToProps)(SlackSettings);

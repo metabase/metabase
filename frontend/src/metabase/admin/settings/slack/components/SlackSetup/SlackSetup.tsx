@@ -1,12 +1,11 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
+import Tooltip from "metabase/components/Tooltip";
 import { SlackSettings } from "metabase-types/api";
 import SlackBadge from "../SlackBadge";
 import SlackButton from "../SlackButton";
+import { useCopyTooltip } from "../../hooks/use-copy-tooltip";
 import {
-  BannerIcon,
-  BannerRoot,
-  BannerText,
   HeaderMessage,
   HeaderRoot,
   HeaderTitle,
@@ -24,64 +23,45 @@ import {
 } from "./SlackSetup.styled";
 
 export interface SlackSetupProps {
-  SetupForm: ComponentType<SlackSetupFormProps>;
-  hasSlackBot: boolean;
-  hasSlackError: boolean;
+  Form: ComponentType<SlackSetupFormProps>;
+  hasBot: boolean;
+  hasError: boolean;
   onSubmit: (settings?: SlackSettings) => void;
 }
 
 export interface SlackSetupFormProps {
   onSubmit: (settings?: SlackSettings) => void;
+  onSubmitFail: () => void;
 }
 
 const SlackSetup = ({
-  SetupForm,
-  hasSlackBot,
-  hasSlackError,
+  Form,
+  hasBot,
+  hasError,
   onSubmit,
 }: SlackSetupProps): JSX.Element => {
-  const [hasSubmitError, setHasSubmitError] = useState(false);
-
-  const handleSubmit = async (settings?: SlackSettings) => {
-    try {
-      await onSubmit(settings);
-    } catch (error) {
-      setHasSubmitError(true);
-      throw error;
-    }
-  };
-
   return (
     <SetupRoot>
-      <SetupHeader
-        hasSlackBot={hasSlackBot}
-        hasSlackError={hasSlackError}
-        hasSubmitError={hasSubmitError}
-      />
+      <SetupHeader hasBot={hasBot} hasError={hasError} />
       <CreateAppSection />
-      <CopyManifestSection />
-      <ActivateAppSection SetupForm={SetupForm} onSubmit={handleSubmit} />
+      <CopyManifestSection manifest="" />
+      <ActivateAppSection Form={Form} onSubmit={onSubmit} />
     </SetupRoot>
   );
 };
 
 interface SetupHeaderProps {
-  hasSlackBot: boolean;
-  hasSlackError: boolean;
-  hasSubmitError: boolean;
+  hasBot: boolean;
+  hasError: boolean;
 }
 
-const SetupHeader = ({
-  hasSlackBot,
-  hasSlackError,
-  hasSubmitError,
-}: SetupHeaderProps): JSX.Element => {
+const SetupHeader = ({ hasBot, hasError }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
-      {hasSlackBot ? (
+      {hasBot ? (
         <HeaderMessage>
-          <SlackBadge hasSlackBot={hasSlackBot} hasSlackError={hasSlackError} />{" "}
+          <SlackBadge hasBot={hasBot} hasError={hasError} />{" "}
           {jt`We recommend you ${(
             <strong key="apps">{t`upgrade to Slack Apps`}</strong>
           )}, see the instructions below:`}
@@ -91,12 +71,6 @@ const SetupHeader = ({
           {t`Bring the power of Metabase to your Slack #channels.`}{" "}
           {t`Follow these steps to connect your bot to Slack:`}
         </HeaderMessage>
-      )}
-      {hasSubmitError && (
-        <BannerRoot>
-          <BannerIcon name="warning" />
-          <BannerText>{t`Looks like your slack channel name is incorrect. Please check your settings and try again.`}</BannerText>
-        </BannerRoot>
       )}
     </HeaderRoot>
   );
@@ -147,7 +121,15 @@ const CreateAppSection = (): JSX.Element => {
   );
 };
 
-const CopyManifestSection = (): JSX.Element => {
+export interface CopyManifestSectionProps {
+  manifest: string;
+}
+
+const CopyManifestSection = ({
+  manifest,
+}: CopyManifestSectionProps): JSX.Element => {
+  const { element, handleClick } = useCopyTooltip(manifest);
+
   return (
     <SetupSection title={t`2. Copy the Metabase manifest`}>
       <SectionMessage>
@@ -158,21 +140,28 @@ const CopyManifestSection = (): JSX.Element => {
         )}” and authorize it.`}
       </SectionMessage>
       <SectionCode>
-        <SectionCodeContent />
-        <SectionCodeButton small>{t`Copy`}</SectionCodeButton>
+        <SectionCodeContent>{manifest}</SectionCodeContent>
+        <SectionCodeButton small onClick={handleClick}>
+          {t`Copy`}
+        </SectionCodeButton>
+        {element && (
+          <Tooltip tooltip={t`Copied!`} reference={element} isOpen={true} />
+        )}
       </SectionCode>
     </SetupSection>
   );
 };
 
 interface ActivateAppSectionProps {
-  SetupForm: ComponentType<SlackSetupFormProps>;
+  Form: ComponentType<SlackSetupFormProps>;
   onSubmit: (settings?: SlackSettings) => void;
+  onSubmitFail: () => void;
 }
 
 const ActivateAppSection = ({
-  SetupForm,
+  Form,
   onSubmit,
+  onSubmitFail,
 }: ActivateAppSectionProps): JSX.Element => {
   return (
     <SetupSection
@@ -185,7 +174,7 @@ const ActivateAppSection = ({
           <strong key="token">{t`Bot User OAuth Token`}</strong>
         )}” and paste it here.`}
       </SectionMessage>
-      <SetupForm onSubmit={onSubmit} />
+      <Form onSubmit={onSubmit} onSubmitFail={onSubmitFail} />
     </SetupSection>
   );
 };
