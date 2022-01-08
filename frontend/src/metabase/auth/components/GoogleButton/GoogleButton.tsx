@@ -35,7 +35,7 @@ const GoogleButton = ({
         setErrors(getErrors(error));
       }
     },
-    [onLogin],
+    [onLogin, redirectUrl],
   );
 
   const handleError = useCallback((error: string) => {
