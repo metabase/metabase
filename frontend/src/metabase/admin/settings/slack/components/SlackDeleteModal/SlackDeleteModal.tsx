@@ -19,6 +19,9 @@ const SlackDeleteModal = ({
         <Button key="close" onClick={onClose}>
           {t`Cancel`}
         </Button>,
+        <Button key="delete" danger onClick={onDelete}>
+          {t`Delete`}
+        </Button>,
       ]}
     >
       <span>
