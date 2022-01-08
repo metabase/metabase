@@ -189,17 +189,7 @@ const SECTIONS = updateSectionsWithPlugins({
     name: "Slack",
     order: 5,
     component: SlackSettings,
-    settings: [
-      {
-        key: "slack-app-token",
-        display_name: t`Slack API Token`,
-        description: "",
-        placeholder: t`Enter the token you received from Slack`,
-        type: "string",
-        required: false,
-        autoFocus: true,
-      },
-    ],
+    settings: [],
   },
   authentication: {
     name: t`Authentication`,

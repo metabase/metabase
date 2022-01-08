@@ -1,9 +1,11 @@
-import React, { ComponentType } from "react";
+import React, { ComponentType, useState } from "react";
 import { jt, t } from "ttag";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
+import Modal from "metabase/components/Modal";
 import SlackBadge from "../SlackBadge";
 import SlackButton from "../SlackButton";
+import SlackDeleteModal from "../SlackDeleteModal";
 import {
   StatusFooter,
   StatusHeader,
@@ -26,6 +28,10 @@ const SlackStatus = ({
   hasError,
   onDelete,
 }: SlackStatusProps): JSX.Element => {
+  const [isOpened, setIsOpened] = useState(false);
+  const handleOpen = () => setIsOpened(true);
+  const handleClose = () => setIsOpened(false);
+
   return (
     <StatusRoot>
       <StatusHeader>
@@ -50,8 +56,13 @@ const SlackStatus = ({
       </StatusHeader>
       <Form />
       <StatusFooter>
-        <Button onClick={onDelete}>{t`Delete Slack App`}</Button>
+        <Button onClick={handleOpen}>{t`Delete Slack App`}</Button>
       </StatusFooter>
+      {isOpened && (
+        <Modal isOpen={isOpened} full={false} onClose={handleClose}>
+          <SlackDeleteModal onDelete={onDelete} onClose={handleClose} />
+        </Modal>
+      )}
     </StatusRoot>
   );
 };
