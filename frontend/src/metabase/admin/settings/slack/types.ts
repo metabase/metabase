@@ -1,4 +1,4 @@
 export interface SlackData {
-  token: string;
-  channel: string;
+  token?: string;
+  channel?: string;
 }
