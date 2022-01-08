@@ -16,8 +16,8 @@ export const getSlackForm = (readOnly?: boolean) => ({
       title: t`Slack channel name`,
       placeholder: "metabase_files",
       readOnly,
-      normalize: (value: string) => value.toLowerCase(),
       validate: (value: string) => !value && t`required`,
+      normalize: (value: string) => value.toLowerCase(),
     },
   ],
 });
