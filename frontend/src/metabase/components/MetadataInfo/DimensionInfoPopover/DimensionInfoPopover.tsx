@@ -6,7 +6,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import { isCypressActive } from "metabase/env";
 
 import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";
 
@@ -40,7 +39,7 @@ function DimensionInfoPopover({
   return hasMetadata ? (
     <TippyPopover
       className={className}
-      delay={isCypressActive ? 0 : delay}
+      delay={delay}
       interactive
       placement={placement || "left-start"}
       disabled={disabled}

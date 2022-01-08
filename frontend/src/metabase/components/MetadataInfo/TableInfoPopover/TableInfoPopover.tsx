@@ -5,7 +5,6 @@ import { hideAll } from "tippy.js";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import { isCypressActive } from "metabase/env";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
@@ -38,7 +37,7 @@ function TableInfoPopover({
     <TippyPopover
       className={className}
       interactive
-      delay={isCypressActive ? 0 : delay}
+      delay={delay}
       placement={placement}
       offset={offset}
       content={<WidthBoundTableInfo tableId={tableId} />}
