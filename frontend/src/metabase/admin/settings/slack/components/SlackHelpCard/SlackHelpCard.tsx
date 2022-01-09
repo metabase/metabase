@@ -9,11 +9,15 @@ import {
   CardTitle,
 } from "./SlackHelpCard.styled";
 
-const SlackHelpCard = (): JSX.Element => {
+export interface SlackHelpCardProps {
+  className?: string;
+}
+
+const SlackHelpCard = ({ className }: SlackHelpCardProps): JSX.Element => {
   const docsUrl = Settings.docsUrl("administration-guide/09-setting-up-slack");
 
   return (
-    <CardRoot href={docsUrl}>
+    <CardRoot className={className} href={docsUrl}>
       <CardHeader>
         <CardIcon name="info" />
         <CardTitle>{t`Need help?`}</CardTitle>

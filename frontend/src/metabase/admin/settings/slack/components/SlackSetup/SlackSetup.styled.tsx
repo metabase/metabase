@@ -1,7 +1,9 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
+import { breakpointMinLarge } from "metabase/styled-components/theme";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
+import SlackHelpCard from "../SlackHelpCard";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
@@ -25,9 +27,15 @@ export const HeaderMessage = styled.div`
 `;
 
 export const SectionRoot = styled.section`
-  margin-bottom: 2rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
+  margin-bottom: 2rem;
+
+  ${breakpointMinLarge} {
+    &:last-of-type {
+      margin-bottom: 0;
+    }
+  }
 `;
 
 export const SectionHeader = styled.div`
@@ -91,4 +99,13 @@ export const SectionCodeButton = styled(Button)`
   top: 1rem;
   right: 1rem;
   background-color: ${color("white")};
+`;
+
+export const SetupHelpCard = styled(SlackHelpCard)`
+  ${breakpointMinLarge} {
+    position: fixed;
+    right: 2rem;
+    bottom: 2rem;
+    max-width: 15%;
+  }
 `;
