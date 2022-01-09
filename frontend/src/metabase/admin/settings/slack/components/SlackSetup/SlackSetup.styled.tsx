@@ -38,7 +38,7 @@ export const SectionRoot = styled.section`
   }
 `;
 
-export const SectionHeader = styled.div`
+export const SectionHeader = styled.header`
   display: flex;
   justify-content: space-between;
   align-items: center;
