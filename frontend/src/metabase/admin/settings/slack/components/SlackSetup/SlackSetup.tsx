@@ -2,7 +2,7 @@ import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import SlackBadge from "../SlackBadge";
-import SlackButton from "../SlackButton";
+import SlackAppsButton from "../SlackAppsButton";
 import { useCopyTooltip } from "../../hooks/use-copy-tooltip";
 import {
   HeaderMessage,
@@ -110,7 +110,7 @@ const CreateAppSection = (): JSX.Element => {
           <strong key="manifest">{t`From an app manifest`}</strong>
         )}”.`}
       </SectionMessage>
-      <SlackButton />
+      <SlackAppsButton />
     </SetupSection>
   );
 };

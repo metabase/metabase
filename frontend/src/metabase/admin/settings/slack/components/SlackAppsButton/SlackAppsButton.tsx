@@ -1,7 +1,7 @@
 import React from "react";
-import { ButtonIcon, ButtonRoot, ButtonText } from "./SlackButton.styled";
+import { ButtonIcon, ButtonRoot, ButtonText } from "./SlackAppsButton.styled";
 
-const SlackButton = (): JSX.Element => {
+const SlackAppsButton = (): JSX.Element => {
   return (
     <ButtonRoot
       className="Button Button--primary"
@@ -13,4 +13,4 @@ const SlackButton = (): JSX.Element => {
   );
 };
 
-export default SlackButton;
+export default SlackAppsButton;

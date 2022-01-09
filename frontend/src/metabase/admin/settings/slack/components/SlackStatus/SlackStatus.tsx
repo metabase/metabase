@@ -5,7 +5,7 @@ import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Modal from "metabase/components/Modal";
 import SlackBadge from "../SlackBadge";
-import SlackButton from "../SlackButton";
+import SlackAppsButton from "../SlackAppsButton";
 import SlackDeleteModal from "../SlackDeleteModal";
 import {
   StatusFooter,
@@ -51,7 +51,7 @@ const SlackStatus = ({
           </StatusMessage>
         </StatusPrimary>
         <StatusSecondary>
-          <SlackButton />
+          <SlackAppsButton />
         </StatusSecondary>
       </StatusHeader>
       <Form />
