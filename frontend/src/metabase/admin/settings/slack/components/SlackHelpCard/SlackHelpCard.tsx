@@ -24,7 +24,7 @@ const SlackHelpCard = ({ className }: SlackHelpCardProps): JSX.Element => {
         <CardIcon name="external" />
       </CardHeader>
       <CardBody>
-        {t`Check out documentation directions on how to create your metabase bot on slack.`}
+        {t`Check out documentation directions on how to create your metabase bot on Slack.`}
       </CardBody>
     </CardRoot>
   );
