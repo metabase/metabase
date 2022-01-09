@@ -1,5 +1,6 @@
 import React, { ComponentType, useCallback, useState } from "react";
 import { jt, t } from "ttag";
+import Settings from "metabase/lib/settings";
 import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Modal from "metabase/components/Modal";
@@ -31,6 +32,7 @@ const SlackStatus = ({
   const [isOpened, setIsOpened] = useState(false);
   const handleOpen = useCallback(() => setIsOpened(true), []);
   const handleClose = useCallback(() => setIsOpened(false), []);
+  const docsUrl = Settings.docsUrl("administration-guide/09-setting-up-slack");
 
   return (
     <StatusRoot>
@@ -42,9 +44,7 @@ const SlackStatus = ({
             {hasError && (
               <StatusMessageText>
                 {jt`Need help? ${(
-                  <ExternalLink href="https://www.metabase.com/docs/latest/administration-guide/09-setting-up-slack.html">
-                    {t`See our docs`}
-                  </ExternalLink>
+                  <ExternalLink href={docsUrl}>{t`See our docs`}</ExternalLink>
                 )}.`}
               </StatusMessageText>
             )}
