@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import {
@@ -14,7 +14,10 @@ export interface SlackHelpCardProps {
 }
 
 const SlackHelpCard = ({ className }: SlackHelpCardProps): JSX.Element => {
-  const docsUrl = Settings.docsUrl("administration-guide/09-setting-up-slack");
+  const docsUrl = useMemo(
+    () => Settings.docsUrl("administration-guide/09-setting-up-slack"),
+    [],
+  );
 
   return (
     <CardRoot className={className} href={docsUrl}>

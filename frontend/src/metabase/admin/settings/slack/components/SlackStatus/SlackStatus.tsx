@@ -1,4 +1,4 @@
-import React, { ComponentType, useCallback, useState } from "react";
+import React, { ComponentType, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Button from "metabase/components/Button";
@@ -30,9 +30,18 @@ const SlackStatus = ({
   onDelete,
 }: SlackStatusProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false);
-  const handleOpen = useCallback(() => setIsOpened(true), []);
-  const handleClose = useCallback(() => setIsOpened(false), []);
-  const docsUrl = Settings.docsUrl("administration-guide/09-setting-up-slack");
+
+  const handleOpen = useCallback(() => {
+    setIsOpened(true);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setIsOpened(false);
+  }, []);
+
+  const docsUrl = useMemo(() => {
+    return Settings.docsUrl("administration-guide/09-setting-up-slack");
+  }, []);
 
   return (
     <StatusRoot>

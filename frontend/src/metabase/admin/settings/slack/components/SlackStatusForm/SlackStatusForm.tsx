@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import Form from "metabase/containers/Form";
 import { SlackSettings } from "metabase-types/api";
 import { getSlackForm } from "../../forms";
@@ -9,8 +9,8 @@ export interface SlackStatusFormProps {
 }
 
 const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
-  const form = getSlackForm(true);
-  const onSubmit = () => undefined;
+  const form = useMemo(() => getSlackForm(true), []);
+  const onSubmit = useCallback(() => undefined, []);
 
   return (
     <Form form={form} initialValues={settings} onSubmit={onSubmit}>
