@@ -142,6 +142,7 @@ export class ViewTitleHeader extends React.Component {
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
     const dashboardUrl = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    const dashboardName = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardName\s*\=\s*([^;]*).*$)|^.*$/, "$1");
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -173,7 +174,7 @@ export class ViewTitleHeader extends React.Component {
             <ViewSubHeading id="viewBreadcrumbs" className="flex align-center flex-wrap pt1">
 
               {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                <Icon name="dashboard" size="11" color="text-light" />
+                <Icon name="dashboard" size="11" color="text-light" /> {dashboardName}
               </Link>)}
 
               <CollectionBadge
@@ -234,7 +235,7 @@ export class ViewTitleHeader extends React.Component {
             </div>
             <div className="flex align-center flex-wrap">
               {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                <Icon name="dashboard" size="11" color="text-light" />
+                <Icon name="dashboard" size="11" color="text-light" /> {dashboardName}
                 </Link>)}
               {isSummarized && (
                 <QuestionDataSource
