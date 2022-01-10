@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import SlackStatus from "../../containers/SlackStatus";
 import SlackSetup from "../../containers/SlackSetup";
+import SlackStatus from "../../containers/SlackStatus";
 
 export interface SlackSettingsProps {
   isApp?: boolean;
