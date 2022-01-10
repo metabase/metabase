@@ -379,18 +379,6 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });
-
-  describe(" > slack settings", () => {
-    it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/slack");
-      cy.contains("Answers sent right to your Slack");
-      cy.findByLabelText("Slack API Token")
-        .type("not-a-real-token")
-        .blur();
-      cy.findByText("Save changes").click();
-      cy.contains("Looks like we ran into some problems");
-    });
-  });
 });
 
 describeWithoutToken("scenarios > admin > settings (OSS)", () => {
