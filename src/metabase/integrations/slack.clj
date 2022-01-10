@@ -3,16 +3,15 @@
             [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.config :as config]
             [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [clojure.string :as str]))
+            [schema.core :as s]))
 
 (defsetting slack-token
   (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
@@ -180,7 +179,7 @@
        (filter (complement :deleted))
        (filter (complement :is_bot))))
 
-(def ^{:arglists '([channel-name])} files-channel*
+(def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
   ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
   ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
@@ -204,10 +203,10 @@
    :ttl/threshold (u/hours->ms 6)))
 
 (defn files-channel
-  []
   "Calls Slack api `channels.info` to check whether a channel exists with the expected name from the
   [[slack-files-channel]] setting. If it does, returns the channel details as a map. If it doesn't, throws an error
   that advices an admin to create it."
+  []
   (files-channel* (slack-files-channel)))
 
 (def ^:private NonEmptyByteArray

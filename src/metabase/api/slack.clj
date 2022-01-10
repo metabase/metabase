@@ -1,13 +1,13 @@
 (ns metabase.api.slack
   "/api/slack endpoints"
-  (:require [compojure.core :refer [PUT]]
+  (:require [clojure.java.io :as io]
+            [compojure.core :refer [PUT]]
             [metabase.api.common :as api]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [clojure.java.io :as io]))
+            [schema.core :as s]))
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
@@ -34,8 +34,8 @@
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
 (api/defendpoint GET "/manifest"
-  []
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
+  []
   (api/check-superuser)
   @slack-manifest)
 
