@@ -4,8 +4,8 @@ import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 
 export interface SlackDeleteModalProps {
-  onDelete?: () => void;
-  onClose?: () => void;
+  onDelete: () => void;
+  onClose: () => void;
 }
 
 const SlackDeleteModal = ({

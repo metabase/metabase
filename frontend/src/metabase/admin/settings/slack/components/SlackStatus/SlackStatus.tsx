@@ -21,7 +21,7 @@ import {
 export interface SlackStatusProps {
   Form: ComponentType;
   isValid?: boolean;
-  onDelete?: () => void;
+  onDelete: () => void;
 }
 
 const SlackStatus = ({
