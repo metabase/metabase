@@ -7,9 +7,11 @@
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models :refer [Field Table]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [toucan.db :as db]))
 
@@ -18,6 +20,11 @@
 (defn- field-and-table-name [field-id]
   (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)]
     [(db/select-one-field :name Table :id table-id) field-name]))
+
+(defn- add-table-id-name [table-id]
+  (list 'do
+        (symbol (format "#_%s" (pr-str (db/select-one-field :name Table :id table-id))))
+        table-id))
 
 (defn add-names
   "Walk a MBQL snippet `x` and add comment forms with the names of the Fields referenced to any `:field` clauses nil
@@ -38,12 +45,10 @@
                                                 (update :source-field field-id->name-form))]
 
          (m :guard (every-pred map? (comp integer? :source-table)))
-         (-> m
-             (update :source-table (fn [table-id]
-                                     (list 'do
-                                           (symbol (format "#_%s" (pr-str (db/select-one-field :name Table :id table-id))))
-                                           table-id)))
-             add-names*)
+         (add-names* (update m :source-table add-table-id-name))
+
+         (m :guard (every-pred map? (comp integer? ::add/source-table)))
+         (add-names* (update m ::add/source-table add-table-id-name))
 
          (m :guard (every-pred map? (comp integer? :fk-field-id)))
          (-> m
@@ -328,8 +333,8 @@
     (mbql.u/replace form
       ([:field (id :guard integer?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
-            field-name              (str/lower-case field-name)
-            table-name              (str/lower-case table-name)]
+            field-name              (some-> field-name str/lower-case)
+            table-name              (some-> table-name str/lower-case)]
         (if (= table-name table)
           [::$ field-name]
           [::$ table-name field-name]))
@@ -363,25 +368,17 @@
 
       (m :guard (every-pred map? (comp integer? :source-table)))
       (-> (update m :source-table (fn [table-id]
-                                    [::$$ (str/lower-case (db/select-one-field :name Table :id table-id))]))
+                                    [::$$ (some-> (db/select-one-field :name Table :id table-id) str/lower-case)]))
           (expand table))
 
       (m :guard (every-pred map? (comp integer? :fk-field-id)))
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
-                                         field-name              (str/lower-case field-name)
-                                         table-name              (str/lower-case table-name)]
+                                         field-name              (some-> field-name str/lower-case)
+                                         table-name              (some-> table-name str/lower-case)]
                                      (if (= table-name table)
                                        [::% field-name]
                                        [::% table-name field-name]))))
-          (expand table))
-
-      ;; expand the keys in `:qp/refs` and add metadata to the map so we don't end up trying to expand it again
-      (m :guard (every-pred map? :qp/refs #(not (-> % :qp/refs meta ::expanded?))))
-      (-> (update m :qp/refs (partial into
-                                      (with-meta {} {::expanded? true})
-                                      (map (fn [[clause info]]
-                                             [(expand clause table) info]))))
           (expand table)))
     (catch Throwable e
       (throw (ex-info (format "Error expanding %s: %s" (pr-str form) (ex-message e))
@@ -405,6 +402,7 @@
          :source-query
          :source-metadata
          :joins
+         :expressions
          :breakout
          :aggregation
          :fields
@@ -412,7 +410,6 @@
          :order-by
          :page
          :limit
-         :qp/refs
          ;; join keys
          :alias
          :condition
@@ -443,15 +440,7 @@
     (symbol (format "*%s/%s" field-name base-type))
 
     [::$$ table-name]
-    (symbol (format "$$%s" table-name))
-
-    ;; normally [[mbql.u/replace]] doesn't match map keys, but we need to do it for `:qp/refs`
-    (m :guard map?)
-    (into
-     (sorted-mbql-query-map)
-     (map (fn [[k v]]
-            [(symbolize k) (symbolize v)]))
-     m)))
+    (symbol (format "$$%s" table-name))))
 
 (defn- query-table-name [{:keys [source-table source-query]}]
   (cond

@@ -87,9 +87,3 @@
               :source-table (mt/id :categories)
               :fk-field-id  (mt/id :venues :category_id)}]
             "venues")))))
-
-(deftest to-mbql-shorthand-refs-test
-  (testing "Make sure it doesn't do anything kooky with :aggregation references inside :qp/refs"
-    (is (= '(mt/$ids nil {:qp/refs {[:aggregation 0] {:position 0}}})
-           (debug-qp/to-mbql-shorthand
-            {:qp/refs {[:aggregation 0] {:position 0}}})))))
