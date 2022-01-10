@@ -124,18 +124,4 @@
       (is (thrown-with-msg?
             ExceptionInfo
             #"Inclusion and exclusion patterns cannot both be specified"
-            (describe-database/include-schema? "whatever" "foo" "bar"))))
-
-    #_(testing "include-schema? memoizes as expected"
-        (let [call-count (atom 0)
-              orig-fn    #'describe-database/schema-patterns->filter-fn*
-              wrapper-fn (fn [& more]
-                           (swap! call-count inc)
-                           (apply orig-fn more))]
-          (with-redefs [describe-database/schema-patterns->filter-fn* wrapper-fn]
-            (is (= true (describe-database/include-schema? "foo" "foo,bar,baz" "")))
-            (is (= true (describe-database/include-schema? "baz" "foo,bar,baz" "")))
-            (is (= false (describe-database/include-schema? "nope" "foo,bar,baz" "")))
-            ;; TODO: fix this
-            (is (= 1 @call-count)))))))
-
+            (describe-database/include-schema? "whatever" "foo" "bar"))))))

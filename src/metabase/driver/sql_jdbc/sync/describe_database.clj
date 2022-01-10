@@ -159,4 +159,3 @@
   [schema-name inclusion-patterns exclusion-patterns]
   (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
     (filter-fn schema-name)))
-

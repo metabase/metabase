@@ -20,10 +20,10 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetOption BigQuery$DatasetListOption BigQuery$JobOption
+  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$DatasetOption  BigQuery$JobOption
                                       BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions
-                                      DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema
-                                      Table TableId TableResult Dataset]
+                                      Dataset DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration
+                                      Schema Table TableId TableResult]
            java.util.Collections))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)

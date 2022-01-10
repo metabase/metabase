@@ -2,6 +2,7 @@
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -10,8 +11,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]
-            [clojure.string :as str])
+            [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
            java.security.KeyStore
