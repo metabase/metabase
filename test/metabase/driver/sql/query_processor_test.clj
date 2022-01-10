@@ -448,7 +448,8 @@
                 "SELECT VENUES.CATEGORY_ID AS CATEGORY_ID, max(VENUES.PRICE) AS MaxPrice, avg(VENUES.PRICE) AS AvgPrice,"
                 " min(VENUES.PRICE) AS MinPrice "
                 "FROM VENUES "
-                "GROUP BY VENUES.CATEGORY_ID"
+                "GROUP BY VENUES.CATEGORY_ID "
+                "ORDER BY VENUES.CATEGORY_ID ASC"
                 ") CategoriesStats"
                 " ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID"
                 ") source "
@@ -518,15 +519,14 @@
                                    [:asc &People.people.source]]
                     :joins        [{:strategy     :left-join
                                     :source-table $$products
-                                    :condition
-                                    [:= $orders.product_id &P1.products.id]
+                                    :condition    [:= $orders.product_id &P1.products.id]
                                     :alias        "P1"}
                                    {:strategy     :left-join
                                     :source-table $$people
                                     :condition    [:= $orders.user_id &People.people.id]
                                     :alias        "People"}]}
      :joins        [{:strategy     :left-join
-                     :condition    [:= $products.category &Q2.products.category]
+                     :condition    [:= &P1.products.category &Q2.products.category]
                      :alias        "Q2"
                      :source-query {:source-table $$reviews
                                     :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
@@ -603,6 +603,7 @@
                  "    LEFT JOIN PRODUCTS P2"
                  "           ON REVIEWS.PRODUCT_ID = P2.ID"
                  "    GROUP BY P2.CATEGORY"
+                 "    ORDER BY P2.CATEGORY ASC"
                  ") Q2"
                  "       ON source.P1__CATEGORY = Q2.P2__CATEGORY"
                  "LIMIT 2"]
