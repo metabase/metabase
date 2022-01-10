@@ -3,8 +3,13 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DeprecationBanner from "../../components/DeprecationBanner";
-import { hasDeprecatedDatabase, hasSlackBot } from "../../selectors";
+import DeprecationNotice from "../../components/DeprecationNotice";
+import { disableNotice } from "../../actions";
+import {
+  hasDeprecatedDatabase,
+  hasSlackBot,
+  isNoticeEnabled,
+} from "../../selectors";
 
 interface Props {
   databases?: Database[];
@@ -13,11 +18,11 @@ interface Props {
 const mapStateToProps = (state: State, props: Props) => ({
   hasSlackBot: hasSlackBot(state),
   hasDeprecatedDatabase: hasDeprecatedDatabase(state, props),
-  isEnabled: true,
+  isEnabled: isNoticeEnabled,
 });
 
 const mapDispatchToProps = {
-  onClose: () => undefined,
+  onClose: disableNotice,
 };
 
 export default _.compose(
@@ -25,4 +30,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(DeprecationBanner);
+)(DeprecationNotice);

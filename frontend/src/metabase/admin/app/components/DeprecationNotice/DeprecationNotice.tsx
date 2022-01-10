@@ -1,38 +1,38 @@
 import React from "react";
 import { jt, t } from "ttag";
 import {
-  BannerCloseIcon,
-  BannerContent,
-  BannerLink,
-  BannerRoot,
-  BannerWarningIcon,
-} from "./DeprecationBanner.styled";
+  NoticeCloseIcon,
+  NoticeContent,
+  NoticeLink,
+  NoticeRoot,
+  NoticeWarningIcon,
+} from "./DeprecationNotice.styled";
 
-export interface DeprecationBannerProps {
+export interface DeprecationNoticeProps {
   hasSlackBot: boolean;
   hasDeprecatedDatabase: boolean;
   isEnabled: boolean;
   onClose: () => void;
 }
 
-const DeprecationBanner = ({
+const DeprecationNotice = ({
   hasSlackBot,
   hasDeprecatedDatabase,
   isEnabled,
   onClose,
-}: DeprecationBannerProps): JSX.Element | null => {
+}: DeprecationNoticeProps): JSX.Element | null => {
   if ((!hasSlackBot && !hasDeprecatedDatabase) || !isEnabled) {
     return null;
   }
 
   return (
-    <BannerRoot>
-      <BannerWarningIcon name="warning" />
-      <BannerContent>
+    <NoticeRoot>
+      <NoticeWarningIcon name="warning" />
+      <NoticeContent>
         {getBannerContent(hasSlackBot, hasDeprecatedDatabase)}
-      </BannerContent>
-      <BannerCloseIcon name="close" onClick={onClose} />
-    </BannerRoot>
+      </NoticeContent>
+      <NoticeCloseIcon name="close" onClick={onClose} />
+    </NoticeRoot>
   );
 };
 
@@ -45,35 +45,35 @@ const getBannerContent = (
 
   if (hasSlackBot && hasDeprecatedDatabase) {
     return jt`You’re using a ${(
-      <BannerLink
+      <NoticeLink
         key="database"
         to={databaseListUrl}
-      >{t`Database driver`}</BannerLink>
+      >{t`Database driver`}</NoticeLink>
     )} and a ${(
-      <BannerLink
+      <NoticeLink
         key="slack"
         to={slackSettingsUrl}
-      >{t`Slack bot integration`}</BannerLink>
+      >{t`Slack bot integration`}</NoticeLink>
     )} which are now deprecated and will be removed in the next release. We recommend you ${(
       <strong key="upgrade">{t`upgrade`}</strong>
     )}.`;
   } else if (hasSlackBot) {
     return jt`Your Slack bot was deprecated but is still working. We recommend you ${(
-      <BannerLink
+      <NoticeLink
         key="slack"
         to={slackSettingsUrl}
-      >{t`upgrade to Slack Apps`}</BannerLink>
+      >{t`upgrade to Slack Apps`}</NoticeLink>
     )} when you get a chance.`;
   } else if (hasDeprecatedDatabase) {
     return jt`You’re using a ${(
-      <BannerLink
+      <NoticeLink
         key="database"
         to={databaseListUrl}
-      >{t`Database driver`}</BannerLink>
+      >{t`Database driver`}</NoticeLink>
     )} which is now deprecated and will be removed in the next release. We recommend you ${(
       <strong key="upgrade">{t`upgrade`}</strong>
     )}.`;
   }
 };
 
-export default DeprecationBanner;
+export default DeprecationNotice;

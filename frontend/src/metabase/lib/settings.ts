@@ -87,7 +87,7 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-version"
+  | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
   | "metabase-store-managed";
@@ -200,12 +200,12 @@ class Settings {
     return this.get("snowplow-url");
   }
 
-  engineDeprecationNoticeVersion() {
-    return this.get("engine-deprecation-notice-version");
+  deprecationNoticeVersion() {
+    return this.get("deprecation-notice-version");
   }
 
-  engineDeprecationNoticeEnabled() {
-    return this.currentVersion() !== this.engineDeprecationNoticeVersion();
+  deprecationNoticeEnabled() {
+    return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
   token() {

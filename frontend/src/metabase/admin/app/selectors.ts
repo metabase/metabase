@@ -10,6 +10,10 @@ export const hasSlackBot = (state: State): boolean => {
   return state.settings.values["slack-token"] != null;
 };
 
+export const isNoticeEnabled = (state: State): boolean => {
+  return state.admin.app.isNoticeEnabled;
+};
+
 export const hasDeprecatedDatabase = (state: State, props: Props): boolean => {
   return props.databases?.some(d => isDeprecatedEngine(d.engine)) ?? false;
 };

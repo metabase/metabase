@@ -3,33 +3,34 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-export const BannerRoot = styled.div`
+export const NoticeRoot = styled.div`
   display: flex;
   padding: 1rem 1rem 1rem 1.5rem;
   align-items: center;
   background-color: ${color("bg-light")};
 `;
 
-export const BannerContent = styled.div`
+export const NoticeContent = styled.div`
   flex: 1 1 auto;
   margin: 0 0.75rem;
   color: ${color("text-dark")};
 `;
 
-export const BannerLink = styled(Link)`
+export const NoticeLink = styled(Link)`
   color: ${color("brand")};
   font-weight: bold;
 `;
 
-export const BannerWarningIcon = styled(Icon)`
+export const NoticeWarningIcon = styled(Icon)`
   color: ${color("accent5")};
   width: 1.5rem;
   height: 1.5rem;
 `;
 
-export const BannerCloseIcon = styled(Icon)`
+export const NoticeCloseIcon = styled(Icon)`
   color: ${color("bg-dark")};
   cursor: pointer;
+
   &:hover {
     color: ${color("admin-navbar")};
   }

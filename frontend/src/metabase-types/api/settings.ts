@@ -5,7 +5,7 @@ export interface Version {
 export interface Settings {
   "enable-public-sharing"?: boolean;
   "enable-xrays"?: boolean;
-  "engine-deprecation-notice-version"?: string;
+  "deprecation-notice-version"?: string;
   "show-database-syncing-modal"?: boolean;
   "show-homepage-data"?: boolean;
   "show-homepage-xrays"?: boolean;

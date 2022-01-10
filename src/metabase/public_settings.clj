@@ -236,8 +236,8 @@
   :type    :integer
   :default 10)
 
-(defsetting engine-deprecation-notice-version
-  (deferred-tru "Metabase version for which a notice about usage of a deprecated driver has been shown.")
+(defsetting deprecation-notice-version
+  (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)
 
 (defsetting application-name
