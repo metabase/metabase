@@ -19,27 +19,16 @@
        (deferred-tru "Please use a new Slack app integration instead."))
   :deprecated "0.42.0")
 
-(declare valid-token?)
+(defsetting slack-app-token
+  (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
+       " "
+       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
-(defsetting current-slack-token-valid?
+(defsetting slack-token-valid?
   (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
        " "
        (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
   :type :boolean)
-
-(defsetting slack-app-token
-  (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
-       " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0."))
-  :setter (fn [new-value]
-            (when (and new-value
-                       (not config/is-test?)
-                       (not (valid-token? new-value)))
-                (throw (ex-info (tru "Invalid Slack token") {})))
-            (setting/set-value-of-type! :string :slack-app-token new-value)
-            (current-slack-token-valid? true)
-            ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-            (slack-token nil)))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")
@@ -72,9 +61,9 @@
                           :message    message
                           :response   body})]
     (when (and invalid-token? *send-token-error-emails?*)
-      ;; Check `current-slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token
-      (when (current-slack-token-valid?) (messages/send-slack-token-error-emails!))
-      (current-slack-token-valid? false))
+      ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token
+      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
+      (slack-token-valid? false))
     (log/warn (u/pprint-to-str 'red error))
     (throw (ex-info message error))))
 
