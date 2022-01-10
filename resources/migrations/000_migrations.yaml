@@ -9958,9 +9958,32 @@ databaseChangeLog:
       id: v42.00-076
       author: dpsutton
       comment: >-
-        Added 0.42.0 - Create dashboard cards
+        Added 0.42.0 - Create dashboard cards. PG messes up casing with sizeX, in mysql `row` is a reserved word.
       changes:
         - sql:
+            dbms: h2
+            sql: >-
+              INSERT INTO report_dashboardcard
+                   (created_at, updated_at, sizeX, sizeY, `row`, col, card_id, dashboard_id,
+                    parameter_mappings, visualization_settings, source_pulse_card_id)
+              SELECT d.created_at, d.updated_at, 8 as sizeX, 4 as sizeY,
+                     (pc.position * 4) as `row`, 0 as col, pc.card_id, d.id,
+                     '[]' as parameter_mappings, '{}' as visualization_settings, pc.id
+              FROM report_dashboard d
+              INNER JOIN pulse_card pc ON d.source_pulse_id = pc.pulse_id;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              INSERT INTO report_dashboardcard
+                   (created_at, updated_at, sizeX, sizeY, `row`, col, card_id, dashboard_id,
+                    parameter_mappings, visualization_settings, source_pulse_card_id)
+              SELECT d.created_at, d.updated_at, 8 as sizeX, 4 as sizeY,
+                     (pc.position * 4) as `row`, 0 as col, pc.card_id, d.id,
+                     '[]' as parameter_mappings, '{}' as visualization_settings, pc.id
+              FROM report_dashboard d
+              INNER JOIN pulse_card pc ON d.source_pulse_id = pc.pulse_id;
+        - sql:
+            dbms: postgresql
             sql: >-
               INSERT INTO report_dashboardcard
                    (created_at, updated_at, "sizeX", "sizeY", row, col, card_id, dashboard_id,
