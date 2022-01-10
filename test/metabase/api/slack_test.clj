@@ -21,14 +21,29 @@
         (mt/user-http-request :crowberto :put 400 "slack/settings"
                               {:slack-app-token "fake-token"})))
 
-    (testing "The Slack app token setting is cleared if no value is sent in the request"
-      (mt/with-temporary-setting-values [slack-app-token "fake-token"]
-        (mt/user-http-request :crowberto :put 200 "slack/settings" {})
-        (is (= nil (slack/slack-app-token)))))
+    (testing "The Slack files channel setting can be set by an admin, and the leading # is stripped if it is present"
+      (mt/with-temporary-setting-values [slack-files-channel nil]
+        (mt/user-http-request :crowberto :put 200 "slack/settings"
+                              {:slack-files-channel "fake-channel"})
+        (is (= "fake-channel" (slack/slack-files-channel)))
 
-    (testing "A non-admin cannot modify the Slack app token setting"
+        (mt/user-http-request :crowberto :put 200 "slack/settings"
+                              {:slack-files-channel "#fake-channel"})
+        (is (= "fake-channel" (slack/slack-files-channel)))))
+
+    (testing "The Slack app token or files channel settings are cleared if no value is sent in the request"
+      (mt/with-temporary-setting-values [slack-app-token "fake-token"
+                                         slack-files-channel "fake-channel"]
+        (mt/user-http-request :crowberto :put 200 "slack/settings" {})
+        (is (= nil (slack/slack-app-token)))
+        ;; The files channel is reset to its default value
+        (is (= "metabase_files" (slack/slack-files-channel)))))
+
+    (testing "A non-admin cannot modify the Slack app token or files channel settings"
       (mt/user-http-request :rasta :put 403 "slack/settings"
-                            {:slack-app-token "fake-token"}))))
+                            {:slack-app-token "fake-token"})
+      (mt/user-http-request :rasta :put 403 "slack/settings"
+                            {:slack-files-channel "fake-channel"}))))
 
 (deftest manifest-test
   (testing "GET /api/slack/manifest"

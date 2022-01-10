@@ -11,24 +11,24 @@
 
 (api/defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
-  [:as {{slack-app-token :slack-app-token} :body}]
-  {slack-app-token     (s/maybe su/NonBlankString)}
+  [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel} :body}]
+  {slack-app-token     (s/maybe su/NonBlankString)
+   slack-files-channel (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (if-not slack-app-token
-    (do
-      (slack/slack-app-token nil)
-      {:ok true})
-    (try
-      (when-not config/is-test?
-        (when-not (slack/valid-token? slack-app-token)
-          (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
-      ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-      (slack/slack-token nil)
-      (slack/slack-app-token slack-app-token)
-      (slack/slack-token-valid? true)
-      {:ok true}
-      (catch clojure.lang.ExceptionInfo info
-        {:status 400, :body (ex-data info)}))))
+  (try
+    (when (and slack-app-token (not config/is-test?))
+      (when-not (slack/valid-token? slack-app-token)
+        (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
+    (slack/slack-app-token slack-app-token)
+    (when slack-app-token
+      (do
+        (slack/slack-token-valid? true)
+        ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
+        (slack/slack-token nil)))
+    (slack/slack-files-channel slack-files-channel)
+    {:ok true}
+    (catch clojure.lang.ExceptionInfo info
+      {:status 400, :body (ex-data info)})))
 
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))

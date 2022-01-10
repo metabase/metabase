@@ -57,7 +57,8 @@
   #{"invalid_auth", "account_inactive", "token_revoked", "token_expired"})
 
 (def ^:private ^:dynamic *send-token-error-emails?*
-  "Whether to send an email to all admins when an invalid or revoked token error is received. (Default `true`)"
+  "Whether to send an email to all admins when an invalid or revoked token error is received in response to a Slack
+  API call. Should be set to false when checking if an unsaved token is valid. (Default: `true`)"
   true)
 
 (defn- handle-error [body]
