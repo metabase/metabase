@@ -609,8 +609,10 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table-name (db/select-one-field :name table/Table :id (u/the-id table-id))]
-    (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
+  (let [table      (table/Table (u/the-id table-id))
+        table-name (:name table)
+        dataset-id (:schema table)]
+    (with-temporal-type (hx/identifier :field dataset-id table-name field-name) (temporal-type field))))
 
 (defn- maybe-source-query-alias
   "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias, and the
@@ -740,7 +742,7 @@
     {source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
   (let [{table-name :name, dataset-id :schema} (some-> source-table-id qp.store/table)]
-    (assert (seq dataset-id))
+    #_(assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
                                 (sql.qp/mbql->honeysql driver)

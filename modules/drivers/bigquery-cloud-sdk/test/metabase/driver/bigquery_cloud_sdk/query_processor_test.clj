@@ -228,10 +228,12 @@
             " `v3_test_data.venues`.`name` AS `name` "
             "FROM `v3_test_data.venues` "
             "LIMIT 1")
-           (tt/with-temp* [Database [db    {:engine :bigquery-cloud-sdk
+           (tt/with-temp* [Database [db    {:engine  :bigquery-cloud-sdk
                                             :details (assoc (:details (mt/db))
                                                             :include-user-id-and-hash false)}]
-                           Table    [table {:name "venues" :db_id (u/the-id db)}]
+                           Table    [table {:name   "venues"
+                                            :db_id  (u/the-id db)
+                                            :schema (get-in db [:details :dataset-filters-patterns])}]
                            Field    [_     {:table_id (u/the-id table)
                                             :name "id"
                                             :base_type "type/Integer"}]

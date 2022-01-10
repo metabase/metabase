@@ -18,12 +18,12 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details (:details (mt/db))
-          fake-ds-id "definitely-not-a-real-dataset-no-way-no-how"]
+    (let [db-details   (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
-      (testing "can-connect? returns false for bogus dataset-id"
-        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :dataset-id fake-ds-id)))))
+      (testing "can-connect? returns false for bogus credentials"
+        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
@@ -193,14 +193,14 @@
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name view-name})
+                     {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   view-name
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema "v3_test_data"}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
@@ -232,10 +232,12 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [{db-id :id :as temp-db} {:engine  :bigquery-cloud-sdk
-                                                       :details (-> (:details (mt/db))
-                                                                    (assoc :project-id "bigquery-public-data"
-                                                                           :dataset-id "chicago_taxi_trips"))}]
+      (mt/with-temp Database [{db-id :id :as temp-db}
+                              {:engine  :bigquery-cloud-sdk
+                               :details (-> (:details (mt/db))
+                                            (assoc :project-id "bigquery-public-data"
+                                                   :dataset-filters-type "inclusion"
+                                                   :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -280,9 +282,9 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name tbl-nm})
+                     {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   tbl-nm
               :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
                         {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
@@ -294,7 +296,7 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -321,11 +323,11 @@
                     tbl-nm])
       (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
       (fn [tbl-nm]
-        (is (= {:schema nil
+        (is (= {:schema "v3_test_data"
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest retry-certain-exceptions-test
@@ -379,7 +381,8 @@
     (testing "A Database can be seamlessly changed from the :bigquery driver to :bigquery-cloud-sdk driver"
       (mt/with-temp Database [temp-db {:engine  :bigquery
                                        ;; same db-details for new driver as old, so we can luckily just reuse them
-                                       :details (:details (mt/db))}]
+                                       :details (assoc (:details (mt/db))
+                                                  :dataset-id (get-in (mt/db) [:details :dataset-filters-patterns]))}]
         (mt/with-db temp-db
           (sync/sync-database! temp-db {:scan :schema})
           (mt/with-temp Card [temp-card {:database_id   (mt/id)

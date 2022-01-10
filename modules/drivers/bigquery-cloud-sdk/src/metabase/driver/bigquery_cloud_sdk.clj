@@ -63,8 +63,10 @@
           inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
           exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
       (apply concat (for [^Dataset dataset (.iterateAll datasets)
-                          :let [dataset-id (.. dataset getDatasetId getDataset)]
-                          :when (describe-database/include-schema? dataset-id inclusion-patterns exclusion-patterns)]
+                          :let [dataset-id (.. dataset getDatasetId)]
+                          :when (describe-database/include-schema? (.getDataset dataset-id)
+                                                                   inclusion-patterns
+                                                                   exclusion-patterns)]
                       (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                           .iterateAll
                           .iterator
@@ -79,9 +81,12 @@
                     {:schema dataset-id, :name (.getTable table-id)}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ {:keys [project-id schema-filters-type schema-filters-patterns] :as details-map}]
-  ;; check whether we can connect by seeing whether we have at least one Table in the iterator
-  (.. (list-tables {:details details-map}) iterator hasNext))
+  [_ details-map]
+  ;; check whether we can connect by seeing whether listing tables succeeds
+  (try (some? (list-tables {:details details-map}))
+       (catch Exception e
+         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+         false)))
 
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
@@ -90,7 +95,8 @@
   ([{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
-  ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
+  ([client :- BigQuery, project-id :- (s/maybe su/NonBlankString), dataset-id :- su/NonBlankString,
+    table-id :- su/NonBlankString]
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
@@ -131,9 +137,11 @@
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  {:schema nil
+  {:schema dataset-id
    :name   table-name
-   :fields (set (table-schema->metabase-field-info (.. (get-table database dataset-id table-name) getDefinition getSchema)))})
+   :fields (-> (.. (get-table database dataset-id table-name) getDefinition getSchema)
+               table-schema->metabase-field-info
+               set)})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
