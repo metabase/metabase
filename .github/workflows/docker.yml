@@ -9,7 +9,7 @@ on:
     paths:
       - "**"
 
-concurrency: 
+concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
