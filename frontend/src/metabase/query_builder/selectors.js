@@ -63,6 +63,10 @@ export const getQueryResults = createSelector(
     const [result] = queryResults;
     const { cols, results_metadata } = result.data;
 
+    if (!results_metadata) {
+      return queryResults;
+    }
+
     function applyMetadataDiff(column) {
       const columnDiff = metadataDiff[column.field_ref];
       return columnDiff ? merge(column, columnDiff) : column;
