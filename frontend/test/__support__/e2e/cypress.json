@@ -4,6 +4,7 @@
   "integrationFolder": ".",
   "supportFile": "frontend/test/__support__/e2e/cypress.js",
   "videoUploadOnPasses": false,
+  "chromeWebSecurity": false,
   "viewportHeight": 800,
   "viewportWidth": 1280,
   "retries": {

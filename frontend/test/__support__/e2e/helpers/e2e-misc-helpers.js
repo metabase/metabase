@@ -94,3 +94,52 @@ export function interceptPromise(method, path) {
   });
   return state;
 }
+
+const chainStart = Symbol();
+
+/**
+ * Waits for all Cypress commands similarly to Promise.all.
+ * Helps to avoid excessive nesting and verbosity
+ *
+ * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
+ * @example
+ * cypressWaitAll([
+ *   cy.createQuestionAndAddToDashboard(firstQuery, 1),
+ *   cy.createQuestionAndAddToDashboard(secondQuery, 1),
+ * ]).then(() => {
+ *   cy.visit(`/dashboard/1`);
+ * });
+ */
+export const cypressWaitAll = function(commands) {
+  const _ = Cypress._;
+  const chain = cy.wrap(null, { log: false });
+
+  const stopCommand = _.find(cy.queue.commands, {
+    attributes: { chainerId: chain.chainerId },
+  });
+
+  const startCommand = _.find(cy.queue.commands, {
+    attributes: { chainerId: commands[0].chainerId },
+  });
+
+  const p = chain.then(() => {
+    return _(commands)
+      .map(cmd => {
+        return cmd[chainStart]
+          ? cmd[chainStart].attributes
+          : _.find(cy.queue.commands, {
+              attributes: { chainerId: cmd.chainerId },
+            }).attributes;
+      })
+      .concat(stopCommand.attributes)
+      .slice(1)
+      .flatMap(cmd => {
+        return cmd.prev.get("subject");
+      })
+      .value();
+  });
+
+  p[chainStart] = startCommand;
+
+  return p;
+};
