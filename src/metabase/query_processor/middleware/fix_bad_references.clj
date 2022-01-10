@@ -2,10 +2,9 @@
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]))
+            [metabase.util.i18n :refer [trs]]))
 
 (defn- find-source-table [{:keys [source-table source-query]}]
   (or source-table
