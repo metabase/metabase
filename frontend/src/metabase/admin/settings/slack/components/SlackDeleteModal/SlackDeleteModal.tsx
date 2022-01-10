@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
+import ActionButton from "metabase/components/ActionButton";
 import ModalContent from "metabase/components/ModalContent";
 
 export interface SlackDeleteModalProps {
@@ -12,6 +13,11 @@ const SlackDeleteModal = ({
   onDelete,
   onClose,
 }: SlackDeleteModalProps): JSX.Element => {
+  const handleDelete = useCallback(async () => {
+    await onDelete();
+    onClose();
+  }, [onDelete, onClose]);
+
   return (
     <ModalContent
       title={t`Are you sure you want to delete your Slack App?`}
@@ -19,9 +25,15 @@ const SlackDeleteModal = ({
         <Button key="close" onClick={onClose}>
           {t`Cancel`}
         </Button>,
-        <Button key="delete" danger onClick={onDelete}>
-          {t`Delete`}
-        </Button>,
+        <ActionButton
+          key="delete"
+          danger
+          normalText={t`Delete`}
+          activeText={t`Deleting…`}
+          failedText={t`Deleting failed`}
+          successText={t`Deleted`}
+          actionFn={handleDelete}
+        />,
       ]}
     >
       <span>
