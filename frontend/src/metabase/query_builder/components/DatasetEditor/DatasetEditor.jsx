@@ -20,7 +20,7 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
-import { isSameField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -148,6 +148,11 @@ const FIELDS = [
   "settings",
 ];
 
+function compareFields(fieldRef1, fieldRef2) {
+  const compareExact = !isLocalField(fieldRef1) || !isLocalField(fieldRef2);
+  return isSameField(fieldRef1, fieldRef2, compareExact);
+}
+
 function DatasetEditor(props) {
   const {
     question: dataset,
@@ -163,7 +168,9 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
-  const fields = useMemo(() => dataset.getResultMetadata() || [], [dataset]);
+  const fields = useMemo(() => result?.data?.results_metadata?.columns ?? [], [
+    result,
+  ]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -179,7 +186,7 @@ function DatasetEditor(props) {
       return -1;
     }
     return fields.findIndex(field =>
-      isSameField(focusedFieldRef, field.field_ref),
+      compareFields(focusedFieldRef, field.field_ref),
     );
   }, [focusedFieldRef, fields]);
 
@@ -302,7 +309,7 @@ function DatasetEditor(props) {
       <TableHeaderColumnName
         tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
         onFocus={() => handleColumnSelect(column)}
-        isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
+        isSelected={compareFields(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>

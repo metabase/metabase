@@ -27,7 +27,7 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import { isSameField } from "metabase/lib/query/field_ref";
+import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 
@@ -1604,7 +1604,13 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   const resultsMetadata = getResultsMetadata(getState());
 
   const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-    const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
+    const compareExact =
+      !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
+    const isTargetField = isSameField(
+      field_ref,
+      fieldMetadata.field_ref,
+      compareExact,
+    );
     return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
   });
 
