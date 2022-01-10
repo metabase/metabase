@@ -16,7 +16,7 @@ import {
   field_semantic_types,
   has_field_values_options,
 } from "metabase/lib/core";
-import { isSameField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isFK } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/Form";
@@ -153,7 +153,9 @@ function DatasetFieldMetadataSidebar({
   const previousField = usePrevious(field);
 
   useEffect(() => {
-    if (!isSameField(field.field_ref, previousField?.field_ref)) {
+    const compareExact =
+      !isLocalField(field.field_ref) || !isLocalField(previousField?.field_ref);
+    if (!isSameField(field.field_ref, previousField?.field_ref, compareExact)) {
       setShouldAnimateFieldChange(true);
       // setTimeout is required as form fields are rerendered pretty frequently
       setTimeout(() => {
