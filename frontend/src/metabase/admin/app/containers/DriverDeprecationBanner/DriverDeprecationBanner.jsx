@@ -3,8 +3,8 @@ import _ from "underscore";
 import { isDeprecatedEngine } from "metabase/lib/engine";
 import Databases from "metabase/entities/databases";
 import DriverDeprecationBanner from "../../components/DriverDeprecationBanner";
-import { closeDeprecationNotice } from "../../database";
-import { isDeprecationNoticeEnabled } from "../../selectors";
+import { closeDeprecationNotice } from "../../../databases/database";
+import { isDeprecationNoticeEnabled } from "../../../databases/selectors";
 
 const mapStateToProps = (state, { databases = [] }) => ({
   database: databases.find(database => isDeprecatedEngine(database.engine)),

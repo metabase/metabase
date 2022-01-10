@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import DriverDeprecationBanner from "metabase/admin/databases/containers/DriverDeprecationBanner";
+import DriverDeprecationBanner from "metabase/admin/app/containers/DriverDeprecationBanner";
 
 const propTypes = {
   children: PropTypes.node,
