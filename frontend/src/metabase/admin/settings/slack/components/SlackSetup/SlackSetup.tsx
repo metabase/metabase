@@ -25,8 +25,8 @@ import {
 export interface SlackSetupProps {
   Form: ComponentType;
   manifest?: string;
-  hasBot: boolean;
-  hasError: boolean;
+  hasBot?: boolean;
+  hasError?: boolean;
 }
 
 const SlackSetup = ({
@@ -47,8 +47,8 @@ const SlackSetup = ({
 };
 
 interface SetupHeaderProps {
-  hasBot: boolean;
-  hasError: boolean;
+  hasBot?: boolean;
+  hasError?: boolean;
 }
 
 const SetupHeader = ({ hasBot, hasError }: SetupHeaderProps): JSX.Element => {

@@ -20,8 +20,8 @@ import {
 
 export interface SlackStatusProps {
   Form: ComponentType;
-  hasError: boolean;
-  onDelete: () => void;
+  hasError?: boolean;
+  onDelete?: () => void;
 }
 
 const SlackStatus = ({

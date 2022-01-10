@@ -17,10 +17,13 @@ export const useCopyTooltip = (data?: string): UseCopyTooltipResult => {
     }
   }, [element]);
 
-  const handleClick = useCallback((event: MouseEvent<HTMLElement>) => {
-    data && navigator.clipboard.writeText(data);
-    setElement(event.currentTarget);
-  }, []);
+  const handleClick = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      data && navigator.clipboard.writeText(data);
+      setElement(event.currentTarget);
+    },
+    [data],
+  );
 
   return { element, handleClick };
 };

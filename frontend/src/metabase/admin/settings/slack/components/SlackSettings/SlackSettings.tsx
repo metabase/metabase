@@ -3,7 +3,7 @@ import SlackStatus from "../../containers/SlackStatus";
 import SlackSetup from "../../containers/SlackSetup";
 
 export interface SlackSettingsProps {
-  hasApp: boolean;
+  hasApp?: boolean;
 }
 
 const SlackSettings = ({ hasApp }: SlackSettingsProps): JSX.Element => {

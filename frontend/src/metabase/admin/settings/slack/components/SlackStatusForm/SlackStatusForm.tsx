@@ -5,7 +5,7 @@ import { getSlackForm } from "../../forms";
 import { FormProps } from "./types";
 
 export interface SlackStatusFormProps {
-  settings: SlackSettings;
+  settings?: SlackSettings;
 }
 
 const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
