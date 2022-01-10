@@ -258,12 +258,15 @@
 
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
 ;;
-;;    [:+ [:field 1 nil] [:field 2 nil]]`
+;;    [:+ [:field 1 nil] [:field 2 nil]]
+;;
+;; As of 0.42.0 `:expression` references can have an optional options map
 (defclause ^{:requires-features #{:expressions}} expression
-  expression-name helpers/NonBlankString)
+  expression-name helpers/NonBlankString
+  options         (optional (s/pred map? "map")))
 
 (def BinningStrategyName
-  "Schema for a valid value for the `strategy-name` param of a `binning-strategy` clause."
+  "Schema for a valid value for the `strategy-name` param of a [[field]] clause with `:binning` information."
   (s/enum :num-bins :bin-width :default))
 
 (defn- validate-bin-width [schema]
@@ -389,7 +392,7 @@
 (def ^:private Field*
   (one-of expression field))
 
-;; TODO -- consider renaming this FieldOrExpression,
+;; TODO -- consider renaming this FieldOrExpression
 (def Field
   "Schema for either a `:field` clause (reference to a Field) or an `:expression` clause (reference to an expression)."
   (s/recursive #'Field*))
@@ -408,7 +411,11 @@
 ;;
 ;; TODO - it would be nice if we could check that there's actually an aggregation with the corresponding index,
 ;; wouldn't it
-(defclause aggregation, aggregation-clause-index s/Int)
+;;
+;; As of 0.42.0 `:aggregation` references can have an optional options map.
+(defclause aggregation
+  aggregation-clause-index s/Int
+  options                  (optional (s/pred map? "map")))
 
 (def FieldOrAggregationReference
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
