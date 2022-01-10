@@ -32,11 +32,11 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Build container image
-      run: docker buildx build . -t metabase/metabase-branch:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
+      run: docker buildx build . -t metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
     - name: Launch container
-      run: docker run -dp 3000:3000 metabase/metabase-branch:${{ steps.extract_branch.outputs.branch }}
+      run: docker run -dp 3000:3000 metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
       timeout-minutes: 5
     - run: docker ps
     - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3032/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 1
