@@ -17,5 +17,5 @@ export const Default: ComponentStory<typeof SlackStatus> = args => {
 
 Default.args = {
   Form: () => <div />,
-  hasError: false,
+  isValid: true,
 };

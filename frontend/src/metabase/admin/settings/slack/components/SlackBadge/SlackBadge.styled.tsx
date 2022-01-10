@@ -2,11 +2,11 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 export interface BadgeProps {
-  hasError?: boolean;
+  isValid?: boolean;
 }
 
-const getColor = ({ hasError }: BadgeProps): string => {
-  return color(hasError ? "error" : "success");
+const getColor = ({ isValid }: BadgeProps): string => {
+  return color(isValid ? "success" : "error");
 };
 
 export const BadgeRoot = styled.span`

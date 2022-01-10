@@ -20,13 +20,13 @@ import {
 
 export interface SlackStatusProps {
   Form: ComponentType;
-  hasError?: boolean;
+  isValid?: boolean;
   onDelete?: () => void;
 }
 
 const SlackStatus = ({
   Form,
-  hasError,
+  isValid,
   onDelete,
 }: SlackStatusProps): JSX.Element => {
   const [isOpened, setIsOpened] = useState(false);
@@ -40,8 +40,8 @@ const SlackStatus = ({
         <StatusPrimary>
           <StatusTitle>{t`Metabase on Slack`}</StatusTitle>
           <StatusMessage>
-            <SlackBadge hasError={hasError} />{" "}
-            {hasError && (
+            <SlackBadge isValid={isValid} />{" "}
+            {!isValid && (
               <StatusMessageText>
                 {jt`Need help? ${(
                   <ExternalLink href={docsUrl}>{t`See our docs`}</ExternalLink>

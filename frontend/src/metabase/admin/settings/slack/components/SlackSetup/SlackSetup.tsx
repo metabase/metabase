@@ -26,18 +26,18 @@ export interface SlackSetupProps {
   Form: ComponentType;
   manifest?: string;
   isBot?: boolean;
-  hasError?: boolean;
+  isValid?: boolean;
 }
 
 const SlackSetup = ({
   Form,
   manifest,
   isBot,
-  hasError,
+  isValid,
 }: SlackSetupProps): JSX.Element => {
   return (
     <SetupRoot>
-      <SetupHeader isBot={isBot} hasError={hasError} />
+      <SetupHeader isBot={isBot} isValid={isValid} />
       <CreateAppSection />
       <CopyManifestSection manifest={manifest} />
       <ActivateAppSection Form={Form} />
@@ -48,16 +48,16 @@ const SlackSetup = ({
 
 interface SetupHeaderProps {
   isBot?: boolean;
-  hasError?: boolean;
+  isValid?: boolean;
 }
 
-const SetupHeader = ({ isBot, hasError }: SetupHeaderProps): JSX.Element => {
+const SetupHeader = ({ isBot, isValid }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
       {isBot ? (
         <HeaderMessage>
-          <SlackBadge isBot={isBot} hasError={hasError} />{" "}
+          <SlackBadge isBot={isBot} isValid={isValid} />{" "}
           {jt`We recommend you ${(
             <strong key="apps">{t`upgrade to Slack Apps`}</strong>
           )}, see the instructions below:`}

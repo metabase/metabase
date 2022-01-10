@@ -19,5 +19,5 @@ Default.args = {
   Form: () => <div />,
   manifest: "app: token",
   isBot: false,
-  hasError: false,
+  isValid: true,
 };
