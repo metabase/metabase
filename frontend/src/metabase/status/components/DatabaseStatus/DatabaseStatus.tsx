@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { isSyncInProgress } from "metabase/lib/syncing";
+import { Database, User } from "metabase-types/api";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import DatabaseStatusLarge from "../DatabaseStatusLarge";
 import DatabaseStatusSmall from "../DatabaseStatusSmall";
-import { Database, User } from "../../types";
 
 export interface DatabaseStatusProps {
   user?: User;

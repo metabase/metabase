@@ -12,7 +12,9 @@ export function generateExpression(seed, resultType, depth = 13) {
   const zero = () => 0;
   const one = () => 1;
   const integer = () => randomInt(1e6);
-  const float = () => String(integer()) + "." + String(integer());
+  const float1 = () => String(integer()) + ".";
+  const float2 = () => "." + String(integer());
+  const float3 = () => String(integer()) + "." + String(integer());
 
   const string = () => '"' + characters() + '"';
 
@@ -135,7 +137,7 @@ export function generateExpression(seed, resultType, depth = 13) {
 
   const numberLiteral = () => {
     const exp = () => randomItem(["", "-", "+"]) + randomInt(1e2);
-    const number = () => oneOf([zero, one, integer, float])(); // LIMITATION: no dangling decimal point, e.g. "3."
+    const number = () => oneOf([zero, one, integer, float1, float2, float3])();
     const sci = () => number() + randomItem(["e", "E"]) + exp();
     return {
       type: NODE.Literal,
@@ -153,12 +155,11 @@ export function generateExpression(seed, resultType, depth = 13) {
     };
   };
 
-  // LIMITATION: no negative on negative, e.g. "--4"
   const unaryMinus = () => {
     return {
       type: NODE.Unary,
       op: "-",
-      child: oneOf([numberLiteral])(),
+      child: numberExpression(),
     };
   };
 
@@ -233,12 +234,11 @@ export function generateExpression(seed, resultType, depth = 13) {
     return node;
   };
 
-  // LIMITATION: no NOT on NOT, e.g. "NOT NOT [HighlyRated]"
   const logicalNot = () => {
     return {
       type: NODE.Unary,
       op: "NOT ",
-      child: oneOf([field, comparison, logicalGroup])(),
+      child: booleanExpression(),
     };
   };
 

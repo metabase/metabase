@@ -6,7 +6,7 @@ import Link from "metabase/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { Dashboard, Database, User } from "../../types";
+import { Dashboard, Database, User } from "metabase-types/api";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   BannerCloseIcon,

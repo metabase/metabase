@@ -1,4 +1,10 @@
-import { restore, sidebar, popover, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  sidebar,
+  popover,
+  visualize,
+  openNotebookEditor,
+} from "__support__/e2e/cypress";
 
 describe("smoketest > user", () => {
   // Goal: user can use all the features of the simple question and notebook editor
@@ -6,9 +12,7 @@ describe("smoketest > user", () => {
   beforeEach(cy.signInAsNormalUser);
 
   it("should be able to ask a custom question", () => {
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Custom question").click();
+    openNotebookEditor();
     cy.findByTextEnsureVisible("Sample Dataset").click();
     cy.findByTextEnsureVisible("Products").click();
     cy.findByText("Add filters to narrow your answer").click();

@@ -469,6 +469,17 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should reject Enter when the filter expression is invalid", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    enterCustomColumnDetails({ formula: "[Rating] > 2E{enter}" }); // there should numbers after 'E'
+
+    cy.findByText("Missing exponent");
+    cy.findByText("Rating is greater than 2").should("not.exist");
+  });
+
   it("should offer case expression in the auto-complete suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
