@@ -6,7 +6,7 @@ export interface Settings {
   "show-homepage-xrays"?: boolean;
   "show-homepage-pin-message"?: boolean;
   "slack-token"?: string;
-  "slack-token-valid"?: boolean;
+  "slack-token-valid?"?: boolean;
   "slack-app-token"?: string;
   "slack-files-channel"?: string;
 }

@@ -14,5 +14,5 @@ export const hasSlackAppToken = (state: State): boolean => {
 };
 
 export const isSlackTokenValid = (state: State): boolean | undefined => {
-  return state.settings.values["slack-token-valid"];
+  return state.settings.values["slack-token-valid?"];
 };
