@@ -104,7 +104,7 @@
   (for [member row]
     (cond
       ;; this returns true for bigint only, not normal int or long
-      (and (not (int? member)) (integer? member))
+      (instance? clojure.lang.BigInt member)
       (int member)
 
       ;; this returns true for bigdec only, not actual normal decimals
@@ -116,6 +116,9 @@
       member)))
 
 (defn row-preprocess
-  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
+  "Preprocess rows.
+
+  - Removes any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`
+  - Normalizes bigints and bigdecs to ordinary sizes"
   [x-axis-fn y-axis-fn rows]
   (map coerce-bignum-to-int (filter (every-pred x-axis-fn y-axis-fn) rows)))
