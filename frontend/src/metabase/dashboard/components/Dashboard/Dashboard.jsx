@@ -220,6 +220,8 @@ export default class Dashboard extends Component {
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
 
+    document.cookie = "dashboardUrl= ; expires = Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = `dashboardUrl=` + document.URL + `; SameSite=Strict`;
     return (
       <DashboardLoadingAndErrorWrapper
         isFullHeight={isEditing || isSharing}

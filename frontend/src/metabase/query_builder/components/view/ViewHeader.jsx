@@ -5,6 +5,7 @@ import cx from "classnames";
 import { Box } from "grid-styled";
 
 import Link from "metabase/components/Link";
+import Icon from "metabase/components/Icon";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
@@ -140,7 +141,7 @@ export class ViewTitleHeader extends React.Component {
         .hasAggregations();
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
-
+    const dashboardUrl = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/, "$1");
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -169,7 +170,12 @@ export class ViewTitleHeader extends React.Component {
                 />
               )}
             </div>
-            <ViewSubHeading className="flex align-center flex-wrap pt1">
+            <ViewSubHeading id="viewBreadcrumbs" className="flex align-center flex-wrap pt1">
+
+              {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
+                <Icon name="dashboard" size="11" color="text-light" />
+              </Link>)}
+
               <CollectionBadge
                 className="mb1"
                 collectionId={question.collectionId()}
@@ -227,6 +233,9 @@ export class ViewTitleHeader extends React.Component {
               )}
             </div>
             <div className="flex align-center flex-wrap">
+              {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
+                <Icon name="dashboard" size="11" color="text-light" />
+                </Link>)}
               {isSummarized && (
                 <QuestionDataSource
                   className="mb1"
@@ -387,5 +396,13 @@ export class ViewSubHeader extends React.Component {
     ) : null;
   }
 }
+
+// const breadcrumbsBlock = document.getElementById('viewBreadcrumbs');
+// const dashboardUrl = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+// if (dashboardUrl) {
+//   const dashboardLink = '<a class="mb1 mr2 cokoTF" activecolor="brand" href="' + dashboardUrl + '"><span class="text-wrap">Dashboard</span></a>';
+//   console.log(dashboardLink);
+//   if (breadcrumbsBlock.length) breadcrumbsBlock.insertAdjacentHTML('afterbegin', dashboardLink);
+// }
 
 ViewSubHeader.propTypes = viewSubHeaderPropTypes;
