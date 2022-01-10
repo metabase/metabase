@@ -1,6 +1,7 @@
 (ns metabase.api.slack-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.test :as mt]))
 
@@ -17,7 +18,10 @@
           (is (= nil (slack/slack-token))))))
 
     (testing "A 400 error is returned if the Slack app token is invalid"
-      (with-redefs [slack/valid-token? (constantly false)]
+      (with-redefs [slack/valid-token? (constantly false)
+                    ;; Token validation is skipped by default in test environments; overriding `is-test?` ensures
+                    ;; that validation occurs
+                    config/is-test?    false]
         (mt/user-http-request :crowberto :put 400 "slack/settings"
                               {:slack-app-token "fake-token"})))
 
