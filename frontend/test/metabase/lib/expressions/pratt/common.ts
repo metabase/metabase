@@ -7,6 +7,7 @@ import {
 import { resolve } from "metabase/lib/expressions/resolver";
 import { getMBQLName } from "metabase/lib/expressions/config";
 import {
+  parse as oldParser,
   useShorthands,
   adjustCase,
   adjustOptions,
@@ -44,11 +45,7 @@ export function mockResolve(kind: any, name: string): Expr {
 export function oracle(source: string, type: Type) {
   let mbql = null;
   try {
-    mbql = resolve({
-      source,
-      startRule: type,
-      resolve: mockResolve,
-    } as any);
+    mbql = oldParser(source);
   } catch (e) {
     let err = e as any;
     if (err.length && err.length > 0) {
@@ -59,7 +56,7 @@ export function oracle(source: string, type: Type) {
     }
     throw err;
   }
-  return resolve(mbql, type);
+  return resolve(mbql, type, mockResolve as any);
 }
 
 export function compare(
