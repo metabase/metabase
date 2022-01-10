@@ -24,7 +24,7 @@ driver:
     - name: schema
       display-name: Schema (optional)
       helper-text: Only add tables to Metabase that come from a specific schema.
-      placeholder: jest_crows
+      placeholder: just_crows
       required: false
     - merge:
         - user

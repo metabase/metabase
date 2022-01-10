@@ -1,14 +1,20 @@
 import styled, { css } from "styled-components";
 import { color, darken } from "metabase/lib/colors";
 
-export const InputRoot = styled.div`
+export interface InputProps {
+  hasError?: boolean;
+  hasTooltip?: boolean;
+  fullWidth?: boolean;
+}
+
+export const InputRoot = styled.div<InputProps>`
   display: inline-flex;
   align-items: center;
   position: relative;
   width: ${props => (props.fullWidth ? "100%" : "")};
 `;
 
-export const InputField = styled.input`
+export const InputField = styled.input<InputProps>`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
