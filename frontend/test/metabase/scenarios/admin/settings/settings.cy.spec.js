@@ -379,6 +379,19 @@ describe("scenarios > admin > settings", () => {
     cy.findByText("Metabase Admin");
     cy.findByLabelText("store icon").should("not.exist");
   });
+
+  describe(" > slack settings", () => {
+    it("should present the form and display errors", () => {
+      cy.visit("/admin/settings/slack");
+
+      cy.findByText("Metabase on Slack");
+      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
+      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.button("Save changes").click();
+
+      cy.findByText(": invalid token");
+    });
+  });
 });
 
 describeWithoutToken("scenarios > admin > settings (OSS)", () => {
