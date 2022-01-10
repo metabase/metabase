@@ -46,21 +46,33 @@ const getBannerContent = (
 
   if (hasSlackBot && hasDeprecatedDatabase) {
     return jt`You’re using a ${(
-      <BannerLink to={databaseListUrl}>{t`Database driver`}</BannerLink>
+      <BannerLink
+        key="database"
+        to={databaseListUrl}
+      >{t`Database driver`}</BannerLink>
     )} and a ${(
-      <BannerLink to={slackSettingsUrl}>{t`Slack bot integration`}</BannerLink>
+      <BannerLink
+        key="slack"
+        to={slackSettingsUrl}
+      >{t`Slack bot integration`}</BannerLink>
     )} which are now deprecated and will be removed in the next release. We recommend you ${(
-      <strong>{t`upgrade`}</strong>
+      <strong key="upgrade">{t`upgrade`}</strong>
     )}.`;
   } else if (hasSlackBot) {
     return jt`Your Slack bot was deprecated but is still working. We recommend you ${(
-      <BannerLink to={slackSettingsUrl}>{t`upgrade to Slack Apps`}</BannerLink>
+      <BannerLink
+        key="slack"
+        to={slackSettingsUrl}
+      >{t`upgrade to Slack Apps`}</BannerLink>
     )} when you get a chance.`;
   } else if (hasDeprecatedDatabase) {
     return jt`You’re using a ${(
-      <BannerLink to={databaseListUrl}>{t`Database driver`}</BannerLink>
+      <BannerLink
+        key="database"
+        to={databaseListUrl}
+      >{t`Database driver`}</BannerLink>
     )} which is now deprecated and will be removed in the next release. We recommend you ${(
-      <strong>{t`upgrade`}</strong>
+      <strong key="upgrade">{t`upgrade`}</strong>
     )}.`;
   }
 };
