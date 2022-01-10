@@ -157,18 +157,18 @@ export default class Navbar extends Component {
                 data-metabase-event={`NavBar;Create Menu Click`}
               >
                 <Icon name="add" size={14} />
-                <h4 className="hide sm-show ml1 text-nowrap">{t`Create`}</h4>
+                <h4 className="hide sm-show ml1 text-nowrap">{t`New`}</h4>
               </Link>
             }
             items={[
               {
-                title: t`Visual question`,
+                title: t`Question`,
                 icon: `insight`,
                 link: Urls.newQuestion({
                   mode: "notebook",
                   creationType: "complex_question",
                 }),
-                event: `NavBar;New Visual Question Click;`,
+                event: `NavBar;New Question Click;`,
               },
               ...(hasNativeWrite
                 ? [
@@ -184,13 +184,13 @@ export default class Navbar extends Component {
                   ]
                 : []),
               {
-                title: t`New dashboard`,
+                title: t`Dashboard`,
                 icon: `dashboard`,
                 action: () => this.setModal(MODAL_NEW_DASHBOARD),
                 event: `NavBar;New Dashboard Click;`,
               },
               {
-                title: t`New collection`,
+                title: t`Collection`,
                 icon: `all`,
                 link: Urls.newCollection("root"),
                 event: `NavBar;New Collection Click;`,
