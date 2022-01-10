@@ -5,14 +5,14 @@ import Link from "metabase/components/Link";
 
 export const BannerRoot = styled.div`
   display: flex;
-  padding: 1rem 1rem 1rem 2rem;
+  padding: 1rem 1rem 1rem 1.5rem;
   align-items: center;
   background-color: ${color("bg-light")};
 `;
 
 export const BannerContent = styled.div`
   flex: 1 1 auto;
-  margin: 0 0.5rem;
+  margin: 0 0.75rem;
   color: ${color("text-dark")};
 `;
 

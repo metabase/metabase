@@ -97,10 +97,10 @@ type SettingsMap = Record<SettingName, any>; // provides access to Metabase appl
 type SettingListener = (value: any) => void;
 
 class Settings {
-  _settings: SettingsMap;
+  _settings: Partial<SettingsMap>;
   _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
 
-  constructor(settings: SettingsMap) {
+  constructor(settings: Partial<SettingsMap> = {}) {
     this._settings = settings;
   }
 

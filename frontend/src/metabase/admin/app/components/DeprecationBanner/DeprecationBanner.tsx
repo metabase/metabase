@@ -1,6 +1,5 @@
 import React from "react";
 import { jt, t } from "ttag";
-import * as Urls from "metabase/lib/urls";
 import {
   BannerCloseIcon,
   BannerContent,
@@ -41,8 +40,8 @@ const getBannerContent = (
   hasSlackBot: boolean,
   hasDeprecatedDatabase: boolean,
 ) => {
-  const slackSettingsUrl = Urls.slackSettings();
-  const databaseListUrl = Urls.listDatabases();
+  const databaseListUrl = "/admin/databases";
+  const slackSettingsUrl = "/admin/settings/slack";
 
   if (hasSlackBot && hasDeprecatedDatabase) {
     return jt`You’re using a ${(
