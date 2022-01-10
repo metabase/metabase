@@ -18,6 +18,7 @@ const SummarizePill = props => (
 const SummarizeButton = props => (
   <ViewButton
     medium
+    data-testid="toggle-summarize-sidebar-button"
     icon="insight"
     color={color("accent1")}
     labelBreakpoint="sm"

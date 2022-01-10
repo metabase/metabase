@@ -20,7 +20,7 @@ function FieldFingerprintInfo({ className, field }) {
 
   if (field.isDate()) {
     return <DateTimeFingerprint className={className} field={field} />;
-  } else if (field.isNumber()) {
+  } else if (field.isNumber() && !field.isID()) {
     return <NumberFingerprint className={className} field={field} />;
   } else if (field.isCategory()) {
     return <CategoryFingerprint className={className} field={field} />;
@@ -34,7 +34,7 @@ function getTimezone(field) {
 }
 
 function DateTimeFingerprint({ className, field }) {
-  const dateTimeFingerprint = field.fingerprint.type["type/DateTime"];
+  const dateTimeFingerprint = field.fingerprint.type?.["type/DateTime"];
   if (!dateTimeFingerprint) {
     return null;
   }
@@ -65,7 +65,7 @@ function DateTimeFingerprint({ className, field }) {
 }
 
 function NumberFingerprint({ className, field }) {
-  const numberFingerprint = field.fingerprint.type["type/Number"];
+  const numberFingerprint = field.fingerprint.type?.["type/Number"];
   if (!numberFingerprint) {
     return null;
   }

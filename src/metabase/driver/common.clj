@@ -436,11 +436,19 @@
 (def ^:private days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
+(defn start-of-week->int
+  "Returns the int value for the current :start-of-week setting value, which ranges from 0 (:monday) to 6 (:sunday).
+  If the :start-of-week setting does not have a value, then `nil` is returned."
+  {:added "0.42.0"}
+  []
+  (when-let [v (setting/get-value-of-type :keyword :start-of-week)]
+    (.indexOf ^clojure.lang.PersistentVector days-of-week v)))
+
 (s/defn start-of-week-offset :- s/Int
   "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
-        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-value-of-type :keyword :start-of-week))
+        target-start-of-week (start-of-week->int)
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
