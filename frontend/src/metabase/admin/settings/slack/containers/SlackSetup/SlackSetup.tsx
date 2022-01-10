@@ -6,7 +6,7 @@ import { hasBotToken } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   Form: SlackSetupForm,
-  hasBot: hasBotToken(state),
+  isBot: hasBotToken(state),
   hasError: false,
 });
 
