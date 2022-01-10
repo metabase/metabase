@@ -141,8 +141,14 @@ export class ViewTitleHeader extends React.Component {
         .hasAggregations();
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
-    const dashboardUrl = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-    const dashboardName = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardName\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    const dashboardUrl = document.cookie.replace(
+      /(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/,
+      "$1",
+    );
+    const dashboardName = document.cookie.replace(
+      /(?:(?:^|.*;\s*)dashboardName\s*\=\s*([^;]*).*$)|^.*$/,
+      "$1",
+    );
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -171,11 +177,16 @@ export class ViewTitleHeader extends React.Component {
                 />
               )}
             </div>
-            <ViewSubHeading id="viewBreadcrumbs" className="flex align-center flex-wrap pt1">
-
-              {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                <Icon name="dashboard" size="11" color="text-light" /> {dashboardName}
-              </Link>)}
+            <ViewSubHeading
+              id="viewBreadcrumbs"
+              className="flex align-center flex-wrap pt1"
+            >
+              {dashboardUrl && (
+                <Link to={dashboardUrl} className="mr2 mb1" color="text-light">
+                  <Icon name="dashboard" size="11" color="text-light" />{" "}
+                  {dashboardName}
+                </Link>
+              )}
 
               <CollectionBadge
                 className="mb1"
@@ -234,9 +245,12 @@ export class ViewTitleHeader extends React.Component {
               )}
             </div>
             <div className="flex align-center flex-wrap">
-              {dashboardUrl && (<Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                <Icon name="dashboard" size="11" color="text-light" /> {dashboardName}
-                </Link>)}
+              {dashboardUrl && (
+                <Link to={dashboardUrl} className="mr2 mb1" color="text-light">
+                  <Icon name="dashboard" size="11" color="text-light" />{" "}
+                  {dashboardName}
+                </Link>
+              )}
               {isSummarized && (
                 <QuestionDataSource
                   className="mb1"

@@ -220,11 +220,22 @@ export default class Dashboard extends Component {
       !shouldRenderParametersWidgetInViewMode &&
       (!isEditing || isEditingParameter);
 
-    if(this.props.dashboard !== undefined && this.props.dashboard.name !== undefined) {
-      document.cookie = "dashboardName= ; expires = Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
-      document.cookie = `dashboardName=` + this.props.dashboard.name + `;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/;SameSite=Lax`;
-      document.cookie = "dashboardUrl= ; expires = Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
-      document.cookie = `dashboardUrl=` + document.URL + `;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/;SameSite=Lax`;
+    if (
+      this.props.dashboard !== undefined &&
+      this.props.dashboard.name !== undefined
+    ) {
+      document.cookie =
+        "dashboardName= ; expires = Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
+      document.cookie =
+        `dashboardName=` +
+        this.props.dashboard.name +
+        `;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/;SameSite=Lax`;
+      document.cookie =
+        "dashboardUrl= ; expires = Thu, 01 Jan 1970 00:00:00 GMT;SameSite=Lax";
+      document.cookie =
+        `dashboardUrl=` +
+        document.URL +
+        `;expires=Fri, 31 Dec 9999 23:59:59 GMT;path=/;SameSite=Lax`;
     }
 
     return (
