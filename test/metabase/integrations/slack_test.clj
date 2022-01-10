@@ -141,7 +141,7 @@
                  (slack/users-list))))))))
 
 (defn- mock-files-channel []
-  (let [channel-name @#'slack/files-channel-name]
+  (let [channel-name (slack/slack-files-channel)]
     (-> (mock-conversations)
         first
         (assoc
