@@ -2,12 +2,12 @@ import { connect } from "react-redux";
 import { State } from "metabase-types/store";
 import SlackSetup from "../../components/SlackSetup";
 import SlackSetupForm from "../../containers/SlackSetupForm";
-import { hasBotToken } from "../../selectors";
+import { hasSlackBotToken, isSlackTokenValid } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
   Form: SlackSetupForm,
-  isBot: hasBotToken(state),
-  isValid: false,
+  isBot: hasSlackBotToken(state),
+  isValid: isSlackTokenValid(state),
 });
 
 export default connect(mapStateToProps)(SlackSetup);

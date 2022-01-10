@@ -1,11 +1,13 @@
 import { connect } from "react-redux";
+import { State } from "metabase-types/store";
 import SlackStatus from "../../components/SlackStatus";
 import SlackStatusForm from "../../containers/SlackStatusForm";
 import { updateSettings } from "../../actions";
+import { isSlackTokenValid } from "../../selectors";
 
-const mapStateToProps = () => ({
+const mapStateToProps = (state: State) => ({
   Form: SlackStatusForm,
-  isValid: false,
+  isValid: isSlackTokenValid(state),
 });
 
 const mapDispatchToProps = {
