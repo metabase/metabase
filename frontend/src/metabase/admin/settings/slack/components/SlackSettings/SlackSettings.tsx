@@ -22,7 +22,7 @@ const SlackSettings = ({
       const { payload } = await onLoadManifest();
       setManifest(payload);
     }
-  }, [onLoadManifest]);
+  }, [isApp, onLoadManifest]);
 
   useEffect(() => {
     handleMount();
