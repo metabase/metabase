@@ -11,7 +11,6 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [toucan.db :as db]))
 
@@ -47,8 +46,8 @@
          (m :guard (every-pred map? (comp integer? :source-table)))
          (add-names* (update m :source-table add-table-id-name))
 
-         (m :guard (every-pred map? (comp integer? ::add/source-table)))
-         (add-names* (update m ::add/source-table add-table-id-name))
+         (m :guard (every-pred map? (comp integer? :metabase.query-processor.util.add-alias-info/source-table)))
+         (add-names* (update m :metabase.query-processor.util.add-alias-info/source-table add-table-id-name))
 
          (m :guard (every-pred map? (comp integer? :fk-field-id)))
          (-> m
