@@ -63,7 +63,7 @@
           inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
           exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
       (apply concat (for [^Dataset dataset (.iterateAll datasets)
-                          :let [dataset-id (.. dataset getDatasetId)]
+                          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
                           :when (describe-database/include-schema? (.getDataset dataset-id)
                                                                    inclusion-patterns
                                                                    exclusion-patterns)]
@@ -76,7 +76,7 @@
   [_ database]
   (let [tables             (list-tables database)]
     {:tables (set (for [^Table table tables
-                        :let  [^String table-id   (.getTableId table)
+                        :let  [^TableId table-id  (.getTableId table)
                                ^String dataset-id (.getDataset table-id)]]
                     {:schema dataset-id, :name (.getTable table-id)}))}))
 

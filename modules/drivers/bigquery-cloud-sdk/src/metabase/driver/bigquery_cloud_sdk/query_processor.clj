@@ -25,8 +25,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
