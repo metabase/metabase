@@ -4,7 +4,7 @@ _metadata:
 display_information:
   name: Metabase
   description: Bringing the power of Metabase to your Slack #channels!
-  background_color: #509EE3
+  background_color: "#509EE3"
 features:
   bot_user:
     display_name: Metabase
