@@ -267,14 +267,6 @@ export function editDatabase(databaseId) {
   return `/admin/databases/${databaseId}`;
 }
 
-export function listDatabases() {
-  return `/admin/databases`;
-}
-
-export function slackSettings() {
-  return "/admin/settings/slack";
-}
-
 export function exploreDatabase(database) {
   return `/explore/${database.id}`;
 }
