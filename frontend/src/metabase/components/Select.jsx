@@ -47,6 +47,7 @@ export default class Select extends Component {
     searchCaseInsensitive: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
     searchFuzzy: PropTypes.bool,
+    hideEmptySectionsInSearch: PropTypes.bool,
 
     optionNameFn: PropTypes.func,
     optionValueFn: PropTypes.func,
@@ -177,6 +178,7 @@ export default class Select extends Component {
       searchCaseInsensitive,
       searchPlaceholder,
       searchFuzzy,
+      hideEmptySectionsInSearch,
       isInitiallyOpen,
       onClose,
     } = this.props;
@@ -234,6 +236,7 @@ export default class Select extends Component {
           searchCaseInsensitive={searchCaseInsensitive}
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
+          hideEmptySectionsInSearch={hideEmptySectionsInSearch}
         />
       </PopoverWithTrigger>
     );
