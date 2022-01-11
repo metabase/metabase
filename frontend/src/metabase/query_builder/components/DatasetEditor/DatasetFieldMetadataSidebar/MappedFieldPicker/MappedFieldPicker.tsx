@@ -1,21 +1,21 @@
 import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
-import _ from "underscore";
+import _, { isNull } from "underscore";
 
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import Field from "metabase-lib/lib/metadata/Field";
+import Fields from "metabase/entities/fields";
 
 import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
 type CollapsedPickerProps = {
-  selectedField?: Field;
   isTriggeredComponentOpen: boolean;
   open: () => void;
   close: () => void;
 };
 
-type MappedFieldPickerProps = {
+type MappedFieldPickerOwnProps = {
   field: {
     value: number | null;
     onChange: (fieldId: number) => void;
@@ -23,12 +23,32 @@ type MappedFieldPickerProps = {
   formField: {
     databaseId: number;
   };
+  fieldObject?: Field;
   tabIndex?: number;
+};
+
+type MappedFieldPickerStateProps = {
+  fieldObject?: Field;
+};
+
+type MappedFieldPickerProps = MappedFieldPickerOwnProps &
+  MappedFieldPickerStateProps;
+
+const query = {
+  id: (state: unknown, { field }: MappedFieldPickerOwnProps) =>
+    field.value || null,
+
+  // When using Field object loader, it passes the field object as a `field` prop
+  // and overwrites form's `field` prop. Entity alias makes it pass the `fieldObject` prop instead
+  entityAlias: "fieldObject",
+
+  loadingAndErrorWrapper: false,
 };
 
 function MappedFieldPicker({
   field,
   formField,
+  fieldObject,
   tabIndex,
 }: MappedFieldPickerProps) {
   const { value: selectedFieldId = null, onChange } = field;
@@ -49,13 +69,13 @@ function MappedFieldPicker({
   );
 
   const renderTriggerElement = useCallback(
-    ({ selectedField, open }: CollapsedPickerProps) => {
-      const label = selectedField
-        ? selectedField.displayName({ includeTable: true })
+    ({ open }: CollapsedPickerProps) => {
+      const label = fieldObject
+        ? fieldObject.displayName({ includeTable: true })
         : t`None`;
       return (
         <StyledSelectButton
-          hasValue={!!selectedField}
+          hasValue={!!fieldObject}
           tabIndex={tabIndex}
           onKeyUp={e => {
             if (e.key === "Enter") {
@@ -68,13 +88,15 @@ function MappedFieldPicker({
         </StyledSelectButton>
       );
     },
-    [tabIndex],
+    [fieldObject, tabIndex],
   );
 
   return (
     <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
       selectedDatabaseId={databaseId}
+      selectedTableId={fieldObject?.table.id}
+      selectedSchemaId={fieldObject?.table.schema?.id}
       selectedFieldId={selectedFieldId}
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
@@ -84,5 +106,4 @@ function MappedFieldPicker({
     />
   );
 }
-
-export default MappedFieldPicker;
+export default Fields.load(query)(MappedFieldPicker);
