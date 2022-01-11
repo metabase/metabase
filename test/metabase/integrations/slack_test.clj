@@ -211,28 +211,36 @@
                        (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
 
 (deftest slack-token-error-test
-  (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
-                               (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
-    (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
-      (tu/with-temporary-setting-values [slack-app-token "test-token"
-                                         slack-token-valid? true]
-        (mt/with-fake-inbox
+  (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
+    (tu/with-temporary-setting-values [slack-app-token "test-token"
+                                       slack-token-valid? true]
+      (mt/with-fake-inbox
+        (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
+                                     (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
           (testing "If a slack token is revoked, an email should be sent to admins, and the `slack-token-valid?` setting
-           should be set to false"
-              (try
-                (slack/post-chat-message! "C94712B6X" ":wow:")
-                (catch Throwable e
-                  (is (= "Invalid token" (ex-message e)))
-                  (is (= (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
-                                                  :to #{"crowberto@metabase.com"}
-                                                  :body [{"Your Slack connection stopped working." true}]})
-                         (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
-                  (is (false? (slack/slack-token-valid?)))))
+             should be set to false"
+            (try
+              (slack/post-chat-message! "C94712B6X" ":wow:")
+              (catch Throwable e
+                (is (= "Invalid token" (ex-message e)))
+                (is (= (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
+                                                :to #{"crowberto@metabase.com"}
+                                                :body [{"Your Slack connection stopped working." true}]})
+                       (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
+                (is (false? (slack/slack-token-valid?))))))
 
-              (testing "If `slack-token-valid?` is already false, no email should be sent"
-                (mt/reset-inbox!)
-                (try
-                  (slack/post-chat-message! "C94712B6X" ":wow:")
-                  (catch Throwable e
-                    (is (= "Invalid token" (ex-message e)))
-                    (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working."))))))))))))
+          (testing "If `slack-token-valid?` is already false, no email should be sent"
+            (mt/reset-inbox!)
+            (try
+              (slack/post-chat-message! "C94712B6X" ":wow:")
+              (catch Throwable e
+                (is (= "Invalid token" (ex-message e)))
+                (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))))))
+
+        (testing "No email is sent during token validation checks, even if `slack-token-valid?` is currently true"
+          (tu/with-temporary-setting-values [slack-token-valid? true]
+            (http-fake/with-fake-routes {conversations-endpoint (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
+              (mt/reset-inbox!)
+              (is (= false (slack/valid-token? "abc")))
+              (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
+              (is (slack/slack-token-valid?)))))))))

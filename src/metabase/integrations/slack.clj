@@ -166,7 +166,7 @@
     (binding [*send-token-error-emails?* false]
       (boolean (take 1 (conversations-list :limit 1, :token token))))
     (catch Throwable e
-      (if (= (:error-code (ex-data e)) "invalid_auth")
+      (if (slack-token-error-codes (:error-code (ex-data e)))
         false
         (throw e)))))
 
