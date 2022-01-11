@@ -74,7 +74,7 @@
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
-  (let [tables             (list-tables database)]
+  (let [tables (list-tables database)]
     {:tables (set (for [^Table table tables
                         :let  [^TableId table-id  (.getTableId table)
                                ^String dataset-id (.getDataset table-id)]]

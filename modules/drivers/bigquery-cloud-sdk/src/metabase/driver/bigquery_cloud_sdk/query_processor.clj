@@ -73,15 +73,6 @@
                  (ret-fn project-id-override)))
           (ret-fn project-id-override project-id-creds))))))
 
-(s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
-  "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify
-  identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
-  `BigQueryIdentifier` record type; see its definition for more details."
-  []
-  "dummy-dataset-id"
-  #_(when (qp.store/initialized?)
-      (some-> (qp.store/database) :details :dataset-id)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Running Queries & Parsing Results                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -737,11 +728,9 @@
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver
-   {database-id                                                 :database
-    {source-table-id :source-table, source-query :source-query} :query
+   {{source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
   (let [{table-name :name, dataset-id :schema} (some-> source-table-id qp.store/table)]
-    #_(assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
                                 (sql.qp/mbql->honeysql driver)
