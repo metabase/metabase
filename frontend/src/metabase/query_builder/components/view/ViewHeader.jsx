@@ -149,8 +149,6 @@ export class ViewTitleHeader extends React.Component {
       /(?:(?:^|.*;\s*)dashboardName\s*\=\s*([^;]*).*$)|^.*$/,
       "$1",
     );
-    console.log("question");
-    console.log(question);
     return (
       <ViewSection
         className={cx("border-bottom", className)}
