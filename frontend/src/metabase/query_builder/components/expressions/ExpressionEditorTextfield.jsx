@@ -253,8 +253,13 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     this.clearSuggestions();
 
-    try {
-      // whenever our input blurs we push the updated expression to our parent if valid
+    const errorMessage = this.diagnoseExpression();
+    this.setState({ errorMessage });
+
+    // whenever our input blurs we push the updated expression to our parent if valid
+    if (errorMessage) {
+      this.props.onError(errorMessage);
+    } else {
       const expression = this.compileExpression();
       if (expression) {
         if (!isExpression(expression)) {
@@ -262,20 +267,8 @@ export default class ExpressionEditorTextfield extends React.Component {
         }
         this.props.onChange(expression);
       } else {
-        const diagnostic = this.diagnoseExpression();
-        /// An unsupported expression is one that errors on the resolver but compiles here
-        const errorMessage = diagnostic
-          ? diagnostic
-          : { message: "Unsupported expression" };
-        this.setState({ errorMessage });
-        this.props.onError(errorMessage);
+        this.props.onError({ message: t`Invalid expression` });
       }
-    } catch (err) {
-      // This shouldn't(?) happen, but for now, just in case.
-      console.warn("resolver error", err);
-      const errorMessage = this.diagnoseExpression();
-      this.setState({ errorMessage });
-      this.props.onError(errorMessage);
     }
   };
 
@@ -314,9 +307,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       return null;
     }
     const { query, startRule } = this.props;
-    const { expression } = processSource({ source, query, startRule });
-
-    return expression;
+    return processSource({ source, query, startRule });
   }
 
   diagnoseExpression() {
