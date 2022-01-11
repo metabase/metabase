@@ -220,7 +220,7 @@ function compileInfixOp(node: Node, opts: Options) {
       token: node.children[2].token,
     });
   } else if (node.children.length === 0) {
-    throw new CompileError("Expected expressions", { node, token: node.token });
+    throw new CompileError("Expected expression", { node, token: node.token });
   }
   const leftFn = getCompileFunction(node.children[0]);
   if (!leftFn) {
