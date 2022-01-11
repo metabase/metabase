@@ -184,7 +184,15 @@ export class ViewTitleHeader extends React.Component {
               className="flex align-center flex-wrap pt1"
             >
               {dashboardUrl && (
-                <Link to={dashboardUrl} className="mr2 mb1" style={{color: "rgb(148, 154, 171)", fontSize: "0.875em", fontWeight: "bold"}}>
+                <Link
+                  to={dashboardUrl}
+                  className="mr2 mb1"
+                  style={{
+                    color: "rgb(148, 154, 171)",
+                    fontSize: "0.875em",
+                    fontWeight: "bold",
+                  }}
+                >
                   <Icon name="dashboard" size="11" />
                   <span class="ml1 text-wrap">{dashboardName}</span>
                 </Link>
@@ -248,7 +256,15 @@ export class ViewTitleHeader extends React.Component {
             </div>
             <div className="flex align-center flex-wrap">
               {dashboardUrl && (
-                <Link to={dashboardUrl} className="mr2 mb1" style={{color: "rgb(148, 154, 171)", fontSize: "0.875em", fontWeight: "bold"}}>
+                <Link
+                  to={dashboardUrl}
+                  className="mr2 mb1"
+                  style={{
+                    color: "rgb(148, 154, 171)",
+                    fontSize: "0.875em",
+                    fontWeight: "bold",
+                  }}
+                >
                   <Icon name="dashboard" size="11" />
                   <span class="ml1 text-wrap">{dashboardName}</span>
                 </Link>
