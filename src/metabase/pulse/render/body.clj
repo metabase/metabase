@@ -424,7 +424,7 @@
             (for [label (map first rows)]
               [:div {:style (style/style {:float       :left :margin-right "12px"
                                           :font-family "Lato, sans-serif"
-                                          :font-size   "24px"})}
+                                          :font-size   "16px"})}
                [:span {:style (style/style {:color (legend-colors label)})}
                 "•"]
                [:span {:style (style/style {:margin-left "6px"})}
@@ -715,25 +715,25 @@
       [:img {:style (style/style {:display :block
                                   :width   :100%})
              :src   (:image-src image-bundle)}]
-      [:table
-       [:tr
-        [:td {:style (style/style {:color         style/color-text-dark
-                                   :font-size     :24px
-                                   :font-weight   700
-                                   :padding-right :16px})}
-         (first values)]
-        [:td {:style (style/style {:color       style/color-gray-3
-                                   :font-size   :24px
-                                   :font-weight 700})}
-         (second values)]]
+      [:table {:style (style/style {:border-spacing :0px})}
        [:tr
         [:td {:style (style/style {:color         style/color-text-dark
                                    :font-size     :16px
                                    :font-weight   700
                                    :padding-right :16px})}
+         (first values)]
+        [:td {:style (style/style {:color       style/color-gray-3
+                                   :font-size   :16px
+                                   :font-weight 700})}
+         (second values)]]
+       [:tr
+        [:td {:style (style/style {:color         style/color-text-dark
+                                   :font-size     :12px
+                                   :font-weight   700
+                                   :padding-right :16px})}
          (first labels)]
         [:td {:style (style/style {:color     style/color-gray-3
-                                   :font-size :16px})}
+                                   :font-size :12px})}
          (second labels)]]]]}))
 
 (s/defmethod render :waterfall :- common/RenderedPulseCard
