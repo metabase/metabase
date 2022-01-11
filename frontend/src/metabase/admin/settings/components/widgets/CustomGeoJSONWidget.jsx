@@ -138,6 +138,10 @@ export default class CustomGeoJSONWidget extends Component {
   render() {
     const { setting } = this.props;
 
+    if (setting.is_env_setting) {
+      return null;
+    }
+
     return (
       <div className="flex-full">
         <div className="flex justify-between">
