@@ -6,11 +6,15 @@
             [metabase.models.field :refer [Field]]
             [toucan.db :as db]))
 
-(declare parse-token-by-sigil)
-
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
     sigil))
+
+(defmulti ^:private parse-token-by-sigil
+  {:arglists '([source-table-symb token])}
+  (fn [_ token]
+    (when (symbol? token)
+      (token->sigil token))))
 
 (defn- field-id-call
   "Replace a token string like `field` or `table.field` with a call to [[metabase.test.data/id]]."
@@ -88,12 +92,6 @@
 (defn- mbql-field-with-strategy [strategy source-table-symb token-str]
   (let [[token-type & args] (token->type+args token-str)]
     (apply mbql-field strategy token-type source-table-symb args)))
-
-(defmulti ^:private parse-token-by-sigil
-  {:arglists '([source-table-symb token])}
-  (fn [_ token]
-    (when (symbol? token)
-      (token->sigil token))))
 
 (defmethod parse-token-by-sigil :default [_ token] token)
 
