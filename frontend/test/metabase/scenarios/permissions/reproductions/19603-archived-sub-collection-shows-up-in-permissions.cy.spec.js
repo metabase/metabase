@@ -1,6 +1,6 @@
 import { restore } from "__support__/e2e/cypress";
 
-describe.skip("issue 19603", () => {
+describe("issue 19603", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -9,7 +9,7 @@ describe.skip("issue 19603", () => {
     cy.request("GET", "/api/collection/").then(({ body }) => {
       const { id } = body.find(c => c.slug === "second_collection");
 
-      cy.request("PUT", `/api/collection/${id}`, { archived: true });
+      cy.archiveCollection(id);
     });
   });
 
