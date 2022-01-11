@@ -207,8 +207,16 @@
   [results]
   (every? is-card-empty? results))
 
+
+(defn- timeseries-goal?
+  "Is the the goal for a timeseries (as opposed to a Progress Bar Goal)?"
+  [viz-settings]
+  (boolean (and (:graph.show_goal viz-settings)
+                (= 1 (count (:graph.metrics viz-settings))))))
+
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [goal-comparison      (if alert_above_goal <= >=)
+  (let [[above below] (if (timeseries-goal? (get-in first-result [:result :data :viz-settings])) [<= >=] [<= >])
+        goal-comparison (if alert_above_goal above below)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]

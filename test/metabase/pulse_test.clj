@@ -564,6 +564,87 @@
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
+(deftest above-goal-alert-test-2
+  (testing "above goal alert"
+    (tests {:pulse {:alert_condition  "goal"
+                    :alert_first_only false
+                    :alert_above_goal true}}
+      "timeseries data - above goal"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 5.9 ;; query value is 6, so alert is sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
+                                    [test-card-result png-attachment png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "timeseries data - at goal, not above"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 6 ;; query value is 6, so alert is not sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "timeseries data - below goal"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 6.1 ;; query value is 6, so alert is not sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - above goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 3}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
+                                    [test-card-result png-attachment png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - at goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 4}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
+                                    [test-card-result png-attachment png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - below goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 5}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}})))
+
 (deftest below-goal-alert-test
   (testing "Below goal alert"
     (tests {:card  {:visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
@@ -600,6 +681,86 @@
        (merge (venues-query-card "min")
               {:display                :progress
                :visualization_settings {:progress.goal 2}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
+                                    [test-card-result png-attachment png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}})))
+
+(deftest below-goal-alert-test-2
+  (testing "below goal alert"
+    (tests {:pulse {:alert_condition  "goal"
+                    :alert_first_only false
+                    :alert_above_goal false}}
+      "timeseries data - below goal"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 6.1 ;; query value is 6, so alert is sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
+                                    [test-card-result png-attachment png-attachment])
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "timeseries data - at goal, not above"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 6 ;; query value is 6, so alert is not sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "timeseries data - above goal"
+      {:card
+       (merge (checkins-query-card {:filter   [:between $date "2014-04-01" "2014-06-01"]
+                                    :breakout [!day.date]})
+              {:display                :line
+               :visualization_settings {:graph.goal_value 5.9 ;; query value is 6, so alert is not sent
+                                        :graph.show_goal true
+                                        :graph.metrics ["some-value"]}})
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - above goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 3}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - at goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 4}})
+
+       :assert
+       {:email
+        (fn [_ _]
+          (is (= {}
+                 (mt/summarize-multipart-email test-card-regex))))}}
+      "with progress bar - below goal"
+      {:card
+       (merge (venues-query-card "max")
+              {:display                :progress
+               :visualization_settings {:progress.goal 5}})
 
        :assert
        {:email
