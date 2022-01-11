@@ -18,7 +18,7 @@ interface Props {
 const mapStateToProps = (state: State, props: Props) => ({
   hasSlackBot: hasSlackBot(state),
   hasDeprecatedDatabase: hasDeprecatedDatabase(state, props),
-  isEnabled: isNoticeEnabled,
+  isEnabled: isNoticeEnabled(state),
 });
 
 const mapDispatchToProps = {

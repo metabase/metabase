@@ -26,7 +26,7 @@ const DeprecationNotice = ({
   }
 
   return (
-    <NoticeRoot>
+    <NoticeRoot role="status">
       <NoticeWarningIcon name="warning" />
       <NoticeContent>
         {getBannerContent(hasSlackBot, hasDeprecatedDatabase)}

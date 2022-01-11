@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import DeprecationBanner from "../../containers/DeprecationBanner";
+import DeprecationBanner from "../../containers/DeprecationNotice";
 
 export interface AdminAppProps {
   children?: ReactNode;

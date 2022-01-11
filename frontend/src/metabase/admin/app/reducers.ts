@@ -4,7 +4,7 @@ import { DISABLE_NOTICE } from "./actions";
 
 const isNoticeEnabled = handleActions(
   {
-    [DISABLE_NOTICE]: () => false,
+    [DISABLE_NOTICE]: { next: () => false },
   },
   Settings.deprecationNoticeEnabled(),
 );
