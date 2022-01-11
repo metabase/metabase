@@ -424,7 +424,7 @@
             (for [label (map first rows)]
               [:div {:style (style/style {:float       :left :margin-right "12px"
                                           :font-family "Lato, sans-serif"
-                                          :font-size   "24px"})}
+                                          :font-size   "16px"})}
                [:span {:style (style/style {:color (legend-colors label)})}
                 "•"]
                [:span {:style (style/style {:margin-left "6px"})}
