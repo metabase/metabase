@@ -466,7 +466,7 @@
         "line"))
 
 (defn- join-series
-  [names colors types row-seqs y-axis-positions]
+  [names colors types row-seqs x-tick-widths y-axis-positions]
   ;;; gotta flatten i guess
   (let [joined (map vector names colors types row-seqs y-axis-positions)]
     (vec (for [[card-name card-color card-type rows y-axis-position] joined]
@@ -474,7 +474,7 @@
             :color         card-color
             :type          card-type
             :data          rows
-            :xTickWidths   invalid
+            :xTickWidths   x-tick-widths
             :yAxisPosition y-axis-position}))))
 
 
@@ -499,8 +499,9 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
+        x-widths      (x-tick-widths rows xcol)
         y-pos         (take (count names) default-y-pos)
-        series        (join-series names colors types row-seqs y-pos)
+        series        (join-series names colors types row-seqs x-widths y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
@@ -531,13 +532,14 @@
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
+          x-tick-widths (some shit here)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth default-y-pos idx))]
     {:name          card-name
      :color         card-color
      :type          card-type
      :data          selected-rows
-     :xTickWidths   invalid
+     :xTickWidths   x-tick-widths
      :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
@@ -559,13 +561,14 @@
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
+            x-tick-widths (some shit here)
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
                                    (nth default-y-pos idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
          :data          selected-row-group
-         :xTickWidths   invalid
+         :xTickWidths   x-tick-widths
          :yAxisPosition y-axis-pos}))))
 
 (defn- lab-image-bundle
