@@ -16,8 +16,8 @@ const SlackStatusForm = ({ settings }: SlackStatusFormProps): JSX.Element => {
     <Form form={form} initialValues={settings} onSubmit={onSubmit}>
       {({ Form, FormField }: FormProps) => (
         <Form>
-          <FormField name="token" />
-          <FormField name="channel" />
+          <FormField name="slack-app-token" />
+          <FormField name="slack-files-channel" />
         </Form>
       )}
     </Form>
