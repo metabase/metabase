@@ -88,14 +88,36 @@ export interface Hooks {
  * easily distinguish between compilation error exceptions and exceptions due to
  * bugs
  */
-export class CompileError extends Error {
-  type: string;
-  data: any;
+export abstract class ExpressionError extends Error {
+  abstract get pos(): number | null;
+  abstract get len(): number | null;
+}
 
-  constructor(type: string, data: any) {
-    super(type);
-    this.type = type;
-    this.data = data;
+export class CompileError extends ExpressionError {
+  constructor(message: string, private data: any) {
+    super(message);
+  }
+
+  get pos(): number | null {
+    return this.data?.token?.pos ?? null;
+  }
+
+  get len(): number | null {
+    return this.data?.token?.len ?? null;
+  }
+}
+
+export class ResolverError extends ExpressionError {
+  constructor(message: string, private node: Node) {
+    super(message);
+  }
+
+  get pos(): number | null {
+    return this.node?.token?.pos ?? null;
+  }
+
+  get len(): number | null {
+    return this.node?.token?.length ?? null;
   }
 }
 
