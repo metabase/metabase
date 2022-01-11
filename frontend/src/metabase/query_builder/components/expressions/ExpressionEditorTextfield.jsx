@@ -264,18 +264,18 @@ export default class ExpressionEditorTextfield extends React.Component {
       } else {
         const diagnostic = this.diagnoseExpression();
         /// An unsupported expression is one that errors on the resolver but compiles here
-        const error = diagnostic
+        const errorMessage = diagnostic
           ? diagnostic
           : { message: "Unsupported expression" };
-        this.setState({ errorMessage: error.message });
-        this.props.onError(error);
+        this.setState({ errorMessage });
+        this.props.onError(errorMessage);
       }
     } catch (err) {
       // This shouldn't(?) happen, but for now, just in case.
       console.warn("resolver error", err);
-      const diagnostic = this.diagnoseExpression();
-      this.setState({ errorMessage: diagnostic.message });
-      this.props.onError(diagnostic);
+      const errorMessage = this.diagnoseExpression();
+      this.setState({ errorMessage });
+      this.props.onError(errorMessage);
     }
   };
 
