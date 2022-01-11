@@ -462,4 +462,68 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("MiscDate Previous 30 Years"); // Filter name
     cy.findByText("MiscDate"); // Column name
   });
+
+  it("should allow switching focus with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1 + 2" });
+
+    // next focus: a link
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "link");
+    cy.focused()
+      .should("have.attr", "target")
+      .and("eq", "_blank");
+
+    // next focus: the textbox for the name
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "value")
+      .and("eq", "");
+    cy.focused()
+      .should("have.attr", "placeholder")
+      .and("eq", "Something nice and descriptive");
+
+    // Shift+Tab twice and we're back at the editor
+    cy.realPress(["Shift", "Tab"]);
+    cy.realPress(["Shift", "Tab"]);
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+  });
+
+  it("should allow choosing a suggestion with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "[" });
+
+    // Suggestion popover shows up and this select the first one ([Created At])
+    cy.realPress("Tab");
+
+    // Focus remains on the expression editor
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+
+    // Tab twice to focus on the name box
+    cy.realPress("Tab");
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "value")
+      .and("eq", "");
+    cy.focused()
+      .should("have.attr", "placeholder")
+      .and("eq", "Something nice and descriptive");
+
+    // Shift+Tab twice and we're back at the editor
+    cy.realPress(["Shift", "Tab"]);
+    cy.realPress(["Shift", "Tab"]);
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+  });
 });

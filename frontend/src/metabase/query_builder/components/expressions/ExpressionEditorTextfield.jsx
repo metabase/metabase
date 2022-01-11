@@ -132,6 +132,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       fontSize: "12px",
     });
 
+    const passKeysToBrowser = editor.commands.byName.passKeysToBrowser;
+    editor.commands.bindKey("Tab", passKeysToBrowser);
+    editor.commands.bindKey("Shift-Tab", passKeysToBrowser);
+    editor.commands.removeCommand(editor.commands.byName.indent);
+    editor.commands.removeCommand(editor.commands.byName.outdent);
+
     this.setCaretPosition(
       this.state.source.length,
       this.state.source.length === 0,
@@ -218,14 +224,11 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  handleTab = () => {
+  chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
-    const { editor } = this.input.current;
 
     if (suggestions.length) {
       this.onSuggestionSelected(highlightedSuggestionIndex);
-    } else {
-      editor.commands.byName.tab();
     }
   };
 
@@ -274,10 +277,31 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   clearSuggestions() {
     this.setState({
-      suggestions: [],
       highlightedSuggestionIndex: 0,
       helpText: null,
     });
+    this.updateSuggestions([]);
+  }
+
+  updateSuggestions(suggestions = []) {
+    this.setState({ suggestions });
+
+    // Correctly bind Tab depending on whether suggestions are available or not
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      const { suggestions } = this.state;
+      const tabBinding = editor.commands.commandKeyBinding.tab;
+      if (suggestions.length > 0) {
+        // Something to suggest? Tab is for choosing one of them
+        editor.commands.bindKey("Tab", editor.commands.byName.chooseSuggestion);
+      } else {
+        if (Array.isArray(tabBinding) && tabBinding.length > 1) {
+          // No more suggestions? Keep a single binding and remove the
+          // second one (added to choose a suggestion)
+          editor.commands.commandKeyBinding.tab = tabBinding.shift();
+        }
+      }
+    }
   }
 
   compileExpression() {
@@ -338,10 +362,8 @@ export default class ExpressionEditorTextfield extends React.Component {
       targetOffset: cursor.column,
     });
 
-    this.setState({
-      suggestions: suggestions || [],
-      helpText,
-    });
+    this.setState({ helpText });
+    this.updateSuggestions(suggestions);
   }
 
   errorAsMarkers(errorMessage = null) {
@@ -387,10 +409,10 @@ export default class ExpressionEditorTextfield extends React.Component {
       },
     },
     {
-      name: "tab",
-      bindKey: { win: "Tab", mac: "Tab" },
+      name: "chooseSuggestion",
+      bindKey: null,
       exec: () => {
-        this.handleTab();
+        this.chooseSuggestion();
       },
     },
   ];
