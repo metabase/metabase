@@ -7,7 +7,12 @@ import {
   parseSegment,
 } from "metabase/lib/expressions";
 import { resolve } from "metabase/lib/expressions/resolver";
-import { parse, lexify, compile } from "metabase/lib/expressions/pratt";
+import {
+  parse,
+  lexify,
+  compile,
+  ResolverError,
+} from "metabase/lib/expressions/pratt";
 import {
   useShorthands,
   adjustCase,
@@ -84,27 +89,27 @@ function prattCompiler(source, startRule, query) {
     return errors[0];
   }
 
-  function resolveMBQLField(kind, name) {
+  function resolveMBQLField(kind, name, node) {
     if (!query) {
       return [kind, name];
     }
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
-        throw new Error(`Unknown Metric: ${name}`);
+        throw new ResolverError(`Unknown Field: ${name}`, node);
       }
       return ["metric", metric.id];
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new Error(`Unknown Segment: ${name}`);
+        throw new ResolverError(`Unknown Field: ${name}`, node);
       }
       return ["segment", segment.id];
     } else {
       // fallback
       const dimension = parseDimension(name, options);
       if (!dimension) {
-        throw new Error(`Unknown Field: ${name}`);
+        throw new ResolverError(`Unknown Field: ${name}`, node);
       }
       return dimension.mbql();
     }
