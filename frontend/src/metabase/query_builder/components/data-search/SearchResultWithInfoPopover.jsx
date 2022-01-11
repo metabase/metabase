@@ -18,7 +18,10 @@ export function SearchResultWithInfoPopover({ item, onSelect }) {
         <TableInfoPopover
           placement="right-start"
           offset={OFFSET}
-          tableId={item.table_id}
+          table={{
+            id: item.table_id,
+            description: item.table_description,
+          }}
         >
           <li>
             <SearchResult result={item} onClick={onSelect} compact />
