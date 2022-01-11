@@ -63,8 +63,8 @@
 (defn- handle-error [body]
   (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
-                         (tru "Invalid token")
-                         (tru "Slack API error: {0}" (:error body)))
+                         (trs "Invalid token")
+                         (trs "Slack API error: {0}" (:error body)))
         error          (if invalid-token?
                          {:error-code (:error body)
                           :errors     {:slack-token message}}
@@ -75,7 +75,9 @@
       ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token
       (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
       (slack-token-valid? false))
-    (log/warn (u/pprint-to-str 'red error))
+    (if invalid-token?
+      (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
+      (log/warn (u/pprint-to-str 'red error)))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [status body]}]
