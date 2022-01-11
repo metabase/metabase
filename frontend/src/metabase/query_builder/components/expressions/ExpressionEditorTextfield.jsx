@@ -307,7 +307,9 @@ export default class ExpressionEditorTextfield extends React.Component {
       return null;
     }
     const { query, startRule } = this.props;
-    return processSource({ source, query, startRule });
+    const { expression } = processSource({ source, query, startRule });
+
+    return expression;
   }
 
   diagnoseExpression() {
