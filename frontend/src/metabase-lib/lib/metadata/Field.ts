@@ -30,8 +30,9 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import Base from "./Base";
 import Dimension from "../Dimension";
+import Table from "./Table";
+import Base from "./Base";
 /**
  * @typedef { import("./metadata").FieldValues } FieldValues
  */
@@ -42,6 +43,7 @@ import Dimension from "../Dimension";
 
 export default class Field extends Base {
   name: string;
+  table: Table;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
