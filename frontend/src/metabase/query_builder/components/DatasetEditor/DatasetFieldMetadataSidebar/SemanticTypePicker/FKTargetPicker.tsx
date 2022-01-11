@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,6 +20,7 @@ type FieldObject = {
 
 type StateProps = {
   IDFields: Field[];
+  fetchDatabaseIDFields: (payload: { id: number }) => Promise<void>;
 };
 
 type OwnProps = {
@@ -62,8 +63,22 @@ function mapStateToProps(
   };
 }
 
-function FKTargetPicker({ field, IDFields }: Props) {
+const mapDispatchToProps = {
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+};
+
+function FKTargetPicker({
+  field,
+  formField,
+  IDFields,
+  fetchDatabaseIDFields,
+}: Props) {
   const { value, onChange } = field;
+  const { databaseId } = formField;
+
+  useEffect(() => {
+    fetchDatabaseIDFields({ id: databaseId });
+  }, [databaseId, fetchDatabaseIDFields]);
 
   const options = useMemo(
     () => _.sortBy(IDFields, field => getFieldName(field)),
@@ -85,4 +100,4 @@ function FKTargetPicker({ field, IDFields }: Props) {
   );
 }
 
-export default connect(mapStateToProps)(FKTargetPicker);
+export default connect(mapStateToProps, mapDispatchToProps)(FKTargetPicker);
