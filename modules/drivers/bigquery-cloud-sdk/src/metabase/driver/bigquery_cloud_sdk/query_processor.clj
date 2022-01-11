@@ -42,17 +42,6 @@
 (def ^:private ProjectIdentifierString
   (s/pred valid-project-identifier? "Valid BigQuery project-id"))
 
-(defn- valid-dataset-identifier?
-  "Is String `s` a valid BigQuery dataset identifier (a.k.a. dataset-id)? Identifiers are only allowed to contain
-  letters, numbers, and underscores, cannot start with a number, and for dataset-id, can be at most 1024 characters
-  long."
-  [s]
-  (boolean (and (string? s)
-                (re-matches #"^[a-zA-Z_0-9\.\-]{1,1024}$" s))))
-
-(def ^:private DatasetIdentifierString
-  (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
-
 (s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
