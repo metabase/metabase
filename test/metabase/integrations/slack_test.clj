@@ -5,6 +5,7 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.test.util :as tu]
             [schema.core :as s])
@@ -208,3 +209,30 @@
                                            slack-token nil]
           (is (schema= expected-schema
                        (slack/post-chat-message! "C94712B6X" ":wow:"))))))))
+
+(deftest slack-token-error-test
+  (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
+                               (fn [_] (mock-200-response {:ok false, :error "account_inactive"}))}
+    (with-redefs [messages/all-admin-recipients (constantly ["crowberto@metabase.com"])]
+      (tu/with-temporary-setting-values [slack-app-token "test-token"
+                                         slack-token-valid? true]
+        (mt/with-fake-inbox
+          (testing "If a slack token is revoked, an email should be sent to admins, and the `slack-token-valid?` setting
+           should be set to false"
+              (try
+                (slack/post-chat-message! "C94712B6X" ":wow:")
+                (catch Throwable e
+                  (is (= "Invalid token" (ex-message e)))
+                  (is (= (mt/email-to :crowberto {:subject "Your Slack connection stopped working"
+                                                  :to #{"crowberto@metabase.com"}
+                                                  :body [{"Your Slack connection stopped working." true}]})
+                         (mt/summarize-multipart-email #"Your Slack connection stopped working.")))
+                  (is (false? (slack/slack-token-valid?)))))
+
+              (testing "If `slack-token-valid?` is already false, no email should be sent"
+                (mt/reset-inbox!)
+                (try
+                  (slack/post-chat-message! "C94712B6X" ":wow:")
+                  (catch Throwable e
+                    (is (= "Invalid token" (ex-message e)))
+                    (is (= {} (mt/summarize-multipart-email #"Your Slack connection stopped working."))))))))))))
