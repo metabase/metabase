@@ -1,7 +1,8 @@
 import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
-import _, { isNull } from "underscore";
+import _ from "underscore";
 
+import { isVirtualCardId } from "metabase/lib/saved-questions";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -91,11 +92,17 @@ function MappedFieldPicker({
     [fieldObject, tabIndex],
   );
 
+  // TODO explain the need to skip virtual card id
+  const selectedTableId =
+    !fieldObject || isVirtualCardId(fieldObject.table.id)
+      ? null
+      : fieldObject?.table.id;
+
   return (
     <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
       selectedDatabaseId={databaseId}
-      selectedTableId={fieldObject?.table.id}
+      selectedTableId={selectedTableId}
       selectedSchemaId={fieldObject?.table.schema?.id}
       selectedFieldId={selectedFieldId}
       getTriggerElementContent={renderTriggerElement}
