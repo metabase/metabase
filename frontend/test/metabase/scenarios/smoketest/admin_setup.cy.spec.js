@@ -587,7 +587,7 @@ describe("smoketest > admin_setup", () => {
 
       // Access to SQl queries as user
 
-      cy.findByText("Create").click();
+      cy.findByText("New").click();
       cy.findByText("SQL query");
 
       // Cannot see Review table as no collection user

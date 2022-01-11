@@ -88,12 +88,12 @@ describe("metabase-smoketest > admin", () => {
 
       // Following section is repeated-- turn into callback function?
       // Also, selecting Metabase H2 doesn't do anything
-      cy.findByText("Create").click();
+      cy.findByText("New").click();
 
-      cy.findByText("Visual question");
+      cy.findByText("Question");
       cy.findByText("SQL query");
 
-      cy.findByText("Visual question").click();
+      cy.findByText("Question").click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("People").click();
 
@@ -224,7 +224,7 @@ describe("metabase-smoketest > admin", () => {
       cy.visit("/");
       // New dashboard
       cy.icon("add").click();
-      cy.findByText("New dashboard").click();
+      cy.findByText("Dashboard").click();
 
       cy.findByText("Which collection should this go in?");
 
@@ -323,7 +323,7 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should create my own question as user
         // =================
-        cy.findByText("Create").click();
+        cy.findByText("New").click();
 
         cy.findByText("SQL query");
 
@@ -361,7 +361,7 @@ describe("metabase-smoketest > admin", () => {
         // should create my own dashboard as user
         // =================
         cy.icon("add").click();
-        cy.findByText("New dashboard").click();
+        cy.findByText("Dashboard").click();
         cy.findByLabelText("Name").type("New User Demo Dash");
         cy.findByLabelText("Description").type("This is my own demo dash!");
         cy.get(".ModalBody")

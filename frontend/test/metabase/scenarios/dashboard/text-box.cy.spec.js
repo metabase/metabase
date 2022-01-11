@@ -70,7 +70,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.reload();
 
       // Page should still load
-      cy.findByText("Create");
+      cy.findByText("New");
       cy.findByText("Loading...").should("not.exist");
       cy.findByText("Cannot read property 'type' of undefined").should(
         "not.exist",
