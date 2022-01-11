@@ -21,10 +21,17 @@ import {
   STRING,
   SUB,
   WS,
-} from "./syntax";
-import { assert, CompileError, NodeType, Token, Node, Hooks } from "./types";
+} from "metabase/lib/expressions/pratt/syntax";
+import {
+  assert,
+  CompileError,
+  NodeType,
+  Token,
+  Node,
+  Hooks,
+} from "metabase/lib/expressions/pratt/types";
 
-import { tokenize, TOKEN, OPERATOR } from "../tokenizer";
+import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
 
 interface ParserOptions {
   hooks?: Hooks;

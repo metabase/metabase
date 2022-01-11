@@ -16,8 +16,13 @@ import {
   IDENTIFIER,
   ROOT,
   ARG_LIST,
-} from "./syntax";
-import { assert, NodeType, Node, CompileError } from "./types";
+} from "metabase/lib/expressions/pratt/syntax";
+import {
+  assert,
+  NodeType,
+  Node,
+  CompileError,
+} from "metabase/lib/expressions/pratt/types";
 
 export type Expr = number | string | ([string, ...Expr[]] & { node?: Node });
 export type CompilerPass = (expr: Expr) => Expr;
