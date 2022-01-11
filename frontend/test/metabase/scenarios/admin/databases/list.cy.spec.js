@@ -74,7 +74,7 @@ describe("scenarios > admin > databases > list", () => {
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
-  it.only("should display a deprecated database warning", () => {
+  it("should display a deprecated database warning", () => {
     cy.intercept(/\/api\/database$/, req => {
       req.reply(res => {
         res.body.data = res.body.data.map(database => ({
