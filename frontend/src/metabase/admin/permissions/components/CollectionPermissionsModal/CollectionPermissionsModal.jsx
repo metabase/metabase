@@ -21,6 +21,7 @@ import { permissionEditorPropTypes } from "../PermissionsEditor";
 import {
   getIsDirty,
   getCollectionsPermissionEditor,
+  collectionsQuery,
 } from "../../selectors/collection-permissions";
 import {
   initializeCollectionPermissions,
@@ -161,7 +162,7 @@ CollectionPermissionsModal.propTypes = propTypes;
 
 export default _.compose(
   Collections.loadList({
-    query: () => ({ tree: true }),
+    entityQuery: collectionsQuery,
   }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
