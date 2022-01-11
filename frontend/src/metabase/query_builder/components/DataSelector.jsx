@@ -391,7 +391,6 @@ export class UnconnectedDataSelector extends Component {
       selectedTable: selectedTable,
       fields: fields || [],
       selectedField: selectedField,
-      isSavedQuestionPickerShown: isVirtualCardId(selectedTableId),
     };
   }
 
