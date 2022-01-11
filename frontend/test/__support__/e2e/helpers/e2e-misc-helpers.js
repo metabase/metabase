@@ -32,7 +32,7 @@ export function openNativeEditor({
   if (!fromCurrentPage) {
     cy.visit("/");
   }
-  cy.findByText("Create").click();
+  cy.findByText("New").click();
   cy.findByText("SQL query").click();
 
   databaseName && cy.findByText(databaseName).click();
@@ -56,8 +56,8 @@ export function openNotebookEditor({ fromCurrentPage } = {}) {
     cy.visit("/");
   }
 
-  cy.findByText("Create").click();
-  cy.findByText("Visual question").click();
+  cy.findByText("New").click();
+  cy.findByText("Question").click();
 }
 
 /**
