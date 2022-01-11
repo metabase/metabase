@@ -8,7 +8,6 @@ display_information:
 features:
   bot_user:
     display_name: Metabase
-    always_online: true
 oauth_config:
   scopes:
     bot:
@@ -19,7 +18,3 @@ oauth_config:
       - chat:write
       - chat:write.customize
       - chat:write.public
-settings:
-  org_deploy_enabled: false
-  socket_mode_enabled: false
-  token_rotation_enabled: false
