@@ -7,6 +7,7 @@
             [medley.core :as m]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [schema.core :as s])
   (:import java.nio.charset.Charset
