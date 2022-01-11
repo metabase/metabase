@@ -75,10 +75,19 @@
   [setting-name]
   (boolean (Setting :key (name setting-name))))
 
+(defn- test-assert-setting-has-tag [setting-var expected-tag]
+  (let [{:keys [tag arglists]} (meta setting-var)]
+    (testing "There should not be a tag on the var itself"
+      (is (nil? tag)))
+    (testing "Arglists should be tagged\n"
+      (doseq [arglist arglists]
+        (testing (binding [*print-meta* true] (pr-str arglist))
+          (is (= expected-tag
+                 (:tag (meta arglist)))))))))
+
 (deftest string-tag-test
-  (testing "String vars defined by `defsetting` should have correct `:tag` metadata"
-    (is (= 'java.lang.String
-           (:tag (meta #'test-setting-1))))))
+  (testing "String vars defined by `defsetting` should have correct `:tag` metadata\n"
+    (test-assert-setting-has-tag #'test-setting-1 'java.lang.String)))
 
 (deftest defsetting-getter-fn-test
   (testing "Test defsetting getter fn. Should return the value from env var MB_TEST_ENV_SETTING"
@@ -297,8 +306,7 @@
 
 (deftest boolean-settings-tag-test
   (testing "Boolean settings should have correct `:tag` metadata"
-    (is (= 'java.lang.Boolean
-           (:tag (meta #'test-boolean-setting))))))
+    (test-assert-setting-has-tag #'test-boolean-setting 'java.lang.Boolean)))
 
 (deftest boolean-setting-user-facing-info-test
   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
@@ -459,8 +467,7 @@
   :type :timestamp)
 
 (deftest timestamp-settings-test
-  (is (= 'java.time.temporal.Temporal
-         (:tag (meta #'test-timestamp-setting))))
+  (test-assert-setting-has-tag #'test-timestamp-setting 'java.time.temporal.Temporal)
 
   (testing "make sure we can set & fetch the value and that it gets serialized/deserialized correctly"
     (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
