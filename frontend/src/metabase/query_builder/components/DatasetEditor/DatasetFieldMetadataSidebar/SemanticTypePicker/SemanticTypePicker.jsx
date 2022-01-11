@@ -81,6 +81,7 @@ function SemanticTypePicker({
       placeholder={t`Select a semantic type`}
       searchProp="name"
       searchPlaceholder={t`Search for a special type`}
+      hideEmptySectionsInSearch
       triggerElement={renderSelectButton}
       onClose={focusSelectButton}
     />
