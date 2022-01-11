@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from "react";
+import React, { useCallback, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
