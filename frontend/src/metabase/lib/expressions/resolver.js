@@ -1,6 +1,7 @@
 import { ngettext, msgid, t } from "ttag";
 
 import { OPERATOR as OP } from "./tokenizer";
+import { ResolverError } from "./pratt/types";
 import { MBQL_CLAUSES } from "./index";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
@@ -57,7 +58,7 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
-      return fn ? fn(kind, name) : [kind, name];
+      return fn ? fn(kind, name, expression.node) : [kind, name];
     }
 
     let operandType = null;
@@ -69,7 +70,10 @@ export function resolve(expression, type = "expression", fn = undefined) {
       operandType = "expression";
       const [firstOperand] = operands;
       if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
-        throw new Error(t`Expecting field but found ${firstOperand}`);
+        throw new ResolverError(
+          t`Expecting field but found ${firstOperand}`,
+          expression.node,
+        );
       }
     } else if (op === "concat") {
       operandType = "expression";
@@ -78,7 +82,10 @@ export function resolve(expression, type = "expression", fn = undefined) {
     } else if (op === "case") {
       const [pairs, options] = operands;
       if (pairs.length < 1) {
-        throw new Error(t`CASE expects 2 arguments or more`);
+        throw new ResolverError(
+          t`CASE expects 2 arguments or more`,
+          expression.node,
+        );
       }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
@@ -105,12 +112,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
 
     const clause = findMBQL(op);
     if (!clause) {
-      throw new Error(t`Unknown function ${op}`);
+      throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
     const { displayName, args, multiple, hasOptions } = clause;
     if (!isCompatible(type, clause.type)) {
-      throw new Error(
+      throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
+        expression.node,
       );
     }
     if (!multiple) {
@@ -122,12 +130,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
         operands.length < expectedArgsLength ||
         operands.length > maxArgCount
       ) {
-        throw new Error(
+        throw new ResolverError(
           ngettext(
             msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
             `Function ${displayName} expects ${expectedArgsLength} arguments`,
             expectedArgsLength,
           ),
+          expression.node,
         );
       }
     }
