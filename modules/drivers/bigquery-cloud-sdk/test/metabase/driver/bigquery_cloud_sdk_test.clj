@@ -399,3 +399,9 @@
                   (is (= "metabase-bigquery-driver" (get-in (Database db-id)
                                                             [:details :project-id-from-credentials]))))))))))))
 
+
+(deftest query-drive-external-tables
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Google Sheets external tables can be queried via BigQuery"
+      ;; TODO: fill in test once CI instance is ready
+      (is (= 1 2)))))
