@@ -149,6 +149,8 @@ export class ViewTitleHeader extends React.Component {
       /(?:(?:^|.*;\s*)dashboardName\s*\=\s*([^;]*).*$)|^.*$/,
       "$1",
     );
+    console.log("question");
+    console.log(question);
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -182,9 +184,9 @@ export class ViewTitleHeader extends React.Component {
               className="flex align-center flex-wrap pt1"
             >
               {dashboardUrl && (
-                <Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                  <Icon name="dashboard" size="11" color="text-light" />{" "}
-                  {dashboardName}
+                <Link to={dashboardUrl} className="mr2 mb1" style={{color: "rgb(148, 154, 171)", fontSize: "0.875em", fontWeight: "bold"}}>
+                  <Icon name="dashboard" size="11" />
+                  <span class="ml1 text-wrap">{dashboardName}</span>
                 </Link>
               )}
 
@@ -195,7 +197,7 @@ export class ViewTitleHeader extends React.Component {
 
               {QuestionDataSource.shouldRender(this.props) && (
                 <QuestionDataSource
-                  className="ml3 mb1"
+                  className="ml2 mb1"
                   question={question}
                   isObjectDetail={isObjectDetail}
                   subHead
@@ -246,9 +248,9 @@ export class ViewTitleHeader extends React.Component {
             </div>
             <div className="flex align-center flex-wrap">
               {dashboardUrl && (
-                <Link to={dashboardUrl} className="mr2 mb1" color="text-light">
-                  <Icon name="dashboard" size="11" color="text-light" />{" "}
-                  {dashboardName}
+                <Link to={dashboardUrl} className="mr2 mb1" style={{color: "rgb(148, 154, 171)", fontSize: "0.875em", fontWeight: "bold"}}>
+                  <Icon name="dashboard" size="11" />
+                  <span class="ml1 text-wrap">{dashboardName}</span>
                 </Link>
               )}
               {isSummarized && (
@@ -411,13 +413,5 @@ export class ViewSubHeader extends React.Component {
     ) : null;
   }
 }
-
-// const breadcrumbsBlock = document.getElementById('viewBreadcrumbs');
-// const dashboardUrl = document.cookie.replace(/(?:(?:^|.*;\s*)dashboardUrl\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-// if (dashboardUrl) {
-//   const dashboardLink = '<a class="mb1 mr2 cokoTF" activecolor="brand" href="' + dashboardUrl + '"><span class="text-wrap">Dashboard</span></a>';
-//   console.log(dashboardLink);
-//   if (breadcrumbsBlock.length) breadcrumbsBlock.insertAdjacentHTML('afterbegin', dashboardLink);
-// }
 
 ViewSubHeader.propTypes = viewSubHeaderPropTypes;
