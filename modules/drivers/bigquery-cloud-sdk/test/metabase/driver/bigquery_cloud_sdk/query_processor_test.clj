@@ -781,24 +781,6 @@
                                 :target [:variable [:template-tag "p2"]]
                                 :value  "bar"}]})))))))
 
-(deftest acceptable-dataset-test
-  (mt/test-driver :bigquery
-    (testing "Make sure validation of dataset's name works correctly"
-      (testing "acceptable names"
-        (are [name] (= true (#'bigquery.qp/valid-dataset-identifier? name))
-                    "0"
-                    "a"
-                    "_"
-                    "apple"
-                    "banana.apple"
-                    "my-fruits.orange"
-                    (apply str (repeat 1054 "a"))))
-      (testing "rejected names"
-        (are [name] (= false (#'bigquery.qp/valid-dataset-identifier? name))
-                    "have:dataset"
-                    ""
-                    (apply str (repeat 1055 "a")))))))
-
 (defn- project-id-prefix-if-set []
   (if-let [proj-id (mt/db-test-env-var :bigquery-cloud-sdk :project-id)]
     (str proj-id \.)
