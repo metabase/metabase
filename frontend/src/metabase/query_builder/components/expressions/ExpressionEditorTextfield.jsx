@@ -275,10 +275,31 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   clearSuggestions() {
     this.setState({
-      suggestions: [],
       highlightedSuggestionIndex: 0,
       helpText: null,
     });
+    this.updateSuggestions([]);
+  }
+
+  updateSuggestions(suggestions = []) {
+    this.setState({ suggestions });
+
+    // Correctly bind Tab depending on whether suggestions are available or not
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      const { suggestions } = this.state;
+      const tabBinding = editor.commands.commandKeyBinding.tab;
+      if (suggestions.length > 0) {
+        // Something to suggest? Tab is for choosing one of them
+        editor.commands.bindKey("Tab", editor.commands.byName.chooseSuggestion);
+      } else {
+        if (Array.isArray(tabBinding) && tabBinding.length > 1) {
+          // No more suggestions? Keep a single binding and remove the
+          // second one (added to choose a suggestion)
+          editor.commands.commandKeyBinding.tab = tabBinding.shift();
+        }
+      }
+    }
   }
 
   compileExpression() {
@@ -339,10 +360,8 @@ export default class ExpressionEditorTextfield extends React.Component {
       targetOffset: cursor.column,
     });
 
-    this.setState({
-      suggestions: suggestions || [],
-      helpText,
-    });
+    this.setState({ helpText });
+    this.updateSuggestions(suggestions);
   }
 
   errorAsMarkers(errorMessage = null) {
@@ -396,29 +415,8 @@ export default class ExpressionEditorTextfield extends React.Component {
     },
   ];
 
-  // Correctly bind Tab depending on whether suggestions are available or now
-  updateTabBinding() {
-    if (this.input.current) {
-      const { editor } = this.input.current;
-      const { suggestions } = this.state;
-      const tabBinding = editor.commands.commandKeyBinding.tab;
-      if (suggestions.length > 0) {
-        // Something to suggest? Tab is for choosing one of them
-        editor.commands.bindKey("Tab", editor.commands.byName.chooseSuggestion);
-      } else {
-        if (Array.isArray(tabBinding) && tabBinding.length > 1) {
-          // No more suggestions? Keep a single binding and remove the
-          // second one (added to choose a suggestion)
-          editor.commands.commandKeyBinding.tab = tabBinding.shift();
-        }
-      }
-    }
-  }
-
   render() {
     const { source, suggestions, errorMessage, isFocused } = this.state;
-
-    this.updateTabBinding();
 
     return (
       <React.Fragment>
