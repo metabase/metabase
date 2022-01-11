@@ -9,7 +9,7 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onLoadManifest: dispatch(loadManifest()),
+  onLoadManifest: () => dispatch(loadManifest()),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(SlackSettings);
