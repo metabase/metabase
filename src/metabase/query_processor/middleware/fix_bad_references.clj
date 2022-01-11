@@ -52,13 +52,16 @@
       (opts :guard (complement :join-alias))]
      (let [{table-id :table_id, :as field} (qp.store/field id)
            {join-alias :alias}             (find-join-against-table inner-query table-id)]
-       (log/warn (u/colorize 'yellow (trs "Bad :field clause {0} for field {1} at {2}: clause should have a :join-alias. Guessing join {3}"
-                                          (pr-str &match)
-                                          (pr-str (format "%s.%s"
-                                                          (:name (table table-id))
-                                                          (:name field)))
-                                          (pr-str &parents)
-                                          (pr-str join-alias))))
+       (log/warn (u/colorize 'yellow (str (trs "Bad :field clause {0} for field {1} at {2}: clause should have a :join-alias."
+                                               (pr-str &match)
+                                               (pr-str (format "%s.%s"
+                                                               (:name (table table-id))
+                                                               (:name field)))
+                                               (pr-str &parents))
+                                          " "
+                                          (if join-alias
+                                            (trs "Guessing join {0}" (pr-str join-alias))
+                                            (trs "Unable to infer an appropriate join. Query may not work as expected.")))))
        (if join-alias
          [:field id (assoc opts :join-alias join-alias)]
          &match)))))
@@ -67,8 +70,10 @@
   "Walk `query` and look for `:field` ID clauses without `:join-alias` information that reference Fields belonging to
   Tables other than the source Table (or an 'indirect' source Table that is available via source queries). Such
   references are technically disallowed. Since we are nice we will look thru joins and try to figure out a join that
-  will work and add appropriate `:join-alias` information if we can. If we can't find any viable join, throw an
-  Exception."
+  will work and add appropriate `:join-alias` information if we can.
+
+  This middleware performs a best-effort DWIM transformation, and isn't smart enough to fix every broken query out
+  there. If the query cannot be fixed, this log a warning and move on. See #19612 for more information."
   [query]
   (walk/postwalk
    (fn [form]
