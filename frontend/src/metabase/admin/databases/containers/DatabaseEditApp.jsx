@@ -13,7 +13,6 @@ import title from "metabase/hoc/Title";
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import DriverWarning from "metabase/components/DriverWarning";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 
 import Databases from "metabase/entities/databases";
@@ -131,7 +130,6 @@ export default class DatabaseEditApp extends Component {
                       FormMessage,
                       FormSubmit,
                       formFields,
-                      onChangeField,
                       submitTitle,
                     }) => {
                       return (
@@ -160,13 +158,6 @@ export default class DatabaseEditApp extends Component {
                                 data-testid="database-setup-help-card"
                               />
                             )}
-                            <DriverWarning
-                              engine={selectedEngine}
-                              ml={26}
-                              onChangeEngine={engine => {
-                                onChangeField("engine", engine);
-                              }}
-                            />
                           </Box>
                         </Flex>
                       );
