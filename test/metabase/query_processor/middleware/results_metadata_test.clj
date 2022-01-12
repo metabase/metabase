@@ -195,6 +195,8 @@
                :display_name "Date"
                :name         "DATE"
                :unit         :year
+               :settings     nil
+               :description  nil
                :semantic_type nil
                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
                               :type   {:type/DateTime {:earliest "2013-01-03"
