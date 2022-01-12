@@ -26,7 +26,7 @@ Note that Metabase accounts created with Google Sign-In do not have passwords an
 
 ## Enabling LDAP authentication
 
-In the **Admin** > **Authentication** tab, go the the LDAP section and click **Configure**. Fill out the form with the information about your LDAP server:
+In the **Admin** > **Authentication** tab, go the the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
 
 - hostname
 - port
