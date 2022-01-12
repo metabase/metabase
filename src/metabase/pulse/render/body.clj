@@ -499,9 +499,9 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        x-widths      (x-tick-widths rows xcol)
+        x-tick-widths (rows->x-tick-widths rows (first first-row-fns))
         y-pos         (take (count names) default-y-pos)
-        series        (join-series names colors types row-seqs x-widths y-pos)
+        series        (join-series names colors types row-seqs x-tick-widths y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
@@ -521,7 +521,7 @@
 (defn- single-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
   for a single x-axis with multiple y-axis."
-  [chart-type joined-rows x-cols y-cols viz-settings]
+  [chart-type joined-rows x-cols y-cols x-tick-widths viz-settings]
   (for [[idx y-col] (map-indexed vector y-cols)]
     (let [y-col-key     (keyword (:name y-col))
           card-name     (or (series-setting viz-settings y-col-key :name)
@@ -532,7 +532,6 @@
                             chart-type
                             (nth default-combo-chart-types idx))
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
-          x-tick-widths (some shit here)
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth default-y-pos idx))]
     {:name          card-name
@@ -548,7 +547,7 @@
 
   This mimics default behavior in JS viz, which is to group by the second dimension and make every group-by-value a series.
   This can have really high cardinality of series but the JS viz will complain about more than 100 already"
-  [chart-type joined-rows x-cols y-cols viz-settings]
+  [chart-type joined-rows x-cols y-cols x-tick-widths viz-settings]
   (let [grouped-rows (group-by #(second (first %)) joined-rows)
         groups       (keys grouped-rows)]
     (for [[idx group-key] (map-indexed vector groups)]
@@ -561,7 +560,6 @@
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
-            x-tick-widths (some shit here)
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
                                    (nth default-y-pos idx))]
         {:name          card-name
@@ -586,10 +584,11 @@
         enforced-type    (if (= chart-type :combo)
                            nil
                            chart-type)
+        x-tick-widths    (rows->x-tick-widths rows x-axis-rowfn)
         ;; NB: There's a hardcoded limit of arity 2 on x-axis, so there's only the 1-axis or 2-axis case
         series           (if (= (count x-cols) 1)
-                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings)
-                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
+                           (single-x-axis-combo-series enforced-type joined-rows x-cols y-cols x-tick-widths viz-settings)
+                           (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols x-tick-widths viz-settings))
 
         labels           (combo-label-info x-cols y-cols viz-settings)
         settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
