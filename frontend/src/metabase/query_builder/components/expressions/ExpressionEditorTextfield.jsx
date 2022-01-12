@@ -118,8 +118,15 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { expression, query, startRule } = newProps;
     if (!this.state || !_.isEqual(this.props.expression, expression)) {
       const source = format(expression, { query, startRule });
+      const currentSource = this.state?.source;
       this.setState({ source, expression });
       this.clearSuggestions();
+
+      // Reset caret position due to reformatting
+      if (currentSource !== source && this.input.current) {
+        const { editor } = this.input.current;
+        setTimeout(() => editor.gotoLine(1, source.length), 0);
+      }
     }
   }
 
