@@ -84,6 +84,9 @@ export default class Select extends Component {
     );
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
+
+    this.accordionListRef = React.createRef();
+    this.selectButtonRef = React.createRef();
   }
 
   _getSections() {
@@ -138,6 +141,7 @@ export default class Select extends Component {
     onChange({ target: { value } });
     if (!multiple) {
       this._popover.close();
+      this.selectButtonRef.current?.focus();
     }
   };
 
@@ -191,6 +195,7 @@ export default class Select extends Component {
         triggerElement={
           this.props.triggerElement || (
             <SelectButton
+              ref={this.selectButtonRef}
               className="flex-full"
               hasValue={selectedNames.length > 0}
               {...buttonProps}
@@ -214,6 +219,7 @@ export default class Select extends Component {
         pinInitialAttachment
       >
         <AccordionList
+          ref={this.accordionListRef}
           sections={sections}
           className="MB-Select text-brand"
           alwaysExpanded

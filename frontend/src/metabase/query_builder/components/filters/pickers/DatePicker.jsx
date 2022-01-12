@@ -10,7 +10,7 @@ import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { DATE_PERIODS } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
-import Calendar from "metabase/components/Calendar";
+import { Calendar } from "metabase/components/Calendar";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 

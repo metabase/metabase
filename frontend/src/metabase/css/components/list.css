@@ -44,6 +44,12 @@
   margin-top: 2px;
   margin-bottom: 2px;
 }
+
+.List-item:focus {
+  outline: none;
+  background-color: color-mod(var(--color-text-light) alpha(-80%));
+}
+
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected:not(.List-item--disabled) {
   background-color: currentColor;

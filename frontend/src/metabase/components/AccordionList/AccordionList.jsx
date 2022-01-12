@@ -1,5 +1,6 @@
-import React, { Component } from "react";
+import React, { Component, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
+import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -9,7 +10,8 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
-import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
+import { memoize } from "metabase-lib/lib/utils";
+import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 export default class AccordionList extends Component {
   constructor(props, context) {
@@ -37,12 +39,15 @@ export default class AccordionList extends Component {
     this.state = {
       openSection,
       searchText: "",
+      focusedIndex: null,
     };
 
     this._cache = new CellMeasurerCache({
       fixedWidth: true,
       minHeight: 10,
     });
+
+    this.containerRef = React.createRef();
   }
 
   static propTypes = {
@@ -125,6 +130,9 @@ export default class AccordionList extends Component {
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
       const index = this._initialSelectedRowIndex;
+
+      this.setState({ focusedIndex: index });
+
       if (
         this._list &&
         index != null &&
@@ -245,29 +253,65 @@ export default class AccordionList extends Component {
     }
   };
 
-  render() {
-    const {
-      id,
-      style,
-      className,
-      searchable,
-      searchProp,
-      sections,
-      alwaysTogglable,
-      alwaysExpanded,
-      hideSingleSectionTitle,
-    } = this.props;
+  findClosestItemRow = (currentIndex, order) => {
+    const rows = this.getRows();
 
-    const openSection = this.getOpenSection();
+    let index = order === "next" ? currentIndex + 1 : currentIndex - 1;
+
+    while (index >= 0 && index < rows.length) {
+      if (rows[index].type === "item") {
+        return index;
+      }
+
+      if (order === "next") {
+        index++;
+      } else {
+        index--;
+      }
+    }
+
+    return null;
+  };
+
+  handleKeyDown = event => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.key === "ArrowUp") {
+      return this.setState(prev => ({
+        focusedIndex:
+          this.findClosestItemRow(prev.focusedIndex, "prev") ??
+          prev.focusedIndex,
+      }));
+    }
+
+    if (event.key === "ArrowDown") {
+      return this.setState(prev => ({
+        focusedIndex:
+          this.findClosestItemRow(prev.focusedIndex, "next") ??
+          prev.focusedIndex,
+      }));
+    }
+  };
+
+  @memoize
+  getRowsCached = (
+    searchText,
+    searchable,
+    searchProp,
+    sections,
+    alwaysTogglable,
+    alwaysExpanded,
+    hideSingleSectionTitle,
+    itemIsSelected,
+    openSection,
+  ) => {
     const sectionIsExpanded = sectionIndex =>
       alwaysExpanded || openSection === sectionIndex;
     const sectionIsSearchable = sectionIndex =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
-    const sectionIsTogglable = sectionIndex =>
-      alwaysTogglable || sections.length > 1;
 
-    const { searchText } = this.state;
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
@@ -292,7 +336,12 @@ export default class AccordionList extends Component {
         section.name &&
         (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
       ) {
-        rows.push({ type: "header", section, sectionIndex, isLastSection });
+        rows.push({
+          type: "header",
+          section,
+          sectionIndex,
+          isLastSection,
+        });
       } else {
         rows.push({
           type: "header-hidden",
@@ -311,7 +360,12 @@ export default class AccordionList extends Component {
         if (alwaysExpanded) {
           globalSearch = true;
         } else {
-          rows.push({ type: "search", section, sectionIndex, isLastSection });
+          rows.push({
+            type: "search",
+            section,
+            sectionIndex,
+            isLastSection,
+          });
         }
       }
       if (
@@ -323,7 +377,7 @@ export default class AccordionList extends Component {
         for (const [itemIndex, item] of section.items.entries()) {
           if (searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
-            if (this.props.itemIsSelected(item)) {
+            if (itemIsSelected(item)) {
               this._initialSelectedRowIndex = rows.length;
             }
             rows.push({
@@ -357,6 +411,56 @@ export default class AccordionList extends Component {
       });
     }
 
+    return rows;
+  };
+
+  getRows() {
+    const {
+      searchable,
+      searchProp,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+      hideSingleSectionTitle,
+      itemIsSelected,
+    } = this.props;
+
+    const { searchText } = this.state;
+
+    const openSection = this.getOpenSection();
+
+    return this.getRowsCached(
+      searchText,
+      searchable,
+      searchProp,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+      hideSingleSectionTitle,
+      itemIsSelected,
+      openSection,
+    );
+  }
+
+  render() {
+    const {
+      id,
+      style,
+      className,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+    } = this.props;
+
+    const openSection = this.getOpenSection();
+    const sectionIsExpanded = sectionIndex =>
+      alwaysExpanded || openSection === sectionIndex;
+
+    const sectionIsTogglable = _sectionIndex =>
+      alwaysTogglable || sections.length > 1;
+
+    const rows = this.getRows();
+
     if (this.props.maxHeight === Infinity) {
       return (
         <div
@@ -368,6 +472,7 @@ export default class AccordionList extends Component {
         >
           {rows.map((row, index) => (
             <AccordionListCell
+              isFocused={this.state.focusedIndex === index}
               key={index}
               {...this.props}
               row={row}
@@ -378,6 +483,7 @@ export default class AccordionList extends Component {
               sectionIsExpanded={sectionIsExpanded}
               sectionIsTogglable={sectionIsTogglable}
               toggleSection={this.toggleSection}
+              onKeyDown={this.handleKeyDown}
             />
           ))}
         </div>
@@ -432,6 +538,7 @@ export default class AccordionList extends Component {
             >
               {({ measure }) => (
                 <AccordionListCell
+                  isFocused={this.state.focusedIndex === index}
                   {...this.props}
                   style={style}
                   row={rows[index]}
@@ -442,6 +549,7 @@ export default class AccordionList extends Component {
                   sectionIsExpanded={sectionIsExpanded}
                   sectionIsTogglable={sectionIsTogglable}
                   toggleSection={this.toggleSection}
+                  onKeyDown={this.handleKeyDown}
                 />
               )}
             </CellMeasurer>
@@ -482,7 +590,23 @@ const AccordionListCell = ({
   showItemArrows,
   itemTestId,
   getItemClassName,
+  isFocused,
+  onKeyDown,
 }) => {
+  const cellRef = useRef();
+
+  useEffect(() => {
+    if (isFocused) {
+      cellRef.current?.focus();
+    }
+  }, [isFocused]);
+
+  const handleKeyDown = event => {
+    if (event.key === " ") {
+      onChange(item);
+    }
+  };
+
   const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
   let content;
   if (type === "header") {
@@ -561,7 +685,11 @@ const AccordionListCell = ({
     content = (
       <div
         data-testid={itemTestId}
+        role="option"
         aria-selected={isSelected}
+        tabIndex={0}
+        ref={cellRef}
+        onKeyDown={composeEventHandlers(onKeyDown, handleKeyDown)}
         className={cx(
           "List-item flex mx1",
           {

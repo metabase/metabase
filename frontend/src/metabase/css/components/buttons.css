@@ -17,6 +17,7 @@
   border-radius: var(--default-button-border-radius);
 }
 
+.Button:focus,
 .Button:hover {
   color: var(--color-brand);
   border-color: color-mod(var(--color-border) blackness(12%));
@@ -58,6 +59,7 @@
   border: 1px solid var(--color-brand);
 }
 
+.Button--primary:focus,
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
@@ -70,6 +72,7 @@
   border: 1px solid var(--color-error);
 }
 
+.Button--warning:focus,
 .Button--warning:hover {
   color: var(--color-text-white);
   border-color: var(--color-error);
@@ -92,6 +95,7 @@
   border: 1px solid var(--color-accent7);
 }
 
+.Button--purple:focus,
 .Button--purple:hover {
   color: white;
   background-color: color-mod(var(--color-accent7) alpha(-12%));
@@ -103,6 +107,7 @@
   background: transparent;
   color: var(--color-text-medium);
 }
+.Button--borderless:focus,
 .Button--borderless:hover {
   border-color: transparent;
   color: var(--color-text-medium);

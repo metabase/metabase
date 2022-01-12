@@ -43,6 +43,9 @@ export default ComposedComponent =>
 
     toggle(isOpen = !this.state.isOpen) {
       this.setState({ isOpen });
+
+      const { onOpen } = this.props;
+      isOpen && onOpen?.();
     }
 
     onClose(e) {
@@ -99,6 +102,21 @@ export default ComposedComponent =>
       }
     }
 
+    isOpen() {
+      return this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+    }
+
+    handleKeyPress = event => {
+      if (event.key === " " || event.key === "Enter") {
+        return this.handleToggle(event);
+      }
+    };
+
+    handleToggle = event => {
+      event?.preventDefault();
+      !this.props.disabled && this.toggle();
+    };
+
     render() {
       const {
         triggerId,
@@ -108,8 +126,7 @@ export default ComposedComponent =>
         triggerClassesClose,
       } = this.props;
 
-      const isOpen =
-        this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
+      const isOpen = this.isOpen();
 
       let { triggerElement } = this.props;
       if (triggerElement && triggerElement.type === Tooltip) {
@@ -133,13 +150,11 @@ export default ComposedComponent =>
       }
 
       return (
-        <a
+        <span
           id={triggerId}
           ref={this.trigger}
-          onClick={event => {
-            event.preventDefault();
-            !this.props.disabled && this.toggle();
-          }}
+          onClick={this.handleToggle}
+          onKeyDown={this.handleKeyPress}
           className={cx(
             triggerClasses,
             isOpen && triggerClassesOpen,
@@ -163,7 +178,7 @@ export default ComposedComponent =>
           >
             {children}
           </ComposedComponent>
-        </a>
+        </span>
       );
     }
   };

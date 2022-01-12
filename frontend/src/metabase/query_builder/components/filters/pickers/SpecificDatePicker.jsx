@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Calendar from "metabase/components/Calendar";
+import { Calendar } from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
