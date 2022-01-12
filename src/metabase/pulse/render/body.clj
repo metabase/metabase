@@ -458,15 +458,21 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (repeat "left"))
+  (conj (repeat "right")
+        "left"))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
   (conj (repeat "bar")
         "line"))
 
+(defn- rows->x-tick-widths
+  [rows x-fn]
+  (let [x-rows (map x-fn rows)]
+    (map #(common/string-width % "Lato" 11) x-rows)))
+
 (defn- join-series
-  [names colors types row-seqs x-tick-widths y-axis-positions]
+  [names colors types row-seqs x-fn y-axis-positions]
   ;;; gotta flatten i guess
   (let [joined (map vector names colors types row-seqs y-axis-positions)]
     (vec (for [[card-name card-color card-type rows y-axis-position] joined]
@@ -474,7 +480,7 @@
             :color         card-color
             :type          card-type
             :data          rows
-            :xTickWidths   x-tick-widths
+            :xTickWidths   (rows->x-tick-widths rows x-fn)
             :yAxisPosition y-axis-position}))))
 
 
@@ -493,15 +499,16 @@
                                (common/non-nil-rows x-rowfn y-rowfn row-seq))))
         col-seqs      (map :cols multi-data)
         first-rowfns  (first rowfns)
-        [x-col y-col] ((juxt (first first-rowfns) (second first-rowfns)) (first col-seqs))
+        x-fn          (first first-rowfns)
+        y-fn          (second first-rowfns)
+        [x-col y-col] ((juxt x-fn y-fn) (first col-seqs))
         labels        (x-and-y-axis-label-info x-col y-col viz-settings)
         names         (map :name cards)
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        x-tick-widths (rows->x-tick-widths rows (first first-row-fns))
         y-pos         (take (count names) default-y-pos)
-        series        (join-series names colors types row-seqs x-tick-widths y-pos)
+        series        (join-series names colors types row-seqs x-fn y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
