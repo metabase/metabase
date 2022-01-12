@@ -8,9 +8,9 @@
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.driver.util :as driver.u])
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]
            java.util.regex.Pattern))
 
@@ -165,6 +165,18 @@
         true
         nil))
 
+(defn db-details->schema-filter-patterns
+  "Given a `prop-nm` (which is expected to be a connection property of type `:schema-filters`, and a `database`
+  instance, return a vector containing [inclusion-patterns exclusion-patterns]."
+  {:added "0.42.0"}
+  [prop-nm {db-details :details :as database}]
+  (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
+        schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
+        exclusion-type?        (= "exclusion" schema-filter-type)]
+    (if exclusion-type?
+      [nil schema-filter-patterns]
+      [schema-filter-patterns nil])))
+
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec]
@@ -178,14 +190,10 @@
                    default-active-tbl-fn   #(into #{} (i/active-tables driver conn nil nil))]
                (if has-schema-filter-prop?
                  (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
-                   (let [prop-nm                (:name schema-filter-prop)
-                         db-details             (:details database)
-                         schema-filter-type     (get db-details(keyword (str prop-nm "-type")))
-                         schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
-                         exclusion-type?        (= "exclusion" schema-filter-type)]
-                     (into #{} (i/active-tables driver
-                                                conn
-                                                (when-not exclusion-type? schema-filter-patterns)
-                                                (when exclusion-type? schema-filter-patterns))))
+                   (let [prop-nm                                 (:name schema-filter-prop)
+                         [inclusion-patterns exclusion-patterns] (db-details->schema-filter-patterns
+                                                                  prop-nm
+                                                                  database)]
+                     (into #{} (i/active-tables driver conn inclusion-patterns exclusion-patterns)))
                    (default-active-tbl-fn))
                  (default-active-tbl-fn))))})
