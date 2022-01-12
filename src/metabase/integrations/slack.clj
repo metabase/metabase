@@ -194,14 +194,14 @@
   ;; will be refetched.
   (memoize/ttl
    (fn [channel-name]
-       (or (channel-with-name channel-name)
-        (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
-                           " "
-                           (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                           " "
-                           (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-          (log/error (u/format-color 'red message))
-          (throw (ex-info message {:status-code 400})))))
+     (or (when channel-name (channel-with-name channel-name))
+         (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                            " "
+                            (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                            " "
+                            (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
+           (log/error (u/format-color 'red message))
+           (throw (ex-info message {:status-code 400})))))
    :ttl/threshold (u/hours->ms 6)))
 
 (defn files-channel
