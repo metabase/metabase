@@ -209,13 +209,12 @@
 
 
 (defn- timeseries-goal?
-  "Is the the goal for a timeseries (as opposed to a Progress Bar Goal)?"
-  [viz-settings]
-  (boolean (and (:graph.show_goal viz-settings)
-                (= 1 (count (:graph.metrics viz-settings))))))
+  "Is the the goal for a timeseries (:area, :bar, :line)? as opposed to a Progress Bar Goal?"
+  [result]
+  (not= :progress (get-in result [:card :display])))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [[above below] (if (timeseries-goal? (get-in first-result [:result :data :viz-settings])) [<= >=] [<= >])
+  (let [[above below] (if (timeseries-goal? first-result) [<= >=] [<= >])
         goal-comparison (if alert_above_goal above below)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
@@ -225,9 +224,10 @@
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
                       {:pulse  pulse
                        :result first-result})))
-    (some (fn [row]
-            (goal-comparison goal-val (comparison-col-rowfn row)))
-          (get-in first-result [:result :data :rows]))))
+    (boolean
+     (some (fn [row]
+             (goal-comparison goal-val (comparison-col-rowfn row)))
+           (get-in first-result [:result :data :rows])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
