@@ -9,4 +9,5 @@
   :visibility :internal
   :getter (fn []
             (when (premium-features/hide-embed-branding?)
-              (or (setting/get-string :notification-link-base-url) (public-settings/site-url)))))
+              (or (setting/get-value-of-type :string :notification-link-base-url)
+                  (public-settings/site-url)))))
