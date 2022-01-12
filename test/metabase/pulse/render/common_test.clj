@@ -76,3 +76,10 @@
                                         {{::mb.viz/column-id 1}
                                          {::mb.viz/number-style "percent"}}})
                 "bob"))))))
+
+(deftest string-width-test
+  (testing "Returns results"
+    (is (= 230
+           (common/string-width "bob dobbs" "Lato" 44))))
+    (is (= 0
+           (common/string-width "bob dobbs" "Lato" 0))))

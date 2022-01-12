@@ -468,7 +468,7 @@
 
 (defn- rows->x-tick-widths
   [rows x-fn]
-  (let [x-rows (map x-fn rows)]
+  (let [x-rows (map (comp str first x-fn) rows)]
     (map #(common/string-width % "Lato" 11) x-rows)))
 
 (defn- join-series
