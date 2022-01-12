@@ -5,11 +5,11 @@ export interface FormField {
 }
 
 export interface FormProps {
-  values: FormValues;
-  formFields: FormField[];
   Form: ComponentType;
   FormField: ComponentType<FormFieldProps>;
   FormFooter: ComponentType<FormFooterProps>;
+  formFields: FormField[];
+  values: FormValues;
   onChangeField: (field: string, value: unknown) => void;
 }
 

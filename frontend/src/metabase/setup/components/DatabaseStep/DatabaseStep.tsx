@@ -124,11 +124,11 @@ const DatabaseForm = ({
       onSubmit={handleSubmit}
     >
       {({
-        values,
-        formFields,
         Form,
         FormField,
         FormFooter,
+        formFields,
+        values,
         onChangeField,
       }: FormProps) => (
         <Form>
