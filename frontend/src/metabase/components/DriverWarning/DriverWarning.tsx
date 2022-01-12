@@ -18,11 +18,11 @@ const DriverWarning = ({
   onChange,
 }: DriverWarningProps): JSX.Element | null => {
   const engine = engineKey ? engines[engineKey] : undefined;
-  const engineName = engine?.["display-name"];
+  const engineName = engine?.["driver-name"];
 
   const newEngineKey = engine?.["superseded-by"];
   const newEngine = newEngineKey ? engines[newEngineKey] : undefined;
-  const newEngineName = newEngine?.["display-name"];
+  const newEngineName = newEngine?.["driver-name"];
   const handleChangeToNew = () => newEngineKey && onChange?.(newEngineKey);
 
   const oldEngineKey = _.findKey(engines, { "superseded-by": engineKey });

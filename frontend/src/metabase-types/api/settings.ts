@@ -1,5 +1,5 @@
 export interface Engine {
-  "display-name": string;
+  "driver-name": string;
   "superseded-by": string | undefined;
 }
 

@@ -15,7 +15,7 @@ export const WarningRoot = styled.div<WarningRootProps>`
   background-color: ${color("bg-light")};
 `;
 
-export const WarningLink = styled.span`
+export const WarningLink = styled.a`
   color: ${color("brand")};
   cursor: pointer;
   font-weight: bold;

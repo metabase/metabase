@@ -1,7 +1,7 @@
 import { Engine, Settings, Version } from "metabase-types/api";
 
 export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
-  "display-name": "PostgreSQL",
+  "driver-name": "PostgreSQL",
   "superseded-by": undefined,
   ...opts,
 });

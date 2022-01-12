@@ -15,11 +15,11 @@ const Template: ComponentStory<typeof DriverWarning> = args => {
 Template.args = {
   engines: {
     presto: createMockEngine({
-      "display-name": "Presto (Deprecated Driver)",
+      "driver-name": "Presto (Deprecated Driver)",
       "superseded-by": "presto-jdbc",
     }),
     "presto-jdbc": createMockEngine({
-      "display-name": "Presto",
+      "driver-name": "Presto",
     }),
   },
 };
