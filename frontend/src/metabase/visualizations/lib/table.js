@@ -109,15 +109,20 @@ export function isColumnRightAligned(column: Column) {
 /*
  * Make table cohort
  */
- export function cohortFormat(isCohorted) {
-  console.log('cohortFormat: ' + document.getElementsByClassName("table-cell").length + ' isCohorted: ' + isCohorted);
+export function cohortFormat(isCohorted) {
+  console.log(
+    "cohortFormat: " +
+      document.getElementsByClassName("table-cell").length +
+      " isCohorted: " +
+      isCohorted,
+  );
   let cells = document.getElementsByClassName("table-cell");
   // select all table cells
   for (let i = 0; i < cells.length; i++) {
     if (
       cells.item(i).dataset.columnindex != 0 &&
       cells.item(i).dataset.columnindex != 1
-      ) {
+    ) {
       let div = cells.item(i).getElementsByTagName("div");
       // prepare table cells to make cohort counts
       if (!div[0].dataset.cohortValue || !div[0].dataset.originalValue) {
@@ -134,21 +139,22 @@ export function isColumnRightAligned(column: Column) {
               //get default value
               if (columnindex == 1) {
                 defaultValue[rowindex] = div[0].innerHTML
-                ? div[0].innerHTML.replace(/\D/g, "")
-                : 1;
+                  ? div[0].innerHTML.replace(/\D/g, "")
+                  : 1;
               } else if (typeof div[0].dataset.cohortValue == "undefined") {
                 let cellVal = parseFloat(div[0].innerHTML.replace(/\D/g, ""));
                 if (defaultValue[rowindex] && cellVal) {
                   cohortValue =
-                  Math.round((cellVal / defaultValue[rowindex]) * 100 * 100) / 100;
+                    Math.round((cellVal / defaultValue[rowindex]) * 100 * 100) /
+                    100;
                 } else {
                   cohortValue = 0;
                 }
                 // store values
                 div[0].dataset.cohortValue = cohortValue;
                 div[0].dataset.originalValue = div[0].innerHTML
-                ? div[0].innerHTML
-                : "";
+                  ? div[0].innerHTML
+                  : "";
               }
             }
           }

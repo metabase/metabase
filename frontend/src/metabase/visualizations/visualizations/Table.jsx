@@ -229,7 +229,7 @@ export default class Table extends Component {
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
     "table.pivot_cohort": {
-      id: 'pivot_cohort',
+      id: "pivot_cohort",
       section: t`Columns`,
       title: t`Show cohort`,
       widget: "toggle",
@@ -359,10 +359,10 @@ export default class Table extends Component {
         ),
       });
       if (settings["table.pivot_cohort"]) {
-        console.log('table.jsx');
+        console.log("table.jsx");
         cohortFormat(true);
       } else {
-        console.log('table.jsx');
+        console.log("table.jsx");
         cohortFormat(false);
       }
     } else {
