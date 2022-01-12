@@ -19,7 +19,7 @@
     (when (and slack-app-token (not config/is-test?))
       (when-not (slack/valid-token? slack-app-token)
         (throw (ex-info (tru "Invalid Slack token.")
-                        {:errors {:slack-app-token (tru "Invalid token")}
+                        {:errors {:slack-app-token (tru "invalid token")}
                          :status-code 400}))))
     (slack/slack-app-token slack-app-token)
     (when slack-app-token
