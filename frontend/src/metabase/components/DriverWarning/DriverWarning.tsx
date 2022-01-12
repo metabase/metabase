@@ -32,7 +32,7 @@ const DriverWarning = ({
       <WarningRoot>
         {t`This driver will be removed in a future release.`}{" "}
         {jt`We recommend you upgrade to the ${(
-          <WarningLink key="button" role="button" onClick={handleChangeToNew}>
+          <WarningLink key="link" onClick={handleChangeToNew}>
             {t`new ${newEngineName} driver`}
           </WarningLink>
         )}.`}
@@ -46,7 +46,7 @@ const DriverWarning = ({
         {t`This is our new ${engineName} driver.`}{" "}
         {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
         {jt`If you really need to use it, you can ${(
-          <WarningLink key="button" role="button" onClick={handleChangeToOld}>
+          <WarningLink key="link" onClick={handleChangeToOld}>
             {t`find it here`}
           </WarningLink>
         )}.`}
