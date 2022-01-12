@@ -222,9 +222,11 @@ export function getParameterValuesSearchKey({
   query = null,
   filteringParameterValues = {},
 }) {
+  const BY_PARAMETER_ID = "0";
+  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
   const sortedParameterValues = _.sortBy(
     Object.entries(filteringParameterValues),
-    "0",
+    BY_PARAMETER_ID,
   );
   const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
 
