@@ -1,8 +1,10 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import { updateIn } from "icepick";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
+import DriverWarning from "metabase/containers/DriverWarning";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
@@ -121,9 +123,21 @@ const DatabaseForm = ({
       database={database}
       onSubmit={handleSubmit}
     >
-      {({ formFields, Form, FormField, FormFooter }: FormProps) => (
+      {({
+        values,
+        formFields,
+        Form,
+        FormField,
+        FormFooter,
+        onChangeField,
+      }: FormProps) => (
         <Form>
-          {formFields.map(({ name }) => (
+          <FormField name="engine" />
+          <DriverWarning
+            engine={values.engine}
+            onChange={engine => onChangeField("engine", engine)}
+          />
+          {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
           {engine && <FormFooter submitTitle={t`Next`} />}
