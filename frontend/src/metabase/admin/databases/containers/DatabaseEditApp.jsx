@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 import { getValues } from "redux-form";
 
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Box, Flex } from "grid-styled";
 
@@ -13,8 +14,8 @@ import title from "metabase/hoc/Title";
 import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import DriverWarning from "metabase/components/DriverWarning";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
+import DriverWarning from "metabase/containers/DriverWarning";
 
 import Databases from "metabase/entities/databases";
 
@@ -131,19 +132,26 @@ export default class DatabaseEditApp extends Component {
                       FormMessage,
                       FormSubmit,
                       formFields,
-                      onChangeField,
+                      values,
                       submitTitle,
+                      onChangeField,
                     }) => {
                       return (
                         <Flex>
                           <Box width={620}>
                             <Form>
-                              {formFields.map(formField => (
-                                <FormField
-                                  key={formField.name}
-                                  name={formField.name}
-                                />
-                              ))}
+                              <FormField name="engine" />
+                              <DriverWarning
+                                engine={values.engine}
+                                onChange={engine =>
+                                  onChangeField("engine", engine)
+                                }
+                              />
+                              {_.reject(formFields, { name: "engine" }).map(
+                                ({ name }) => (
+                                  <FormField key={name} name={name} />
+                                ),
+                              )}
                               <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
@@ -160,13 +168,6 @@ export default class DatabaseEditApp extends Component {
                                 data-testid="database-setup-help-card"
                               />
                             )}
-                            <DriverWarning
-                              engine={selectedEngine}
-                              ml={26}
-                              onChangeEngine={engine => {
-                                onChangeField("engine", engine);
-                              }}
-                            />
                           </Box>
                         </Flex>
                       );

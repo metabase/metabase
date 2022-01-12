@@ -28,6 +28,9 @@ const ENGINES_MOCK = {
   },
 };
 
+const ComponentMock = () => <div />;
+jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
+
 function mockSettings({ cachingEnabled = false }) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");

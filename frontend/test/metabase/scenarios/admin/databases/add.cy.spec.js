@@ -298,7 +298,7 @@ describe("scenarios > admin > databases > add", () => {
       cy.findByText("find it here").click();
       cy.findByText("BigQuery (Deprecated Driver)");
       cy.findByText("Need help setting up your database?").should("not.exist");
-      cy.findByText("This driver has been deprecated", { exact: false });
+      cy.findByText("This driver will be removed", { exact: false });
     });
   });
 
