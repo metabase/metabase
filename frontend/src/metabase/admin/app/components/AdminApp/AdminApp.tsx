@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import DeprecationBanner from "../../containers/DeprecationNotice";
+import DeprecationNotice from "../../containers/DeprecationNotice";
 
 export interface AdminAppProps {
   children?: ReactNode;
@@ -8,7 +8,7 @@ export interface AdminAppProps {
 const AdminApp = ({ children }: AdminAppProps): JSX.Element => {
   return (
     <div>
-      <DeprecationBanner />
+      <DeprecationNotice />
       {children}
     </div>
   );
