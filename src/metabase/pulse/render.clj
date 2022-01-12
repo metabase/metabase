@@ -32,7 +32,7 @@
                          (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
-       :content     [:table {:style (style/style {:margin-bottom   :8px
+       :content     [:table {:style (style/style {:margin-bottom   :2px
                                                   :border-collapse :collapse
                                                   :width           :100%})}
                      [:tbody

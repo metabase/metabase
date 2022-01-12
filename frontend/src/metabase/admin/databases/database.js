@@ -64,8 +64,6 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
 
 export const CLOSE_SYNCING_MODAL =
   "metabase/admin/databases/CLOSE_SYNCING_MODAL";
-export const CLOSE_DEPRECATION_NOTICE =
-  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
 
 export const reset = createAction(RESET);
 
@@ -294,19 +292,6 @@ export const closeSyncingModal = createThunkAction(
   },
 );
 
-export const closeDeprecationNotice = createThunkAction(
-  CLOSE_DEPRECATION_NOTICE,
-  function() {
-    return async function(dispatch) {
-      const setting = {
-        key: "engine-deprecation-notice-version",
-        value: MetabaseSettings.currentVersion(),
-      };
-      await dispatch(updateSetting(setting));
-    };
-  },
-);
-
 // reducers
 
 const editingDatabase = handleActions(
@@ -367,13 +352,6 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
-const isDeprecationNoticeEnabled = handleActions(
-  {
-    [CLOSE_DEPRECATION_NOTICE]: () => false,
-  },
-  MetabaseSettings.engineDeprecationNoticeEnabled(),
-);
-
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -381,5 +359,4 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
-  isDeprecationNoticeEnabled,
 });

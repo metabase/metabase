@@ -46,7 +46,7 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <GridItem key={table.id} width={ITEM_WIDTHS}>
-            <TableInfoPopover tableId={table.id} placement="bottom-start">
+            <TableInfoPopover table={table} placement="bottom-start">
               <TableCard hoverable={isSyncCompleted(table)}>
                 <TableLink
                   to={

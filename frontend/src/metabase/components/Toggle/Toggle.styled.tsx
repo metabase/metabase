@@ -24,7 +24,7 @@ const getBackgroundColor = ({
   if (isSelected) {
     return currentColor ?? color("brand");
   } else {
-    return color("white");
+    return color("bg-medium");
   }
 };
 

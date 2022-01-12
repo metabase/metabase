@@ -86,14 +86,20 @@ describe("scenarios > admin > databases > list", () => {
 
     cy.visit("/admin");
 
-    const message = `You’re using a database driver which is now deprecated and will be removed in the next release.`;
-    cy.findByText(message);
-    cy.findByText("Show me").click();
-    cy.findByText("Sample Dataset");
-    cy.findByText(message).should("not.exist");
+    cy.findByRole("status").within(() => {
+      cy.findByText("Database driver");
+      cy.findByText(/which is now deprecated/);
+      cy.findByText("Database driver").click();
+    });
 
-    cy.reload();
-    cy.findByText("Metabase Admin");
-    cy.findByText(message).should("not.exist");
+    cy.findByRole("table").within(() => {
+      cy.findByText("Sample Dataset");
+    });
+
+    cy.findByRole("status").within(() => {
+      cy.findByLabelText("close icon").click();
+    });
+
+    cy.findByRole("status").should("not.exist");
   });
 });

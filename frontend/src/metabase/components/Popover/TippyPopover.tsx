@@ -5,6 +5,7 @@ import cx from "classnames";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import EventSandbox from "metabase/components/EventSandbox";
+import { isCypressActive } from "metabase/env";
 
 const TippyComponent = Tippy.default;
 type TippyProps = Tippy.TippyProps;
@@ -27,8 +28,10 @@ function TippyPopover({
   disableContentSandbox,
   lazy = true,
   content,
+  delay,
   ...props
 }: ITippyPopoverProps) {
+  delay = isCypressActive ? 0 : delay;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const [mounted, setMounted] = useState(!lazy);
   const plugins = useMemo(
@@ -65,6 +68,7 @@ function TippyPopover({
       plugins={plugins}
       {...props}
       duration={animationDuration}
+      delay={delay}
       content={computedContent}
     />
   );

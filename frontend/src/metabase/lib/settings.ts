@@ -87,7 +87,7 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-version"
+  | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
   | "metabase-store-managed";
@@ -97,10 +97,10 @@ type SettingsMap = Record<SettingName, any>; // provides access to Metabase appl
 type SettingListener = (value: any) => void;
 
 class Settings {
-  _settings: SettingsMap;
+  _settings: Partial<SettingsMap>;
   _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
 
-  constructor(settings: SettingsMap) {
+  constructor(settings: Partial<SettingsMap> = {}) {
     this._settings = settings;
   }
 
@@ -200,12 +200,12 @@ class Settings {
     return this.get("snowplow-url");
   }
 
-  engineDeprecationNoticeVersion() {
-    return this.get("engine-deprecation-notice-version");
+  deprecationNoticeVersion() {
+    return this.get("deprecation-notice-version");
   }
 
-  engineDeprecationNoticeEnabled() {
-    return this.currentVersion() !== this.engineDeprecationNoticeVersion();
+  deprecationNoticeEnabled() {
+    return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
   token() {
