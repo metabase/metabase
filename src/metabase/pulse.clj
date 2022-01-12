@@ -214,8 +214,8 @@
   (not= :progress (get-in result [:card :display])))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [[above below] (if (timeseries-goal? first-result) [<= >=] [<= >])
-        goal-comparison (if alert_above_goal above below)
+  (let [[above below]        (if (timeseries-goal? first-result) [<= >=] [<= >])
+        goal-comparison      (if alert_above_goal above below)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
