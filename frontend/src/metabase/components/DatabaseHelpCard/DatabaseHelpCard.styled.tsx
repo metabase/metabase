@@ -10,6 +10,7 @@ const CardRootMixin = css`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 6px ${color("shadow")};
+  box-sizing: border-box;
 `;
 
 const CardHeaderMixin = css`
