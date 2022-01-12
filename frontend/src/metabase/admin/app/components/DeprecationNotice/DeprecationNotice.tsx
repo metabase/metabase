@@ -58,12 +58,12 @@ const getBannerContent = (
       <strong key="upgrade">{t`upgrade`}</strong>
     )}.`;
   } else if (hasSlackBot) {
-    return jt`Your Slack bot was deprecated but is still working. We recommend you ${(
+    return jt`Your Slack bot was deprecated but is still working. We recommend you delete the existing connection and ${(
       <NoticeLink
         key="slack"
         to={slackSettingsUrl}
       >{t`upgrade to Slack Apps`}</NoticeLink>
-    )} when you get a chance.`;
+    )}.`;
   } else if (hasDeprecatedDatabase) {
     return jt`You’re using a ${(
       <NoticeLink
