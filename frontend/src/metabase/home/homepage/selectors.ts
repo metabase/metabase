@@ -21,22 +21,27 @@ export const getSettings = createSelector(
   settings => settings.values,
 );
 
-export const getShowData = createSelector([getSettings], settings =>
-  Boolean(settings["show-homepage-data"]),
+export const getShowData = createSelector(
+  [getSettings],
+  settings => settings["show-homepage-data"],
 );
 
-export const getShowXrays = createSelector([getSettings], settings =>
-  Boolean(settings["show-homepage-xrays"]),
+export const getShowXrays = createSelector(
+  [getSettings],
+  settings => settings["show-homepage-xrays"],
 );
 
-export const getEnableXrays = createSelector([getSettings], settings =>
-  Boolean(settings["enable-xrays"]),
+export const getEnableXrays = createSelector(
+  [getSettings],
+  settings => settings["enable-xrays"],
 );
 
-export const getShowPinMessage = createSelector([getSettings], settings =>
-  Boolean(settings["show-homepage-pin-message"]),
+export const getShowPinMessage = createSelector(
+  [getSettings],
+  settings => settings["show-homepage-pin-message"],
 );
 
-export const getShowSyncingModal = createSelector([getSettings], settings =>
-  Boolean(settings["show-database-syncing-modal"]),
+export const getShowSyncingModal = createSelector(
+  [getSettings],
+  settings => settings["show-database-syncing-modal"],
 );

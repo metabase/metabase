@@ -199,7 +199,7 @@
   [_]
   {:title       (tru "Set Slack credentials")
    :group       (tru "Get connected")
-   :description (tru "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot.")
+   :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
    :link        "/admin/settings/slack"
    :completed   (slack/slack-configured?)
    :triggered   :always})

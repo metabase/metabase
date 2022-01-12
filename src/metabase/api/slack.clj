@@ -18,7 +18,8 @@
     (try
       (when-not config/is-test?
         (when-not (slack/valid-token? slack-app-token)
-          (throw (ex-info (tru "Invalid Slack token.") {:status-code 400}))))
+          (throw (ex-info (tru "Invalid Slack token.")
+          {:errors {:slack-app-token (tru "invalid token")}}))))
       ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
       (slack/slack-token nil)
       (slack/slack-app-token slack-app-token)

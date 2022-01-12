@@ -299,7 +299,7 @@ export const closeDeprecationNotice = createThunkAction(
   function() {
     return async function(dispatch) {
       const setting = {
-        key: "engine-deprecation-notice-version",
+        key: "deprecation-notice-version",
         value: MetabaseSettings.currentVersion(),
       };
       await dispatch(updateSetting(setting));
@@ -371,7 +371,7 @@ const isDeprecationNoticeEnabled = handleActions(
   {
     [CLOSE_DEPRECATION_NOTICE]: () => false,
   },
-  MetabaseSettings.engineDeprecationNoticeEnabled(),
+  MetabaseSettings.deprecationNoticeEnabled(),
 );
 
 export default combineReducers({
