@@ -1,28 +1,45 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/components/ExternalLink";
 
-export const CardRoot = styled(ExternalLink)`
+const CardRootMixin = css`
   display: block;
   padding: 1.5rem;
   max-width: 21.5rem;
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 6px ${color("shadow")};
+`;
+
+const CardHeaderMixin = css`
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+export const CardRootStatic = styled.div`
+  ${CardRootMixin};
+`;
+
+export const CardRootLink = styled(ExternalLink)`
+  ${CardRootMixin};
 
   &:hover {
     background-color: ${color("bg-light")};
   }
 `;
 
-export const CardHeader = styled.span`
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
+export const CardHeaderStatic = styled.div`
+  ${CardHeaderMixin};
+`;
+
+export const CardHeaderLink = styled(ExternalLink)`
+  ${CardHeaderMixin};
 `;
 
 export const CardTitle = styled.span`
+  display: block;
   flex: 1 1 auto;
   color: ${color("brand")};
   font-weight: bold;
@@ -34,7 +51,18 @@ export const CardIcon = styled(Icon)`
   color: ${color("brand")};
 `;
 
-export const CardBody = styled.span`
+export const CardMessage = styled.span`
+  display: block;
   color: ${color("text-medium")};
   line-height: 1.25rem;
+
+  &:not(:last-child) {
+    margin-bottom: 1.25rem;
+  }
+`;
+
+export const CardLink = styled(ExternalLink)`
+  color: ${color("brand")};
+  cursor: pointer;
+  font-weight: bold;
 `;

@@ -1,35 +1,51 @@
 import React from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import {
-  CardBody,
-  CardHeader,
+  CardHeaderLink,
+  CardHeaderStatic,
   CardIcon,
-  CardRoot,
+  CardLink,
+  CardMessage,
+  CardRootLink,
+  CardRootStatic,
   CardTitle,
 } from "./DatabaseHelpCard.styled";
 
 export interface DatabaseHelpCardProps {
   className?: string;
   engine?: string;
+  isHosted?: boolean;
 }
 
 const DatabaseHelpCard = ({
   className,
   engine,
+  isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
   const docsUrl = getDocsUrl(engine);
+  const CardRoot = isHosted ? CardRootStatic : CardRootLink;
+  const CardHeader = isHosted ? CardHeaderLink : CardHeaderStatic;
 
   return (
-    <CardRoot className={className} href={docsUrl}>
-      <CardHeader>
+    <CardRoot className={className} href={isHosted ? undefined : docsUrl}>
+      <CardHeader href={isHosted ? docsUrl : undefined}>
         <CardIcon name="info" />
         <CardTitle>{t`Need help connecting?`}</CardTitle>
         <CardIcon name="external" />
       </CardHeader>
-      <CardBody>
+      <CardMessage>
         {t`Check out documentation for step-by-step directions on how to connect to your database.`}
-      </CardBody>
+      </CardMessage>
+      {isHosted && (
+        <CardMessage>
+          {jt`Docs weren't enough? ${(
+            <CardLink key="link" href="https://www.metabase.com/help/cloud">
+              {t`Write us.`}
+            </CardLink>
+          )}`}
+        </CardMessage>
+      )}
     </CardRoot>
   );
 };

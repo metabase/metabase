@@ -12,8 +12,11 @@ const Template: ComponentStory<typeof DatabaseHelpCard> = args => {
 };
 
 export const Default = Template.bind({});
+Default.args = {
+  isHosted: false,
+};
 
-export const MySQL = Template.bind({});
-MySQL.args = {
-  engine: "mysql",
+export const Cloud = Template.bind({});
+Cloud.args = {
+  isHosted: true,
 };
