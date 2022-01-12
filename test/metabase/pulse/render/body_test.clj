@@ -314,9 +314,25 @@
                                  :unit :month
                                  :last-change 1.333333
                                  :col "value"
-                                 :last-value 40.0}]}]
+                                 :last-value 40.0}]}
+            ;; by "dumb" it is meant "without nonnil insights"
+            dumbres {:cols [{:name         "value",
+                             :display_name "VALUE",
+                             :base_type    :type/Decimal}
+                            {:name           "time",
+                             :display_name   "TIME",
+                             :base_type      :type/DateTime
+                             :effective_type :type/DateTime}]
+                     :rows [[20.0 :month-before]]
+                     :insights [{:previous-value nil
+                                 :unit nil
+                                 :last-change nil
+                                 :col "value"
+                                 :last-value 20.0}]}]
         (is (= "40.00\nUp 133.33%. Was 30.00 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
+        (is (= "20.0\n Nothing to compare to."
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
                       :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
