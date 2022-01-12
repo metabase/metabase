@@ -495,6 +495,24 @@ describe("scenarios > question > custom column", () => {
       .and("eq", "ace_text-input");
   });
 
+  it.skip("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.icon("add_data").click();
+
+    enterCustomColumnDetails({ formula: "1+1" });
+
+    cy.realPress("Tab");
+    cy.realPress(["Shift", "Tab"]);
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    cy.findByDisplayValue("1 + 1").type("2");
+
+    // Fix needed will prevent display value from being `1 +2 1`.
+    // That's because the caret position after refocusing on textarea
+    // would still be after the 3rd character
+    cy.findByDisplayValue("1 + 12");
+  });
+
   it("should allow choosing a suggestion with Tab", () => {
     openOrdersTable({ mode: "notebook" });
     cy.icon("add_data").click();
