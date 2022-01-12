@@ -25,7 +25,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "show-homepage-xrays": false,
   "show-homepage-pin-message": false,
   "slack-token": undefined,
-  "slack-token-valid?": true,
+  "slack-token-valid?": false,
   "slack-app-token": undefined,
   "slack-files-channel": undefined,
   version: createMockVersion(),
