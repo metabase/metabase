@@ -631,7 +631,7 @@
         (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
         (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
         (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
