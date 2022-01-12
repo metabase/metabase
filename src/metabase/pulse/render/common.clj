@@ -7,7 +7,6 @@
             [potemkin.types :as p.types]
             [schema.core :as s])
   (:import java.awt.Font
-           java.awt.FontMetrics
            java.awt.image.BufferedImage
            java.net.URL
            (java.text DecimalFormat DecimalFormatSymbols)))
