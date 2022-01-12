@@ -72,8 +72,10 @@
                           :message    message
                           :response   body})]
     (when (and invalid-token? *send-token-error-emails?*)
-      ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token
-      (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
+      ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
+      ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
+      ;; being used)
+      (when (not (false? (slack-token-valid?))) (messages/send-slack-token-error-emails!))
       (slack-token-valid? false))
     (if invalid-token?
       (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
