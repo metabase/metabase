@@ -693,8 +693,8 @@
                                                  :font-size     :16px
                                                  :font-weight   700
                                                  :padding-right :16px})}
-                        "Nothing to compare to."]]
-         :render/text (str last-value "\n Nothing to compare to.")}))))
+                        (trs "Nothing to compare to.")]]
+         :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
