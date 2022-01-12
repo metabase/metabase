@@ -1,13 +1,14 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
-  `metabase.query-processor.streaming-test` and specifically for each format in
-  `metabase.query-processor.streaming.csv-test` etc."
+  [[metabase.query-processor.streaming-test]] and specifically for each format
+  in [[metabase.query-processor.streaming.csv-test]] etc."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivots]
+            [metabase.driver :as driver]
             [metabase.http-client :as http-client]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -337,10 +338,10 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:bigquery :mongo :presto :h2 :sqlite} metabase.driver/*driver*)
+        (when (#{:bigquery :mongo :presto :h2 :sqlite} driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on `metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test`.
+            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
             (let [query  (-> (pivots/pivot-query)
                              (assoc-in [:query :fields] [[:expression "test-expr"]])
                              (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
