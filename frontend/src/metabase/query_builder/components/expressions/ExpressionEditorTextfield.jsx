@@ -253,10 +253,7 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     this.clearSuggestions();
 
-    const { query, startRule } = this.props;
-    const { source } = this.state;
-
-    const errorMessage = diagnose(source, startRule, query);
+    const errorMessage = this.diagnoseExpression();
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
@@ -313,6 +310,15 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { expression } = processSource({ source, query, startRule });
 
     return expression;
+  }
+
+  diagnoseExpression() {
+    const { source } = this.state;
+    if (!source || source.length === 0) {
+      return { message: "Empty expression" };
+    }
+    const { query, startRule } = this.props;
+    return diagnose(source, startRule, query);
   }
 
   commitExpression() {
