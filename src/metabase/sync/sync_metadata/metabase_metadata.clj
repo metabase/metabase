@@ -9,6 +9,7 @@
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
+            [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -20,7 +21,7 @@
             [toucan.db :as db]))
 
 (def ^:private KeypathComponents
-  {:table-name su/NonBlankString
+  {:table-name (s/maybe su/NonBlankString)
    :field-name (s/maybe su/NonBlankString)
    :k          s/Keyword})
 
@@ -28,13 +29,14 @@
   "Parse a KEYPATH into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
   [keypath :- su/NonBlankString]
-  ;; keypath will have one of two formats:
+  ;; keypath will have one of three formats:
+  ;; property (for database-level properties)
   ;; table_name.property
   ;; table_name.field_name.property
-  (let [[table-name second-part third-part] (str/split keypath #"\.")]
-    {:table-name table-name
+  (let [[first-part second-part third-part] (str/split keypath #"\.")]
+    {:table-name (when second-part first-part)
      :field-name (when third-part second-part)
-     :k          (keyword (or third-part second-part))}))
+     :k          (keyword (or third-part second-part first-part))}))
 
 (s/defn ^:private set-property! :- s/Bool
   "Set a property for a Field or Table in DATABASE. Returns `true` if a property was successfully set."
@@ -43,16 +45,16 @@
    ;; ignore legacy entries that try to set field_type since it's no longer part of Field
    (when-not (= k :field_type)
      ;; fetch the corresponding Table, then set the Table or Field property
-     (when-let [table-id (db/select-one-id Table
-                           ;; TODO: this needs to support schemas
-                           :db_id  (u/the-id database)
-                           :name   table-name
-                           :active true)]
-       (if field-name
-         (db/update-where! Field {:name field-name, :table_id table-id}
-           k value)
-         (db/update! Table table-id
-           k value))))))
+     (if table-name
+       (when-let [table-id (db/select-one-id Table
+                             ;; TODO: this needs to support schemas
+                             :db_id  (u/the-id database)
+                             :name   table-name
+                             :active true)]
+         (if field-name
+           (db/update-where! Field {:name field-name, :table_id table-id} k value)
+           (db/update! Table table-id k value)))
+       (db/update! Database (u/the-id database) k value)))))
 
 (s/defn ^:private sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
