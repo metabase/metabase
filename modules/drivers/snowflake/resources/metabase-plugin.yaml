@@ -27,10 +27,9 @@ driver:
         - name: db
           required: true
           display-name: Database name (case sensitive)
-    - name: schema
-      display-name: Schema (optional)
-      helper-text: Only add tables to Metabase that come from a specific schema.
-      placeholder: just_crows
+    - name: schema-filters
+      type: schema-filters
+      display-name: Schemas
     - name: role
       display-name: Role (optional)
       helper-text: Specify a role to override the database user’s default role.

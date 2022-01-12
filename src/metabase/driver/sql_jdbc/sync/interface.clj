@@ -11,7 +11,10 @@
   functions for more details on the differences.
 
   `metabase` is an instance of `DatabaseMetaData`."
-  {:arglists '([driver ^java.sql.Connection connection])}
+  {:arglists '([driver
+                ^java.sql.Connection connection
+                ^String schema-inclusion-filters
+                ^String schema-exclusion-filters])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

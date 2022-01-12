@@ -8,11 +8,48 @@
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.models :refer [Database]]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.driver.util :as driver.u])
   (:import [java.sql Connection DatabaseMetaData ResultSet]
            java.util.regex.Pattern))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
+
+(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
+  (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
+                (str/replace #"(^|[^\\\\])," "$1|"))))
+
+(defn- schema-patterns->filter-fn*
+  [inclusion-patterns exclusion-patterns]
+  (let [inclusion-blank? (str/blank? inclusion-patterns)
+        exclusion-blank? (str/blank? exclusion-patterns)]
+    (cond
+      (and inclusion-blank? exclusion-blank?)
+      (constantly true)
+
+      (and (not inclusion-blank?) (not exclusion-blank?))
+      (throw (ex-info "Inclusion and exclusion patterns cannot both be specified"
+               {::inclusion-patterns inclusion-patterns
+                ::exclusion-patterns exclusion-patterns}))
+
+      true
+      (let [inclusion? exclusion-blank?
+            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
+        (fn [s]
+          (let [m        (.matcher pattern s)
+                matches? (.matches m)]
+            (if inclusion? matches? (not matches?))))))))
+
+(def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
+
+(defn include-schema?
+  ;; TODO: add more docstring details here, and move to different ns (not strictly JDBC)
+  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
+  `exclusion-patterns`."
+  [schema-name inclusion-patterns exclusion-patterns]
+  (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
+    (filter-fn schema-name)))
 
 (defn all-schemas
   "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
@@ -89,31 +126,44 @@
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver ^Connection conn & [db-name-or-nil]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (let [metadata (.getMetaData conn)]
     (eduction
      (comp (mapcat (fn [schema]
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
-                     (i/have-select-privilege? driver conn table-schema table-name))))
+                     (and
+                       (include-schema? table-schema schema-inclusion-filters schema-exclusion-filters)
+                       (i/have-select-privilege? driver conn table-schema table-name)))))
      (i/syncable-schemas driver conn metadata))))
 
 (defmethod i/active-tables :sql-jdbc
-  [driver connection]
-  (fast-active-tables driver connection))
+  [driver connection schema-inclusion-filters schema-exclusion-filters]
+  (fast-active-tables driver connection nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver ^Connection conn & [db-name-or-nil]]
+  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (eduction
    (filter (let [excluded (i/excluded-schemas driver)]
              (fn [{table-schema :schema, table-name :name}]
                (and (not (contains? excluded table-schema))
+                    (include-schema? table-schema schema-inclusion-filters schema-exclusion-filters)
                     (i/have-select-privilege? driver conn table-schema table-name)))))
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
+
+(defn- db-or-id-or-spec->database [db-or-id-or-spec]
+  (cond (instance? (class Database) db-or-id-or-spec)
+        db-or-id-or-spec
+
+        (int? db-or-id-or-spec)
+        (Database db-or-id-or-spec)
+
+        true
+        nil))
 
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -123,39 +173,19 @@
              ;; is. Not sure how much of a difference that makes since we're not running this inside a transaction,
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
-             (into #{} (i/active-tables driver conn)))})
-
-(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
-  (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
-                  (str/replace #"(^|[^\\\\])," "$1|"))))
-
-(defn- schema-patterns->filter-fn*
-  [inclusion-patterns exclusion-patterns]
-  (let [inclusion-blank? (str/blank? inclusion-patterns)
-        exclusion-blank? (str/blank? exclusion-patterns)]
-    (cond
-      (and inclusion-blank? exclusion-blank?)
-      (constantly true)
-
-      (and (not inclusion-blank?) (not exclusion-blank?))
-      (throw (ex-info "Inclusion and exclusion patterns cannot both be specified"
-                      {::inclusion-patterns inclusion-patterns
-                       ::exclusion-patterns exclusion-patterns}))
-
-      true
-      (let [inclusion? exclusion-blank?
-            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
-        (fn [s]
-          (let [m        (.matcher pattern s)
-                matches? (.matches m)]
-            (if inclusion? matches? (not matches?))))))))
-
-(def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
-
-(defn include-schema?
-  ;; TODO: add more docstring details here, and move to different ns (not strictly JDBC)
-  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
-  `exclusion-patterns`."
-  [schema-name inclusion-patterns exclusion-patterns]
-  (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
-    (filter-fn schema-name)))
+             (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
+                   has-schema-filter-prop? (some? schema-filter-prop)
+                   default-active-tbl-fn   #(into #{} (i/active-tables driver conn nil nil))]
+               (if has-schema-filter-prop?
+                 (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
+                   (let [prop-nm                (:name schema-filter-prop)
+                         db-details             (:details database)
+                         schema-filter-type     (get db-details(keyword (str prop-nm "-type")))
+                         schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
+                         exclusion-type?        (= "exclusion" schema-filter-type)]
+                     (into #{} (i/active-tables driver
+                                                conn
+                                                (when-not exclusion-type? schema-filter-patterns)
+                                                (when exclusion-type? schema-filter-patterns))))
+                   (default-active-tbl-fn))
+                 (default-active-tbl-fn))))})
