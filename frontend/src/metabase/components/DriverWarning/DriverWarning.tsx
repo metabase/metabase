@@ -5,7 +5,7 @@ import { Engine } from "metabase-types/api";
 import { WarningLink, WarningRoot } from "./DriverWarning.styled";
 
 export interface DriverWarningProps {
-  engine: string;
+  engine?: string;
   engines: Record<string, Engine>;
   onChange?: (engine: string) => void;
 }
@@ -15,7 +15,7 @@ const DriverWarning = ({
   engines,
   onChange,
 }: DriverWarningProps): JSX.Element | null => {
-  const engine = engines[engineKey];
+  const engine = engineKey ? engines[engineKey] : undefined;
   const engineName = engine?.["display-name"];
 
   const newEngineKey = engine?.["superseded-by"];
