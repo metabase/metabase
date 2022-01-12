@@ -5,11 +5,11 @@ Cypress.Commands.add(
       ? cy.createNativeQuestion(query)
       : cy.createQuestion(query)
     ).then(response => {
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: response.body.id,
-      });
-
-      return response.body;
+      return cy
+        .request("POST", `/api/dashboard/${dashboardId}/cards`, {
+          cardId: response.body.id,
+        })
+        .then(() => response.body);
     });
   },
 );
