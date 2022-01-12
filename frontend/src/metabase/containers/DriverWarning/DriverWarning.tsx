@@ -5,6 +5,7 @@ import { State } from "metabase-types/store";
 
 export interface DriverWarningProps {
   engine?: string;
+  hasBorder?: boolean;
   onChange?: (engine: string) => void;
 }
 

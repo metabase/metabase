@@ -135,6 +135,7 @@ const DatabaseForm = ({
           <FormField name="engine" />
           <DriverWarning
             engine={values.engine}
+            hasBorder={true}
             onChange={engine => onChangeField("engine", engine)}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (

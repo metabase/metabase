@@ -7,12 +7,14 @@ import { WarningLink, WarningRoot } from "./DriverWarning.styled";
 export interface DriverWarningProps {
   engine?: string;
   engines: Record<string, Engine>;
+  hasBorder?: boolean;
   onChange?: (engine: string) => void;
 }
 
 const DriverWarning = ({
   engine: engineKey,
   engines,
+  hasBorder,
   onChange,
 }: DriverWarningProps): JSX.Element | null => {
   const engine = engineKey ? engines[engineKey] : undefined;
@@ -29,7 +31,7 @@ const DriverWarning = ({
 
   if (newEngine) {
     return (
-      <WarningRoot>
+      <WarningRoot hasBorder={hasBorder}>
         {t`This driver will be removed in a future release.`}{" "}
         {jt`We recommend you upgrade to the ${(
           <WarningLink key="link" onClick={handleChangeToNew}>
