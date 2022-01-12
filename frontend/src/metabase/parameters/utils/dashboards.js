@@ -204,3 +204,31 @@ export function hasMatchingParameters({
     return dashcardMappingsByParameterId[parameter.id] != null;
   });
 }
+
+export function getFilteringParameterValuesMap(parameter, parameters) {
+  const { filteringParameters = [] } = parameter || {};
+  const filteringParameterValues = Object.fromEntries(
+    parameters
+      .filter(p => filteringParameters.includes(p.id) && p.value != null)
+      .map(p => [p.id, p.value]),
+  );
+
+  return filteringParameterValues;
+}
+
+export function getParameterValuesSearchKey({
+  dashboardId,
+  parameterId,
+  query = null,
+  filteringParameterValues = {},
+}) {
+  const BY_PARAMETER_ID = "0";
+  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
+  const sortedParameterValues = _.sortBy(
+    Object.entries(filteringParameterValues),
+    BY_PARAMETER_ID,
+  );
+  const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
+
+  return `dashboardId: ${dashboardId}, parameterId: ${parameterId}, query: ${query}, filteringParameterValues: ${stringifiedParameterValues}`;
+}

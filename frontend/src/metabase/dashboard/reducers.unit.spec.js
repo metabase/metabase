@@ -28,6 +28,7 @@ describe("dashboard reducers", () => {
         startTime: null,
       },
       parameterValues: {},
+      parameterValuesSearchCache: {},
       sidebar: { props: {} },
       slowCards: {},
     });
