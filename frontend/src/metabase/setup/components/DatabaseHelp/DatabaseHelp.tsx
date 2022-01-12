@@ -1,5 +1,6 @@
 import React from "react";
-import { DatabaseHelpRoot, DatabaseHelpCard } from "./DatabaseHelp.styled";
+import DatabaseHelpCard from "metabase/components/DatabaseHelpCard";
+import { DatabaseHelpRoot } from "./DatabaseHelp.styled";
 
 export interface DatabaseHelpProps {
   engine?: string;
@@ -17,7 +18,7 @@ const DatabaseHelp = ({
       isVisible={isVisible}
       data-testid="database-setup-help-card"
     >
-      <DatabaseHelpCard {...{ engine, hasCircle: false }} />
+      <DatabaseHelpCard engine={engine} />
     </DatabaseHelpRoot>
   );
 };
