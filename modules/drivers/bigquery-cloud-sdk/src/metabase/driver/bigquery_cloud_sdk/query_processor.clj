@@ -25,8 +25,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
@@ -42,17 +41,6 @@
 
 (def ^:private ProjectIdentifierString
   (s/pred valid-project-identifier? "Valid BigQuery project-id"))
-
-(defn- valid-dataset-identifier?
-  "Is String `s` a valid BigQuery dataset identifier (a.k.a. dataset-id)? Identifiers are only allowed to contain
-  letters, numbers, and underscores, cannot start with a number, and for dataset-id, can be at most 1024 characters
-  long."
-  [s]
-  (boolean (and (string? s)
-                (re-matches #"^[a-zA-Z_0-9\.\-]{1,1024}$" s))))
-
-(def ^:private DatasetIdentifierString
-  (s/pred valid-dataset-identifier? "Valid BigQuery dataset-id"))
 
 (s/defn ^:private project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
@@ -73,14 +61,6 @@
             (->> (bigquery.common/populate-project-id-from-credentials! database)
                  (ret-fn project-id-override)))
           (ret-fn project-id-override project-id-creds))))))
-
-(s/defn ^:private dataset-id-for-current-query :- DatasetIdentifierString
-  "Fetch the dataset-id for the database associated with this query, needed because BigQuery requires you to qualify
-  identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
-  `BigQueryIdentifier` record type; see its definition for more details."
-  []
-  (when (qp.store/initialized?)
-    (some-> (qp.store/database) :details :dataset-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Running Queries & Parsing Results                                        |
@@ -502,10 +482,10 @@
   (if-not (should-qualify-identifier? identifier)
     identifier
     (-> identifier
-        (update :components (fn [[table & more]]
+        (update :components (fn [[dataset-id table & more]]
                               (cons (str (when-let [proj-id (project-id-for-current-query)]
                                            (str proj-id \.))
-                                         (dataset-id-for-current-query)
+                                         dataset-id
                                          \.
                                          table)
                                     more)))
@@ -608,8 +588,10 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table-name (db/select-one-field :name table/Table :id (u/the-id table-id))]
-    (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
+  (let [table      (table/Table (u/the-id table-id))
+        table-name (:name table)
+        dataset-id (:schema table)]
+    (with-temporal-type (hx/identifier :field dataset-id table-name field-name) (temporal-type field))))
 
 (defn- maybe-source-query-alias
   "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias, and the
@@ -735,12 +717,9 @@
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver
-   {database-id                                                 :database
-    {source-table-id :source-table, source-query :source-query} :query
+   {{source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
-  (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
-        {table-name :name} (some-> source-table-id qp.store/table)]
-    (assert (seq dataset-id))
+  (let [{table-name :name, dataset-id :schema} (some-> source-table-id qp.store/table)]
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
                                 (sql.qp/mbql->honeysql driver)
