@@ -359,10 +359,8 @@ export default class Table extends Component {
         ),
       });
       if (settings["table.pivot_cohort"]) {
-        console.log("table.jsx");
         cohortFormat(true);
       } else {
-        console.log("table.jsx");
         cohortFormat(false);
       }
     } else {

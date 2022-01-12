@@ -794,7 +794,6 @@ export default class TableInteractive extends Component {
       document.getElementsByClassName("table-cell").length &&
       this.props.isCohorted
     ) {
-      console.log("TableInteractive.jsx");
       cohortFormat(this.props.isCohorted);
     }
     if (!width || !height) {

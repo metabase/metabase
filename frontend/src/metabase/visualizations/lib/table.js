@@ -110,12 +110,6 @@ export function isColumnRightAligned(column: Column) {
  * Make table cohort
  */
 export function cohortFormat(isCohorted) {
-  console.log(
-    "cohortFormat: " +
-      document.getElementsByClassName("table-cell").length +
-      " isCohorted: " +
-      isCohorted,
-  );
   let cells = document.getElementsByClassName("table-cell");
   // select all table cells
   for (let i = 0; i < cells.length; i++) {
