@@ -6,8 +6,11 @@ export const createMockEngine = (opts?: Partial<Engine>): Engine => ({
   ...opts,
 });
 
-export const createMockEngines = (): Record<string, Engine> => ({
+export const createMockEngines = (
+  opts?: Record<string, Engine>,
+): Record<string, Engine> => ({
   postgres: createMockEngine(),
+  ...opts,
 });
 
 export const createMockVersion = (opts?: Partial<Version>): Version => ({
