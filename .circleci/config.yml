@@ -1371,6 +1371,7 @@ workflows:
                   "dashboard",
                   "dashboard-filters",
                   "dashboard-filters-sql",
+                  "datasets",
                   "downloads",
                   "moderation",
                   "native",
