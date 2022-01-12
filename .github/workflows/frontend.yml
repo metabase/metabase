@@ -175,6 +175,9 @@ jobs:
       - run: yarn install --frozen-lockfile --prefer-offline
       - name: Publish to Chromatic
         uses: chromaui/action@v1
+        env:
+          PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        if: env.PUBLISH_CHROMATIC != null
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

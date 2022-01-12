@@ -6,7 +6,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
-import { isCypressActive } from "metabase/env";
 
 import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";
 
@@ -21,7 +20,7 @@ const propTypes = {
 
 type Props = { dimension: Dimension } & Pick<
   ITippyPopoverProps,
-  "children" | "placement" | "disabled"
+  "children" | "placement" | "disabled" | "delay"
 >;
 
 const className = "dimension-info-popover";
@@ -31,6 +30,7 @@ function DimensionInfoPopover({
   children,
   placement,
   disabled,
+  delay = POPOVER_DELAY,
 }: Props) {
   // avoid a scenario where we may have a Dimension instance but not enough metadata
   // to even show a display name (probably indicative of a bug)
@@ -39,7 +39,7 @@ function DimensionInfoPopover({
   return hasMetadata ? (
     <TippyPopover
       className={className}
-      delay={isCypressActive ? 0 : POPOVER_DELAY}
+      delay={delay}
       interactive
       placement={placement || "left-start"}
       disabled={disabled}

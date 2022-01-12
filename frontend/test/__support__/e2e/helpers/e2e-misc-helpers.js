@@ -24,9 +24,16 @@ export function visitAlias(alias) {
  * @example
  * openNativeEditor({ databaseName: "QA Postgres12" }).type("SELECT 123");
  */
-export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
-  cy.visit("/");
-  cy.icon("sql").click();
+export function openNativeEditor({
+  databaseName,
+  alias = "editor",
+  fromCurrentPage,
+} = {}) {
+  if (!fromCurrentPage) {
+    cy.visit("/");
+  }
+  cy.findByText("Create").click();
+  cy.findByText("SQL query").click();
 
   databaseName && cy.findByText(databaseName).click();
 
@@ -34,6 +41,23 @@ export function openNativeEditor({ databaseName, alias = "editor" } = {}) {
     .get(".ace_content")
     .as(alias)
     .should("be.visible");
+}
+
+/**
+ * Open notebook editor.
+ *
+ * @param {object} options
+ * @param {boolean} [options.fromCurrentPage] - Open notebook editor from current location
+ * @example
+ * openNotebookEditor({ fromCurrentPage: true })
+ */
+export function openNotebookEditor({ fromCurrentPage } = {}) {
+  if (!fromCurrentPage) {
+    cy.visit("/");
+  }
+
+  cy.findByText("Create").click();
+  cy.findByText("Visual question").click();
 }
 
 /**
@@ -70,3 +94,52 @@ export function interceptPromise(method, path) {
   });
   return state;
 }
+
+const chainStart = Symbol();
+
+/**
+ * Waits for all Cypress commands similarly to Promise.all.
+ * Helps to avoid excessive nesting and verbosity
+ *
+ * @param {Array.<Cypress.Chainable<any>>} commands - Cypress commands
+ * @example
+ * cypressWaitAll([
+ *   cy.createQuestionAndAddToDashboard(firstQuery, 1),
+ *   cy.createQuestionAndAddToDashboard(secondQuery, 1),
+ * ]).then(() => {
+ *   cy.visit(`/dashboard/1`);
+ * });
+ */
+export const cypressWaitAll = function(commands) {
+  const _ = Cypress._;
+  const chain = cy.wrap(null, { log: false });
+
+  const stopCommand = _.find(cy.queue.commands, {
+    attributes: { chainerId: chain.chainerId },
+  });
+
+  const startCommand = _.find(cy.queue.commands, {
+    attributes: { chainerId: commands[0].chainerId },
+  });
+
+  const p = chain.then(() => {
+    return _(commands)
+      .map(cmd => {
+        return cmd[chainStart]
+          ? cmd[chainStart].attributes
+          : _.find(cy.queue.commands, {
+              attributes: { chainerId: cmd.chainerId },
+            }).attributes;
+      })
+      .concat(stopCommand.attributes)
+      .slice(1)
+      .flatMap(cmd => {
+        return cmd.prev.get("subject");
+      })
+      .value();
+  });
+
+  p[chainStart] = startCommand;
+
+  return p;
+};

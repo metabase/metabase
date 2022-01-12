@@ -11,8 +11,8 @@ import { Flex, Box } from "grid-styled";
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
-import Icon, { IconWrapper } from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
@@ -44,12 +44,6 @@ import { getDefaultSearchColor } from "metabase/nav/constants";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-};
-
-// TODO
-const NavHover = {
-  backgroundColor: darken(color("nav")),
-  color: "white",
 };
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
@@ -150,42 +144,45 @@ export default class Navbar extends Component {
           </Box>
         </Flex>
         <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
-          {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to={Urls.newQuestionFlow()}
-              p={1}
-              hover={{
-                backgroundColor: darken(color("brand")),
-              }}
-              className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;New Question`}
-            >
-              <Icon name="insight" size={18} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Ask a question`}</h4>
-            </Link>
-          )}
-          {hasDataAccess && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
-            >
-              <Link
-                to="browse"
-                className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Data Browse`}
-                tooltip={t`Browse data`}
-              >
-                <Icon name="table_spaced" size={14} p={"11px"} />
-              </Link>
-            </IconWrapper>
-          )}
           <EntityMenu
-            tooltip={t`Create`}
             className="hide sm-show mr1"
-            triggerIcon="add"
-            triggerProps={{ hover: NavHover }}
+            trigger={
+              <Link
+                mr={1}
+                p={1}
+                hover={{
+                  backgroundColor: darken(color("brand")),
+                }}
+                className="flex align-center rounded transition-background"
+                data-metabase-event={`NavBar;Create Menu Click`}
+              >
+                <Icon name="add" size={14} />
+                <h4 className="hide sm-show ml1 text-nowrap">{t`Create`}</h4>
+              </Link>
+            }
             items={[
+              {
+                title: t`Visual question`,
+                icon: `insight`,
+                link: Urls.newQuestion({
+                  mode: "notebook",
+                  creationType: "complex_question",
+                }),
+                event: `NavBar;New Visual Question Click;`,
+              },
+              ...(hasNativeWrite
+                ? [
+                    {
+                      title: t`SQL query`,
+                      icon: `sql`,
+                      link: Urls.newQuestion({
+                        type: "native",
+                        creationType: "native_question",
+                      }),
+                      event: `NavBar;New SQL Query Click;`,
+                    },
+                  ]
+                : []),
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
@@ -193,27 +190,28 @@ export default class Navbar extends Component {
                 event: `NavBar;New Dashboard Click;`,
               },
               {
-                title: t`New pulse`,
-                icon: `pulse`,
-                link: Urls.newPulse(),
-                event: `NavBar;New Pulse Click;`,
+                title: t`New collection`,
+                icon: `all`,
+                link: Urls.newCollection("root"),
+                event: `NavBar;New Collection Click;`,
               },
             ]}
           />
-          {hasNativeWrite && (
-            <IconWrapper
-              className="relative hide sm-show mr1 overflow-hidden"
-              hover={NavHover}
+
+          {hasDataAccess && (
+            <Link
+              mr={[1, 2]}
+              to="browse"
+              p={1}
+              hover={{
+                backgroundColor: darken(color("brand")),
+              }}
+              className="flex align-center rounded transition-background"
+              data-metabase-event={`NavBar;Data Browse`}
             >
-              <Link
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center"
-                data-metabase-event={`NavBar;SQL`}
-                tooltip={t`Write SQL`}
-              >
-                <Icon size={18} p={"11px"} name="sql" />
-              </Link>
-            </IconWrapper>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>
+            </Link>
           )}
           <ProfileLink {...this.props} />
         </Flex>
