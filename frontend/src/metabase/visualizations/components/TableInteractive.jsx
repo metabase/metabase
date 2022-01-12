@@ -16,6 +16,7 @@ import {
   getTableHeaderClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
+  cohortFormat,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
@@ -789,7 +790,10 @@ export default class TableInteractive extends Component {
       data: { cols, rows },
       className,
     } = this.props;
-
+    if(document.getElementsByClassName("table-cell").length && this.props.isCohorted) {
+      console.log('TableInteractive.jsx');
+      cohortFormat(this.props.isCohorted);
+    }
     if (!width || !height) {
       return <div className={className} />;
     }

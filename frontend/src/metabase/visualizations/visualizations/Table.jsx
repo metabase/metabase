@@ -24,7 +24,7 @@ import ChartSettingOrderedColumns from "metabase/visualizations/components/setti
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
-
+import { cohortFormat } from "metabase/visualizations/lib/table";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
@@ -203,6 +203,7 @@ export default class Table extends Component {
       ) => ({
         cols: cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
+        isCohorted: settings["table.pivot_cohort"],
       }),
       getHidden: (
         [
@@ -228,6 +229,7 @@ export default class Table extends Component {
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
     "table.pivot_cohort": {
+      id: 'pivot_cohort',
       section: t`Columns`,
       title: t`Show cohort`,
       widget: "toggle",
@@ -357,9 +359,11 @@ export default class Table extends Component {
         ),
       });
       if (settings["table.pivot_cohort"]) {
-        cohortswitch(true);
+        console.log('table.jsx');
+        cohortFormat(true);
       } else {
-        cohortswitch(false);
+        console.log('table.jsx');
+        cohortFormat(false);
       }
     } else {
       const { cols, rows } = data;
@@ -389,6 +393,7 @@ export default class Table extends Component {
     }
     const { settings } = this.props;
     const isPivoted = settings["table.pivot"];
+    const isCohorted = settings["table.pivot_cohort"];
     const column = cols[columnIndex];
     if (isPivoted) {
       return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
@@ -408,10 +413,10 @@ export default class Table extends Component {
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
+    const isCohorted = settings["table.pivot_cohort"];
     const columnSettings = settings["table.columns"] || [];
     const areAllColumnsHidden = !columnSettings.some(f => f.enabled);
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
-
     if (!data) {
       return null;
     }
@@ -443,73 +448,10 @@ export default class Table extends Component {
         {...this.props}
         data={data}
         isPivoted={isPivoted}
+        isCohorted={isCohorted}
         sort={sort}
         getColumnTitle={this.getColumnTitle}
       />
     );
-  }
-}
-
-function PrepareCohortData() {
-  let defaultValue = [];
-  let cells = document.getElementsByClassName("table-cell");
-  if (cells.length) {
-    // Get cells data for cohort analysis
-    for (let i = 0; i < cells.length; i++) {
-      let cohortValue;
-      let rowindex = cells.item(i).dataset.rowindex;
-      let columnindex = cells.item(i).dataset.columnindex;
-      let div = cells.item(i).getElementsByTagName("div");
-      if (columnindex != 0) {
-        if (columnindex == 1) {
-          defaultValue[rowindex] = div[0].innerHTML
-            ? div[0].innerHTML.replace(/\D/g, "")
-            : 1;
-        } else if (typeof div[0].dataset.cohortValue == "undefined") {
-          let cellVal = parseFloat(div[0].innerHTML.replace(/\D/g, ""));
-          if (defaultValue[rowindex] && cellVal) {
-            cohortValue =
-              Math.round((cellVal / defaultValue[rowindex]) * 100 * 100) / 100;
-          } else {
-            cohortValue = 0;
-          }
-          div[0].dataset.cohortValue = cohortValue;
-          div[0].dataset.originalValue = div[0].innerHTML
-            ? div[0].innerHTML
-            : "";
-        }
-      }
-    }
-  }
-}
-
-// switch data between original and cohort
-function cohortswitch(cohortSwitch) {
-  let cells = document.getElementsByClassName("table-cell");
-
-  for (let i = 0; i < cells.length; i++) {
-    if (
-      cells.item(i).dataset.columnindex != 0 &&
-      cells.item(i).dataset.columnindex != 1
-    ) {
-      let div = cells.item(i).getElementsByTagName("div");
-      if (div[0].dataset.cohortValue && div[0].dataset.originalValue) {
-        if (
-          cells.item(i).dataset.columnindex == 2 &&
-          cells.item(i).dataset.rowindex == 0
-        ) {
-          //find problem with cell[0,2]
-          console.log('cohortSwitch: ' + cohortSwitch);
-          console.log(div[0]);
-        }
-        if (cohortSwitch) {
-          div[0].innerHTML = div[0].dataset.cohortValue;
-        } else {
-          div[0].innerHTML = div[0].dataset.originalValue;
-        }
-      } else {
-        PrepareCohortData();
-      }
-    }
   }
 }
