@@ -326,7 +326,17 @@ describe("meta/Dashboard", () => {
         field(id) {
           return this.fields[id];
         },
-        table() {},
+        tables: {
+          6: {
+            id: 6,
+          },
+          8: {
+            id: 8,
+          },
+        },
+        table(id) {
+          return this.tables[id];
+        },
       };
 
       dashboard = DASHBOARD_WITH_BOOLEAN_PARAMETER;
@@ -341,7 +351,7 @@ describe("meta/Dashboard", () => {
             "56": {
               card_id: 56,
               dashcard_id: 81,
-              field: metadata.field(120),
+              field: expect.any(Field),
               field_id: 120,
               parameter_id: "parameter1",
               target: ["dimension", ["field", 120, null]],
@@ -351,7 +361,7 @@ describe("meta/Dashboard", () => {
             "59": {
               card_id: 59,
               dashcard_id: 86,
-              field: metadata.field(134),
+              field: expect.any(Field),
               field_id: 134,
               parameter_id: "parameter1",
               target: ["dimension", ["template-tag", "bbb"]],
@@ -373,7 +383,13 @@ describe("meta/Dashboard", () => {
         },
       });
 
-      expect(mappings.parameter1["87"]["62"].field).toEqual(
+      expect(mappings.parameter1["81"]["56"].field.getPlainObject()).toEqual(
+        expect.objectContaining(metadata.field(120).getPlainObject()),
+      );
+      expect(mappings.parameter1["86"]["59"].field.getPlainObject()).toEqual(
+        expect.objectContaining(metadata.field(134).getPlainObject()),
+      );
+      expect(mappings.parameter1["87"]["62"].field.getPlainObject()).toEqual(
         expect.objectContaining({
           name: "boolean",
         }),
