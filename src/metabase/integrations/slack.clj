@@ -3,8 +3,10 @@
             [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -22,26 +24,62 @@
        " "
        (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
+(defsetting slack-token-valid?
+  (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
+       " "
+       (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
+  :type :boolean)
+
+(defsetting slack-files-channel
+  (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
+  :default "metabase_files"
+  :setter (fn [channel]
+            (if (str/blank? channel)
+              (setting/set-value-of-type! :string :slack-files-channel nil)
+              ;; Strip leading # if present, since the Slack API doesn't like it
+              (setting/set-value-of-type! :string
+                                          :slack-files-channel
+                                          (if (str/starts-with? channel "#") (subs channel 1) channel)))))
+
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
-(def ^:private ^String files-channel-name "metabase_files")
 
 (defn slack-configured?
   "Is Slack integration configured?"
   []
   (boolean (or (seq (slack-app-token)) (seq (slack-token)))))
 
+(def ^:private slack-token-error-codes
+  "List of error codes that indicate an invalid or revoked Slack token."
+  ;; If any of these error codes are received from the Slack API, we send an email to all admins indicating that the
+  ;; Slack integration is broken. In practice, the "account_inactive" error code is the one that is most likely to be
+  ;; received. This would happen if access to the Slack workspace is manually revoked via the Slack UI.
+  #{"invalid_auth", "account_inactive", "token_revoked", "token_expired"})
+
+(def ^:private ^:dynamic *send-token-error-emails?*
+  "Whether to send an email to all admins when an invalid or revoked token error is received in response to a Slack
+  API call. Should be set to false when checking if an unsaved token is valid. (Default: `true`)"
+  true)
+
 (defn- handle-error [body]
-  (let [invalid-token? (= (:error body) "invalid_auth")
+  (let [invalid-token? (slack-token-error-codes (:error body))
         message        (if invalid-token?
-                         (tru "Invalid token")
-                         (tru "Slack API error: {0}" (:error body)))
+                         (trs "Invalid token")
+                         (trs "Slack API error: {0}" (:error body)))
         error          (if invalid-token?
                          {:error-code (:error body)
                           :errors     {:slack-token message}}
                          {:error-code (:error body)
                           :message    message
                           :response   body})]
-    (log/warn (u/pprint-to-str 'red error))
+    (when (and invalid-token? *send-token-error-emails?*)
+      ;; Check `slack-token-valid?` before sending emails to avoid sending repeat emails for the same invalid token.
+      ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
+      ;; being used)
+      (when (not (false? (slack-token-valid?))) (messages/send-slack-token-error-emails!))
+      (slack-token-valid? false))
+    (if invalid-token?
+      (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
+      (log/warn (u/pprint-to-str 'red error)))
     (throw (ex-info message error))))
 
 (defn- handle-response [{:keys [status body]}]
@@ -129,9 +167,10 @@
   "Check whether a Slack token is valid by checking whether we can call `conversations.list` with it."
   [token :- su/NonBlankString]
   (try
-    (boolean (take 1 (conversations-list :limit 1, :token token)))
+    (binding [*send-token-error-emails?* false]
+      (boolean (take 1 (conversations-list :limit 1, :token token))))
     (catch Throwable e
-      (if (= (:error-code (ex-data e)) "invalid_auth")
+      (if (slack-token-error-codes (:error-code (ex-data e)))
         false
         (throw e)))))
 
@@ -144,19 +183,7 @@
        (filter (complement :deleted))
        (filter (complement :is_bot))))
 
-(defn- files-channel* []
-  (or (channel-with-name files-channel-name)
-      (let [message (str (tru "Slack channel named `metabase_files` is missing!")
-                         " "
-                         (tru "Please create or unarchive the channel in order to complete the Slack integration.")
-                         " "
-                         (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
-        (log/error (u/format-color 'red message))
-        (throw (ex-info message {:status-code 400})))))
-
-(def ^{:arglists '([])} files-channel
-  "Calls Slack api `channels.info` to check whether a channel named #metabase_files exists. If it doesn't, throws an
-  error that advices an admin to create it."
+(def ^:private ^{:arglists '([channel-name])} files-channel*
   ;; If the channel has successfully been created we can cache the information about it from the API response. We need
   ;; this information every time we send out a pulse, but making a call to the `conversations.list` endpoint everytime we
   ;; send a Pulse can result in us seeing 429 (rate limiting) status codes -- see
@@ -164,7 +191,27 @@
   ;;
   ;; Of course, if `files-channel*` *fails* (because the channel is not created), this won't get cached; this is what
   ;; we want -- to remind people to create it
-  (memoize/ttl files-channel* :ttl/threshold (u/hours->ms 6)))
+  ;;
+  ;; The memoized function is paramterized by the channel name so that if the name is changed, the cached channel details
+  ;; will be refetched.
+  (memoize/ttl
+   (fn [channel-name]
+     (or (when channel-name (channel-with-name channel-name))
+         (let [message (str (tru "Slack channel named `{0}` is missing!" channel-name)
+                            " "
+                            (tru "Please create or unarchive the channel in order to complete the Slack integration.")
+                            " "
+                            (tru "The channel is used for storing images that are included in dashboard subscriptions."))]
+           (log/error (u/format-color 'red message))
+           (throw (ex-info message {:status-code 400})))))
+   :ttl/threshold (u/hours->ms 6)))
+
+(defn files-channel
+  "Calls Slack api `channels.info` to check whether a channel exists with the expected name from the
+  [[slack-files-channel]] setting. If it does, returns the channel details as a map. If it doesn't, throws an error
+  that advices an admin to create it."
+  []
+  (files-channel* (slack-files-channel)))
 
 (def ^:private NonEmptyByteArray
   (s/constrained
