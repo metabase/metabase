@@ -818,6 +818,45 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Expecting field but found 0");
   });
 
+  it("should allow switching focus with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get(".ace_text-input").type("[Tax] > 0");
+
+    // Tab switches the focus to the "Done" button
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("contains", "Button");
+  });
+
+  it("should allow choosing a suggestion with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+
+    // Suggestion popover shows up and this select the first one ([Created At])
+    cy.realPress("Tab");
+
+    // Focus remains on the expression editor
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+
+    // Finish to complete a valid expression, i.e. [Tax] > 42
+    cy.get(".ace_text-input").type("> 42");
+
+    // Tab switches the focus to the "Done" button
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("contains", "Button");
+  });
+
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
     visitQuestionAdhoc({
       dataset_query: {

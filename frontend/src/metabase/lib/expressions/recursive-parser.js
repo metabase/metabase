@@ -210,12 +210,25 @@ function recursiveParse(source) {
 const modify = (node, transform) => {
   if (Array.isArray(node)) {
     const [operator, ...operands] = node;
-    return transform([
-      operator,
-      ...operands.map(sub => modify(sub, transform)),
-    ]);
+    return withAST(
+      transform([operator, ...operands.map(sub => modify(sub, transform))]),
+      node,
+    );
   }
-  return transform(node);
+  return withAST(transform(node), node);
+};
+
+const withAST = (result, expr) => {
+  // If this expression comes from the compiler, an object property
+  // containing the parent AST node will be included for errors
+  if (expr.node && typeof result.node === "undefined") {
+    Object.defineProperty(result, "node", {
+      writable: false,
+      enumerable: false,
+      value: expr.node,
+    });
+  }
+  return result;
 };
 
 const NEGATIVE_FILTER_SHORTHANDS = {
@@ -233,7 +246,7 @@ export const useShorthands = tree =>
         const [fn, ...params] = operand;
         const shorthand = NEGATIVE_FILTER_SHORTHANDS[fn];
         if (shorthand) {
-          return [shorthand, ...params];
+          return withAST([shorthand, ...params], node);
         }
       }
     }
@@ -259,7 +272,7 @@ export const adjustOptions = tree =>
               operands.pop();
               operands.push({ "include-current": true });
             }
-            return [operator, ...operands];
+            return withAST([operator, ...operands], node);
           }
         }
       }
@@ -282,9 +295,9 @@ export const adjustCase = tree =>
         }
         if (operands.length > 2 * pairCount) {
           const defVal = operands[operands.length - 1];
-          return [operator, pairs, { default: defVal }];
+          return withAST([operator, pairs, { default: defVal }], node);
         }
-        return [operator, pairs];
+        return withAST([operator, pairs], node);
       }
     }
     return node;

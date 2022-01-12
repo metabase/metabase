@@ -28,7 +28,7 @@ describe("scenarios > dashboard", () => {
     // Create dashboard
     cy.visit("/");
     cy.icon("add").click();
-    cy.findByText("New dashboard").click();
+    cy.findByText("Dashboard").click();
     modal().within(() => {
       cy.findByLabelText("Name").type("Test Dash");
       cy.findByLabelText("Description").type("Desc");

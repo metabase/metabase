@@ -5,6 +5,7 @@ import {
   modal,
   openPeopleTable,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -586,8 +587,8 @@ describe("smoketest > admin_setup", () => {
 
       // Access to SQl queries as user
 
-      cy.findByText("Ask a question").click();
-      cy.findByText("Native query");
+      cy.findByText("New").click();
+      cy.findByText("SQL query");
 
       // Cannot see Review table as no collection user
       cy.signOut();
@@ -793,9 +794,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user cannot make an SQL query
 
-      cy.findByText("Ask a question").click();
-
-      cy.findByText("Simple question");
+      openNotebookEditor({ fromCurrentPage: true });
 
       cy.signOut();
       cy.signIn("nocollection");
@@ -886,8 +885,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("pencil");
 
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor({ fromCurrentPage: true });
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();
