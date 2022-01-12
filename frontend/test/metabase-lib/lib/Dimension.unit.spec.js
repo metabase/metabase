@@ -59,6 +59,25 @@ const nestedQuestionCard = {
 
 const PRODUCT_CATEGORY_FIELD_ID = 21;
 
+const ORDERS_USER_ID_FIELD = metadata.field(ORDERS.USER_ID.id).getPlainObject();
+
+const OVERWRITTEN_USER_ID_FIELD_METADATA = {
+  ...ORDERS_USER_ID_FIELD,
+  display_name: "Foo",
+  description: "Bar",
+  fk_target_field_id: 1,
+  semantic_type: "type/Price",
+  settings: {
+    show_mini_bar: true,
+  },
+};
+
+const ORDERS_DATASET = ORDERS.question()
+  .setDataset(true)
+  .setResultsMetadata({
+    columns: [OVERWRITTEN_USER_ID_FIELD_METADATA],
+  });
+
 describe("Dimension", () => {
   describe("STATIC METHODS", () => {
     describe("parseMBQL(mbql metadata)", () => {
@@ -320,6 +339,20 @@ describe("Dimension", () => {
 
           expect(field.id).toEqual(ORDERS.TOTAL.id);
           expect(field.base_type).toEqual("type/Float");
+        });
+
+        it("should merge field results metadata with field info", () => {
+          const dimension = Dimension.parseMBQL(
+            ["field", ORDERS.USER_ID.id, null],
+            metadata,
+            ORDERS_DATASET.query(),
+          );
+
+          const field = dimension.field();
+
+          expect(field.getPlainObject()).toEqual(
+            OVERWRITTEN_USER_ID_FIELD_METADATA,
+          );
         });
       });
     });

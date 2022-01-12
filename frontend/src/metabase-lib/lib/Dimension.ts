@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+import { merge } from "icepick";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 import { TemplateTagVariable } from "./Variable";
@@ -19,6 +20,7 @@ import {
   DatetimeUnit,
 } from "metabase-types/types/Query";
 import { IconName } from "metabase-types/types";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import Aggregation from "./queries/structured/Aggregation";
 import StructuredQuery from "./queries/StructuredQuery";
@@ -573,37 +575,61 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
+  _createField(fieldInfo, { hydrate = false } = {}) {
+    const field = new Field({
+      ...fieldInfo,
+      metadata: this._metadata,
+      query: this._query,
+    });
+
+    if (hydrate) {
+      field.table = this._metadata.table(field.table_id);
+
+      if (field.isFK()) {
+        field.target = this._metadata.field(field.fk_target_field_id);
+      }
+
+      if (field.name_field != null) {
+        field.field_name = meta.field(field.name_field);
+      } else if (field.table && field.isPK()) {
+        field.field_name = _.find(field.table.fields, f => f.isEntityName());
+      }
+
+      field.values = getFieldValues(field);
+      field.remappings = new Map(getRemappings(field));
+    }
+
+    return field;
+  }
+
   field(): any {
+    const question = this.query()?.question();
+    const lookupField = this.isIntegerFieldId() ? "id" : "name";
+    const fieldMetadata = question
+      ? _.findWhere(question.getResultMetadata(), {
+          [lookupField]: this.fieldIdOrName(),
+        })
+      : null;
+
     if (this.isIntegerFieldId()) {
       const field = this._metadata?.field(this.fieldIdOrName());
 
       if (field) {
-        return field;
-      }
-
-      // if the field isn't in metadata, there _might_ be a card tied to this Dimension
-      // if so, check the card's result_metadata
-      const question = this.query()?.question();
-
-      if (question != null) {
-        const field = _.findWhere(question.getResultMetadata(), {
-          id: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          return new Field({
-            ...field,
-            metadata: this._metadata,
-            query: this._query,
-          });
+        if (!fieldMetadata) {
+          return field;
         }
+        const fieldObject = merge(
+          field instanceof Field ? field.getPlainObject() : field,
+          fieldMetadata,
+        );
+        return this._createField(fieldObject, { hydrate: true });
       }
 
-      return new Field({
-        id: this._fieldIdOrName,
-        metadata: this._metadata,
-        query: this._query,
-      });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
+      }
+
+      return this._createField({ id: this._fieldIdOrName });
     }
 
     // look for a "virtual" field on the query's table or question
@@ -618,38 +644,31 @@ export class FieldDimension extends Dimension {
         });
 
         if (field) {
-          return field;
+          if (!fieldMetadata) {
+            return field;
+          }
+          const fieldObject = merge(
+            field instanceof Field ? field.getPlainObject() : field,
+            fieldMetadata,
+          );
+          return this._createField(fieldObject, { hydrate: true });
         }
       }
 
-      const question = this.query().question();
-
-      if (question != null) {
-        const field = _.findWhere(question.getResultMetadata(), {
-          name: this.fieldIdOrName(),
-        });
-
-        if (field) {
-          return new Field({
-            ...field,
-            metadata: this._metadata,
-            query: this._query,
-          });
-        }
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
       }
     }
 
     // despite being unable to find a field, we _might_ still have enough data to know a few things about it
     // for example, if we have an mbql field reference, it might contain a `base-type`
-    return new Field({
+    return this._createField({
       id: this.mbql(),
       name: this._fieldIdOrName,
       // NOTE: this display_name will likely be incorrect
       // if a `FieldDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this._fieldIdOrName,
       base_type: this.getOption("base-type"),
-      query: this._query,
-      metadata: this._metadata,
     });
   }
 
