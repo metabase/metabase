@@ -19,7 +19,8 @@ const SlackSetupForm = ({ onSubmit }: SlackSetupFormProps): JSX.Element => {
         <Form>
           <FormField name="slack-app-token" />
           <FormMessage>
-            {t`Finally, open Slack and create a public channel and put its name below.`}
+            {t`Finally, open Slack, create a public channel and enter its name below.`}{" "}
+            {t`We'll upload charts and tables here before sending out dashboard subscriptions.`}
           </FormMessage>
           <FormField name="slack-files-channel" />
           <FormFooter submitTitle={t`Save changes`} />
