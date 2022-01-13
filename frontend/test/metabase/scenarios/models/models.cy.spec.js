@@ -20,14 +20,14 @@ import {
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
-describe("scenarios > datasets", () => {
+describe("scenarios > models", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("allows to turn a GUI question into a dataset", () => {
-    cy.request("PUT", "/api/card/1", { name: "Orders Dataset" });
+  it("allows to turn a GUI question into a model", () => {
+    cy.request("PUT", "/api/card/1", { name: "Orders model" });
     cy.visit("/question/1");
 
     turnIntoDataset();
@@ -192,7 +192,7 @@ describe("scenarios > datasets", () => {
           tables: true,
         });
 
-        cy.findByText("Datasets").click();
+        cy.findByText("Models").click();
         cy.findByTestId("select-list").within(() => {
           cy.findByText("Orders");
           cy.findByText("Orders, Count").should("not.exist");
@@ -232,7 +232,7 @@ describe("scenarios > datasets", () => {
       cy.findByText("Custom question").click();
 
       popover().within(() => {
-        cy.findByText("Datasets").click();
+        cy.findByText("Models").click();
         cy.findByText("Orders").click();
       });
 
@@ -272,7 +272,7 @@ describe("scenarios > datasets", () => {
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
       popover().within(() => {
-        cy.findByText("Datasets").should("not.exist");
+        cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");
       });
     });
@@ -378,7 +378,7 @@ describe("scenarios > datasets", () => {
   });
 
   describe("adding a question to collection from its page", () => {
-    it("should offer to pick one of the collection's datasets by default", () => {
+    it("should offer to pick one of the collection's models by default", () => {
       cy.request("PUT", "/api/card/1", { dataset: true });
       cy.request("PUT", "/api/card/2", { dataset: true });
 
@@ -389,7 +389,7 @@ describe("scenarios > datasets", () => {
       cy.findByText("Orders, Count");
       cy.findByText("All data");
 
-      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Models").should("not.exist");
       cy.findByText("Raw Data").should("not.exist");
       cy.findByText("Saved Questions").should("not.exist");
       cy.findByText("Sample Dataset").should("not.exist");
@@ -412,7 +412,7 @@ describe("scenarios > datasets", () => {
 
       cy.findByText("All data").click({ force: true });
 
-      cy.findByText("Datasets");
+      cy.findByText("Models");
       cy.findByText("Raw Data");
       cy.findByText("Saved Questions");
     });
@@ -429,24 +429,24 @@ describe("scenarios > datasets", () => {
       cy.button("Visualize");
     });
 
-    it("should use correct picker if collection has no datasets", () => {
+    it("should use correct picker if collection has no models", () => {
       cy.request("PUT", "/api/card/1", { dataset: true });
 
       cy.visit("/collection/9");
       openNewCollectionItemFlowFor("question");
 
       cy.findByText("All data").should("not.exist");
-      cy.findByText("Datasets");
+      cy.findByText("Models");
       cy.findByText("Raw Data");
       cy.findByText("Saved Questions");
     });
 
-    it("should use correct picker if there are datasets at all", () => {
+    it("should use correct picker if there are models at all", () => {
       cy.visit("/collection/root");
       openNewCollectionItemFlowFor("question");
 
       cy.findByText("All data").should("not.exist");
-      cy.findByText("Datasets").should("not.exist");
+      cy.findByText("Models").should("not.exist");
       cy.findByText("Raw Data").should("not.exist");
 
       cy.findByText("Saved Questions");
