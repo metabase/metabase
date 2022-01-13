@@ -29,6 +29,7 @@ const ENGINES_MOCK = {
 };
 
 const ComponentMock = () => <div />;
+jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
 jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
 function mockSettings({ cachingEnabled = false }) {
