@@ -476,3 +476,17 @@
                            :limit        1})
                         add-alias-info
                         :query)))))))
+
+(deftest aggregation-reference-test
+  (testing "Make sure we add info to `:aggregation` reference clauses correctly"
+    (is (query= (mt/mbql-query checkins
+                  {:aggregation [[:aggregation-options
+                                  [:sum [:field %user_id {::add/source-table $$checkins
+                                                          ::add/source-alias "USER_ID"}]]
+                                  {:name "sum"}]]
+                   :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"
+                                                        ::add/position      0}]]]})
+                (add-alias-info
+                 (mt/mbql-query checkins
+                   {:aggregation [[:sum $user_id]]
+                    :order-by    [[:asc [:aggregation 0]]]}))))))

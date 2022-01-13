@@ -261,7 +261,7 @@
                       {:type   qp.error-type/invalid-query
                        :clause ag-ref-clause
                        :query  inner-query})))
-    (let [[_ ag-name _ :as matching-ag] (nth aggregations index)]
+    (let [[_ _ {ag-name :name} :as matching-ag] (nth aggregations index)]
       ;; make sure we have an `:aggregation-options` clause like we expect. This is mostly a precondition check
       ;; since we should never be running this code on not-preprocessed queries, so it's not i18n'ed
       (when-not (mbql.u/is-clause? :aggregation-options matching-ag)
