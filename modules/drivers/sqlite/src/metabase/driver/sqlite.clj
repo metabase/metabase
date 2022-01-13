@@ -13,7 +13,6 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
