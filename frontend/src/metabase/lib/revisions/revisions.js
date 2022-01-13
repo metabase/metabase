@@ -98,7 +98,7 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.UPDATE]: (wasDataset, isDataset) =>
       isDataset
         ? t`turned this into a model`
-        : t`reverted this from a model to a saved question`,
+        : t`changed this from a model to a saved question`,
   },
   dataset_query: {
     [CHANGE_TYPE.ADD]: t`edited the question`,
