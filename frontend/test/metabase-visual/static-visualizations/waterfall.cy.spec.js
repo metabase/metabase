@@ -15,8 +15,8 @@ describe("static visualizations", () => {
     setupSMTP();
   });
 
-  it(`waterfall chart`, () => {
-    const dashboardName = `Waterfall charts dashboard`;
+  it("waterfall chart", () => {
+    const dashboardName = "Waterfall charts dashboard";
     cy.createDashboardWithQuestions({
       dashboardName,
       questions: [
