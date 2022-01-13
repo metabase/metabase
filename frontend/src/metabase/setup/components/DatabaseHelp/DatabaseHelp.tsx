@@ -1,5 +1,5 @@
 import React from "react";
-import DatabaseHelpCard from "metabase/components/DatabaseHelpCard";
+import DatabaseHelpCard from "metabase/containers/DatabaseHelpCard";
 import { DatabaseHelpRoot } from "./DatabaseHelp.styled";
 
 export interface DatabaseHelpProps {
