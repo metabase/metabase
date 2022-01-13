@@ -255,17 +255,17 @@ describe("getRevisionDescription | questions", () => {
     );
   });
 
-  it("handles turning a question into a dataset", () => {
+  it("handles turning a question into a model", () => {
     const revision = getSimpleRevision({
       field: "dataset",
       before: false,
       after: true,
     });
 
-    expect(getRevisionDescription(revision)).toBe("turned this into a dataset");
+    expect(getRevisionDescription(revision)).toBe("turned this into a model");
   });
 
-  it("handles turning a dataset back into a saved question", () => {
+  it("handles turning a model back into a saved question", () => {
     const revision = getSimpleRevision({
       field: "dataset",
       before: true,
@@ -273,7 +273,7 @@ describe("getRevisionDescription | questions", () => {
     });
 
     expect(getRevisionDescription(revision)).toBe(
-      "reverted this from a dataset to a saved question",
+      "reverted this from a model to a saved question",
     );
   });
 });

@@ -59,7 +59,7 @@ describe("scenarios > datasets", () => {
     assertIsQuestion();
 
     cy.findByText("History").click();
-    cy.findByText(/Turned this into a dataset/i)
+    cy.findByText(/Turned this into a model/i)
       .closest("li")
       .within(() => {
         cy.button("Revert").click();
