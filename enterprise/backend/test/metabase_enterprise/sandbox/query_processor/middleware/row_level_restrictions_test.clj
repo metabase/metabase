@@ -20,6 +20,7 @@
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
             [metabase.util :as u]
@@ -37,8 +38,14 @@
      (sql.qp/->honeysql (or driver/*driver* :h2) (Table (mt/id table-key)))))
 
   ([table-key field-key]
-   (mt/with-everything-store
-     (sql.qp/->honeysql (or driver/*driver* :h2) [:field (mt/id table-key field-key) nil]))))
+   (let [field-id   (mt/id table-key field-key)
+         field-name (db/select-one-field :name Field :id field-id)]
+     (mt/with-everything-store
+       (sql.qp/->honeysql
+        (or driver/*driver* :h2)
+        [:field field-id {::add/source-table  (mt/id table-key)
+                          ::add/source-alias  field-name
+                          ::add/desired-alias field-name}])))))
 
 (defn- venues-category-mbql-gtap-def []
   {:query      (mt/mbql-query venues)
