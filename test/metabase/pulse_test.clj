@@ -640,7 +640,7 @@
         (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
         (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
         (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest native-query-with-user-specified-axes-test
