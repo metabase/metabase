@@ -30,7 +30,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn- unique-alias-fn
+(defn- make-unique-alias-fn
   "Creates a function with the signature
 
     (unique-alias position original-alias)
@@ -46,7 +46,7 @@
                         ;; [[escape-alias]] above
                         :unique-alias-fn (fn [original suffix]
                                            (escape-alias driver/*driver* (str original \_ suffix))))]
-    (fn unique-alias-fn* [position original-alias]
+    (fn unique-alias-fn [position original-alias]
       (unique-name-fn position (escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
@@ -279,7 +279,7 @@
 
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
-  (let [unique-alias-fn (unique-alias-fn)]
+  (let [unique-alias-fn (make-unique-alias-fn)]
     (mbql.u/replace inner-query
       ;; don't rewrite anything inside any source queries or source metadata.
       (_ :guard (constantly (some (partial contains? (set &parents))
