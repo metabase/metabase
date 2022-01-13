@@ -323,7 +323,7 @@
       (let [db-id (u/the-id database)]
         (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                         db-id))
-        (db/update-where! MetabaseTable {:db_id db-id} :schema dataset-id)
+        (db/update-where! MetabaseTable {:db_id db-id, :schema nil} :schema dataset-id)
         (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
             (assoc-in [:details :dataset-filters-patterns] dataset-id)
             (m/dissoc-in [:details :dataset-id])))
