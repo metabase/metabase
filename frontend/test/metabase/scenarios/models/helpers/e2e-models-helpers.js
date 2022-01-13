@@ -100,8 +100,3 @@ export function selectFromDropdown(option, clickOpts) {
     .findByText(option)
     .click(clickOpts);
 }
-
-export function joinTable(table) {
-  cy.icon("join_left_outer").click();
-  selectFromDropdown(table);
-}

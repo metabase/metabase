@@ -18,8 +18,7 @@ import {
   assertIsQuestion,
   openDetailsSidebar,
   getDetailsSidebarActions,
-  joinTable,
-} from "./helpers/e2e-datasets-helpers";
+} from "./helpers/e2e-models-helpers";
 
 describe("scenarios > datasets", () => {
   beforeEach(() => {
@@ -237,7 +236,9 @@ describe("scenarios > datasets", () => {
         cy.findByText("Orders").click();
       });
 
-      joinTable("Products");
+      cy.icon("join_left_outer").click();
+
+      selectFromDropdown("Products");
       selectFromDropdown("Product ID");
       selectFromDropdown("ID");
 

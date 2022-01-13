@@ -8,7 +8,7 @@ import {
   saveQuestionBasedOnDataset,
   assertIsQuestion,
   openDetailsSidebar,
-} from "./helpers/e2e-datasets-helpers";
+} from "./helpers/e2e-models-helpers";
 
 describe("scenarios > datasets", () => {
   beforeEach(() => {

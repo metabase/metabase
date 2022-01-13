@@ -7,7 +7,7 @@ import {
 import {
   selectFromDropdown,
   openDetailsSidebar,
-} from "./helpers/e2e-datasets-helpers";
+} from "./helpers/e2e-models-helpers";
 
 describe("scenarios > datasets query editor", () => {
   beforeEach(() => {
