@@ -277,13 +277,11 @@ describe("scenarios > admin > databases > add", () => {
       chooseDatabase("BigQuery");
 
       cy.findByText("BigQuery");
-      cy.findByText("Need help setting up your database?");
-      cy.findByText("The old driver has been deprecated", { exact: false });
+      cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
       cy.findByText("BigQuery (Deprecated Driver)");
-      cy.findByText("Need help setting up your database?").should("not.exist");
-      cy.findByText("This driver will be removed", { exact: false });
+      cy.findByText("Need help connecting?");
     });
   });
 
