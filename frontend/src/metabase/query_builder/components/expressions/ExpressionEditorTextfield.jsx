@@ -248,6 +248,12 @@ export default class ExpressionEditorTextfield extends React.Component {
     if (this.input.current) {
       const { editor } = this.input.current;
       this.handleCursorChange(editor.selection);
+
+      // workaround some unknown issue on Firefox
+      // without explicit focus, the editor is vertically shifted
+      setTimeout(() => {
+        editor.focus();
+      }, 0);
     }
   };
 
