@@ -39,13 +39,14 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
-;; This is mainly for use by other drivers -- AFAIK only [[metabase.driver.sqlserver]] actually uses it. Consider seeing
-;; if we can deprecate it.
-(def ^:dynamic *field-options*
+(def ^:dynamic ^{:deprecated "0.42.0"} *field-options*
   "This is automatically bound to the `options` part of a `:field` clause when that clause is being compiled to
   HoneySQL. Useful if you store additional keys there and need to access them.
 
-  This value is not used by the SQL QP code itself, and overriding it will have no effect."
+  This value is not used by the SQL QP code itself, and overriding it will have no effect.
+
+  DEPRECATED in 0.42.0 -- this is only used by SQL Server and will likely be removed and replaced with a variable
+  in [[metabase.driver.sqlserver]] in the future. You should do the same if you are currently relying on this."
   nil)
 
 (p/deftype+ SQLSourceQuery [sql params]
@@ -722,7 +723,8 @@
                     :field        &match)]
     ;; We must not transform the head again else we'll have an infinite loop
     ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
-    [:or (into [op] (map (partial ->honeysql driver)) args)
+    [:or
+     (into [op] (map (partial ->honeysql driver)) args)
      [:= (->honeysql driver field-arg) nil]]))
 
 (defmethod ->honeysql [:sql :!=]
