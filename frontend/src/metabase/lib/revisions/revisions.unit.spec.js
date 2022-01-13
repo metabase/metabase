@@ -273,7 +273,7 @@ describe("getRevisionDescription | questions", () => {
     });
 
     expect(getRevisionDescription(revision)).toBe(
-      "reverted this from a model to a saved question",
+      "changed this from a model to a saved question",
     );
   });
 });
