@@ -18,7 +18,7 @@ describe("scenarios > models > revision history", () => {
 
   beforeEach(() => {
     cy.request("PUT", "/api/card/3", {
-      name: "Orders Dataset",
+      name: "Orders Model",
       dataset: true,
     });
     cy.intercept("PUT", "/api/card/3").as("updateCard");
@@ -51,7 +51,7 @@ describe("scenarios > models > revision history", () => {
     });
   });
 
-  it("should allow reverting to a dataset state", () => {
+  it("should allow reverting to a model state", () => {
     cy.request("PUT", "/api/card/3", { dataset: false });
 
     cy.visit("/question/3");
@@ -79,7 +79,7 @@ describe("scenarios > models > revision history", () => {
     cy.button("Add filter").click();
 
     assertQuestionIsBasedOnDataset({
-      dataset: "Orders Dataset",
+      dataset: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
@@ -88,7 +88,7 @@ describe("scenarios > models > revision history", () => {
 
     assertQuestionIsBasedOnDataset({
       questionName: "Q1",
-      dataset: "Orders Dataset",
+      dataset: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
