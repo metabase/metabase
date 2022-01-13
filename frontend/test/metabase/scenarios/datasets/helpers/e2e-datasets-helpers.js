@@ -95,10 +95,6 @@ export function turnIntoDataset() {
   });
 }
 
-export function getCollectionItemRow(itemName) {
-  return cy.findByText(itemName).closest("tr");
-}
-
 export function selectFromDropdown(option, clickOpts) {
   popover()
     .findByText(option)

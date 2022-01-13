@@ -15,7 +15,6 @@ import {
   selectFromDropdown,
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnDataset,
-  getCollectionItemRow,
   assertIsQuestion,
   openDetailsSidebar,
   testDataPickerSearch,
@@ -455,3 +454,7 @@ describe("scenarios > datasets", () => {
     });
   });
 });
+
+function getCollectionItemRow(itemName) {
+  return cy.findByText(itemName).closest("tr");
+}
