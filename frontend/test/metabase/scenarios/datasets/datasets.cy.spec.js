@@ -17,7 +17,6 @@ import {
   saveQuestionBasedOnDataset,
   assertIsQuestion,
   openDetailsSidebar,
-  testDataPickerSearch,
   getDetailsSidebarActions,
   joinTable,
 } from "./helpers/e2e-datasets-helpers";
@@ -457,4 +456,21 @@ describe("scenarios > datasets", () => {
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
+}
+
+function testDataPickerSearch({
+  inputPlaceholderText,
+  query,
+  datasets = false,
+  cards = false,
+  tables = false,
+} = {}) {
+  cy.findByPlaceholderText(inputPlaceholderText).type(query);
+  cy.wait("@search");
+
+  cy.findAllByText(/Dataset in/i).should(datasets ? "exist" : "not.exist");
+  cy.findAllByText(/Saved question in/i).should(cards ? "exist" : "not.exist");
+  cy.findAllByText(/Table in/i).should(tables ? "exist" : "not.exist");
+
+  cy.icon("close").click();
 }
