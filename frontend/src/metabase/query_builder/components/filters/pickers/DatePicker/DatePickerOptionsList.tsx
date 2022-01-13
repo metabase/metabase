@@ -11,11 +11,12 @@ import {
   PREDEFINED_RELATIVE_MONTH_FILTER_OPTIONS,
   CUSTOM_FILTER_OPTIONS,
   PredefinedFilter,
+  DatePickerView,
 } from "./constants";
 
 type Props = {
   onPredefinedFilterClick: (id: PredefinedFilter) => void;
-  onCustomFilterClick: (id: string) => void;
+  onCustomFilterClick: (id: DatePickerView) => void;
 };
 
 export function DatePickerOptionsList({

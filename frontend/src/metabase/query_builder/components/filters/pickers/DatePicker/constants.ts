@@ -7,6 +7,18 @@ export type OnFilterChange = (
   commitImmediately: boolean,
 ) => void;
 
+export enum DatePickerView {
+  DEFAULT = "default",
+  RELATIVE_PAST = "relative-past",
+  RELATIVE_CURRENT = "relative-current",
+  RELATIVE_NEXT = "relative-next",
+  SPECIFIC_BETWEEN = "specific-between",
+  SPECIFIC_BEFORE = "specific-before",
+  SPECIFIC_AFTER = "specific-after",
+  SPECIFIC_ON = "specific-on",
+  EXCLUDE = "exclude",
+}
+
 export enum PredefinedFilter {
   TODAY = "today",
   YESTERDAY = "yesterday",
@@ -19,6 +31,8 @@ export enum PredefinedFilter {
 }
 
 type PredefinedFilterOption = { id: PredefinedFilter; name: string };
+
+type CustomFilterOption = { id: DatePickerView; name: string };
 
 export const PREDEFINED_RELATIVE_DAY_FILTER_OPTIONS: PredefinedFilterOption[] = [
   {
@@ -58,17 +72,17 @@ export const PREDEFINED_RELATIVE_MONTH_FILTER_OPTIONS: PredefinedFilterOption[] 
   },
 ];
 
-export const CUSTOM_FILTER_OPTIONS = [
+export const CUSTOM_FILTER_OPTIONS: CustomFilterOption[] = [
   {
-    id: "specific",
+    id: DatePickerView.SPECIFIC_ON,
     name: t`Specific dates…`,
   },
   {
-    id: "relative-past",
+    id: DatePickerView.RELATIVE_PAST,
     name: t`Relative dates…`,
   },
   {
-    id: "exclude",
+    id: DatePickerView.EXCLUDE,
     name: t`Exclude…`,
   },
-] as const;
+];
