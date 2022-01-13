@@ -8,7 +8,7 @@
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
+            [metabase.driver.sync :as driver.s]
             [metabase.models :refer [Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
@@ -64,9 +64,9 @@
           exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
       (apply concat (for [^Dataset dataset (.iterateAll datasets)
                           :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                          :when (describe-database/include-schema? (.getDataset dataset-id)
-                                                                   inclusion-patterns
-                                                                   exclusion-patterns)]
+                          :when (driver.s/include-schema? inclusion-patterns
+                                                          exclusion-patterns
+                                                          (.getDataset dataset-id))]
                       (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                           .iterateAll
                           .iterator

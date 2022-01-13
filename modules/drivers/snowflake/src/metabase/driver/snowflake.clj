@@ -15,9 +15,9 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sync :as driver.s]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -259,16 +259,16 @@
       (qp.store/fetch-and-store-database! (u/the-id database))
       (let [spec            (sql-jdbc.conn/db->pooled-connection-spec database)
             sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
-            schema-patterns (describe-database/db-details->schema-filter-patterns "schema-filters" database)
+            schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
         (with-open [conn (jdbc/get-connection spec)]
           {:tables (into
                     #{}
                     (comp (filter (fn [{schema :schema_name, table-name :name}]
                                     (and (not (contains? excluded-schemas schema))
-                                         (describe-database/include-schema? schema
-                                                                            inclusion-patterns
-                                                                            exclusion-patterns)
+                                         (driver.s/include-schema? inclusion-patterns
+                                                                   exclusion-patterns
+                                                                   schema)
                                          (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
                                  {:name        table-name

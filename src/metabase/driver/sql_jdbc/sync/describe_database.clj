@@ -8,6 +8,7 @@
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sync :as driver.s]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
             [metabase.util.honeysql-extensions :as hx])
@@ -15,41 +16,6 @@
            java.util.regex.Pattern))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
-
-(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
-  (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
-                (str/replace #"(^|[^\\\\])," "$1|"))))
-
-(defn- schema-patterns->filter-fn*
-  [inclusion-patterns exclusion-patterns]
-  (let [inclusion-blank? (str/blank? inclusion-patterns)
-        exclusion-blank? (str/blank? exclusion-patterns)]
-    (cond
-      (and inclusion-blank? exclusion-blank?)
-      (constantly true)
-
-      (and (not inclusion-blank?) (not exclusion-blank?))
-      (throw (ex-info "Inclusion and exclusion patterns cannot both be specified"
-               {::inclusion-patterns inclusion-patterns
-                ::exclusion-patterns exclusion-patterns}))
-
-      true
-      (let [inclusion? exclusion-blank?
-            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
-        (fn [s]
-          (let [m        (.matcher pattern s)
-                matches? (.matches m)]
-            (if inclusion? matches? (not matches?))))))))
-
-(def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
-
-(defn include-schema?
-  ;; TODO: add more docstring details here, and move to different ns (not strictly JDBC)
-  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
-  `exclusion-patterns`."
-  [schema-name inclusion-patterns exclusion-patterns]
-  (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
-    (filter-fn schema-name)))
 
 (defn all-schemas
   "Get a *reducible* sequence of all string schema names for the current database from its JDBC database metadata."
@@ -61,8 +27,9 @@
      #(.getString rs "TABLE_SCHEM"))))
 
 (defmethod i/syncable-schemas :sql-jdbc
-  [driver _ metadata]
+  [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (i/excluded-schemas driver)))
+            (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 
 (defn simple-select-probe-query
@@ -134,9 +101,9 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (and
-                       (include-schema? table-schema schema-inclusion-filters schema-exclusion-filters)
+                       (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
                        (i/have-select-privilege? driver conn table-schema table-name)))))
-     (i/syncable-schemas driver conn metadata))))
+     (i/syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod i/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]
@@ -151,7 +118,7 @@
    (filter (let [excluded (i/excluded-schemas driver)]
              (fn [{table-schema :schema, table-name :name}]
                (and (not (contains? excluded table-schema))
-                    (include-schema? table-schema schema-inclusion-filters schema-exclusion-filters)
+                    (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
                     (i/have-select-privilege? driver conn table-schema table-name)))))
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
@@ -164,18 +131,6 @@
 
         true
         nil))
-
-(defn db-details->schema-filter-patterns
-  "Given a `prop-nm` (which is expected to be a connection property of type `:schema-filters`, and a `database`
-  instance, return a vector containing [inclusion-patterns exclusion-patterns]."
-  {:added "0.42.0"}
-  [prop-nm {db-details :details :as database}]
-  (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
-        schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
-        exclusion-type?        (= "exclusion" schema-filter-type)]
-    (if exclusion-type?
-      [nil schema-filter-patterns]
-      [schema-filter-patterns nil])))
 
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -191,7 +146,7 @@
                (if has-schema-filter-prop?
                  (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
                    (let [prop-nm                                 (:name schema-filter-prop)
-                         [inclusion-patterns exclusion-patterns] (db-details->schema-filter-patterns
+                         [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
                                                                   prop-nm
                                                                   database)]
                      (into #{} (i/active-tables driver conn inclusion-patterns exclusion-patterns)))
