@@ -148,9 +148,7 @@ class RawCustomFormField extends React.Component {
     const field = getIn(fields, name.split("."));
 
     field.onChange(...args);
-    if (typeof onChange === "function") {
-      onChange(...args);
-    }
+    onChange(...args);
   };
 
   render() {
@@ -163,15 +161,19 @@ class RawCustomFormField extends React.Component {
       return null;
     }
 
+    const hasCustomOnChangeHandler = typeof this.props.onChange === "function";
+
     const props = {
       ...this.props,
       values,
       onChangeField,
       formField,
-      field: {
-        ...field,
-        onChange: this.onChange,
-      },
+      field: hasCustomOnChangeHandler
+        ? {
+            ...field,
+            onChange: this.onChange,
+          }
+        : field,
     };
 
     const hasCustomWidget =
