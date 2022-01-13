@@ -84,15 +84,15 @@ describe("QuestionDetailsSidebarPanel", () => {
   describe("datasets", () => {
     it("displays management section", () => {
       setup({ question: getDataset() });
-      expect(screen.queryByText("Dataset management")).toBeInTheDocument();
+      expect(screen.queryByText("Model management")).toBeInTheDocument();
       expect(
         screen.queryByText("Turn back into a saved question"),
       ).toBeInTheDocument();
     });
 
-    it("does not display dataset management section with read-only-access", () => {
+    it("does not display model management section with read-only-access", () => {
       setup({ question: getDataset({ can_write: false }) });
-      expect(screen.queryByText("Dataset management")).not.toBeInTheDocument();
+      expect(screen.queryByText("Model management")).not.toBeInTheDocument();
       expect(
         screen.queryByText("Turn back into a saved question"),
       ).not.toBeInTheDocument();
@@ -100,9 +100,9 @@ describe("QuestionDetailsSidebarPanel", () => {
   });
 
   describe("saved questions", () => {
-    it("does not display dataset management section", () => {
+    it("does not display model management section", () => {
       setup({ question: getQuestion() });
-      expect(screen.queryByText("Dataset management")).not.toBeInTheDocument();
+      expect(screen.queryByText("Model management")).not.toBeInTheDocument();
       expect(
         screen.queryByText("Turn back into a saved question"),
       ).not.toBeInTheDocument();

@@ -68,7 +68,7 @@ export function assertIsDataset() {
   getDetailsSidebarActions().within(() => {
     cy.icon("dataset").should("not.exist");
   });
-  cy.findByText("Dataset management");
+  cy.findByText("Model management");
   cy.findByText("Sample Dataset").should("not.exist");
 
   // For native
@@ -81,7 +81,7 @@ export function assertIsQuestion() {
   getDetailsSidebarActions().within(() => {
     cy.icon("dataset");
   });
-  cy.findByText("Dataset management").should("not.exist");
+  cy.findByText("Model management").should("not.exist");
   cy.findByText("Sample Dataset");
 }
 

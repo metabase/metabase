@@ -37,7 +37,7 @@ function DatasetManagementSection({
 
   return (
     <div>
-      <SectionTitle>{t`Dataset management`}</SectionTitle>
+      <SectionTitle>{t`Model management`}</SectionTitle>
       <SectionContent>
         <Button
           icon="notebook"
