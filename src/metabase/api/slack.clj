@@ -27,7 +27,6 @@
         ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
         (slack/slack-token nil)))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
-      (slack/channel-with-name my-processed-files-channel1)
       (when (and processed-files-channel (not (slack/channel-with-name processed-files-channel)))
         (throw (ex-info (tru "Slack channel not found.")
                         {:errors {:slack-files-channel (tru "channel not found")}})))
