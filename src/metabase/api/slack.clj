@@ -19,15 +19,19 @@
     (when (and slack-app-token (not config/is-test?))
       (when-not (slack/valid-token? slack-app-token)
         (throw (ex-info (tru "Invalid Slack token.")
-                        {:errors {:slack-app-token (tru "invalid token")}
-                         :status-code 400}))))
+                        {:errors {:slack-app-token (tru "invalid token")}}))))
     (slack/slack-app-token slack-app-token)
     (when slack-app-token
       (do
         (slack/slack-token-valid? true)
         ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
         (slack/slack-token nil)))
-    (slack/slack-files-channel slack-files-channel)
+    (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
+      (slack/channel-with-name my-processed-files-channel1)
+      (when (and processed-files-channel (not (slack/channel-with-name processed-files-channel)))
+        (throw (ex-info (tru "Slack channel not found.")
+                        {:errors {:slack-files-channel (tru "channel not found")}})))
+      (slack/slack-files-channel processed-files-channel))
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))

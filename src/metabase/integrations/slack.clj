@@ -30,16 +30,18 @@
        (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
   :type :boolean)
 
+(defn process-files-channel-name
+  "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
+  [channel-name]
+  (when-not (str/blank? channel-name)
+    ;; Strip leading # if present, since the Slack API doesn't like it
+    (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
+
 (defsetting slack-files-channel
   (deferred-tru "The name of the channel to which Metabase files should be initially uploaded")
   :default "metabase_files"
-  :setter (fn [channel]
-            (if (str/blank? channel)
-              (setting/set-value-of-type! :string :slack-files-channel nil)
-              ;; Strip leading # if present, since the Slack API doesn't like it
-              (setting/set-value-of-type! :string
-                                          :slack-files-channel
-                                          (if (str/starts-with? channel "#") (subs channel 1) channel)))))
+  :setter (fn [channel-name]
+            (setting/set-value-of-type! :string :slack-files-channel (process-files-channel-name channel-name))))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 
@@ -155,7 +157,7 @@
   (let [params (merge {:exclude_archived true, :types "public_channel"} query-parameters)]
     (paged-list-request "conversations.list" :channels params)))
 
-(defn- channel-with-name
+(defn channel-with-name
   "Return a Slack channel with `channel-name` (as a map) if it exists."
   [channel-name]
   (some (fn [channel]
