@@ -9,7 +9,7 @@
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
-            [metabase.models :refer [Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
+            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -316,22 +316,35 @@
   [_ database]
   (bigquery.common/populate-project-id-from-credentials! database))
 
+(defn- convert-dataset-id-to-filters!
+  "Converts a bigquery-cloud-sdk db-details having the outdated `dataset-id` connection parameter, into one where that
+  same value is set as the (only) dataset inclusion filter pattern. Also updated model objects to reflect the new
+  structure:
+
+  * any associated Table instances will be updated to have schema set (to the dataset-id value)
+  * the Database model itself will be updated to persist this change to db-details back to the app DB
+
+  Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
+  [database dataset-id]
+  (let [db-id (u/the-id database)]
+    (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
+                    db-id))
+    (db/execute! {:update MetabaseTable
+                  :set    {:schema dataset-id}
+                  :where  [:and
+                           [:= :db_id db-id]
+                           [:or
+                            [:= :schema nil]
+                            [:not= :schema dataset-id]]]})
+    (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
+                         (assoc-in [:details :dataset-filters-patterns] dataset-id)
+                         (m/dissoc-in [:details :dataset-id]))]
+      (db/update! Database db-id :details (:details updated-db))
+      updated-db)))
+
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_ database]
   (if-let [dataset-id (get-in database [:details :dataset-id])]
     (if-not (str/blank? dataset-id)
-      (let [db-id (u/the-id database)]
-        (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
-                        db-id))
-        (db/execute! {:update MetabaseTable
-                      :set    {:schema dataset-id}
-                      :where  [:and
-                               [:= :db_id db-id]
-                               [:or
-                                [:= :schema nil]
-                                [:not= :schema dataset-id]]]})
-        (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
-            (assoc-in [:details :dataset-filters-patterns] dataset-id)
-            (m/dissoc-in [:details :dataset-id])))
-      database)
+      (convert-dataset-id-to-filters! database dataset-id))
     database))
