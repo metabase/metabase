@@ -2,18 +2,21 @@ name: Uberjar
 
 on:
   push:
-    branches:
-      - '**'
     paths-ignore:
     - 'docs/**'
     - 'frontend/test/**'
     - 'enterprise/frontend/test/**'
+    - ".**"
+    - "test*"
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-
   build:
     runs-on: ubuntu-20.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       matrix:
         edition: [ee, oss]
@@ -41,8 +44,48 @@ jobs:
           ./target/uberjar/metabase.jar
           ./COMMIT-ID
           ./SHA256.sum
-
-  check:
+  
+  containerize_and_test_container:
+    if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport') || startsWith(github.ref_name,'release')) }}
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+    - name: Extract and clean branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+      id: extract_branch
+    - uses: actions/checkout@v2
+    - uses: actions/download-artifact@v2
+      with:
+          name: metabase-ee-uberjar
+          path: bin/docker/
+    - name: Move the uberjar to the context dir
+      run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build and push
+      uses: docker/build-push-action@v2
+      with:
+        context: bin/docker/.
+        platforms: linux/amd64
+        push: true
+        tags: metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+        no-cache: true
+    - name: Launch container
+      run: docker run -dp 3000:3000 metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      timeout-minutes: 5
+    - run: docker ps
+    - name: Wait for Metabase to start
+      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      timeout-minutes: 1
+  
+  check_jar:
     runs-on: ubuntu-20.04
     name: check ${{ matrix.edition }} (java ${{ matrix.java-version }})
     needs: build
