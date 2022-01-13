@@ -29,6 +29,7 @@ import ColumnSettings, {
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
+import { getColumnTypeIcon } from "../utils";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 import {
@@ -97,6 +98,9 @@ function getFormFields({ dataset }) {
         title: t`Column type`,
         widget: SemanticTypePicker,
         options: getSemanticTypeOptions(),
+        icon: getColumnTypeIcon({
+          semantic_type: fieldFormValues.semantic_type,
+        }),
       },
       {
         name: "fk_target_field_id",
