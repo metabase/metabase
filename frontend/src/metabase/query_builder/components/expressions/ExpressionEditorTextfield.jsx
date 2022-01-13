@@ -32,6 +32,10 @@ import ExpressionMode from "./ExpressionMode";
 
 import "./expressions.css";
 
+import * as ace from "ace-builds/src-noconflict/ace";
+
+ace.config.set("basePath", "/assets/ui/");
+
 const HelpText = ({ helpText, width }) =>
   helpText ? (
     <Popover
