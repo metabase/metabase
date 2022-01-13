@@ -131,19 +131,19 @@ describe("scenarios > datasets", () => {
     cy.get(".LineAreaBarChart").should("not.exist");
   });
 
-  it("allows to undo turning a question into a dataset", () => {
+  it("allows to undo turning a question into a model", () => {
     cy.visit("/question/3");
     cy.get(".LineAreaBarChart");
 
     turnIntoDataset();
-    cy.findByText("This is a dataset now.");
+    cy.findByText("This is a model now.");
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
     assertIsQuestion();
   });
 
-  it("allows to turn a dataset back into a saved question", () => {
+  it("allows to turn a model back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
     cy.visit("/dataset/1");
