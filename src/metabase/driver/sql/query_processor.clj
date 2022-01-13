@@ -386,12 +386,14 @@
           database-type        (or database-type
                                    (:database_type field))]
       (binding [*field-options* options]
-        (let [identifier (apply hx/identifier :field (concat source-table-aliases [source-alias]))]
-          (cond->> (->honeysql driver identifier)
-            allow-casting?           (cast-field-if-needed driver field)
-            database-type            (#(hx/with-database-type-info % database-type))
-            (:temporal-unit options) (apply-temporal-bucketing driver options)
-            (:binning options)       (apply-binning options)))))
+        (let [identifier (->honeysql driver (apply hx/identifier :field (concat source-table-aliases [source-alias])))]
+          (u/prog1
+            (cond->> identifier
+              allow-casting?           (cast-field-if-needed driver field)
+              database-type            (#(hx/with-database-type-info % database-type))
+              (:temporal-unit options) (apply-temporal-bucketing driver options)
+              (:binning options)       (apply-binning options))
+            (log/tracef "Compiled field clause\n%s\n=>\n%s" (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -590,15 +592,17 @@
   `::add/desired-alias` key in the clause options.
 
   Optional third parameter `unique-name-fn` is no longer used as of 0.42.0."
-  [_driver [clause-type id-or-name {::add/keys [desired-alias]}] & _unique-name-fn]
-  (or desired-alias
-      ;; fallback behavior for anyone using SQL QP functions directly without including the stuff from
-      ;; [[metabase.query-processor.util.add-alias-info]]
-      (when (string? id-or-name)
-        id-or-name)
-      (when (and (= clause-type :field)
-                 (integer? id-or-name))
-        (:name (qp.store/field id-or-name)))))
+  [driver [clause-type id-or-name {::add/keys [desired-alias]}] & _unique-name-fn]
+  (let [desired-alias (or desired-alias
+                          ;; fallback behavior for anyone using SQL QP functions directly without including the stuff
+                          ;; from [[metabase.query-processor.util.add-alias-info]]. We should probably disallow this
+                          ;; going forward because it is liable to break
+                          (when (string? id-or-name)
+                            id-or-name)
+                          (when (and (= clause-type :field)
+                                     (integer? id-or-name))
+                            (:name (qp.store/field id-or-name))))]
+    (->honeysql driver (hx/identifier :field-alias desired-alias))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `clause`. The
@@ -617,7 +621,7 @@
   (let [honeysql-form (->honeysql driver clause)
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
-      [honeysql-form (->honeysql driver (hx/identifier :field-alias field-alias))]
+      [honeysql-form field-alias]
       honeysql-form)))
 
 
@@ -633,7 +637,7 @@
                             [(->honeysql driver ag)
                              (->honeysql driver (hx/identifier
                                                  :field-alias
-                                                 ;; TODO -- use the alias from `:qp/refs`
+                                                 ;; TODO -- use the alias from [[metabase.query-processor.util.add]]
                                                  (driver/format-custom-field-name driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 
@@ -964,8 +968,9 @@
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
   (let [inner-query (preprocess inner-query)]
+    (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
     (u/prog1 (apply-clauses driver {} inner-query)
-      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+      (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
 ;;;; MBQL -> Native
 
