@@ -2,7 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :as t]
             [metabase.mbql.util :as mbql.u]
-            metabase.types))
+            [metabase.types]))
 
 (comment metabase.types/keep-me)
 

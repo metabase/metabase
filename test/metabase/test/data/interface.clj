@@ -429,13 +429,12 @@
 (s/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  {:style/indent 1}
-  [database-name :- su/NonBlankString, & definition]
+  [database-name :- su/NonBlankString & table-definitions]
   (s/validate
    DatabaseDefinition
    (map->DatabaseDefinition
     {:database-name     database-name
-     :table-definitions (for [table definition]
+     :table-definitions (for [table table-definitions]
                           (dataset-table-definition table))})))
 
 (defmacro defdataset

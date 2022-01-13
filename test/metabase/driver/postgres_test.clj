@@ -10,6 +10,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -394,25 +395,31 @@
       (do-with-money-test-db
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
+           (is (= "SELECT avg(bird_prices.price::numeric) AS avg FROM bird_prices"
+                  (sql.qp-test-util/query->sql
+                   (mt/mbql-query bird_prices
+                     {:aggregation [[:avg $price]]}))))
            (is (= [[14.995M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:aggregation [[:avg $price]]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:aggregation [[:avg $price]]})))))
+
          (testing "Should be able to filter on a money column"
            (is (= [["Katie Parakeet" 23.99M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:= $price 23.99]}))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:= $price 23.99]}))))
            (is (= []
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:!= $price $price]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:!= $price $price]})))))
+
          (testing "Should be able to sort by price"
            (is (= [["Katie Parakeet" 23.99M]
                    ["Lucky Pigeon" 6.00M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:order-by [[:desc $price]]}))))))))))
+                   (mt/run-mbql-query bird_prices
+                     {:order-by [[:desc $price]]}))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 

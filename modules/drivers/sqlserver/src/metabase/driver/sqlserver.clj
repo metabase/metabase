@@ -75,7 +75,6 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
-
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
@@ -304,7 +303,7 @@
       (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
-  "Optimize `:order-by` `subclauses` using `optimized-temporal-buckets`, if possible."
+  "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
   [subclauses]
   (vec
    (mapcat
@@ -315,24 +314,13 @@
         [subclause]))
     subclauses)))
 
-;; From the dox:
-;;
-;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
-;; expressions, unless TOP, OFFSET or FOR XML is also specified.
-;;
-;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
-;; but not for `top-level` queries (since it's not needed there)
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
   [driver _ honeysql-form {:keys [limit], :as query}]
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
-        add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
-        honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
-                       driver :order-by honeysql-form query)]
-    (if-not add-limit?
-      honeysql-form
-      (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
+        parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
+    (parent-method driver :order-by honeysql-form query)))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -395,20 +383,55 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
-;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
-;; the same as the default
-(defmethod sql-jdbc.execute/prepared-statement :sqlserver
-  [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn sql
-                                ResultSet/TYPE_FORWARD_ONLY
-                                ResultSet/CONCUR_READ_ONLY)]
-    (try
-      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-      (sql-jdbc.execute/set-parameters! driver stmt params)
-      stmt
-      (catch Throwable e
-        (.close stmt)
-        (throw e)))))
+;; From the dox:
+;;
+;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
+;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this :
+;;
+;; - Remove `:order-by` without a corresponding `:limit` inside a `:join` (since it usually doesn't really accomplish
+;;   anything anyway; if you really need it you can always specify a limit yourself)
+;;
+;; - Add a max-results `:limit` to source queries if there's not already one
+
+(defn- in-source-query? [path]
+  (= (last path) :source-query))
+
+(defn- in-join-source-query? [path]
+  (and (in-source-query? path)
+       (= (last (butlast path)) :joins)))
+
+(defn- has-order-by-without-limit? [m]
+  (and (map? m)
+       (:order-by m)
+       (not (:limit m))))
+
+(defn- remove-order-by? [path m]
+  (and (has-order-by-without-limit? m)
+       (in-join-source-query? path)))
+
+(defn- add-limit? [path m]
+  (and (has-order-by-without-limit? m)
+       (not (in-join-source-query? path))
+       (in-source-query? path)))
+
+(defn- fix-order-bys [inner-query]
+  (letfn []
+    (mbql.u/replace inner-query
+      ;; remove order by and then recurse in case we need to do more tranformations at another level
+      (m :guard (partial remove-order-by? &parents))
+      (fix-order-bys (dissoc m :order-by))
+
+      (m :guard (partial add-limit? &parents))
+      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+
+(defmethod driver/mbql->native :sqlserver
+  [driver query]
+  ((get-method driver/mbql->native :sql)
+   driver
+   ;; do the [[sql.qp/preprocess]] steps first so we'll add extra levels of nesting for expressions if we need to.
+   (update query :query (comp fix-order-bys sql.qp/preprocess))))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

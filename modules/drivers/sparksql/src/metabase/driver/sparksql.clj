@@ -15,9 +15,9 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet]))
 
@@ -29,13 +29,21 @@
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
 
-;; use `source-table-alias` for the source Table, e.g. `t1.field` instead of the normal `schema.table.field`
-(defmethod sql.qp/->honeysql [:sparksql (class Field)]
-  [driver field]
-  (binding [sql.qp/*table-alias* (or sql.qp/*table-alias* source-table-alias)]
-    ((get-method sql.qp/->honeysql [:hive-like (class Field)]) driver field)))
+(defmethod sql.qp/->honeysql [:sparksql :field]
+  [driver field-clause]
+  ;; use [[source-table-alias]] instead of a [[metabase.models.table]] to qualify fields e.g. `t1.field` instead of the
+  ;; normal `schema.table.field`
+  (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
+        field-clause  (mbql.u/update-field-options field-clause
+                                                   update ::add/source-table
+                                                   (fn [source-table]
+                                                     (if (integer? source-table)
+                                                       source-table-alias
+                                                       source-table)))]
+    (parent-method driver field-clause)))
 
-(defmethod sql.qp/apply-top-level-clause [:sparksql :page] [_ _ honeysql-form {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:sparksql :page]
+  [_ _ honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit

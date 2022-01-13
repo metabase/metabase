@@ -16,7 +16,10 @@
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
   (testing "throws if argument is not a descendant of `:Coercion/UNIXTime->Temporal`"
-    (is (thrown? AssertionError (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Semantic type must be a UNIXTimestamp"
+         (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
 (mt/defdataset toucan-microsecond-incidents
   [["incidents" [{:field-name "severity"

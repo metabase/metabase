@@ -89,7 +89,8 @@
         (update :fields (fn [fields]
                           (set
                            (for [[_ {table-id :table_id, field-name :name}] fields]
-                             [(get-in store [:tables table-id :name]) field-name])))))))
+                             [(get-in store [:tables table-id :name]) field-name]))))
+        (dissoc :misc))))
 
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.

@@ -19,6 +19,12 @@
 (defn- implicitly-joined-fields [x]
   (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
 
+;; TODO -- we should probably add some sort of short hash for any alias that gets truncated because of length, to make
+;; sure we have all unique aliases.
+;;
+;; TODO -- we should leverage [[mbql.u/unique-name-generator]] here to make sure all the names we generate are unique.
+;; What if someone has an explict join named `TABLE__via__SOME_COLUMN`? That would be a case of trying to intentionally
+;; break things, but it would still break.
 (defn- join-alias [dest-table-name source-fk-field-name]
   (apply str (take 30 (str dest-table-name "__via__" source-fk-field-name))))
 
