@@ -7,6 +7,7 @@ const CardRootMixin = css`
   display: block;
   padding: 1.5rem;
   max-width: 21.5rem;
+  border: 1px solid ${color("border")};
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 6px ${color("shadow")};
