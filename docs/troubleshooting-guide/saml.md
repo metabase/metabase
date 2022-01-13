@@ -4,15 +4,15 @@
 
 Some common problems when setting up SAML.
 
-## Is the entity or issuer id correct?
+## Is the entity or issuer ID correct?
 
-After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer>**.
+After filling out the authentication form with your identity provider, you're taken back to Metabase but it throws an error. To see the error, go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Incorrect response <issuer>**.
 
-**Root cause** Your entity or issuer id is incorrect.
+**Root cause**: Your entity or issuer ID is incorrect.
 
-**Steps to take**
+**Steps to take**:
 
-1. You should have received an XML file from your identity provider. Open that metadata file, and look for the correct issuer or entity ID. This ID is a unique identifier for the IdP. Depending on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v.
+1. You should have received an XML file of metadata from your identity provider. Open that metadata file, and look for the correct issuer or entity ID. This ID is a unique identifier for the identity provider. Depending on your provider, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v.
 2. Copy that ID.
 3. Go to **Admin settings** > **Settings** > **Authentication** > **SAML** and enter the issuer or entity ID into the **SAML Identity Provider Issuer** field in Metabase. 
 
@@ -20,12 +20,12 @@ After filling out the authentication form with your identity provider, you're ta
 
 After filling out the authentication form with your identity provider, you go back to Metabase but it throws an error. Go to **Admin settings** > **Troubleshooting** > **Logs**. You'll see an error that says something like **Invalid assertion error <issuer>**. 
 
-**Root cause** The certificate value you entered is incorrect.
+**Root cause**: The certificate value you entered is incorrect.
 
-**Steps to take**
+**Steps to take**:
 
 1. You should have received an XML file from your identity provider. Open that metadata file, and check to make sure the certificate you inputted is correct.
-2. Go to **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider. Depending on your IdP, you might need to download this, open it in a text editor, then copy and paste the certificate's contents into the field.
+2. Go to **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider. Depending on your provider, you might need to download this, open it in a text editor, then copy and paste the certificate's contents into the field.
 
 ## Searching for private key and found a null
 
@@ -37,6 +37,6 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 
 **Root cause**: The certificate in the keystore file does not have a private key.
 
-**Steps to take**
+**Steps to take**:
 
 1. Add a certificate with a private key to your keystore.
