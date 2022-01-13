@@ -43,7 +43,7 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
           key="action"
           primary
           onClick={onConfirm}
-        >{t`Turn this into a dataset`}</Button>,
+        >{t`Turn this into a model`}</Button>,
       ]}
     >
       <FeatureOverviewContainer>

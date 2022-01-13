@@ -91,7 +91,7 @@ export function turnIntoDataset() {
     cy.icon("dataset").click();
   });
   modal().within(() => {
-    cy.button("Turn this into a dataset").click();
+    cy.button("Turn this into a model").click();
   });
 }
 
