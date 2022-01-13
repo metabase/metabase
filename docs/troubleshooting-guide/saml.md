@@ -1,4 +1,6 @@
-# Troubleshooting SAML
+# Troubleshooting SAML authentication setup
+
+{% include plans-blockquote.html feature="SAML authentication" %}
 
 Some common problems when setting up SAML.
 
