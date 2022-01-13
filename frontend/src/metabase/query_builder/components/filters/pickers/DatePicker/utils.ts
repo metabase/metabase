@@ -1,51 +1,61 @@
 import { PredefinedFilter } from "./constants";
 
-export function getPredefinedFilter(
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+
+export function updateToPredefinedFilter(
+  filter: Filter,
+  filterId: PredefinedFilter,
+): Filter {
+  const { operator, args } = getPredefinedFilterOperatorAndArgs(filterId);
+  return filter.setOperator(operator).setArguments(args);
+}
+
+function getPredefinedFilterOperatorAndArgs(
   filterId: PredefinedFilter,
 ): {
   operator: string;
-  arguments: any[];
+  args: any[];
 } {
   switch (filterId) {
     case PredefinedFilter.TODAY:
       return {
         operator: "time-interval",
-        arguments: ["current", "day"],
+        args: ["current", "day"],
       };
     case PredefinedFilter.YESTERDAY:
       return {
         operator: "time-interval",
-        arguments: [-1, "day"],
+        args: [-1, "day"],
       };
     case PredefinedFilter.LAST_WEEK:
       return {
         operator: "time-interval",
-        arguments: [-1, "week"],
+        args: [-1, "week"],
       };
     case PredefinedFilter.LAST_7_DAYS:
       return {
         operator: "time-interval",
-        arguments: [-7, "day"],
+        args: [-7, "day"],
       };
     case PredefinedFilter.LAST_30_DAYS:
       return {
         operator: "time-interval",
-        arguments: [-30, "day"],
+        args: [-30, "day"],
       };
     case PredefinedFilter.LAST_MONTH:
       return {
         operator: "time-interval",
-        arguments: [-1, "month"],
+        args: [-1, "month"],
       };
     case PredefinedFilter.LAST_3_MONTHS:
       return {
         operator: "time-interval",
-        arguments: [-3, "month"],
+        args: [-3, "month"],
       };
     case PredefinedFilter.LAST_12_MONTHS:
       return {
         operator: "time-interval",
-        arguments: [-12, "month"],
+        args: [-12, "month"],
       };
     default: {
       const missingFilter: never = filterId;

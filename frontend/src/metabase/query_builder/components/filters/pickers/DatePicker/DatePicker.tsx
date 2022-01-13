@@ -4,7 +4,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { Root } from "./DatePicker.styled";
 import { DatePickerOptionsList } from "./DatePickerOptionsList";
 import { OnFilterChange, PredefinedFilter, DatePickerView } from "./constants";
-import { getPredefinedFilter } from "./utils";
+import { updateToPredefinedFilter } from "./utils";
 
 type Props = {
   filter: Filter;
@@ -16,8 +16,7 @@ export function DatePicker({ filter, onFilterChange }: Props) {
   const [view, setView] = useState(DatePickerView.DEFAULT);
 
   const onPredefinedFilterClick = (filterId: PredefinedFilter) => {
-    const { operator, arguments: args } = getPredefinedFilter(filterId);
-    const newFilter = filter.setOperator(operator).setArguments(args);
+    const newFilter = updateToPredefinedFilter(filter, filterId);
     onFilterChange(newFilter, true);
   };
 
