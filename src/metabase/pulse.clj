@@ -207,9 +207,8 @@
   [results]
   (every? is-card-empty? results))
 
-
 (defn- timeseries-goal?
-  "Is the the goal for a timeseries (:area, :bar, :line)? as opposed to a Progress Bar Goal?"
+  "Is the goal for a timeseries (:area, :bar, :line)? as opposed to a Progress Bar Goal?"
   [result]
   (not= :progress (get-in result [:card :display])))
 
