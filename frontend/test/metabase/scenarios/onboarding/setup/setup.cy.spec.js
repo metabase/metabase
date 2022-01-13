@@ -95,31 +95,26 @@ describe("scenarios > setup", () => {
       cy.findByText("Add your data");
 
       // test database setup help card is NOT displayed before DB is selected
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // test that you can return to user settings if you want
       cy.findByText("Hi, Testy. Nice to meet you!").click();
       cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
 
       // test database setup help card is NOT displayed on other steps
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // now back to database setting
       cy.findByText("Next").click();
 
-      // check database setup card changes copy
+      // check database setup card is visible
       cy.findByText("MySQL").click();
-      cy.findByTestId("database-setup-help-card").within(() => {
-        cy.findByText("Need help setting up MySQL?");
-        cy.findByRole("link", { name: /Our docs can help/i });
-      });
+      cy.findByText("Need help connecting?").should("be.visible");
 
       cy.findByLabelText("Remove database").click();
       cy.findByPlaceholderText("Search for a database…").type("SQL");
       cy.findByText("SQLite").click();
-      cy.findByTestId("database-setup-help-card").findByText(
-        "Need help setting up your database?",
-      );
+      cy.findByText("Need help connecting?");
 
       // add h2 database
       cy.findByLabelText("Remove database").click();
@@ -139,7 +134,7 @@ describe("scenarios > setup", () => {
         .click();
 
       // test database setup help card is hidden on the next step
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // ================
       // Data Preferences

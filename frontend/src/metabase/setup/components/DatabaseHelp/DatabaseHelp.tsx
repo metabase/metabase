@@ -14,10 +14,7 @@ const DatabaseHelp = ({
   const isVisible = isStepActive && engine != null;
 
   return (
-    <DatabaseHelpRoot
-      isVisible={isVisible}
-      data-testid="database-setup-help-card"
-    >
+    <DatabaseHelpRoot isVisible={isVisible}>
       <DatabaseHelpCard engine={engine} />
     </DatabaseHelpRoot>
   );
