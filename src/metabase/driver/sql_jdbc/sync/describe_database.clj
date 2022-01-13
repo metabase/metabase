@@ -12,8 +12,7 @@
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql Connection DatabaseMetaData ResultSet]
-           java.util.regex.Pattern))
+  (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
