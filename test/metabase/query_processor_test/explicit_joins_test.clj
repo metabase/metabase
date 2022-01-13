@@ -582,3 +582,31 @@
               (is (= [[4 89 0.46 41]]
                      (mt/formatted-rows [int int 2.0 int]
                        (qp/process-query query)))))))))))
+
+(deftest join-against-saved-question-with-sort-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Should be able to join against a Saved Question that is sorted (#13744)"
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query products
+                      {:joins    [{:source-query {:source-table $$products
+                                                  :aggregation  [[:count]]
+                                                  :breakout     [$category]
+                                                  :order-by     [[:asc [:aggregation 0]]]}
+                                   :alias        "Q1"
+                                   :condition    [:= $category [:field %category {:join-alias "Q1"}]]
+                                   :fields       :all}]
+                       :order-by [[:asc $id]]
+                       :limit    1})]
+          (mt/with-native-query-testing-context query
+            (is (= [[1
+                     "1018947080336"
+                     "Rustic Paper Wallet"
+                     "Gizmo"
+                     "Swaniawski, Casper and Hilll"
+                     29.46
+                     4.6
+                     "2017-07-19T19:44:56.582Z"
+                     "Gizmo"
+                     51]]
+                   (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
+                    (qp/process-query query))))))))))

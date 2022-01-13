@@ -1272,10 +1272,3 @@
                        "2018-05-15T20:25:48.517Z"]]
                      (mt/formatted-rows [int int int int str int str str]
                        (qp/process-query query)))))))))))
-
-(deftest rewrite-field-clauses-test
-  (mt/mbql-query venues
-    {:source-query {:source-query {:source-table $$venues
-                                   :expressions  {:double_price [:* $price 2]}}}
-     :fields       [$price
-                    [:field "double_price" {:base-type :type/Float, ::another-option true}]]}))
