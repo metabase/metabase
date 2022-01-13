@@ -112,8 +112,10 @@
 
 (defmethod tx/destroy-db! :snowflake
   [_ {:keys [database-name]}]
-  (let [database-name (qualified-db-name database-name)]
-    (jdbc/execute! (no-db-connection-spec) [(format "DROP DATABASE \"%s\";" database-name)])
+  (let [database-name (qualified-db-name database-name)
+        sql           (format "DROP DATABASE \"%s\";" database-name)]
+    (println "[Snowflake]" sql)
+    (jdbc/execute! (no-db-connection-spec) [sql])
     (remove-existing-dataset! database-name)))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
