@@ -5,9 +5,20 @@ import {
   getNotebookStep,
   openNewCollectionItemFlowFor,
   visualize,
-  runNativeQuery,
   mockSessionProperty,
 } from "__support__/e2e/cypress";
+
+import {
+  turnIntoDataset,
+  assertIsDataset,
+  assertQuestionIsBasedOnDataset,
+  selectFromDropdown,
+  selectDimensionOptionFromSidebar,
+  saveQuestionBasedOnDataset,
+  assertIsQuestion,
+  openDetailsSidebar,
+  getDetailsSidebarActions,
+} from "./helpers/e2e-models-helpers";
 
 describe("scenarios > datasets", () => {
   beforeEach(() => {
@@ -225,7 +236,9 @@ describe("scenarios > datasets", () => {
         cy.findByText("Orders").click();
       });
 
-      joinTable("Products");
+      cy.icon("join_left_outer").click();
+
+      selectFromDropdown("Products");
       selectFromDropdown("Product ID");
       selectFromDropdown("ID");
 
@@ -354,13 +367,13 @@ describe("scenarios > datasets", () => {
           .type("D1");
         cy.findByLabelText("Description")
           .clear()
-          .type("Some helpful dataset description");
+          .type("foo");
         cy.button("Save").click();
       });
       cy.wait("@updateCard");
 
       cy.findByText("D1");
-      cy.findByText("Some helpful dataset description");
+      cy.findByText("foo");
     });
   });
 
@@ -440,329 +453,10 @@ describe("scenarios > datasets", () => {
       cy.findByText("Sample Dataset");
     });
   });
-
-  describe("revision history", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/card/3", {
-        name: "Orders Dataset",
-        dataset: true,
-      });
-      cy.intercept("PUT", "/api/card/3").as("updateCard");
-      cy.intercept("POST", "/api/revision/revert").as("revertToRevision");
-    });
-
-    it("should allow reverting to a saved question state", () => {
-      cy.visit("/question/3");
-      openDetailsSidebar();
-      assertIsDataset();
-
-      cy.findByText("History").click();
-      cy.button("Revert").click();
-      cy.wait("@revertToRevision");
-
-      assertIsQuestion();
-      cy.get(".LineAreaBarChart");
-
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Filter").click();
-      });
-      selectDimensionOptionFromSidebar("Discount");
-      cy.findByText("Equal to").click();
-      selectFromDropdown("Not empty");
-      cy.button("Add filter").click();
-
-      cy.findByText("Save").click();
-      modal().within(() => {
-        cy.findByText(/Replace original question/i);
-      });
-    });
-
-    it("should allow reverting to a dataset state", () => {
-      cy.request("PUT", "/api/card/3", { dataset: false });
-
-      cy.visit("/question/3");
-      openDetailsSidebar();
-      assertIsQuestion();
-
-      cy.findByText("History").click();
-      cy.findByText(/Turned this into a dataset/i)
-        .closest("li")
-        .within(() => {
-          cy.button("Revert").click();
-        });
-      cy.wait("@revertToRevision");
-
-      assertIsDataset();
-      cy.get(".LineAreaBarChart").should("not.exist");
-
-      cy.findByTestId("qb-header-action-panel").within(() => {
-        cy.findByText("Filter").click();
-      });
-      selectDimensionOptionFromSidebar("Count");
-      cy.findByText("Equal to").click();
-      selectFromDropdown("Greater than");
-      cy.findByPlaceholderText("Enter a number").type("2000");
-      cy.button("Add filter").click();
-
-      assertQuestionIsBasedOnDataset({
-        dataset: "Orders Dataset",
-        collection: "Our analytics",
-        table: "Orders",
-      });
-
-      saveQuestionBasedOnDataset({ datasetId: 3, name: "Q1" });
-
-      assertQuestionIsBasedOnDataset({
-        questionName: "Q1",
-        dataset: "Orders Dataset",
-        collection: "Our analytics",
-        table: "Orders",
-      });
-
-      cy.url().should("not.include", "/question/3");
-    });
-  });
-
-  describe("query editor", () => {
-    beforeEach(() => {
-      cy.intercept("PUT", "/api/card/*").as("updateCard");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-    });
-
-    it("allows to edit GUI dataset query", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.visit("/dataset/1");
-
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
-
-      getNotebookStep("data").findByText("Orders");
-      cy.get(".TableInteractive");
-      cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
-
-      cy.findByTestId("action-buttons")
-        .findByText("Summarize")
-        .click();
-      selectFromDropdown("Count of rows");
-      cy.findByText("Pick a column to group by").click();
-      selectFromDropdown("Created At");
-
-      cy.get(".RunButton").click();
-
-      cy.get(".TableInteractive").within(() => {
-        cy.findByText("Created At: Month");
-        cy.findByText("Count");
-      });
-      cy.get(".TableInteractive-headerCellData").should("have.length", 2);
-
-      cy.button("Save changes").click();
-      cy.wait("@updateCard");
-
-      cy.url().should("include", "/dataset/1");
-      cy.url().should("not.include", "/query");
-
-      cy.visit("/dataset/1/query");
-      getNotebookStep("summarize").within(() => {
-        cy.findByText("Created At: Month");
-        cy.findByText("Count");
-      });
-      cy.get(".TableInteractive").within(() => {
-        cy.findByText("Created At: Month");
-        cy.findByText("Count");
-      });
-
-      cy.button("Cancel").click();
-      cy.url().should("include", "/dataset/1");
-      cy.url().should("not.include", "/query");
-
-      cy.go("back");
-      cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
-    });
-
-    it("locks display to table", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.visit("/dataset/1/query");
-
-      cy.findByTestId("action-buttons")
-        .findByText("Join data")
-        .click();
-      selectFromDropdown("People");
-
-      cy.button("Save changes").click();
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
-
-      cy.findByTestId("action-buttons")
-        .findByText("Summarize")
-        .click();
-      selectFromDropdown("Count of rows");
-      cy.findByText("Pick a column to group by").click();
-      selectFromDropdown("Created At");
-
-      cy.get(".RunButton").click();
-      cy.wait("@dataset");
-
-      cy.get(".LineAreaBarChart").should("not.exist");
-      cy.get(".TableInteractive");
-    });
-
-    it("allows to edit native dataset query", () => {
-      cy.createNativeQuestion(
-        {
-          name: "Native DS",
-          dataset: true,
-          native: {
-            query: "SELECT * FROM orders",
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
-
-      cy.get(".ace_content").as("editor");
-      cy.get(".TableInteractive");
-      cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
-
-      cy.get("@editor").type(
-        " LEFT JOIN products ON orders.PRODUCT_ID = products.ID",
-      );
-      runNativeQuery();
-
-      cy.get(".TableInteractive").within(() => {
-        cy.findByText("EAN");
-        cy.findByText("TOTAL");
-      });
-
-      cy.button("Save changes").click();
-      cy.wait("@updateCard");
-
-      cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
-      cy.url().should("not.include", "/query");
-
-      cy.findByText("Edit query definition").click();
-
-      cy.get(".TableInteractive").within(() => {
-        cy.findByText("EAN");
-        cy.findByText("TOTAL");
-      });
-
-      cy.button("Cancel").click();
-      cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
-      cy.url().should("not.include", "/query");
-    });
-  });
 });
-
-function assertQuestionIsBasedOnDataset({
-  questionName,
-  collection,
-  dataset,
-  table,
-}) {
-  if (questionName) {
-    cy.findByText(questionName);
-  }
-
-  // Asserts shows dataset and its collection names
-  // instead of db + table
-  cy.findAllByText(collection);
-  cy.findByText(dataset);
-
-  cy.findByText("Sample Dataset").should("not.exist");
-  cy.findByText(table).should("not.exist");
-}
-
-function assertCreatedNestedQuery(datasetId) {
-  cy.wait("@createCard").then(({ request }) => {
-    expect(request.body.dataset_query.query["source-table"]).to.equal(
-      `card__${datasetId}`,
-    );
-  });
-}
-
-function saveQuestionBasedOnDataset({ datasetId, name }) {
-  cy.intercept("POST", "/api/card").as("createCard");
-
-  cy.findByText("Save").click();
-
-  modal().within(() => {
-    cy.findByText(/Replace original question/i).should("not.exist");
-    if (name) {
-      cy.findByLabelText("Name")
-        .clear()
-        .type(name);
-    }
-    cy.findByText("Save").click();
-  });
-
-  assertCreatedNestedQuery(datasetId);
-
-  modal()
-    .findByText("Not now")
-    .click();
-}
-
-function selectDimensionOptionFromSidebar(name) {
-  cy.get("[data-testid=dimension-list-item]")
-    .contains(name)
-    .click();
-}
-
-function openDetailsSidebar() {
-  cy.findByTestId("saved-question-header-button").click();
-}
-
-function getDetailsSidebarActions() {
-  return cy.findByTestId("question-action-buttons");
-}
-
-// Requires dataset details sidebar to be open
-function assertIsDataset() {
-  getDetailsSidebarActions().within(() => {
-    cy.icon("dataset").should("not.exist");
-  });
-  cy.findByText("Dataset management");
-  cy.findByText("Sample Dataset").should("not.exist");
-
-  // For native
-  cy.findByText("This question is written in SQL.").should("not.exist");
-  cy.get("ace_content").should("not.exist");
-}
-
-// Requires question details sidebar to be open
-function assertIsQuestion() {
-  getDetailsSidebarActions().within(() => {
-    cy.icon("dataset");
-  });
-  cy.findByText("Dataset management").should("not.exist");
-  cy.findByText("Sample Dataset");
-}
-
-function turnIntoDataset() {
-  openDetailsSidebar();
-  getDetailsSidebarActions().within(() => {
-    cy.icon("dataset").click();
-  });
-  modal().within(() => {
-    cy.button("Turn this into a dataset").click();
-  });
-}
 
 function getCollectionItemRow(itemName) {
   return cy.findByText(itemName).closest("tr");
-}
-
-function selectFromDropdown(option, clickOpts) {
-  popover()
-    .findByText(option)
-    .click(clickOpts);
-}
-
-function joinTable(table) {
-  cy.icon("join_left_outer").click();
-  selectFromDropdown(table);
 }
 
 function testDataPickerSearch({
