@@ -289,11 +289,6 @@
                                                                                          ::add/source-alias  "CATEGORY"
                                                                                          ::add/desired-alias "P2__CATEGORY"
                                                                                          ::add/position      0}]]
-                                              :order-by     [[:asc [:field %products.category {:join-alias         "P2"
-                                                                                               ::add/source-table  "P2"
-                                                                                               ::add/source-alias  "CATEGORY"
-                                                                                               ::add/desired-alias "P2__CATEGORY"
-                                                                                               ::add/position      0}]]]
                                               :joins        [{:strategy     :left-join
                                                               :source-table $$products
                                                               :condition    [:=
@@ -369,18 +364,13 @@
                                                                 ::add/desired-alias "Cat~~NAME"
                                                                 ::add/position      1}]]
                        :joins        [{:source-table $$categories
-                                       :fields       [[:field %categories.name {:join-alias         "Cat"
-                                                                                ::add/source-table  "Cat"
-                                                                                ::add/source-alias  "NAME"
-                                                                                ::add/desired-alias "Cat~~NAME"
-                                                                                ::add/position      1}]]
                                        :alias        "Cat"
                                        :condition    [:=
-                                                      [:field %category_id {::add/source-table  $$venues
-                                                                            ::add/source-alias  "CATEGORY_ID"}]
-                                                      [:field %categories.id {:join-alias         "Cat"
-                                                                              ::add/source-table  "Cat"
-                                                                              ::add/source-alias  "ID"}]]
+                                                      [:field %category_id {::add/source-table $$venues
+                                                                            ::add/source-alias "CATEGORY_ID"}]
+                                                      [:field %categories.id {:join-alias        "Cat"
+                                                                              ::add/source-table "Cat"
+                                                                              ::add/source-alias "ID"}]]
                                        :strategy     :left-join}]
                        :limit        1})
                     (-> (mt/mbql-query venues

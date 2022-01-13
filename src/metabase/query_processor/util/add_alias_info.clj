@@ -205,13 +205,10 @@
       (when (string? id-or-name)
         id-or-name)))
 
-(def call-count (atom {}))
-
 (defn- expensive-field-info
   "Calculate extra stuff about `field-clause` that's a little expensive to calculate. This is done once so we can pass
   it around instead of recalculating it a bunch of times."
   [inner-query field-clause]
-  (swap! call-count update field-clause (fnil inc 0))
   {:field-name              (field-name inner-query field-clause)
    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
