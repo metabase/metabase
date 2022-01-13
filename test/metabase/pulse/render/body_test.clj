@@ -481,6 +481,10 @@
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
+    (is (has-inline-image?
+          (render-waterfall {:cols default-columns
+                             :rows [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns

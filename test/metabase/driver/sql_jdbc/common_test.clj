@@ -18,3 +18,21 @@
                                                ["localhost:4321?a=1&b=2" :url "localhost:4321" {:a 1 :b 2}]]]
       (let [opts-str (sql-jdbc.common/additional-opts->string sep-style opts)]
         (t/is (= exp-str (sql-jdbc.common/conn-str-with-additional-opts conn-str sep-style opts-str)))))))
+
+(t/deftest additional-options->map-test
+  (t/testing "additional-options->map function works as expected"
+    (doseq [[exp addl-opts sep-style nv-sep] [[{"bar" "two"} "bar=two" :url]
+                                              [{"bar" "two", "baz" "three"} "bar=two&baz=three" :url]
+                                              [{"foo" "one", "bar" "two", "baz" "three"}
+                                               "foo=one&bar=two&baz=three"
+                                               :url]
+                                              [{"foo" "one", "bar" "Two"} "foo=one&BAR=Two" :url]
+                                              [{"foo" "one", "bar" nil, "baz" "three"} "foo=one&bar=&baz=three" :url]
+                                              [{"foo" "one", "bar" "two", "baz" "three"}
+                                               "foo=one,bar=two,baz=three"
+                                               :comma]
+                                              [{"foo" "one", "bar" "two", "baz" "three"}
+                                               "foo=one;BaR=two;baz=three"
+                                               :semicolon]]]
+      (t/testing (format "can parse value for %s separator style from %s" sep-style addl-opts)
+        (t/is (= exp (sql-jdbc.common/additional-options->map addl-opts sep-style nv-sep)))))))

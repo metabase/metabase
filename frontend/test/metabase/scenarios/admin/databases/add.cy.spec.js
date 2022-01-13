@@ -228,7 +228,9 @@ describe("scenarios > admin > databases > add", () => {
 
       // enter text
       typeField("Display name", "bq db");
-      typeField("Dataset ID", "some-dataset");
+      // typeField("Dataset ID", "some-dataset");
+      selectFieldOption("Datasets", "Only these...");
+      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
       // create blob to act as selected file
       cy.get("input[type=file]")
@@ -298,7 +300,7 @@ describe("scenarios > admin > databases > add", () => {
       cy.findByText("find it here").click();
       cy.findByText("BigQuery (Deprecated Driver)");
       cy.findByText("Need help setting up your database?").should("not.exist");
-      cy.findByText("This driver has been deprecated", { exact: false });
+      cy.findByText("This driver will be removed", { exact: false });
     });
   });
 

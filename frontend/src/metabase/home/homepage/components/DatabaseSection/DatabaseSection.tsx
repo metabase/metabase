@@ -5,7 +5,7 @@ import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
-import { Database, User } from "../../types";
+import { Database, User } from "metabase-types/api";
 import Section, {
   SectionCloseIcon,
   SectionHeader,

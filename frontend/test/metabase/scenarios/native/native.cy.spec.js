@@ -3,6 +3,8 @@ import {
   popover,
   modal,
   openNativeEditor,
+  openNotebookEditor,
+  visualize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > native", () => {
@@ -103,15 +105,15 @@ describe("scenarios > question > native", () => {
     });
     cy.findByText("Not now").click();
 
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Simple question").click();
+    openNotebookEditor();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
       cy.findByText(QUESTION).click();
     });
 
-    cy.url("should.contain", "/question#");
+    visualize();
+
+    cy.url("should.contain", "/question/notebook#");
     cy.findByText("This has a value");
 
     FILTERS.forEach(filter => {

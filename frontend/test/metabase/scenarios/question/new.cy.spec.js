@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -102,8 +103,7 @@ describe("scenarios > question > new", () => {
 
   describe("data picker search", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -170,8 +170,7 @@ describe("scenarios > question > new", () => {
 
   describe("saved question picker", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -260,8 +259,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
+      cy.visit("/question/new");
       cy.contains("Simple question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
@@ -371,12 +369,11 @@ describe("scenarios > question > new", () => {
 
       // it is essential for this repro to find question following these exact steps
       // (for example, visiting `/collection/root` would yield different result)
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
-      cy.findByText("Summarize").click();
+      visualize();
+      cy.findByTestId("toggle-summarize-sidebar-button").click();
       cy.findByText("Group by")
         .parent()
         .within(() => {
@@ -433,9 +430,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 
@@ -445,9 +440,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show a table info popover when hovering over the table name in the header", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 

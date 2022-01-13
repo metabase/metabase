@@ -1,16 +1,23 @@
 import { createSelector } from "reselect";
+import { Dashboard, Database } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import { createCandidatesQuery } from "./utils/database-candidates";
 
+export interface CandidatesProps {
+  databases?: Database[];
+  dashboards?: Dashboard[];
+}
+
 export const getCandidatesQuery = createSelector(
-  (state: any, props: any) => props.databases,
-  (state: any, props: any) => props.dashboards,
-  (state: any) => getShowXrays(state),
-  (state: any) => getEnableXrays(state),
+  (state: State, props: CandidatesProps) => props.databases,
+  (state: State, props: CandidatesProps) => props.dashboards,
+  (state: State) => getShowXrays(state),
+  (state: State) => getEnableXrays(state),
   createCandidatesQuery,
 );
 
-export const getSettings = createSelector<any, any, any>(
-  state => state.settings,
+export const getSettings = createSelector(
+  (state: State) => state.settings,
   settings => settings.values,
 );
 

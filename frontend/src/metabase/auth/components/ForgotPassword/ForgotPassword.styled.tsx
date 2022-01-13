@@ -62,5 +62,10 @@ export const InfoMessage = styled.div`
 `;
 
 export const InfoLink = styled(Link)`
+  color: ${color("text-dark")};
   margin-top: 2.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;

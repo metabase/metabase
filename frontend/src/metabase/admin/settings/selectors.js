@@ -20,8 +20,8 @@ import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddin
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
-import SettingsSlackForm from "./components/SettingsSlackForm";
-import { trackTrackingPermissionChanged } from "./tracking";
+import SlackSettings from "./slack/containers/SlackSettings";
+import { trackTrackingPermissionChanged } from "./analytics";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -188,27 +188,8 @@ const SECTIONS = updateSectionsWithPlugins({
   slack: {
     name: "Slack",
     order: 5,
-    component: SettingsSlackForm,
-    settings: [
-      {
-        key: "slack-token",
-        display_name: t`Slack API Token`,
-        description: "",
-        placeholder: t`Enter the token you received from Slack`,
-        type: "string",
-        required: false,
-        autoFocus: true,
-      },
-      {
-        key: "metabot-enabled",
-        display_name: "MetaBot",
-        type: "boolean",
-        // TODO: why do we have "defaultValue" here in addition to the "default" specified by the backend?
-        defaultValue: false,
-        required: true,
-        autoFocus: false,
-      },
-    ],
+    component: SlackSettings,
+    settings: [],
   },
   authentication: {
     name: t`Authentication`,

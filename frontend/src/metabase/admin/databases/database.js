@@ -10,6 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
@@ -63,8 +64,6 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
 
 export const CLOSE_SYNCING_MODAL =
   "metabase/admin/databases/CLOSE_SYNCING_MODAL";
-export const CLOSE_DEPRECATION_NOTICE =
-  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
 
 export const reset = createAction(RESET);
 
@@ -241,6 +240,7 @@ export const syncDatabaseSchema = createThunkAction(
     return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
+        dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -287,19 +287,6 @@ export const closeSyncingModal = createThunkAction(
   function() {
     return async function(dispatch) {
       const setting = { key: "show-database-syncing-modal", value: false };
-      await dispatch(updateSetting(setting));
-    };
-  },
-);
-
-export const closeDeprecationNotice = createThunkAction(
-  CLOSE_DEPRECATION_NOTICE,
-  function() {
-    return async function(dispatch) {
-      const setting = {
-        key: "engine-deprecation-notice-version",
-        value: MetabaseSettings.currentVersion(),
-      };
       await dispatch(updateSetting(setting));
     };
   },
@@ -365,13 +352,6 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
-const isDeprecationNoticeEnabled = handleActions(
-  {
-    [CLOSE_DEPRECATION_NOTICE]: () => false,
-  },
-  MetabaseSettings.engineDeprecationNoticeEnabled(),
-);
-
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -379,5 +359,4 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
-  isDeprecationNoticeEnabled,
 });

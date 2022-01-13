@@ -198,6 +198,7 @@ export const EmailApi = {
 };
 
 export const SlackApi = {
+  getManifest: GET("/api/slack/manifest"),
   updateSettings: PUT("/api/slack/settings"),
 };
 

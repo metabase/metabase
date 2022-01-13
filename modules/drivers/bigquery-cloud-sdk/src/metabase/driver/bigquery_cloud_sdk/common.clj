@@ -22,6 +22,14 @@
   {:pre [(map? db-details) (seq service-account-json)]}
   (ServiceAccountCredentials/fromStream (ByteArrayInputStream. (.getBytes service-account-json))))
 
+(defn database-details->credential-project-id
+  "Uses the given DB `details` credentials to determine the embedded project-id.  This is basically an
+  inferred/calculated key (not something the user will ever\n  set directly), since it's simply encoded within the
+  `service-account-json` payload."
+  [details]
+  (-> (database-details->service-account-credential details)
+      .getProjectId))
+
 (defn populate-project-id-from-credentials!
   "Update the given `database` details blob to include the credentials' project-id as a separate entry (under a
   `project-id-from-credentials` key). This is basically an inferred/calculated key (not something the user will ever
@@ -33,11 +41,10 @@
   details change (i.e. the service account), just calculate it once per change (when the DB is updated, or upon first
   query for a new Database), and store it back to the app DB.
 
-  Returns the calculated project-id String from the credentials."
+  Returns the calculated project-id (see `database-details->credential-project-id`) String from the credentials."
   {:added "0.42.0"}
   ^String [{:keys [details] :as database}]
-  (let [creds-proj-id  (-> (database-details->service-account-credential details)
-                           .getProjectId)]
+  (let [creds-proj-id (database-details->credential-project-id details)]
     (db/update! Database
       (u/the-id database)
       :details

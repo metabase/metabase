@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
 
 describe("operators in questions", () => {
   beforeEach(() => {
@@ -60,9 +60,7 @@ describe("operators in questions", () => {
 
   describe("fields have proper operators", () => {
     it("text operators", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -79,9 +77,7 @@ describe("operators in questions", () => {
     });
 
     it("number operators", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -98,9 +94,7 @@ describe("operators in questions", () => {
     });
 
     it("date operators", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -117,9 +111,7 @@ describe("operators in questions", () => {
     });
 
     it("id operators", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -136,9 +128,7 @@ describe("operators in questions", () => {
     });
 
     it("geo operators", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("People").click();
       cy.findByText("Add filters to narrow your answer").click();

@@ -236,8 +236,8 @@
   :type    :integer
   :default 10)
 
-(defsetting engine-deprecation-notice-version
-  (deferred-tru "Metabase version for which a notice about usage of a deprecated driver has been shown.")
+(defsetting deprecation-notice-version
+  (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)
 
 (defsetting application-name
@@ -429,8 +429,12 @@
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.
-  It won''t affect SQL queries.")
+  (str
+    (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.")
+    " "
+    (deferred-tru "It won''t affect most SQL queries,")
+    " "
+    (deferred-tru " although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday)
@@ -450,14 +454,13 @@
 (def ^:private fetch-cloud-gateway-ips-fn
   (memoize/ttl
    (fn []
-       (when (premium-features/is-hosted?)
-         (try
-           (-> (http/get (cloud-gateway-ips-url))
-               :body
-               (json/parse-string keyword)
-               :ip_addresses)
-           (catch Exception e
-             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+     (try
+       (-> (http/get (cloud-gateway-ips-url))
+           :body
+           (json/parse-string keyword)
+           :ip_addresses)
+       (catch Exception e
+         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
    :ttl/threshold (* 1000 60 60 24)))
 
 (defsetting cloud-gateway-ips
@@ -465,7 +468,9 @@
   :visibility :public
   :type       :json
   :setter     :none
-  :getter     fetch-cloud-gateway-ips-fn)
+  :getter     (fn []
+                (when (premium-features/is-hosted?)
+                  (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
   (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")

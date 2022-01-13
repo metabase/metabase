@@ -8,7 +8,22 @@ module.exports = {
     "../frontend/**/*.stories.mdx",
     "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
-  addons: ["@storybook/addon-links", "@storybook/addon-essentials"],
+  addons: [
+    {
+      name: "@storybook/addon-essentials",
+    },
+    {
+      name: "@storybook/addon-links",
+    },
+    {
+      name: "@storybook/addon-postcss",
+      options: {
+        postcssLoaderOptions: {
+          implementation: require("postcss"),
+        },
+      },
+    },
+  ],
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
     resolve: {

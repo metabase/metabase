@@ -1,8 +1,24 @@
 import { t } from "ttag";
 
+import {
+  getMBQLName,
+  parseDimension,
+  parseMetric,
+  parseSegment,
+} from "metabase/lib/expressions";
+import { resolve } from "metabase/lib/expressions/resolver";
+import {
+  parse,
+  lexify,
+  compile,
+  ResolverError,
+} from "metabase/lib/expressions/pratt";
+import {
+  useShorthands,
+  adjustCase,
+  adjustOptions,
+} from "metabase/lib/expressions/recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
-import { getMBQLName } from "metabase/lib/expressions";
-import { processSource } from "metabase/lib/expressions/process";
 
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
 export function countMatchingParentheses(tokens) {
@@ -53,12 +69,66 @@ export function diagnose(source, startRule, query) {
     return { message };
   }
 
-  const { compileError } = processSource({ source, query, startRule });
+  try {
+    return prattCompiler(source, startRule, query);
+  } catch (err) {
+    return err;
+  }
+}
 
-  if (compileError) {
-    return Array.isArray(compileError) && compileError.length > 0
-      ? compileError[0]
-      : compileError;
+function prattCompiler(source, startRule, query) {
+  const tokens = lexify(source);
+  const options = { source, startRule, query };
+
+  // PARSE
+  const { root, errors } = parse(tokens, {
+    throwOnError: false,
+    ...options,
+  });
+  if (errors.length > 0) {
+    return errors[0];
+  }
+
+  function resolveMBQLField(kind, name, node) {
+    if (!query) {
+      return [kind, name];
+    }
+    if (kind === "metric") {
+      const metric = parseMetric(name, options);
+      if (!metric) {
+        throw new ResolverError(`Unknown Field: ${name}`, node);
+      }
+      return ["metric", metric.id];
+    } else if (kind === "segment") {
+      const segment = parseSegment(name, options);
+      if (!segment) {
+        throw new ResolverError(`Unknown Field: ${name}`, node);
+      }
+      return ["segment", segment.id];
+    } else {
+      // fallback
+      const dimension = parseDimension(name, options);
+      if (!dimension) {
+        throw new ResolverError(`Unknown Field: ${name}`, node);
+      }
+      return dimension.mbql();
+    }
+  }
+
+  // COMPILE
+  try {
+    compile(root, {
+      passes: [
+        adjustOptions,
+        useShorthands,
+        adjustCase,
+        expr => resolve(expr, startRule, resolveMBQLField),
+      ],
+      getMBQLName,
+    });
+  } catch (err) {
+    console.warn("compile error", err);
+    return err;
   }
 
   return null;

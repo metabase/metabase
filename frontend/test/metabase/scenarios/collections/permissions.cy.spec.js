@@ -52,7 +52,7 @@ describe("collection permissions", () => {
                   cy.get(".Nav").within(() => {
                     cy.icon("add").click();
                   });
-                  cy.findByText("New dashboard").click();
+                  cy.findByText("Dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
                 });
 
@@ -62,7 +62,7 @@ describe("collection permissions", () => {
                     cy.findByText("Orders in a dashboard").click();
                     cy.icon("add").click();
                     popover()
-                      .findByText("New dashboard")
+                      .findByText("Dashboard")
                       .click();
                     cy.get(".AdminSelect").findByText("Our analytics");
                   });
@@ -480,7 +480,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
-                cy.findByText("New dashboard").click();
+                cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
                 cy.findByText(

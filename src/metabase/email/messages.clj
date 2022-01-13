@@ -651,3 +651,15 @@
   [alert user {:keys [first_name last_name] :as archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+
+(defn send-slack-token-error-emails!
+  "Email all admins when a Slack API call fails due to a revoked token or other auth error"
+  []
+  (email/send-message!
+   :subject (trs "Your Slack connection stopped working")
+   :recipients (all-admin-recipients)
+   :message-type :html
+   :message (stencil/render-file "metabase/email/slack_token_error.mustache"
+                                 (merge (common-context)
+                                        {:logoHeader  true
+                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))

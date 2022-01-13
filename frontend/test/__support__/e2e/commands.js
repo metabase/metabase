@@ -13,6 +13,7 @@ import "./commands/api/user";
 
 import "./commands/api/composite/createQuestionAndDashboard";
 import "./commands/api/composite/createNativeQuestionAndDashboard";
+import "./commands/api/composite/createQuestionAndAddToDashboard";
 
 import "./commands/user/createUser";
 import "./commands/user/authentication";

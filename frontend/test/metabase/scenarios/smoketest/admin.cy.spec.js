@@ -1,4 +1,9 @@
-import { restore, sidebar, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  sidebar,
+  visualize,
+  openNotebookEditor,
+} from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
 const { admin } = USERS;
@@ -83,12 +88,12 @@ describe("metabase-smoketest > admin", () => {
 
       // Following section is repeated-- turn into callback function?
       // Also, selecting Metabase H2 doesn't do anything
-      cy.findByText("Ask a question").click();
+      cy.findByText("New").click();
 
-      cy.findByText("Custom question");
-      cy.findByText("Native query");
+      cy.findByText("Question");
+      cy.findByText("SQL query");
 
-      cy.findByText("Simple question").click();
+      cy.findByText("Question").click();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("People").click();
 
@@ -149,16 +154,9 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it.skip("should add a simple JOINed question as admin", () => {
-      cy.visit("/");
-      cy.findByText("Ask a question");
-
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
-
-      // Join tables
-      cy.icon("notebook").click();
 
       cy.findByText("Data");
       cy.findByText("Showing").should("not.exist");
@@ -190,15 +188,11 @@ describe("metabase-smoketest > admin", () => {
     });
 
     it("should add a question with a default line visualization as admin", () => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
-
-      cy.findByText("Native query");
-
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor();
       cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByTextEnsureVisible("Orders").click();
+
+      visualize();
 
       cy.findByText("Product ID");
       cy.findByText("Pick your data").should("not.exist");
@@ -230,7 +224,7 @@ describe("metabase-smoketest > admin", () => {
       cy.visit("/");
       // New dashboard
       cy.icon("add").click();
-      cy.findByText("New dashboard").click();
+      cy.findByText("Dashboard").click();
 
       cy.findByText("Which collection should this go in?");
 
@@ -329,11 +323,11 @@ describe("metabase-smoketest > admin", () => {
         // =================
         // should create my own question as user
         // =================
-        cy.findByText("Ask a question").click();
+        cy.findByText("New").click();
 
-        cy.findByText("Native query");
+        cy.findByText("SQL query");
 
-        cy.findByText("Simple question").click();
+        cy.findByText("Visual question").click();
         cy.findByTextEnsureVisible("Sample Dataset").click();
         cy.findByTextEnsureVisible("Reviews").click();
 
@@ -367,7 +361,7 @@ describe("metabase-smoketest > admin", () => {
         // should create my own dashboard as user
         // =================
         cy.icon("add").click();
-        cy.findByText("New dashboard").click();
+        cy.findByText("Dashboard").click();
         cy.findByLabelText("Name").type("New User Demo Dash");
         cy.findByLabelText("Description").type("This is my own demo dash!");
         cy.get(".ModalBody")

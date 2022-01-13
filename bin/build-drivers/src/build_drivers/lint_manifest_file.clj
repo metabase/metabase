@@ -19,7 +19,7 @@
 (s/def ::description string?)
 (s/def ::info (spell/keys :req-un [::name ::version ::description]))
 
-(def ^:private property-types #{"string" "textFile" "boolean" "secret" "info"})
+(def ^:private property-types #{"string" "textFile" "boolean" "secret" "info" "schema-filters"})
 
 (s/def ::display-name string?)
 (s/def ::default any?)

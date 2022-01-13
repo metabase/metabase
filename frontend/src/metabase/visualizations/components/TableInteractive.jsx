@@ -131,7 +131,7 @@ export default class TableInteractive extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const PROP_KEYS = ["width", "height", "settings", "data"];
+    const PROP_KEYS = ["width", "height", "settings", "data", "clicked"];
     // compare specific props and state to determine if we should re-render
     return (
       !_.isEqual(
@@ -650,6 +650,7 @@ export default class TableInteractive extends Component {
           <DimensionInfoPopover
             placement="bottom-start"
             dimension={this.getDimension(column, this.props.query)}
+            disabled={this.props.clicked != null}
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
