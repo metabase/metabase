@@ -10,7 +10,7 @@ import {
   openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
 
-describe("scenarios > datasets", () => {
+describe("scenarios > models > revision history", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

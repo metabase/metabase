@@ -81,8 +81,8 @@ describe("QuestionDetailsSidebarPanel", () => {
     });
   });
 
-  describe("datasets", () => {
-    it("displays management section", () => {
+  describe("models", () => {
+    it("displays model management section", () => {
       setup({ question: getDataset() });
       expect(screen.queryByText("Model management")).toBeInTheDocument();
       expect(
