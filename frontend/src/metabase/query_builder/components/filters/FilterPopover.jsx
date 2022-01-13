@@ -98,9 +98,14 @@ export default class ViewFilterPopover extends Component {
     this.setState({ choosingField: false });
   };
 
-  handleFilterChange = newFilter => {
-    const filter = this.state.filter || new Filter([], null, this.props.query);
-    this.setFilter(filter.set(newFilter));
+  handleFilterChange = (newFilter, commitImmediately) => {
+    if (commitImmediately) {
+      this.handleUpdateAndCommit(newFilter);
+    } else {
+      const filter =
+        this.state.filter || new Filter([], null, this.props.query);
+      this.setFilter(filter.set(newFilter));
+    }
   };
 
   render() {
