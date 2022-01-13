@@ -6,7 +6,7 @@ const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
 const question1 = getQuestionDetails("18502#1", PEOPLE.CREATED_AT);
 const question2 = getQuestionDetails("18502#2", PEOPLE.BIRTH_DATE);
 
-describe.skip("issue 18502", () => {
+describe("issue 18502", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
