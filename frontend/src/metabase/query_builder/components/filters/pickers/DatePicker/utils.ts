@@ -1,48 +1,48 @@
-import { PredefinedFilterId } from "./constants";
+import { PredefinedFilter } from "./constants";
 
 export function getPredefinedFilter(
-  filterId: PredefinedFilterId,
+  filterId: PredefinedFilter,
 ): {
   operator: string;
   arguments: any[];
 } {
   switch (filterId) {
-    case "today":
+    case PredefinedFilter.TODAY:
       return {
         operator: "time-interval",
         arguments: ["current", "day"],
       };
-    case "yesterday":
+    case PredefinedFilter.YESTERDAY:
       return {
         operator: "time-interval",
         arguments: [-1, "day"],
       };
-    case "last-week":
+    case PredefinedFilter.LAST_WEEK:
       return {
         operator: "time-interval",
         arguments: [-1, "week"],
       };
-    case "last-7-days":
+    case PredefinedFilter.LAST_7_DAYS:
       return {
         operator: "time-interval",
         arguments: [-7, "day"],
       };
-    case "last-30-days":
+    case PredefinedFilter.LAST_30_DAYS:
       return {
         operator: "time-interval",
         arguments: [-30, "day"],
       };
-    case "last-month":
+    case PredefinedFilter.LAST_MONTH:
       return {
         operator: "time-interval",
         arguments: [-1, "month"],
       };
-    case "last-3-months":
+    case PredefinedFilter.LAST_3_MONTHS:
       return {
         operator: "time-interval",
         arguments: [-3, "month"],
       };
-    case "last-12-months":
+    case PredefinedFilter.LAST_12_MONTHS:
       return {
         operator: "time-interval",
         arguments: [-12, "month"],

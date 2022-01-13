@@ -3,7 +3,7 @@ import React from "react";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { Root } from "./DatePicker.styled";
 import { DatePickerOptionsList } from "./DatePickerOptionsList";
-import { OnFilterChange, PredefinedFilterId } from "./constants";
+import { OnFilterChange, PredefinedFilter } from "./constants";
 import { getPredefinedFilter } from "./utils";
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
 };
 
 export function DatePicker({ filter, onFilterChange }: Props) {
-  const onPredefinedFilterClick = (filterId: PredefinedFilterId) => {
+  const onPredefinedFilterClick = (filterId: PredefinedFilter) => {
     const { operator, arguments: args } = getPredefinedFilter(filterId);
     const newFilter = filter.setOperator(operator).setArguments(args);
     onFilterChange(newFilter, true);

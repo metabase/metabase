@@ -7,52 +7,53 @@ export type OnFilterChange = (
   commitImmediately: boolean,
 ) => void;
 
-export type PredefinedFilterId =
-  | "today"
-  | "yesterday"
-  | "last-week"
-  | "last-7-days"
-  | "last-30-days"
-  | "last-month"
-  | "last-3-months"
-  | "last-12-months";
+export enum PredefinedFilter {
+  TODAY = "today",
+  YESTERDAY = "yesterday",
+  LAST_WEEK = "last-week",
+  LAST_7_DAYS = "last-7-days",
+  LAST_30_DAYS = "last-30-days",
+  LAST_MONTH = "last-month",
+  LAST_3_MONTHS = "last-3-months",
+  LAST_12_MONTHS = "last-12-months",
+}
 
-type PredefinedFilterOption = { id: PredefinedFilterId; name: string };
+type PredefinedFilterOption = { id: PredefinedFilter; name: string };
 
 export const PREDEFINED_RELATIVE_DAY_FILTER_OPTIONS: PredefinedFilterOption[] = [
   {
-    id: "today",
+    id: PredefinedFilter.TODAY,
     name: t`Today`,
   },
   {
-    id: "yesterday",
+    id: PredefinedFilter.YESTERDAY,
     name: t`Yesterday`,
   },
   {
-    id: "last-week",
+    id: PredefinedFilter.LAST_WEEK,
     name: t`Last week`,
   },
   {
-    id: "last-7-days",
+    id: PredefinedFilter.LAST_7_DAYS,
     name: t`Last 7 days`,
   },
   {
-    id: "last-30-days",
+    id: PredefinedFilter.LAST_30_DAYS,
     name: t`Last 30 days`,
   },
 ];
 
 export const PREDEFINED_RELATIVE_MONTH_FILTER_OPTIONS: PredefinedFilterOption[] = [
   {
-    id: "last-month",
+    id: PredefinedFilter.LAST_MONTH,
     name: t`Last month`,
   },
   {
-    id: "last-3-months",
+    id: PredefinedFilter.LAST_3_MONTHS,
     name: t`Last 3 months`,
   },
   {
-    id: "last-12-months",
+    id: PredefinedFilter.LAST_12_MONTHS,
     name: t`Last 12 months`,
   },
 ];

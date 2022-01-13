@@ -10,11 +10,11 @@ import {
   PREDEFINED_RELATIVE_DAY_FILTER_OPTIONS,
   PREDEFINED_RELATIVE_MONTH_FILTER_OPTIONS,
   CUSTOM_FILTER_OPTIONS,
-  PredefinedFilterId,
+  PredefinedFilter,
 } from "./constants";
 
 type Props = {
-  onPredefinedFilterClick: (id: PredefinedFilterId) => void;
+  onPredefinedFilterClick: (id: PredefinedFilter) => void;
   onCustomFilterClick: (id: string) => void;
 };
 
