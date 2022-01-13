@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import EditBar from "metabase/components/EditBar";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
@@ -27,7 +28,7 @@ export const TableHeaderColumnName = styled.div`
   min-width: 35px;
 
   margin: 24px 0.75em;
-  padding: ${space(0)} ${space(1)};
+  padding: 3px ${space(1)};
 
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -43,11 +44,6 @@ export const TableHeaderColumnName = styled.div`
 
   transition: all 0.25s;
 
-  &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
-  }
-
   ${props =>
     props.isSelected &&
     css`
@@ -56,8 +52,29 @@ export const TableHeaderColumnName = styled.div`
     `}
 
   .Icon {
-    margin-right: 4px;
+    margin-right: 8px;
+    transition: all 0.25s;
   }
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${color("brand")};
+
+    .Icon {
+      background-color: ${color("white")};
+      color: ${color("brand")};
+    }
+  }
+`;
+
+export const FieldTypeIcon = styled(Icon).attrs({ size: 14 })`
+  background-color: ${props =>
+    props.isSelected ? color("white") : color("brand")};
+
+  color: ${props => (props.isSelected ? color("brand") : color("white"))};
+
+  border-radius: 0.3em;
+  padding: 0.2em;
 `;
 
 // Mirrors styling of some QB View div elements
