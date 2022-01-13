@@ -34,7 +34,6 @@
   "Converts empty strings to `nil`, and removes leading `#` from the channel name if present."
   [channel-name]
   (when-not (str/blank? channel-name)
-    ;; Strip leading # if present, since the Slack API doesn't like it
     (if (str/starts-with? channel-name "#") (subs channel-name 1) channel-name)))
 
 (defsetting slack-files-channel
