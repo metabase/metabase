@@ -94,7 +94,11 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [expressionObj, source]
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.number,
+      PropTypes.array,
+    ]),
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
