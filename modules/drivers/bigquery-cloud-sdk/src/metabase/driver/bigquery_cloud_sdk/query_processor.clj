@@ -5,7 +5,6 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -457,42 +456,60 @@
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; this is a little hacky, I'm 99% sure we could just have the [[sql.qp/->honeysql]] method for `:field` swap out the
+;; `::add/source-table` to a `[project.dataset table]` pair but this will have to do for now.
+(def ^:private ^:dynamic *field-is-from-join-or-source-query?* false)
+
+(defn- should-qualify-identifier?
+  "Should we qualify an Identifier with the dataset name?
+
+  Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
+  table e.g.
+
+    `table`.`field` -> `dataset.table`.`field`"
+  [{:keys [identifier-type components] :as identifier}]
+  (cond
+    (::already-qualified? (meta identifier))
+    false
+
+    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
+    *field-is-from-join-or-source-query?*
+    false
+
+    ;; otherwise always qualify Table identifiers
+    (= identifier-type :table)
+    true
+
+    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
+    ;; DDL statements)
+    (and (= identifier-type :field)
+         (>= (count components) 2))
+    true))
+
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   (hsql/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
 
-;; Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
-;; table e.g.
-;;
-;;    "table"."field" -> "dataset.table"."field"
-(defn- qualify-identifier [identifier]
-  (if (::already-qualified? (meta identifier))
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
+  [_ identifier]
+  (if-not (should-qualify-identifier? identifier)
     identifier
     (-> identifier
-        ;; make sure it's a vector so we can use index as key below
-        (update :components vec)
-        ;; prefix the first part (the table) with the dataset name
-        (update-in [:components 0] (partial str (project-id-for-current-query) \.))
+        (update :components (fn [[dataset-id table & more]]
+                              (cons (str (when-let [proj-id (project-id-for-current-query)]
+                                           (str proj-id \.))
+                                         dataset-id
+                                         \.
+                                         table)
+                                    more)))
         (vary-meta assoc ::already-qualified? true))))
-
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
-  [_ {:keys [identifier-type], :as identifier}]
-  (cond-> identifier
-    ;; only tables need to be handled here, `:field` is done below in [[sql.qp/->honeysql]]` for `:field`
-    (= identifier-type :table) qualify-identifier))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]
-  ;; if this is a table with a numeric source table (e.g. would get compiled like `venues.price`, we need to qualify the
-  ;; table with the dataset name (e.g. `test-data.venues.price`)
-  (let [field-clause  (cond-> field-clause
-                        (integer? source-table)
-                        (mbql.u/update-field-options assoc ::add/source-table (str (project-id-for-current-query)
-                                                                                   \.
-                                                                                   (:name (qp.store/table source-table)))))
-        parent-method (get-method sql.qp/->honeysql [:sql :field])]
-    (-> (parent-method driver field-clause)
-        (with-temporal-type (temporal-type field-clause)))))
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
+      (-> (parent-method driver field-clause)
+          (with-temporal-type (temporal-type field-clause))))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
@@ -530,13 +547,8 @@
       (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
 
 (defmethod sql.qp/escape-alias :bigquery-cloud-sdk
-  [_ expression-name]
-  (->valid-field-identifier expression-name))
-
-(defmethod sql.qp/prefix-field-alias :bigquery-cloud-sdk
-  [driver prefix field-alias]
-  (let [s ((get-method sql.qp/prefix-field-alias :sql) driver prefix field-alias)]
-    (->valid-field-identifier s)))
+  [_ column-alias]
+  (->valid-field-identifier column-alias))
 
 ;; See:
 ;;
@@ -576,53 +588,45 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
-(defn- maybe-source-query-alias
-  "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias, and the
-  source query is on a table (as opposed to being another query). This is neccessary in order to properly qualify the
-  GROUP BY or ORDER BY field (a regular :field-alias identifier will only use the final alias portion, not including
-  the table alias in effect.
-
-  If the source query is NOT a table (and is, in fact, another query), then this shouldn't be returned.  In that case,
-  BQ will fail if the name is qualified by \"table\" here (see #18742)."
-  [breakout]
-  (when (and (vector? breakout) (some? sql.qp/*table-alias*))
-    (let [source-query sql.qp/*source-query*
-          [_ f & _]    breakout]
-      (when (and (string? f) (:source-table source-query))
-        (hx/identifier :field sql.qp/*table-alias* f)))))
+;; In `ORDER BY` and `GROUP BY`, unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we
+;; gave them in the `SELECT` clause, rather than repeating their definitions.
+;;
+;; See #17536 and #18742
+(defn- rewrite-fields-to-force-using-column-aliases
+  "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
+  [form]
+  (mbql.u/replace form
+    [:field id-or-name opts]
+    [:field id-or-name (-> opts
+                           (assoc ::add/source-alias (::add/desired-alias opts)
+                                  ::add/source-table :add/none)
+                           ;; don't want to do casting again inside the order by or breakout either. That happens inside
+                           ;; the `SELECT`
+                           (dissoc :temporal-unit))]))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
-  [driver _ honeysql-form {breakouts :breakout, fields :fields, :as query}]
-  (as-> honeysql-form new-hsql
-      ;; Group by all the breakout fields.
-      ;;
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
-      ;; twice, or HoneySQL will barf
-      (apply h/merge-select new-hsql (for [field-clause breakouts
-                                           :when        (not (contains? (set fields) field-clause))]
-                                       (sql.qp/as driver field-clause)))
-      ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
-      ;; `SELECT` clause, rather than repeating their definitions.
-      (apply h/group new-hsql (for [breakout breakouts
-                                    :let     [alias (or (maybe-source-query-alias breakout)
-                                                        (sql.qp/field-clause->alias driver breakout)
-                                                        (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
-                                                                        {:type     error-type/qp
-                                                                         :breakout breakout
-                                                                         :query    query})))]]
-                                alias))))
+  [driver top-level-clause honeysql-form query]
+  ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
+  ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
+  ;; them removed. Then we'll splice the unqualified `:group-by` in
+  (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                               driver top-level-clause honeysql-form)
+        qualified     (parent-method query)
+        unqualified   (parent-method (update query :breakout rewrite-fields-to-force-using-column-aliases))]
+    (merge qualified
+           (select-keys unqualified #{:group-by}))))
 
-;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
-;; compiling `:asc` and `:desc` and alias the Fields if applicable
-(defn- alias-order-by-field [driver [direction field-clause]]
-  (let [field-clause (if (mbql.u/is-clause? :aggregation field-clause)
-                       field-clause
-                       (or (maybe-source-query-alias field-clause)
-                           (sql.qp/field-clause->alias driver field-clause)))]
-    ((get-method sql.qp/->honeysql [:sql direction]) driver [direction field-clause])))
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :asc])
+   driver
+   (rewrite-fields-to-force-using-column-aliases clause)))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]  [driver clause] (alias-order-by-field driver clause))
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc] [driver clause] (alias-order-by-field driver clause))
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :desc])
+   driver
+   (rewrite-fields-to-force-using-column-aliases clause)))
 
 (defn- reconcile-temporal-types
   "Make sure the temporal types of fields and values in filter clauses line up."
@@ -699,20 +703,13 @@
   (AddIntervalForm. hsql-form amount unit))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
-  [driver
-   {{source-table-id :source-table, source-query :source-query} :query
-    :as                                                         outer-query}]
-  (let [{table-name :name, dataset-id :schema} (some-> source-table-id qp.store/table)]
-    (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
-      (let [[sql & params] (->> outer-query
-                                (sql.qp/mbql->honeysql driver)
-                                (sql.qp/format-honeysql driver))]
-        {:query      sql
-         :params     params
-         :table-name (or table-name
-                         (when source-query
-                           sql.qp/source-query-alias))
-         :mbql?      true}))))
+  [driver outer-query]
+  (let [parent-method (get-method driver/mbql->native :sql)
+        compiled      (parent-method driver outer-query)]
+    (assoc compiled
+           :table-name (or (some-> (get-in outer-query [:query :source-table]) qp.store/table :name)
+                           sql.qp/source-query-alias)
+           :mbql? true)))
 
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql

@@ -367,7 +367,7 @@
               (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
-                     (hsql/format-predicate (sql.qp/->honeysql :bigquery filter-clause)))))
+                     (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))
             (is (= :completed
                    (:status (qp/process-query query))))))))))
 
@@ -664,7 +664,7 @@
   (try
     (mt/run-mbql-query attempts
       {:aggregation [[:count]]
-       :breakout [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
+       :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
     true
     (catch Throwable _
       false)))
@@ -769,30 +769,36 @@
                                 :value  "bar"}]})))))))
 
 (defn- project-id-prefix-if-set []
-  (if-let [proj-id (mt/db-test-env-var :bigquery-cloud-sdk :project-id)]
+  (if-let [proj-id (mt/with-driver :bigquery-cloud-sdk
+                     (mt/with-everything-store
+                       (#'bigquery.qp/project-id-for-current-query)))]
     (str proj-id \.)
     ""))
 
 (deftest multiple-counts-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Count of count grouping works (#15074)"
-      (is (= {:query      (format (str "SELECT `source`.`count` AS `count`, count(*) AS `count` FROM "
-                                       "(SELECT date_trunc(`%1$sv3_test_data.checkins`.`date`, month) "
-                                       "AS `date`, "
-                                       "count(*) AS `count` FROM `%1$sv3_test_data.checkins` "
-                                       "GROUP BY `date` ORDER BY `date` ASC) `source` GROUP BY `source`.`count` "
-                                       "ORDER BY `source`.`count` ASC")
-                                  (project-id-prefix-if-set))
-              :params     nil
-              :table-name "source"
-              :mbql?      true}
-            (qp/query->native
-              (mt/mbql-query checkins
-                {:aggregation  [[:count]],
-                 :breakout     [[:field "count" {:base-type :type/Integer}]],
-                 :source-query {:source-table (mt/id :checkins)
-                                :aggregation  [[:count]]
-                                :breakout     [!month.date]}})))))))
+      (let [query (mt/mbql-query checkins
+                    {:aggregation  [[:count]]
+                     :breakout     [[:field "count" {:base-type :type/Integer}]]
+                     :source-query {:source-table (mt/id :checkins)
+                                    :aggregation  [[:count]]
+                                    :breakout     [!month.date]}})]
+        (mt/with-native-query-testing-context query
+          (is (sql= {:select   '[source.count AS count
+                                 count (*)    AS count]
+                     :from     [(let [table (symbol (str (project-id-prefix-if-set) 'v3_test_data.checkins))]
+                                  {:select   ['date_trunc table 'AS 'date
+                                              'count '(*)       'AS 'count]
+                                   :from     [table]
+                                   :group-by '[date]
+                                   :order-by '[date ASC]})
+                                'source]
+                     :group-by '[source.count]
+                     :order-by '[source.count ASC]}
+                    query))
+          (is (= :wow
+                 (qp/process-query query))))))))
 
 (deftest custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
