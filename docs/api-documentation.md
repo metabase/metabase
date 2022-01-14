@@ -1061,7 +1061,7 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
   - [POST /api/database/:id/sync](#post-apidatabaseidsync)
   - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
-  - [POST /api/database/sample_database](#post-apidatabasesample_database)
+  - [POST /api/database/sample_dataset](#post-apidatabasesample_dataset)
   - [POST /api/database/validate](#post-apidatabasevalidate)
   - [PUT /api/database/:id](#put-apidatabaseid)
 
@@ -1262,9 +1262,9 @@ You must be a superuser to do this.
 
 *  **`id`** 
 
-### `POST /api/database/sample_database`
+### `POST /api/database/sample_dataset`
 
-Add the sample database as a new `Database`.
+Add the sample dataset as a new `Database`.
 
 You must be a superuser to do this.
 
