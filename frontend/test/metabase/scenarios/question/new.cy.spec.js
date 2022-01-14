@@ -1,7 +1,6 @@
 import {
   browse,
   enterCustomColumnDetails,
-  getBinningButtonForDimension,
   openOrdersTable,
   openReviewsTable,
   popover,
