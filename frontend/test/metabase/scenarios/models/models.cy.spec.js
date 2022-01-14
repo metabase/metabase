@@ -228,6 +228,7 @@ describe("scenarios > models", () => {
     });
 
     it("allows to create a question based on a model", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
 
@@ -237,10 +238,8 @@ describe("scenarios > models", () => {
       });
 
       cy.icon("join_left_outer").click();
-
+      cy.wait("@schema");
       selectFromDropdown("Products");
-      selectFromDropdown("Product ID");
-      selectFromDropdown("ID");
 
       cy.findByText("Add filters to narrow your answer").click();
       selectFromDropdown("Products");
