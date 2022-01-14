@@ -505,7 +505,7 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
             : t`Alert me when the progress bar…`
         }
         trueText={
-          isTimeseries ? t`Goes above the goal line` : t`Reaches the goal`
+          isTimeseries ? t`Reaches the goal line` : t`Reaches the goal`
         }
         falseText={
           isTimeseries ? t`Goes below the goal line` : t`Goes below the goal`
