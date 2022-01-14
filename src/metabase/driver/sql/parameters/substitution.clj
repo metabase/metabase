@@ -24,6 +24,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.time.temporal.Temporal
