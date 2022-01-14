@@ -524,6 +524,77 @@ export default function StaticVizPage() {
             }}
           />
         </Box>
+
+        <Box py={3}>
+          <Subhead>
+            Combo chart with ordinal X-axis and more than 10 ticks
+          </Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                goal: {
+                  value: 120,
+                  label: "Goal",
+                },
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  right: "Sum",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "line series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "line",
+                  data: [
+                    ["Alden Sparks", 70],
+                    ["Areli Guerra", 30],
+                    ["Arturo Hopkins", 80],
+                    ["Beatrice Lane", 120],
+                    ["Brylee Davenport", 100],
+                    ["Cali Nixon", 60],
+                    ["Dane Terrell", 150],
+                    ["Deshawn Rollins", 40],
+                    ["Isabell Bright", 70],
+                    ["Kaya Rowe", 20],
+                    ["Roderick Herman", 50],
+                    ["Ruth Dougherty", 75],
+                  ],
+                },
+                {
+                  name: "bar series 1",
+                  color: "#88bf4d",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: [
+                    ["Alden Sparks", 20],
+                    ["Areli Guerra", 80],
+                    ["Arturo Hopkins", 10],
+                    ["Beatrice Lane", 10],
+                    ["Brylee Davenport", 15],
+                    ["Cali Nixon", 20],
+                    ["Dane Terrell", 40],
+                    ["Deshawn Rollins", 60],
+                    ["Isabell Bright", 80],
+                    ["Kaya Rowe", 50],
+                    ["Roderick Herman", 40],
+                    ["Ruth Dougherty", 65],
+                  ],
+                },
+              ],
+            }}
+          />
+        </Box>
+
         <Box py={3}>
           <Subhead>Funnel</Subhead>
           <StaticChart
