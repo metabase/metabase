@@ -8,7 +8,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.params.field-values :as params.field-values]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]

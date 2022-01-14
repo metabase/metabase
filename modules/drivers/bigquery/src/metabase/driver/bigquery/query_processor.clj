@@ -16,7 +16,6 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
-            [metabase.models.table :as table]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
@@ -24,8 +23,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
            [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))

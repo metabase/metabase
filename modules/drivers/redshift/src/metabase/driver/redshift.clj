@@ -2,7 +2,6 @@
   "Amazon Redshift Driver."
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
