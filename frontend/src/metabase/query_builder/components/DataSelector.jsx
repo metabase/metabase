@@ -1127,7 +1127,7 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
             name={dataset.name}
             onSelect={() => onSelect(dataset)}
             size="small"
-            icon={{ name: "dataset", size: 16 }}
+            icon={{ name: "model", size: 16 }}
             rightIcon={PLUGIN_MODERATION.getStatusIcon(
               dataset.moderated_status,
             )}
