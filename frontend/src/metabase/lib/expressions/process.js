@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { parse } from "metabase/lib/expressions/recursive-parser";
 import { resolve } from "metabase/lib/expressions/resolver";
 
@@ -12,20 +14,20 @@ export function processSource(options) {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
-        throw new Error(`Unknown Metric: ${name}`);
+        throw new Error(t`Unknown Metric: ${name}`);
       }
       return ["metric", metric.id];
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
-        throw new Error(`Unknown Segment: ${name}`);
+        throw new Error(t`Unknown Segment: ${name}`);
       }
       return ["segment", segment.id];
     } else {
       // fallback
       const dimension = parseDimension(name, options);
       if (!dimension) {
-        throw new Error(`Unknown Field: ${name}`);
+        throw new Error(t`Unknown Field: ${name}`);
       }
       return dimension.mbql();
     }
