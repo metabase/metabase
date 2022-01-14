@@ -445,14 +445,29 @@
                                         :db_id (u/the-id db)}]
                       Table    [table2 {:name "Table 2"
                                         :db_id (u/the-id db)}]]
-        ;; so we need to manually update the temp DB again here, to force the "old" structure
-        (let [updated? (db/update! Database (u/the-id db) :details {:dataset-id "my-dataset"})]
-          (is updated?)
-          (let [updated (Database (u/the-id db))]
-            (is (nil? (get-in updated [:details :dataset-id])))
-            ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
-            (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
-            (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
-            (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
-              ;; and the existing tables should have been updated with that schema
-              (is (= "my-dataset" (:schema table))))))))))
+        (let [db-id      (u/the-id db)
+              call-count (atom 0)
+              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
+          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                  (swap! call-count inc)
+                                                                  (orig-fn database dataset-id))]
+            ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
+            (doseq [_ (range 5)]
+              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+            ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
+            ;; that runs at the end of creating the temp object, above ^
+            ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
+            ;; queries the domain object, they should see that as having already been done
+            ;; hence, assert it was not called anymore here
+            (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
+          ;; now, so we need to manually update the temp DB again here, to force the "old" structure
+          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+            (is updated?)
+            (let [updated (Database db-id)]
+              (is (nil? (get-in updated [:details :dataset-id])))
+              ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
+              (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
+              (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
+              (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
+                ;; and the existing tables should have been updated with that schema
+                (is (= "my-dataset" (:schema table)))))))))))
