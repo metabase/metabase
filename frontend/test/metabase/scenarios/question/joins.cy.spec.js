@@ -14,7 +14,7 @@ describe("scenarios > question > joined questions", () => {
     cy.signInAsAdmin();
   });
 
-  it("joining on a question with remapped values should work (metabase#15578)", () => {
+  it.skip("joining on a question with remapped values should work (metabase#15578)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     // Remap display value
     cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
