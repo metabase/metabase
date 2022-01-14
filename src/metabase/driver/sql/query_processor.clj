@@ -166,7 +166,7 @@
 
 (defmethod field->alias :sql
   [driver field]
-  (add/escape-alias driver (:name field)))
+  (driver/escape-alias driver (:name field)))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -636,7 +636,7 @@
                                                  ;; need to have that namespace add `:desired-alias` to
                                                  ;; `aggregation-options` as well. I cannot believe stuff is still
                                                  ;; working. If we fix this we'll probably fix a LOT of bugs.
-                                                 (add/escape-alias driver (annotate/aggregation-name ag))))]))]
+                                                 (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 
 
@@ -985,7 +985,9 @@
 ;;;; Potemkin Exports for Covenience/Backwards Compatibility
 
 (p/import-vars
- ;; These multimethods were moved to [[metabase.query-processor.util.add-alias-info]] in 0.42.0
+ ;; These multimethods were moved to [[metabase.query-processor.util.add-alias-info]] and [[metabase.driver]]
+ ;; respectively in 0.42.0
  [add
-  escape-alias
-  prefix-field-alias])
+  prefix-field-alias]
+ [driver
+  escape-alias])

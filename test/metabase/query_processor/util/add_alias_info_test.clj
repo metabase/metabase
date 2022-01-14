@@ -395,7 +395,7 @@
 
 (driver/register! ::custom-escape :parent :h2)
 
-(defmethod add/escape-alias ::custom-escape
+(defmethod driver/escape-alias ::custom-escape
   [_driver field-alias]
   (str "COOL." field-alias))
 

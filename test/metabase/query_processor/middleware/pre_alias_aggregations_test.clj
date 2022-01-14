@@ -6,8 +6,7 @@
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.query-processor.util.add-alias-info :as add]))
+            [metabase.test.data :as data]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
@@ -99,7 +98,7 @@
 
 (driver/register! ::test-driver, :abstract? true, :parent :sql)
 
-(defmethod add/escape-alias ::test-driver [_ custom-field-name]
+(defmethod driver/escape-alias ::test-driver [_ custom-field-name]
   (str \_ custom-field-name))
 
 (deftest use-escape-alias-test
