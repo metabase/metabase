@@ -13,19 +13,17 @@
             [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.common.parameters.operators :as ops]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.mbql.schema :as mbql.s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.time.temporal.Temporal
