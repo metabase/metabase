@@ -1,4 +1,4 @@
-(ns metabatabaseery-processor-test.nested-queries-test
+(ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]

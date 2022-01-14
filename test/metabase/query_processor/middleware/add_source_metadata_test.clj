@@ -1,4 +1,4 @@
-(ns metabatabaseery-processor.middleware.add-source-metadata-test
+(ns metabase.query-processor.middleware.add-source-metadata-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]

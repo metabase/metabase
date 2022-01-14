@@ -1,4 +1,4 @@
-(ns metabatabaseery-processor.util.add-alias-info-test
+(ns metabase.query-processor.util.add-alias-info-test
   (:require [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
