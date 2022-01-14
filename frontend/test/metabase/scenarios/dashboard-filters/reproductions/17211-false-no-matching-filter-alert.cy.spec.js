@@ -1,8 +1,8 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATABASEE } from "__support__/e2e/cypress_sample_databasee";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASEE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const questionDetails = {
   query: {

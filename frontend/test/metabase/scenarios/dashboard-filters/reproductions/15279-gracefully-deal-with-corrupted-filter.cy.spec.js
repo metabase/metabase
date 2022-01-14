@@ -1,7 +1,7 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_databasee";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASEE;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const firstFilter = {
   name: "List",

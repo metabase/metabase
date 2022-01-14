@@ -1,4 +1,4 @@
-(ns metabatabaseeery-processor.middleware.add-implicit-joins-test
+(ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
