@@ -114,7 +114,7 @@ function SavedQuestionPicker({
       <CollectionsContainer>
         <BackButton onClick={onBack}>
           <Icon name="chevronleft" className="mr1" />
-          {isDatasets ? t`Datasets` : t`Saved Questions`}
+          {isDatasets ? t`Models` : t`Saved Questions`}
         </BackButton>
         <Box my={1}>
           <Tree

@@ -39,7 +39,7 @@ const SEARCH_FILTERS = [
     icon: "database",
   },
   {
-    name: t`Datasets`,
+    name: t`Models`,
     filter: "dataset",
     icon: "dataset",
   },

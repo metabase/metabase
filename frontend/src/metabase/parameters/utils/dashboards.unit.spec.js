@@ -7,6 +7,8 @@ import {
   getMappingsByParameter,
   getParametersMappedToDashcard,
   hasMatchingParameters,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { metadata } from "__support__/sample_dataset_fixture";
 
@@ -536,6 +538,126 @@ describe("meta/Dashboard", () => {
           metadata,
         }),
       ).toBe(true);
+    });
+  });
+
+  describe("getFilteringParameterValuesMap", () => {
+    const undefinedFilteringParameters = {};
+    const emptyFilteringParameters = {
+      filteringParameters: [],
+    };
+
+    const parameter = {
+      filteringParameters: ["a", "b", "c", "d"],
+    };
+    const parameters = [
+      {
+        id: "a",
+        value: "aaa",
+      },
+      {
+        id: "b",
+        value: "bbb",
+      },
+      {
+        id: "c",
+      },
+      {
+        id: "d",
+        value: null,
+      },
+      {
+        id: "e",
+        value: "eee",
+      },
+    ];
+
+    it("should create a map of any defined parameterValues found in a specific parameter's filteringParameters property", () => {
+      expect(
+        getFilteringParameterValuesMap(
+          undefinedFilteringParameters,
+          parameters,
+        ),
+      ).toEqual({});
+      expect(
+        getFilteringParameterValuesMap(emptyFilteringParameters, parameters),
+      ).toEqual({});
+      expect(getFilteringParameterValuesMap(parameter, parameters)).toEqual({
+        a: "aaa",
+        b: "bbb",
+      });
+    });
+
+    it("should handle a missing `filteringParameters` prop gracefully", () => {
+      expect(
+        getFilteringParameterValuesMap(
+          undefinedFilteringParameters,
+          parameters,
+        ),
+      ).toEqual({});
+      expect(
+        getFilteringParameterValuesMap(emptyFilteringParameters, parameters),
+      ).toEqual({});
+    });
+  });
+
+  describe("getParameterValuesSearchKey", () => {
+    it("should return a string using the given props related to parameter value searching", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          query: "foo",
+          filteringParameterValues: {
+            a: "aaa",
+            b: "bbb",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: foo, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should default `query` to null", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          filteringParameterValues: {
+            a: "aaa",
+            b: "bbb",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should sort the entries in the `filteringParameterValues` object", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          filteringParameterValues: {
+            b: "bbb",
+            a: "aaa",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should handle there being no filteringParameterValues", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          query: "abc",
+        }),
+      ).toEqual(
+        "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
+      );
     });
   });
 });

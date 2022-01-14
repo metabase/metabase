@@ -1372,6 +1372,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "models",
                   "moderation",
                   "native",
                   "native-filters",

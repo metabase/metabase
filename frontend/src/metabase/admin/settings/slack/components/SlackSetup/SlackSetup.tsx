@@ -129,7 +129,7 @@ const CopyManifestSection = ({
   return (
     <SetupSection title={t`2. Copy the Metabase manifest`}>
       <SectionMessage>
-        {jt`Copy our ${(
+        {jt`Select your workspace and then copy our ${(
           <strong key="manifest">{t`Slack Manifest`}</strong>
         )} below and paste it in to create the app. In the following screen, click “${(
           <strong key="install">{t`Install to workspace`}</strong>
