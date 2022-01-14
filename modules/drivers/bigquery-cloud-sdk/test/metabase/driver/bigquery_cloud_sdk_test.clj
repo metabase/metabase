@@ -403,5 +403,9 @@
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Google Sheets external tables can be queried via BigQuery"
-      ;; TODO: fill in test once CI instance is ready
-      (is (= 1 2)))))
+      (is (= []
+             (mt/rows
+               (qp/process-query
+                 (mt/native-query
+                   {:query
+                    "SELECT * FROM `metabase-bigquery-ci.google_drive_dataset.metabase_ci_bigquery_sheet` ORDER BY `id`"}))))))))
