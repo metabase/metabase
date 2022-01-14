@@ -1,54 +1,49 @@
-import React, { useMemo } from "react";
-import PropTypes from "prop-types";
+import React, { Key, ReactNode, useMemo } from "react";
 import _ from "underscore";
-
-import Icon from "metabase/components/Icon";
+import { RadioColorScheme, RadioVariant } from "./types";
 import {
-  RadioInput,
-  RadioButton,
-  BubbleList,
   BubbleItem,
-  NormalList,
+  BubbleList,
   NormalItem,
-  UnderlinedList,
+  NormalList,
+  RadioButton,
+  RadioIcon,
+  RadioInput,
   UnderlinedItem,
+  UnderlinedList,
 } from "./Radio.styled";
 
-export const optionShape = PropTypes.shape({
-  name: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.element,
-    PropTypes.node,
-  ]).isRequired,
-  value: PropTypes.any.isRequired,
-  icon: PropTypes.string,
-});
+export interface RadioOption<T extends Key> {
+  name: ReactNode;
+  value: T;
+  icon?: string;
+}
 
-const propTypes = {
-  name: PropTypes.string,
-  value: PropTypes.any,
-  options: PropTypes.oneOfType([
-    PropTypes.arrayOf(PropTypes.string),
-    PropTypes.arrayOf(optionShape),
-  ]).isRequired,
-  onChange: PropTypes.func,
-  onOptionClick: PropTypes.func,
-  optionNameFn: PropTypes.func,
-  optionValueFn: PropTypes.func,
-  optionKeyFn: PropTypes.func,
-  showButtons: PropTypes.bool,
-  xspace: PropTypes.number,
-  yspace: PropTypes.number,
-  py: PropTypes.number,
+export interface RadioProps<T extends Key> {
+  name?: string;
+  value?: T;
+  options: RadioOption<T>[];
+  onChange?: (value: T) => void;
+  onOptionClick?: (value: T) => void;
+  optionNameFn?: (option: RadioOption<T>) => ReactNode;
+  optionValueFn?: (option: RadioOption<T>) => T;
+  optionKeyFn?: (option: RadioOption<T>) => Key;
+  showButtons?: boolean;
+  xspace?: number;
+  yspace?: number;
+  py?: number;
+  variant?: RadioVariant;
+  vertical?: boolean;
+  colorScheme?: RadioColorScheme;
+}
 
-  // Modes
-  variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
-  vertical: PropTypes.bool,
-  colorScheme: PropTypes.oneOf(["admin", "default", "accent7"]),
-};
+function defaultNameGetter<T extends Key>(option: RadioOption<T>): ReactNode {
+  return option.name;
+}
 
-const defaultNameGetter = option => option.name;
-const defaultValueGetter = option => option.value;
+function defaultValueGetter<T extends Key>(option: RadioOption<T>): T {
+  return option.value;
+}
 
 const VARIANTS = {
   normal: [NormalList, NormalItem],
@@ -56,7 +51,7 @@ const VARIANTS = {
   underlined: [UnderlinedList, UnderlinedItem],
 };
 
-function Radio({
+function Radio<T extends Key>({
   name: nameFromProps,
   value: currentValue,
   options,
@@ -78,7 +73,7 @@ function Radio({
   showButtons = vertical && variant !== "bubble",
   colorScheme = "default",
   ...props
-}) {
+}: RadioProps<T>) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameFromProps || id;
 
@@ -91,7 +86,12 @@ function Radio({
   }
 
   return (
-    <List {...props} vertical={vertical} showButtons={showButtons}>
+    <List
+      {...props}
+      vertical={vertical}
+      showButtons={showButtons}
+      colorScheme={colorScheme}
+    >
       {options.map((option, index) => {
         const value = optionValueFn(option);
         const selected = currentValue === value;
@@ -118,9 +118,8 @@ function Radio({
                 }
               }}
             >
-              {option.icon && <Icon name={option.icon} mr={1} />}
+              {option.icon && <RadioIcon name={option.icon} />}
               <RadioInput
-                colorScheme={colorScheme}
                 id={id}
                 name={name}
                 value={value}
@@ -144,7 +143,5 @@ function Radio({
     </List>
   );
 }
-
-Radio.propTypes = propTypes;
 
 export default Radio;

@@ -3,15 +3,21 @@ import styled from "styled-components";
 import { space } from "styled-system";
 
 import { color, lighten } from "metabase/lib/colors";
+import { RadioColorScheme } from "metabase/components/Radio/types";
+import Icon from "metabase/components/Icon";
 
 const COLOR_SCHEMES = {
-  accent7: {
-    main: () => color("accent7"),
-    button: () => color("accent7"),
-  },
   default: {
     main: () => color("brand"),
     button: () => color("brand"),
+  },
+  admin: {
+    main: () => color("brand"),
+    button: () => color("brand"),
+  },
+  accent7: {
+    main: () => color("accent7"),
+    button: () => color("accent7"),
   },
 };
 
@@ -28,7 +34,16 @@ export const RadioInput = styled.input.attrs({ type: "radio" })`
   z-index: 1;
 `;
 
-export const RadioButton = styled.div`
+export const RadioIcon = styled(Icon)`
+  margin-right: 0.5rem;
+`;
+
+export interface RadioButtonProps {
+  checked?: boolean;
+  colorScheme?: RadioColorScheme;
+}
+
+export const RadioButton = styled.div<RadioButtonProps>`
   cursor: pointer;
   display: inline-block;
   flex: 0 0 auto;
@@ -60,17 +75,36 @@ export const RadioButton = styled.div`
 `;
 
 // BASE
-const BaseList = styled.ul`
+interface BaseListProps {
+  vertical?: boolean;
+  showButtons?: boolean;
+}
+
+const BaseList = styled.ul<BaseListProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
   font-weight: bold;
 `;
 
-const BaseItem = styled.label.attrs({
-  mr: props => (!props.vertical && !props.last ? props.xspace : null),
-  mb: props => (props.vertical && !props.last ? props.yspace : null),
+interface BaseItemProps {
+  colorScheme: RadioColorScheme;
+  selected?: boolean;
+  vertical?: boolean;
+  last?: boolean;
+  px?: number;
+  py?: number;
+  xspace?: number;
+  yspace?: number;
+  showButtons?: boolean;
+}
+
+const BaseItem = styled.label.attrs<BaseItemProps>({
+  mr: (props: BaseItemProps) =>
+    !props.vertical && !props.last ? props.xspace : null,
+  mb: (props: BaseItemProps) =>
+    props.vertical && !props.last ? props.yspace : null,
 })`
-  ${space}
+  ${space};
   position: relative;
   display: flex;
   align-items: center;
