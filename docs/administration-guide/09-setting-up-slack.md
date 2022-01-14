@@ -5,10 +5,10 @@ If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent
 Here's an overview of the steps for setting up Slack:
 
 1. [Create your Slack App](#create-your-slack-app)
-2  [Give Slack your app manifest](#the-app-manifest)
+2. [Give Slack your app manifest](#the-app-manifest)
 3. [Install your app to your workspace](#install-your-app-to-your-workspace)
-4. [Get the Bot User Oauth Token](#the-bot-user-oauth-token)
-5. [Created a dedicated Metabase channel in your Slack](create-a-dedicated-metabase-channel-in-your-slack)
+4. [Get the Bot User OAuth Token](#the-bot-user-oauth-token)
+5. [Create a dedicated Metabase channel in your Slack](#create-a-dedicated-metabase-channel-in-your-slack)
 6. [Save your changes](#save-your-changes-in-metabase)
 
 ## Create your Slack App
@@ -17,11 +17,13 @@ For Metabase to post to your Slack channels, you’ll need to create a Slack App
 
 From any Metabase page, go to **Admin settings** > **Settings** > **Slack**.
 
-Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to Slack to create the App. On the Slack website, click **Create an App**.  Select **From an app manifest** and and select the Slack workspace you want Metabase to post to (you're not going to be developing an app, this is just telling Slack what workspace you want Metabase to post to).
+Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to the Slack website to create the Slack app.
+
+On the Slack website, click **Create an App**. Select **From an app manifest** and and select the Slack workspace you want Metabase to post to (you're not going to be developing an app, this is just telling Slack what workspace you want Metabase to post to).
 
 ## The app manifest
 
-To get the app manifest, head back to Metabase and the Slack settings page, copy the manifest, and return to the Slack app creation page on the Slack website to paste in the manifest (the manifest is in YAML format). The manifest will take care of settings for your app and help speed things along. Once you've pasted the manifest in Slack Apps, click the **Next** button. Then hit **Create** to set up your Slack App.
+To get the app manifest, head back to Metabase and the Slack settings page, copy the manifest, and return to the Slack app creation page on the Slack website to paste in the manifest (the manifest is in YAML format). The manifest will take care of settings for your app and help speed things along. Once you've pasted the manifest, click the **Next** button. Then hit **Create** to set up your Slack app.
 
 ## Install your app to your workspace
 
@@ -33,11 +35,11 @@ On the Slack site page for your Slack app, on the left in the **Features** secti
 
 ## Create a dedicated Metabase channel in your Slack
 
-In your Slack workspace, create a public channel named whatever you want — we think something like "Metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Due to the way the Slack API is set up, we’ll need this channel to attach charts Dashboard Subscriptions. Make sure the channel you create is the same channel that you enter in this field in Metabase. 
+In your Slack workspace, create a public channel named whatever you want — we think something like "metabase" does just fine — then enter that channel's name in the **Slack Channel Name** field in Metabase. This channel allows your Metabase to post to your Slack workspace without having to deal with unnecessary permissions. Make sure the channel you create is the same channel that you enter in this field in Metabase (omit the "#" prefix).
 
 ## Save your changes in Metabase
 
-In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token is working properly. If something goes wrong, it'll give you an error message.
+In Metabase, click on the **Save changes** button and that’s it! Metabase will automatically run a quick test to check that the API token and your dedicated Slack channel are working properly. If something goes wrong, it'll give you an error message.
 
 ---
 
