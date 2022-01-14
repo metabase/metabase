@@ -23,7 +23,7 @@ describe("scenarios > admin > databases > edit", () => {
         "Sample Database",
       );
       cy.findByLabelText("Connection String").should($input =>
-        expect($input[0].value).to.match(/sample-database\.db/),
+        expect($input[0].value).to.match(/sample-dataset\.db/),
       );
     });
 
