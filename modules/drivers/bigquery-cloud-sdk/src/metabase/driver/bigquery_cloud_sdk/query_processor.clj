@@ -17,9 +17,9 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
-            [metabase.models.table :as table]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -29,7 +29,7 @@
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
-           metabase.util.honeysql_extensions.Identifier))
+           [metabase.util.honeysql_extensions Identifier TypedHoneySQLForm]))
 
 (defn- valid-project-identifier?
   "Is String `s` a valid BigQuery project identifier (a.k.a. project-id)? Identifiers are only allowed to contain
@@ -136,6 +136,10 @@
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
+;; [[hx/with-database-type-info]] stuff we've added. [[hx/with-database-type-info]] was inspired by this BigQuery code
+;; but uses a new record type rather than attaching metadata to everything
+
 (def ^:private temporal-type-hierarchy
   (-> (make-hierarchy)
       (derive :date :temporal-type)
@@ -164,14 +168,26 @@
     :type/DateTime       :datetime
     nil))
 
-(defmethod temporal-type (class Field)
-  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
-  (case database-type
+(defn- database-type->temporal-type [database-type]
+  (condp = (some-> database-type str/upper-case)
     "TIMESTAMP" :timestamp
     "DATETIME"  :datetime
     "DATE"      :date
     "TIME"      :time
-    (base-type->temporal-type (or effective-type base-type))))
+    nil))
+
+(defmethod temporal-type (class Field)
+  [{base-type :base_type, effective-type :effective_type, database-type :database_type}]
+  (or (database-type->temporal-type database-type)
+      (base-type->temporal-type (or effective-type base-type))))
+
+(defmethod temporal-type TypedHoneySQLForm
+  [form]
+  (if (contains? (meta form) :bigquery-cloud-sqk/temporal-type)
+    (:bigquery-cloud-sqk/temporal-type (meta form))
+    (let [{::hx/keys [database-type]} (hx/type-info form)]
+      (or (database-type->temporal-type database-type)
+          (temporal-type (hx/unwrap-typed-honeysql-form form))))))
 
 (defmethod temporal-type :absolute-datetime
   [[_ t _]]
@@ -182,10 +198,10 @@
   :time)
 
 (defmethod temporal-type :field
-  [[_ id-or-name {:keys [base-type temporal-unit], :as opts} :as clause]]
+  [[_ id-or-name {:keys [base-type temporal-unit]} :as clause]]
   (cond
-    (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
-    (:bigquery-cloud-sdk/temporal-type (meta clause))
+    (contains? (meta clause) :bigquery-cloud-sqk/temporal-type)
+    (:bigquery-cloud-sqk/temporal-type (meta clause))
 
     ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
     ;;
@@ -441,60 +457,42 @@
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- should-qualify-identifier?
-  "Should we qualify an Identifier with the dataset name?
-
-  Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
-  table e.g.
-
-    `table`.`field` -> `dataset.table`.`field`"
-  [{:keys [identifier-type components] :as identifier}]
-  (cond
-    (::already-qualified? (meta identifier))
-    false
-
-    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
-    sql.qp/*table-alias*
-    false
-
-    ;; otherwise always qualify Table identifiers
-    (= identifier-type :table)
-    true
-
-    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
-    ;; DDL statements)
-    (and (= identifier-type :field)
-         (>= (count components) 2))
-    true))
-
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
   (hsql/call :parse_datetime (hx/literal "%Y%m%d%H%M%S") expr))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk (class Field)]
-  [driver field]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
-        identifier    (parent-method driver field)]
-    (with-temporal-type identifier (temporal-type field))))
-
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
-  [_ identifier]
-  (if-not (should-qualify-identifier? identifier)
+;; Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
+;; table e.g.
+;;
+;;    "table"."field" -> "dataset.table"."field"
+(defn- qualify-identifier [identifier]
+  (if (::already-qualified? (meta identifier))
     identifier
     (-> identifier
-        (update :components (fn [[dataset-id table & more]]
-                              (cons (str (when-let [proj-id (project-id-for-current-query)]
-                                           (str proj-id \.))
-                                         dataset-id
-                                         \.
-                                         table)
-                                    more)))
+        ;; make sure it's a vector so we can use index as key below
+        (update :components vec)
+        ;; prefix the first part (the table) with the dataset name
+        (update-in [:components 0] (partial str (project-id-for-current-query) \.))
         (vary-meta assoc ::already-qualified? true))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk Identifier]
+  [_ {:keys [identifier-type], :as identifier}]
+  (cond-> identifier
+    ;; only tables need to be handled here, `:field` is done below in [[sql.qp/->honeysql]]` for `:field`
+    (= identifier-type :table) qualify-identifier))
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver clause]
-  (let [hsql-form ((get-method sql.qp/->honeysql [:sql :field]) driver clause)]
-    (with-temporal-type hsql-form (temporal-type clause))))
+  [driver [_ _ {::add/keys [source-table]} :as field-clause]]
+  ;; if this is a table with a numeric source table (e.g. would get compiled like `venues.price`, we need to qualify the
+  ;; table with the dataset name (e.g. `test-data.venues.price`)
+  (let [field-clause  (cond-> field-clause
+                        (integer? source-table)
+                        (mbql.u/update-field-options assoc ::add/source-table (str (project-id-for-current-query)
+                                                                                   \.
+                                                                                   (:name (qp.store/table source-table)))))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    (-> (parent-method driver field-clause)
+        (with-temporal-type (temporal-type field-clause)))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
@@ -534,10 +532,6 @@
 (defmethod sql.qp/escape-alias :bigquery-cloud-sdk
   [_ expression-name]
   (->valid-field-identifier expression-name))
-
-(defmethod driver/format-custom-field-name :bigquery-cloud-sdk
-  [_ custom-field-name]
-  (->valid-field-identifier custom-field-name))
 
 (defmethod sql.qp/prefix-field-alias :bigquery-cloud-sdk
   [driver prefix field-alias]

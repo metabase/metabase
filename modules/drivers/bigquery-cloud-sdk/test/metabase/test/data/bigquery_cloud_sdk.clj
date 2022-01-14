@@ -242,7 +242,7 @@
             (println (u/format-color 'red error-message))
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
-(defn- base-type->bigquery-type [base-type]
+(defn base-type->bigquery-type [base-type]
   (let [types {:type/BigInteger     :INTEGER
                :type/Boolean        :BOOLEAN
                :type/Date           :DATE
