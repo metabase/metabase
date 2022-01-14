@@ -507,13 +507,13 @@
     (testing "Make sure Field filters against temporal fields generates correctly-typed SQL (#11578)"
       (mt/dataset attempted-murders
         (doseq [field              [:datetime
-                                    #_:date
-                                    #_:datetime_tz]
-                [value-type value] {#_:date/relative     #_"past30days"
-                                    #_:date/range        #_"2019-12-11~2020-01-09"
+                                    :date
+                                    :datetime_tz]
+                [value-type value] {:date/relative     "past30days"
+                                    :date/range        "2019-12-11~2020-01-09"
                                     :date/single       "2020-01-09"
-                                    #_:date/quarter-year #_"Q1-2020"
-                                    #_:date/month-year   #_"2020-01"}]
+                                    :date/quarter-year "Q1-2020"
+                                    :date/month-year   "2020-01"}]
           (testing (format "\nField filter with %s Field" field)
             (testing (format "\nfiltering against %s value '%s'" value-type value)
               (let [query {:database   (mt/id)
