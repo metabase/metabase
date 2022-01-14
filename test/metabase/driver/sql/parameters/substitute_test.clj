@@ -523,7 +523,7 @@
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
   (let [sql (:query (qp/query->native (mt/mbql-query checkins)))]
-    (second (re-find #"FROM\s([^\s()]+)" sql))))
+    (second (re-find #"(?m)FROM\s+([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
