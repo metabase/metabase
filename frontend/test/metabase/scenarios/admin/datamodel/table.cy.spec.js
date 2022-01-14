@@ -26,7 +26,7 @@ describe("scenarios > admin > databases > table", () => {
       "Select any table to see its schema and add or edit metadata.",
     ).should("not.exist");
     cy.get(
-      "input[value='This is a confirmed order for a product from a user.']",
+      "input[value='Confirmed Sample Company orders for a product, from a user.']",
     );
   });
 
