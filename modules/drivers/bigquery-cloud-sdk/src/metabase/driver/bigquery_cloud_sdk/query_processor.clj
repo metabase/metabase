@@ -599,7 +599,7 @@
     [:field id-or-name opts]
     [:field id-or-name (-> opts
                            (assoc ::add/source-alias (::add/desired-alias opts)
-                                  ::add/source-table :add/none)
+                                  ::add/source-table ::add/none)
                            ;; don't want to do casting again inside the order by or breakout either. That happens inside
                            ;; the `SELECT`
                            (dissoc :temporal-unit))]))
