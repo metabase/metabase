@@ -60,7 +60,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         </Tooltip>
       )}
       {canWrite && !isDataset && (
-        <Tooltip tooltip={t`Turn this into a dataset`}>
+        <Tooltip tooltip={t`Turn this into a model`}>
           <Button
             onlyIcon
             icon="dataset"
