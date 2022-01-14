@@ -313,7 +313,7 @@ describe("smoketest > admin_setup", () => {
         .clear()
         .type("Test Table");
 
-      cy.get("[value='This is a confirmed order for a product from a user.']")
+      cy.get("[value='Confirmed Sample Company orders for a product, from a user.']")
         .clear()
         .type("Testing table description");
     });

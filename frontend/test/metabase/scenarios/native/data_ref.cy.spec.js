@@ -13,7 +13,7 @@ describe("scenarios > native question > data reference sidebar", () => {
     // Force-clicking was needed here because Cypress complains that "ORDERS" is covered by a <div>
     // TODO: Maybe re-think the structure of that component because that div seems unnecessary anyway
     cy.findByText("ORDERS").click({ force: true });
-    cy.findByText("This is a confirmed order for a product from a user.");
+    cy.findByText("Confirmed Sample Company orders for a product, from a user.");
     cy.findByText("9 columns");
 
     cy.findByText("QUANTITY").click({ force: true });
