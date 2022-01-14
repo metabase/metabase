@@ -66,7 +66,7 @@ export function getDetailsSidebarActions() {
 // Requires dataset details sidebar to be open
 export function assertIsDataset() {
   getDetailsSidebarActions().within(() => {
-    cy.icon("dataset").should("not.exist");
+    cy.icon("model").should("not.exist");
   });
   cy.findByText("Model management");
   cy.findByText("Sample Dataset").should("not.exist");
@@ -79,7 +79,7 @@ export function assertIsDataset() {
 // Requires question details sidebar to be open
 export function assertIsQuestion() {
   getDetailsSidebarActions().within(() => {
-    cy.icon("dataset");
+    cy.icon("model");
   });
   cy.findByText("Model management").should("not.exist");
   cy.findByText("Sample Dataset");
@@ -88,7 +88,7 @@ export function assertIsQuestion() {
 export function turnIntoDataset() {
   openDetailsSidebar();
   getDetailsSidebarActions().within(() => {
-    cy.icon("dataset").click();
+    cy.icon("model").click();
   });
   modal().within(() => {
     cy.button("Turn this into a model").click();

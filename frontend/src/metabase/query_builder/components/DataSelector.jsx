@@ -1152,7 +1152,7 @@ const DataBucketPicker = ({ onChangeDataBucket }) => {
   const BUCKETS = [
     {
       id: DATA_BUCKET.DATASETS,
-      icon: "dataset",
+      icon: "model",
       name: t`Models`,
       description: t`The best starting place for new questions.`,
     },

@@ -41,7 +41,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Models`,
     filter: "dataset",
-    icon: "dataset",
+    icon: "model",
   },
   {
     name: t`Raw Tables`,

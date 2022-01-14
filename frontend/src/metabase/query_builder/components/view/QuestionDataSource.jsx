@@ -101,7 +101,7 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon="dataset"
+          icon="model"
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}
