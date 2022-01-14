@@ -28,8 +28,9 @@
     [:field field-form nil]
     (mbql.u/match-one field-form :field)))
 
+;; TODO -- I'm not 100% sure we need this code anymore.
 (defn wrap-field-id-if-needed
-  "Wrap a raw Field ID in a `:field-id` clause if needed."
+  "Wrap a raw Field ID in a `:field` clause if needed."
   [field-id-or-form]
   (cond
     (mbql.u/mbql-clause? field-id-or-form)
@@ -39,8 +40,7 @@
     [:field field-id-or-form nil]
 
     :else
-    (throw (ex-info (trs "Don''t know how to wrap Field ID.")
-                    {:form field-id-or-form}))))
+    field-id-or-form))
 
 (def ^:dynamic *ignore-current-user-perms-and-return-all-field-values*
   "Whether to ignore permissions for the current User and return *all* FieldValues for the Fields being parameterized by

@@ -582,17 +582,6 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
-(defmethod sql.qp/field->identifier :bigquery-cloud-sdk
-  [_ {table-id :table_id, field-name :name, :as field}]
-  ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
-  ;; currently only used for SQL params so it's not a huge deal at this point
-  ;;
-  ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table      (table/Table (u/the-id table-id))
-        table-name (:name table)
-        dataset-id (:schema table)]
-    (with-temporal-type (hx/identifier :field dataset-id table-name field-name) (temporal-type field))))
-
 (defn- maybe-source-query-alias
   "Returns an Identifer instance if the QP table alias is in effect, and the breakout is for a field alias, and the
   source query is on a table (as opposed to being another query). This is neccessary in order to properly qualify the

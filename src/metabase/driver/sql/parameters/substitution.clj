@@ -20,7 +20,12 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.util :as u]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util.honeysql-extensions :as hx]
+            [metabase.mbql.schema :as mbql.s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.time.temporal.Temporal
@@ -220,37 +225,45 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
+(s/defn ^:private field->clause :- mbql.s/field
+  [driver {table-id :table_id, base-type :base_type, field-id :id, :as field} param-type]
+  ;; hopefully the Field is already fetched, but the QP store will check and skip if that's the case, so duplicate calls
+  ;; don't hurt.
+  (qp.store/fetch-and-store-fields! #{field-id})
+  (qp.store/fetch-and-store-tables! #{table-id})
+  [:field
+   (u/the-id field)
+   {:base-type         (:base_type field)
+    ::add/source-table (:table_id field)
+    :temporal-unit     (when (date-params/date-type? param-type)
+                         :day)}])
+
 (s/defn ^:private field->identifier :- su/NonBlankString
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver {semantic-type :semantic_type, :as field} param-type]
-  (:replacement-snippet
-   (honeysql->replacement-snippet-info
-    driver
-    (let [identifier (sql.qp/cast-field-if-needed driver field (sql.qp/->honeysql driver (sql.qp/field->identifier driver field)))]
-      (if (date-params/date-type? param-type)
-        (sql.qp/date driver :day identifier)
-        identifier)))))
+  [driver field param-type]
+  (->> (field->clause driver field param-type)
+       (sql.qp/->honeysql driver)
+       (honeysql->replacement-snippet-info driver)
+       :replacement-snippet))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
-  (let [prepend-field
-        (fn [x]
-          (update x :replacement-snippet
-                  (partial str (field->identifier driver field param-type) " ")))]
+  (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
+  (letfn [(prepend-field [x]
+            (update x :replacement-snippet
+                    (partial str (field->identifier driver field param-type) " ")))]
     (cond
       (ops/operator? param-type)
       (let [[snippet & args]
-            (->> (assoc params :target
-                        [:template-tag [:field (field->identifier driver field param-type)
-                                        {:base-type (:base_type field)}]])
-                 ops/to-clause
-                 mbql.u/desugar-filter-clause
-                 wrap-value-literals/wrap-value-literals-in-mbql
-                 (sql.qp/->honeysql driver)
-                 hsql/format-predicate)]
+            (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
+              (ops/to-clause form)
+              (mbql.u/desugar-filter-clause form)
+              (wrap-value-literals/wrap-value-literals-in-mbql form)
+              (sql.qp/->honeysql driver form)
+              (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (date-params/date-range-type? param-type) (prepend-field
