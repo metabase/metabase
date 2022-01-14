@@ -71,31 +71,33 @@
 
 ;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
 
-(defn- partial=-minimize-diff
-  "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `only-in-actual` diff that's not
+(defn- remove-keys-not-in-expected
+  "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `actual` diff that's not
   in the original `expected` form."
-  [expected only-in-actual]
+  [expected actual]
+  (println "(pr-str expected) (pr-str actual):" (pr-str expected) (pr-str actual)) ; NOCOMMIT
   (cond
-    (and (map? expected) (map? only-in-actual))
+    (and (map? expected) (map? actual))
     (into {}
           (comp (filter (fn [[k v]]
                           (contains? expected k)))
                 (map (fn [[k v]]
-                       [k (partial=-minimize-diff (get expected k) v)])))
-          only-in-actual)
+                       [k (remove-keys-not-in-expected (get expected k) v)])))
+          actual)
 
-    (and (sequential? expected) (sequential? only-in-actual))
+    (and (sequential? expected) (sequential? actual))
     (into
-     [(partial=-minimize-diff (first expected) (first only-in-actual))]
+     [(remove-keys-not-in-expected (first expected) (first actual))]
      (when (next expected)
-       (partial=-minimize-diff (next expected) (next only-in-actual))))
+       (remove-keys-not-in-expected (next expected) (next actual))))
 
     :else
-    only-in-actual))
+    actual))
 
 (defn partial=-report
   [message expected actual]
-  (let [[only-in-actual only-in-expected] (data/diff actual expected)
+  (let [actual'                           (remove-keys-not-in-expected expected actual)
+        [only-in-actual only-in-expected] (data/diff actual' expected)
         pass?                             (if (coll? only-in-expected)
                                             (empty? only-in-expected)
                                             (nil? only-in-expected))]
@@ -103,7 +105,7 @@
      :message  message
      :expected expected
      :actual   actual
-     :diffs    [[actual [only-in-expected (partial=-minimize-diff expected only-in-actual)]]]}))
+     :diffs    [[actual [only-in-expected only-in-actual]]]}))
 
 (defmethod t/assert-expr 'partial=
   [message [_ expected actual]]
