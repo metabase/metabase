@@ -373,7 +373,10 @@ describe("scenarios > question > new", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
       visualize();
-      cy.findByTestId("toggle-summarize-sidebar-button").click();
+      cy.findAllByTestId("toggle-summarize-sidebar-button")
+        .contains("Summarize")
+        .click();
+
       cy.findByText("Group by")
         .parent()
         .within(() => {
@@ -381,13 +384,15 @@ describe("scenarios > question > new", () => {
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
-          getBinningButtonForDimension({
-            name: "Created At",
-          })
-            .should("have.text", "by month")
-            .click();
+
+          cy.findByText("Created At")
+            .closest("li")
+            .contains("by month")
+            // realHover() or mousemove don't work for whatever reason
+            // have to use this ugly hack for now
+            .click({ force: true });
         });
-      // this step is maybe redundant since it fails to even find "by month"
+      // // this step is maybe redundant since it fails to even find "by month"
       cy.findByText("Hour of Day");
     });
 
