@@ -38,7 +38,7 @@ Send different groups of people the contents of the dashboard with different fil
 
 ## Official collections
 
-You can mark certain collections as [official](../users-guide/collections.md#official-collections), which helps people find your most important questions, dashboards, and datasets.
+You can mark certain collections as [official](../users-guide/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
 
 ## Question moderation
 

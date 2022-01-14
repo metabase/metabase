@@ -22,9 +22,9 @@ If your teammates are cool, they'll have pinned some important dashboards or que
 
 Collections have a list of any other items that are saved within them, and you can see what other collections are saved inside of the current one by checking out the navigation sidebar.
 
-## Datasets
+## Models
 
-[Datasets][datasets] are 
+You can use Models to create derived tables on the fly. See [Models][models]. 
 
 ## Exploring dashboards
 
@@ -79,4 +79,4 @@ So what do you do if you can't find an existing dashboard or question that's exa
 
 [collections]: collections.md
 [dashboards]: 07-dashboards.md
-[datasets]: datasets.md
+[models]: models.md
