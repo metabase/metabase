@@ -22,7 +22,7 @@ describe("scenarios > question > loading behavior", () => {
     cy.route({ url: "/api/database/1/schemas" }).as("fetch2");
     cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch3");
 
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders");
 
     // confirm that schemas and schema tables were fetched individually,

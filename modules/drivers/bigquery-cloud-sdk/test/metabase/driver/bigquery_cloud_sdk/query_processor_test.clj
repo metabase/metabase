@@ -352,7 +352,7 @@
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
                                                                  :effective_type    :type/Instant}
           (let [query         (mt/mbql-query reviews
@@ -364,7 +364,7 @@
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
             (mt/with-everything-store
-              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
+              (is (= [(str "timestamp_millis(v3_sample_database.reviews.rating)"
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
                      (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))
@@ -806,13 +806,13 @@
 
 (deftest custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
                 :table-name "orders"
-                :query      (str "SELECT APPROX_QUANTILES(`v3_sample_dataset.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
-                                 " FROM `v3_sample_dataset.orders` LIMIT 10")}
+                :query      (str "SELECT APPROX_QUANTILES(`v3_sample_database.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
+                                 " FROM `v3_sample_database.orders` LIMIT 10")}
               (qp/query->native (mt/mbql-query orders
                                   {:aggregation [[:aggregation-options
                                                   [:percentile $orders.quantity 0.5]

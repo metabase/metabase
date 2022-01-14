@@ -105,11 +105,11 @@ export const getTableForeignKeys = createSelector(
   table => table && table.fks,
 );
 
-export const getSampleDatasetId = createSelector(
+export const getSampleDatabaseId = createSelector(
   [getDatabasesList],
   databases => {
-    const sampleDataset = _.findWhere(databases, { is_sample: true });
-    return sampleDataset && sampleDataset.id;
+    const sampleDatabase = _.findWhere(databases, { is_sample: true });
+    return sampleDatabase && sampleDatabase.id;
   },
 );
 

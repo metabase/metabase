@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { metadata } from "__support__/sample_dataset_fixture";
+import { metadata } from "__support__/sample_database_fixture";
 
 import Question from "metabase-lib/lib/Question";
 import Field from "metabase-lib/lib/metadata/Field";

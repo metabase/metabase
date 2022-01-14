@@ -40,7 +40,7 @@
 
 (deftest url?-test
   (mt/are+ [s expected] (= expected
-                        (u/url? s))
+                         (u/url? s))
     "http://google.com"                                                                      true
     "https://google.com"                                                                     true
     "https://amazon.co.uk"                                                                   true
@@ -75,7 +75,7 @@
 
 (deftest state?-test
   (mt/are+ [s expected] (= expected
-                        (u/state? s))
+                         (u/state? s))
     "louisiana"      true
     "north carolina" true
     "WASHINGTON"     true
@@ -88,7 +88,7 @@
 
 (deftest qualified-name-test
   (mt/are+ [k expected] (= expected
-                        (u/qualified-name k))
+                         (u/qualified-name k))
     :keyword                          "keyword"
     :namespace/keyword                "namespace/keyword"
     ;; `qualified-name` should return strings as-is
@@ -134,7 +134,7 @@
 
            "check that diactrics get removed"
            {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
-            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___"}
 
            "check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)"
            {"勇士" "%E5%8B%87%E5%A3%AB"}}]
@@ -181,7 +181,7 @@
 
 (deftest base64-string?-test
   (mt/are+ [s expected]    (= expected
-                        (u/base64-string? s))
+                            (u/base64-string? s))
     "ABc="         true
     "ABc/+asdasd=" true
     100            false
@@ -211,7 +211,7 @@
 
 (deftest order-of-magnitude-test
   (mt/are+ [n expected] (= expected
-                        (u/order-of-magnitude n))
+                         (u/order-of-magnitude n))
     0.01  -2
     0.5   -1
     4     0
@@ -235,7 +235,7 @@
 
 (deftest one-or-many-test
   (mt/are+ [input expected] (= expected
-                            (u/one-or-many input))
+                             (u/one-or-many input))
     nil   nil
     [nil] [nil]
     42    [42]
@@ -243,7 +243,7 @@
 
 (deftest topological-sort-test
   (mt/are+ [input expected] (= expected
-                            (u/topological-sort identity input))
+                             (u/topological-sort identity input))
     {:b []
      :c [:a]
      :e [:d]
@@ -266,7 +266,7 @@
 
 (deftest parse-currency-test
   (mt/are+ [s expected] (= expected
-                        (u/parse-currency s))
+                         (u/parse-currency s))
     nil             nil
     ""              nil
     "   "           nil

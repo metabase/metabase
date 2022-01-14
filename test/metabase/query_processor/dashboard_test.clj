@@ -83,7 +83,7 @@
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query (str "SELECT distinct category "
@@ -125,7 +125,7 @@
 
 (deftest default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-temp* [Card [{card-id :id} {:dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query "SELECT {{filter}}"

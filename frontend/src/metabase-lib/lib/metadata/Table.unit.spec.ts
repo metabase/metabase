@@ -1,4 +1,4 @@
-import { PRODUCTS } from "__support__/sample_dataset_fixture";
+import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "./Table";
 
 describe("Table", () => {

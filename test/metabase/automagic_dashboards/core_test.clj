@@ -311,7 +311,7 @@
       (let [join-vec    [{:source-table (mt/id :categories)
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
-                          :alias        "Dealios" }]
+                          :alias        "Dealios"}]
             q           (query/adhoc-query {:query {:source-table (mt/id :venues)
                                                     :joins join-vec
                                                     :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}
@@ -550,7 +550,7 @@
 
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (let [query (query/map->QueryInstance
                    {:database-id   (mt/id)
                     :table-id      (mt/id :products)

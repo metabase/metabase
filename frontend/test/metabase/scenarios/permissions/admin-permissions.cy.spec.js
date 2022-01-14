@@ -202,7 +202,7 @@ describe("scenarios > admin > permissions", () => {
       selectSidebarItem("All Users");
 
       modifyPermission(
-        "Sample Dataset",
+        "Sample Database",
         DATA_ACCESS_PERMISSION_INDEX,
         "Unrestricted",
       );
@@ -289,10 +289,10 @@ describe("scenarios > admin > permissions", () => {
         cy.findByText("Permissions for the Administrators group");
         cy.findByText("1 person");
 
-        assertPermissionTable([["Sample Dataset", "Unrestricted", "Yes"]]);
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
           ["Orders", "Unrestricted", "Yes"],
@@ -307,10 +307,10 @@ describe("scenarios > admin > permissions", () => {
 
         selectSidebarItem("collection");
 
-        assertPermissionTable([["Sample Dataset", "No self-service", "No"]]);
+        assertPermissionTable([["Sample Database", "No self-service", "No"]]);
 
         // Drill down to tables permissions
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
           ["Orders", "No self-service", "No"],
@@ -340,10 +340,10 @@ describe("scenarios > admin > permissions", () => {
         // Navigate back
         selectSidebarItem("collection");
 
-        assertPermissionTable([["Sample Dataset", "Granular", "No"]]);
+        assertPermissionTable([["Sample Database", "Granular", "No"]]);
 
         modifyPermission(
-          "Sample Dataset",
+          "Sample Database",
           NATIVE_QUERIES_PERMISSION_INDEX,
           "Yes",
         );
@@ -353,10 +353,10 @@ describe("scenarios > admin > permissions", () => {
           cy.button("Allow").click();
         });
 
-        assertPermissionTable([["Sample Dataset", "Unrestricted", "Yes"]]);
+        assertPermissionTable([["Sample Database", "Unrestricted", "Yes"]]);
 
         // Drill down to tables permissions
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
 
         assertPermissionTable([
           ["Orders", "Unrestricted", "Yes"],
@@ -370,10 +370,10 @@ describe("scenarios > admin > permissions", () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "collection will be given access to 4 tables in Sample Dataset.",
+            "collection will be given access to 4 tables in Sample Database.",
           );
           cy.contains(
-            "collection will now be able to write native queries for Sample Dataset.",
+            "collection will now be able to write native queries for Sample Database.",
           );
           cy.button("Yes").click();
         });
@@ -399,7 +399,7 @@ describe("scenarios > admin > permissions", () => {
 
         cy.findByText("Select a database to see group permissions");
 
-        selectSidebarItem("Sample Dataset");
+        selectSidebarItem("Sample Database");
 
         assertPermissionTable([
           ["Administrators", "Unrestricted", "Yes"],
@@ -443,7 +443,7 @@ describe("scenarios > admin > permissions", () => {
 
         // Navigate back
         cy.get("a")
-          .contains("Sample Dataset")
+          .contains("Sample Database")
           .click();
 
         assertPermissionTable([
@@ -476,10 +476,10 @@ describe("scenarios > admin > permissions", () => {
         modal().within(() => {
           cy.findByText("Save permissions?");
           cy.contains(
-            "readonly will be given access to 4 tables in Sample Dataset.",
+            "readonly will be given access to 4 tables in Sample Database.",
           );
           cy.contains(
-            "readonly will now be able to write native queries for Sample Dataset.",
+            "readonly will now be able to write native queries for Sample Database.",
           );
           cy.button("Yes").click();
         });

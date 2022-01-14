@@ -350,7 +350,7 @@
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
                                                                  :effective_type    :type/Instant}
           (let [query         (mt/mbql-query reviews
@@ -362,7 +362,7 @@
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
             (mt/with-everything-store
-              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
+              (is (= [(str "timestamp_millis(v3_sample_database.reviews.rating)"
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
                      (hsql/format-predicate (sql.qp/->honeysql :bigquery filter-clause)))))

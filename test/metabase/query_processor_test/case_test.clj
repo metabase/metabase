@@ -76,7 +76,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= [nil -2.0 -1.0]
            (->> {:expressions {"case_test" [:case [[[:< [:field (mt/id :venues :price) nil] 2] -1.0]
-                                                   [[:< [:field (mt/id :venues :price) nil] 3] -2.0]] ]}
+                                                   [[:< [:field (mt/id :venues :price) nil] 3] -2.0]]]}
                  :fields [[:expression "case_test"]]}
                 (mt/run-mbql-query venues)
                 mt/rows
@@ -87,7 +87,7 @@
 (deftest two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (is (= [[1
                  "1018947080336"
                  "Rustic Paper Wallet"

@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.nested-queries-test
+(ns metabatabaseery-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
@@ -149,7 +149,7 @@
 (deftest nested-with-aggregations-at-both-levels
   (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-temp* [Card [{card-id :id :as card}
                               {:dataset_query
                                (mt/$ids :products
@@ -795,7 +795,7 @@
 
 (deftest remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       ;; Add column remapping from Orders Product ID -> Products.Title
       (mt/with-temp Dimension [_ (mt/$ids orders
                                    {:field_id                %product_id
@@ -827,7 +827,7 @@
 
 (deftest nested-query-with-joins-test-2
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (letfn [(do-test [f]
                 (let [results (mt/run-mbql-query orders
                                 {:source-query {:source-table $$orders
@@ -857,7 +857,7 @@
 
 (deftest inception-metadata-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> result result
@@ -893,7 +893,7 @@
 
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
@@ -948,7 +948,7 @@
                        (mt/first-row result)))))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (testing "References to joined fields should be handled correctly (#14766)"
       ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
       (let [expected-result (mt/run-mbql-query orders
@@ -980,24 +980,23 @@
 
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
-    (mt/dataset sample-dataset
-      (let [query (mt/mbql-query orders
-                    {:filter       [:> *count/Integer 5]
-                     :source-query {:source-table $$orders
-                                    :aggregation  [[:count]]
-                                    :breakout     [!month.created_at !month.product_id->products.created_at]}
-                     :limit        5})]
-        (mt/with-native-query-testing-context query
-          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
-                 (mt/rows (qp/process-query query)))))))))
+    (mt/dataset sample-database
+      (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+              ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+              ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+             (mt/rows
+               (mt/run-mbql-query orders
+                 {:filter       [:> *count/Integer 5]
+                  :source-query {:source-table $$orders
+                                 :aggregation  [[:count]]
+                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
+                  :limit        5})))))))
 
 (deftest nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       ;; create the query we'll use as a source query
       (let [query    (mt/mbql-query orders
                        {:joins    [{:source-table $$products
@@ -1057,7 +1056,7 @@
 
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "against joins (#14809)"
         (is (schema= {:status   (s/eq :completed)
                       s/Keyword s/Any}
@@ -1080,7 +1079,7 @@
 
 (deftest support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (schema= {:status   (s/eq :completed)
                     s/Keyword s/Any}
                    (qp/process-query
@@ -1098,7 +1097,7 @@
 
 (deftest nested-queries-with-expressions-and-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
         (is (= (cond-> [["Twitter" "Widget" 0 498.59]
                         ["Twitter" nil      0 401.51]]
@@ -1147,31 +1146,29 @@
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
-      (mt/dataset sample-dataset
-        (let [query (mt/mbql-query orders
-                      {:source-query {:source-query {:source-table $$orders
-                                                     :filter       [:= $user_id 1]
-                                                     :aggregation  [[:sum $total]]
-                                                     :breakout     [!day.created_at
-                                                                    $product_id->products.title
-                                                                    $product_id->products.category]}
-                                      :filter       [:> *sum/Float 100]
-                                      :aggregation  [[:sum *sum/Float]]
-                                      :breakout     [*products.title]}
-                       :filter       [:> *sum/Float 100]})]
-          (mt/with-native-query-testing-context query
-            (is (= [["Awesome Bronze Plate" 115.23]
-                    ["Mediocre Rubber Shoes" 101.04]
-                    ["Mediocre Wooden Bench" 117.03]
-                    ["Sleek Steel Table" 134.91]
-                    ["Small Marble Hat" 102.8]]
-                   (mt/formatted-rows [str 2.0]
-                     (qp/process-query query))))))))))
+      (mt/dataset sample-database
+        (is (= [["Awesome Bronze Plate" 115.23]
+                ["Mediocre Rubber Shoes" 101.04]
+                ["Mediocre Wooden Bench" 117.03]
+                ["Sleek Steel Table" 134.91]
+                ["Small Marble Hat" 102.8]]
+               (mt/formatted-rows [str 2.0]
+                 (mt/run-mbql-query orders
+                   {:source-query {:source-query {:source-table $$orders
+                                                  :filter       [:= $user_id 1]
+                                                  :aggregation  [[:sum $total]]
+                                                  :breakout     [!day.created_at
+                                                                 $product_id->products.title
+                                                                 $product_id->products.category]}
+                                   :filter       [:> *sum/Float 100]
+                                   :aggregation  [[:sum *sum/Float]]
+                                   :breakout     [*products.title]}
+                    :filter       [:> *sum/Float 100]}))))))))
 
 (deftest date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (let [q1        (mt/mbql-query orders
                           {:aggregation [[:count]]
                            :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
@@ -1222,7 +1219,7 @@
                       :basic-aggregations
                       :expression-aggregations
                       :foreign-keys)
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                    {:filter      [:between $total 30 60]
                                                     :aggregation [[:aggregation-options

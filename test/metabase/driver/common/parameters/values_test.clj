@@ -119,7 +119,7 @@
              :type         :dimension
              :widget-type  :date/all-options
              :dimension    [:field (mt/id :checkins :date) nil]}
-             nil))))
+            nil))))
 
   (testing "id requiring casting"
     (is (= {:field (extra-field-info
@@ -148,7 +148,7 @@
                    :widget-type  :date/all-options
                    :required     true
                    :dimension    [:field (mt/id :checkins :date) nil]}
-                   nil))))
+                  nil))))
 
   (testing "required and default specified"
     (is (= {:field (extra-field-info
@@ -168,7 +168,7 @@
              :required     true
              :default      "2015-04-01~2015-05-01"
              :dimension    [:field (mt/id :checkins :date) nil]}
-             nil))))
+            nil))))
 
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
@@ -213,7 +213,7 @@
              :dimension    [:field (mt/id :checkins :date) nil]
              :default      "past5days"
              :widget-type  :date/all-options}
-             nil))))
+            nil))))
   (testing "Make sure nil values result in no value"
     (is (= {:field (extra-field-info
                     {:id             (mt/id :checkins :date)
@@ -429,7 +429,7 @@
 
 (deftest parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options
@@ -453,7 +453,7 @@
   (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
     ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
     ;; request parameter. If the template tag also specifies a default, we should prefer that.
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "Field filters"
         (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
                                                   :value    (s/eq ["Gizmo" "Gadget"])
@@ -509,7 +509,7 @@
 
 (deftest use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), use the parameter's default"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "Field filters"
         (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :string/=)
                                                   :default  (s/eq ["Widget"])

@@ -84,7 +84,7 @@
 
 
 (defn- test-query []
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (mt/$ids orders
       {:database     (mt/id)
        :type         :query
@@ -108,7 +108,7 @@
 
 (deftest generate-queries-test
   (mt/test-drivers (pivot.test-utils/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
                                   :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
@@ -184,7 +184,7 @@
 
 (defn- distinct-values [table col]
   (->> (mt/rows
-         (mt/dataset sample-dataset
+         (mt/dataset sample-database
            (qp/process-query
             {:database (mt/id)
              :type     :query
@@ -224,14 +224,14 @@
            (pivot/run-pivot-query (pivot.test-utils/pivot-query) nil {:rff rff})))))
 
 (deftest parameters-query-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (is (schema= {:status    (s/eq :completed)
                   :row_count (s/eq 137)
                   s/Keyword  s/Any}
                  (pivot/run-pivot-query (pivot.test-utils/parameters-query))))))
 
 (deftest pivots-should-not-return-expressions-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
                           :breakout    [$user_id->people.source $product_id->products.category]})
@@ -276,7 +276,7 @@
 
 (deftest pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-temp-copy-of-db
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]

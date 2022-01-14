@@ -2,10 +2,10 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   PRODUCTS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import DimensionLabel from "./DimensionLabel";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -41,7 +41,7 @@ describe("DimensionLabel", () => {
     beforeEach(() => {
       const aggQuery = new StructuredQuery(PRODUCTS.question(), {
         type: "query",
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         query: {
           "source-table": PRODUCTS.id,
           aggregation: ["sum", ["field", PRODUCTS.RATING.id, null]],
@@ -87,7 +87,7 @@ describe("DimensionLabel", () => {
   describe("given a TemplateTagDimension", () => {
     beforeEach(() => {
       const nativeQuery = new NativeQuery(PRODUCTS.question(), {
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
           query: "select * from PRODUCTS where CREATED_AT = {{date}}",

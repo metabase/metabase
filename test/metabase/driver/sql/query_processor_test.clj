@@ -280,149 +280,110 @@
 
 (deftest ambiguous-field-metadata-test
   (testing "With queries that refer to the same field more than once, can we generate sane SQL?"
-    (mt/dataset sample-dataset
-      (is (= '{:select    [ORDERS.ID                       AS ID
-                           ORDERS.PRODUCT_ID               AS PRODUCT_ID
-                           PRODUCTS__via__PRODUCT_ID.TITLE AS PRODUCTS__via__PRODUCT_ID__TITLE
-                           Products.ID                     AS Products__ID
-                           Products.TITLE                  AS Products__TITLE]
-               :from      [ORDERS]
-               :left-join [PRODUCTS Products                  ON ORDERS.PRODUCT_ID = Products.ID
-                           PRODUCTS PRODUCTS__via__PRODUCT_ID ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
-               :order-by  [ORDERS.ID ASC]
-               :limit     [2]}
-             (-> (mt/mbql-query orders
-                   {:joins    [{:strategy     :left-join
-                                :source-table $$products
-                                :condition    [:= $product_id &Products.products.id]
-                                :alias        "Products"}
-                               {:strategy     :left-join
-                                :source-table $$products
-                                :alias        "PRODUCTS__via__PRODUCT_ID"
-                                :fk-field-id  %product_id
-                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
-                    :order-by [[:asc $id]]
-                    :limit    2
-                    :fields   [$id
-                               $product_id
-                               &PRODUCTS__via__PRODUCT_ID.products.title
-                               &Products.products.id
-                               &Products.products.title]})
-                 mbql->native
-                 sql.qp-test-util/sql->sql-map))))))
-
-(deftest simple-expressions-test
-  (is (= '{:select [source.ID          AS ID
-                    source.NAME        AS NAME
-                    source.CATEGORY_ID AS CATEGORY_ID
-                    source.LATITUDE    AS LATITUDE
-                    source.LONGITUDE   AS LONGITUDE
-                    source.PRICE       AS PRICE
-                    source.double_id   AS double_id]
-           :from   [{:select [VENUES.ID          AS ID
-                              VENUES.NAME        AS NAME
-                              VENUES.CATEGORY_ID AS CATEGORY_ID
-                              VENUES.LATITUDE    AS LATITUDE
-                              VENUES.LONGITUDE   AS LONGITUDE
-                              VENUES.PRICE       AS PRICE
-                              (VENUES.ID * 2)    AS double_id]
-                     :from   [VENUES]}
-                    source]
-           :limit  [1]}
-         (-> (mt/mbql-query venues
-               {:source-query {:source-table $$venues
-                               :expressions  {:double_id [:* $id 2]}
-                               :fields       [$id $name $category_id $latitude $longitude $price [:expression "double_id"]]}
-                :fields       [$id $name $category_id $latitude $longitude $price *double_id/Float]
-                :limit        1})
-             mbql->native
-             sql.qp-test-util/sql->sql-map))))
+    (mt/dataset sample-database
+      (is (= (str "SELECT"
+                  " ORDERS.ID AS ID,"
+                  " ORDERS.PRODUCT_ID AS PRODUCT_ID,"
+                  " PRODUCTS__via__PRODUCT_ID.TITLE AS PRODUCTS__via__PRODUCT_ID__TITLE,"
+                  " Products.ID AS Products__ID,"
+                  " Products.TITLE AS Products__TITLE "
+                  "FROM ORDERS "
+                  "LEFT JOIN PRODUCTS Products"
+                  " ON ORDERS.PRODUCT_ID = Products.ID"
+                  " LEFT JOIN PRODUCTS PRODUCTS__via__PRODUCT_ID"
+                  " ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID "
+                  "ORDER BY ORDERS.ID ASC "
+                  "LIMIT 2")
+             (mbql->native
+              (mt/mbql-query orders
+                {:joins    [{:strategy     :left-join
+                             :source-table $$products
+                             :condition    [:= $product_id &Products.products.id]
+                             :alias        "Products"}
+                            {:strategy     :left-join
+                             :source-table $$products
+                             :alias        "PRODUCTS__via__PRODUCT_ID"
+                             :fk-field-id  %product_id
+                             :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}]
+                 :order-by [[:asc $id]]
+                 :limit    2
+                 :fields   [$id
+                            $product_id
+                            &PRODUCTS__via__PRODUCT_ID.products.title
+                            &Products.products.id
+                            &Products.products.title]})))))))
 
 (deftest multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
-    (mt/dataset sample-dataset
-      (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                          source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy") AS CREATED_AT
-                          source.pivot-grouping AS pivot-grouping
-                          count (*) AS count]
-               :from     [{:select    [ORDERS.ID                          AS ID
-                                       ORDERS.USER_ID                     AS USER_ID
-                                       ORDERS.PRODUCT_ID                  AS PRODUCT_ID
-                                       ORDERS.SUBTOTAL                    AS SUBTOTAL
-                                       ORDERS.TAX                         AS TAX
-                                       ORDERS.TOTAL                       AS TOTAL
-                                       ORDERS.DISCOUNT                    AS DISCOUNT
-                                       ORDERS.CREATED_AT                  AS CREATED_AT
-                                       ORDERS.QUANTITY                    AS QUANTITY
-                                       abs (0)                            AS pivot-grouping
-                                       ;; TODO -- I'm not sure if the order here is deterministic
-                                       PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
-                                       PEOPLE__via__USER_ID.SOURCE        AS PEOPLE__via__USER_ID__SOURCE
-                                       PRODUCTS__via__PRODUCT_ID.ID       AS PRODUCTS__via__PRODUCT_ID__ID
-                                       PEOPLE__via__USER_ID.ID            AS PEOPLE__via__USER_ID__ID]
-                           :from      [ORDERS]
-                           :left-join [PRODUCTS PRODUCTS__via__PRODUCT_ID
-                                       ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID
-                                       PEOPLE PEOPLE__via__USER_ID
-                                       ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID]}
-                          source]
-               :where    [((source.PEOPLE__via__USER_ID__SOURCE = ? OR source.PEOPLE__via__USER_ID__SOURCE = ?)
-                           AND
-                           (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ? OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)
-                           AND
-                           source.CREATED_AT >= parsedatetime (year (dateadd ("year" CAST (-2 AS long) now ())) "yyyy")
-                           AND
-                           source.CREATED_AT < parsedatetime (year (now ()) "yyyy"))]
-               :group-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY
-                          source.PEOPLE__via__USER_ID__SOURCE
-                          parsedatetime (year (source.CREATED_AT) "yyyy")
-                          source.pivot-grouping]
-               :order-by [source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC
-                          source.PEOPLE__via__USER_ID__SOURCE ASC
-                          parsedatetime (year (source.CREATED_AT) "yyyy") ASC
-                          source.pivot-grouping ASC]}
-             (-> (mt/mbql-query orders
-                   {:aggregation [[:aggregation-options [:count] {:name "count"}]]
-                    :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
-                                  &PEOPLE__via__USER_ID.people.source
-                                  !year.created_at
-                                  [:expression "pivot-grouping"]]
-                    :filter      [:and
-                                  [:or
-                                   [:=
-                                    &PEOPLE__via__USER_ID.people.source
-                                    [:value "Facebook" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
-                                   [:=
-                                    &PEOPLE__via__USER_ID.people.source
-                                    [:value "Google" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
-                                  [:or
-                                   [:=
-                                    &PRODUCTS__via__PRODUCT_ID.products.category
-                                    [:value "Doohickey" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
-                                   [:=
-                                    &PRODUCTS__via__PRODUCT_ID.products.category
-                                    [:value "Gizmo" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
-                                  [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
-                    :expressions {:pivot-grouping [:abs 0]}
-                    :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
-                                  [:asc &PEOPLE__via__USER_ID.people.source]
-                                  [:asc !year.created_at]
-                                  [:asc [:expression "pivot-grouping"]]]
-                    :joins       [{:source-table $$products
-                                   :strategy     :left-join
-                                   :alias        "PRODUCTS__via__PRODUCT_ID"
-                                   :fk-field-id  %product_id
-                                   :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}
-                                  {:source-table $$people
-                                   :strategy     :left-join
-                                   :alias        "PEOPLE__via__USER_ID"
-                                   :fk-field-id  %user_id
-                                   :condition    [:= $user_id &PEOPLE__via__USER_ID.people.id]}]})
-                 mbql->native
-                 sql.qp-test-util/sql->sql-map))))))
+    (mt/dataset sample-database
+      (is (= (str "SELECT source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                  " source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
+                  " parsedatetime(year(source.CREATED_AT), 'yyyy') AS CREATED_AT,"
+                  " source.\"pivot-grouping\" AS \"pivot-grouping\", count(*) AS count "
+                  "FROM ("
+                  "SELECT PRODUCTS__via__PRODUCT_ID.CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                  " PEOPLE__via__USER_ID.SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
+                  " ORDERS.CREATED_AT AS CREATED_AT,"
+                  " abs(0) AS \"pivot-grouping\" "
+                  "FROM ORDERS"
+                  " LEFT JOIN PRODUCTS PRODUCTS__via__PRODUCT_ID"
+                  " ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID "
+                  "LEFT JOIN PEOPLE PEOPLE__via__USER_ID"
+                  " ON ORDERS.USER_ID = PEOPLE__via__USER_ID.ID"
+                  ") source "
+                  "WHERE ((source.PEOPLE__via__USER_ID__SOURCE = ? OR source.PEOPLE__via__USER_ID__SOURCE = ?)"
+                  " AND (source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?"
+                  " OR source.PRODUCTS__via__PRODUCT_ID__CATEGORY = ?)"
+                  " AND source.CREATED_AT >= parsedatetime(year(dateadd('year', CAST(-2 AS long), now())), 'yyyy')"
+                  " AND source.CREATED_AT < parsedatetime(year(now()), 'yyyy')) "
+                  "GROUP BY source.PRODUCTS__via__PRODUCT_ID__CATEGORY,"
+                  " source.PEOPLE__via__USER_ID__SOURCE,"
+                  " parsedatetime(year(source.CREATED_AT), 'yyyy'),"
+                  " source.\"pivot-grouping\" "
+                  "ORDER BY source.PRODUCTS__via__PRODUCT_ID__CATEGORY ASC,"
+                  " source.PEOPLE__via__USER_ID__SOURCE ASC,"
+                  " parsedatetime(year(source.CREATED_AT), 'yyyy') ASC,"
+                  " source.\"pivot-grouping\" ASC")
+             (mbql->native
+              (mt/mbql-query orders
+                {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                 :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
+                               &PEOPLE__via__USER_ID.people.source
+                               !year.created_at
+                               [:expression "pivot-grouping"]]
+                 :filter     [:and
+                              [:or
+                               [:=
+                                &PEOPLE__via__USER_ID.people.source
+                                [:value "Facebook" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]
+                               [:=
+                                &PEOPLE__via__USER_ID.people.source
+                                [:value "Google" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "SOURCE"}]]]
+                              [:or
+                               [:=
+                                &PRODUCTS__via__PRODUCT_ID.products.category
+                                [:value "Doohickey" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]
+                               [:=
+                                &PRODUCTS__via__PRODUCT_ID.products.category
+                                [:value "Gizmo" {:base_type :type/Text, :semantic_type nil, :database_type "VARCHAR", :name "CATEGORY"}]]]
+                              [:between !year.created_at [:relative-datetime -2 :year] [:relative-datetime -1 :year]]]
+                 :expressions {:pivot-grouping [:abs 0]}
+                 :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
+                               [:asc &PEOPLE__via__USER_ID.people.source]
+                               [:asc !year.created_at]
+                               [:asc [:expression "pivot-grouping"]]]
+                 :joins       [{:source-table $$products
+                                :strategy     :left-join
+                                :alias        "PRODUCTS__via__PRODUCT_ID"
+                                :fk-field-id  %product_id
+                                :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]}
+                               {:source-table $$people
+                                :strategy     :left-join
+                                :alias        "PEOPLE__via__USER_ID",
+                                :fk-field-id  %user_id
+                                :condition    [:= $user_id &PEOPLE__via__USER_ID.people.id]}]})))))))
 
-(deftest reference-aggregation-expressions-in-joins-test
+(deftest referernce-aggregation-expressions-in-joins-test
   (testing "See if we can correctly compile a query that references expressions that come from a join"
     (is (= '{:select [source.ID                           AS ID
                       source.NAME                         AS NAME
@@ -723,37 +684,100 @@
                                                    :aggregation  [[:avg $reviews.rating]]
                                                    :breakout     [&P2.products.category]}}]
                     :order-by     [[:asc &P1.products.category]
-                                   [:asc [:field %people.source {:join-alias "People"}]]]
-                    :limit        2})
-                 mbql->native
-                 sql.qp-test-util/sql->sql-map))))))
+                                   [:asc &People.people.source]]
+                    :joins        [{:strategy     :left-join
+                                    :source-table $$products
+                                    :condition
+                                    [:= $orders.product_id &P1.products.id]
+                                    :alias        "P1"}
+                                   {:strategy     :left-join
+                                    :source-table $$people
+                                    :condition    [:= $orders.user_id &People.people.id]
+                                    :alias        "People"}]}
+     :joins        [{:strategy     :left-join
+                     :condition    [:= $products.category &Q2.products.category]
+                     :alias        "Q2"
+                     :source-query {:source-table $$reviews
+                                    :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                    :breakout     [&P2.products.category]
+                                    :joins        [{:strategy     :left-join
+                                                    :source-table $$products
+                                                    :condition    [:= $reviews.product_id &P2.products.id]
+                                                    :alias        "P2"}]}}]
+     :limit        2}))
 
-(deftest floating-point-division-test
-  (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
-    (is (= '{:select   [source.my_cool_new_field AS my_cool_new_field]
-             :from     [{:select [VENUES.ID          AS ID
-                                  VENUES.NAME        AS NAME
-                                  VENUES.CATEGORY_ID AS CATEGORY_ID
-                                  VENUES.LATITUDE    AS LATITUDE
-                                  VENUES.LONGITUDE   AS LONGITUDE
-                                  VENUES.PRICE       AS PRICE
-                                  (VENUES.PRICE + 2) AS big_price
-                                  (CAST
-                                   (VENUES.PRICE AS float)
-                                   /
-                                   CASE WHEN (VENUES.PRICE + 2) = 0 THEN NULL
-                                   ELSE (VENUES.PRICE + 2)
-                                   END) AS my_cool_new_field]
-                         :from   [VENUES]}
-                        source]
-             :order-by [source.ID ASC]
-             :limit    [3]}
-           (-> (mt/mbql-query venues
-                 {:expressions {:big_price         [:+ $price 2]
-                                :my_cool_new_field [:/ $price [:expression "big_price"]]}
-                  :fields      [[:expression "my_cool_new_field"]]
-                  :limit       3
-                  :order-by    [[:asc $id]]})
+(deftest source-aliases-test
+  (mt/dataset sample-database
+    (mt/with-everything-store
+      (let [query       (mega-query)
+            small-query (get-in query [:query :source-query])]
+        (testing (format "Query =\n%s" (u/pprint-to-str small-query))
+          (is (= {:this-level-fields {[:field (mt/id :products :category) nil] "P1__CATEGORY"
+                                      [:field (mt/id :people :source) nil]     "People__SOURCE"}
+                  :source-fields     {}}
+                 (#'sql.qp/source-aliases :h2 small-query))))
+
+        (testing (format "Query =\n%s" (u/pprint-to-str query))
+          (is (= {[:field (mt/id :products :category) nil]                "P1__CATEGORY"
+                  [:field (mt/id :people :source) nil]                    "People__SOURCE"
+                  [:field (mt/id :products :category) {:join-alias "Q2"}] "P2__CATEGORY"}
+                 (:source-fields (#'sql.qp/source-aliases :h2 (:query query))))))))))
+
+(defn mini-query []
+  (mt/dataset sample-database
+    (qp/query->preprocessed
+     (mt/mbql-query orders
+       {:source-table $$orders
+        :fields       [$id &Q2.products.category]
+        :joins        [{:fields       :none
+                        :condition    [:= $products.category &Q2.products.category]
+                        :alias        "Q2"
+                        :source-query {:source-table $$reviews
+                                       :joins        [{:fields       :all
+                                                       :source-table $$products
+                                                       :condition    [:=
+                                                                      $reviews.product_id
+                                                                      &Products.products.id]
+                                                       :alias        "Products"}]
+                                       :aggregation  [[:avg $reviews.rating]]
+                                       :breakout     [&Products.products.category]}}]
+        :limit        2}))))
+
+(deftest use-correct-source-aliases-test
+  (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)")
+  (mt/dataset sample-database
+    (is (= (->> ["SELECT source.P1__CATEGORY AS P1__CATEGORY,"
+                 "       source.People__SOURCE AS People__SOURCE,"
+                 "       source.count AS count,"
+                 "       Q2.P2__CATEGORY AS Q2__CATEGORY,"
+                 "       Q2.avg AS avg"
+                 "FROM ("
+                 "    SELECT P1.CATEGORY AS P1__CATEGORY,"
+                 "           People.SOURCE AS People__SOURCE,"
+                 "           count(*) AS count"
+                 "    FROM ORDERS"
+                 "    LEFT JOIN PRODUCTS P1"
+                 "           ON ORDERS.PRODUCT_ID = P1.ID"
+                 "    LEFT JOIN PEOPLE People"
+                 "           ON ORDERS.USER_ID = People.ID"
+                 "    GROUP BY P1.CATEGORY,"
+                 "             People.SOURCE"
+                 "    ORDER BY P1.CATEGORY ASC,"
+                 "             People.SOURCE ASC"
+                 ") source"
+                 "LEFT JOIN ("
+                 "    SELECT P2.CATEGORY AS P2__CATEGORY,"
+                 "           avg(REVIEWS.RATING) AS avg"
+                 "    FROM REVIEWS"
+                 "    LEFT JOIN PRODUCTS P2"
+                 "           ON REVIEWS.PRODUCT_ID = P2.ID"
+                 "    GROUP BY P2.CATEGORY"
+                 ") Q2"
+                 "       ON source.P1__CATEGORY = Q2.P2__CATEGORY"
+                 "LIMIT 2"]
+                (str/join " ")
+                even-prettier-sql)
+           (-> (mega-query)
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 

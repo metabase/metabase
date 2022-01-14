@@ -54,7 +54,7 @@
 
 (deftest resolve-joined-fields-in-source-queries-test
   (testing "Should be able to resolve joined fields at any level of the query (#13642)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "simple query"
         (let [query (mt/mbql-query nil
                       {:source-query {:source-table $$orders
@@ -159,7 +159,7 @@
 
 (deftest multiple-joins-to-same-table-test
   (testing "Should prefer EXPLICIT joins when resolving joined fields and both implicit/explicit joins are present"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (let [query (mt/mbql-query orders
                     {:filter [:= $products.category "Widget"]
                      :joins  [{:source-table $$products
@@ -195,7 +195,7 @@
                        (qp/process-query query))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (testing "References to joined fields in a join in a source query should be resolved correctly #(14766)"
       (is (= (mt/mbql-query orders
                {:source-query {:source-table $$orders

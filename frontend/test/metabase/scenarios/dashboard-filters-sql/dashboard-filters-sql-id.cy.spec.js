@@ -7,11 +7,11 @@ import {
   setFilter,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > SQL > ID", () => {
   beforeEach(() => {

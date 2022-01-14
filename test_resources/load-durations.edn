@@ -21,10 +21,10 @@
  ["office-checkins" "checkins"]                                       5350200
  ["places-cam-likes" "places"]                                        1194400
  ["sad-toucan-incidents" "incidents"]                                 7324200
- ["sample-dataset" "orders"]                                          3439047900
- ["sample-dataset" "people"]                                          1922302400
- ["sample-dataset" "products"]                                        95636200
- ["sample-dataset" "reviews"]                                         292738400
+ ["sample-database" "orders"]                                         3439047900
+ ["sample-database" "people"]                                         1922302400
+ ["sample-database" "products"]                                       95636200
+ ["sample-database" "reviews"]                                        292738400
  ["string-times" "times"]                                             2629800
  ["table_with_comment_after_sync_db" "table_with_comment_after_sync"] 997500
  ["table_with_comment_db" "table_with_comment"]                       871300

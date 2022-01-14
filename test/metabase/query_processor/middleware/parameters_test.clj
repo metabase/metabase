@@ -286,7 +286,7 @@
 
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options

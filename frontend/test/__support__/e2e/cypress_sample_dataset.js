@@ -3,8 +3,8 @@
  *  See: `frontend/test/snapshot-creators/default.cy.snap.js:19`
  *
  *  - It had to be added to `.gitignore`.
- *  - It contains extracted metadata from sample dataset (table ids and field ids)
+ *  - It contains extracted metadata from sample database (table ids and field ids)
  */
 
 //
-export { default as SAMPLE_DATASET } from "./cypress_sample_dataset.json"; // eslint-disable-line import/no-unresolved
+export { default as SAMPLE_DATABASE } from "./cypress_sample_database.json"; // eslint-disable-line import/no-unresolved

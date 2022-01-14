@@ -217,7 +217,7 @@ describe("scenarios > models", () => {
         cy.icon("chevronleft").click();
 
         cy.findByText("Raw Data").click();
-        cy.findByText("Sample Dataset").click(); // go back to db list
+        cy.findByText("Sample Database").click(); // go back to db list
         cy.findByText("Saved Questions").should("not.exist");
         testDataPickerSearch({
           inputPlaceholderText: "Search for a table…",
@@ -392,7 +392,7 @@ describe("scenarios > models", () => {
       cy.findByText("Models").should("not.exist");
       cy.findByText("Raw Data").should("not.exist");
       cy.findByText("Saved Questions").should("not.exist");
-      cy.findByText("Sample Dataset").should("not.exist");
+      cy.findByText("Sample Database").should("not.exist");
 
       cy.findByText("Orders").click();
 
@@ -450,7 +450,7 @@ describe("scenarios > models", () => {
       cy.findByText("Raw Data").should("not.exist");
 
       cy.findByText("Saved Questions");
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
     });
   });
 });

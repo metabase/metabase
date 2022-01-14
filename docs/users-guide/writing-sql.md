@@ -16,7 +16,7 @@ You can write SQL (or your database's native querying language) directly into th
 
 ![SQL editor](images/SQLInterface.png)
 
-To try it out, select the Sample Dataset, then type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
+To try it out, select the Sample Database, then type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
 
 **Tip:** You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only the selected section of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
 
@@ -37,7 +37,7 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 
 ### Learn more
 
-- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html) 
+- [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
 
 ---
 

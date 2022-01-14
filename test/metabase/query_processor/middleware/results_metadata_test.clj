@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.results-metadata-test
+(ns metabatabaseery-processor.middleware.results-metadata-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
@@ -306,7 +306,7 @@
 
 (deftest results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (letfn [(do-test []
                 (let [results-metadata       (get-in (mt/run-mbql-query orders {:limit 10})
                                                      [:data :results_metadata :columns])
@@ -328,7 +328,7 @@
 
 (deftest field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (doseq [[description query]
               {"simple query"
                (mt/mbql-query orders

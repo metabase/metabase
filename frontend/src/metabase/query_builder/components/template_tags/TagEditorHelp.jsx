@@ -219,12 +219,12 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
 const TagEditorHelp = ({
   database,
   setDatasetQuery,
-  sampleDatasetId,
+  sampleDatabaseId,
   switchToSettings,
 }) => {
   const driver = database && database.engine;
   const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = driver === "mongo" ? database.id : sampleDatasetId;
+  const datasetId = driver === "mongo" ? database.id : sampleDatabaseId;
 
   let setQueryWithDatasetId = null;
   if (datasetId != null) {

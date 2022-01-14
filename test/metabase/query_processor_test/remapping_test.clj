@@ -184,7 +184,7 @@
 
 (deftest native-query-remapping-test
   (testing "Remapping should work for native queries"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (letfn [(remappings-with-metadata [metadata]
                 (mt/with-column-remappings [orders.product_id products.title]
                   (mt/rows
@@ -197,14 +197,14 @@
             (is (seq metadata))
             (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                     [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
-                   (remappings-with-metadata metadata)))))
+                   (remappings-with-metadata metadata)))))))))
         ;; doesn't currently work with any other metadata.
-        ))))
+
 
 (deftest remappings-with-implicit-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-column-remappings [orders.product_id products.title]
           (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
                  (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]

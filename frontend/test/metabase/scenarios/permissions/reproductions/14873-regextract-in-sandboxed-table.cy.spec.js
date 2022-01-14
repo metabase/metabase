@@ -14,7 +14,7 @@ describeWithToken("postgres > user > query", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    // Update basic permissions (the same starting "state" as we have for the "Sample Dataset")
+    // Update basic permissions (the same starting "state" as we have for the "Sample Database")
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
         [PG_DB_ID]: { schemas: "none", native: "none" },

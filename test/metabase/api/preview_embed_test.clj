@@ -1,4 +1,4 @@
-(ns metabase.api.preview-embed-test
+(ns metabatabasei.preview-embed-test
   (:require [clojure.test :refer :all]
             [metabase.api.embed-test :as embed-test]
             [metabase.api.pivots :as pivots]
@@ -356,7 +356,7 @@
 
 (deftest pivot-query-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "GET /api/preview_embed/pivot/card/:token/query"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
@@ -396,7 +396,7 @@
 
 (deftest pivot-card-id-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (embed-test/with-embedding-enabled-and-new-secret-key
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}

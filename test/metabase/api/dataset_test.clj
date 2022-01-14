@@ -1,4 +1,4 @@
-(ns metabase.api.dataset-test
+(ns metabatabasei.dataset-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
@@ -322,7 +322,7 @@
 
 (deftest pivot-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/pivot-query))
@@ -372,7 +372,7 @@
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/filters-query))
@@ -389,7 +389,7 @@
 
 (deftest pivot-parameter-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/parameters-query))

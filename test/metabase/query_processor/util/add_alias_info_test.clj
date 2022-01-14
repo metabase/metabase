@@ -1,4 +1,4 @@
-(ns metabase.query-processor.util.add-alias-info-test
+(ns metabatabaseery-processor.util.add-alias-info-test
   (:require [clojure.test :refer :all]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
@@ -81,7 +81,7 @@
                   :limit        1})))))
 
 (deftest multiple-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (is (query= (mt/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :joins        [{:source-table $$products
@@ -157,7 +157,7 @@
                     :limit        1}))))))
 
 (deftest uniquify-aliases-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (is (query= (mt/mbql-query products
                   {:source-table $$products
                    :expressions  {:CATEGORY [:concat
@@ -297,7 +297,7 @@
 
 (deftest join-source-query-join-test
   (with-redefs [fix-bad-refs/fix-bad-references identity]
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (query= (mt/mbql-query orders
                     {:joins  [{:source-query {:source-table $$reviews
                                               :aggregation  [[:aggregation-options

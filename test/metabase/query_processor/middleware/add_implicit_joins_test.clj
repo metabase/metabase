@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.add-implicit-joins-test
+(ns metabatabaseeery-processor.middleware.add-implicit-joins-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.driver :as driver]
@@ -11,7 +11,7 @@
             [schema.core :as s]))
 
 (deftest resolve-implicit-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (let [query (mt/nest-query
                  (mt/mbql-query orders
                    {:source-table $$orders
@@ -133,7 +133,7 @@
                                 :fk-field-id  %category_id}]}}))))
 
     (testing "Should work at arbitrary levels of nesting"
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (doseq [level (range 4)]
           (testing (format "(%d levels of nesting)" level)
             (let [query (-> (mt/mbql-query orders
@@ -202,7 +202,7 @@
 
 (deftest reuse-existing-joins-test-2
   (testing "We DEFINITELY need to reuse joins if adding them again would break the query."
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= (mt/mbql-query orders
                {:filter       [:> *count/Integer 5]
                 :fields       [$created_at
@@ -232,7 +232,7 @@
                  :limit        5})))))))
 
 (deftest add-fields-for-reused-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (mt/mbql-query orders
                {:source-query {:source-table $$orders
@@ -299,7 +299,7 @@
                  :limit        5})))))))
 
 (deftest reuse-joins-sanity-check-test
-  (mt/dataset sample-dataset
+  (mt/dataset sample-database
     (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
       (let [query (mt/mbql-query orders
                     {:source-query {:source-table $$orders
