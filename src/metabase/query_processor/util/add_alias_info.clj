@@ -52,26 +52,10 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
 
-;; these methods were moved from [[metabase.driver.sql.query-processor]] in 0.42.0
-
-(defmulti prefix-field-alias
+(defn prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
-  columns that are the result of joins.
-
-  Drivers that do not use the functionality in [[metabase.query-processor.util.add-alias-info]] or that do not support
-  joins should not worry about this method.
-
-  The default implementation joins strings with `__`. Override this if you need to do something different.
-
-  DEPRECATED IN 0.42.0 -- [[metabase.driver/escape-alias]] is now called on all aliases generated
-  by [[prefix-field-alias]], and thus it is not necessary to implement this method for purposes of ensuring the result
-  is escaped. There should be no need to implement this method. It will be removed from a future release."
-  {:arglists '([driver prefix field-alias]), :added "0.38.1", :deprecated "0.42.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod prefix-field-alias :default
-  [_driver prefix field-alias]
+  columns that are the result of joins."
+  [prefix field-alias]
   (str prefix "__" field-alias))
 
 (defn- make-unique-alias-fn
@@ -262,7 +246,7 @@
    [_ _id-or-name {:keys [join-alias]}, :as field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias driver/*driver* join-alias field-name)
+    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
     :else                                      field-name))
@@ -274,7 +258,7 @@
    [_ _id-or-name {:keys [join-alias]} :as field-clause]
    {:keys [field-name alias-from-join alias-from-source-query]}]
   (cond
-    join-alias              (prefix-field-alias driver/*driver* join-alias (or alias-from-join field-name))
+    join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     alias-from-source-query alias-from-source-query
     :else                   field-name))
 

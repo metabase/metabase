@@ -502,11 +502,6 @@
   [_ alias-name]
   (->valid-field-identifier alias-name))
 
-(defmethod sql.qp/prefix-field-alias :bigquery
-  [driver prefix field-alias]
-  (let [s ((get-method sql.qp/prefix-field-alias :sql) driver prefix field-alias)]
-    (->valid-field-identifier s)))
-
 ;; See:
 ;;
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions

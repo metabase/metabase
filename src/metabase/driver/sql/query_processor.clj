@@ -20,7 +20,7 @@
             [metabase.query-processor.util.nest-query :as nest-query]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
@@ -146,28 +146,6 @@
        :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
      day-of-week)))
 
-(defmulti field->identifier
-  "DEPRECATED: Unused in 0.42.0+; this functionality is now handled by [[->honeysql]]. Implementing this method has no
-  effect. This method will be removed in a future release."
-  {:arglists '([driver field]), :deprecated "0.42.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti ^String field->alias
-  "Returns an escaped alias for a Field instance `field`.
-
-  DEPRECATED as of x.41. This method is no longer used by the SQL QP itself, but is still available for existing code
-  already using it. This multimethod will be removed in a future release. Instead, drivers will simply override
-  the [[metabase.query-processor.util.add-alias-info/escape-alias]] multimethod if they want to influence the alias to
-  be used for a given field name."
-  {:arglists '([driver field]), :deprecated "0.41.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod field->alias :sql
-  [driver field]
-  (driver/escape-alias driver (:name field)))
-
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
   statement. Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
@@ -240,22 +218,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Low-Level ->honeysql impls                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:dynamic ^{:deprecated "0.42.0"} *table-alias*
-  "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
-  schema + Table name. Used to implement things like joined `:field`s.
-
-  Deprecated (unused) in 0.42.0+. Instead of using this, use or override `::add/source-table` in the
-  `:field`/`:expression`/`:aggregation` options."
-  nil)
-
-(def ^:dynamic ^{:deprecated "0.42.0"} *source-query*
-  "The source-query in effect.  Used when the query processor might need to distinguish between the type of the source
-  query (ex: to provide different behavior depending on whether the source query is from a table versus a subquery).
-
-  DEPRECATED -- use [[*query*]] instead, which does the same thing but it always bound even if we are not in a source
-  query."
-  nil)
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
@@ -395,9 +357,10 @@
                       {:clause field-clause}
                       e)))))
 
-;; deprecated, but we'll keep it here for now for backwards compatibility. TODO -- should we log a warning about this?
+;; deprecated, but we'll keep it here for now for backwards compatibility.
 (defmethod ->honeysql [:sql (type Field)]
   [driver field]
+  (log-deprecation-warning driver "->honeysql [:sql (class Field)]" "0.42.0")
   (->honeysql driver [:field (:id field) nil]))
 
 (defmethod ->honeysql [:sql :count]
@@ -771,16 +734,15 @@
 
 (defmethod join-source :sql
   [driver {:keys [source-table source-query]}]
-  (binding [*table-alias* nil]
-    (cond
-      (and source-query (:native source-query))
-      (SQLSourceQuery. (:native source-query) (:params source-query))
+  (cond
+    (and source-query (:native source-query))
+    (SQLSourceQuery. (:native source-query) (:params source-query))
 
-      source-query
-      (mbql->honeysql driver {:query source-query})
+    source-query
+    (mbql->honeysql driver {:query source-query})
 
-      :else
-      (->honeysql driver (qp.store/table source-table)))))
+    :else
+    (->honeysql driver (qp.store/table source-table))))
 
 (def ^:private HoneySQLJoin
   "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
@@ -919,9 +881,6 @@
         (query->keys-in-application-order inner-query))
        (add-default-select driver)))
 
-
-;;; -------------------------------------------- Handling source queries ---------------------------------------------
-
 (declare apply-clauses)
 
 (defn- apply-source-query
@@ -934,16 +893,6 @@
                    (apply-clauses driver {} source-query))
                  (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 
-(defn- apply-clauses-with-aliased-source-query-table
-  "Bind [[*table-alias*]] which will cause `field` and the like to be compiled to SQL that is qualified by that alias
-  rather than their normal table."
-  [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*table-alias*  source-query-alias
-            *source-query* source-query]
-    (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
-
-
-;;; -------------------------------------------- putting it all together --------------------------------------------
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
@@ -951,10 +900,10 @@
   [driver honeysql-form {:keys [source-query], :as inner-query}]
   (binding [*query* inner-query]
     (if source-query
-      (apply-clauses-with-aliased-source-query-table
+      (apply-top-level-clauses
        driver
        (apply-source-query driver honeysql-form inner-query)
-       inner-query)
+       (dissoc inner-query :source-query))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
 (defn preprocess
@@ -983,12 +932,90 @@
     {:query sql, :params args}))
 
 
-;;;; Potemkin Exports for Covenience/Backwards Compatibility
+;;; DEPRECATED STUFF
 
-(p/import-vars
- ;; These multimethods were moved to [[metabase.query-processor.util.add-alias-info]] and [[metabase.driver]]
- ;; respectively in 0.42.0
- [add
-  prefix-field-alias]
- [driver
-  escape-alias])
+(def ^:dynamic ^{:deprecated "0.42.0"} *table-alias*
+  "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
+  schema + Table name. Used to implement things like joined `:field`s.
+
+  Deprecated (unused) in 0.42.0+. Instead of using this, use or override `::add/source-table` in the
+  `:field`/`:expression`/`:aggregation` options."
+  nil)
+
+(def ^:dynamic ^{:deprecated "0.42.0"} *source-query*
+  "The source-query in effect.  Used when the query processor might need to distinguish between the type of the source
+  query (ex: to provide different behavior depending on whether the source query is from a table versus a subquery).
+
+  DEPRECATED -- use [[*query*]] instead, which does the same thing but it always bound even if we are not in a source
+  query."
+  nil)
+
+(defn- log-deprecation-warning [driver method-name deprecated-version]
+  (log/warn
+   (u/colorize 'red
+     (trs "Warning: Driver {0} is using {1}. This method was deprecated in {2} and will be removed in a future release."
+          driver method-name deprecated-version))))
+
+(defmulti field->identifier
+  "DEPRECATED: Unused in 0.42.0+; this functionality is now handled by [[->honeysql]]. Implementing this method has no
+  effect. This method will be removed in a future release."
+  {:arglists '([driver field]), :deprecated "0.42.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field->identifier :sql
+  [driver field]
+  (log-deprecation-warning driver `field->identifier "v0.42.0")
+  (->honeysql driver field))
+
+(defmulti ^String field->alias
+  "Returns an escaped alias for a Field instance `field`.
+
+  DEPRECATED as of x.41. This method is no longer used by the SQL QP itself, but is still available for existing code
+  already using it. This multimethod will be removed in a future release.
+
+  Drivers that need to access this information can look at the
+  `::metabase.query-processor.util.add-alias-info/desired-alias` information in the
+  `:field`/`:expression`/`:aggregation` options map. See [[metabase.query-processor.util.add-alias]] for more
+  information.
+
+  Drivers that need to customize the aliases used can override
+  the [[metabase.query-processor.util.add-alias-info/escape-alias]] multimethod, or change the values of
+  `::metabase.query-processor.util.add-alias-info/desired-alias` or
+  `::metabase.query-processor.util.add-alias-info/source-alias` in the appropriate [[->honeysql]] methods."
+  {:arglists '([driver field]), :deprecated "0.41.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod field->alias :sql
+  [driver [_ _ {::add/keys [desired-alias]} :as field]]
+  (log-deprecation-warning driver `field->alias "v0.41.0")
+  (or desired-alias
+      (driver/escape-alias driver (:name field))))
+
+(defmulti escape-alias
+  "DEPRECATED -- this has been moved to [[driver/escape-alias]]."
+  {:added "0.41.0", :deprecated "0.42.0", :arglists '([driver column-alias-name])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod escape-alias :sql
+  [driver column-alias-name]
+  (log-deprecation-warning driver `escape-alias "0.42.0")
+  (driver/escape-alias driver column-alias-name))
+
+(defmulti prefix-field-alias
+  "DEPRECATED and no longer used in 0.42.0. Previously, this method was used to tell the SQL QP how to combine to
+  strings in order to generate aliases for columns coming from joins. Its primary use was to escape the resulting
+  identifier if needed.
+
+  In Metabase 0.42.0+ you can implement [[metabase.driver/escape-alias]] instead, which is now called when such an
+  alias is generated."
+  {:arglists '([driver prefix column-alias]), :added "0.38.1", :deprecated "0.42.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod prefix-field-alias :sql
+  [driver prefix column-alias]
+  (log-deprecation-warning driver `prefix-field-alias "0.42.0")
+  (add/prefix-field-alias prefix column-alias))
