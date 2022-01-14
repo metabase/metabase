@@ -68,3 +68,44 @@
   [message [_ expected actual]]
   `(t/do-report
     (query=-report ~message ~expected ~actual)))
+
+;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
+
+(defn- partial=-minimize-diff
+  "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `only-in-actual` diff that's not
+  in the original `expected` form."
+  [expected only-in-actual]
+  (cond
+    (and (map? expected) (map? only-in-actual))
+    (into {}
+          (comp (filter (fn [[k v]]
+                          (contains? expected k)))
+                (map (fn [[k v]]
+                       [k (partial=-minimize-diff (get expected k) v)])))
+          only-in-actual)
+
+    (and (sequential? expected) (sequential? only-in-actual))
+    (into
+     [(partial=-minimize-diff (first expected) (first only-in-actual))]
+     (when (next expected)
+       (partial=-minimize-diff (next expected) (next only-in-actual))))
+
+    :else
+    only-in-actual))
+
+(defn partial=-report
+  [message expected actual]
+  (let [[only-in-actual only-in-expected] (data/diff actual expected)
+        pass?                             (if (coll? only-in-expected)
+                                            (empty? only-in-expected)
+                                            (nil? only-in-expected))]
+    {:type     (if pass? :pass :fail)
+     :message  message
+     :expected expected
+     :actual   actual
+     :diffs    [[actual [only-in-expected (partial=-minimize-diff expected only-in-actual)]]]}))
+
+(defmethod t/assert-expr 'partial=
+  [message [_ expected actual]]
+  `(t/do-report
+    (partial=-report ~message ~expected ~actual)))
