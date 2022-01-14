@@ -26,9 +26,9 @@ First, look for models that already exist. If you can't find one that meets your
 1. [Ask a question][question] using either the query builder or the SQL editor.
 2. Save the question.
 3. Click on the down arrow next the question title to open the question details sidebar.
-4. Click on the dataset icon to turn the question into a dataset. 
+4. Click on the model icon to turn the question into a model. 
 
-Convert the question to a dataset (from the sidebar). You can add metadata for each column (especially useful for SQL questions), and edit the underlying query if you need to. People will be able to select datasets in the data picker as the starting point for a new question, and you can place datasets in collections for people to discover.
+Convert the question to a dataset (from the sidebar). You can add metadata for each column (especially useful for SQL questions), and edit the underlying query if you need to. People will be able to select models in the data picker as the starting point for a new question, and you can place models in collections for people to discover.
 
 ## Add metadata to columns in a model
 
@@ -40,9 +40,9 @@ TODO
 
 See [asking questions][question].
 
-## Refer to a dataset in the SQL query editor
+## Refer to a model in the SQL query editor
 
-You can refer to datasets in a SQL query like so:
+You can refer to model in a SQL query like so:
 
 ```
 {% raw %}
@@ -54,9 +54,9 @@ Or as a [CTE][CTE]:
 
 ```
 {% raw %}
-WITH dataset AS {{#3807}}
+WITH model AS {{#3807}}
 SELECT *
-FROM dataset;
+FROM model;
 {% endraw %}
 ```
 
