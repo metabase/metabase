@@ -500,10 +500,6 @@
       ;; when compared to other strings that may have normalized to the same thing.
       (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
 
-(defmethod driver/format-custom-field-name :bigquery
-  [_ custom-field-name]
-  (->valid-field-identifier custom-field-name))
-
 (defmethod sql.qp/escape-alias :bigquery
   [_ alias-name]
   (->valid-field-identifier alias-name))

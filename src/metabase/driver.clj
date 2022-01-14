@@ -446,36 +446,18 @@
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
 
-(defmulti ^:deprecated format-custom-field-name
-  "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
-  `:named` clause:
-
-    [:named [:count] \"My Count\"]
-
-  This name was used for both the `:display_name` in the query results, and for the `:name` used as an alias in the
-  query (e.g. the right-hand side of a SQL `AS` expression). Because some custom display names weren't allowed by some
-  drivers, or would be transformed in some way (for example, Redshift always lowercases custom aliases), this method
-  was needed so we could match the name we had given the column with the one in the query results.
-
-  In 0.33.0, we started using `:named` internally to alias aggregations in middleware in *all* queries to prevent
-  issues with referring to multiple aggregations of the same type when that query was used as a source query.
-  See [#9767](https://github.com/metabase/metabase/issues/9767) for more details. After this change, it became
-  desirable to differentiate between such internally-generated aliases and display names, which need not be used in
-  the query at all; thus in MBQL 1.3.0 [`:named` was replaced by the more general
-  `:aggregation-options`](https://github.com/metabase/mbql/pull/7). Because user-generated names are no longer used as
-  aliases in native queries themselves, this method is no longer needed and will be removed in a future release."
+(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
+  "Unused in Metabase 0.42.0+. Implement [[metabase.query-processor.util.add-alias-info/escape-alias]] instead. This
+  method will be removed in a future release."
   {:arglists '([driver custom-field-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod format-custom-field-name ::driver [_ custom-field-name]
-  custom-field-name)
-
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
-  Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
+  Generic error messages are provided in [[metabase.driver.common/connection-error-messages]]; return one of these
   whenever possible.
-  Error messages can be strings, or localized strings, as returned by `metabase.util.i18n/trs` and
+  Error messages can be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver

@@ -636,7 +636,7 @@
                                                  ;; need to have that namespace add `:desired-alias` to
                                                  ;; `aggregation-options` as well. I cannot believe stuff is still
                                                  ;; working. If we fix this we'll probably fix a LOT of bugs.
-                                                 (driver/format-custom-field-name driver (annotate/aggregation-name ag))))]))]
+                                                 (add/escape-alias driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 
 

@@ -67,10 +67,6 @@
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
 
-(defmethod driver/format-custom-field-name :redshift
-  [_ custom-field-name]
-  (str/lower-case custom-field-name))
-
 ;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
 ;; Redshift is always in UTC and doesn't return it's timezone
 (defmethod driver.common/current-db-time-date-formatters :redshift

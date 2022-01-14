@@ -6,7 +6,8 @@
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
             [metabase.test :as mt]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.query-processor.util.add-alias-info :as add]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
@@ -96,17 +97,13 @@
                         :aggregation  [[:+ 20 [:sum [:field 2 nil]]]
                                        [:- 20 [:sum [:field 2 nil]]]]}})))))
 
-;; TODO - `format-custom-field-name` is officially deprecated because it is no longer needed now that custom
-;; aggregation names are not used in queries themselves. It can be removed soon, and we can remove this test
 (driver/register! ::test-driver, :abstract? true, :parent :sql)
 
-;; this implementation prepends an underscore to any all names. Some DBs, such as BigQuery, do ;; not allow aliases
-;; that start with an number for example
-(defmethod driver/format-custom-field-name ::test-driver [_ custom-field-name]
+(defmethod add/escape-alias ::test-driver [_ custom-field-name]
   (str \_ custom-field-name))
 
-(deftest use-driver-format-custom-field-name-test
-  (testing (str "we should use `driver/format-custom-field-name` on the generated aggregation names in case the "
+(deftest use-escape-alias-test
+  (testing (str "we should use [[add/escape-alias]] on the generated aggregation names in case the "
                 "drivers need to tweak the default names we generate."))
   (is (= {:database 1
           :type     :query
