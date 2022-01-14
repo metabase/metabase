@@ -81,7 +81,7 @@ describe("scenarios > alert > types", () => {
 
       openAlertModal();
 
-      cy.findByText("Goes above the goal line").click();
+      cy.findByText("Reaches the goal line").click();
       cy.findByText("The first time").click();
 
       cy.button("Done").click();
