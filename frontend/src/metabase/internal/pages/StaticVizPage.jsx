@@ -17,7 +17,181 @@ export default function StaticVizPage() {
           /static-viz/ and see the effects. You might need to hard refresh to
           see updates.
         </Text>
+        <Box py={3}>
+          <Subhead>Line chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/line"
+            options={{
+              data: [
+                ["2020-01-10", 10],
+                ["2020-06-10", 60],
+                ["2020-12-10", 80],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Area chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/area"
+            options={{
+              data: [
+                ["2020-01-10", 10],
+                ["2020-06-10", 60],
+                ["2020-12-10", 80],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              settings: {
+                x: {
+                  date_style: "MMM",
+                },
+              },
+              labels: {
+                left: "Count",
+                bottom: "Created At",
+              },
+              colors: {
+                brand: "#88BF4D",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Bar chart with timeseries data</Subhead>
+          <StaticChart
+            type="timeseries/bar"
+            options={{
+              data: [
+                ["2020-10-21", 20],
+                ["2020-10-22", 30],
+                ["2020-10-23", 25],
+                ["2020-10-24", 10],
+                ["2020-10-25", 15],
+              ],
+              accessors: {
+                x: row => new Date(row[0]).valueOf(),
+                y: row => row[1],
+              },
+              settings: {
+                x: {
+                  date_style: "MM/DD/YYYY",
+                },
+                y: {
+                  number_style: "currency",
+                  currency: "USD",
+                  currency_style: "symbol",
+                  decimals: 0,
+                },
+              },
+              labels: {
+                left: "Price",
+                bottom: "Created At",
+              },
+            }}
+          />
+        </Box>
 
+        <Box py={3}>
+          <Subhead>Line chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/line"
+            options={{
+              data: [
+                ["Alden Sparks", 70],
+                ["Areli Guerra", 30],
+                ["Arturo Hopkins", 80],
+                ["Beatrice Lane", 120],
+                ["Brylee Davenport", 100],
+                ["Cali Nixon", 60],
+                ["Dane Terrell", 150],
+                ["Deshawn Rollins", 40],
+                ["Isabell Bright", 70],
+                ["Kaya Rowe", 20],
+                ["Roderick Herman", 50],
+                ["Ruth Dougherty", 75],
+              ],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              labels: {
+                left: "Tasks",
+                bottom: "People",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Area chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/area"
+            options={{
+              data: [
+                ["Alden Sparks", 70],
+                ["Areli Guerra", 30],
+                ["Arturo Hopkins", 80],
+                ["Beatrice Lane", 120],
+                ["Brylee Davenport", 100],
+                ["Cali Nixon", 60],
+                ["Dane Terrell", 150],
+                ["Deshawn Rollins", 40],
+                ["Isabell Bright", 70],
+                ["Kaya Rowe", 20],
+                ["Roderick Herman", 50],
+                ["Ruth Dougherty", 75],
+              ],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              labels: {
+                left: "Tasks",
+                bottom: "People",
+              },
+            }}
+          />
+        </Box>
+        <Box py={3}>
+          <Subhead>Bar chart with categorical data</Subhead>
+          <StaticChart
+            type="categorical/bar"
+            options={{
+              data: [
+                ["Alden Sparks", 70],
+                ["Areli Guerra", 30],
+                ["Arturo Hopkins", 80],
+                ["Beatrice Lane", 120],
+                ["Brylee Davenport", 100],
+                ["Cali Nixon", 60],
+                ["Dane Terrell", 150],
+                ["Deshawn Rollins", 40],
+                ["Isabell Bright", 70],
+                ["Kaya Rowe", 20],
+                ["Roderick Herman", 50],
+                ["Ruth Dougherty", 75],
+              ],
+              accessors: {
+                x: row => row[0],
+                y: row => row[1],
+              },
+              labels: {
+                left: "Tasks",
+                bottom: "People",
+              },
+            }}
+          />
+        </Box>
         <Box py={3}>
           <Subhead>Donut chart with categorical data</Subhead>
           <StaticChart

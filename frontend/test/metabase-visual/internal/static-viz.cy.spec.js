@@ -9,7 +9,8 @@ describe("visual tests > internal > static-viz", () => {
   it("basic charts", () => {
     cy.visit("/_internal/static-viz");
 
-    cy.findByText("Waterfall chart with categorical data and total");
+    cy.findByText("Bar chart with timeseries data");
+    cy.findByText("Line chart with timeseries data");
     cy.findByText("Donut chart with categorical data");
 
     cy.percySnapshot();
