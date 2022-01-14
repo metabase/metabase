@@ -520,7 +520,7 @@
   ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
   ^Integer [object-or-id]
   (or (id object-or-id)
-      (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
+      (throw (Exception. (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
