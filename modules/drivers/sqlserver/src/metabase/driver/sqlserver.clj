@@ -426,12 +426,10 @@
       (m :guard (partial add-limit? &parents))
       (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
 
-(defmethod driver/mbql->native :sqlserver
+(defmethod sql.qp/preprocess :sqlserver
   [driver query]
-  ((get-method driver/mbql->native :sql)
-   driver
-   ;; do the [[sql.qp/preprocess]] steps first so we'll add extra levels of nesting for expressions if we need to.
-   (update query :query (comp fix-order-bys sql.qp/preprocess))))
+  (let [parent-method (get-method sql.qp/preprocess :sql)]
+    (fix-order-bys (parent-method driver query))))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

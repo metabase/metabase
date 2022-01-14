@@ -347,52 +347,6 @@
                                                                :alias        "P2"}]}}]
                       :limit  2})))))))
 
-(driver/register! ::custom-prefix-style :parent :h2)
-
-(defmethod add/prefix-field-alias ::custom-prefix-style
-  [_driver prefix field-alias]
-  (format "%s~~%s" prefix field-alias))
-
-(deftest custom-prefix-style-test
-  (let [db (mt/db)]
-    (driver/with-driver ::custom-prefix-style
-      (mt/with-db db
-        (is (query= (mt/$ids venues
-                      {:source-table $$venues
-                       :fields       [[:field %price {::add/source-table  $$venues
-                                                      ::add/source-alias  "PRICE"
-                                                      ::add/desired-alias "PRICE"
-                                                      ::add/position      0}]
-                                      [:field %categories.name {:join-alias         "Cat"
-                                                                ::add/source-table  "Cat"
-                                                                ::add/source-alias  "NAME"
-                                                                ::add/desired-alias "Cat~~NAME"
-                                                                ::add/position      1}]]
-                       :joins        [{:source-table $$categories
-                                       :fields       [[:field %categories.name {:join-alias         "Cat"
-                                                                                ::add/source-table  "Cat"
-                                                                                ::add/source-alias  "NAME"
-                                                                                ::add/desired-alias "Cat~~NAME"
-                                                                                ::add/position      1}]]
-                                       :alias        "Cat"
-                                       :condition    [:=
-                                                      [:field %category_id {::add/source-table  $$venues
-                                                                            ::add/source-alias  "CATEGORY_ID"}]
-                                                      [:field %categories.id {:join-alias         "Cat"
-                                                                              ::add/source-table  "Cat"
-                                                                              ::add/source-alias  "ID"}]]
-                                       :strategy     :left-join}]
-                       :limit        1})
-                    (-> (mt/mbql-query venues
-                          {:fields [$price]
-                           :joins  [{:source-table $$categories
-                                     :fields       [&Cat.categories.name]
-                                     :alias        "Cat"
-                                     :condition    [:= $category_id &Cat.categories.id]}]
-                           :limit  1})
-                        add-alias-info
-                        :query)))))))
-
 (driver/register! ::custom-escape :parent :h2)
 
 (defmethod driver/escape-alias ::custom-escape
