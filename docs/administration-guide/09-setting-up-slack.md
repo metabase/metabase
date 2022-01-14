@@ -45,6 +45,6 @@ In Metabase, click on the **Save changes** button and that’s it! Metabase will
 
 ## Next: configuring Metabase
 
-There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings.md).
+There are a few other settings you configure in Metabase. [Learn how](08-configuration-settings).
 
 [dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.html
