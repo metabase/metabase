@@ -82,7 +82,8 @@
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
 
-(defonce ^:private ^{:arglists '([driver connection metadata])} original-syncable-schemas
+(defonce ^:private ^{:arglists '([driver connection metadata _ _])}
+  original-syncable-schemas
   (get-method sql-jdbc.sync/syncable-schemas :redshift))
 
 (def ^:dynamic *use-original-syncable-schemas-impl?*
@@ -93,7 +94,7 @@
 ;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
 ;; schema used for a specific test.
 (defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [driver conn metadata]
+  [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
   (if *use-original-syncable-schemas-impl?*
-    (original-syncable-schemas driver conn metadata)
+    (original-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
     #{session-schema-name "spectrum"}))
