@@ -1,33 +1,33 @@
 import { popover, modal } from "__support__/e2e/cypress";
 
-export function assertQuestionIsBasedOnDataset({
+export function assertQuestionIsBasedOnModel({
   questionName,
   collection,
-  dataset,
+  model,
   table,
 }) {
   if (questionName) {
     cy.findByText(questionName);
   }
 
-  // Asserts shows dataset and its collection names
+  // Asserts shows model and its collection names
   // instead of db + table
   cy.findAllByText(collection);
-  cy.findByText(dataset);
+  cy.findByText(model);
 
   cy.findByText("Sample Dataset").should("not.exist");
   cy.findByText(table).should("not.exist");
 }
 
-export function assertCreatedNestedQuery(datasetId) {
+export function assertCreatedNestedQuery(modelId) {
   cy.wait("@createCard").then(({ request }) => {
     expect(request.body.dataset_query.query["source-table"]).to.equal(
-      `card__${datasetId}`,
+      `card__${modelId}`,
     );
   });
 }
 
-export function saveQuestionBasedOnDataset({ datasetId, name }) {
+export function saveQuestionBasedOnModel({ modelId, name }) {
   cy.intercept("POST", "/api/card").as("createCard");
 
   cy.findByText("Save").click();
@@ -42,7 +42,7 @@ export function saveQuestionBasedOnDataset({ datasetId, name }) {
     cy.findByText("Save").click();
   });
 
-  assertCreatedNestedQuery(datasetId);
+  assertCreatedNestedQuery(modelId);
 
   modal()
     .findByText("Not now")
@@ -63,8 +63,8 @@ export function getDetailsSidebarActions() {
   return cy.findByTestId("question-action-buttons");
 }
 
-// Requires dataset details sidebar to be open
-export function assertIsDataset() {
+// Requires model details sidebar to be open
+export function assertIsModel() {
   getDetailsSidebarActions().within(() => {
     cy.icon("model").should("not.exist");
   });
@@ -85,7 +85,7 @@ export function assertIsQuestion() {
   cy.findByText("Sample Dataset");
 }
 
-export function turnIntoDataset() {
+export function turnIntoModel() {
   openDetailsSidebar();
   getDetailsSidebarActions().within(() => {
     cy.icon("model").click();

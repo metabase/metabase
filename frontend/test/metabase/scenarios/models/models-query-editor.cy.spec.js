@@ -9,7 +9,7 @@ import {
   openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
 
-describe("scenarios > datasets query editor", () => {
+describe("scenarios > models query editor", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -20,7 +20,7 @@ describe("scenarios > datasets query editor", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("allows to edit GUI dataset query", () => {
+  it("allows to edit GUI model query", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/dataset/1");
 
@@ -97,7 +97,7 @@ describe("scenarios > datasets query editor", () => {
     cy.get(".TableInteractive");
   });
 
-  it("allows to edit native dataset query", () => {
+  it("allows to edit native model query", () => {
     cy.createNativeQuestion(
       {
         name: "Native DS",

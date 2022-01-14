@@ -1,11 +1,11 @@
 import { restore, modal } from "__support__/e2e/cypress";
 
 import {
-  assertIsDataset,
-  assertQuestionIsBasedOnDataset,
+  assertIsModel,
+  assertQuestionIsBasedOnModel,
   selectFromDropdown,
   selectDimensionOptionFromSidebar,
-  saveQuestionBasedOnDataset,
+  saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
@@ -28,7 +28,7 @@ describe("scenarios > models > revision history", () => {
   it("should allow reverting to a saved question state", () => {
     cy.visit("/question/3");
     openDetailsSidebar();
-    assertIsDataset();
+    assertIsModel();
 
     cy.findByText("History").click();
     cy.button("Revert").click();
@@ -66,7 +66,7 @@ describe("scenarios > models > revision history", () => {
       });
     cy.wait("@revertToRevision");
 
-    assertIsDataset();
+    assertIsModel();
     cy.get(".LineAreaBarChart").should("not.exist");
 
     cy.findByTestId("qb-header-action-panel").within(() => {
@@ -78,17 +78,17 @@ describe("scenarios > models > revision history", () => {
     cy.findByPlaceholderText("Enter a number").type("2000");
     cy.button("Add filter").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 3, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 3, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
