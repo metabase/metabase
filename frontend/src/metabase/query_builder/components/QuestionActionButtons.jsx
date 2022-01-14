@@ -26,6 +26,10 @@ QuestionActionButtons.propTypes = {
 export default QuestionActionButtons;
 
 function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
+  const duplicateTooltip = isDataset
+    ? t`Duplicate this model`
+    : t`Duplicate this question`;
+
   return (
     <Container data-testid="question-action-buttons">
       {canWrite && (
@@ -71,7 +75,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         </Tooltip>
       )}
       {canWrite && (
-        <Tooltip tooltip={t`Duplicate this question`}>
+        <Tooltip tooltip={duplicateTooltip}>
           <Button
             onlyIcon
             icon="segment"
