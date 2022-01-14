@@ -216,32 +216,32 @@
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (redshift.test/execute! (str "CREATE SCHEMA %s;"
-                                       "CREATE USER %s PASSWORD '%s';%n"
-                                       "GRANT USAGE ON SCHEMA %s TO %s;%n")
-                                  random-schema
-                                  temp-username
-                                  user-pw
-                                  random-schema
-                                  temp-username)
+                                     "CREATE USER %s PASSWORD '%s';%n"
+                                     "GRANT USAGE ON SCHEMA %s TO %s;%n")
+                                random-schema
+                                temp-username
+                                user-pw
+                                random-schema
+                                temp-username)
         (try
           (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
             (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
               (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
                 (let [schemas (reduce conj
                                       #{}
-                                      (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
+                                      (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn) nil nil))]
                   (testing "syncable-schemas for the user should contain the newly created random schema"
                     (is (contains? schemas random-schema)))
                   (testing "should not contain the current session-schema name (since that was never granted)"
                     (is (not (contains? schemas redshift.test/session-schema-name))))))))
           (finally
             (redshift.test/execute! (str "REVOKE USAGE ON SCHEMA %s FROM %s;%n"
-                                           "DROP USER IF EXISTS %s;%n"
-                                           "DROP SCHEMA IF EXISTS %s;%n")
-             random-schema
-             temp-username
-             temp-username
-             random-schema)))))
+                                         "DROP USER IF EXISTS %s;%n"
+                                         "DROP SCHEMA IF EXISTS %s;%n")
+                                    random-schema
+                                    temp-username
+                                    temp-username
+                                    random-schema)))))
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
@@ -258,7 +258,7 @@
                           (reduce
                            conj
                            #{}
-                           (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                           (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
                   (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
                     (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
                                                                                       reducible)]
