@@ -349,6 +349,7 @@
                            (:table_id (qp.store/field id-or-name))))]
     (cond
       (= source-table ::add/source) [source-query-alias]
+      (= source-table ::add/none)   nil
       (integer? source-table)       (let [{schema :schema, table-name :name} (qp.store/table source-table)]
                                       [schema table-name])
       source-table                  [source-table])))

@@ -1,4 +1,49 @@
 (ns metabase.query-processor.util.add-alias-info
+  "Walks query and adds generates appropriate aliases for every selected column; and adds extra keys to the
+  corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
+  with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
+  columns in the parent level.
+
+  This code is currently opt-in, and is currently only used by SQL drivers ([[metabase.driver.sql.query-processor]]
+  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]) but at some point
+  in the future this may become general QP middleware that can't be opted out of.
+
+  [[add-alias-info]] adds some or all of the following keys to every `:field` clause, `:expression` reference, and
+  `:aggregation` reference:
+
+  ##### `::source-table`
+
+  String name, integer Table ID, the keyword `::source`, or the keyword `::none`. Use this alias to qualify the clause
+  during compilation.
+
+  - String names are aliases for joins. This name should be used literally.
+
+  - An integer Table ID means this comes from the `:source-table`; use the Table's schema and name to qualify the
+    clause. (Some databases also need to qualify Fields with the Database name.)
+
+  - `::source` means this clause comes from the `:source-query`; the alias to use is theoretically driver-specific but
+    in practice is `source` (see [[metabase.driver.sql.query-processor/source-query-alias]]).
+
+  - `::none` means this clause SHOULD NOT be qualified at all. `::none` is currently only used in some very special
+     circumstances, specially by the Spark SQL driver when compiling Field Filter replacement snippets. But it's here
+     for those sorts of cases where we need it.
+
+  TODO -- consider allowing vectors of multiple qualifiers e.g. `[schema table]` or `[database schema table]` as well
+  -- so drivers that need to modify these can rewrite this info appropriately.
+
+  ##### `::source-alias`
+
+  String name to use to refer to this clause during compilation.
+
+  ##### `::desired-alias`
+
+  If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
+  this alias. This alias is guaranteed to be unique.
+
+  ##### `::position`
+
+  If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
+  column index)."
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.driver :as driver]

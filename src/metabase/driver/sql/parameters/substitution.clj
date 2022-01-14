@@ -233,10 +233,12 @@
   (qp.store/fetch-and-store-tables! #{table-id})
   [:field
    (u/the-id field)
-   {:base-type         (:base_type field)
-    ::add/source-table (:table_id field)
-    :temporal-unit     (when (date-params/date-type? param-type)
-                         :day)}])
+   {:base-type                (:base_type field)
+    :temporal-unit            (when (date-params/date-type? param-type)
+                                :day)
+    ::add/source-table        (:table_id field) ; TODO -- are we sure we want to qualify this?
+    ;; in case anyone needs to know we're compiling a Field filter.
+    ::compiling-field-filter? true}])
 
 (s/defn ^:private field->identifier :- su/NonBlankString
   "Return an approprate snippet to represent this `field` in SQL given its param type.
