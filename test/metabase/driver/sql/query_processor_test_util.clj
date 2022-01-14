@@ -95,6 +95,7 @@
   [s]
   (-> s
       pretty-sql
+      (str/replace #"`" "")
       (str/replace #"\s+" " ")
       (str/replace #"\(\s*" "(")
       (str/replace #"\s*\)" ")")
