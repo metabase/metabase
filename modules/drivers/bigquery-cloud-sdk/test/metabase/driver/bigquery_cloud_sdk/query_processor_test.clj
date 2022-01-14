@@ -12,6 +12,7 @@
             [metabase.models :refer [Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]

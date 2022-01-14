@@ -667,5 +667,5 @@
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
                                   (name driver)
-                                  (str/upper-case (name driver))
+                                  (str/upper-case (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))
