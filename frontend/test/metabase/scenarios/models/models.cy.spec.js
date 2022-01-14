@@ -60,7 +60,7 @@ describe("scenarios > models", () => {
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
-      cy.icon("dataset");
+      cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
       cy.icon("table");
@@ -110,7 +110,7 @@ describe("scenarios > models", () => {
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
-      cy.icon("dataset");
+      cy.icon("model");
     });
     getCollectionItemRow("Q1").within(() => {
       cy.icon("table");

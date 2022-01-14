@@ -47,7 +47,7 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
       ]}
     >
       <FeatureOverviewContainer>
-        <DatasetImg src="app/img/dataset-illustration.svg" />
+        <DatasetImg src="app/img/model-illustration.svg" />
         <DatasetTitle>{t`Models`}</DatasetTitle>
         <ul>
           <DatasetValueProp>

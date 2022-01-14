@@ -63,7 +63,7 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
         <Tooltip tooltip={t`Turn this into a model`}>
           <Button
             onlyIcon
-            icon="dataset"
+            icon="model"
             iconSize={ICON_SIZE}
             onClick={() => onOpenModal(MODAL_TYPES.TURN_INTO_DATASET)}
             data-testid={TURN_INTO_DATASET_TESTID}

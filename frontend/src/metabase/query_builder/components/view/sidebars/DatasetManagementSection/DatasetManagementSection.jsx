@@ -44,7 +44,7 @@ function DatasetManagementSection({
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
         <Button
-          icon="dataset_framed"
+          icon="model_framed"
           onClick={turnDatasetIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
       </SectionContent>

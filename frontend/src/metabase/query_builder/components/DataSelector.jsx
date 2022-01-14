@@ -1127,7 +1127,7 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
             name={dataset.name}
             onSelect={() => onSelect(dataset)}
             size="small"
-            icon={{ name: "dataset", size: 16 }}
+            icon={{ name: "model", size: 16 }}
             rightIcon={PLUGIN_MODERATION.getStatusIcon(
               dataset.moderated_status,
             )}
@@ -1152,7 +1152,7 @@ const DataBucketPicker = ({ onChangeDataBucket }) => {
   const BUCKETS = [
     {
       id: DATA_BUCKET.DATASETS,
-      icon: "dataset",
+      icon: "model",
       name: t`Models`,
       description: t`The best starting place for new questions.`,
     },
