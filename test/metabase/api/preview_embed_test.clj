@@ -1,4 +1,4 @@
-(ns metabatabasei.preview-embed-test
+(ns metabase.api.preview-embed-test
   (:require [clojure.test :refer :all]
             [metabase.api.embed-test :as embed-test]
             [metabase.api.pivots :as pivots]

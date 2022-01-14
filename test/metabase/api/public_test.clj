@@ -1,4 +1,4 @@
-(ns metabatabasei.public-test
+(ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
             [clojure.string :as str]

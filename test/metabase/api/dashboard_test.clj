@@ -1365,8 +1365,8 @@
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
 
 (defn- add-query-params [url query-params]
-  (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)])
-                                     (codec/form-encode {k v}))]
+  (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
+                                         (codec/form-encode {k v})))]
     (cond-> url
       (seq query-params-str) (str "?" query-params-str))))
 

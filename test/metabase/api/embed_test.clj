@@ -1,4 +1,4 @@
-(ns metabatabasei.embed-test
+(ns metabase.api.embed-test
   "Tests for /api/embed endpoints."
   (:require [buddy.sign.jwt :as jwt]
             [buddy.sign.util :as buddy-util]
