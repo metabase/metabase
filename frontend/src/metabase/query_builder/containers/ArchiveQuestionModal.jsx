@@ -26,14 +26,18 @@ class ArchiveQuestionModal extends Component {
   render() {
     const { onClose, question } = this.props;
 
-    const title = question.isDataset()
-      ? t`Archive this model?`
-      : t`Archive this question?`;
+    const isModel = question.isDataset();
+
+    const title = isModel ? t`Archive this model?` : t`Archive this question?`;
+
+    const message = isModel
+      ? t`This model will be removed from any dashboards or pulses using it.`
+      : t`This question will be removed from any dashboards or pulses using it.`;
 
     return (
       <ArchiveModal
         title={title}
-        message={t`This question will be removed from any dashboards or pulses using it.`}
+        message={message}
         onArchive={this.onArchive}
         onClose={onClose}
       />
