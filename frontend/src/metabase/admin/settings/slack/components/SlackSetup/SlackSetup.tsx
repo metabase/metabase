@@ -65,7 +65,7 @@ const SetupHeader = ({ isBot, isValid }: SetupHeaderProps): JSX.Element => {
       ) : (
         <HeaderMessage>
           {t`Bring the power of Metabase to your Slack #channels.`}{" "}
-          {t`Follow these steps to connect your bot to Slack:`}
+          {t`Follow these steps to connect to Slack:`}
         </HeaderMessage>
       )}
     </HeaderRoot>
@@ -109,8 +109,8 @@ const CreateAppSection = (): JSX.Element => {
         )}, hit “${(
           <strong key="app">{t`Create New App`}</strong>
         )}” and pick “${(
-          <strong key="manifest">{t`From an app manifest`}</strong>
-        )}”.`}
+          <strong key="manifest">{t`From an app manifest.`}</strong>
+        )}”`}
       </SectionMessage>
       <SlackAppsButton />
     </SetupSection>
