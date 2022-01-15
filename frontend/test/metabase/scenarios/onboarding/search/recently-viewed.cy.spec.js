@@ -1,6 +1,6 @@
 import { restore } from "__support__/e2e/cypress";
 
-describe(`search > recently viewed`, () => {
+describe("search > recently viewed", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

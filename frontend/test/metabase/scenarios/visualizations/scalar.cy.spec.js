@@ -57,12 +57,12 @@ describe("scenarios > visualizations > scalar", () => {
     });
   });
 
-  it(`should render date without time (metabase#7494)`, () => {
+  it("should render date without time (metabase#7494)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
         native: {
-          query: `SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)`,
+          query: "SELECT cast('2018-05-01T00:00:00Z'::timestamp as date)",
           "template-tags": {},
         },
         database: 1,

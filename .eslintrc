@@ -32,7 +32,8 @@
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": "error",
-    "complexity": ["error", { "max": 54 }]
+    "complexity": ["error", { "max": 54 }],
+    "quotes": [2, "double", "avoid-escape"]
   },
   "globals": {
     "before": true,

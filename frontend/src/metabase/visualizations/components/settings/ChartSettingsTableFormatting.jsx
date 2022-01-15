@@ -205,7 +205,7 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
         borderless
         icon="add"
         onClick={onAdd}
-        data-metabase-event={`Chart Settings;Table Formatting;Add Rule`}
+        data-metabase-event={"Chart Settings;Table Formatting;Add Rule"}
       >
         {t`Add a rule`}
       </Button>
@@ -465,7 +465,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <Button
             primary
             onClick={onRemove}
-            data-metabase-event={`Chart Settings;Table Formatting;`}
+            data-metabase-event={"Chart Settings;Table Formatting;"}
           >
             {isNew ? t`Cancel` : t`Delete`}
           </Button>

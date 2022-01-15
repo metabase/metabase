@@ -14,7 +14,7 @@ describe("issue 17768", () => {
     });
 
     // Sync "Sample Dataset" schema
-    cy.request("POST", `/api/database/1/sync_schema`);
+    cy.request("POST", "/api/database/1/sync_schema");
 
     waitForSyncToFinish();
 

@@ -207,7 +207,7 @@ describe.skip("scenarios > public", () => {
       describe(`${userType}`, () => {
         beforeEach(setUser);
 
-        it(`should be able to view public questions`, () => {
+        it("should be able to view public questions", () => {
           cy.visit(questionPublicLink);
           cy.contains(COUNT_ALL);
 
@@ -219,7 +219,7 @@ describe.skip("scenarios > public", () => {
         });
 
         // [quarantine]: failing almost consistently in CI
-        it(`should be able to view embedded questions`, () => {
+        it("should be able to view embedded questions", () => {
           cy.visit(questionEmbedUrl);
           cy.contains(COUNT_ALL);
 
@@ -230,7 +230,7 @@ describe.skip("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it(`should be able to view public dashboards`, () => {
+        it("should be able to view public dashboards", () => {
           cy.visit(dashboardPublicLink);
           cy.contains(COUNT_ALL);
 
@@ -241,7 +241,7 @@ describe.skip("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        it(`should be able to view embedded dashboards`, () => {
+        it("should be able to view embedded dashboards", () => {
           cy.visit(dashboardEmbedUrl);
           cy.contains(COUNT_ALL);
 

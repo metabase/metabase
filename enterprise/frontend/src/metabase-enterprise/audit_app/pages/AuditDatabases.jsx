@@ -25,7 +25,7 @@ const AuditDatabasesOverviewTab = () => (
 
 const AuditDatabasesAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Database name`}
+    placeholder={"Database name"}
     table={DatabasesCards.table()}
   />
 );

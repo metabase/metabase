@@ -14,7 +14,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
     cy.route("PUT", "/api/field/*").as("fieldUpdate");
-    cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
+    cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as("ORDERS_URL");
   });
 
   it("should allow editing of the name and description", () => {

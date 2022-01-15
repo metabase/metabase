@@ -79,7 +79,7 @@ const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
               left: "50%",
               top: 0,
               bottom: 0,
-              borderLeft: `1px solid white`,
+              borderLeft: "1px solid white",
             }}
           />
         )}

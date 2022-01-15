@@ -19,7 +19,7 @@ const FORM = {
 
 export const component = Form;
 export const category = "form";
-export const description = `A standard form component.`;
+export const description = "A standard form component.";
 export const examples = {
   "with form prop": (
     <Form form={FORM} onSubmit={values => alert(JSON.stringify(values))} />

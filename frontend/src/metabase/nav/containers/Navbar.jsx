@@ -156,7 +156,7 @@ export default class Navbar extends Component {
                   backgroundColor: darken(color("brand")),
                 }}
                 className="flex align-center rounded transition-background"
-                data-metabase-event={`NavBar;Create Menu Click`}
+                data-metabase-event={"NavBar;Create Menu Click"}
               >
                 <Icon name="add" size={14} />
                 <h4 className="hide sm-show ml1 text-nowrap">{t`New`}</h4>
@@ -165,37 +165,37 @@ export default class Navbar extends Component {
             items={[
               {
                 title: t`Question`,
-                icon: `insight`,
+                icon: "insight",
                 link: Urls.newQuestion({
                   mode: "notebook",
                   creationType: "complex_question",
                 }),
-                event: `NavBar;New Question Click;`,
+                event: "NavBar;New Question Click;",
               },
               ...(hasNativeWrite
                 ? [
                     {
                       title: t`SQL query`,
-                      icon: `sql`,
+                      icon: "sql",
                       link: Urls.newQuestion({
                         type: "native",
                         creationType: "native_question",
                       }),
-                      event: `NavBar;New SQL Query Click;`,
+                      event: "NavBar;New SQL Query Click;",
                     },
                   ]
                 : []),
               {
                 title: t`Dashboard`,
-                icon: `dashboard`,
+                icon: "dashboard",
                 action: () => this.setModal(MODAL_NEW_DASHBOARD),
-                event: `NavBar;New Dashboard Click;`,
+                event: "NavBar;New Dashboard Click;",
               },
               {
                 title: t`Collection`,
-                icon: `all`,
+                icon: "all",
                 action: () => this.setModal(MODAL_NEW_COLLECTION),
-                event: `NavBar;New Collection Click;`,
+                event: "NavBar;New Collection Click;",
               },
             ]}
           />
@@ -209,7 +209,7 @@ export default class Navbar extends Component {
                 backgroundColor: darken(color("brand")),
               }}
               className="flex align-center rounded transition-background"
-              data-metabase-event={`NavBar;Data Browse`}
+              data-metabase-event={"NavBar;Data Browse"}
             >
               <Icon name="table_spaced" size={14} />
               <h4 className="hide sm-show ml1 text-nowrap">{t`Browse data`}</h4>

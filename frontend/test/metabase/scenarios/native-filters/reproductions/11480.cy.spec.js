@@ -23,7 +23,7 @@ describe("issue 11480", () => {
 
     // Run the query and see an error.
     SQLFilter.runQuery();
-    cy.contains(`Data conversion error converting "some text"`);
+    cy.contains('Data conversion error converting "some text"');
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
     SQLFilter.openTypePickerFromDefaultFilterType();

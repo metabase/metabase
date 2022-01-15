@@ -14,8 +14,8 @@ import { POST, DELETE } from "metabase/lib/api";
 
 import forms from "./questions/forms";
 
-const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
+const FAVORITE_ACTION = "metabase/entities/questions/FAVORITE";
+const UNFAVORITE_ACTION = "metabase/entities/questions/UNFAVORITE";
 
 const Questions = createEntity({
   name: "questions",

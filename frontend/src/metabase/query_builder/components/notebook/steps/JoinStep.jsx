@@ -464,7 +464,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
           />
         ) : (
           <NotebookCellItem color={color}>
-            {`Choose a join type`}
+            {"Choose a join type"}
           </NotebookCellItem>
         )
       }

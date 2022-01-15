@@ -28,7 +28,7 @@ describe("issue 16918", () => {
     });
   });
 
-  it(`should load question binned by "Month of Year" or similar granularity (metabase#16918)`, () => {
+  it('should load question binned by "Month of Year" or similar granularity (metabase#16918)', () => {
     cy.visit("/pulse/create");
 
     cy.findByText("Select a question").click();

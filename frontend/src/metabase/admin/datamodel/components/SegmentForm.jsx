@@ -80,7 +80,7 @@ export default class SegmentForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={`/admin/datamodel/segments`}
+          to={"/admin/datamodel/segments"}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>

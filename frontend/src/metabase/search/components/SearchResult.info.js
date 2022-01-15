@@ -3,7 +3,8 @@ import SearchResult from "./SearchResult";
 export const component = SearchResult;
 export const category = "search";
 
-export const description = `Displays search results w/ optional context in typeahead and on the search results page`;
+export const description =
+  "Displays search results w/ optional context in typeahead and on the search results page";
 
 const DEMO_URL = "/_internal/components/searchresult";
 

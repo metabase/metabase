@@ -417,7 +417,7 @@ describe("collection permissions", () => {
                     "eq",
                     "/dashboard/2-orders-in-a-dashboard-duplicate",
                   );
-                  cy.findByText(`Orders in a dashboard - Duplicate`);
+                  cy.findByText("Orders in a dashboard - Duplicate");
                 });
 
                 describe("move", () => {

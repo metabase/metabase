@@ -42,12 +42,12 @@ describe("CollectionAuthorityLevelIcon", () => {
       return screen.queryByLabelText("badge icon");
     }
 
-    it(`renders correctly`, () => {
+    it("renders correctly", () => {
       renderOfficialCollection();
       expect(queryOfficialIcon()).toBeInTheDocument();
     });
 
-    it(`displays a tooltip by default`, () => {
+    it("displays a tooltip by default", () => {
       renderOfficialCollection();
       userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent(
@@ -55,7 +55,7 @@ describe("CollectionAuthorityLevelIcon", () => {
       );
     });
 
-    it(`can display different tooltip`, () => {
+    it("can display different tooltip", () => {
       renderOfficialCollection({ tooltip: "belonging" });
       userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent(
@@ -63,13 +63,13 @@ describe("CollectionAuthorityLevelIcon", () => {
       );
     });
 
-    it(`can display custom tooltip text`, () => {
+    it("can display custom tooltip text", () => {
       renderOfficialCollection({ tooltip: "Hello" });
       userEvent.hover(queryOfficialIcon());
       expect(screen.getByRole("tooltip")).toHaveTextContent("Hello");
     });
 
-    it(`can hide tooltip`, () => {
+    it("can hide tooltip", () => {
       renderOfficialCollection({ tooltip: null });
       userEvent.hover(queryOfficialIcon());
       expect(screen.queryByLabelText("tooltip")).toBeNull();

@@ -111,7 +111,7 @@ describe("Collection selectors", () => {
     });
 
     it("does not use URL slug if it's not collection URL", () => {
-      const slug = `5-dashboard`;
+      const slug = "5-dashboard";
       const props = {
         params: {
           slug,

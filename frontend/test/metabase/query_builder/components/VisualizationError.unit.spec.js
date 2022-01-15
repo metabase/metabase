@@ -10,9 +10,12 @@ describe("VisualizationError", () => {
     "/* anything before the remarks in multiline is redshift */-- Metabase:: userID: 1 queryType: native queryHash: 9863b8284f269ce8763ad59b04cec26407a1dd74eebeb16cffdf1ef3e23b325a\nfwefwef";
   const unremarkedQuery = "fwefwef";
 
-  const unadjustedError = `boopy boop boopy boop fake error message Position: 1000;`;
-  const adjustedError = `boopy boop boopy boop fake error message Position: 881;`;
-  const redshiftAdjustedError = `boopy boop boopy boop fake error message Position: 823;`;
+  const unadjustedError =
+    "boopy boop boopy boop fake error message Position: 1000;";
+  const adjustedError =
+    "boopy boop boopy boop fake error message Position: 881;";
+  const redshiftAdjustedError =
+    "boopy boop boopy boop fake error message Position: 823;";
 
   const errorLineNumbers = "boopy boop boopy boop fake error message Line: 2";
 

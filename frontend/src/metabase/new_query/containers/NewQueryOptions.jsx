@@ -85,7 +85,7 @@ export default class NewQueryOptions extends Component {
                 description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
                 width={180}
                 to={Urls.newQuestion({ creationType: "simple_question" })}
-                data-metabase-event={`New Question; Simple Question Start`}
+                data-metabase-event={"New Question; Simple Question Start"}
               />
             </GridItem>
           )}
@@ -100,7 +100,7 @@ export default class NewQueryOptions extends Component {
                   mode: "notebook",
                   creationType: "complex_question",
                 })}
-                data-metabase-event={`New Question; Custom Question Start`}
+                data-metabase-event={"New Question; Custom Question Start"}
               />
             </GridItem>
           )}
@@ -115,7 +115,7 @@ export default class NewQueryOptions extends Component {
                   creationType: "native_question",
                 })}
                 width={180}
-                data-metabase-event={`New Question; Native Query Start`}
+                data-metabase-event={"New Question; Native Query Start"}
               />
             </GridItem>
           )}

@@ -36,7 +36,7 @@ describe("scenarios > alert > alert permissions", () => {
       cy.intercept("PUT", "/api/alert/1").as("updatedAlert");
 
       // Change alert
-      cy.visit(`/question/1`);
+      cy.visit("/question/1");
       cy.icon("bell").click();
       cy.findByText("Edit").click();
 

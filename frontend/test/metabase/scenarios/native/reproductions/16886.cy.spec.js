@@ -14,7 +14,7 @@ describe("issue 16886", () => {
     cy.signInAsAdmin();
   });
 
-  it(`shouldn't remove parts of the query when choosing "Run selected text" (metabase#16886)`, () => {
+  it('shouldn\'t remove parts of the query when choosing "Run selected text" (metabase#16886)', () => {
     openNativeEditor().type(
       ORIGINAL_QUERY + moveCursorToBeginning + highlightSelectedText,
       { delay: 50 },

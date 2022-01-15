@@ -438,7 +438,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   it("should display an error message for native queries", () => {
     cy.server();
     // native queries should use the normal dataset endpoint even when set to pivot
-    cy.route("POST", `/api/dataset`).as("dataset");
+    cy.route("POST", "/api/dataset").as("dataset");
 
     visitQuestionAdhoc({
       dataset_query: {

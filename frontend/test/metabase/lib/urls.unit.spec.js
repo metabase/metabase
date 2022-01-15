@@ -248,59 +248,59 @@ describe("urls", () => {
       },
       {
         caseName: "quotes",
-        input: `'Our' "Orders"`,
+        input: "'Our' \"Orders\"",
         expectedString: "our-orders",
       },
       {
         caseName: "brackets",
-        input: `[Our] important (Orders)`,
+        input: "[Our] important (Orders)",
         expectedString: "our-important-orders",
       },
       {
         caseName: "emoji",
-        input: `Our Orders 🚚`,
+        input: "Our Orders 🚚",
         expectedString: "our-orders",
       },
       {
         caseName: "emoji only",
-        input: `🚚 📦 🍰`,
+        input: "🚚 📦 🍰",
         expectedString: "",
       },
       {
         caseName: "umlauts",
-        input: `Über Aufträge`,
+        input: "Über Aufträge",
         expectedString: "uber-auftrage",
       },
       {
         caseName: "Danish",
-        input: `æbleflæsk`,
+        input: "æbleflæsk",
         expectedString: "aebleflaesk",
       },
       {
         caseName: "French",
-        input: `Déjà Vu`,
+        input: "Déjà Vu",
         expectedString: "deja-vu",
       },
       {
         caseName: "cyrillic",
-        input: `Заказы`,
+        input: "Заказы",
         expectedString: "zakazy",
       },
       // we don't transliterate languages below,
       // as their transliteration is usually too inaccurate
       {
         caseName: "Chinese",
-        input: `命令`,
+        input: "命令",
         expectedString: "",
       },
       {
         caseName: "Japanese",
-        input: `注文`,
+        input: "注文",
         expectedString: "",
       },
       {
         caseName: "Thai",
-        input: `เชียงใหม่`,
+        input: "เชียงใหม่",
         expectedString: "",
       },
     ];

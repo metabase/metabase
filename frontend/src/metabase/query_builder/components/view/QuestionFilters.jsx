@@ -47,8 +47,8 @@ export default function QuestionFilters({
             onClick={expanded ? onCollapse : onExpand}
             data-metabase-event={
               expanded
-                ? `View Mode; Header Filters Collapse Click`
-                : `View Mode; Header Filters Expand Click`
+                ? "View Mode; Header Filters Collapse Click"
+                : "View Mode; Header Filters Expand Click"
             }
             data-testid="filters-visibility-control"
           >

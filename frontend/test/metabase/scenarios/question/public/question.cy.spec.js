@@ -34,8 +34,8 @@ const EXPECTED_QUERY_PARAMS = "?birthdate=past30years&source=Affiliate";
 
 describe("scenarios > question > public", () => {
   beforeEach(() => {
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
-    cy.intercept("GET", `/api/public/card/*/query?*`).as("publicQuery");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
 
     restore();
     cy.signInAsAdmin();

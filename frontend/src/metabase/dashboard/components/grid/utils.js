@@ -43,7 +43,7 @@ export function generateGridBackground({ cellSize, margin, cols, gridWidth }) {
   const svg = [
     `<svg xmlns='${XMLNS}' width='${gridWidth}' height='${rowHeight}'>`,
     ...rectangles,
-    `</svg>`,
+    "</svg>",
   ].join("");
 
   return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;

@@ -955,7 +955,7 @@ function joinTwoSavedQuestions() {
         "source-table": PRODUCTS_ID,
       },
     }).then(() => {
-      cy.visit(`/question/new`);
+      cy.visit("/question/new");
       cy.findByText("Custom question").click();
 
       popover().within(() => {

@@ -176,9 +176,9 @@ export class AlertListItem extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={`ml-auto text-bold text-small`}
+              className={"ml-auto text-bold text-small"}
               style={{
-                transform: `translateY(4px)`,
+                transform: "translateY(4px)",
               }}
             >
               {(isAdmin || isCurrentUser) && (
@@ -244,7 +244,7 @@ export const UnsubscribedListItem = () => (
       <Icon name="check" className="text-success" />
     </div>
     <h3
-      className={`text-dark`}
+      className={"text-dark"}
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>

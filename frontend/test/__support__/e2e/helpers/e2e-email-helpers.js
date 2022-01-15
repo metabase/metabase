@@ -31,7 +31,7 @@ export const getInbox = () => {
 };
 
 const getInboxWithRetry = (timeout = INBOX_TIMEOUT) => {
-  return cy.request("GET", `http://localhost:80/email`).then(response => {
+  return cy.request("GET", "http://localhost:80/email").then(response => {
     if (response.body.length) {
       return cy.wrap(response);
     } else if (timeout > 0) {

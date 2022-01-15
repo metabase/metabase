@@ -18,7 +18,7 @@ describe("scenatios > question > native > mongo", () => {
   });
 
   it("can save a native MongoDB query", () => {
-    cy.get(".ace_content").type(`[ { $count: "Total" } ]`, {
+    cy.get(".ace_content").type('[ { $count: "Total" } ]', {
       parseSpecialCharSequences: false,
     });
     cy.get(".NativeQueryEditor .Icon-play").click();

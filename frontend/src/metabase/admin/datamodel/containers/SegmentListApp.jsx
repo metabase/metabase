@@ -19,7 +19,7 @@ class SegmentListApp extends React.Component {
       <div className="px3 pb2">
         <div className="flex py2">
           {tableSelector}
-          <Link to={`/admin/datamodel/segment/create`} className="ml-auto">
+          <Link to={"/admin/datamodel/segment/create"} className="ml-auto">
             <Button primary>{t`New segment`}</Button>
           </Link>
         </div>

@@ -169,7 +169,7 @@ describe("scenarios > setup", () => {
   });
 
   it("should allow pre-filling user details", () => {
-    cy.visit(`/setup#123456`);
+    cy.visit("/setup#123456");
 
     cy.findByText("Welcome to Metabase");
     cy.findByTextEnsureVisible("Let's get started").click();
@@ -200,7 +200,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
   it("should send snowplow events", () => {
     // 1 - pageview
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     // 2 - setup/step_seen
     cy.findByText("Welcome to Metabase");
@@ -215,7 +215,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
   it("should ignore snowplow failures and work as normal", () => {
     blockSnowplow();
-    cy.visit(`/setup`);
+    cy.visit("/setup");
 
     cy.findByText("Welcome to Metabase");
     cy.findByTextEnsureVisible("Let's get started").click();

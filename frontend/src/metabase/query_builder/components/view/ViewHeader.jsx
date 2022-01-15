@@ -292,7 +292,7 @@ function AhHocQuestionLeftSide(props) {
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
-            data-metabase-event={`Question Data Source Click`}
+            data-metabase-event={"Question Data Source Click"}
           />
         )}
         {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
@@ -455,8 +455,8 @@ function ViewTitleHeaderRightSide(props) {
           disabled={!question.canRun()}
           data-metabase-event={
             isShowingNotebook
-              ? `Notebook Mode; Click Save`
-              : `View Mode; Click Save`
+              ? "Notebook Mode; Click Save"
+              : "View Mode; Click Save"
           }
           onClick={() => onOpenModal("save")}
         >
@@ -470,7 +470,7 @@ function ViewTitleHeaderRightSide(props) {
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
           onCloseFilter={onCloseFilter}
-          data-metabase-event={`View Mode; Open Filter Widget`}
+          data-metabase-event={"View Mode; Open Filter Widget"}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
@@ -480,7 +480,7 @@ function ViewTitleHeaderRightSide(props) {
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
-          data-metabase-event={`View Mode; Open Summary Widget`}
+          data-metabase-event={"View Mode; Open Summary Widget"}
         />
       )}
       {QuestionNotebookButton.shouldRender({ question }) && (
@@ -492,8 +492,8 @@ function ViewTitleHeaderRightSide(props) {
           setQueryBuilderMode={setQueryBuilderMode}
           data-metabase-event={
             isShowingNotebook
-              ? `Notebook Mode;Go to View Mode`
-              : `View Mode; Go to Notebook Mode`
+              ? "Notebook Mode;Go to View Mode"
+              : "View Mode; Go to Notebook Mode"
           }
         />
       )}
@@ -501,7 +501,7 @@ function ViewTitleHeaderRightSide(props) {
         <NativeQueryButton
           size={16}
           question={question}
-          data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+          data-metabase-event={"Notebook Mode; Convert to SQL Click"}
         />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}

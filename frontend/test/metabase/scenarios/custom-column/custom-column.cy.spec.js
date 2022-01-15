@@ -421,7 +421,7 @@ describe("scenarios > question > custom column", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
-      formula: `isnull([Discount])`,
+      formula: "isnull([Discount])",
       name: "No discount",
     });
     cy.button("Done").click();
@@ -439,7 +439,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Custom column").click();
 
     enterCustomColumnDetails({
-      formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
+      formula: "case([Discount] > 0, [Created At], [Product → Created At])",
       name: "MiscDate",
     });
 

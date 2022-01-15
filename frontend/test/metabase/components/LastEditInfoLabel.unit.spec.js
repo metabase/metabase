@@ -88,7 +88,7 @@ describe("LastEditInfoLabel", () => {
   it("should display if user is the last editor", () => {
     const { getByTestId } = setup({ isLastEditedByCurrentUser: true });
     expect(getByTestId("revision-history-button")).toHaveTextContent(
-      new RegExp(`Edited .* by you`),
+      new RegExp("Edited .* by you"),
     );
   });
 });

@@ -196,7 +196,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               "POST",
               `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
             ).as("cardQuery");
-            cy.route("POST", `/api/dataset`).as("dataset");
+            cy.route("POST", "/api/dataset").as("dataset");
 
             cy.visit(`/dashboard/${DASHBOARD_ID}`);
 

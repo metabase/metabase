@@ -30,7 +30,7 @@ describeWithToken("formatting > whitelabel > color theme", () => {
 
   it("should change the brand color", () => {
     cy.visit("/admin/settings/whitelabel");
-    cy.intercept("GET", `/api/setting`).as("setting");
+    cy.intercept("GET", "/api/setting").as("setting");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     // brand color
@@ -56,7 +56,7 @@ describeWithToken("formatting > whitelabel > color theme", () => {
 
   it("should change the navigation color", () => {
     cy.visit("/admin/settings/whitelabel");
-    cy.intercept("GET", `/api/setting`).as("setting");
+    cy.intercept("GET", "/api/setting").as("setting");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     // brand color
@@ -92,7 +92,7 @@ describeWithToken("formatting > whitelabel > color theme", () => {
 
   it("should change the special navigation bar in the admin panel", () => {
     cy.visit("/admin/settings/whitelabel");
-    cy.intercept("GET", `/api/setting`).as("setting");
+    cy.intercept("GET", "/api/setting").as("setting");
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     // admin nav

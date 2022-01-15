@@ -41,7 +41,7 @@ export default ({ question, clicked }) => {
   const recordName = query.table() && query.table().displayName();
   const inflectedTableName = recordName
     ? inflect(recordName, count)
-    : ngettext(msgid`record`, `records`, count);
+    : ngettext(msgid`record`, "records", count);
   return [
     {
       name: "underlying-records",

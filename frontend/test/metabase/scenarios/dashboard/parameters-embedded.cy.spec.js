@@ -44,11 +44,11 @@ describe("scenarios > dashboard > parameters-embedded", () => {
       });
     });
 
-    cy.request("PUT", `/api/setting/embedding-secret-key`, {
+    cy.request("PUT", "/api/setting/embedding-secret-key", {
       value: METABASE_SECRET_KEY,
     });
-    cy.request("PUT", `/api/setting/enable-embedding`, { value: true });
-    cy.request("PUT", `/api/setting/enable-public-sharing`, { value: true });
+    cy.request("PUT", "/api/setting/enable-embedding", { value: true });
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
   });
 
   describe("embeded params", () => {

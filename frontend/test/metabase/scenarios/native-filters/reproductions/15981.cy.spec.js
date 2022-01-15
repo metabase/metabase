@@ -12,7 +12,7 @@ describe("issue 15981", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it(`"Text" filter should work (metabase#15981-1)`, () => {
+  it('"Text" filter should work (metabase#15981-1)', () => {
     SQLFilter.enterParameterizedQuery(
       "select * from PRODUCTS where CATEGORY = {{text_filter}}",
     );
@@ -28,7 +28,7 @@ describe("issue 15981", () => {
     cy.icon("play").should("not.exist");
   });
 
-  it(`"Number" filter should work (metabase#15981-2)`, () => {
+  it('"Number" filter should work (metabase#15981-2)', () => {
     SQLFilter.enterParameterizedQuery(
       "select * from ORDERS where QUANTITY = {{number_filter}}",
     );

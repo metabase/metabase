@@ -15,8 +15,8 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       colorScheme="accent7"
       value={tab}
       options={[
-        { name: t`Data permissions`, value: `data` },
-        { name: t`Collection permissions`, value: `collections` },
+        { name: t`Data permissions`, value: "data" },
+        { name: t`Collection permissions`, value: "collections" },
       ]}
       onOptionClick={onChangeTab}
       variant="underlined"

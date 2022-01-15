@@ -281,7 +281,7 @@ describe("scenarios > question > new", () => {
       }).then(({ body: { id: QESTION_ID } }) => {
         cy.server();
         cy.route("POST", `/api/card/${QESTION_ID}/query`).as("cardQuery");
-        cy.route("POST", `/api/dataset`).as("dataset");
+        cy.route("POST", "/api/dataset").as("dataset");
 
         cy.visit(`/question/${QESTION_ID}`);
 

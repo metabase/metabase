@@ -8,7 +8,7 @@ const Card = styled.div`
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
   border: 1px solid ${props =>
     props.dark ? "transparent" : color("bg-medium")};
-  ${props => props.dark && `color: white`};
+  ${props => props.dark && "color: white"};
   border-radius: 6px;
   box-shadow: 0 7px 20px ${color("shadow")};
   line-height: 24px;
@@ -17,7 +17,7 @@ const Card = styled.div`
     `&:hover {
     box-shadow: 0 10px 22px ${alpha(color("shadow"), 0.09)};
   }`};
-  ${props => props.flat && `box-shadow: none;`};
+  ${props => props.flat && "box-shadow: none;"};
   ${props => props.compact && `box-shadow: 0 1px 2px ${color("shadow")};`};
 `;
 

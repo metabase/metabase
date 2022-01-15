@@ -22,7 +22,7 @@ const AuditTablesOverviewTab = () => (
 
 const AuditTablesAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Table name`}
+    placeholder={"Table name"}
     table={TablesCards.table()}
   />
 );

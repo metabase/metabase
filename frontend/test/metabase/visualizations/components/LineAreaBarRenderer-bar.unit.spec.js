@@ -97,7 +97,7 @@ describe("LineAreaBarRenderer-bar", () => {
     cleanupFixture(element);
   });
 
-  it(`should render an bar chart with 1 series`, () => {
+  it("should render an bar chart with 1 series", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(element, [MainSeries("bar")], {
       onHoverChange,
@@ -113,7 +113,7 @@ describe("LineAreaBarRenderer-bar", () => {
     ]);
   });
 
-  it(`should render an bar chart with 2 series`, () => {
+  it("should render an bar chart with 2 series", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(element, [MainSeries("bar"), ExtraSeries()], {
       onHoverChange,
@@ -134,7 +134,7 @@ describe("LineAreaBarRenderer-bar", () => {
     ]);
   });
 
-  it(`should render an bar stacked chart with 2 series`, () => {
+  it("should render an bar stacked chart with 2 series", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
@@ -159,7 +159,7 @@ describe("LineAreaBarRenderer-bar", () => {
     ]);
   });
 
-  it(`should render an bar normalized chart with 2 series`, () => {
+  it("should render an bar normalized chart with 2 series", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
@@ -185,7 +185,7 @@ describe("LineAreaBarRenderer-bar", () => {
     ]);
   });
 
-  it(`should render a normalized bar chart with consistent precision`, () => {
+  it("should render a normalized bar chart with consistent precision", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
@@ -206,7 +206,7 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(values).toEqual(["0.1%", "99.9%"]);
   });
 
-  it(`should render an bar normalized chart with just one series`, () => {
+  it("should render an bar normalized chart with just one series", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
@@ -270,7 +270,7 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(tick.textContent).toEqual("(empty)");
   });
 
-  it(`should render a stacked chart on a logarithmic y scale`, async () => {
+  it("should render a stacked chart on a logarithmic y scale", async () => {
     const settings = {
       "stackable.stack_type": "stacked",
       "graph.y_axis.scale": "log",

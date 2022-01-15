@@ -40,7 +40,7 @@ describe("issue 18352", () => {
     cy.findByPlaceholderText("Enter user names or email addresses").click();
     cy.findByText(`${first_name} ${last_name}`).click();
     // Click this just to close the popover that is blocking the "Send email now" button
-    cy.findByText(`To:`).click();
+    cy.findByText("To:").click();
 
     cy.button("Send email now").click();
     cy.findByText("Email sent");

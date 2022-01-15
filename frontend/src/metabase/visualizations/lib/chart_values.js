@@ -278,7 +278,7 @@ export function onRenderValueLabels(
       .attr("transform", d => {
         const transforms = [`translate(${d.xPos}, ${d.yPos})`];
         if (d.rotated) {
-          transforms.push("rotate(-90)", `translate(-15, 4)`);
+          transforms.push("rotate(-90)", "translate(-15, 4)");
         }
         return transforms.join(" ");
       });

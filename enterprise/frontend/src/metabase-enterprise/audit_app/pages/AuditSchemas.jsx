@@ -22,7 +22,7 @@ const AuditSchemasOverviewTab = () => (
 
 const AuditSchemasAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Schema name`}
+    placeholder={"Schema name"}
     table={SchemasCards.table()}
   />
 );

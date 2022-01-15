@@ -163,7 +163,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText("Done").click();
 
       cy.get(`div[fill='#${colors.primary.hex};']`);
-      cy.get(`rect[fill='#509EE3']`).should("not.exist");
+      cy.get("rect[fill='#509EE3']").should("not.exist");
     });
   });
 

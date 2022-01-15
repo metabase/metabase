@@ -62,7 +62,7 @@ export default class MetricForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={`/admin/datamodel/metrics`}
+          to={"/admin/datamodel/metrics"}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>

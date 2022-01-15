@@ -260,7 +260,7 @@ export const getRoutes = store => (
       </Route>
 
       {/* REFERENCE */}
-      <Route path="/reference" title={`Data Reference`}>
+      <Route path="/reference" title={"Data Reference"}>
         <IndexRedirect to="/reference/databases" />
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />

@@ -90,12 +90,12 @@ describe("scenarios > question > native", () => {
     cy.location("pathname").should("match", /\/question\/\d+/);
   });
 
-  it(`shouldn't remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)`, () => {
+  it('shouldn\'t remove rows containing NULL when using "Is not" or "Does not contain" filter (metabase#13332)', () => {
     const FILTERS = ["Is not", "Does not contain"];
     const QUESTION = "QQ";
 
     openNativeEditor().type(
-      `SELECT null AS "V", 1 as "N" UNION ALL SELECT 'This has a value' AS "V", 2 as "N"`,
+      'SELECT null AS "V", 1 as "N" UNION ALL SELECT \'This has a value\' AS "V", 2 as "N"',
     );
     cy.findByText("Save").click();
 

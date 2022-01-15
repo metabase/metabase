@@ -24,7 +24,7 @@ const AuditUsersOverviewTab = () => (
 
 const AuditUsersAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Member name`}
+    placeholder={"Member name"}
     table={UsersCards.table()}
   />
 );

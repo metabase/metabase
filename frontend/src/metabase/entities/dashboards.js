@@ -22,9 +22,9 @@ import {
 
 import forms from "./dashboards/forms";
 
-const FAVORITE_ACTION = `metabase/entities/dashboards/FAVORITE`;
-const UNFAVORITE_ACTION = `metabase/entities/dashboards/UNFAVORITE`;
-const COPY_ACTION = `metabase/entities/dashboards/COPY`;
+const FAVORITE_ACTION = "metabase/entities/dashboards/FAVORITE";
+const UNFAVORITE_ACTION = "metabase/entities/dashboards/UNFAVORITE";
+const COPY_ACTION = "metabase/entities/dashboards/COPY";
 
 const Dashboards = createEntity({
   name: "dashboards",

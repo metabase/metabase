@@ -82,7 +82,7 @@ const getDayFormat = options =>
   options.compact || options.date_abbreviate ? "ddd" : "dddd";
 
 // use en dashes, for Maz
-const RANGE_SEPARATOR = ` – `;
+const RANGE_SEPARATOR = " – ";
 
 // for extracting number portion from a formatted currency string
 // NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
@@ -365,7 +365,7 @@ export function formatDateTimeRangeWithUnit(value, unit, options = {}) {
       return (
         start.format(`${monthFormat} D`) +
         RANGE_SEPARATOR +
-        end.format(`D, YYYY`)
+        end.format("D, YYYY")
       );
     }
   } else {
@@ -850,10 +850,10 @@ export function humanize(...args) {
 
 export function conjunct(list, conjunction) {
   return (
-    list.slice(0, -1).join(`, `) +
-    (list.length > 2 ? `,` : ``) +
-    (list.length > 1 ? ` ${conjunction} ` : ``) +
-    (list[list.length - 1] || ``)
+    list.slice(0, -1).join(", ") +
+    (list.length > 2 ? "," : "") +
+    (list.length > 1 ? ` ${conjunction} ` : "") +
+    (list[list.length - 1] || "")
   );
 }
 

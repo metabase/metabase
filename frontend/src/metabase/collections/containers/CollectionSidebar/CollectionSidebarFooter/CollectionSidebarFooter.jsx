@@ -21,7 +21,7 @@ export default function CollectionSidebarFooter({ isAdmin }) {
         </Link>
       )}
 
-      <Link to={`/archive`}>
+      <Link to={"/archive"}>
         <Icon name="view_archive" />
         {t`View archive`}
       </Link>

@@ -51,7 +51,7 @@ const AuditDrill = ({ question, clicked }) => {
       return [
         {
           name: "detail",
-          title: `View this`,
+          title: "View this",
           default: true,
           action() {
             const url = columnNameToUrl[column.name](value, clicked);
@@ -74,7 +74,7 @@ const AuditDrill = ({ question, clicked }) => {
       return [
         {
           name: "detail",
-          title: `View this`,
+          title: "View this",
           default: true,
           url() {
             return `/admin/audit/query/${encodeURIComponent(String(value))}`;

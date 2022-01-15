@@ -11,13 +11,13 @@ export const getPublicEmbedOptions = ({ iframeUrl }) => [
 export const getSignedEmbedOptions = () => [
   {
     name: "Mustache",
-    source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
+    source: () => html({ iframeUrl: '"{{iframeUrl}}"', mode: "ace/mode/html" }),
   },
-  { name: "Pug / Jade", source: () => pug({ iframeUrl: `iframeUrl` }) },
-  { name: "ERB", source: () => html({ iframeUrl: `"<%= @iframe_url %>"` }) },
+  { name: "Pug / Jade", source: () => pug({ iframeUrl: "iframeUrl" }) },
+  { name: "ERB", source: () => html({ iframeUrl: '"<%= @iframe_url %>"' }) },
   {
     name: "JSX",
-    source: () => jsx({ iframeUrl: `{iframeUrl}`, mode: "ace/mode/jsx" }),
+    source: () => jsx({ iframeUrl: "{iframeUrl}", mode: "ace/mode/jsx" }),
   },
 ];
 

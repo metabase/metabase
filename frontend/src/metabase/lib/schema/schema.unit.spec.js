@@ -52,7 +52,7 @@ describe("schemas", () => {
       });
     });
 
-    it(`handles undefined object`, () => {
+    it("handles undefined object", () => {
       expect(entityTypeForObject()).toBe(undefined);
     });
   });

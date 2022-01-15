@@ -2,7 +2,8 @@ import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 import { runQuery } from "../../native-filters/helpers/e2e-sql-filter-helpers";
 
-const ORIGINAL_QUERY = `select ID as "num", CATEGORY as "text" from PRODUCTS limit 1`;
+const ORIGINAL_QUERY =
+  'select ID as "num", CATEGORY as "text" from PRODUCTS limit 1';
 const SECTION = "select ";
 const SELECTED_TEXT = "ID";
 

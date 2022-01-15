@@ -192,7 +192,7 @@ describe("scenarios > visualizations > line chart", () => {
       display: "line",
     });
 
-    cy.get(`.sub._0`)
+    cy.get(".sub._0")
       .find("circle")
       .should("have.length", 2);
   });

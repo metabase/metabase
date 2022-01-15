@@ -23,7 +23,7 @@ const AuditDashboardsOverviewTab = () => (
 
 const AuditDashboardsAllTab = () => (
   <AuditTableWithSearch
-    placeholder={`Dashboard name`}
+    placeholder={"Dashboard name"}
     table={DashboardCards.table()}
   />
 );

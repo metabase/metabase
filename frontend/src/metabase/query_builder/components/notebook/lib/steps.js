@@ -146,7 +146,7 @@ export function getQuestionSteps(question, openSteps = {}) {
  */
 export function getStageSteps(stageQuery, stageIndex, openSteps) {
   const getId = (step, itemIndex) =>
-    `${stageIndex}:${step.type}` + (itemIndex > 0 ? `:${itemIndex}` : ``);
+    `${stageIndex}:${step.type}` + (itemIndex > 0 ? `:${itemIndex}` : "");
 
   function getStep(STEP, itemIndex = null) {
     const id = getId(STEP, itemIndex);

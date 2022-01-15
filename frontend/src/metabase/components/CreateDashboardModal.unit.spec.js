@@ -33,7 +33,7 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
   const onClose = jest.fn();
 
   if (mockCreateDashboardResponse) {
-    xhrMock.post(`/api/dashboard`, (req, res) =>
+    xhrMock.post("/api/dashboard", (req, res) =>
       res.status(200).body(req.body()),
     );
   }

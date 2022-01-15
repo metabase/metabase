@@ -17,7 +17,7 @@ describe("scenatios > question > native > mysql", () => {
   it("can write a native MySQL query with a field filter", () => {
     // Write Native query that includes a filter
     cy.get(".ace_content").type(
-      `SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];`,
+      "SELECT TOTAL, CATEGORY FROM ORDERS LEFT JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID [[WHERE PRODUCTS.ID = {{id}}]];",
       {
         parseSpecialCharSequences: false,
       },
@@ -43,7 +43,7 @@ describe("scenatios > question > native > mysql", () => {
   });
 
   it("can save a native MySQL query", () => {
-    cy.get(".ace_content").type(`SELECT * FROM ORDERS`);
+    cy.get(".ace_content").type("SELECT * FROM ORDERS");
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("37.65");
 

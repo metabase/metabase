@@ -12,7 +12,7 @@ export default class ScratchApp extends React.Component {
     super(props);
     const hash = window.location.hash.replace(/^#/, "");
     this.state = {
-      code: hash ? atob(hash) : `<Button>Hello World</Button>`,
+      code: hash ? atob(hash) : "<Button>Hello World</Button>",
       error: null,
       centered: true,
     };

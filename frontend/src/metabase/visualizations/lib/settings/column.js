@@ -139,7 +139,7 @@ function dateStyleOption(
   }
   return {
     name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ""),
     value: style,
   };
 }
@@ -148,7 +148,7 @@ function timeStyleOption(style, description) {
   const format = style;
   return {
     name:
-      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ``),
+      EXAMPLE_DATE.format(format) + (description ? ` (${description})` : ""),
     value: style,
   };
 }
@@ -310,17 +310,17 @@ export const NUMBER_COLUMN_SETTINGS = {
           ...(symbol !== code
             ? [
                 {
-                  name: t`Symbol` + ` ` + `(${symbol})`,
+                  name: t`Symbol` + " " + `(${symbol})`,
                   value: "symbol",
                 },
               ]
             : []),
           {
-            name: t`Code` + ` ` + `(${code})`,
+            name: t`Code` + " " + `(${code})`,
             value: "code",
           },
           {
-            name: t`Name` + ` ` + `(${name})`,
+            name: t`Name` + " " + `(${name})`,
             value: "name",
           },
         ],

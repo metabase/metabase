@@ -11,7 +11,7 @@ describe("scenarios > internal > question", () => {
 
   it("should load saved questions", () => {
     cy.server();
-    cy.route("POST", `/api/card/1/query`).as("query");
+    cy.route("POST", "/api/card/1/query").as("query");
     cy.visit("/_internal/question/1");
     cy.wait("@query");
     cy.findAllByText("37.65"); // some text in the orders table
@@ -19,7 +19,7 @@ describe("scenarios > internal > question", () => {
 
   it("should load adhoc questions", () => {
     cy.server();
-    cy.route("POST", `/api/dataset`).as("dataset");
+    cy.route("POST", "/api/dataset").as("dataset");
     const hash = adhocQuestionHash({
       dataset_query: {
         type: "query",

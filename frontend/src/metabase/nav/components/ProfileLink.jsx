@@ -43,13 +43,13 @@ export default class ProfileLink extends Component {
         title: t`Account settings`,
         icon: null,
         link: Urls.accountSettings(),
-        event: `Navbar;Profile Dropdown;Edit Profile`,
+        event: "Navbar;Profile Dropdown;Edit Profile",
       },
       admin && {
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
+        event: "Navbar;Profile Dropdown;Enter Admin",
       },
       {
         title: t`Activity`,
@@ -74,7 +74,7 @@ export default class ProfileLink extends Component {
         title: t`Sign out`,
         icon: null,
         link: "auth/logout",
-        event: `Navbar;Profile Dropdown;Logout`,
+        event: "Navbar;Profile Dropdown;Logout",
       },
     ].filter(Boolean);
   };

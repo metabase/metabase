@@ -5,7 +5,8 @@ import Calendar from "./Calendar";
 export const component = Calendar;
 export const category = "pickers";
 
-export const description = `For when gregorian time is your need, a calendar is your friend indeed`;
+export const description =
+  "For when gregorian time is your need, a calendar is your friend indeed";
 
 const onChange = () => ({});
 

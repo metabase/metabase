@@ -20,7 +20,7 @@ export const newQuestionFlow = () => "/question/new";
 export const newDashboard = collectionId =>
   `collection/${collectionId}/new_dashboard`;
 
-export const newPulse = () => `/pulse/create`;
+export const newPulse = () => "/pulse/create";
 
 export const newCollection = collectionId =>
   `collection/${collectionId}/new_collection`;
@@ -213,7 +213,7 @@ export function label(label) {
 
 export function publicQuestion(uuid, type = null) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
+  return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : "");
 }
 
 export function publicDashboard(uuid) {
@@ -223,7 +223,7 @@ export function publicDashboard(uuid) {
 
 export function embedCard(token, type = null) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : "");
 }
 
 export function embedDashboard(token) {
@@ -232,11 +232,11 @@ export function embedDashboard(token) {
 }
 
 export function accountSettings() {
-  return `/account/profile`;
+  return "/account/profile";
 }
 
 export function newUser() {
-  return `/admin/people/new`;
+  return "/admin/people/new";
 }
 
 export function editUser(userId) {
@@ -260,7 +260,7 @@ export function reactivateUser(userId) {
 }
 
 export function newDatabase() {
-  return `/admin/databases/create`;
+  return "/admin/databases/create";
 }
 
 export function editDatabase(databaseId) {

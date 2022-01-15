@@ -22,7 +22,7 @@ const Element = ({
     align="center"
     p={2}
     mb={1}
-    style={{ width: 300, boxShadow: `0 1px 4px 1px rgba(0, 0, 0, 0.08)` }}
+    style={{ width: 300, boxShadow: "0 1px 4px 1px rgba(0, 0, 0, 0.08)" }}
   >
     <IconWrapper borderRadius={"99px"} bg={iconBackgroundColor} p={1} mr={1}>
       <Icon name={iconName} color="white" />

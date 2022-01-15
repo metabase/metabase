@@ -57,7 +57,7 @@ class NotebookStepPreview extends React.Component {
     return (
       <Box pt={2}>
         <Flex align="center" justify="space-between" mb={1}>
-          <span className="text-bold">{`Preview`}</span>
+          <span className="text-bold">{"Preview"}</span>
           <Flex align="right">
             <Icon
               name="close"

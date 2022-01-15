@@ -85,7 +85,7 @@ function question(
 
 function throwIfNotPresent(param) {
   if (!param) {
-    throw new Error(`Wrong key! Expected "query" or "native".`);
+    throw new Error('Wrong key! Expected "query" or "native".');
   }
 }
 

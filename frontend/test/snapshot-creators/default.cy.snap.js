@@ -48,7 +48,7 @@ describe("snapshots", () => {
       },
     );
     // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
+    cy.request("PUT", "/api/user/1/modal/qbnewb", {});
   }
 
   function updateSettings() {
@@ -155,9 +155,9 @@ describe("snapshots", () => {
 
     // dashboard 1: Orders in a dashboard
     cy.createDashboard({ name: "Orders in a dashboard" });
-    cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
+    cy.request("POST", "/api/dashboard/1/cards", { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/1/cards`, {
+        cy.request("PUT", "/api/dashboard/1/cards", {
           cards: [
             {
               id: dashCardId,
