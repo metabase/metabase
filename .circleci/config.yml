@@ -42,7 +42,7 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-16-clj-1.10.3.929-07-27-2021-node-browsers
 
-  postgres:
+  postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
@@ -1100,7 +1100,7 @@ workflows:
           matrix:
             parameters:
               driver: ["bigquery", "bigquery-cloud-sdk", "googleanalytics", "sqlite"]
-          name: be-tests-<< matrix.driver >>
+          name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-tests-java-8-ee
           driver: << matrix.driver >>
@@ -1108,7 +1108,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["sqlserver", "druid", "postgres"]
+              driver: ["sqlserver", "druid"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-tests-java-8-ee
@@ -1187,6 +1187,14 @@ workflows:
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
+
+      - test-driver:
+          name: be-tests-postgres-ee
+          description: "(9.6)"
+          requires:
+            - be-tests-java-8-ee
+          e: postgres-9-6
+          driver: postgres
 
       - test-driver:
           name: be-tests-postgres-latest-ee
