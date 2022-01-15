@@ -66,7 +66,7 @@
                                                 ::add/position      0}]]
                  :aggregation  [[:aggregation-options [:count] {:name               "count"
                                                                 ::add/desired-alias "count"
-                                                                ::add/position      0}]]
+                                                                ::add/position      1}]]
                  :fields       [[:field "double_price" {:base-type          :type/Float
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "double_price"
@@ -271,7 +271,7 @@
                                                                                                        ::add/source-alias "PRICE"}]]
                                                                                  {:name               "MaxPrice"
                                                                                   ::add/desired-alias "MaxPrice"
-                                                                                  ::add/position      0}]
+                                                                                  ::add/position      1}]
                                                                                 [:aggregation-options
                                                                                  [:avg
                                                                                   [:field
@@ -280,13 +280,13 @@
                                                                                     ::add/source-alias "PRICE"}]]
                                                                                  {:name               "AvgPrice"
                                                                                   ::add/desired-alias "AvgPrice"
-                                                                                  ::add/position      0}]
+                                                                                  ::add/position      2}]
                                                                                 [:aggregation-options
                                                                                  [:min [:field %price {::add/source-table $$venues
                                                                                                        ::add/source-alias "PRICE"}]]
                                                                                  {:name               "MinPrice"
                                                                                   ::add/desired-alias "MinPrice"
-                                                                                  ::add/position      0}]]
+                                                                                  ::add/position      3}]]
                                                                  :breakout     [[:field %category_id {::add/source-table  $$venues
                                                                                                       ::add/source-alias  "CATEGORY_ID"
                                                                                                       ::add/desired-alias "CATEGORY_ID"
@@ -449,15 +449,9 @@
                     :joins       [{:strategy     :left-join
                                    :condition    [:= $category_id &CategoriesStats.category_id]
                                    :source-query {:source-table $$venues
-                                                  :aggregation  [[:aggregation-options [:max $price] {:name               "MaxPrice"
-                                                                                                      ::add/desired-alias "MaxPrice"
-                                                                                                      ::add/position      0}]
-                                                                 [:aggregation-options [:avg $price] {:name               "AvgPrice"
-                                                                                                      ::add/desired-alias "AvgPrice"
-                                                                                                      ::add/position      0}]
-                                                                 [:aggregation-options [:min $price] {:name               "MinPrice"
-                                                                                                      ::add/desired-alias "MinPrice"
-                                                                                                      ::add/position      0}]]
+                                                  :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
+                                                                 [:aggregation-options [:avg $price] {:name "AvgPrice"}]
+                                                                 [:aggregation-options [:min $price] {:name "MinPrice"}]]
                                                   :breakout     [$category_id]}
                                    :alias        "CategoriesStats"
                                    :fields       :all}]
@@ -607,15 +601,13 @@
                         {:breakout    [products-category created-at pivot-grouping]
                          :aggregation [[:aggregation-options [:count] {:name               "count"
                                                                        ::add/desired-alias "count"
-                                                                       ::add/position      0}]]
+                                                                       ::add/position      3}]]
                          :order-by    [[:asc products-category]
                                        [:asc created-at]
                                        [:asc pivot-grouping]]})))
                   (nest-expressions
                    (mt/mbql-query orders
-                     {:aggregation [[:aggregation-options [:count] {:name               "count"
-                                                                    ::add/desired-alias "count"
-                                                                    ::add/position      0}]]
+                     {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                       :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
                                     !year.created_at
                                     [:expression "pivot-grouping"]]
@@ -634,62 +626,62 @@
     (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (query= (mt/$ids products
-                      {:source-query {:source-table $$products
-                                      :expressions  {:CATEGORY [:concat
-                                                                [:field %category {::add/source-table  $$products
-                                                                                   ::add/source-alias  "CATEGORY"
-                                                                                   ::add/desired-alias "CATEGORY"
-                                                                                   ::add/position      3}]
-                                                                "2"]}
-                                      :fields       [[:field %id {::add/source-table  $$products
-                                                                  ::add/source-alias  "ID"
-                                                                  ::add/desired-alias "ID"
-                                                                  ::add/position      0}]
-                                                     [:field %ean {::add/source-table  $$products
-                                                                   ::add/source-alias  "EAN"
-                                                                   ::add/desired-alias "EAN"
-                                                                   ::add/position      1}]
-                                                     [:field %title {::add/source-table  $$products
-                                                                     ::add/source-alias  "TITLE"
-                                                                     ::add/desired-alias "TITLE"
-                                                                     ::add/position      2}]
-                                                     [:field %category {::add/source-table  $$products
-                                                                        ::add/source-alias  "CATEGORY"
-                                                                        ::add/desired-alias "CATEGORY"
-                                                                        ::add/position      3}]
-                                                     [:field %vendor {::add/source-table  $$products
-                                                                      ::add/source-alias  "VENDOR"
-                                                                      ::add/desired-alias "VENDOR"
-                                                                      ::add/position      4}]
-                                                     [:field %price {::add/source-table  $$products
-                                                                     ::add/source-alias  "PRICE"
-                                                                     ::add/desired-alias "PRICE"
-                                                                     ::add/position      5}]
-                                                     [:field %rating {::add/source-table  $$products
-                                                                      ::add/source-alias  "RATING"
-                                                                      ::add/desired-alias "RATING"
-                                                                      ::add/position      6}]
-                                                     [:field %created_at {:temporal-unit      :default
-                                                                          ::add/source-table  $$products
-                                                                          ::add/source-alias  "CREATED_AT"
-                                                                          ::add/desired-alias "CREATED_AT"
-                                                                          ::add/position      7}]
-                                                     [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
-                                                                              ::add/position      8}]]}
-                       :breakout     [[:field "CATEGORY_2" {:base-type          :type/Text
-                                                            ::add/source-table  ::add/source
-                                                            ::add/source-alias  "CATEGORY_2"
-                                                            ::add/desired-alias "CATEGORY_2"
-                                                            ::add/position      0}]]
-                       :aggregation  [[:aggregation-options [:count] {:name               "count"
-                                                                      ::add/desired-alias "count"
-                                                                      ::add/position      0}]]
-                       :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                      {:source-query       {:source-table $$products
+                                            :expressions  {:CATEGORY [:concat
+                                                                      [:field %category {::add/source-table  $$products
+                                                                                         ::add/source-alias  "CATEGORY"
+                                                                                         ::add/desired-alias "CATEGORY"
+                                                                                         ::add/position      3}]
+                                                                      "2"]}
+                                            :fields       [[:field %id {::add/source-table  $$products
+                                                                        ::add/source-alias  "ID"
+                                                                        ::add/desired-alias "ID"
+                                                                        ::add/position      0}]
+                                                           [:field %ean {::add/source-table  $$products
+                                                                         ::add/source-alias  "EAN"
+                                                                         ::add/desired-alias "EAN"
+                                                                         ::add/position      1}]
+                                                           [:field %title {::add/source-table  $$products
+                                                                           ::add/source-alias  "TITLE"
+                                                                           ::add/desired-alias "TITLE"
+                                                                           ::add/position      2}]
+                                                           [:field %category {::add/source-table  $$products
+                                                                              ::add/source-alias  "CATEGORY"
+                                                                              ::add/desired-alias "CATEGORY"
+                                                                              ::add/position      3}]
+                                                           [:field %vendor {::add/source-table  $$products
+                                                                            ::add/source-alias  "VENDOR"
+                                                                            ::add/desired-alias "VENDOR"
+                                                                            ::add/position      4}]
+                                                           [:field %price {::add/source-table  $$products
+                                                                           ::add/source-alias  "PRICE"
+                                                                           ::add/desired-alias "PRICE"
+                                                                           ::add/position      5}]
+                                                           [:field %rating {::add/source-table  $$products
+                                                                            ::add/source-alias  "RATING"
+                                                                            ::add/desired-alias "RATING"
+                                                                            ::add/position      6}]
+                                                           [:field %created_at {:temporal-unit      :default
+                                                                                ::add/source-table  $$products
+                                                                                ::add/source-alias  "CREATED_AT"
+                                                                                ::add/desired-alias "CREATED_AT"
+                                                                                ::add/position      7}]
+                                                           [:expression "CATEGORY" {::add/desired-alias "CATEGORY_2"
+                                                                                    ::add/position      8}]]}
+                       :breakout           [[:field "CATEGORY_2" {:base-type          :type/Text
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "CATEGORY_2"
                                                                   ::add/desired-alias "CATEGORY_2"
-                                                                  ::add/position      0}]]]
-                       :limit        1})
+                                                                  ::add/position      0}]]
+                       :aggregation        [[:aggregation-options [:count] {:name               "count"
+                                                                            ::add/desired-alias "count"
+                                                                            ::add/position      1}]]
+                       :order-by           [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
+                                                                        ::add/source-table  ::add/source
+                                                                        ::add/source-alias  "CATEGORY_2"
+                                                                        ::add/desired-alias "CATEGORY_2"
+                                                                        ::add/position      0}]]]
+                       :limit              1})
                     (-> (mt/mbql-query products
                           {:expressions {:CATEGORY [:concat $category "2"]}
                            :breakout    [:expression :CATEGORY]
