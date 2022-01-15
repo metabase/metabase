@@ -7,11 +7,10 @@
   method."
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [clojure.core.memoize :as memoize]
-            [metabase.query-processor.store :as qp.store]))
+            [metabase.util.i18n :refer [trs]]))
 
 ;; TODO -- this is actually pretty handy and I think we ought to use it for all the deprecated driver methods.
 (defn log-deprecation-warning
