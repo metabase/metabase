@@ -25,7 +25,8 @@
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
-            [clojure.walk :as walk])
+            [clojure.walk :as walk]
+            [metabase.query-processor.util.nest-query :as nest-query])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
@@ -605,8 +606,10 @@
   (mbql.u/replace form
     [:field id-or-name opts]
     [:field id-or-name (-> opts
-                           (assoc ::add/source-alias (::add/desired-alias opts)
-                                  ::add/source-table ::add/none)
+                           (assoc ::add/source-alias        (::add/desired-alias opts)
+                                  ::add/source-table        ::add/none
+                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
+                                  ::nest-query/outer-select true)
                            ;; don't want to do casting again inside the order by or breakout either. That happens inside
                            ;; the `SELECT`
                            (dissoc :temporal-unit))]))
