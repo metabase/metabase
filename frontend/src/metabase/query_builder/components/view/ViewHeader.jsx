@@ -385,7 +385,7 @@ DatasetCollectionBadge.propTypes = {
 function DatasetCollectionBadge({ dataset }) {
   const { collection } = dataset.card();
   return (
-    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="dataset">
+    <HeadBreadcrumbs.Badge to={Urls.collection(collection)} icon="model">
       {collection?.name || t`Our analytics`}
     </HeadBreadcrumbs.Badge>
   );

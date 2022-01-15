@@ -19,6 +19,8 @@ const propTypes = {
 };
 
 function EditQuestionInfoModal({ question, onClose, onSave }) {
+  const modalTitle = question.isDataset() ? t`Edit model` : t`Edit question`;
+
   const onSubmit = useCallback(
     async card => {
       await onSave({ ...question.card(), ...card });
@@ -31,7 +33,7 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
     PLUGIN_CACHING.getQuestionsImplicitCacheTTL(question) > 0;
 
   return (
-    <ModalContent title={t`Edit question`} onClose={onClose}>
+    <ModalContent title={modalTitle} onClose={onClose}>
       <Form
         initialValues={question.card()}
         form={Questions.forms.edit}

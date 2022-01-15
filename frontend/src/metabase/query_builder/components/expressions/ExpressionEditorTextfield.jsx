@@ -32,6 +32,10 @@ import ExpressionMode from "./ExpressionMode";
 
 import "./expressions.css";
 
+import * as ace from "ace-builds/src-noconflict/ace";
+
+ace.config.set("basePath", "/assets/ui/");
+
 const HelpText = ({ helpText, width }) =>
   helpText ? (
     <Popover
@@ -94,7 +98,11 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [expressionObj, source]
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.number,
+      PropTypes.array,
+    ]),
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -244,6 +252,12 @@ export default class ExpressionEditorTextfield extends React.Component {
     if (this.input.current) {
       const { editor } = this.input.current;
       this.handleCursorChange(editor.selection);
+
+      // workaround some unknown issue on Firefox
+      // without explicit focus, the editor is vertically shifted
+      setTimeout(() => {
+        editor.focus();
+      }, 0);
     }
   };
 

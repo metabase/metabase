@@ -103,6 +103,8 @@
   email-to
   fake-inbox-email-fn
   inbox
+  received-email-body?
+  received-email-subject?
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
