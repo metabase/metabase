@@ -21,7 +21,7 @@
             [metabase.query-processor.util.nest-query :as nest-query]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
