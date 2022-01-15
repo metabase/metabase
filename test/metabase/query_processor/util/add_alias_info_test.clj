@@ -183,7 +183,11 @@
 
 (deftest not-null-test
   (is (query= (mt/mbql-query checkins
-                {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                {:aggregation [[:aggregation-options
+                                [:count]
+                                {:name               "count"
+                                 ::add/desired-alias "count"
+                                 ::add/position      0}]]
                  :filter      [:!=
                                [:field %date {:temporal-unit     :default
                                               ::add/source-table $$checkins
@@ -203,9 +207,21 @@
 (deftest duplicate-aggregations-test
   (is (query= (mt/mbql-query venues
                 {:source-query {:source-table $$venues
-                                :aggregation  [[:aggregation-options [:count] {:name "count"}]
-                                               [:aggregation-options [:count] {:name "count_2"}]
-                                               [:aggregation-options [:count] {:name "count_3"}]]}
+                                :aggregation  [[:aggregation-options
+                                                [:count]
+                                                {:name               "count"
+                                                 ::add/desired-alias "count"
+                                                 ::add/position      0}]
+                                               [:aggregation-options
+                                                [:count]
+                                                {:name               "count_2"
+                                                 ::add/desired-alias "count_2"
+                                                 ::add/position      1}]
+                                               [:aggregation-options
+                                                [:count]
+                                                {:name               "count_3"
+                                                 ::add/desired-alias "count_3"
+                                                 ::add/position      2}]]}
                  :fields       [[:field "count" {:base-type          :type/BigInteger
                                                  ::add/source-table  ::add/source
                                                  ::add/source-alias  "count"
@@ -225,7 +241,11 @@
               (add-alias-info
                (mt/mbql-query venues
                  {:source-query {:source-table $$venues
-                                 :aggregation  [[:aggregation-options [:count] {:name "count"}]
+                                 :aggregation  [[:aggregation-options
+                                                 [:count]
+                                                 {:name               "count"
+                                                  ::add/position      0
+                                                  ::add/desired-alias "count"}]
                                                 [:count]
                                                 [:count]]}
                   :limit        1})))))
@@ -283,7 +303,9 @@
                                               :aggregation  [[:aggregation-options
                                                               [:avg [:field %reviews.rating {::add/source-table $$reviews
                                                                                              ::add/source-alias "RATING"}]]
-                                                              {:name "avg"}]]
+                                                              {:name               "avg"
+                                                               ::add/desired-alias "avg"
+                                                               ::add/position      1}]]
                                               :breakout     [[:field %products.category {:join-alias         "P2"
                                                                                          ::add/source-table  "P2"
                                                                                          ::add/source-alias  "CATEGORY"
@@ -333,7 +355,7 @@
                   (add-alias-info
                    (mt/mbql-query orders
                      {:fields [[:field "count" {:base-type :type/BigInteger}]
-                                     &Q2.products.category
+                               &Q2.products.category
                                [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]
                       :joins  [{:strategy     :left-join
                                 :condition    [:= $products.category &Q2.products.category]
@@ -380,7 +402,9 @@
                                                ::add/source-alias  "double_price"
                                                ::add/desired-alias "COOL.double_price"
                                                ::add/position      0}]]
-                            {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                            {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
+                                                                           ::add/position      1
+                                                                           ::add/desired-alias "COOL.count"}]]
                              :breakout    [double-price]
                              :order-by    [[:asc double-price]]})))
                     (-> (mt/mbql-query venues
@@ -437,10 +461,30 @@
                   {:aggregation [[:aggregation-options
                                   [:sum [:field %user_id {::add/source-table $$checkins
                                                           ::add/source-alias "USER_ID"}]]
-                                  {:name "sum"}]]
+                                  {:name               "sum"
+                                   ::add/position      0
+                                   ::add/desired-alias "sum"}]]
                    :order-by    [[:asc [:aggregation 0 {::add/desired-alias "sum"
                                                         ::add/position      0}]]]})
                 (add-alias-info
                  (mt/mbql-query checkins
                    {:aggregation [[:sum $user_id]]
                     :order-by    [[:asc [:aggregation 0]]]}))))))
+
+(deftest uniquify-aggregation-names-text
+  (is (query= (mt/mbql-query checkins
+                {:expressions {:count [:+ 1 1]}
+                 :breakout    [[:expression "count" {::add/desired-alias "count"
+                                                     ::add/position      0}]]
+                 :aggregation [[:aggregation-options [:count] {:name               "count_2"
+                                                               ::add/desired-alias "count_2"
+                                                               ::add/position      1}]]
+                 :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
+                                                           ::add/position      0}]]]
+                 :limit       1})
+              (add-alias-info
+               (mt/mbql-query checkins
+                 {:expressions {"count" [:+ 1 1]}
+                  :breakout    [[:expression "count"]]
+                  :aggregation [[:count]]
+                  :limit       1})))))

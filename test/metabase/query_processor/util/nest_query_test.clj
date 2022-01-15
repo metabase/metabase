@@ -59,12 +59,14 @@
                                                                      ::add/desired-alias "PRICE"
                                                                      ::add/position      5}]
                                                [:expression "double_price" {::add/desired-alias "double_price"
-                                                                            ::add/position       6}]]}
+                                                                            ::add/position      6}]]}
                  :breakout     [[:field %price {::add/source-table  ::add/source
                                                 ::add/source-alias  "PRICE"
                                                 ::add/desired-alias "PRICE"
                                                 ::add/position      0}]]
-                 :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                 :aggregation  [[:aggregation-options [:count] {:name               "count"
+                                                                ::add/desired-alias "count"
+                                                                ::add/position      0}]]
                  :fields       [[:field "double_price" {:base-type          :type/Float
                                                         ::add/source-table  ::add/source
                                                         ::add/source-alias  "double_price"
@@ -267,18 +269,24 @@
                                                                  :aggregation  [[:aggregation-options
                                                                                  [:max [:field %price {::add/source-table $$venues
                                                                                                        ::add/source-alias "PRICE"}]]
-                                                                                 {:name "MaxPrice"}]
+                                                                                 {:name               "MaxPrice"
+                                                                                  ::add/desired-alias "MaxPrice"
+                                                                                  ::add/position      0}]
                                                                                 [:aggregation-options
                                                                                  [:avg
                                                                                   [:field
                                                                                    %price
                                                                                    {::add/source-table $$venues
                                                                                     ::add/source-alias "PRICE"}]]
-                                                                                 {:name "AvgPrice"}]
+                                                                                 {:name               "AvgPrice"
+                                                                                  ::add/desired-alias "AvgPrice"
+                                                                                  ::add/position      0}]
                                                                                 [:aggregation-options
                                                                                  [:min [:field %price {::add/source-table $$venues
                                                                                                        ::add/source-alias "PRICE"}]]
-                                                                                 {:name "MinPrice"}]]
+                                                                                 {:name               "MinPrice"
+                                                                                  ::add/desired-alias "MinPrice"
+                                                                                  ::add/position      0}]]
                                                                  :breakout     [[:field %category_id {::add/source-table  $$venues
                                                                                                       ::add/source-alias  "CATEGORY_ID"
                                                                                                       ::add/desired-alias "CATEGORY_ID"
@@ -441,9 +449,15 @@
                     :joins       [{:strategy     :left-join
                                    :condition    [:= $category_id &CategoriesStats.category_id]
                                    :source-query {:source-table $$venues
-                                                  :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
-                                                                 [:aggregation-options [:avg $price] {:name "AvgPrice"}]
-                                                                 [:aggregation-options [:min $price] {:name "MinPrice"}]]
+                                                  :aggregation  [[:aggregation-options [:max $price] {:name               "MaxPrice"
+                                                                                                      ::add/desired-alias "MaxPrice"
+                                                                                                      ::add/position      0}]
+                                                                 [:aggregation-options [:avg $price] {:name               "AvgPrice"
+                                                                                                      ::add/desired-alias "AvgPrice"
+                                                                                                      ::add/position      0}]
+                                                                 [:aggregation-options [:min $price] {:name               "MinPrice"
+                                                                                                      ::add/desired-alias "MinPrice"
+                                                                                                      ::add/position      0}]]
                                                   :breakout     [$category_id]}
                                    :alias        "CategoriesStats"
                                    :fields       :all}]
@@ -591,13 +605,17 @@
                                                                         ::add/desired-alias "pivot-grouping"
                                                                         ::add/position      2}]]
                         {:breakout    [products-category created-at pivot-grouping]
-                         :aggregation [[:aggregation-options [:count] {:name "count"}]]
+                         :aggregation [[:aggregation-options [:count] {:name               "count"
+                                                                       ::add/desired-alias "count"
+                                                                       ::add/position      0}]]
                          :order-by    [[:asc products-category]
                                        [:asc created-at]
                                        [:asc pivot-grouping]]})))
                   (nest-expressions
                    (mt/mbql-query orders
-                     {:aggregation [[:aggregation-options [:count] {:name "count"}]]
+                     {:aggregation [[:aggregation-options [:count] {:name               "count"
+                                                                    ::add/desired-alias "count"
+                                                                    ::add/position      0}]]
                       :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
                                     !year.created_at
                                     [:expression "pivot-grouping"]]
@@ -663,7 +681,9 @@
                                                             ::add/source-alias  "CATEGORY_2"
                                                             ::add/desired-alias "CATEGORY_2"
                                                             ::add/position      0}]]
-                       :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                       :aggregation  [[:aggregation-options [:count] {:name               "count"
+                                                                      ::add/desired-alias "count"
+                                                                      ::add/position      0}]]
                        :order-by     [[:asc [:field "CATEGORY_2" {:base-type          :type/Text
                                                                   ::add/source-table  ::add/source
                                                                   ::add/source-alias  "CATEGORY_2"

@@ -818,7 +818,8 @@
   {;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    (s/optional-key :name)         helpers/NonBlankString
    ;; user-facing display name for this aggregation instead of the default one
-   (s/optional-key :display-name) helpers/NonBlankString})
+   (s/optional-key :display-name) helpers/NonBlankString
+   s/Keyword                      s/Any})
 
 (defclause aggregation-options
   aggregation UnnamedAggregation

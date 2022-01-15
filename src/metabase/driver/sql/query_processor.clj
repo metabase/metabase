@@ -35,7 +35,6 @@
     FROM ( SELECT * FROM some_table ) source"
   "source")
 
-;; TODO - yet another `*query*` dynamic var. We should really consolidate them all so we only need a single one.
 (def ^:dynamic *query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
@@ -332,17 +331,16 @@
                                     (not outer-select))
           database-type        (or database-type
                                    (:database_type field))]
-      (binding [deprecated/*field-options* options]
-        (let [identifier (->honeysql driver (apply hx/identifier :field (concat source-table-aliases [source-alias])))]
-          (u/prog1
-            (cond->> identifier
-              allow-casting?           (cast-field-if-needed driver field)
-              database-type            (#(hx/with-database-type-info % database-type))
-              (:temporal-unit options) (apply-temporal-bucketing driver options)
-              (:binning options)       (apply-binning options))
-            (log/trace (binding [*print-meta* true]
-                         (format "Compiled field clause\n%s\n=>\n%s"
-                                 (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))))
+      (let [identifier (->honeysql driver (apply hx/identifier :field (concat source-table-aliases [source-alias])))]
+        (u/prog1
+          (cond->> identifier
+            allow-casting?           (cast-field-if-needed driver field)
+            database-type            (#(hx/with-database-type-info % database-type))
+            (:temporal-unit options) (apply-temporal-bucketing driver options)
+            (:binning options)       (apply-binning options))
+          (log/trace (binding [*print-meta* true]
+                       (format "Compiled field clause\n%s\n=>\n%s"
+                               (u/pprint-to-str field-clause) (u/pprint-to-str <>)))))))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -506,7 +504,9 @@
     (->honeysql driver &match)
 
     ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
-    ;; TODO - this obviously doesn't work right for multiple aggregations of the same type
+    ;;
+    ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
+    ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
     [ag-type & _]
     (->honeysql driver (hx/identifier :field-alias ag-type))))
 
@@ -581,10 +581,6 @@
                             [(->honeysql driver ag)
                              (->honeysql driver (hx/identifier
                                                  :field-alias
-                                                 ;; TODO -- use the alias from [[metabase.query-processor.util.add]] We
-                                                 ;; need to have that namespace add `:desired-alias` to
-                                                 ;; `aggregation-options` as well. I cannot believe stuff is still
-                                                 ;; working. If we fix this we'll probably fix a LOT of bugs.
                                                  (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 

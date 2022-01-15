@@ -730,15 +730,16 @@
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (mt/with-bigquery-fks :bigquery-cloud-sdk
         (let [query (mt/mbql-query checkins
-                      {:fields [$id $venue_id->venues.name]})]
+                      {:fields [$id $venue_id->venues.name]
+                       :limit  1})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
-            (is (= (str "SELECT `v3_test_data.checkins`.`id` AS `id`,"
-                        " `Organização__via__venue_id`.`name` AS `Organizacao__via__venue_id__name_560a3449` "
-                        "FROM `v3_test_data.checkins` "
-                        "LEFT JOIN `v3_test_data.Organização` `Organização__via__venue_id`"
-                        " ON `v3_test_data.checkins`.`venue_id` = `Organização__via__venue_id`.`id` "
-                        "LIMIT 1048575")
-                   (:query (qp/query->native query))))))))))
+            (is (sql= '{:select    [v3_test_data.checkins.id        AS id
+                                    Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
+                        :from      [v3_test_data.checkins]
+                        :left-join [v3_test_data.Organização Organização__via__venue_id
+                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id ]
+                        :limit     [1]}
+                      query))))))))
 
 (deftest multiple-template-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -783,22 +784,25 @@
                      :breakout     [[:field "count" {:base-type :type/Integer}]]
                      :source-query {:source-table (mt/id :checkins)
                                     :aggregation  [[:count]]
-                                    :breakout     [!month.date]}})]
+                                    :breakout     [!month.date]}
+                     :limit        2})]
         (mt/with-native-query-testing-context query
-          (is (sql= {:select   '[source.count AS count
-                                 count (*)    AS count]
-                     :from     [(let [table (symbol (str (project-id-prefix-if-set) 'v3_test_data.checkins))]
-                                  {:select   ['date_trunc table 'AS 'date
-                                              'count '(*)       'AS 'count]
-                                   :from     [table]
+          (is (sql= {:select   '[count        AS count
+                                 count (*)    AS count_2]
+                     :from     [(let [prefix (project-id-prefix-if-set)]
+                                  {:select   ['date_trunc (list (symbol (str prefix 'v3_test_data.checkins.date)) 'month) 'AS 'date
+                                              'count '(*)                                                                 'AS 'count]
+                                   :from     [(symbol (str prefix 'v3_test_data.checkins))]
                                    :group-by '[date]
                                    :order-by '[date ASC]})
                                 'source]
-                     :group-by '[source.count]
-                     :order-by '[source.count ASC]}
+                     :group-by '[count]
+                     :order-by '[count ASC]
+                     :limit    [2]}
                     query))
-          (is (= :wow
-                 (qp/process-query query))))))))
+          (is (= [[7 1] [8 1]]
+                 (mt/rows
+                  (qp/process-query query)))))))))
 
 (deftest custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
@@ -818,15 +822,14 @@
 
 (deftest no-qualify-breakout-field-name-with-subquery-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Breakout field name is not qualified if the source query is not a table (#18742)"
-      (is (= {:query      (str "SELECT `source`.`source` AS `source`, count(*) AS `count` FROM"
-                               " (select 1 as `val`, '2' as `source`) `source`"
-                               " GROUP BY `source` ORDER BY `source` ASC")
-              :params     nil
-              :table-name "source"
-              :mbql?      true}
-            (qp/query->native
-              (mt/mbql-query checkins
-                {:aggregation  [[:count]],
-                 :breakout     [[:field "source" {:base-type :type/Text}]],
-                 :source-query {:native "select 1 as `val`, '2' as `source`"}})))))))
+    (testing "Breakout field name is not qualified if it is from source query (#18742)"
+      (is (sql= '{:select   [source    AS source
+                             count (*) AS count]
+                  :from     [(select 1 as val "2" as source)
+                             source]
+                  :group-by [source]
+                  :order-by [source ASC]}
+                (mt/mbql-query checkins
+                  {:aggregation  [[:count]]
+                   :breakout     [[:field "source" {:base-type :type/Text}]],
+                   :source-query {:native "select 1 as `val`, '2' as `source`"}}))))))

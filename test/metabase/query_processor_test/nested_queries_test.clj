@@ -689,7 +689,7 @@
                   :fields       [$id]
                   :filter       [:= *date "2014-03-30"]})))))))
 
-(deftest apply-filters-test
+(deftest aapply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "make sure filters in source queries are applied correctly!"
       (is (= [["Fred 62"     1]

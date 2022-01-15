@@ -105,6 +105,16 @@
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
+(def ^:private ^:dynamic *field-options*
+  "The options part of the `:field` clause we're currently compiling."
+  nil)
+
+(defmethod sql.qp/->honeysql [:sqlserver :field]
+  [driver [_ _ options :as field-clause]]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    (binding [*field-options* options]
+      (parent-method driver field-clause))))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
@@ -139,7 +149,7 @@
   [_ _ expr]
   ;; `::optimized-bucketing?` is added by `optimized-temporal-buckets`; this signifies that we can use more efficient
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/day expr)
     (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
@@ -167,7 +177,7 @@
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/month expr)
     (hsql/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
 
@@ -190,7 +200,7 @@
 
 (defmethod sql.qp/date [:sqlserver :year]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
     (hsql/call :DateFromParts (hx/year expr) 1 1)))
 
@@ -427,9 +437,9 @@
       (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
-  [driver query]
+  [driver inner-query]
   (let [parent-method (get-method sql.qp/preprocess :sql)]
-    (fix-order-bys (parent-method driver query))))
+    (fix-order-bys (parent-method driver inner-query))))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

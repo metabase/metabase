@@ -24,7 +24,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [clojure.walk :as walk])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
@@ -507,9 +508,15 @@
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_ _ {::add/keys [source-table]} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
+    ;; project ID no matter what
     (binding [*field-is-from-join-or-source-query?* (not (integer? source-table))]
-      (-> (parent-method driver field-clause)
-          (with-temporal-type (temporal-type field-clause))))))
+      ;; if this Field is from a source table DO NOT qualify it at all.
+      (let [field-clause (cond-> field-clause
+                           (= source-table ::add/source)
+                           (mbql.u/update-field-options assoc ::add/source-table ::add/none))]
+        (-> (parent-method driver field-clause)
+            (with-temporal-type (temporal-type field-clause)))))))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :relative-datetime]
   [driver clause]
@@ -546,7 +553,7 @@
       ;; when compared to other strings that may have normalized to the same thing.
       (str (substring-first-n-characters replaced-str 119) \_ (short-string-hash s)))))
 
-(defmethod sql.qp/escape-alias :bigquery-cloud-sdk
+(defmethod driver/escape-alias :bigquery-cloud-sdk
   [_ column-alias]
   (->valid-field-identifier column-alias))
 

@@ -302,17 +302,37 @@
     {::desired-alias (unique-alias-fn position expression-name)
      ::position      position}))
 
+(defn- add-info-to-aggregation-definition
+  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as ag-clause] ag-index]
+  (let [position     (clause->position inner-query [:aggregation ag-index])
+        unique-alias (unique-alias-fn position original-ag-name)]
+    [:aggregation-options wrapped-ag-clause (assoc opts
+                                                   :name           unique-alias
+                                                   ::position      position
+                                                   ::desired-alias unique-alias)]))
+
+(defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
+  (cond-> inner-query
+    (seq aggregations)
+    (update :aggregation (fn [aggregations]
+                           (into
+                            []
+                            (map-indexed (fn [i aggregation]
+                                           (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
+                            aggregations)))))
+
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
-    (mbql.u/replace inner-query
-      ;; don't rewrite anything inside any source queries or source metadata.
-      (_ :guard (constantly (some (partial contains? (set &parents))
-                                  [:source-query :source-metadata])))
-      &match
+    (-> (mbql.u/replace inner-query
+          ;; don't rewrite anything inside any source queries or source metadata.
+          (_ :guard (constantly (some (partial contains? (set &parents))
+                                      [:source-query :source-metadata])))
+          &match
 
-      #{:field :aggregation :expression}
-      (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))))
+          #{:field :aggregation :expression}
+          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
+        (add-info-to-aggregation-definitions unique-alias-fn))))
 
 (defn add-alias-info
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must
