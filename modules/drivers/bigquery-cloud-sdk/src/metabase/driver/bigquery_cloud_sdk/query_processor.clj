@@ -19,14 +19,13 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.query-processor.util.nest-query :as nest-query]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s]
-            [clojure.walk :as walk]
-            [metabase.query-processor.util.nest-query :as nest-query])
+            [schema.core :as s])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
@@ -610,9 +609,9 @@
                                   ::add/source-table        ::add/none
                                   ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
                                   ::nest-query/outer-select true)
-                           ;; don't want to do casting again inside the order by or breakout either. That happens inside
-                           ;; the `SELECT`
-                           (dissoc :temporal-unit))]))
+                           ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
+                           ;; That happens inside the `SELECT`
+                           (dissoc :temporal-unit :binning))]))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver top-level-clause honeysql-form query]
