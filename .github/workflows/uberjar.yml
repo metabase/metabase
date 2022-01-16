@@ -93,7 +93,7 @@ jobs:
     - uses: actions/download-artifact@v2
       with:
           name: metabase-ee-uberjar
-          path: bin/docker/Dockerfile
+          path: bin/docker/metabase.jar
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
