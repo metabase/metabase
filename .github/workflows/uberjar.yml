@@ -102,6 +102,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Where am I?
+      run: pwd
     - name: Build container image
       run: docker buildx build . -f bin/docker/Dockerfile -t metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
     - name: Launch container
