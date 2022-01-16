@@ -78,7 +78,8 @@
         bq      (bigquery)]
     (or (:project-id details) (.. bq getOptions getProjectId))))
 
-(defmethod tx/dbdef->connection-details :bigquery-cloud-sdk [_ _ {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
+  [_driver _context {:keys [database-name]}]
   (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
 
@@ -314,7 +315,7 @@
   outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
   suffix, so we can just look for that here."
   [dataset-name]
-  (when-let [[_ ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
+  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-name)]
     ;; millis to hours
     (< (* 1000 60 60 2) (- ns-load-time (Long. ds-timestamp-str)))))
 
