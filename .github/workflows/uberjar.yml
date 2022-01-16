@@ -12,6 +12,10 @@ on:
     - 'enterprise/frontend/test/**'
     - ".**"
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-20.04
@@ -78,6 +82,7 @@ jobs:
           ./SHA256.sum
   
   containerize:
+    runs-on: ubuntu-20.04
     needs: build
     steps:
     - name: Extract branch name
@@ -86,8 +91,9 @@ jobs:
       id: extract_branch
     - uses: actions/checkout@v2
     - uses: actions/download-artifact@v2
-        with:
+      with:
           name: metabase-ee-uberjar
+          path: bin/docker/Dockerfile
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
