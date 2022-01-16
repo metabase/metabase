@@ -40,7 +40,7 @@ jobs:
     - name: Install Clojure CLI
       run: |
         curl -O https://download.clojure.org/install/linux-install-1.10.3.1058.sh &&
-        sudo bash ./linux-install-1.10.3.933.sh
+        sudo bash ./linux-install-1.10.3.1058.sh
     - name: Check versions
       run: |
         echo "Node.js `node --version`"
