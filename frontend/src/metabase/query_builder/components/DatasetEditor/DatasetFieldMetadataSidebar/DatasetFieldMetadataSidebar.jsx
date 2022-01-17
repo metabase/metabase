@@ -77,8 +77,10 @@ function getFormFields({ dataset }) {
       value: type.id,
     }));
 
-  return fieldFormValues =>
-    [
+  return fieldFormValues => {
+    const hasMappedColumn =
+      !dataset.isNative() || typeof fieldFormValues.id === "number";
+    return [
       { name: "display_name", title: t`Display name` },
       {
         name: "description",
@@ -110,7 +112,10 @@ function getFormFields({ dataset }) {
         type: "radio",
         options: visibilityTypeOptions,
       },
-      {
+      // has_field_values is only handled properly when the field has an ID
+      // for native data models, the field has to be mapped to a real DB column
+      // before `has_field_values` can be set
+      hasMappedColumn && {
         name: "has_field_values",
         title: t`Filtering on this field`,
         info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
@@ -118,6 +123,7 @@ function getFormFields({ dataset }) {
         options: has_field_values_options,
       },
     ].filter(Boolean);
+  };
 }
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
