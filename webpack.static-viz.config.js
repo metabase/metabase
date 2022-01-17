@@ -35,18 +35,6 @@ module.exports = {
         exclude: /node_modules/,
         use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
       },
-      {
-        test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: "eslint-loader",
-            options: {
-              rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
-            },
-          },
-        ],
-      },
     ],
   },
   resolve: {
