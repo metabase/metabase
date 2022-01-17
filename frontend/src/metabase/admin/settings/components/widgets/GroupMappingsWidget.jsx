@@ -197,36 +197,18 @@ class AddMappingRow extends React.Component {
     };
   }
 
-  handleAdd = () => {
+  _handleSubmit = e => {
+    e.preventDefault();
     const { onAdd } = this.props;
     onAdd && onAdd(this.state.value);
     this.setState({ value: "" });
   };
 
-  handleCancel = () => {
+  _handleCancelClick = e => {
+    e.preventDefault();
     const { onCancel } = this.props;
     onCancel && onCancel();
     this.setState({ value: "" });
-  };
-
-  handleAddClick = e => {
-    e.preventDefault();
-    this.handleAdd();
-  };
-
-  handleCancelClick = e => {
-    e.preventDefault();
-    this.handleCancel();
-  };
-
-  handleInputChange = e => {
-    this.setState({ value: e.target.value });
-  };
-
-  handleInputKeyDown = e => {
-    if (e.key === "Enter") {
-      this.handleAdd();
-    }
   };
 
   render() {
@@ -237,27 +219,29 @@ class AddMappingRow extends React.Component {
     return (
       <tr>
         <td colSpan="3" style={{ padding: 0 }}>
-          <div className="my2 pl1 p1 bordered border-brand rounded relative flex align-center">
+          <form
+            className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
+            onSubmit={this._handleSubmit}
+          >
             <input
               className="input--borderless h3 ml1 flex-full"
               type="text"
               value={value}
               placeholder={this.props.placeholder}
               autoFocus
-              onChange={this.handleInputChange}
-              onKeyDown={this.handleInputKeyDown}
+              onChange={e => this.setState({ value: e.target.value })}
             />
             <span
               className="link no-decoration cursor-pointer"
-              onClick={this.handleCancelClick}
+              onClick={this._handleCancelClick}
             >{t`Cancel`}</span>
             <Button
               className="ml2"
+              type="submit"
               primary={!!isValid}
               disabled={!isValid}
-              onClick={this.handleAddClick}
             >{t`Add`}</Button>
-          </div>
+          </form>
         </td>
       </tr>
     );
