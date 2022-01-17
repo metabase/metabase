@@ -170,22 +170,7 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should display a setup help card", () => {
     cy.visit("/admin/databases/create");
-    cy.findByTestId("database-setup-help-card").within(() => {
-      cy.findByText(/Need help setting up (.*)\?/i);
-      cy.findByRole("link", { name: /Our docs can help/i });
-    });
-
-    cy.get("#formField-engine").click();
-    cy.findByText("MySQL").click();
-    cy.findByTestId("database-setup-help-card").findByText(
-      "Need help setting up MySQL?",
-    );
-
-    cy.get("#formField-engine").click();
-    cy.findByText("SQLite").click();
-    cy.findByTestId("database-setup-help-card").findByText(
-      "Need help setting up your database?",
-    );
+    cy.findByText("Need help connecting?");
   });
 
   it("should respect users' decision to manually sync large database (metabase#17450)", () => {
@@ -294,13 +279,11 @@ describe("scenarios > admin > databases > add", () => {
       chooseDatabase("BigQuery");
 
       cy.findByText("BigQuery");
-      cy.findByText("Need help setting up your database?");
-      cy.findByText("The old driver has been deprecated", { exact: false });
+      cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
       cy.findByText("BigQuery (Deprecated Driver)");
-      cy.findByText("Need help setting up your database?").should("not.exist");
-      cy.findByText("This driver will be removed", { exact: false });
+      cy.findByText("Need help connecting?");
     });
   });
 

@@ -59,8 +59,7 @@ describe("admin > database > add > Presto", () => {
     // This should be disabled but we'll not add that assertion until we mark all the required fields in the form
     cy.button("Save");
 
-    cy.findByText("Need help setting up your database?");
-    cy.findByRole("link", { name: "Our docs can help." });
+    cy.findByText("Need help connecting?");
 
     cy.contains("This is our new Presto driver.");
 
