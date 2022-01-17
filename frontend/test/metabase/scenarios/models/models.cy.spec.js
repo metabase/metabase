@@ -165,12 +165,12 @@ describe("scenarios > models", () => {
     cy.findByText(/We're a little lost/i);
   });
 
-  it("redirects to /dataset URL when opening a model with /question URL", () => {
+  it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/question/1");
     openDetailsSidebar();
     assertIsModel();
-    cy.url().should("include", "/dataset");
+    cy.url().should("include", "/model");
   });
 
   describe("data picker", () => {
