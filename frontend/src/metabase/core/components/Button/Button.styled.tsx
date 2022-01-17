@@ -71,4 +71,12 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   border: 1px solid ${getBorderColor};
   border-radius: 0.375rem;
   background-color: ${getBackgroundColor};
+
+  &:focus {
+    outline: 0.125rem solid ${color("brand-light")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 `;
