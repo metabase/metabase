@@ -30,14 +30,13 @@ export default function DimensionSemanticTypeLabel({
 }: Props) {
   const field = dimension.field();
   const semanticType = field.semantic_type;
-  const semanticTypeIcon = getSemanticTypeIcon(semanticType);
-  const icon = semanticTypeIcon || "ellipsis";
+  const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;
 
   return (
     <LabelContainer className={className}>
-      <InvertedColorRelativeSizeIcon name={icon} />
+      <InvertedColorRelativeSizeIcon name={semanticTypeIcon} />
       <Label>{semanticTypeName}</Label>
     </LabelContainer>
   );
