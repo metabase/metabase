@@ -32,6 +32,7 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 - User accounts or settings
 - Alerts on saved questions
 - Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
+- Revision history of questions and dashboards (so questions and dashboards loaded via serialization won't have "last edited by" and "last edited at" property)
 
 ### Before creating or loading a dump
 
@@ -43,7 +44,7 @@ To create a dump of a Metabase instance, use the following command in your termi
 
 `java -jar metabase.jar dump [dump_name] --user [example@example.com]`
 
-The optional `--user` flag is used to specify a default administrator account for cases when this dump is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the data dump. If this flag isn't specified, Metabase will assume that the instance into which you're loading already has an admin user (but the load will fail if there isn't an admin user).
+The optional `--user` flag is used to specify a default administrator account for cases when this dump is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the data dump. If this flag isn't specified, Metabase will assume that the instance into which you're loading already has an admin user (but the load will fail if there isn't an admin user). If you don't specify a user
 
 ### Loading a dump
 
