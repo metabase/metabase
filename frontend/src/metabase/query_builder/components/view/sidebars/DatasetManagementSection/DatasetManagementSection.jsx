@@ -59,7 +59,7 @@ function DatasetManagementSection({
           <Button
             icon="label"
             onClick={onCustomizeMetadataClick}
-          >{t`Customize Metadata`}</Button>
+          >{t`Customize metadata`}</Button>
           <MetadataIndicatorContainer>
             <DatasetMetadataStrengthIndicator dataset={dataset} />
           </MetadataIndicatorContainer>
