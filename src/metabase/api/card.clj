@@ -242,10 +242,11 @@
   [{:keys [dataset_query result_metadata], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
-  (let [data-keys            [:dataset_query :description :display :name :dataset
+  (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*)
+                                    :creator_id api/*current-user-id*
+                                    :dataset (boolean (:dataset card-data)))
         result-metadata-chan (result-metadata-async dataset_query result_metadata)
         out-chan             (a/promise-chan)]
     (a/go
