@@ -1,19 +1,21 @@
-import React, { ChangeEvent, SyntheticEvent, useState } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
-import Input from "metabase/components/Input";
+import Users from "metabase/entities/users";
 import {
-  FormInputButton,
-  FormInputContainer,
+  FormContainer,
+  FormFieldContainer,
+  FormHeader,
   FormLabel,
   FormLabelCard,
   FormLabelIcon,
   FormLabelText,
-  FormHeader,
   FormRoot,
   FormSuccessContainer,
   FormSuccessIcon,
   FormSuccessText,
 } from "./NewsletterForm.styled";
+import { FormProps } from "./types";
+import { SubscribeInfo } from "../../types";
 
 export interface NewsletterFormProps {
   initialEmail?: string;
@@ -24,21 +26,16 @@ const NewsletterForm = ({
   initialEmail = "",
   onSubscribe,
 }: NewsletterFormProps): JSX.Element => {
-  const [email, setEmail] = useState(initialEmail);
+  const initialValues = { email: initialEmail };
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const onChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setEmail(event.currentTarget.value);
-  };
-
-  const onSubmit = (event: SyntheticEvent) => {
-    event.preventDefault();
-    onSubscribe(email);
+  const onSubmit = async ({ email }: SubscribeInfo) => {
+    await onSubscribe(email);
     setIsSubscribed(true);
   };
 
   return (
-    <FormRoot onSubmit={onSubmit}>
+    <FormRoot>
       <FormLabel>
         <FormLabelCard>
           <FormLabelIcon name="mail" />
@@ -49,17 +46,18 @@ const NewsletterForm = ({
         {t`Get infrequent emails about new releases and feature updates.`}
       </FormHeader>
       {!isSubscribed && (
-        <FormInputContainer>
-          <Input
-            name="email"
-            type="email"
-            defaultValue={initialEmail}
-            placeholder={t`Email address`}
-            fullWidth
-            onChange={onChange}
-          />
-          <FormInputButton type="submit">{t`Subscribe`}</FormInputButton>
-        </FormInputContainer>
+        <Users.Form initialValues={initialValues} onSubmit={onSubmit}>
+          {({ Form, FormField, FormSubmit }: FormProps) => (
+            <Form>
+              <FormContainer>
+                <FormFieldContainer>
+                  <FormField name="email" />
+                </FormFieldContainer>
+                <FormSubmit submitTitle={t`Subscribe`} />
+              </FormContainer>
+            </Form>
+          )}
+        </Users.Form>
       )}
       {isSubscribed && (
         <FormSuccessContainer>

@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
-export const FormRoot = styled.form`
+export const FormRoot = styled.div`
   position: relative;
   padding: 2rem;
   border: 1px solid ${color("border")};
@@ -46,13 +46,13 @@ export const FormHeader = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-export const FormInputContainer = styled.div`
+export const FormContainer = styled.div`
   display: flex;
 `;
 
-export const FormInputButton = styled(Button)`
-  flex: 0 0 auto;
-  margin-left: 1rem;
+export const FormFieldContainer = styled.div`
+  flex: 1 0 auto;
+  margin-right: 1rem;
 `;
 
 export const FormSuccessContainer = styled.div`
