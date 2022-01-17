@@ -57,7 +57,10 @@ export default class DeleteDatabaseModal extends Component {
         title={t`Delete the ${database.name} database?`}
         onClose={this.props.onClose}
       >
-        <form onSubmit={confirmed ? this.handleSubmit : undefined}>
+        <form
+          className="flex flex-column"
+          onSubmit={confirmed ? this.handleSubmit : undefined}
+        >
           <div className="mb4">
             <p className="text-paragraph">
               {t`All saved questions, metrics, and segments that rely on this database will be lost.`}{" "}
