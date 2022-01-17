@@ -4,10 +4,19 @@ import { ButtonVariant } from "./types";
 
 interface ButtonRootProps {
   variant: ButtonVariant;
+  disabled: boolean;
   fullWidth: boolean;
 }
 
-const getColor = ({ variant }: ButtonRootProps): string => {
+const getCursor = ({ disabled }: ButtonRootProps): string => {
+  return disabled ? "default" : "pointer";
+};
+
+const getColor = ({ variant, disabled }: ButtonRootProps): string => {
+  if (disabled) {
+    return color("text-light");
+  }
+
   switch (variant) {
     case "primary":
       return color("bg-light");
@@ -18,7 +27,11 @@ const getColor = ({ variant }: ButtonRootProps): string => {
   }
 };
 
-const getBorderColor = ({ variant }: ButtonRootProps): string => {
+const getBorderColor = ({ variant, disabled }: ButtonRootProps): string => {
+  if (disabled) {
+    return color("border");
+  }
+
   switch (variant) {
     case "primary":
       return color("brand");
@@ -29,7 +42,11 @@ const getBorderColor = ({ variant }: ButtonRootProps): string => {
   }
 };
 
-const getBackgroundColor = ({ variant }: ButtonRootProps): string => {
+const getBackgroundColor = ({ variant, disabled }: ButtonRootProps): string => {
+  if (disabled) {
+    return "transparent";
+  }
+
   switch (variant) {
     case "primary":
       return color("brand");
@@ -47,8 +64,8 @@ const getWidth = ({ fullWidth }: ButtonRootProps): string => {
 export const ButtonRoot = styled.button<ButtonRootProps>`
   appearance: none;
   color: ${getColor};
+  cursor: ${getCursor};
   font-weight: bold;
-  cursor: pointer;
   width: ${getWidth};
   padding: 0.75rem 1.125rem;
   border: 1px solid ${getBorderColor};
