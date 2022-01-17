@@ -472,8 +472,6 @@
                                             :base_type    "type/Text"
                                             :effective_type "type/Text"
                                             :semantic_type "type/Name"
-                                            :target       nil
-                                            :has_field_values "search"
                                             :fingerprint  (:name mutil/venue-fingerprints)
                                             :field_ref    ["field" "NAME" {:base-type "type/Text"}]}
                                            {:name         "ID"
@@ -481,8 +479,6 @@
                                             :base_type    "type/BigInteger"
                                             :effective_type "type/BigInteger"
                                             :semantic_type nil
-                                            :target       nil
-                                            :has_field_values "none"
                                             :fingerprint  (:id mutil/venue-fingerprints)
                                             :field_ref    ["field" "ID" {:base-type "type/BigInteger"}]}
                                            (with-numeric-dimension-options
@@ -491,8 +487,6 @@
                                               :base_type    "type/Integer"
                                               :effective_type "type/Integer"
                                               :semantic_type nil
-                                              :target       nil
-                                              :has_field_values "none"
                                               :fingerprint  (:price mutil/venue-fingerprints)
                                               :field_ref    ["field" "PRICE" {:base-type "type/Integer"}]})
                                            (with-coordinate-dimension-options
@@ -501,8 +495,6 @@
                                               :base_type    "type/Float"
                                               :effective_type "type/Float"
                                               :semantic_type "type/Latitude"
-                                              :target       nil
-                                              :has_field_values "none"
                                               :fingerprint  (:latitude mutil/venue-fingerprints)
                                               :field_ref    ["field" "LATITUDE" {:base-type "type/Float"}]})])})
                (->> card
@@ -539,8 +531,6 @@
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "NAME" {:base-type "type/Text"}]
                                          :semantic_type            "type/Name"
-                                         :has_field_values         "search"
-                                         :target                   nil
                                          :default_dimension_option nil
                                          :dimension_options        []
                                          :fingerprint              (:fingerprint name-metadata)
@@ -552,8 +542,6 @@
                                          :table_id                 card-virtual-table-id
                                          :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                          :semantic_type            nil
-                                         :has_field_values         "none"
-                                         :target                   nil
                                          :default_dimension_option (var-get #'table-api/date-default-index)
                                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                          :fingerprint              (:fingerprint last-login-metadata)
