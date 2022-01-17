@@ -104,7 +104,7 @@ export const XYChart = ({
     xTicksDimensions.maxTextWidth,
     xScale.bandwidth,
   );
-  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 5;
+  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 4;
 
   const labelProps: Partial<TextProps> = {
     fontWeight: style.axes.labels.fontWeight,
