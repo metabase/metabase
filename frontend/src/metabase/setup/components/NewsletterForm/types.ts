@@ -15,5 +15,6 @@ export interface FormFieldProps {
 }
 
 export interface FormSubmitProps {
+  primary?: boolean;
   submitTitle?: string;
 }

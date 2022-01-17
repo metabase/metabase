@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
+import Form from "metabase/containers/Form";
 import {
   FormContainer,
   FormFieldContainer,
@@ -46,18 +47,23 @@ const NewsletterForm = ({
         {t`Get infrequent emails about new releases and feature updates.`}
       </FormHeader>
       {!isSubscribed && (
-        <Users.Form initialValues={initialValues} onSubmit={onSubmit}>
+        <Form
+          form={Users.forms.newsletter}
+          initialValues={initialValues}
+          submitTitle={t`Subscribe`}
+          onSubmit={onSubmit}
+        >
           {({ Form, FormField, FormSubmit }: FormProps) => (
             <Form>
               <FormContainer>
                 <FormFieldContainer>
                   <FormField name="email" />
                 </FormFieldContainer>
-                <FormSubmit submitTitle={t`Subscribe`} />
+                <FormSubmit primary={false} />
               </FormContainer>
             </Form>
           )}
-        </Users.Form>
+        </Form>
       )}
       {isSubscribed && (
         <FormSuccessContainer>

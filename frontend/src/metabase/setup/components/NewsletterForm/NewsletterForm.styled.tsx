@@ -53,6 +53,7 @@ export const FormContainer = styled.div`
 export const FormFieldContainer = styled.div`
   flex: 1 0 auto;
   margin-right: 1rem;
+  margin-bottom: -1.5em;
 `;
 
 export const FormSuccessContainer = styled.div`
