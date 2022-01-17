@@ -106,7 +106,7 @@ function CollectionsPermissionsPage({
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState
-          icon="all"
+          icon="folder"
           message={t`Select a collection to see its permissions`}
         />
       )}
