@@ -197,18 +197,36 @@ class AddMappingRow extends React.Component {
     };
   }
 
-  _handleCancelClick = e => {
-    e.preventDefault();
+  handleAdd = () => {
+    const { onAdd } = this.props;
+    onAdd && onAdd(this.state.value);
+    this.setState({ value: "" });
+  };
+
+  handleCancel = () => {
     const { onCancel } = this.props;
     onCancel && onCancel();
     this.setState({ value: "" });
   };
 
-  _handleAddClick = e => {
+  handleAddClick = e => {
     e.preventDefault();
-    const { onAdd } = this.props;
-    onAdd && onAdd(this.state.value);
-    this.setState({ value: "" });
+    this.handleAdd();
+  };
+
+  handleCancelClick = e => {
+    e.preventDefault();
+    this.handleCancel();
+  };
+
+  handleInputChange = e => {
+    this.setState({ value: e.target.value });
+  };
+
+  handleInputKeyDown = e => {
+    if (e.key === "Enter") {
+      this.handleAdd();
+    }
   };
 
   render() {
@@ -226,17 +244,18 @@ class AddMappingRow extends React.Component {
               value={value}
               placeholder={this.props.placeholder}
               autoFocus
-              onChange={e => this.setState({ value: e.target.value })}
+              onChange={this.handleInputChange}
+              onKeyDown={this.handleInputKeyDown}
             />
             <span
               className="link no-decoration cursor-pointer"
-              onClick={this._handleCancelClick}
+              onClick={this.handleCancelClick}
             >{t`Cancel`}</span>
             <Button
               className="ml2"
               primary={!!isValid}
               disabled={!isValid}
-              onClick={this._handleAddClick}
+              onClick={this.handleAddClick}
             >{t`Add`}</Button>
           </div>
         </td>
