@@ -793,7 +793,7 @@ export function getIconForField(field) {
 
 export function getSemanticTypeIcon(semanticType) {
   const semanticTypeMetadata = field_semantic_types_map[semanticType];
-  return semanticTypeMetadata?.icon || "unknown";
+  return semanticTypeMetadata?.icon;
 }
 
 export function getSemanticTypeName(semanticType) {

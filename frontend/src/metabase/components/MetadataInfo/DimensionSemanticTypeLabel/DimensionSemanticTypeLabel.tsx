@@ -31,7 +31,7 @@ export default function DimensionSemanticTypeLabel({
   const field = dimension.field();
   const semanticType = field.semantic_type;
   const semanticTypeIcon = getSemanticTypeIcon(semanticType);
-  const icon = semanticTypeIcon === "unknown" ? "ellipsis" : semanticTypeIcon;
+  const icon = semanticTypeIcon || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;
 
