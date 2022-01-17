@@ -236,7 +236,7 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
-        <Route path="/dataset">
+        <Route path="/model">
           <IndexRoute component={QueryBuilder} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
