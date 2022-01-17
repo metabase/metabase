@@ -96,6 +96,8 @@ jobs:
           path: bin/docker/
     - name: Move the uberjar next to the Dockerfile
       run: mv bin/docker/target/uberjar/metabase.jar ../../.
+    - name: ls
+      run: ls bin/docker/
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
