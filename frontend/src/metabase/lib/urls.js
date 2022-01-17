@@ -50,7 +50,7 @@ export function question(card, hash = "", query = "") {
 
   const { card_id, id, name } = card;
   const basePath =
-    card?.dataset || card?.model === "dataset" ? "dataset" : "question";
+    card?.dataset || card?.model === "dataset" ? "model" : "question";
 
   /**
    * If the question has been added to the dashboard we're reading the dashCard's properties.

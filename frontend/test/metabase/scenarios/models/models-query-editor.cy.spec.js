@@ -22,14 +22,14 @@ describe("scenarios > models query editor", () => {
 
   it("allows to edit GUI model query", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.visit("/dataset/1");
+    cy.visit("/model/1");
 
     openDetailsSidebar();
     cy.findByText("Edit query definition").click();
 
     getNotebookStep("data").findByText("Orders");
     cy.get(".TableInteractive");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
+    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
 
     cy.findByTestId("action-buttons")
       .findByText("Summarize")
@@ -49,10 +49,10 @@ describe("scenarios > models query editor", () => {
     cy.button("Save changes").click();
     cy.wait("@updateCard");
 
-    cy.url().should("include", "/dataset/1");
+    cy.url().should("include", "/model/1");
     cy.url().should("not.include", "/query");
 
-    cy.visit("/dataset/1/query");
+    cy.visit("/model/1/query");
     getNotebookStep("summarize").within(() => {
       cy.findByText("Created At: Month");
       cy.findByText("Count");
@@ -63,16 +63,16 @@ describe("scenarios > models query editor", () => {
     });
 
     cy.button("Cancel").click();
-    cy.url().should("include", "/dataset/1");
+    cy.url().should("include", "/model/1");
     cy.url().should("not.include", "/query");
 
     cy.go("back");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
+    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
   });
 
   it("locks display to table", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.visit("/dataset/1/query");
+    cy.visit("/model/1/query");
 
     cy.findByTestId("action-buttons")
       .findByText("Join data")
@@ -114,7 +114,7 @@ describe("scenarios > models query editor", () => {
 
     cy.get(".ace_content").as("editor");
     cy.get(".TableInteractive");
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\/query/);
+    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
 
     cy.get("@editor").type(
       " LEFT JOIN products ON orders.PRODUCT_ID = products.ID",
@@ -129,7 +129,7 @@ describe("scenarios > models query editor", () => {
     cy.button("Save changes").click();
     cy.wait("@updateCard");
 
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
+    cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
     cy.url().should("not.include", "/query");
 
     cy.findByText("Edit query definition").click();
@@ -140,7 +140,7 @@ describe("scenarios > models query editor", () => {
     });
 
     cy.button("Cancel").click();
-    cy.url().should("match", /\/dataset\/[1-9]\d*.*\d/);
+    cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
     cy.url().should("not.include", "/query");
   });
 });

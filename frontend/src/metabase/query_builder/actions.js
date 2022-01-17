@@ -492,7 +492,7 @@ export const initializeQB = (location, params, queryParams) => {
           card = null;
         }
 
-        if (!card.dataset && location.pathname.startsWith("/dataset")) {
+        if (!card.dataset && location.pathname.startsWith("/model")) {
           dispatch(
             setErrorPage({
               data: {

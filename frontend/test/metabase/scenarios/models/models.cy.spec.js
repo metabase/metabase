@@ -146,7 +146,7 @@ describe("scenarios > models", () => {
   it("allows to turn a model back into a saved question", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
-    cy.visit("/dataset/1");
+    cy.visit("/model/1");
 
     openDetailsSidebar();
     cy.findByText("Turn back into a saved question").click();
@@ -161,16 +161,16 @@ describe("scenarios > models", () => {
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
-    cy.visit("/dataset/1");
+    cy.visit("/model/1");
     cy.findByText(/We're a little lost/i);
   });
 
-  it("redirects to /dataset URL when opening a model with /question URL", () => {
+  it("redirects to /model URL when opening a model with /question URL", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/question/1");
     openDetailsSidebar();
     assertIsModel();
-    cy.url().should("include", "/dataset");
+    cy.url().should("include", "/model");
   });
 
   describe("data picker", () => {
