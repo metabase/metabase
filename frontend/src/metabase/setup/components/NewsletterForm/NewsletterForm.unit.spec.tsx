@@ -9,11 +9,11 @@ const FormMock = (props: FormHTMLAttributes<HTMLFormElement>) => (
   </form>
 );
 
+jest.mock("metabase/containers/Form", () => FormMock);
+
 jest.mock("metabase/entities/users", () => ({
   forms: { newsletter: jest.fn() },
 }));
-
-jest.mock("metabase/containers/Form", () => FormMock);
 
 describe("NewsletterForm", () => {
   it("allows to submit the form with an email", async () => {
