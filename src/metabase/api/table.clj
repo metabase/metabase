@@ -308,8 +308,10 @@
                       ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     add-field-dimension-options))]
-    (hydrate fields [:target :has_field_values] :has_field_values)))
+                     add-field-dimension-options))
+        field->annotated (let [with-ids (filter :id fields)]
+                           (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
+    (map #(field->annotated % %) fields)))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
