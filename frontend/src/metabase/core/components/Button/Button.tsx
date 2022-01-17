@@ -9,11 +9,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = ({
   variant = "secondary",
+  fullWidth = false,
   children,
   ...props
 }: ButtonProps): JSX.Element => {
   return (
-    <ButtonRoot variant={variant} {...props}>
+    <ButtonRoot variant={variant} fullWidth={fullWidth} {...props}>
       {children}
     </ButtonRoot>
   );

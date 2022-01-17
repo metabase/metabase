@@ -4,6 +4,7 @@ import { ButtonVariant } from "./types";
 
 interface ButtonRootProps {
   variant: ButtonVariant;
+  fullWidth: boolean;
 }
 
 const getColor = ({ variant }: ButtonRootProps): string => {
@@ -39,11 +40,16 @@ const getBackgroundColor = ({ variant }: ButtonRootProps): string => {
   }
 };
 
+const getWidth = ({ fullWidth }: ButtonRootProps): string => {
+  return fullWidth ? "100%" : "";
+};
+
 export const ButtonRoot = styled.button<ButtonRootProps>`
   appearance: none;
   color: ${getColor};
   font-weight: bold;
   cursor: pointer;
+  width: ${getWidth};
   padding: 0.75rem 1.125rem;
   border: 1px solid ${getBorderColor};
   border-radius: 0.375rem;
