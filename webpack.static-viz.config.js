@@ -33,7 +33,15 @@ module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [
+          {
+            loader: "esbuild-loader",
+            options: {
+              loader: "tsx",
+              target: "es2015",
+            }
+          }
+        ],
       },
     ],
   },
