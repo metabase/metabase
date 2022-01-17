@@ -193,7 +193,7 @@ export default class Navbar extends Component {
               },
               {
                 title: t`Collection`,
-                icon: `all`,
+                icon: `folder`,
                 action: () => this.setModal(MODAL_NEW_COLLECTION),
                 event: `NavBar;New Collection Click;`,
               },
