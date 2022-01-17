@@ -20,7 +20,9 @@ export default class DeleteDatabaseModal extends Component {
     onDelete: PropTypes.func,
   };
 
-  async deleteDatabase() {
+  handleSubmit = async e => {
+    e.preventDefault();
+
     try {
       this.props.onDelete(this.props.database);
       // immediately call on close because database deletion should be non blocking
@@ -28,7 +30,7 @@ export default class DeleteDatabaseModal extends Component {
     } catch (error) {
       this.setState({ error });
     }
-  }
+  };
 
   render() {
     const { confirmValue } = this.state;
@@ -55,33 +57,38 @@ export default class DeleteDatabaseModal extends Component {
         title={t`Delete the ${database.name} database?`}
         onClose={this.props.onClose}
       >
-        <div className="mb4">
-          <p className="text-paragraph">
-            {t`All saved questions, metrics, and segments that rely on this database will be lost.`}{" "}
-            <strong>{t`This cannot be undone.`}</strong>
-          </p>
-          <p className="text-paragraph">
-            {t`If you're sure, please type`} <strong>{database.name}</strong>{" "}
-            {t`in this box:`}
-          </p>
-          <input
-            className="Form-input"
-            type="text"
-            onChange={e => this.setState({ confirmValue: e.target.value })}
-            autoFocus
-          />
-        </div>
+        <form onSubmit={confirmed ? this.handleSubmit : undefined}>
+          <div className="mb4">
+            <p className="text-paragraph">
+              {t`All saved questions, metrics, and segments that rely on this database will be lost.`}{" "}
+              <strong>{t`This cannot be undone.`}</strong>
+            </p>
+            <p className="text-paragraph">
+              {t`If you're sure, please type`} <strong>{database.name}</strong>{" "}
+              {t`in this box:`}
+            </p>
+            <input
+              className="Form-input"
+              type="text"
+              onChange={e => this.setState({ confirmValue: e.target.value })}
+              autoFocus
+            />
+          </div>
 
-        <div className="ml-auto">
-          <Button onClick={this.props.onClose}>{t`Cancel`}</Button>
-          <Button
-            ml={2}
-            danger
-            disabled={!confirmed}
-            onClick={() => this.deleteDatabase()}
-          >{t`Delete`}</Button>
-          {formError}
-        </div>
+          <div className="ml-auto">
+            <Button
+              type="button"
+              onClick={this.props.onClose}
+            >{t`Cancel`}</Button>
+            <Button
+              ml={2}
+              danger
+              type="submit"
+              disabled={!confirmed}
+            >{t`Delete`}</Button>
+            {formError}
+          </div>
+        </form>
       </ModalContent>
     );
   }
