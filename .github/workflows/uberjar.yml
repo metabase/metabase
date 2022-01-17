@@ -95,7 +95,7 @@ jobs:
           name: metabase-ee-uberjar
           path: bin/docker/
     - name: Move the uberjar next to the Dockerfile
-      run: mv bin/docker/target/uberjar/metabase.jar ../../.
+      run: mv bin/docker/target/uberjar/metabase.jar bin/docker/
     - name: ls
       run: ls bin/docker/
     - name: Set up Docker Buildx
