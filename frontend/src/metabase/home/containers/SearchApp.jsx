@@ -31,7 +31,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Collections`,
     filter: "collection",
-    icon: "all",
+    icon: "folder",
   },
   {
     name: t`Databases`,
