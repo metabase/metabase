@@ -6,16 +6,16 @@ import {
   PRODUCTS,
   metadata,
 } from "__support__/sample_dataset_fixture";
-import DimensionLabel from "./DimensionLabel";
+import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
 import Dimension from "metabase-lib/lib/Dimension";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 function setup(dimension) {
-  return render(<DimensionLabel dimension={dimension} />);
+  return render(<DimensionSemanticTypeLabel dimension={dimension} />);
 }
 
-describe("DimensionLabel", () => {
+describe("DimensionSemanticTypeLabel", () => {
   describe("given a FieldDimension", () => {
     beforeEach(() => {
       const fieldDimension = Dimension.parseMBQL(
