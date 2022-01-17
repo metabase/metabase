@@ -210,7 +210,7 @@ export class FieldValuesWidget extends Component {
       // ignoring for fields from native queries or coming from nested queries
       // Currently, the back end returns `has_field_values` in their metadata,
       // but features like values search are not properly supported yet, so we ignore them for now.
-      fields.every(f => f.id !== "string")
+      fields.every(f => typeof f.id !== "string")
     );
   }
 
