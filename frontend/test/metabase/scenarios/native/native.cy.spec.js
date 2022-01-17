@@ -128,7 +128,7 @@ describe("scenarios > question > native", () => {
       popover().within(() => {
         cy.findByText(filter).click();
       });
-      cy.findByPlaceholderText("Search by V").type("This has a value");
+      cy.findByPlaceholderText("Enter some text").type("This has a value");
       cy.findByText("Add filter").click();
 
       cy.log(

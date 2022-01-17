@@ -428,7 +428,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     cy.findByText("Category").click();
-    cy.findByPlaceholderText("Search by TITLE").type(
+    cy.findByPlaceholderText("Enter some text").type(
       "Small Marble Hat{enter}Enormous Marble Wallet{enter}",
     );
     cy.button("Add filter").click();
