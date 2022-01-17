@@ -60,7 +60,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
   cursor: ${({ disabled }) => (disabled ? "default" : "pointer")};
   font-weight: bold;
   width: ${({ fullWidth }) => (fullWidth ? "100%" : "")};
-  padding: 0.75rem 1.125rem;
+  padding: 0.6875rem 1.125rem;
   border: 1px solid ${getBorderColor};
   border-radius: ${({ round }) => (round ? "10rem" : "0.375rem")};
   background-color: ${getBackgroundColor};
