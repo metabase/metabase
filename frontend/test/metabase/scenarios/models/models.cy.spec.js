@@ -9,12 +9,12 @@ import {
 } from "__support__/e2e/cypress";
 
 import {
-  turnIntoDataset,
-  assertIsDataset,
-  assertQuestionIsBasedOnDataset,
+  turnIntoModel,
+  assertIsModel,
+  assertQuestionIsBasedOnModel,
   selectFromDropdown,
   selectDimensionOptionFromSidebar,
-  saveQuestionBasedOnDataset,
+  saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
   getDetailsSidebarActions,
@@ -30,8 +30,8 @@ describe("scenarios > models", () => {
     cy.request("PUT", "/api/card/1", { name: "Orders Model" });
     cy.visit("/question/1");
 
-    turnIntoDataset();
-    assertIsDataset();
+    turnIntoModel();
+    assertIsModel();
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.findByText("Filter").click();
@@ -41,17 +41,17 @@ describe("scenarios > models", () => {
     selectFromDropdown("Not empty");
     cy.button("Add filter").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
@@ -80,8 +80,8 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    turnIntoDataset();
-    assertIsDataset();
+    turnIntoModel();
+    assertIsModel();
 
     cy.findByTestId("qb-header-action-panel").within(() => {
       cy.findByText("Filter").click();
@@ -91,17 +91,17 @@ describe("scenarios > models", () => {
     selectFromDropdown("Not empty");
     cy.button("Add filter").click();
 
-    assertQuestionIsBasedOnDataset({
-      dataset: "Orders Model",
+    assertQuestionIsBasedOnModel({
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
 
-    saveQuestionBasedOnDataset({ datasetId: 4, name: "Q1" });
+    saveQuestionBasedOnModel({ modelId: 4, name: "Q1" });
 
-    assertQuestionIsBasedOnDataset({
+    assertQuestionIsBasedOnModel({
       questionName: "Q1",
-      dataset: "Orders Model",
+      model: "Orders Model",
       collection: "Our analytics",
       table: "Orders",
     });
@@ -125,7 +125,7 @@ describe("scenarios > models", () => {
     cy.get(".LineAreaBarChart");
     cy.get(".TableInteractive").should("not.exist");
 
-    turnIntoDataset();
+    turnIntoModel();
 
     cy.get(".TableInteractive");
     cy.get(".LineAreaBarChart").should("not.exist");
@@ -135,7 +135,7 @@ describe("scenarios > models", () => {
     cy.visit("/question/3");
     cy.get(".LineAreaBarChart");
 
-    turnIntoDataset();
+    turnIntoModel();
     cy.findByText("This is a model now.");
     cy.findByText("Undo").click();
 
@@ -157,7 +157,7 @@ describe("scenarios > models", () => {
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
-    assertIsDataset();
+    assertIsModel();
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {
@@ -169,7 +169,7 @@ describe("scenarios > models", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/question/1");
     openDetailsSidebar();
-    assertIsDataset();
+    assertIsModel();
     cy.url().should("include", "/dataset");
   });
 
@@ -187,7 +187,7 @@ describe("scenarios > models", () => {
         testDataPickerSearch({
           inputPlaceholderText: "Search for some data…",
           query: "Ord",
-          datasets: true,
+          models: true,
           cards: true,
           tables: true,
         });
@@ -200,7 +200,7 @@ describe("scenarios > models", () => {
         testDataPickerSearch({
           inputPlaceholderText: "Search for a model…",
           query: "Ord",
-          datasets: true,
+          models: true,
         });
         cy.icon("chevronleft").click();
 
@@ -297,8 +297,8 @@ describe("scenarios > models", () => {
       selectFromDropdown("Not empty");
       cy.button("Add filter").click();
 
-      assertQuestionIsBasedOnDataset({
-        dataset: "Orders Model",
+      assertQuestionIsBasedOnModel({
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
@@ -309,18 +309,18 @@ describe("scenarios > models", () => {
       selectDimensionOptionFromSidebar("Created At");
       cy.button("Done").click();
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Count by Created At: Month",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Q1",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
@@ -334,18 +334,18 @@ describe("scenarios > models", () => {
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Sum of Subtotal by Created At: Month",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      saveQuestionBasedOnDataset({ datasetId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
-      assertQuestionIsBasedOnDataset({
+      assertQuestionIsBasedOnModel({
         questionName: "Q1",
-        dataset: "Orders Model",
+        model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
@@ -462,14 +462,14 @@ function getCollectionItemRow(itemName) {
 function testDataPickerSearch({
   inputPlaceholderText,
   query,
-  datasets = false,
+  models = false,
   cards = false,
   tables = false,
 } = {}) {
   cy.findByPlaceholderText(inputPlaceholderText).type(query);
   cy.wait("@search");
 
-  cy.findAllByText(/Model in/i).should(datasets ? "exist" : "not.exist");
+  cy.findAllByText(/Model in/i).should(models ? "exist" : "not.exist");
   cy.findAllByText(/Saved question in/i).should(cards ? "exist" : "not.exist");
   cy.findAllByText(/Table in/i).should(tables ? "exist" : "not.exist");
 
