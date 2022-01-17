@@ -221,7 +221,7 @@ class AddMappingRow extends React.Component {
         <td colSpan="3" style={{ padding: 0 }}>
           <form
             className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
-            onSubmit={this._handleSubmit}
+            onSubmit={isValid ? this._handleSubmit : undefined}
           >
             <input
               className="input--borderless h3 ml1 flex-full"
