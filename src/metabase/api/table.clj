@@ -309,7 +309,7 @@
                       ;; the dimension options
                       :semantic_type (keyword (:semantic_type col)))
                      add-field-dimension-options))
-        field->annotated (let [with-ids (filter :id fields)]
+        field->annotated (let [with-ids (filter (comp number? :id) fields)]
                            (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
     (map #(field->annotated % %) fields)))
 
