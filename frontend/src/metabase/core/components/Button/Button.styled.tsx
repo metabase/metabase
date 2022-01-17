@@ -4,13 +4,10 @@ import { ButtonVariant } from "./types";
 
 interface ButtonRootProps {
   variant: ButtonVariant;
-  disabled: boolean;
-  fullWidth: boolean;
+  disabled?: boolean;
+  round?: boolean;
+  fullWidth?: boolean;
 }
-
-const getCursor = ({ disabled }: ButtonRootProps): string => {
-  return disabled ? "default" : "pointer";
-};
 
 const getColor = ({ variant, disabled }: ButtonRootProps): string => {
   if (disabled) {
@@ -57,19 +54,15 @@ const getBackgroundColor = ({ variant, disabled }: ButtonRootProps): string => {
   }
 };
 
-const getWidth = ({ fullWidth }: ButtonRootProps): string => {
-  return fullWidth ? "100%" : "";
-};
-
 export const ButtonRoot = styled.button<ButtonRootProps>`
   appearance: none;
   color: ${getColor};
-  cursor: ${getCursor};
+  cursor: ${({ disabled }) => (disabled ? "default" : "pointer")};
   font-weight: bold;
-  width: ${getWidth};
+  width: ${({ fullWidth }) => (fullWidth ? "100%" : "")};
   padding: 0.75rem 1.125rem;
   border: 1px solid ${getBorderColor};
-  border-radius: 0.375rem;
+  border-radius: ${({ round }) => (round ? "10rem" : "0.375rem")};
   background-color: ${getBackgroundColor};
 
   &:focus {

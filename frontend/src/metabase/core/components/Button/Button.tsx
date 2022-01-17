@@ -5,23 +5,17 @@ import { ButtonVariant } from "./types";
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   disabled?: boolean;
+  round?: boolean;
   fullWidth?: boolean;
 }
 
 const Button = ({
   variant = "secondary",
-  disabled = false,
-  fullWidth = false,
   children,
   ...props
 }: ButtonProps): JSX.Element => {
   return (
-    <ButtonRoot
-      variant={variant}
-      disabled={disabled}
-      fullWidth={fullWidth}
-      {...props}
-    >
+    <ButtonRoot variant={variant} {...props}>
       {children}
     </ButtonRoot>
   );
