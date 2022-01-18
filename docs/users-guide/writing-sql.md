@@ -22,7 +22,7 @@ To try it out, select the Sample Dataset, then type the command `select sum(subt
 
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
 
-You can also [refer to datasets and saved questions][reference-datasets] in your SQL queries.
+You can also [refer to models and saved questions][ref-models] in your SQL queries.
 
 ## Using SQL filters
 
@@ -47,4 +47,4 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 Now that you have an answer to your question, you can learn about [visualizing answers](05-visualizing-results.md).
 
 [learn-sql]: https://www.metabase.com/learn/sql-questions 
-[reference-datasets]: referencing-saved-questions-in-your-queries.md
+[ref-models]: referencing-saved-questions-in-your-queries.md
