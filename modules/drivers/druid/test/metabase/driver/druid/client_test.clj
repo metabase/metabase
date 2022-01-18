@@ -57,3 +57,22 @@
               (or (when (instance? java.net.ConnectException e)
                     (throw e))
                   (some-> (.getCause e) recur)))))))))
+
+(defn- test-request [request-fn]
+  (try
+    (request-fn "http://localhost:8082/druid/v2"
+      :auth-token "12345678910")
+    (catch Exception e
+      (ex-data e))))
+
+(defn- get-auth-header [m]
+  (select-keys (:request-options m) ["Authorization"]))
+
+(deftest auth-token-methods
+  (let [get-request    (test-request druid.client/GET)
+        post-request   (test-request druid.client/POST)
+        delete-request (test-request druid.client/DELETE)]
+    (is (= {"Authorization" "Basic 12345678910"}
+          (get-auth-header get-request)
+          (get-auth-header post-request)
+          (get-auth-header delete-request)))))

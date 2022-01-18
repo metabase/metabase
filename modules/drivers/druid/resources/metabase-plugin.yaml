@@ -18,6 +18,8 @@ driver:
     - ssh-tunnel
     - advanced-options-start
     - default-advanced-options
+    - auth-token
+
 init:
   - step: load-namespace
     namespace: metabase.driver.druid

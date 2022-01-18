@@ -95,6 +95,9 @@ const DATABASE_DETAIL_OVERRIDES = {
   refingerprint: () => ({
     name: "refingerprint",
   }),
+  "auth-token": () => ({
+    name: "auth-token",
+  }),
 };
 
 function getEngineName(engine) {

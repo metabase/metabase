@@ -217,6 +217,18 @@
    :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
    :visible-if   {"advanced-options" true}})
 
+(def auth-token
+  "Map representing the authentication token option in a Druid DB connection."
+  [{:name         "auth-enabled"
+    :display-name (deferred-tru "Authentication header")
+    :type         :boolean
+    :default      false
+    :visible-if   {"advanced-options" true}}
+   {:name         "auth-token"
+    :display-name (deferred-tru "Authentication token")
+    :required     true
+    :visible-if   {"auth-enabled" true}}])
+
 (def default-advanced-options
   "Vector containing the three most common options present in the advanced option section of the DB connection form."
   [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
@@ -240,7 +252,8 @@
    :ssh-tunnel               ssh-tunnel-preferences
    :additional-options       additional-options
    :advanced-options-start   advanced-options-start
-   :default-advanced-options default-advanced-options})
+   :default-advanced-options default-advanced-options
+   :auth-token               auth-token})
 
 (def cloud-ip-address-info
   "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior
