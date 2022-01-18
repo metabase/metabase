@@ -48,6 +48,3 @@ If you don’t have a sense of which questions you want to view in  Slack, you c
 
 ---
 
-## Next:
-
-Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](12-data-model-reference.md) to help you make sense of your data.

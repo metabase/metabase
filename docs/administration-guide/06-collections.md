@@ -66,19 +66,9 @@ You don't explicitly set permissions on [dashboards subscriptions][dashboard-sub
 
 Here's what you can do with dashboard subscriptions based on Collection permissions for the collection the dashboard is in:
 
-- **Curate access**: You can view and edit all subscriptions for the dashboard, including subscriptions created by other people.
+- [ ] **Curate access**: You can view and edit all subscriptions for the dashboard, including subscriptions created by other people.
 - **View access**: You can view all subscriptions for that dashboard. You can also create subscriptions and edit ones that you’ve created, but you can’t edit ones that other people created. You can also unsubscribe from a subscription that somebody else created.
 - **No access**: You can’t view any of the dashboard's subscriptions, including, for example, subscriptions you created before an administrator revoked your access to the collection.
-
-### Metabot group
-
-If you’ve set up the [Slack integration][slack-integration] and enabled Metabot, you’ll also see a special Metabot group when assigning permissions to collections, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
-
-## A note about Pulses
-
-If you're using [Pulses][pulses], we recommend switching to [dashboard subscriptions][dashboard-subscriptions].
-
-Pulses act a bit differently with regard to permissions. When a user creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a user’s permissions, a Pulse will always render all of its cards.
 
 ---
 

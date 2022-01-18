@@ -31,8 +31,7 @@
 
 ### Query builder
 
-- [Simple questions](./users-guide/04-asking-questions.html)
-- [Custom questions](./users-guide/custom-questions.html)
+- [Asking questions](./users-guide/04-asking-questions.html)
 - [Custom expressions](./users-guide/expressions.html)
 - [List of expressions: aggregations and functions](./users-guide/expressions-list.html)
 - [Visualizing data](./users-guide/05-visualizing-results.html)
@@ -45,7 +44,7 @@
 - [SQL templates](./users-guide/13-sql-parameters.html)
 - [SQL snippets](./users-guide/sql-snippets.html)
 
-### Alerts and Metabot
+### Alerts
 
 - [Setting and getting alerts](./users-guide/15-alerts.html)
 - [Get answers in Slack with Metabot](./users-guide/11-metabot.html)
@@ -57,6 +56,10 @@
 - [Interactive dashboards](./users-guide/interactive-dashboards.html)
 - [Dashboard charts with multiple series](./users-guide/09-multi-series-charting.html)
 - [Setting up dashboard subscriptions](./users-guide/dashboard-subscriptions.html)
+
+## Models
+
+- [Models](./users-guide/models.md)
 
 ## Collections
 
