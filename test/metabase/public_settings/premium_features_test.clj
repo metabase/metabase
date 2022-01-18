@@ -4,9 +4,8 @@
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
             [metabase.public-settings.premium-features :as premium-features]
-            [toucan.util.test :as tt]
-            ;; Circular reference with mt in here, so use tu
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu] ;; Circular reference with mt in here, so use tu
+            [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
