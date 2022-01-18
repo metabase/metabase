@@ -125,6 +125,8 @@ export const XYChart = ({
     textAnchor: "end",
   };
 
+  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+
   return (
     <svg width={width} height={height + legend.height}>
       <Group top={margin.top} left={xMin}>
@@ -206,7 +208,7 @@ export const XYChart = ({
 
       <AxisBottom
         scale={xScale.scale}
-        label={settings.labels.bottom}
+        label={areXTicksRotated ? undefined : settings.labels.bottom}
         top={yMin}
         left={xMin}
         numTicks={xTicksCount}
@@ -222,7 +224,7 @@ export const XYChart = ({
               props,
               style.axes.ticks.fontSize,
               xTickWidthLimit,
-              settings.x.tick_display === "rotate-45",
+              areXTicksRotated,
             )}
           />
         )}
