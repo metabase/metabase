@@ -11,7 +11,7 @@
 (defn- bar-th-style []
   (merge
    (style/font-style)
-   {:font-size :12.5px
+   {:font-size :12px
     :font-weight     700
     :color           style/color-text-medium
     :border-bottom   (str "1px solid " style/color-header-row-border)
@@ -23,14 +23,14 @@
 (defn- bar-td-style []
   (merge
    (style/font-style)
-   {:font-size      :12.5px
+   {:font-size      :12px
     :font-weight    700
     :text-align     :left
     :color          style/color-text-dark
     :border-bottom  (str "1px solid " style/color-body-row-border)
-    :height         :36px
-    :padding-right  :0.5em
-    :padding-left   :0.5em}))
+    :height         :28px
+    :padding-right  :0.375em
+    :padding-left   :0.375em}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -78,7 +78,7 @@
   [:thead
    [:tr
     (for [header-cell row]
-      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
+      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px})}
        (h header-cell)])
     (when bar-width
       [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
