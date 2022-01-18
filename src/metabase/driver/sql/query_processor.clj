@@ -35,7 +35,7 @@
     FROM ( SELECT * FROM some_table ) source"
   "source")
 
-(def ^:dynamic *query*
+(def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
@@ -216,14 +216,14 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as clause]]
-  (when-not (get-in *query* [:expressions (keyword expression-name)])
+  (when-not (get-in *inner-query* [:expressions (keyword expression-name)])
     (throw (ex-info (tru "No expression named {0} at this level of the query" (pr-str expression-name))
                     {:type       qp.error-type/invalid-query
                      :expression clause
-                     :query      *query*})))
+                     :query      *inner-query*})))
   (->honeysql driver (if (= source-table ::add/source)
                        (apply hx/identifier :field source-query-alias source-alias)
-                       (mbql.u/expression-with-name *query* expression-name))))
+                       (mbql.u/expression-with-name *inner-query* expression-name))))
 
 (defn semantic-type->unix-timestamp-unit
   "Translates coercion types like `:Coercion/UNIXSeconds->DateTime` to the corresponding unit of time to use in
@@ -488,7 +488,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (mbql.u/match-one (nth (:aggregation *query*) index)
+  (mbql.u/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag (options :guard :name)]
     (->honeysql driver (hx/identifier :field-alias (:name options)))
 
@@ -879,7 +879,7 @@
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*query* inner-query]
+  (binding [*inner-query* inner-query]
     (if source-query
       (apply-top-level-clauses
        driver

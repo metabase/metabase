@@ -36,7 +36,8 @@
   ;; normal `schema.table.field`
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
         field-clause  (mbql.u/update-field-options field-clause
-                                                   update ::add/source-table
+                                                   update
+                                                   ::add/source-table
                                                    (fn [source-table]
                                                      (cond
                                                        ;; DO NOT qualify fields from field filters with `t1`, that won't

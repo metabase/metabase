@@ -647,13 +647,13 @@
 
 (defmethod driver/mbql->native :bigquery
   [driver
-   {database-id                                                 :database
-    {source-table-id :source-table, source-query :source-query} :query
-    :as                                                         outer-query}]
+   {database-id                                                                  :database
+    {source-table-id :source-table, source-query :source-query, :as inner-query} :query
+    :as                                                                          outer-query}]
   (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
-    (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
+    (binding [sql.qp/*inner-query* (assoc inner-query :dataset-id dataset-id)]
       (let [[sql & params] (->> outer-query
                                 (sql.qp/mbql->honeysql driver)
                                 (sql.qp/format-honeysql driver))]

@@ -83,19 +83,20 @@
   "The source-query in effect.  Used when the query processor might need to distinguish between the type of the source
   query (ex: to provide different behavior depending on whether the source query is from a table versus a subquery).
 
-  DEPRECATED -- use [[*query*]] instead, which does the same thing but it always bound even if we are not in a source
-  query."
+  DEPRECATED -- use [[metabase.driver.sql.query-processor/*inner-query*]] instead, which does the same thing but it
+  always bound even if we are not in a source query."
   nil)
 
 (defmulti field->identifier
-  "DEPRECATED: Unused in 0.42.0+; this functionality is now handled by [[->honeysql]]. Implementing this method has no
-  effect. This method will be removed in a future release."
+  "DEPRECATED: Unused in 0.42.0+; this functionality is now handled
+  by [[metabase.driver.sql.query-processor/->honeysql]]. Implementing this method has no effect. This method will be
+  removed in a future release."
   {:arglists '([driver field]), :deprecated "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti escape-alias
-  "DEPRECATED -- this has been moved to [[driver/escape-alias]]."
+  "DEPRECATED -- this has been moved to [[metabase.driver/escape-alias]]."
   {:added "0.41.0", :deprecated "0.42.0", :arglists '([driver column-alias-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -104,6 +105,8 @@
   [driver column-alias-name]
   ((get-method driver/escape-alias ::driver/driver) driver column-alias-name))
 
+;; this method impl is only here to add a little bit of magic so we use the deprecated [[escape-alias]] method above, if
+;; an impl for it exists. This method impl can be removed entirely when we get rid of [[escape-alias]].
 (defmethod driver/escape-alias :sql
   [driver column-alias-name]
   (when-not (= (get-method escape-alias driver)

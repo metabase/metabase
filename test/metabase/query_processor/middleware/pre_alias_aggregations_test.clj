@@ -102,7 +102,7 @@
   (str \_ custom-field-name))
 
 (deftest use-escape-alias-test
-  (testing (str "we should use [[add/escape-alias]] on the generated aggregation names in case the "
+  (testing (str "we should use [[driver/escape-alias]] on the generated aggregation names in case the "
                 "drivers need to tweak the default names we generate."))
   (is (= {:database 1
           :type     :query

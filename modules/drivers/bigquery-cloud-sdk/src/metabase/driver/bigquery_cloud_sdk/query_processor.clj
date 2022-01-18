@@ -718,7 +718,7 @@
     (assoc compiled
            :table-name (or (some-> (get-in outer-query [:query :source-table]) qp.store/table :name)
                            sql.qp/source-query-alias)
-           :mbql? true)))
+           :mbql?      true)))
 
 (defrecord ^:private CurrentMomentForm [t]
   hformat/ToSql

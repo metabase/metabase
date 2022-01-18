@@ -10,7 +10,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.types :as types]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [tru trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -89,7 +89,9 @@
              (qp.store/initialized?))
     ;; by 'caching' this result, this log message will only be shown once for a given QP run.
     (qp.store/cached [::should-add-implicit-fields-warning]
-        (log/warn "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")))
+      (log/warn (str (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")
+                     \newline
+                     (trs "Query: {0}" (u/pprint-to-str source-query))))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))

@@ -774,35 +774,35 @@
 (deftest join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
     (mt/dataset sample-dataset
-     (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
-                          source.count                         AS count
-                          Reviews.ID                           AS Reviews__ID
-                          Reviews.PRODUCT_ID                   AS Reviews__PRODUCT_ID
-                          Reviews.REVIEWER                     AS Reviews__REVIEWER
-                          Reviews.RATING                       AS Reviews__RATING
-                          Reviews.BODY                         AS Reviews__BODY
-                          Reviews.CREATED_AT                   AS Reviews__CREATED_AT]
-              :from      [{:select    [PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
-                                       count (*)                    AS count]
-                           :from      [ORDERS]
-                           :left-join [PRODUCTS PRODUCTS__via__PRODUCT_ID
-                                       ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
-                           :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
-                           :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
-                          source]
-              :left-join [REVIEWS Reviews
-                          ON source.PRODUCTS__via__PRODUCT_ID__ID = Reviews.PRODUCT_ID]
-              :limit     [1]}
-            (sql.qp-test-util/query->sql-map
-             (mt/mbql-query orders
-               {:source-query {:source-table $$orders
-                               :aggregation  [[:count]]
-                               :breakout     [$product_id->products.id]}
-                :joins        [{:fields       :all
-                                :source-table $$reviews
-                                :condition    [:= *ID/BigInteger &Reviews.reviews.product_id]
-                                :alias        "Reviews"}]
-                :limit        1})))))))
+      (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
+                           source.count                         AS count
+                           Reviews.ID                           AS Reviews__ID
+                           Reviews.PRODUCT_ID                   AS Reviews__PRODUCT_ID
+                           Reviews.REVIEWER                     AS Reviews__REVIEWER
+                           Reviews.RATING                       AS Reviews__RATING
+                           Reviews.BODY                         AS Reviews__BODY
+                           Reviews.CREATED_AT                   AS Reviews__CREATED_AT]
+               :from      [{:select    [PRODUCTS__via__PRODUCT_ID.ID AS PRODUCTS__via__PRODUCT_ID__ID
+                                        count (*)                    AS count]
+                            :from      [ORDERS]
+                            :left-join [PRODUCTS PRODUCTS__via__PRODUCT_ID
+                                        ON ORDERS.PRODUCT_ID = PRODUCTS__via__PRODUCT_ID.ID]
+                            :group-by  [PRODUCTS__via__PRODUCT_ID.ID]
+                            :order-by  [PRODUCTS__via__PRODUCT_ID.ID ASC]}
+                           source]
+               :left-join [REVIEWS Reviews
+                           ON source.PRODUCTS__via__PRODUCT_ID__ID = Reviews.PRODUCT_ID]
+               :limit     [1]}
+             (sql.qp-test-util/query->sql-map
+              (mt/mbql-query orders
+                {:source-query {:source-table $$orders
+                                :aggregation  [[:count]]
+                                :breakout     [$product_id->products.id]}
+                 :joins        [{:fields       :all
+                                 :source-table $$reviews
+                                 :condition    [:= *ID/BigInteger &Reviews.reviews.product_id]
+                                 :alias        "Reviews"}]
+                 :limit        1})))))))
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"

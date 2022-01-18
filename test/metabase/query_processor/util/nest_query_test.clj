@@ -83,59 +83,60 @@
                   :aggregation [[:count]]
                   :fields      [[:expression "double_price"]]})))))
 
-(deftest nest-expressions-test-2
-  (is (query= (mt/$ids checkins
-                {:source-query {:source-table $$checkins
-                                :expressions  {:double_id [:*
-                                                           [:field %checkins.id {::add/source-table  $$checkins
-                                                                                 ::add/source-alias  "ID"
-                                                                                 ::add/desired-alias "ID"
-                                                                                 ::add/position      0}]
-                                                           2]}
-                                :fields       [[:field %id {::add/source-table  $$checkins
-                                                            ::add/source-alias  "ID"
-                                                            ::add/desired-alias "ID"
-                                                            ::add/position      0}]
-                                               [:field %date {:temporal-unit      :default
-                                                              ::add/source-table  $$checkins
-                                                              ::add/source-alias  "DATE"
-                                                              ::add/desired-alias "DATE"
-                                                              ::add/position      1}]
-                                               [:field %user_id {::add/source-table  $$checkins
-                                                                 ::add/source-alias  "USER_ID"
-                                                                 ::add/desired-alias "USER_ID"
-                                                                 ::add/position      2}]
-                                               [:field %venue_id {::add/source-table  $$checkins
-                                                                  ::add/source-alias  "VENUE_ID"
-                                                                  ::add/desired-alias "VENUE_ID"
-                                                                  ::add/position      3}]
-                                               [:expression "double_id" {::add/desired-alias "double_id"
-                                                                         ::add/position      4}]]}
-                 :fields       [[:field "double_id" {:base-type          :type/Float
-                                                     ::add/source-table  ::add/source
-                                                     ::add/source-alias  "double_id"
-                                                     ::add/desired-alias "double_id"
-                                                     ::add/position      0}]
-                                [:field %date {:temporal-unit            :day
-                                               ::nest-query/outer-select true
-                                               ::add/source-table        ::add/source
-                                               ::add/source-alias        "DATE"
-                                               ::add/desired-alias       "DATE"
-                                               ::add/position            1}]
-                                [:field %date {:temporal-unit            :month
-                                               ::nest-query/outer-select true
-                                               ::add/source-table        ::add/source
-                                               ::add/source-alias        "DATE"
-                                               ::add/desired-alias       "DATE_2"
-                                               ::add/position            2}]]
-                 :limit        1})
-              (nest-expressions
-               (mt/mbql-query checkins
-                 {:expressions {:double_id [:* $id 2]}
-                  :fields      [[:expression "double_id"]
-                                !day.date
-                                !month.date]
-                  :limit       1})))))
+(deftest nest-expressions-with-existing-non-expression-fields-test
+  (testing "Other `:fields` besides the `:expressions` should be preserved in the top level"
+    (is (query= (mt/$ids checkins
+                  {:source-query {:source-table $$checkins
+                                  :expressions  {:double_id [:*
+                                                             [:field %checkins.id {::add/source-table  $$checkins
+                                                                                   ::add/source-alias  "ID"
+                                                                                   ::add/desired-alias "ID"
+                                                                                   ::add/position      0}]
+                                                             2]}
+                                  :fields       [[:field %id {::add/source-table  $$checkins
+                                                              ::add/source-alias  "ID"
+                                                              ::add/desired-alias "ID"
+                                                              ::add/position      0}]
+                                                 [:field %date {:temporal-unit      :default
+                                                                ::add/source-table  $$checkins
+                                                                ::add/source-alias  "DATE"
+                                                                ::add/desired-alias "DATE"
+                                                                ::add/position      1}]
+                                                 [:field %user_id {::add/source-table  $$checkins
+                                                                   ::add/source-alias  "USER_ID"
+                                                                   ::add/desired-alias "USER_ID"
+                                                                   ::add/position      2}]
+                                                 [:field %venue_id {::add/source-table  $$checkins
+                                                                    ::add/source-alias  "VENUE_ID"
+                                                                    ::add/desired-alias "VENUE_ID"
+                                                                    ::add/position      3}]
+                                                 [:expression "double_id" {::add/desired-alias "double_id"
+                                                                           ::add/position      4}]]}
+                   :fields       [[:field "double_id" {:base-type          :type/Float
+                                                       ::add/source-table  ::add/source
+                                                       ::add/source-alias  "double_id"
+                                                       ::add/desired-alias "double_id"
+                                                       ::add/position      0}]
+                                  [:field %date {:temporal-unit            :day
+                                                 ::nest-query/outer-select true
+                                                 ::add/source-table        ::add/source
+                                                 ::add/source-alias        "DATE"
+                                                 ::add/desired-alias       "DATE"
+                                                 ::add/position            1}]
+                                  [:field %date {:temporal-unit            :month
+                                                 ::nest-query/outer-select true
+                                                 ::add/source-table        ::add/source
+                                                 ::add/source-alias        "DATE"
+                                                 ::add/desired-alias       "DATE_2"
+                                                 ::add/position            2}]]
+                   :limit        1})
+                (nest-expressions
+                 (mt/mbql-query checkins
+                   {:expressions {:double_id [:* $id 2]}
+                    :fields      [[:expression "double_id"]
+                                  !day.date
+                                  !month.date]
+                    :limit       1}))))))
 
 (deftest multiple-expressions-test
   (testing "Make sure the nested version of the query doesn't mix up expressions if we have ones that reference others"
