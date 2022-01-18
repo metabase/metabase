@@ -1,4 +1,5 @@
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 // Query Builder Mode
 
@@ -40,4 +41,26 @@ export function isAdHocDatasetQuestion(question, originalQuestion) {
     getQuestionVirtualTableId(originalQuestion.card());
 
   return isDataset && isSameCard && isSelfReferencing;
+}
+
+function getTemplateTagWithoutSnippetsCount(question) {
+  const query = question.query();
+  return query instanceof NativeQuery
+    ? query.templateTagsWithoutSnippets().length
+    : 0;
+}
+
+export function getNextTemplateTagVisibilityState({
+  oldQuestion,
+  newQuestion,
+  isTemplateTagEditorVisible,
+}) {
+  const oldCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
+  const newCount = getTemplateTagWithoutSnippetsCount(newQuestion);
+  if (newCount > oldCount) {
+    return true;
+  }
+  if (newCount === 0 && isTemplateTagEditorVisible) {
+    return false;
+  }
 }
