@@ -609,4 +609,24 @@
                      "Gizmo"
                      51]]
                    (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
-                    (qp/process-query query))))))))))
+                     (qp/process-query query))))))))))
+
+(deftest join-with-space-in-alias-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks :bigquery-cloud-sdk
+          (let [query (mt/mbql-query products
+                        {:joins    [{:source-query {:source-table $$orders}
+                                     :alias        "Q 1"
+                                     :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
+                                     :fields       :all}]
+                         :fields   [$id
+                                    [:field %orders.id {:join-alias "Q 1"}]]
+                         :order-by [[:asc $id]
+                                    [:asc [:field %orders.id {:join-alias "Q 1"}]]]
+                         :limit    2})]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 448] [1 493]]
+                     (mt/formatted-rows [int int]
+                       (qp/process-query query)))))))))))

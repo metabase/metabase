@@ -251,7 +251,7 @@
     false
     (config/config-bool :mb-colorize-logs)))
 
-(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
+(def ^{:arglists '(^String [color-symb x])} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
@@ -811,7 +811,7 @@
   [message start-time]
   ;; indent the message according to [[*profile-level*]] and add a little down-left arrow so it (hopefully) points to
   ;; the parent form
-  (println (format-color (case (mod *profile-level* 4)
+  (println (format-color (case (int (mod *profile-level* 4))
                            0 :green
                            1 :cyan
                            2 :magenta

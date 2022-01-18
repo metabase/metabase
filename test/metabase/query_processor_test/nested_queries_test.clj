@@ -347,18 +347,23 @@
                :aggregation  [[:avg *stddev/Integer]]}))))))
 
 (deftest handle-incorrect-field-forms-gracefully-test
-  (testing "make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense"
-    (is (= (honeysql->sql
-            {:select   [[:source.category_id :category_id]]
-             :from     [[venues-source-honeysql :source]]
-             :group-by [:source.category_id]
-             :order-by [[:source.category-id :asc]]
-             :limit    10})
-           (qp/query->native
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues}
-               :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
-               :limit        10}))))))
+  (testing "make sure that we handle [:field [:field <name> ...]] forms gracefully, despite that not making any sense"
+    (is (sql= '{:select   [source.CATEGORY_ID AS CATEGORY_ID]
+                :from     [{:select [VENUES.ID          AS ID
+                                     VENUES.NAME        AS NAME
+                                     VENUES.CATEGORY_ID AS CATEGORY_ID
+                                     VENUES.LATITUDE    AS LATITUDE
+                                     VENUES.LONGITUDE   AS LONGITUDE
+                                     VENUES.PRICE       AS PRICE]
+                            :from [VENUES]}
+                           source]
+                :group-by [source.CATEGORY_ID]
+                :order-by [source.CATEGORY_ID ASC]
+                :limit    [10]}
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues}
+                 :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                 :limit        10})))))
 
 (deftest filter-by-string-fields-test
   (testing "Make sure we can filter by string fields from a source query"
@@ -1271,4 +1276,25 @@
                        "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
                        "2018-05-15T20:25:48.517Z"]]
                      (mt/formatted-rows [int int int int str int str str]
+                       (qp/process-query query)))))))))))
+
+(deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+    (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
+                  "incorrectly using `:field` literals to refer to the Field (#16389)")
+      ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
+      ;; is broken
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks :bigquery-cloud-sdk
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :breakout     [!month.product_id->products.created_at]
+                                        :aggregation  [[:count]]}
+                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
+                         :aggregation  [[:sum *count/Integer]]
+                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :limit        1})]
+            (mt/with-native-query-testing-context query
+              (is (= [["2016-04-01T00:00:00Z" 175]]
+                     (mt/formatted-rows [str int]
                        (qp/process-query query)))))))))))
