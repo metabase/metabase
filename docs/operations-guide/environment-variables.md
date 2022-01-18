@@ -140,13 +140,6 @@ Default: `true`
 
 Identify when new versions of Metabase are available.
 
-### `MB_CLIENT`
-
-Type: string<br>
-Default: `null`
-
-Used to recognize the Mac App client, which then defaults to `"OSX"`.
-
 ### `MB_COLORIZE_LOGS`
 
 Type: boolean<br>
@@ -747,6 +740,14 @@ Type: string<br>
 Default: `""`
 
 Comma-separated namespaces to trace. **WARNING:** Could log sensitive information like database passwords.
+
+### `MB_NOTIFICATION_LINK_BASE_URL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+The base URL where dashboard notitification links will point to instead of the Metabase base URL. Only applicable for users who utilize full app embedding.
 
 ### `MB_PASSWORD_COMPLEXITY`
 

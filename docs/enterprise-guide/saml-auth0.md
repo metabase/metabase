@@ -65,3 +65,7 @@ Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and th
 The "SAML Application Name" value can be left as the default (Metabase).
 
 Save your settings, then [enable SAML](authenticating-with-saml.md) in Metabase, and you should be good to go!
+
+## Troubleshooting
+
+For common issues, see our [SAML troubleshooting page][../troubleshooting-guide/saml.md).

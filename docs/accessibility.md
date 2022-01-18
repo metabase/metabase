@@ -1,6 +1,6 @@
-# Is Metabase accessible or 508 compliant?
+# Accessibility in Metabase 
 
-Metabase strives to be accessible, but is not yet fully compliant with [the US federal government's Section 508 standard][508-accessibility]. Some specific areas where Metabase we still have work to do include:
+Metabase is not yet fully compliant with [the US federal government's Section 508 standard][508-accessibility]. Some specific areas where Metabase we still have work to do include:
 
 - Metabase doesn't have a method to allow screen readers to skip over repetitive navigation elements.
 - Metabase is extremely close but not 100% compliant at providing text equivalents for all non-text elements.
