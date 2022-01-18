@@ -4,7 +4,9 @@
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
             [metabase.public-settings.premium-features :as premium-features]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            ;; Circular reference with mt in here, so use tu
+            [metabase.test.util :as tu]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -41,7 +43,16 @@
 
 (deftest fetch-token-status-test
   (tt/with-temp User [user {:email "admin@example.com"}]
-    (let [token "fa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3e"]
+    (let [token       "fa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3e"
+          print-token "fa3e...fa3e"]
+
+      (testing "Do not log the token (#18249)"
+        (let [logs        (tu/with-log-messages-for-level :info
+                            (#'premium-features/fetch-token-status* token))
+              pr-str-logs (mapv pr-str logs)]
+          (is (every? (complement #(re-find (re-pattern token) %)) pr-str-logs))
+          (is (= 2 (count (filter #(re-find (re-pattern print-token) %) pr-str-logs))))))
+
       (testing "With the backend unavailable"
         (let [result (token-status-response token {:status 500})]
           (is (false? (:valid result)))))
