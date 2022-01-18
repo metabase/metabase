@@ -11,6 +11,7 @@ export interface Settings {
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   engines: Record<string, Engine>;
+  "is-hosted?": boolean;
   "deprecation-notice-version": string | undefined;
   "show-database-syncing-modal": boolean;
   "show-homepage-data": boolean;

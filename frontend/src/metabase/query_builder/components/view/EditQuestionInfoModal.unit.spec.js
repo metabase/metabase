@@ -54,6 +54,7 @@ function setup({ cachingEnabled = true } = {}) {
     database: () => ({
       cache_ttl: null,
     }),
+    isDataset: () => true,
   };
 
   renderWithProviders(

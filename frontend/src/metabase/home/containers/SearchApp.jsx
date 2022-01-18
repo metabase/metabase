@@ -31,7 +31,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Collections`,
     filter: "collection",
-    icon: "all",
+    icon: "folder",
   },
   {
     name: t`Databases`,
@@ -41,7 +41,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Models`,
     filter: "dataset",
-    icon: "dataset",
+    icon: "model",
   },
   {
     name: t`Raw Tables`,

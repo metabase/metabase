@@ -172,4 +172,13 @@ export default {
   password_reset: {
     fields: [...PASSWORD_FORM_FIELDS],
   },
+  newsletter: {
+    fields: [
+      {
+        name: "email",
+        placeholder: "youlooknicetoday@email.com",
+        validate: validate.required().email(),
+      },
+    ],
+  },
 };

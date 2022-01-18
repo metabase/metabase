@@ -2,6 +2,7 @@ import React from "react";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
 import { Colors } from "./types";
+import { adjustSettings } from "./utils/settings";
 
 const defaultColors = {
   brand: "#509ee3",
@@ -44,10 +45,12 @@ const LineAreaBarChart = ({
     goalColor: palette.textMedium,
   };
 
+  const adjustedSettings = adjustSettings(settings, series);
+
   return (
     <XYChart
       series={series}
-      settings={settings}
+      settings={adjustedSettings}
       style={chartStyle}
       width={540}
       height={300}

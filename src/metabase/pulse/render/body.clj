@@ -654,7 +654,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card _ {:keys [cols _rows insights viz-settings]}]
+  [_ _ timezone-id _card _ {:keys [cols rows insights viz-settings] :as data}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -684,7 +684,17 @@
            :render/text (str value "\n"
                              adj " " (percentage last-change) "."
                              " Was " previous " last " (format-unit unit))})
-        @error-rendered-info))))
+        ;; In other words, defaults to plain scalar if we don't have actual changes
+        {:attachments nil
+         :content     [:div
+                       [:div {:style (style/style (style/scalar-style))}
+                        (h last-value)]
+                       [:p {:style (style/style {:color         style/color-text-medium
+                                                 :font-size     :16px
+                                                 :font-weight   700
+                                                 :padding-right :16px})}
+                        (trs "Nothing to compare to.")]]
+         :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]

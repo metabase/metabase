@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   ADD,
   ARG_LIST,
@@ -177,7 +179,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
       continue;
     }
     if (token.type === BAD_TOKEN) {
-      const err = new CompileError(`Unexpected token "${token.text}"`, {
+      const err = new CompileError(t`Unexpected token "${token.text}"`, {
         node,
         token,
       });
@@ -237,7 +239,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         // If the current token isn't in the list of the AST type's ignored
         // tokens and it's not the terminator the current node requires, we'll
         // throw an error
-        const err = new CompileError(`Expected expression`, { node, token });
+        const err = new CompileError(t`Expected expression`, { node, token });
         hooks.onUnexpectedTerminator?.(token, node, err);
         if (throwOnError) {
           throw err;
@@ -260,7 +262,7 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
         node = createASTNode(token, node, NEGATIVE, counter);
         hooks.onCreateNode?.(token, node);
       } else {
-        const err = new CompileError(`Expected expression`, {
+        const err = new CompileError(t`Expected expression`, {
           token,
         });
         hooks.onMissinChildren?.(token, node, err);
@@ -284,12 +286,12 @@ export function parse(tokens: Token[], opts: ParserOptions = {}): ParserResult {
   }
 
   if (counter >= maxIterations) {
-    throw new Error("Reached max number of iterations");
+    throw new Error(t`Reached max number of iterations`);
   }
 
   const childViolation = ROOT.checkChildConstraints(root);
   if (childViolation !== null) {
-    const err = new CompileError("Unexpected token", {
+    const err = new CompileError(t`Unexpected token`, {
       node: root,
       ...childViolation,
     });
@@ -324,7 +326,7 @@ function place(node: Node, errors: CompileError[], opts: ParserOptions) {
 
   const childViolation = type.checkChildConstraints(node);
   if (childViolation !== null) {
-    const err = new CompileError("Unexpected token", {
+    const err = new CompileError(t`Unexpected token`, {
       node,
       ...childViolation,
     });

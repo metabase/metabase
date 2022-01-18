@@ -19,6 +19,7 @@ import {
   BetweenLayoutContainer,
   BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  DefaultPickerContainer,
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
@@ -45,6 +46,7 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
+  isSidebar,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -147,7 +149,12 @@ export default function DefaultPicker({
   }
 
   return (
-    <div className={cx(className, "PopoverBody--marginBottom")}>{layout}</div>
+    <DefaultPickerContainer
+      limitHeight={!isSidebar}
+      className={cx(className, "PopoverBody--marginBottom")}
+    >
+      {layout}
+    </DefaultPickerContainer>
   );
 }
 

@@ -110,11 +110,14 @@ export default class TableInteractive extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    if (
-      this.props.data &&
-      newProps.data &&
-      !_.isEqual(this.props.data.cols, newProps.data.cols)
-    ) {
+    const { card, data } = this.props;
+    const { card: nextCard, data: nextData } = newProps;
+
+    const isDataChange =
+      data && nextData && !_.isEqual(data.cols, nextData.cols);
+    const isDatasetStatusChange = card.dataset !== nextCard.dataset;
+
+    if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
     }
 

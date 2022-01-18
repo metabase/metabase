@@ -27,7 +27,7 @@ export const truncateText = (text: string, width: number, fontSize: number) => {
   }
 
   while (text.length && measureText(text + CHAR_ELLIPSES, fontSize) > width) {
-    text = text.substring(0, text.length - 1);
+    text = text.substring(0, text.length - 1).trim();
   }
 
   return text + CHAR_ELLIPSES;

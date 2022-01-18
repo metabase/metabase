@@ -254,7 +254,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
       cy.wait("@loadDatabase");
 
-      cy.findByTestId("database-setup-help-card").should("not.exist");
+      cy.findByText("Need help connecting?").should("not.exist");
     });
   });
 });

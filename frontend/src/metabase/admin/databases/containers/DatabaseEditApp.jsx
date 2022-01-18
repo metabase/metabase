@@ -11,7 +11,6 @@ import { Box, Flex } from "grid-styled";
 
 import title from "metabase/hoc/Title";
 
-import AddDatabaseHelpCard from "metabase/components/AddDatabaseHelpCard";
 import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
@@ -36,6 +35,7 @@ import {
   selectEngine,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { HelpCard } from "./DatabaseEditApp.styled";
 
 const DATABASE_FORM_NAME = "database";
 
@@ -162,11 +162,7 @@ export default class DatabaseEditApp extends Component {
                           </Box>
                           <Box>
                             {addingNewDatabase && (
-                              <AddDatabaseHelpCard
-                                engine={selectedEngine}
-                                ml={26}
-                                data-testid="database-setup-help-card"
-                              />
+                              <HelpCard engine={selectedEngine} />
                             )}
                           </Box>
                         </Flex>
