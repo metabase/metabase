@@ -23,11 +23,14 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [medley.core :as m]
+  (:require [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -99,37 +102,60 @@
        distinct
        vec))
 
+(defn- add-fk-remaps-one-level
+  [{:keys [fields breakout order-by], {source-query-remappings ::remappings} :source-query, :as query}]
+  (assert (not (keyword? fields))  (str ":fields should not be a keyword. In " (u/pprint-to-str query)1))
+  ;; fetch remapping column pairs if any exist...
+  (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
+    ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
+    (let [new-fields          (->> remap-col-tuples
+                                   (map second)
+                                   (concat fields)
+                                   distinct
+                                   vec)
+          ;; make a map of field-id-clause -> fk-clause from the tuples
+          field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
+                                         [field-clause fk-clause]))
+          new-breakout        (update-remapped-breakout field->remapped-col breakout)
+          new-order-by        (update-remapped-order-by field->remapped-col order-by)]
+      ;; return the Dimensions we are using and the query
+      (assoc (cond-> query
+               (seq fields)   (assoc :fields new-fields)
+               (seq order-by) (assoc :order-by new-order-by)
+               (seq breakout) (assoc :breakout new-breakout))
+             ::remappings (concat source-query-remappings (map last remap-col-tuples))))
+    ;; otherwise return query as-is
+    (assoc query ::remappings source-query-remappings)))
+
+(defn- add-fk-remaps* [inner-query]
+  (let [{::keys [remappings], :as inner-query} (walk/postwalk
+                                                (fn [form]
+                                                  (if (and (map? form)
+                                                           ((some-fn :source-table :source-query) form)
+                                                           (not (get-in form [:source-query :native])))
+                                                    (add-fk-remaps-one-level form)
+                                                    form))
+                                                inner-query)
+        ;; remove the `::remappings` keys so we don't have to look at them any more.
+        inner-query (-> (walk/postwalk
+                         (fn [form]
+                           (if (and (map? form)
+                                    (contains? form ::remappings))
+                             (dissoc form ::remappings)
+                             form))
+                         inner-query))]
+    [remappings (-> {:query inner-query}
+                    resolve-fields/resolve-fields*
+                    add-implicit-joins/add-implicit-joins*
+                    :query)]))
+
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by`
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
-  [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
-  (let [[source-query-remappings query]
-        (if (and source-query (not (:native source-query))) ; Only do lifting if source is MBQL query
-          (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
-            [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
-          [nil query])]
-    ;; fetch remapping column pairs if any exist...
-    (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
-      ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [new-fields          (->> remap-col-tuples
-                                     (map second)
-                                     (concat fields)
-                                     distinct
-                                     vec)
-            ;; make a map of field-id-clause -> fk-clause from the tuples
-            field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
-                                           [field-clause fk-clause]))
-            new-breakout        (update-remapped-breakout field->remapped-col breakout)
-            new-order-by        (update-remapped-order-by field->remapped-col order-by)]
-        ;; return the Dimensions we are using and the query
-        [(concat source-query-remappings (map last remap-col-tuples))
-         (cond-> query
-           (seq fields)   (assoc-in [:query :fields] new-fields)
-           (seq order-by) (assoc-in [:query :order-by] new-order-by)
-           (seq breakout) (assoc-in [:query :breakout] new-breakout))])
-      ;; otherwise return query as-is
-      [source-query-remappings query])))
+  [{inner-query :query, :as query} :- mbql.s/Query]
+  (let [[remappings inner-query] (add-fk-remaps* inner-query)]
+    [remappings (assoc query :query inner-query)]))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

@@ -170,7 +170,8 @@
 (defn- resolve-implicit-joins [{:keys [source-query joins], :as inner-query}]
   (let [recursively-resolved (cond-> inner-query
                                source-query (update :source-query resolve-implicit-joins)
-                               (seq joins)  (update :joins (partial map resolve-implicit-joins)))]
+                               (seq joins)  (update :joins (partial mapv (comp resolve-implicit-joins
+                                                                               #(dissoc % :joins)))))]
     (resolve-implicit-joins-this-level recursively-resolved)))
 
 
@@ -178,11 +179,13 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-implicit-joins* [query]
+(defn add-implicit-joins*
+  "Add implicit joins to an MBQL `query`."
+  [query]
   (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/supports? driver/*driver* :foreign-keys)
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+      (when-not (driver/supports? driver/*driver* :left-join)
+        (throw (ex-info (tru "{0} driver does not support joins." driver/*driver*)
                  {:driver driver/*driver*
                   :type   error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))

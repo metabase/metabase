@@ -609,7 +609,7 @@
                      "Gizmo"
                      51]]
                    (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
-                     (qp/process-query query))))))))))
+                    (qp/process-query query))))))))))
 
 (deftest join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)

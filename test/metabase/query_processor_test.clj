@@ -430,9 +430,10 @@
         (let [thunk (reduce
                      (fn [thunk [source dest]]
                        (fn []
-                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
-                                                                                :semantic_type      "type/FK"}
-                           (thunk))))
+                         (testing (format "With FK %s -> %s" source dest)
+                           (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                  :semantic_type      "type/FK"}
+                             (thunk)))))
                      thunk
                      (if (str/includes? (:name (data/db)) "sample")
                        {[:orders :product_id]  [:products :id]

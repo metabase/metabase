@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
+            [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -214,3 +215,29 @@
                       :filter       [:= $product_id->products.category "Doohickey"]
                       :order-by     [[:asc $id] [:asc $product_id->products.category]]
                       :limit        1})))))))))
+
+(deftest remapped-columns-in-joined-source-queries-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Remapped columns in joined source queries should work (#15578)"
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks :bigquery-cloud-sdk
+          (mt/with-column-remappings [orders.product_id products.title]
+            (let [query (mt/mbql-query products
+                          {:joins    [{:source-query {:source-table $$orders}
+                                       :alias        "Q1"
+                                       :condition    [:= $id &Q1.orders.product_id]
+                                       :fields       :all}]
+                           :order-by [[:asc $id]
+                                      [:asc &Q1.orders.id]]
+                           :limit    2})]
+              (mt/with-native-query-testing-context query
+                (is (= [[1 "1018947080336" "Rustic Paper Wallet" "Gizmo" "Swaniawski, Casper and Hilll"
+                         29.46 4.6 "2017-07-19T19:44:56.582Z"
+                         448 61 1 29.46 1.4 30.86 nil "2016-12-25T22:19:38.656Z" 2]
+                        [1 "1018947080336" "Rustic Paper Wallet" "Gizmo" "Swaniawski, Casper and Hilll"
+                         29.46 4.6 "2017-07-19T19:44:56.582Z"
+                         493 65 1 29.46 1.18 30.64 nil "2017-02-04T10:16:00.936Z" 1]]
+                       (mt/formatted-rows [int str str str str
+                                           2.0 2.0 str
+                                           int int int 2.0 2.0 2.0 identity str int]
+                         (qp/process-query query))))))))))))

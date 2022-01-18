@@ -100,7 +100,7 @@
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
-    [:field id-or-name (remove-namespaced-options (dissoc opts :source-fields))]
+    [:field id-or-name (remove-namespaced-options (dissoc opts :source-field))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
     [:expression expression-name opts]
@@ -172,9 +172,11 @@
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
-      join-is-this-level?                      join-alias
-      (and table-id (= table-id source-table)) table-id
-      :else                                    ::source)))
+      join-is-this-level?                                       join-alias
+      (and table-id (= table-id source-table) #_(not join-alias)) table-id
+      ;; TODO -- if there's a `join-alias` but the join isn't at this level, we should probably check that the join is
+      ;; at least at SOME level and log a warning if it is not.
+      :else                                                     ::source)))
 
 (defn- exports [query]
   (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
@@ -242,7 +244,7 @@
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [{:keys [source-table], :as inner-query}
+  [inner-query
    [_ _id-or-name {:keys [join-alias]}, :as field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond

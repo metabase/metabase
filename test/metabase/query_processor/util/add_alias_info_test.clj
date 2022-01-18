@@ -472,19 +472,108 @@
                     :order-by    [[:asc [:aggregation 0]]]}))))))
 
 (deftest uniquify-aggregation-names-text
-  (is (query= (mt/mbql-query checkins
-                {:expressions {:count [:+ 1 1]}
-                 :breakout    [[:expression "count" {::add/desired-alias "count"
-                                                     ::add/position      0}]]
-                 :aggregation [[:aggregation-options [:count] {:name               "count_2"
-                                                               ::add/desired-alias "count_2"
-                                                               ::add/position      1}]]
-                 :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
-                                                           ::add/position      0}]]]
-                 :limit       1})
-              (add-alias-info
-               (mt/mbql-query checkins
-                 {:expressions {"count" [:+ 1 1]}
-                  :breakout    [[:expression "count"]]
-                  :aggregation [[:count]]
-                  :limit       1})))))
+  (testing "Aggregations should get unique names if other Fields conflict with their original names"
+    (is (query= (mt/mbql-query checkins
+                  {:expressions {:count [:+ 1 1]}
+                   :breakout    [[:expression "count" {::add/desired-alias "count"
+                                                       ::add/position      0}]]
+                   :aggregation [[:aggregation-options [:count] {:name               "count_2"
+                                                                 ::add/desired-alias "count_2"
+                                                                 ::add/position      1}]]
+                   :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
+                                                             ::add/position      0}]]]
+                   :limit       1})
+                (add-alias-info
+                 (mt/mbql-query checkins
+                   {:expressions {"count" [:+ 1 1]}
+                    :breakout    [[:expression "count"]]
+                    :aggregation [[:count]]
+                    :limit       1}))))))
+
+(deftest remapped-columns-in-joined-source-queries-test
+  (mt/dataset sample-dataset
+    (mt/with-column-remappings [orders.product_id products.title]
+      (is (query= (mt/mbql-query products
+                    {:joins  [{:source-query {:source-table $$orders
+                                              :joins        [{:fields       :none
+                                                              :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                              :strategy     :left-join
+                                                              :condition    [:=
+                                                                             [:field
+                                                                              %orders.product_id
+                                                                              {::add/source-table  $$orders
+                                                                               ::add/source-alias  "PRODUCT_ID"
+                                                                               ::add/desired-alias "PRODUCT_ID"
+                                                                               ::add/position      1}]
+                                                                             [:field
+                                                                              %id
+                                                                              {:join-alias        "PRODUCTS__via__PRODUCT_ID"
+                                                                               ::add/source-table "PRODUCTS__via__PRODUCT_ID"
+                                                                               ::add/source-alias "ID"}]]
+                                                              :source-table $$products
+                                                              :fk-field-id  %orders.product_id}]
+                                              :fields       [[:field %orders.id {::add/source-table  $$orders
+                                                                                 ::add/source-alias  "ID"
+                                                                                 ::add/desired-alias "ID"
+                                                                                 ::add/position      0}]
+                                                             [:field %orders.product_id {::add/source-table  $$orders
+                                                                                         ::add/source-alias  "PRODUCT_ID"
+                                                                                         ::add/desired-alias "PRODUCT_ID"
+                                                                                         ::add/position      1}]
+                                                             [:field %title {:source-field       %orders.product_id
+                                                                             :join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                             ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
+                                                                             ::add/source-alias  "TITLE"
+                                                                             ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__TITLE"
+                                                                             ::add/position      2}]]}
+                               :alias        "Q1"
+                               :strategy     :left-join
+                               :condition    [:=
+                                              [:field %id {::add/source-table $$products
+                                                           ::add/source-alias "ID"}]
+                                              [:field %orders.product_id {:join-alias         "Q1"
+                                                                          ::add/source-table  "Q1"
+                                                                          ::add/source-alias  "PRODUCT_ID"
+                                                                          ::add/desired-alias "Q1__PRODUCT_ID"
+                                                                          ::add/position      1}]]
+                               :fields       [[:field %orders.id {:join-alias         "Q1"
+                                                                  ::add/source-table  "Q1"
+                                                                  ::add/source-alias  "ID"
+                                                                  ::add/desired-alias "Q1__ID"
+                                                                  ::add/position      0}]
+                                              [:field %orders.product_id {:join-alias         "Q1"
+                                                                          ::add/source-table  "Q1"
+                                                                          ::add/source-alias  "PRODUCT_ID"
+                                                                          ::add/desired-alias "Q1__PRODUCT_ID"
+                                                                          ::add/position      1}]
+                                              [:field %title {:join-alias         "Q1"
+                                                              ::add/source-table  "Q1"
+                                                              ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__TITLE"
+                                                              ::add/desired-alias "Q1__PRODUCTS__via__PRODUCT_ID__TITLE"
+                                                              ::add/position      2}]]}]
+                     :fields [[:field %orders.id {:join-alias         "Q1"
+                                                  ::add/source-table  "Q1"
+                                                  ::add/source-alias  "ID"
+                                                  ::add/desired-alias "Q1__ID"
+                                                  ::add/position      0}]
+                              [:field %orders.product_id {:join-alias         "Q1"
+                                                          ::add/source-table  "Q1"
+                                                          ::add/source-alias  "PRODUCT_ID"
+                                                          ::add/desired-alias "Q1__PRODUCT_ID"
+                                                          ::add/position      1}]
+                              [:field %title {:join-alias         "Q1"
+                                              ::add/source-table  "Q1"
+                                              ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__TITLE"
+                                              ::add/desired-alias "Q1__PRODUCTS__via__PRODUCT_ID__TITLE"
+                                              ::add/position      2}]]
+                     :limit  2})
+                  (add-alias-info
+                   (mt/mbql-query products
+                     {:joins  [{:source-query {:source-table $$orders
+                                               :fields       [$orders.id $orders.product_id]}
+                                :alias        "Q1"
+                                :condition    [:= $id &Q1.orders.product_id]
+                                :fields       :all}]
+                      :fields [&Q1.orders.id
+                               &Q1.orders.product_id]
+                      :limit  2})))))))
