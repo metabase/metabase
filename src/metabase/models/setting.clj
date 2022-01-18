@@ -74,7 +74,6 @@
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [medley.core :as m]
-            [metabase.events :as events]
             [metabase.models.setting.cache :as cache]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
