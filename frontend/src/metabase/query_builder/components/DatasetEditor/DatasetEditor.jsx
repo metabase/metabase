@@ -114,6 +114,11 @@ function DatasetEditor(props) {
                 isInitiallyOpen
                 viewHeight={height}
                 hasParametersList={false}
+                // We need to rerun the query after saving changes or canceling edits
+                // By default, NativeQueryEditor cancels an active query on unmount,
+                // which can also cancel the expected query rerun
+                // (see https://github.com/metabase/metabase/issues/19180)
+                cancelQueryOnLeave={false}
               />
             ) : (
               <ResizableNotebook
