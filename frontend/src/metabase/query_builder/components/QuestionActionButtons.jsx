@@ -2,6 +2,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
+
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import Button from "metabase/components/Button";
@@ -18,14 +20,14 @@ export const ARCHIVE_TESTID = "archive-button";
 const ICON_SIZE = 18;
 
 QuestionActionButtons.propTypes = {
+  question: PropTypes.object.isRequired,
   canWrite: PropTypes.bool.isRequired,
-  isDataset: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
-export default QuestionActionButtons;
+function QuestionActionButtons({ question, canWrite, onOpenModal }) {
+  const isDataset = question.isDataset();
 
-function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
   const duplicateTooltip = isDataset
     ? t`Duplicate this model`
     : t`Duplicate this question`;
@@ -69,7 +71,12 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
             onlyIcon
             icon="model"
             iconSize={ICON_SIZE}
-            onClick={() => onOpenModal(MODAL_TYPES.TURN_INTO_DATASET)}
+            onClick={() => {
+              const modal = checkCanBeModel(question)
+                ? MODAL_TYPES.TURN_INTO_DATASET
+                : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+              onOpenModal(modal);
+            }}
             data-testid={TURN_INTO_DATASET_TESTID}
           />
         </Tooltip>
@@ -99,3 +106,5 @@ function QuestionActionButtons({ canWrite, isDataset, onOpenModal }) {
     </Container>
   );
 }
+
+export default QuestionActionButtons;
