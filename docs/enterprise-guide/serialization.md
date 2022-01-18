@@ -52,7 +52,7 @@ Currently, you can only load dumps into a Metabase instance that were created fr
 
 `java -jar metabase.jar load [my_dump] --mode [skip/update] --on-error [continue/abort]`
 
-The `--mode` flag lets you specify what to do when encountering a duplicate dashboard, question, or any Admin Panel settings that already set (again, except for permissions and user settings, which are not currently included in data dumps). It can either `skip` that item and do nothing to it, or `update` it with the version being loaded. The default is `skip`.
+The `--mode` flag lets you specify what to do when encountering a duplicate dashboard, question, or any Admin Panel settings that already set (again, except for permissions and user settings, which are not currently included in data dumps). It can either `skip` that item and do nothing to it, or `update` it with the version being loaded. The default is `skip`. For example, if you change the order, add or remove any cards in a dashboard that has been loaded previously, mode `skip` won't do any modifications to it, as the load process "skips" any object that previously exists no matter if there are changes on the source file.
 
 The `--on-error` flag allows you to specify whether the load process should keep going or stop when there's an error. The default is `continue`. Note that `abort` won't undo any successful artifact loads that happened before an error was encountered.
 
