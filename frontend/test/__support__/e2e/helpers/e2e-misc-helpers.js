@@ -57,7 +57,9 @@ export function openNotebookEditor({ fromCurrentPage } = {}) {
   }
 
   cy.findByText("New").click();
-  cy.findByText("Question").click();
+  cy.findByText("Question")
+    .should("be.visible")
+    .click();
 }
 
 /**

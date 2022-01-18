@@ -18,12 +18,12 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details (:details (mt/db))
-          fake-ds-id "definitely-not-a-real-dataset-no-way-no-how"]
+    (let [db-details   (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
-      (testing "can-connect? returns false for bogus dataset-id"
-        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :dataset-id fake-ds-id)))))
+      (testing "can-connect? returns false for bogus credentials"
+        (is (false? (driver/can-connect? :bigquery-cloud-sdk (assoc db-details :project-id fake-proj-id)))))
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
@@ -193,14 +193,14 @@
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name view-name})
+                     {:schema "v3_test_data", :name view-name})
           "`describe-database` should see the view")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   view-name
               :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                         {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
                         {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema "v3_test_data"}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the view (#3414)"
@@ -232,10 +232,12 @@
 (deftest project-id-override-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Querying a different project-id works"
-      (mt/with-temp Database [{db-id :id :as temp-db} {:engine  :bigquery-cloud-sdk
-                                                       :details (-> (:details (mt/db))
-                                                                    (assoc :project-id "bigquery-public-data"
-                                                                           :dataset-id "chicago_taxi_trips"))}]
+      (mt/with-temp Database [{db-id :id :as temp-db}
+                              {:engine  :bigquery-cloud-sdk
+                               :details (-> (:details (mt/db))
+                                            (assoc :project-id "bigquery-public-data"
+                                                   :dataset-filters-type "inclusion"
+                                                   :dataset-filters-patterns "chicago_taxi_trips"))}]
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
@@ -280,9 +282,9 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema nil, :name tbl-nm})
+                     {:schema "v3_test_data", :name tbl-nm})
           "`describe-database` should see the table")
-      (is (= {:schema nil
+      (is (= {:schema "v3_test_data"
               :name   tbl-nm
               :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
                         {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
@@ -294,7 +296,7 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -321,11 +323,11 @@
                     tbl-nm])
       (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
       (fn [tbl-nm]
-        (is (= {:schema nil
+        (is (= {:schema "v3_test_data"
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm}))
+              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest retry-certain-exceptions-test
@@ -379,7 +381,8 @@
     (testing "A Database can be seamlessly changed from the :bigquery driver to :bigquery-cloud-sdk driver"
       (mt/with-temp Database [temp-db {:engine  :bigquery
                                        ;; same db-details for new driver as old, so we can luckily just reuse them
-                                       :details (:details (mt/db))}]
+                                       :details (assoc (:details (mt/db))
+                                                  :dataset-id (get-in (mt/db) [:details :dataset-filters-patterns]))}]
         (mt/with-db temp-db
           (sync/sync-database! temp-db {:scan :schema})
           (mt/with-temp Card [temp-card {:database_id   (mt/id)
@@ -399,6 +402,75 @@
                   (is (= "metabase-bigquery-driver" (get-in (Database db-id)
                                                             [:details :project-id-from-credentials]))))))))))))
 
+(defn- sync-and-assert-filtered-tables [database assert-table-fn]
+  (mt/with-temp Database [db-filtered database]
+    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
+          tables       (Table :db_id (u/the-id db-filtered))]
+      (is (not (empty? tables)))
+      (doseq [table (Table :db_id (u/the-id db-filtered))]
+        (assert-table-fn table)))))
+
+(deftest dataset-filtering-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Filtering BigQuery connections for datasets works as expected"
+      (testing " with an inclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "inclusion"
+                                                              :dataset-filters-patterns "a*,t*"))}
+                                         (fn [{dataset-id :schema}]
+                                           (is (not (contains? #{\a \t} (first dataset-id)))))))
+      (testing " with an exclusion filter"
+        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
+                                          :engine  :bigquery-cloud-sdk
+                                          :details (-> (mt/db)
+                                                       :details
+                                                       (assoc :dataset-filters-type "exclusion"
+                                                              :dataset-filters-patterns "v*"))}
+          (fn [{dataset-id :schema}]
+            (is (not= \v (first dataset-id)))))))))
+
+(deftest normalize-away-dataset-id-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Details should be normalized coming out of the DB, to switch hardcoded dataset-id to an inclusion filter"
+      ;; chicken and egg problem; we need the temp DB ID in order to create temp tables, but the creation of this
+      ;; temp DB will cause driver/normalize-db-details to fire
+      (mt/with-temp* [Database [db {:name    "Legacy BigQuery DB"
+                                    :engine  :bigquery-cloud-sdk,
+                                    :details {:dataset-id "my-dataset"
+                                              :service-account-json "{}"}}]
+                      Table    [table1 {:name "Table 1"
+                                        :db_id (u/the-id db)}]
+                      Table    [table2 {:name "Table 2"
+                                        :db_id (u/the-id db)}]]
+        (let [db-id      (u/the-id db)
+              call-count (atom 0)
+              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
+          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                  (swap! call-count inc)
+                                                                  (orig-fn database dataset-id))]
+            ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
+            (doseq [_ (range 5)]
+              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+            ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
+            ;; that runs at the end of creating the temp object, above ^
+            ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
+            ;; queries the domain object, they should see that as having already been done
+            ;; hence, assert it was not called anymore here
+            (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
+          ;; now, so we need to manually update the temp DB again here, to force the "old" structure
+          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+            (is updated?)
+            (let [updated (Database db-id)]
+              (is (nil? (get-in updated [:details :dataset-id])))
+              ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
+              (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
+              (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
+              (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
+                ;; and the existing tables should have been updated with that schema
+                (is (= "my-dataset" (:schema table)))))))))))
 
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk

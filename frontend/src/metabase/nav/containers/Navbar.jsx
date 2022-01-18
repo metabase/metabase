@@ -20,6 +20,7 @@ import Modal from "metabase/components/Modal";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 import SearchBar from "metabase/nav/components/SearchBar";
 
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { AdminNavbar } from "../components/AdminNavbar";
 
@@ -47,6 +48,7 @@ const mapDispatchToProps = {
 };
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 
 @Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
@@ -191,8 +193,8 @@ export default class Navbar extends Component {
               },
               {
                 title: t`Collection`,
-                icon: `all`,
-                link: Urls.newCollection("root"),
+                icon: `folder`,
+                action: () => this.setModal(MODAL_NEW_COLLECTION),
                 event: `NavBar;New Collection Click;`,
               },
             ]}
@@ -220,17 +222,39 @@ export default class Navbar extends Component {
     );
   }
 
+  renderModalContent() {
+    const { modal } = this.state;
+    const { onChangeLocation } = this.props;
+
+    switch (modal) {
+      case MODAL_NEW_COLLECTION:
+        return (
+          <CollectionCreate
+            onClose={() => this.setState({ modal: null })}
+            onSaved={collection => {
+              this.setState({ modal: null });
+              onChangeLocation(Urls.collection(collection));
+            }}
+          />
+        );
+      case MODAL_NEW_DASHBOARD:
+        return (
+          <CreateDashboardModal
+            onClose={() => this.setState({ modal: null })}
+          />
+        );
+      default:
+        return null;
+    }
+  }
+
   renderModal() {
     const { modal } = this.state;
+
     if (modal) {
       return (
         <Modal onClose={() => this.setState({ modal: null })}>
-          {modal === MODAL_NEW_DASHBOARD ? (
-            <CreateDashboardModal
-              createDashboard={this.props.createDashboard}
-              onClose={() => this.setState({ modal: null })}
-            />
-          ) : null}
+          {this.renderModalContent()}
         </Modal>
       );
     } else {

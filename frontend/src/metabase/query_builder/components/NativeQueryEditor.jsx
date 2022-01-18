@@ -84,6 +84,7 @@ export default class NativeQueryEditor extends Component {
 
   static defaultProps = {
     isOpen: false,
+    cancelQueryOnLeave: true,
   };
 
   UNSAFE_componentWillMount() {
@@ -177,7 +178,9 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    this.props.cancelQuery();
+    if (this.props.cancelQueryOnLeave) {
+      this.props.cancelQuery();
+    }
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
   }

@@ -383,12 +383,13 @@ describe("scenarios > admin > settings", () => {
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
-      cy.contains("Answers sent right to your Slack");
-      cy.findByLabelText("Slack API Token")
-        .type("not-a-real-token")
-        .blur();
-      cy.findByText("Save changes").click();
-      cy.contains("Looks like we ran into some problems");
+
+      cy.findByText("Metabase on Slack");
+      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
+      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.button("Save changes").click();
+
+      cy.findByText(": invalid token");
     });
   });
 });

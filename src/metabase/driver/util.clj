@@ -2,6 +2,7 @@
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
             [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -113,9 +114,9 @@
     [(cond-> {:name (str prop-name "-options")
               :display-name disp-nm
               :type "select"
-              :options [{:name "Local file path"
+              :options [{:name (trs "Local file path")
                          :value "local"}
-                        {:name "Uploaded file path"
+                        {:name (trs "Uploaded file path")
                          :value "uploaded"}]
               :default "local"}
              visible-if (assoc :visible-if visible-if))
@@ -126,7 +127,7 @@
        (dissoc :secret-kind))
      {:name (str prop-name "-path")
       :type "string"
-      :display-name "File path"
+      :display-name (trs "File path")
       :placeholder (:placeholder conn-prop)
       :visible-if {(keyword (str prop-name "-options")) "local"}}]))
 
@@ -166,6 +167,38 @@
           (assoc :placeholder content)
           (dissoc :getter)))))
 
+(defn- expand-schema-filters-prop [prop]
+  (let [prop-name (:name prop)
+        disp-name (or (:display-name prop) "")
+        type-prop-nm (str prop-name "-type")]
+    [{:name type-prop-nm
+      :display-name disp-name
+      :type "select"
+      :options [{:name (trs "All")
+                 :value "all"}
+                {:name (trs "Only these...")
+                 :value "inclusion"}
+                {:name (trs "All except...")
+                 :value "exclusion"}]
+      :default "all"}
+     {:name        (str prop-name "-info-top-inclusion")
+      :type        :info
+      :placeholder (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "inclusion"}}
+     {:name        (str prop-name "-info-top-exclusion")
+      :type        :info
+      :placeholder (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "exclusion"}}
+     {:name (str prop-name "-patterns")
+      :type "text"
+      :placeholder "E.x. public,auth*"
+      :visible-if  {(keyword type-prop-nm) ["inclusion" "exclusion"]}}
+     {:name (str prop-name "-info-bottom")
+      :type :info
+      :placeholder (trs "You can use patterns like auth* to match multiple {0}" (str/lower-case disp-name))
+      :visible-if {(keyword type-prop-nm) ["inclusion" "exclusion"]}}]))
+
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -186,6 +219,9 @@
                                              (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
                                                [conn-prop']
                                                [])
+
+                                             :schema-filters
+                                             (expand-schema-filters-prop conn-prop)
 
                                              [conn-prop])]
                         (-> (update acc ::final-props concat expanded-props)

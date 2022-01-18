@@ -156,11 +156,8 @@ export default class ChartClickActions extends Component {
       });
       delete groupedClickActions["sum"];
     }
-    if (
-      clicked.column &&
-      clicked.column.source === "native" &&
-      groupedClickActions["sort"]
-    ) {
+    const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
+    if (clicked.column?.source === "native" && hasOnlyOneSortAction) {
       // restyle the Formatting action for SQL columns
       groupedClickActions["sort"][0] = {
         ...groupedClickActions["sort"][0],

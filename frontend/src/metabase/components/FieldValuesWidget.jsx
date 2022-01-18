@@ -12,10 +12,12 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { DashboardApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
+import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
+import { getDashboardParameterValuesCache } from "metabase/dashboard/selectors";
 
 import Fields from "metabase/entities/fields";
 
@@ -30,39 +32,16 @@ const optionsMessagePropTypes = {
   message: PropTypes.string.isRequired,
 };
 
-// fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
-// parameterId = the auto-generated ID of the parameter
-// parameters = all parameters in the current dashboard, as an array
-const fetchParameterPossibleValues = async (
-  dashboardId,
-  { id: paramId, filteringParameters = [] } = {},
-  parameters,
-  query,
-) => {
-  // build a map of parameter ID -> value for parameters that this parameter is filtered by
-  const otherValues = _.chain(parameters)
-    .filter(p => filteringParameters.includes(p.id) && p.value != null)
-    .map(p => [p.id, p.value])
-    .object()
-    .value();
-
-  const args = { paramId, query, dashId: dashboardId, ...otherValues };
-  const endpoint = query
-    ? DashboardApi.parameterSearch
-    : DashboardApi.parameterValues;
-  // now call the new chain filter API endpoint
-  const results = await endpoint(args);
-  return results.map(result => [].concat(result));
-};
-
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchDashboardParameterValues,
 };
 
 function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
   return {
+    dashboardParameterValuesCache: getDashboardParameterValuesCache(state),
     fields: fields.map(
       field =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
@@ -121,11 +100,13 @@ export class FieldValuesWidget extends Component {
     let options;
     try {
       const { dashboard, parameter, parameters } = this.props;
-      options = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
+      const args = {
+        dashboardId: dashboard?.id,
         parameter,
         parameters,
-      );
+      };
+      await this.props.fetchDashboardParameterValues(args);
+      options = this.props.dashboardParameterValuesCache.get(args);
     } finally {
       this.setState({
         loadingState: "LOADED",
@@ -261,12 +242,14 @@ export class FieldValuesWidget extends Component {
     let results;
     if (this.useChainFilterEndpoints()) {
       const { dashboard, parameter, parameters } = this.props;
-      results = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
+      const args = {
+        dashboardId: dashboard?.id,
         parameter,
         parameters,
-        value,
-      );
+        query: value,
+      };
+      await this.props.fetchDashboardParameterValues(args);
+      results = this.props.dashboardParameterValuesCache.get(args);
     } else {
       results = dedupeValues(
         await Promise.all(

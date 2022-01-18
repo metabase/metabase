@@ -38,7 +38,9 @@ driver:
     - cloud-ip-address-info
     - ssh-tunnel
     - advanced-options-start
-    - additional-options
+    - merge:
+      - additional-options
+      - placeholder: 'queryTimeout=0'
     - default-advanced-options
 init:
   - step: load-namespace

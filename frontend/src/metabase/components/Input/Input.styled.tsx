@@ -19,7 +19,7 @@ export const InputField = styled.input<InputProps>`
   font-weight: 700;
   font-size: 1rem;
   color: ${color("text-dark")};
-  background-color: ${color("bg-white")};
+  background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   padding: 0.75rem;
   border: 1px solid ${darken("border", 0.1)};
   border-radius: 4px;

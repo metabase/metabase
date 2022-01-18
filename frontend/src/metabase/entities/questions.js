@@ -109,7 +109,7 @@ const Questions = createEntity({
 
 function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
-    return { name: "dataset" };
+    return { name: "model" };
   }
   const visualization = require("metabase/visualizations").default.get(
     question.display,
