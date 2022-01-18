@@ -339,12 +339,13 @@
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery) (conj :bigquery)
-    true                             (disj :presto-jdbc)))
+    (@tx.env/test-drivers :bigquery)           (conj :bigquery)
+    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
+    true                                       (disj :presto-jdbc)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
-    (mt/with-bigquery-fks :bigquery
+    (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
      (testing (str "1 - Creates a GTAP filtering question, looking for any checkins happening on or after 2014\n"
                    "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                    "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"

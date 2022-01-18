@@ -58,7 +58,7 @@
         (select-keys col [:name :id :table_id :display_name :base_type :effective_type :coercion_strategy
                           :semantic_type :unit :fingerprint :settings :source_alias :field_ref :parent_id])))
     (catch Throwable e
-      (log/error e (str (trs "Error determining expected columns for query")))
+      (log/error e (str (trs "Error determining expected columns for query: {0}" (ex-message e))))
       nil)))
 
 (s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
@@ -105,7 +105,9 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn- add-source-metadata-for-source-queries* [{query-type :type, :as query}]
+(defn add-source-metadata-for-source-queries*
+  "Add `:source-metadata` for source queries inside `query`."
+  [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (update query :query add-source-metadata-at-all-levels)))
