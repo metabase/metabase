@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import QuestionPicker from "metabase/containers/QuestionPicker";
@@ -115,7 +116,9 @@ export default class CardTagEditor extends Component {
                 <Icon name="all" size={12} mr={1} /> {question.collection.name}
               </div>
             )}
-            <div className="flex align-center mt1">
+            <div
+              className={cx("flex align-center", { mt1: question.collection })}
+            >
               <Icon name="calendar" size={12} mr={1} />{" "}
               {t`Last edited ${formatDate(question.updated_at)}`}
             </div>
