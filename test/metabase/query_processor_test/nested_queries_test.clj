@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Dimension Field Metric Segment Table]]
             [metabase.models.card :as card :refer [Card]]
@@ -108,7 +109,7 @@
                      [2 33.8894 8]
                      [2 33.9997 7]
                      [3 10.0646 2]
-                     [4 33.983 2]],
+                     [4 33.983 2]]
               :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
                      (qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :latitude))
                      (qp.test/aggregate-col :count)]}
@@ -187,13 +188,13 @@
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results)
-             (qp.test/rows-and-cols
-               (mt/format-rows-by [int int]
-                 (mt/run-mbql-query venues
-                   {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
-                    :aggregation  [:count]
-                    :breakout     [$price]}))))))))
+      (is (= (:rows (breakout-results))
+             (mt/rows
+              (mt/format-rows-by [int int]
+                (mt/run-mbql-query venues
+                  {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
+                   :aggregation  [:count]
+                   :breakout     [*price]}))))))))
 
 
 (defn- mbql-card-def
@@ -688,7 +689,7 @@
                   :fields       [$id]
                   :filter       [:= *date "2014-03-30"]})))))))
 
-(deftest apply-filters-test
+(deftest aapply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "make sure filters in source queries are applied correctly!"
       (is (= [["Fred 62"     1]
@@ -975,18 +976,19 @@
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
     (mt/dataset sample-dataset
-      (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-              ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-              ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
-             (mt/rows
-               (mt/run-mbql-query orders
-                 {:filter       [:> *count/Integer 5]
-                  :source-query {:source-table $$orders
-                                 :aggregation  [[:count]]
-                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
-                  :limit        5})))))))
+      (let [query (mt/mbql-query orders
+                    {:filter       [:> *count/Integer 5]
+                     :source-query {:source-table $$orders
+                                    :aggregation  [[:count]]
+                                    :breakout     [!month.created_at !month.product_id->products.created_at]}
+                     :limit        5})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
@@ -1141,23 +1143,25 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        (is (= [["Awesome Bronze Plate" 115.23]
-                ["Mediocre Rubber Shoes" 101.04]
-                ["Mediocre Wooden Bench" 117.03]
-                ["Sleek Steel Table" 134.91]
-                ["Small Marble Hat" 102.8]]
-               (mt/formatted-rows [str 2.0]
-                 (mt/run-mbql-query orders
-                   {:source-query {:source-query {:source-table $$orders
-                                                  :filter       [:= $user_id 1]
-                                                  :aggregation  [[:sum $total]]
-                                                  :breakout     [!day.created_at
-                                                                 $product_id->products.title
-                                                                 $product_id->products.category]}
-                                   :filter       [:> *sum/Float 100]
-                                   :aggregation  [[:sum *sum/Float]]
-                                   :breakout     [*products.title]}
-                    :filter       [:> *sum/Float 100]}))))))))
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-query {:source-table $$orders
+                                                     :filter       [:= $user_id 1]
+                                                     :aggregation  [[:sum $total]]
+                                                     :breakout     [!day.created_at
+                                                                    $product_id->products.title
+                                                                    $product_id->products.category]}
+                                      :filter       [:> *sum/Float 100]
+                                      :aggregation  [[:sum *sum/Float]]
+                                      :breakout     [*products.title]}
+                       :filter       [:> *sum/Float 100]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Awesome Bronze Plate" 115.23]
+                    ["Mediocre Rubber Shoes" 101.04]
+                    ["Mediocre Wooden Bench" 117.03]
+                    ["Sleek Steel Table" 134.91]
+                    ["Small Marble Hat" 102.8]]
+                   (mt/formatted-rows [str 2.0]
+                     (qp/process-query query))))))))))
 
 (deftest date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
@@ -1234,3 +1238,37 @@
                     ["2016-05-01T00:00:00Z" 5]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest join-against-query-with-implicit-joins-test
+  (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :nested-queries
+                      :basic-aggregations
+                      :foreign-keys
+                      :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [$product_id->products.id]}
+                       :joins        [{:fields       :all
+                                       :source-table $$reviews
+                                       ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
+                                       ;; anyway.
+                                       :condition    [:= *products.id &Reviews.reviews.product_id]
+                                       :alias        "Reviews"}]
+                       :order-by     [[:asc $product_id->products.id]
+                                      [:asc &Reviews.products.id]]
+                       :limit        1})]
+          (sql.qp-test-util/with-native-query-testing-context query
+            (testing "results"
+              (is (= [[1
+                       93
+                       1
+                       1
+                       "christ"
+                       5
+                       "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
+                       "2018-05-15T20:25:48.517Z"]]
+                     (mt/formatted-rows [int int int int str int str str]
+                       (qp/process-query query)))))))))))

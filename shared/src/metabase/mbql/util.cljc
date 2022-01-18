@@ -624,6 +624,8 @@
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
 
+;; TODO -- This seems like it would be easily confused with
+;; [[metabase.driver.sql.query-processor/source-query-alias]]. Joins are REQUIRED to have aliases anyway
 (def ^:private default-join-alias "source")
 
 (s/defn deduplicate-join-aliases :- mbql.s/Joins

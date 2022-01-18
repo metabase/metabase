@@ -98,7 +98,7 @@
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
           db                 (db/insert! Database
                                :name    database-name
-                               :engine  (name driver)
+                               :engine  (u/qualified-name driver)
                                :details connection-details)]
       (try
         ;; sync newly added DB
