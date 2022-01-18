@@ -838,13 +838,7 @@
         (metabase.models.setting/set! k v)))
     (catch Throwable e
       (cache/restore-cache!)
-      (throw e)))
-  ;; TODO - This event is no longer neccessary or desirable. This is used in only a single place, to stop or restart
-  ;; the MetaBot when settings are updated ; this only works if the setting is updated via this specific function.
-  ;; Instead, we should define a custom setter for the relevant setting that additionally performs the desired
-  ;; operations when the value is updated. This pattern is easier to understand, works no matter how the setting is
-  ;; changed, and doesn't run when irrelevant changes (to other settings) are made.
-  (events/publish-event! :settings-update settings))
+      (throw e))))
 
 (defn- obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
