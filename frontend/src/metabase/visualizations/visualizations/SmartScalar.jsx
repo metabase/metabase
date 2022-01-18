@@ -20,6 +20,12 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 
+import {
+  PreviousValueContainer,
+  PreviousValueSeparator,
+  PreviousValueVariation,
+} from "./SmartScalar.styled";
+
 export default class Smart extends React.Component {
   static uiName = t`Trend`;
   static identifier = "smartscalar";
@@ -125,18 +131,7 @@ export default class Smart extends React.Component {
         {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
       </span>
     );
-    const separator = (
-      <span
-        style={{
-          color: color("text-light"),
-          fontSize: "0.7rem",
-          marginLeft: 4,
-          marginRight: 4,
-        }}
-      >
-        •
-      </span>
-    );
+    const separator = <PreviousValueSeparator>•</PreviousValueSeparator>;
     const granularityDisplay = (
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
@@ -196,7 +191,7 @@ export default class Smart extends React.Component {
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <Flex align="center" mt={1} flexWrap="wrap">
+            <PreviousValueContainer>
               <Flex align="center" color={changeColor}>
                 <Icon
                   size={13}
@@ -205,19 +200,13 @@ export default class Smart extends React.Component {
                 />
                 {changeDisplay}
               </Flex>
-              <h4
-                id="SmartScalar-PreviousValue"
-                className="flex align-center hide lg-show"
-                style={{
-                  color: color("text-medium"),
-                }}
-              >
+              <PreviousValueVariation id="SmartScalar-PreviousValue">
                 {jt`${separator} was ${formatValue(
                   previousValue,
                   settings.column(column),
                 )} ${granularityDisplay}`}
-              </h4>
-            </Flex>
+              </PreviousValueVariation>
+            </PreviousValueContainer>
           )}
         </Box>
       </ScalarWrapper>
