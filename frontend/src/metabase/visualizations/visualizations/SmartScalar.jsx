@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -24,6 +24,7 @@ import {
   PreviousValueContainer,
   PreviousValueSeparator,
   PreviousValueVariation,
+  Variation,
 } from "./SmartScalar.styled";
 
 export default class Smart extends React.Component {
@@ -192,14 +193,14 @@ export default class Smart extends React.Component {
             t`No change from last ${granularity}`
           ) : (
             <PreviousValueContainer>
-              <Flex align="center" color={changeColor}>
+              <Variation color={changeColor}>
                 <Icon
                   size={13}
                   pr={1}
                   name={isNegative ? "arrow_down" : "arrow_up"}
                 />
                 {changeDisplay}
-              </Flex>
+              </Variation>
               <PreviousValueVariation id="SmartScalar-PreviousValue">
                 {jt`${separator} was ${formatValue(
                   previousValue,

@@ -1,10 +1,17 @@
 import styled from "styled-components";
 
 import { color } from "metabase/lib/colors";
-import {
-  breakpointMaxExtraSmall,
-  space,
-} from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+
+export const Variation = styled.div`
+  color: ${props => props.color};
+  display: flex;
+  align-items: center;
+
+  ${breakpointMaxSmall} {
+    margin: ${space(1)} 0;
+  }
+`;
 
 export const PreviousValueContainer = styled.div`
   align-items: center;
@@ -12,7 +19,7 @@ export const PreviousValueContainer = styled.div`
   flex-wrap: wrap;
   margin-top: ${space(0)};
 
-  ${breakpointMaxExtraSmall} {
+  ${breakpointMaxSmall} {
     flex-direction: column;
   }
 `;
@@ -22,7 +29,7 @@ export const PreviousValueVariation = styled.h4`
   color: ${color("text-light")};
   display: flex;
 
-  ${breakpointMaxExtraSmall} {
+  ${breakpointMaxSmall} {
     text-transform: capitalize;
   }
 `;
@@ -32,7 +39,7 @@ export const PreviousValueSeparator = styled.span`
   font-size: 0.7rem;
   margin: 0 ${space(0)};
 
-  ${breakpointMaxExtraSmall} {
+  ${breakpointMaxSmall} {
     display: none;
   }
 `;
