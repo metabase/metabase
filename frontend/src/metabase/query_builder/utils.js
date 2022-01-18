@@ -1,3 +1,4 @@
+import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
@@ -46,21 +47,27 @@ export function isAdHocDatasetQuestion(question, originalQuestion) {
 function getTemplateTagWithoutSnippetsCount(question) {
   const query = question.query();
   return query instanceof NativeQuery
-    ? query.templateTagsWithoutSnippets().length
-    : 0;
+    ? query.templateTagsWithoutSnippets()
+    : [];
 }
 
 export function getNextTemplateTagVisibilityState({
   oldQuestion,
   newQuestion,
   isTemplateTagEditorVisible,
+  queryBuilderMode,
 }) {
-  const oldCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
-  const newCount = getTemplateTagWithoutSnippetsCount(newQuestion);
-  if (newCount > oldCount) {
-    return true;
+  const previousTags = getTemplateTagWithoutSnippetsCount(oldQuestion);
+  const nextTags = getTemplateTagWithoutSnippetsCount(newQuestion);
+
+  if (nextTags.length > previousTags.length) {
+    if (queryBuilderMode !== "dataset") {
+      return true;
+    }
+    return nextTags.every(isSupportedTemplateTagForModel);
   }
-  if (newCount === 0 && isTemplateTagEditorVisible) {
+
+  if (nextTags.length === 0 && isTemplateTagEditorVisible) {
     return false;
   }
 }

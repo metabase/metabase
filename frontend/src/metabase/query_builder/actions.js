@@ -1009,10 +1009,7 @@ export const updateQuestion = (
     // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
-    if (
-      getQueryBuilderMode(getState()) === "notebook" &&
-      newQuestion.isNative()
-    ) {
+    if (mode === "notebook" && newQuestion.isNative()) {
       await dispatch(
         setQueryBuilderMode("view", {
           shouldUpdateUrl: false,
@@ -1035,6 +1032,7 @@ export const updateQuestion = (
       oldQuestion,
       newQuestion,
       isTemplateTagEditorVisible,
+      queryBuilderMode: mode,
     });
     if (typeof nextTagEditorVisibilityState === "boolean") {
       dispatch(setIsShowingTemplateTagsEditor(nextTagEditorVisibilityState));
