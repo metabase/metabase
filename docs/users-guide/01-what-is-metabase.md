@@ -1,8 +1,8 @@
 ## What is Metabase?
 
-Metabase is an open source business intelligence tool. It lets you ask questions about your data, and displays answers in formats that make sense, whether that's a bar graph or a detailed table.
+Metabase is an open source business intelligence tool. It lets you ask questions about your data, and displays answers in formats that make sense, whether that's a bar chart or a detailed table.
 
-Your questions can be saved for later, making it easy to come back to them, or you can group questions into great looking dashboards. Metabase also makes it easy to share questions and dashboards with the rest of your team.
+Your questions can be saved for later, making it easy to come back to them, or you can group questions into great looking [dashboards](./07-dashboards.md). Metabase also makes it easy to share questions and dashboards with the rest of your team.
 
 ## Finding your way around
 
@@ -14,9 +14,10 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 Fresh out of the box, Metabase will show you a few things on the home page:
 
-- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them. (Administrators can permanently hide this section by clicking the `X` that appears on hover.)
+- A prompt to [connect your data to Metabase](01-managing-databases.md) (if you haven't already).
+- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them. (Administrators can permanently hide this section by clicking the **X** that appears on hover.)
 - An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
-- A list of the databases you've connected to Metabase. (As with x-rays, administrators can permanently hide this section by clicking the `X` that appears on hover. You can always click on "Browse Data" from the main nav bar to see your databases and tables.)
+- A list of the databases you've connected to Metabase. (As with X-rays, administrators can permanently hide this section by clicking the **X** that appears on hover. You can always click on **Browse Data** from the main nav bar to see your databases and tables.)
 
 ![Our data](./images/our-data.png)
 
@@ -30,23 +31,20 @@ If you connected your database to Metabase during setup, you'll see it listed at
 
 ### Explore your analytics
 
-As you and your team create dashboards and collections, they'll start to show up on the homepage. Click on a collection in the "Our analytics" section to see its contents, or click "browse all items" to see everything you and your team have made. [More about exploring](03-basic-exploration.md)
+As you and your team create dashboards and collections, they'll start to show up on the homepage. Click on a [collection](./collections.md) in the "Our analytics" section to see its contents, or click **Browse all items** to see everything you and your team have made. [More about exploring](03-basic-exploration.md)
 
-### Ask a question or write a query
+### Make something new
 
-Click the `Ask a question` button in the top-right of Metabase to start a new simple exploration of one of your tables, ask a more detailed custom question using the notebook editor, or write a new SQL query if you want to really dig in.
+Click the **+ New** button in the top-right of Metabase to create a new:
 
-### Make a new dashboard or pulse
+- **Question** using Metabase's [graphical query builder](04-asking-questions.md).
+- **SQL query** to ask a question using the [SQL editor](./writing-sql.md).
+- **Dashboard** to create a [dashboard](./07-dashboard.md) to gather and arrange questions and text cards on a grid. You can add filters to dashboards, and share and embed them, and subscribe to them via email or Slack. See [Dashboards](./07-dashboards.md).
+- **Collections** to create a new [collection](./collections.md) that organizes questions, dashboards, and models.
 
-In Metabase, dashboards are made up of saved questions that you can arrange and resize as you please. They're a great way to track important metrics and stats that you care about. Pulses are what regularly scheduled reports are called in Metabase. They can be sent out either via email, Slack, or both.
-
-To make a dashboard or pulse, click the plus (+) icon in the top-right of the main navigation bar.
-
-![Create menu](./images/create-menu.png)
+To [create a new model](./models.md), ask a question using either the query builder or the SQL editor, then convert the results to a model.
 
 ### Use search to quickly find things
-
-![Search results](images/basic-exploration/search-results.gif)
 
 The search bar at the top of the screen helps you find tables, dashboards, collections, saved questions, metrics, segments, and pulses in an instant.
 

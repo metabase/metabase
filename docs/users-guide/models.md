@@ -10,14 +10,16 @@ Models can:
 
 ## How to use models
 
-You can use models to:
+You can use Models to do things ike use complex SQL queries to create models (derived tables) that can be used as starting data in a question just like any other table in your database.
+
+You can use Models to:
 
 - Create models, like a "customer" dataset, or 
 - Summary tables that aggregate data from multiple tables, or
 - Clean up tables with unnecessary columns and rows removed, or
 - Results of a SQL question plus metadata to describe it's columns.
 
-Or whatever else you want to create. The idea with datasets is to give other people a good "starting point table" that makes it easier to answer any questions they have. In this sense, they're like a special sort of saved question that you can add metadata to.
+Or whatever else you want to create. The idea with Models is to give other people a good "starting point table" that makes it easier to answer any questions they have. In this sense, they're like a special sort of saved question that you can add metadata to.
 
 ## Create a model
 
@@ -32,9 +34,7 @@ Convert the question to a dataset (from the sidebar). You can add metadata for e
 
 ## Add metadata to columns in a model
 
-You can optionally add metadata to each of the columns in Metabase, which is especially useful for SQL questions.
-
-TODO
+You can optionally add metadata to each of the columns in Metabase, which is especially useful for SQL questions. When you write a SQL query in Metabase, Metabase can display the results, but it can't "know" what kind of data it's returning. What's not the case with questions built using the query builder; Metabase does some work behind the scenes to keep track of what kind of data it's working with, which is why you can click on the results and drill through the data. Normally, when you create a SQL question, you can't drill through the results, because Metabase can't parse SQL, so it doesn't understand what the results are. With Models, however, you can tell Metabase what kind of data is in each of the resulting columns so that it can still do its drill through magic, 
 
 ## Start a question from a model
 
