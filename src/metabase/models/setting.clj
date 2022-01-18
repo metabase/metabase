@@ -99,6 +99,11 @@
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
   nil)
 
+(def ^:private retired-setting-names
+  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
+  these names to avoid unintended side-effects if an application database still stores values for these settings."
+  #{"metabot-enabled"})
+
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
   :setting)
@@ -640,6 +645,10 @@
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
+      (when (retired-setting-names (name setting-name))
+        (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
+                        {:retired-setting-name (name setting-name)
+                         :new-setting          (dissoc <> :on-change :getter :setter)})))
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
