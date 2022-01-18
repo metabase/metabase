@@ -5,24 +5,24 @@ import { ROOT_COLLECTION } from "metabase/entities/collections";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
+import { State } from "metabase-types/store";
 import Homepage from "../../components/Homepage";
 import {
   hideData,
   hidePinMessage,
-  hideXrays,
   hideSyncingModal,
+  hideXrays,
 } from "../../actions";
 import {
+  getCandidatesQuery,
   getShowData,
   getShowPinMessage,
-  getShowXrays,
   getShowSyncingModal,
 } from "../../selectors";
-import { Database } from "../../types";
 import {
-  trackDatabaseClick,
   trackCollectionClick,
   trackDashboardClick,
+  trackDatabaseClick,
 } from "../../analytics";
 
 const databasesProps = {
@@ -54,25 +54,13 @@ const dashboardsProps = {
 };
 
 const databaseCandidatesProps = {
-  query: (state: any, { databases = [] }: { databases: Database[] }) => {
-    const [sampleDatabases, userDatabases] = _.partition(
-      databases,
-      d => d.is_sample,
-    );
-
-    if (userDatabases.length) {
-      return { id: userDatabases[0].id };
-    } else if (sampleDatabases.length) {
-      return { id: sampleDatabases[0].id };
-    }
-  },
+  query: getCandidatesQuery,
   loadingAndErrorWrapper: false,
 };
 
-const mapStateToProps = (state: any) => ({
+const mapStateToProps = (state: State) => ({
   user: getUser(state),
   showData: getShowData(state),
-  showXrays: getShowXrays(state),
   showPinMessage: getShowPinMessage(state),
   showSyncingModal: getShowSyncingModal(state),
   onCollectionClick: trackCollectionClick,

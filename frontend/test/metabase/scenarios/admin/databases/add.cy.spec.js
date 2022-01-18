@@ -50,6 +50,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.log(
       "**Repro for [metabase#14334](https://github.com/metabase/metabase/issues/14334)**",
     );
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Rerun queries for simple explorations").should(
       "have.attr",
       "aria-checked",
@@ -66,7 +67,9 @@ describe("scenarios > admin > databases > add", () => {
       .click();
 
     cy.wait("@createDatabase");
-    cy.url().should("match", /\/admin\/databases$/);
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByText("Explore sample data");
   });
 
   it("should trim fields needed to connect to the database", () => {
@@ -95,6 +98,8 @@ describe("scenarios > admin > databases > add", () => {
     chooseDatabase("H2");
     typeField("Display name", "Test db name");
     typeField("Connection String", "invalid");
+
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.button("Save").click();
@@ -112,6 +117,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
+    cy.findByText("Show advanced options").click();
     toggleFieldWithDisplayName("Choose when syncs and scans happen");
 
     cy.findByText("Never, I'll do this manually if I need to").click();
@@ -124,7 +130,7 @@ describe("scenarios > admin > databases > add", () => {
       expect(request.body.details.user).to.equal("uberadmin");
     });
 
-    cy.url().should("match", /admin\/databases$/);
+    cy.url().should("match", /admin\/databases\?created=true$/);
   });
 
   it("should show error correctly on server error", () => {
@@ -164,22 +170,7 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should display a setup help card", () => {
     cy.visit("/admin/databases/create");
-    cy.findByTestId("database-setup-help-card").within(() => {
-      cy.findByText(/Need help setting up (.*)\?/i);
-      cy.findByRole("link", { name: /Our docs can help/i });
-    });
-
-    cy.get("#formField-engine").click();
-    cy.findByText("MySQL").click();
-    cy.findByTestId("database-setup-help-card").findByText(
-      "Need help setting up MySQL?",
-    );
-
-    cy.get("#formField-engine").click();
-    cy.findByText("SQLite").click();
-    cy.findByTestId("database-setup-help-card").findByText(
-      "Need help setting up your database?",
-    );
+    cy.findByText("Need help connecting?");
   });
 
   it("should respect users' decision to manually sync large database (metabase#17450)", () => {
@@ -195,6 +186,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Display name", databaseName);
     typeField("Connection String", H2_CONNECTION_STRING);
 
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Choose when syncs and scans happen")
       .click()
       .should("have.attr", "aria-checked", "true");
@@ -202,6 +194,9 @@ describe("scenarios > admin > databases > add", () => {
     isSyncOptionSelected("Never, I'll do this manually if I need to");
 
     cy.button("Save").click();
+
+    cy.findByText("We're taking a look at your database!");
+    cy.findByLabelText("close icon").click();
 
     cy.findByRole("table").within(() => {
       cy.findByText(databaseName).click();
@@ -218,7 +213,9 @@ describe("scenarios > admin > databases > add", () => {
 
       // enter text
       typeField("Display name", "bq db");
-      typeField("Dataset ID", "some-dataset");
+      // typeField("Dataset ID", "some-dataset");
+      selectFieldOption("Datasets", "Only these...");
+      cy.findByPlaceholderText("E.x. public,auth*").type("some-dataset");
 
       // create blob to act as selected file
       cy.get("input[type=file]")
@@ -282,13 +279,11 @@ describe("scenarios > admin > databases > add", () => {
       chooseDatabase("BigQuery");
 
       cy.findByText("BigQuery");
-      cy.findByText("Need help setting up your database?");
-      cy.findByText("The old driver has been deprecated", { exact: false });
+      cy.findByText("Need help connecting?");
 
       cy.findByText("find it here").click();
       cy.findByText("BigQuery (Deprecated Driver)");
-      cy.findByText("Need help setting up your database?").should("not.exist");
-      cy.findByText("This driver has been deprecated", { exact: false });
+      cy.findByText("Need help connecting?");
     });
   });
 
@@ -323,6 +318,7 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.button("Save").click();
 
       cy.wait("@createDatabase").then(({ request }) => {
@@ -339,6 +335,7 @@ describe("scenarios > admin > databases > add", () => {
       typeField("Database name", "test_postgres_db");
       typeField("Username", "uberadmin");
 
+      cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
       popover()
         .findByText("Custom")

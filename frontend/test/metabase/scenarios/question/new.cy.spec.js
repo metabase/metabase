@@ -1,12 +1,12 @@
 import {
   browse,
   enterCustomColumnDetails,
-  getBinningButtonForDimension,
   openOrdersTable,
   openReviewsTable,
   popover,
   restore,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -102,8 +102,7 @@ describe("scenarios > question > new", () => {
 
   describe("data picker search", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -170,8 +169,7 @@ describe("scenarios > question > new", () => {
 
   describe("saved question picker", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -260,8 +258,7 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
+      cy.visit("/question/new");
       cy.contains("Simple question").click();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
@@ -371,12 +368,14 @@ describe("scenarios > question > new", () => {
 
       // it is essential for this repro to find question following these exact steps
       // (for example, visiting `/collection/root` would yield different result)
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
-      cy.findByText("Summarize").click();
+      visualize();
+      cy.findAllByTestId("toggle-summarize-sidebar-button")
+        .contains("Summarize")
+        .click();
+
       cy.findByText("Group by")
         .parent()
         .within(() => {
@@ -384,13 +383,15 @@ describe("scenarios > question > new", () => {
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
-          getBinningButtonForDimension({
-            name: "Created At",
-          })
-            .should("have.text", "by month")
-            .click();
+
+          cy.findByText("Created At")
+            .closest("li")
+            .contains("by month")
+            // realHover() or mousemove don't work for whatever reason
+            // have to use this ugly hack for now
+            .click({ force: true });
         });
-      // this step is maybe redundant since it fails to even find "by month"
+      // // this step is maybe redundant since it fails to even find "by month"
       cy.findByText("Hour of Day");
     });
 
@@ -415,19 +416,43 @@ describe("scenarios > question > new", () => {
         .contains(/All Time/i);
       cy.get("@select").contains(/Month/i);
     });
+
+    // flaky test (#19454)
+    it.skip("should show an info popover when hovering over summarize dimension options", () => {
+      openReviewsTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Title")
+        .trigger("mouseenter");
+
+      popover().contains("Title");
+      popover().contains("199 distinct values");
+    });
   });
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
+      openNotebookEditor();
       cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
 
       visualize();
 
       cy.contains("37.65");
+    });
+
+    it("should show a table info popover when hovering over the table name in the header", () => {
+      openNotebookEditor();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
+
+      visualize();
+
+      cy.findByTestId("question-table-badges").trigger("mouseenter");
+
+      cy.findByText("9 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {

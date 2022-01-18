@@ -4,15 +4,15 @@ import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import ActionButton from "metabase/components/ActionButton";
 import ExternalLink from "metabase/components/ExternalLink";
-import Toggle from "metabase/components/Toggle";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import {
   StepDescription,
-  StepToggle,
+  StepToggleContainer,
   StepToggleLabel,
   StepInfoList,
   StepError,
+  StepToggle,
 } from "./PreferencesStep.styled";
 
 export interface PreferencesStepProps {
@@ -41,6 +41,7 @@ const PreferencesStep = ({
       await onStepSubmit(isTrackingAllowed);
     } catch (error) {
       setErrorMessage(getSubmitError(error));
+      throw error;
     }
   };
 
@@ -67,8 +68,8 @@ const PreferencesStep = ({
           href={Settings.docsUrl("information-collection")}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </StepDescription>
-      <StepToggle>
-        <Toggle
+      <StepToggleContainer>
+        <StepToggle
           value={isTrackingAllowed}
           onChange={onTrackingChange}
           aria-labelledby="anonymous-usage-events-label"
@@ -76,7 +77,7 @@ const PreferencesStep = ({
         <StepToggleLabel id="anonymous-usage-events-label">
           {t`Allow Metabase to anonymously collect usage events`}
         </StepToggleLabel>
-      </StepToggle>
+      </StepToggleContainer>
       {isTrackingAllowed && (
         <StepInfoList>
           <li>{jt`Metabase ${(
@@ -87,8 +88,8 @@ const PreferencesStep = ({
         </StepInfoList>
       )}
       <ActionButton
-        normalText={t`Next`}
-        activeText={t`Next`}
+        normalText={t`Finish`}
+        activeText={t`Finishing…`}
         failedText={t`Failed`}
         successText={t`Success`}
         primary

@@ -13,6 +13,8 @@ import "./commands/api/user";
 
 import "./commands/api/composite/createQuestionAndDashboard";
 import "./commands/api/composite/createNativeQuestionAndDashboard";
+import "./commands/api/composite/createQuestionAndAddToDashboard";
+import "./commands/api/composite/createDashboardWithQuestions";
 
 import "./commands/user/createUser";
 import "./commands/user/authentication";
@@ -23,6 +25,7 @@ import "./commands/permissions/sandboxTable";
 import "./commands/database/addH2SampleDataset";
 
 import "./commands/visibility/isVisibleInPopover";
+import "./commands/visibility/findByTextEnsureVisible";
 import "./commands/visibility/isRenderedWithinViewport";
 
 import "./commands/overwrites/log";

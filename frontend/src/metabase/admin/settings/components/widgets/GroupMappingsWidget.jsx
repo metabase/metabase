@@ -197,17 +197,17 @@ class AddMappingRow extends React.Component {
     };
   }
 
+  _handleSubmit = e => {
+    e.preventDefault();
+    const { onAdd } = this.props;
+    onAdd && onAdd(this.state.value);
+    this.setState({ value: "" });
+  };
+
   _handleCancelClick = e => {
     e.preventDefault();
     const { onCancel } = this.props;
     onCancel && onCancel();
-    this.setState({ value: "" });
-  };
-
-  _handleAddClick = e => {
-    e.preventDefault();
-    const { onAdd } = this.props;
-    onAdd && onAdd(this.state.value);
     this.setState({ value: "" });
   };
 
@@ -219,7 +219,10 @@ class AddMappingRow extends React.Component {
     return (
       <tr>
         <td colSpan="3" style={{ padding: 0 }}>
-          <div className="my2 pl1 p1 bordered border-brand rounded relative flex align-center">
+          <form
+            className="my2 pl1 p1 bordered border-brand rounded relative flex align-center"
+            onSubmit={isValid ? this._handleSubmit : undefined}
+          >
             <input
               className="input--borderless h3 ml1 flex-full"
               type="text"
@@ -234,11 +237,11 @@ class AddMappingRow extends React.Component {
             >{t`Cancel`}</span>
             <Button
               className="ml2"
+              type="submit"
               primary={!!isValid}
               disabled={!isValid}
-              onClick={this._handleAddClick}
             >{t`Add`}</Button>
-          </div>
+          </form>
         </td>
       </tr>
     );

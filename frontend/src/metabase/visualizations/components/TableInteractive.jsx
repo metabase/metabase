@@ -30,6 +30,7 @@ import MiniBar from "./MiniBar";
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -109,11 +110,14 @@ export default class TableInteractive extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(newProps) {
-    if (
-      this.props.data &&
-      newProps.data &&
-      !_.isEqual(this.props.data.cols, newProps.data.cols)
-    ) {
+    const { card, data } = this.props;
+    const { card: nextCard, data: nextData } = newProps;
+
+    const isDataChange =
+      data && nextData && !_.isEqual(data.cols, nextData.cols);
+    const isDatasetStatusChange = card.dataset !== nextCard.dataset;
+
+    if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
     }
 
@@ -130,7 +134,7 @@ export default class TableInteractive extends Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {
-    const PROP_KEYS = ["width", "height", "settings", "data"];
+    const PROP_KEYS = ["width", "height", "settings", "data", "clicked"];
     // compare specific props and state to determine if we should re-render
     return (
       !_.isEqual(
@@ -522,6 +526,21 @@ export default class TableInteractive extends Component {
     return style.left;
   }
 
+  @memoize
+  getDimension(column, query) {
+    if (!query) {
+      return undefined;
+    }
+
+    const dimension = Dimension.parseMBQL(
+      column.field_ref,
+      query.metadata(),
+      query,
+    );
+
+    return dimension;
+  }
+
   tableHeaderRenderer = ({ key, style, columnIndex }) => {
     const {
       data,
@@ -631,31 +650,40 @@ export default class TableInteractive extends Component {
               : undefined
           }
         >
-          {renderTableHeaderWrapper(
-            <Ellipsified tooltip={columnTitle}>
-              {isSortable && isRightAligned && (
-                <Icon
-                  className="Icon mr1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-              {columnTitle}
-              {isSortable && !isRightAligned && (
-                <Icon
-                  className="Icon ml1"
-                  name={isAscending ? "chevronup" : "chevrondown"}
-                  size={8}
-                />
-              )}
-            </Ellipsified>,
-            column,
-            columnIndex,
-          )}
+          <DimensionInfoPopover
+            placement="bottom-start"
+            dimension={this.getDimension(column, this.props.query)}
+            disabled={this.props.clicked != null}
+          >
+            {renderTableHeaderWrapper(
+              <Ellipsified tooltip={columnTitle}>
+                {isSortable && isRightAligned && (
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+                {columnTitle}
+                {isSortable && !isRightAligned && (
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={8}
+                  />
+                )}
+              </Ellipsified>,
+              column,
+              columnIndex,
+            )}
+          </DimensionInfoPopover>
           <Draggable
             axis="x"
             bounds={{ left: RESIZE_HANDLE_WIDTH }}
-            position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+            position={{
+              x: this.getColumnWidth({ index: columnIndex }),
+              y: 0,
+            }}
             onStart={e => {
               e.stopPropagation();
               this.setState({ dragColIndex: columnIndex });

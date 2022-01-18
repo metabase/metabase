@@ -68,8 +68,7 @@
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
             (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
-                       :effective_type :type/Integer
-                       :display_name "PRICE")
+                       :effective_type :type/Integer)
                 (dissoc :description :parent_id :visibility_type))
 
             (not has-source-metadata?)
@@ -145,6 +144,45 @@
                     :order-by     [[:asc $venue_id->venues.price]]
                     :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
+
+(deftest nested-with-aggregations-at-both-levels
+  (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [{card-id :id :as card}
+                              {:dataset_query
+                               (mt/$ids :products
+                                        {:type     :query
+                                         :database (mt/id)
+                                         :query    {:source-table $$products
+                                                    :aggregation
+                                                    [[:aggregation-options
+                                                      [:sum $price]
+                                                      {:name "sum"}]
+                                                     [:aggregation-options
+                                                      [:max $rating]
+                                                      {:name "max"}]]
+                                                    :breakout     $category
+                                                    :order-by     [[:asc $category]]}})}]]
+          (is (= {:cols [{:name "count" :display_name "Count"}
+                         {:name "avg" :display_name "Average of Sum of Price"}]
+                  :rows [[4 2787]]}
+                 (-> (mt/format-rows-by [int int]
+                       (qp/process-query {:type     :query
+                                          :database (mt/id)
+                                          :query    {:source-table (str "card__" card-id)
+                                                     :aggregation  [[:aggregation-options
+                                                                     [:count]
+                                                                     {:name "count"}]
+                                                                    [:aggregation-options
+                                                                     [:avg
+                                                                      [:field
+                                                                       "sum"
+                                                                       {:base-type :type/Float}]]
+                                                                     {:name "avg"}]]}}))
+                     :data
+                     (select-keys [:cols :rows])
+                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))))))))))
 
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -398,7 +436,6 @@
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
                 (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                       :display_name "DATE" ;; the underlying native field has this as its display name
                        :unit         :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys

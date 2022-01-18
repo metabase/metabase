@@ -210,7 +210,7 @@ export default class SettingsSlackForm extends Component {
           ? element.defaultValue
           : formData[element.key];
 
-      if (element.key === "slack-token") {
+      if (element.key === "slack-app-token") {
         return (
           <SettingsSetting
             key={element.key}

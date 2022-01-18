@@ -223,18 +223,18 @@
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2
-    (with-redefs [driver/db-start-of-week (constantly :monday)
-                  setting/get-keyword     (constantly :sunday)]
+    (with-redefs [driver/db-start-of-week   (constantly :monday)
+                  setting/get-value-of-type (constantly :sunday)]
       (is (= (hsql/call :dateadd
-                        (hx/literal "day")
-                        (hx/with-database-type-info (hsql/call :cast -1 #sql/raw "long") "long")
-                        (hsql/call :week (hsql/call :dateadd (hx/literal "day")
-                                                    (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
-                                                    :created_at)))
+               (hx/literal "day")
+               (hx/with-database-type-info (hsql/call :cast -1 #sql/raw "long") "long")
+               (hsql/call :week (hsql/call :dateadd (hx/literal "day")
+                                  (hx/with-database-type-info (hsql/call :cast 1 #sql/raw "long") "long")
+                                  :created_at)))
              (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
-      (with-redefs [driver/db-start-of-week (constantly :monday)
-                    setting/get-keyword     (constantly :monday)]
+      (with-redefs [driver/db-start-of-week   (constantly :monday)
+                    setting/get-value-of-type (constantly :monday)]
         (is (= (hsql/call :week :created_at)
                (sql.qp/adjust-start-of-week :h2 (partial hsql/call :week) :created_at)))))))
 

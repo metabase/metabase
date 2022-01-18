@@ -7,6 +7,8 @@ import {
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
@@ -99,7 +101,7 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon="dataset"
+          icon="model"
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}
@@ -202,7 +204,9 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       to={hasLink ? getTableURL(table) : ""}
       inactiveColor={badgeInactiveColor}
     >
-      {table.displayName()}
+      <TableInfoPopover table={table} placement="bottom-start">
+        <span>{table.displayName()}</span>
+      </TableInfoPopover>
     </HeadBreadcrumbs.Badge>
   ));
 

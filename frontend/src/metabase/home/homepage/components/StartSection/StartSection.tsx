@@ -2,17 +2,17 @@ import React from "react";
 import { jt, t } from "ttag";
 import Ellipsified from "metabase/components/Ellipsified";
 import ExternalLink from "metabase/components/ExternalLink";
-import Link from "metabase/components/Link";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import { Dashboard, Database, User } from "../../types";
+import { Dashboard, Database, User } from "metabase-types/api";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   BannerCloseIcon,
   BannerContent,
   BannerDescription,
   BannerIconContainer,
+  BannerLink,
   BannerModelIcon,
   BannerRoot,
   BannerTitle,
@@ -125,10 +125,9 @@ const DatabaseBanner = ({ user }: DatabaseBannerProps): JSX.Element => {
           )}.`}
         </BannerDescription>
       </BannerContent>
-      <Link
-        className="Button Button--primary"
-        to={databaseUrl}
-      >{t`Add my data`}</Link>
+      <BannerLink className="Button Button--primary" to={databaseUrl}>
+        {t`Add my data`}
+      </BannerLink>
     </BannerRoot>
   );
 };

@@ -14,6 +14,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
@@ -88,57 +89,63 @@
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
-    (let [expected [{:name "host"}
-                    {:name "port"}
-                    {:name "sid"}
-                    {:name "service-name"}
-                    {:name "user"}
-                    {:name "password"}
-                    {:name "cloud-ip-address-info"}
-                    {:name "ssl"}
-                    {:name "ssl-use-keystore"}
-                    {:name       "ssl-keystore-options"
-                     :type       "select"
-                     :options    [{:name  "Local file path"
-                                   :value "local"}
-                                  {:name  "Uploaded file path"
-                                   :value "uploaded"}]
-                     :visible-if {:ssl-use-keystore true}}
-                    {:name       "ssl-keystore-value"
-                     :type       "textFile"
-                     :visible-if {:ssl-keystore-options "uploaded"}}
-                    {:name       "ssl-keystore-path"
-                     :type       "string"
-                     :visible-if {:ssl-keystore-options "local"}}
-                    {:name "ssl-keystore-password-value"
-                     :type "password"}
-                    {:name "ssl-use-truststore"}
-                    {:name       "ssl-truststore-options"
-                     :type       "select"
-                     :options    [{:name  "Local file path"
-                                   :value "local"}
-                                  {:name  "Uploaded file path"
-                                   :value "uploaded"}]
-                     :visible-if {:ssl-use-truststore true}}
-                    {:name       "ssl-truststore-value"
-                     :type       "textFile"
-                     :visible-if {:ssl-truststore-options "uploaded"}}
-                    {:name       "ssl-truststore-path"
-                     :type       "string"
-                     :visible-if {:ssl-truststore-options "local"}}
-                    {:name "ssl-truststore-password-value"
-                     :type "password"}
-                    {:name "tunnel-enabled"}
-                    {:name "tunnel-host"}
-                    {:name "tunnel-port"}
-                    {:name "tunnel-user"}
-                    {:name "tunnel-auth-option"}
-                    {:name "tunnel-pass"}
-                    {:name "tunnel-private-key"}
-                    {:name "tunnel-private-key-passphrase"}]
-          actual   (->> (driver/connection-properties :oracle)
-                        (driver.u/connection-props-server->client :oracle))]
-      (is (= expected (mt/select-keys-sequentially expected actual))))))
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (let [expected [{:name "host"}
+                      {:name "port"}
+                      {:name "sid"}
+                      {:name "service-name"}
+                      {:name "user"}
+                      {:name "password"}
+                      {:name "ssl"}
+                      {:name "ssl-use-keystore"}
+                      {:name       "ssl-keystore-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {:ssl-use-keystore true}}
+                      {:name       "ssl-keystore-value"
+                       :type       "textFile"
+                       :visible-if {:ssl-keystore-options "uploaded"}}
+                      {:name       "ssl-keystore-path"
+                       :type       "string"
+                       :visible-if {:ssl-keystore-options "local"}}
+                      {:name "ssl-keystore-password-value"
+                       :type "password"}
+                      {:name "ssl-use-truststore"}
+                      {:name       "ssl-truststore-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {:ssl-use-truststore true}}
+                      {:name       "ssl-truststore-value"
+                       :type       "textFile"
+                       :visible-if {:ssl-truststore-options "uploaded"}}
+                      {:name       "ssl-truststore-path"
+                       :type       "string"
+                       :visible-if {:ssl-truststore-options "local"}}
+                      {:name "ssl-truststore-password-value"
+                       :type "password"}
+                      {:name "tunnel-enabled"}
+                      {:name "tunnel-host"}
+                      {:name "tunnel-port"}
+                      {:name "tunnel-user"}
+                      {:name "tunnel-auth-option"}
+                      {:name "tunnel-pass"}
+                      {:name "tunnel-private-key"}
+                      {:name "tunnel-private-key-passphrase"}
+                      {:name "advanced-options"}
+                      {:name "auto_run_queries"}
+                      {:name "let-user-control-scheduling"}
+                      {:name "schedules.metadata_sync"}
+                      {:name "schedules.cache_field_values"}
+                      {:name "refingerprint"}]
+            actual   (->> (driver/connection-properties :oracle)
+                          (driver.u/connection-props-server->client :oracle))]
+        (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"

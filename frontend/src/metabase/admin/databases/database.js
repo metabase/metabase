@@ -1,15 +1,17 @@
 import { createAction } from "redux-actions";
 import {
-  handleActions,
   combineReducers,
   createThunkAction,
+  handleActions,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { MetabaseApi, SettingsApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import { updateSetting } from "metabase/admin/settings/settings";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
 
@@ -60,8 +62,8 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
   "metabase/admin/databases/CLEAR_INITIALIZE_DATABASE_ERROR";
 // NOTE: some but not all of these actions have been migrated to use metabase/entities/databases
 
-export const CLOSE_DEPRECATION_NOTICE =
-  "metabase/admin/databases/CLOSE_DEPRECATION_NOTICE";
+export const CLOSE_SYNCING_MODAL =
+  "metabase/admin/databases/CLOSE_SYNCING_MODAL";
 
 export const reset = createAction(RESET);
 
@@ -161,7 +163,7 @@ export const createDatabase = function(database) {
       );
 
       dispatch.action(CREATE_DATABASE);
-      dispatch(push("/admin/databases"));
+      dispatch(push("/admin/databases?created=true"));
     } catch (error) {
       console.error("error creating a database", error);
       MetabaseAnalytics.trackStructEvent(
@@ -238,6 +240,7 @@ export const syncDatabaseSchema = createThunkAction(
     return async function(dispatch, getState) {
       try {
         const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
+        dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -279,18 +282,12 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
-export const closeDeprecationNotice = createThunkAction(
-  CLOSE_DEPRECATION_NOTICE,
+export const closeSyncingModal = createThunkAction(
+  CLOSE_SYNCING_MODAL,
   function() {
-    return async function() {
-      try {
-        await SettingsApi.put({
-          key: "engine-deprecation-notice-version",
-          value: MetabaseSettings.currentVersion(),
-        });
-      } catch (error) {
-        console.log("error saving deprecation notice version", error);
-      }
+    return async function(dispatch) {
+      const setting = { key: "show-database-syncing-modal", value: false };
+      await dispatch(updateSetting(setting));
     };
   },
 );
@@ -355,13 +352,6 @@ const sampleDataset = handleActions(
   { error: undefined, loading: false },
 );
 
-const isDeprecationNoticeEnabled = handleActions(
-  {
-    [CLOSE_DEPRECATION_NOTICE]: () => false,
-  },
-  MetabaseSettings.engineDeprecationNoticeEnabled(),
-);
-
 export default combineReducers({
   editingDatabase,
   initializeError,
@@ -369,5 +359,4 @@ export default combineReducers({
   databaseCreationStep,
   deletes,
   sampleDataset,
-  isDeprecationNoticeEnabled,
 });

@@ -8513,6 +8513,8 @@ databaseChangeLog:
       validCheckSum:
         - 8:d60aa66f5909d37393ee711dea6996c7 # original checksum under #17649
         - 8:98f3ccbb3e8efc46f5766fcd51f39d0e # changed creator_id to nullable in #19398
+        - 8:ccfed82cd5d09891c7a380b428e5fbc5 # no idea where these two values come from :(
+        - 8:b4864fb1516837c753bf3a607a8ed655
       changes:
         - createTable:
             tableName: secret
@@ -9864,6 +9866,21 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_database_creator_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v420.00-070
+      author: camsaul
+      comment: >-
+        Added 0.42.0 - add Database.settings column to implement Database-local Settings
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing Database-local Settings for this Database"
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

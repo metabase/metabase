@@ -1,8 +1,10 @@
 import React, { useEffect } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import { updateIn } from "icepick";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
+import DriverWarning from "metabase/containers/DriverWarning";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
@@ -13,11 +15,12 @@ import {
   StepLink,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
-import { DatabaseInfo, InviteInfo } from "../../types";
+import { DatabaseInfo, InviteInfo, UserInfo } from "../../types";
 
 export interface DatabaseStepProps {
-  engine?: string;
+  user?: UserInfo;
   database?: DatabaseInfo;
+  engine?: string;
   invite?: InviteInfo;
   isEmailConfigured: boolean;
   isStepActive: boolean;
@@ -31,8 +34,9 @@ export interface DatabaseStepProps {
 }
 
 const DatabaseStep = ({
-  engine,
+  user,
   database,
+  engine,
   invite,
   isEmailConfigured,
   isStepActive,
@@ -74,8 +78,8 @@ const DatabaseStep = ({
         <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
       </StepDescription>
       <DatabaseForm
-        engine={engine}
         database={database}
+        engine={engine}
         onSubmit={onDatabaseSubmit}
       />
       <StepActions>
@@ -86,7 +90,7 @@ const DatabaseStep = ({
           title={t`Need help connecting to your data?`}
           description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
         >
-          <InviteForm invite={invite} onSubmit={onInviteSubmit} />
+          <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
         </SetupSection>
       )}
     </ActiveStep>
@@ -94,8 +98,8 @@ const DatabaseStep = ({
 };
 
 interface DatabaseFormProps {
-  engine?: string;
   database?: DatabaseInfo;
+  engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
 }
 
@@ -119,9 +123,22 @@ const DatabaseForm = ({
       database={database}
       onSubmit={handleSubmit}
     >
-      {({ formFields, Form, FormField, FormFooter }: FormProps) => (
+      {({
+        Form,
+        FormField,
+        FormFooter,
+        formFields,
+        values,
+        onChangeField,
+      }: FormProps) => (
         <Form>
-          {formFields.map(({ name }) => (
+          <FormField name="engine" />
+          <DriverWarning
+            engine={values.engine}
+            hasBorder={true}
+            onChange={engine => onChangeField("engine", engine)}
+          />
+          {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
           {engine && <FormFooter submitTitle={t`Next`} />}
@@ -132,14 +149,19 @@ const DatabaseForm = ({
 };
 
 interface InviteFormProps {
+  user?: UserInfo;
   invite?: InviteInfo;
   onSubmit: (invite: InviteInfo) => void;
 }
 
-const InviteForm = ({ invite, onSubmit }: InviteFormProps): JSX.Element => {
+const InviteForm = ({
+  user,
+  invite,
+  onSubmit,
+}: InviteFormProps): JSX.Element => {
   return (
     <Users.Form
-      form={Users.forms.setup_invite}
+      form={Users.forms.setup_invite(user)}
       user={invite}
       onSubmit={onSubmit}
     >

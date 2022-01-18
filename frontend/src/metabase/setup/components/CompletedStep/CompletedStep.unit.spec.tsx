@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import CompletedStep, { CompletedStepProps } from "./CompletedStep";
-import { UserInfo } from "../../types";
+
+const NewsletterFormMock = () => <div>Metabase Newsletter</div>;
+jest.mock("../../containers/NewsletterForm", () => NewsletterFormMock);
 
 describe("CompletedStep", () => {
   it("should render in inactive state", () => {
@@ -27,17 +29,6 @@ describe("CompletedStep", () => {
 });
 
 const getProps = (opts?: Partial<CompletedStepProps>): CompletedStepProps => ({
-  user: getUserInfo(),
   isStepActive: false,
-  ...opts,
-});
-
-const getUserInfo = (opts?: Partial<UserInfo>): UserInfo => ({
-  first_name: "Testy",
-  last_name: "McTestface",
-  email: "testy@metabase.test",
-  site_name: "Epic Team",
-  password: "metasample123",
-  password_confirm: "metasample123",
   ...opts,
 });

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import CollectionList from "metabase/components/CollectionList";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Urls from "metabase/lib/urls";
-import { Collection, User } from "../../types";
+import { Collection, User } from "metabase-types/api";
 import Section, { SectionHeader, SectionTitle } from "../Section";
 import {
   CollectionContent,
@@ -61,6 +61,8 @@ const EmptyState = ({ user }: EmptyStateProps): JSX.Element => {
     <EmptyStateRoot>
       <EmptyStateImage
         src="app/img/empty.png"
+        width={124}
+        height={130}
         srcSet="app/img/empty.png 1x, app/img/empty@2x.png 2x"
       />
       <EmptyStateTitle>

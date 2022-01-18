@@ -32,6 +32,7 @@
             [metabase.query-processor.middleware.desugar :as desugar]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
@@ -91,6 +92,7 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'viz-settings/update-viz-settings
+   #'fix-bad-refs/fix-bad-references-middleware
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins

@@ -16,11 +16,11 @@ import App from "metabase/App.jsx";
 import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/AuthApp";
+import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import ResetPasswordApp from "metabase/auth/containers/ResetPasswordApp";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -42,7 +42,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -178,7 +177,7 @@ export const getRoutes = store => (
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={PasswordResetApp} />
+        <Route path="reset_password/:token" component={ResetPasswordApp} />
       </Route>
 
       {/* MAIN */}
@@ -194,9 +193,6 @@ export const getRoutes = store => (
             }
           }}
         />
-
-        <Route path="/explore" component={PostSetupApp} />
-        <Route path="/explore/:databaseId" component={PostSetupApp} />
 
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
@@ -240,15 +236,13 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
-        <Route path="/dataset">
+        <Route path="/model">
           <IndexRoute component={QueryBuilder} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
         </Route>
-
-        <Route path="/ready" component={PostSetupApp} />
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />

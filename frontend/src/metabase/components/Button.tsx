@@ -20,6 +20,7 @@ const BUTTON_VARIANTS = [
   "white",
   "borderless",
   "onlyIcon",
+  "fullWidth",
 ] as const;
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -47,6 +48,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   round?: boolean;
   borderless?: boolean;
   onlyIcon?: boolean;
+  fullWidth?: boolean;
 }
 
 const BaseButton = forwardRef(function BaseButton(

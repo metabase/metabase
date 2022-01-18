@@ -12,16 +12,11 @@ import { processSource } from "metabase/lib/expressions/process";
 import { diagnose } from "metabase/lib/expressions/diagnostics";
 import { tokenize } from "metabase/lib/expressions/tokenizer";
 
-import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
-
-import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { isExpression } from "metabase/lib/expressions";
 
+import HelpText from "./ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 import {
   EditorContainer,
@@ -32,47 +27,9 @@ import ExpressionMode from "./ExpressionMode";
 
 import "./expressions.css";
 
-const HelpText = ({ helpText, width }) =>
-  helpText ? (
-    <Popover
-      tetherOptions={{
-        attachment: "top left",
-        targetAttachment: "bottom left",
-      }}
-      style={{ width }}
-      isOpen
-    >
-      {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-      <div onMouseDown={e => e.preventDefault()}>
-        <p
-          className="p2 m0 text-monospace text-bold"
-          style={{ background: colors["bg-yellow"] }}
-        >
-          {helpText.structure}
-        </p>
-        <div className="p2 border-top">
-          <p className="mt0 text-bold">{helpText.description}</p>
-          <p className="text-code m0 text-body">{helpText.example}</p>
-        </div>
-        <div className="p2 border-top">
-          {helpText.args.map(({ name, description }, index) => (
-            <div key={index}>
-              <h4 className="text-medium">{name}</h4>
-              <p className="mt1 text-bold">{description}</p>
-            </div>
-          ))}
-          <ExternalLink
-            className="link text-bold block my1"
-            target="_blank"
-            href={MetabaseSettings.docsUrl("users-guide/expressions")}
-          >
-            <Icon name="reference" size={12} className="mr1" />
-            {t`Learn more`}
-          </ExternalLink>
-        </div>
-      </div>
-    </Popover>
-  ) : null;
+import * as ace from "ace-builds/src-noconflict/ace";
+
+ace.config.set("basePath", "/assets/ui/");
 
 const ErrorMessage = ({ error }) => {
   return (
@@ -94,7 +51,11 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [expressionObj, source]
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.number,
+      PropTypes.array,
+    ]),
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -118,8 +79,15 @@ export default class ExpressionEditorTextfield extends React.Component {
     const { expression, query, startRule } = newProps;
     if (!this.state || !_.isEqual(this.props.expression, expression)) {
       const source = format(expression, { query, startRule });
+      const currentSource = this.state?.source;
       this.setState({ source, expression });
       this.clearSuggestions();
+
+      // Reset caret position due to reformatting
+      if (currentSource !== source && this.input.current) {
+        const { editor } = this.input.current;
+        setTimeout(() => editor.gotoLine(1, source.length), 0);
+      }
     }
   }
 
@@ -131,6 +99,12 @@ export default class ExpressionEditorTextfield extends React.Component {
       fontFamily: "Monaco, monospace",
       fontSize: "12px",
     });
+
+    const passKeysToBrowser = editor.commands.byName.passKeysToBrowser;
+    editor.commands.bindKey("Tab", passKeysToBrowser);
+    editor.commands.bindKey("Shift-Tab", passKeysToBrowser);
+    editor.commands.removeCommand(editor.commands.byName.indent);
+    editor.commands.removeCommand(editor.commands.byName.outdent);
 
     this.setCaretPosition(
       this.state.source.length,
@@ -218,21 +192,26 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  handleTab = () => {
+  chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
-    const { editor } = this.input.current;
 
     if (suggestions.length) {
       this.onSuggestionSelected(highlightedSuggestionIndex);
-    } else {
-      editor.commands.byName.tab();
     }
   };
 
   handleFocus = () => {
     this.setState({ isFocused: true });
-    const { editor } = this.input.current;
-    this.handleCursorChange(editor.selection);
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      this.handleCursorChange(editor.selection);
+
+      // workaround some unknown issue on Firefox
+      // without explicit focus, the editor is vertically shifted
+      setTimeout(() => {
+        editor.focus();
+      }, 0);
+    }
   };
 
   handleInputBlur = e => {
@@ -248,32 +227,52 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     this.clearSuggestions();
 
-    const { query, startRule } = this.props;
-    const { source } = this.state;
-
-    const errorMessage = diagnose(source, startRule, query);
+    const errorMessage = this.diagnoseExpression();
     this.setState({ errorMessage });
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    const expression = this.compileExpression();
-    if (expression) {
-      if (!isExpression(expression)) {
-        console.warn("isExpression=false", expression);
-      }
-      this.props.onChange(expression);
-    } else if (errorMessage) {
+    if (errorMessage) {
       this.props.onError(errorMessage);
     } else {
-      this.props.onError({ message: t`Invalid expression` });
+      const expression = this.compileExpression();
+      if (expression) {
+        if (!isExpression(expression)) {
+          console.warn("isExpression=false", expression);
+        }
+        this.props.onChange(expression);
+      } else {
+        this.props.onError({ message: t`Invalid expression` });
+      }
     }
   };
 
   clearSuggestions() {
     this.setState({
-      suggestions: [],
       highlightedSuggestionIndex: 0,
       helpText: null,
     });
+    this.updateSuggestions([]);
+  }
+
+  updateSuggestions(suggestions = []) {
+    this.setState({ suggestions });
+
+    // Correctly bind Tab depending on whether suggestions are available or not
+    if (this.input.current) {
+      const { editor } = this.input.current;
+      const { suggestions } = this.state;
+      const tabBinding = editor.commands.commandKeyBinding.tab;
+      if (suggestions.length > 0) {
+        // Something to suggest? Tab is for choosing one of them
+        editor.commands.bindKey("Tab", editor.commands.byName.chooseSuggestion);
+      } else {
+        if (Array.isArray(tabBinding) && tabBinding.length > 1) {
+          // No more suggestions? Keep a single binding and remove the
+          // second one (added to choose a suggestion)
+          editor.commands.commandKeyBinding.tab = tabBinding.shift();
+        }
+      }
+    }
   }
 
   compileExpression() {
@@ -287,11 +286,29 @@ export default class ExpressionEditorTextfield extends React.Component {
     return expression;
   }
 
-  commitExpression() {
-    const expression = this.compileExpression();
+  diagnoseExpression() {
+    const { source } = this.state;
+    if (!source || source.length === 0) {
+      return { message: "Empty expression" };
+    }
+    const { query, startRule } = this.props;
+    return diagnose(source, startRule, query);
+  }
 
-    if (isExpression(expression)) {
-      this.props.onCommit(expression);
+  commitExpression() {
+    const { query, startRule } = this.props;
+    const { source } = this.state;
+    const errorMessage = diagnose(source, startRule, query);
+    this.setState({ errorMessage });
+
+    if (errorMessage) {
+      this.props.onError(errorMessage);
+    } else {
+      const expression = this.compileExpression();
+
+      if (isExpression(expression)) {
+        this.props.onCommit(expression);
+      }
     }
   }
 
@@ -307,7 +324,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   handleExpressionChange(source) {
-    this.setState({ source });
+    this.setState({ source, errorMessage: null });
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
@@ -325,10 +342,28 @@ export default class ExpressionEditorTextfield extends React.Component {
       targetOffset: cursor.column,
     });
 
-    this.setState({
-      suggestions: suggestions || [],
-      helpText,
-    });
+    this.setState({ helpText });
+    this.updateSuggestions(suggestions);
+  }
+
+  errorAsMarkers(errorMessage = null) {
+    if (errorMessage) {
+      const { pos, len } = errorMessage;
+      // Because not every error message offers location info (yet)
+      if (typeof pos === "number") {
+        return [
+          {
+            startRow: 0,
+            startCol: pos,
+            endRow: 0,
+            endCol: pos + len,
+            className: "error",
+            type: "text",
+          },
+        ];
+      }
+    }
+    return [];
   }
 
   commands = [
@@ -354,10 +389,10 @@ export default class ExpressionEditorTextfield extends React.Component {
       },
     },
     {
-      name: "tab",
-      bindKey: { win: "Tab", mac: "Tab" },
+      name: "chooseSuggestion",
+      bindKey: null,
       exec: () => {
-        this.handleTab();
+        this.chooseSuggestion();
       },
     },
   ];
@@ -373,6 +408,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             commands={this.commands}
             ref={this.input}
             value={source}
+            markers={this.errorAsMarkers(errorMessage)}
             focus={true}
             highlightActiveLine={false}
             wrapEnabled={true}

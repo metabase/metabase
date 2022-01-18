@@ -96,7 +96,6 @@
   "Figure out what we're running under"
   []
   (cond
-    (= (config/config-str :mb-client) "OSX") :osx
     (config/config-str :rds-hostname)        :elastic-beanstalk
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
     :default                                 :unknown))

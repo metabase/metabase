@@ -715,7 +715,7 @@
   (grant-permissions! group-or-id (adhoc-native-query-path database-or-id)))
 
 (defn revoke-db-schema-permissions!
-  "Remove all permissions entires for a DB and *any* child objects.
+  "Remove all permissions entries for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-or-id]
   ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
@@ -830,7 +830,7 @@
 
 (s/defn ^:private update-native-permissions!
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
-  ;; revoke-native-permissions! will delete all entires that would give permissions for native access. Thus if you had
+  ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
   (let [has-full-access? (db/exists? Permissions :group_id group-id, :object (data-perms-path db-id))]

@@ -19,6 +19,7 @@ import {
   BetweenLayoutContainer,
   BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  DefaultPickerContainer,
 } from "./DefaultPicker.styled";
 
 const defaultPickerPropTypes = {
@@ -45,6 +46,7 @@ export default function DefaultPicker({
   className,
   minWidth,
   maxWidth,
+  isSidebar,
 }) {
   const operator = filter.operator();
   if (!operator) {
@@ -141,17 +143,18 @@ export default function DefaultPicker({
   let layout = null;
 
   if (isBetweenLayout) {
-    layout = (
-      <BetweenLayout className={className} fieldWidgets={fieldWidgets} />
-    );
+    layout = <BetweenLayout fieldWidgets={fieldWidgets} />;
   } else if (fieldWidgets.length > 0) {
-    layout = (
-      <DefaultLayout className={className} fieldWidgets={fieldWidgets} />
-    );
+    layout = <DefaultLayout fieldWidgets={fieldWidgets} />;
   }
 
   return (
-    <div className={cx(className, "PopoverBody--marginBottom")}>{layout}</div>
+    <DefaultPickerContainer
+      limitHeight={!isSidebar}
+      className={cx(className, "PopoverBody--marginBottom")}
+    >
+      {layout}
+    </DefaultPickerContainer>
   );
 }
 

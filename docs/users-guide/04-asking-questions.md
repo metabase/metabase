@@ -193,7 +193,7 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 ![Starting from a saved question](./images/notebook/started-from-saved-question.png)
 
-Feel free to play around with any saved question, as you won't have any effect on the existing question. You can filter, summarize, and update the visualization right on the results page, or click on the notebook icon in the upper right to return to the notebook editor.
+Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
 ![The graphical query builder](./images/asking-questions/simple-mode.png)
 

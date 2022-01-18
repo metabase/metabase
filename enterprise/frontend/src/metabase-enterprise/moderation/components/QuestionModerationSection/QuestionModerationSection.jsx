@@ -57,6 +57,7 @@ function QuestionModerationSection({
       <ModerationActions
         moderationReview={latestModerationReview}
         onVerify={isModerator && onVerify}
+        isDataset={question.isDataset()}
       />
       {latestModerationReview && (
         <ModerationReviewBanner

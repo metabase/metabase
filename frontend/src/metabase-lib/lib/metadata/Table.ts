@@ -17,6 +17,7 @@ import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 export default class Table extends Base {
   id: number;
   description?: string;
+  fks?: any[];
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;

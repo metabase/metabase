@@ -197,6 +197,45 @@ describe("scenarios > dashboard > chained filter", () => {
         ).type("An");
         cy.findByText("Anchorage");
         cy.findByText("Anacoco").should("not.exist");
+
+        cy.get("input")
+          .first()
+          .clear();
+      });
+
+      cy.findByText("AK").click();
+      popover().within(() => {
+        cy.findByText("AK").click();
+        cy.findByText("GA").click();
+
+        cy.findByText("Update filter").click();
+      });
+
+      // do it again to make sure it isn't cached incorrectly
+      cy.findByText("Location 1").click();
+      popover().within(() => {
+        cy.get("input")
+          .first()
+          .type("An");
+        cy.findByText("Canton");
+        cy.findByText("Anchorage").should("not.exist");
+      });
+
+      cy.findByText("GA").click();
+      popover().within(() => {
+        cy.findByText("GA").click();
+        cy.findByText("Update filter").click();
+      });
+
+      // do it again without a state filter to make sure it isn't cached incorrectly
+      cy.findByText("Location 1").click();
+      popover().within(() => {
+        cy.get("input")
+          .first()
+          .type("An");
+        cy.findByText("Adrian");
+        cy.findByText("Anchorage");
+        cy.findByText("Canton");
       });
     });
   }

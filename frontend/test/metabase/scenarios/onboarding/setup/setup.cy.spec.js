@@ -27,9 +27,7 @@ describe("scenarios > setup", () => {
       });
       cy.location("pathname").should("eq", "/setup");
       cy.findByText("Welcome to Metabase");
-      cy.findByText("Let's get started")
-        .should("be.visible")
-        .click();
+      cy.findByTextEnsureVisible("Let's get started").click();
 
       // ========
       // Language
@@ -97,31 +95,26 @@ describe("scenarios > setup", () => {
       cy.findByText("Add your data");
 
       // test database setup help card is NOT displayed before DB is selected
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // test that you can return to user settings if you want
       cy.findByText("Hi, Testy. Nice to meet you!").click();
       cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
 
       // test database setup help card is NOT displayed on other steps
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // now back to database setting
       cy.findByText("Next").click();
 
-      // check database setup card changes copy
+      // check database setup card is visible
       cy.findByText("MySQL").click();
-      cy.findByTestId("database-setup-help-card").within(() => {
-        cy.findByText("Need help setting up MySQL?");
-        cy.findByRole("link", { name: /Our docs can help/i });
-      });
+      cy.findByText("Need help connecting?").should("be.visible");
 
       cy.findByLabelText("Remove database").click();
       cy.findByPlaceholderText("Search for a database…").type("SQL");
       cy.findByText("SQLite").click();
-      cy.findByTestId("database-setup-help-card").findByText(
-        "Need help setting up your database?",
-      );
+      cy.findByText("Need help connecting?");
 
       // add h2 database
       cy.findByLabelText("Remove database").click();
@@ -141,7 +134,7 @@ describe("scenarios > setup", () => {
         .click();
 
       // test database setup help card is hidden on the next step
-      cy.findByTestId("database-setup-help-card").should("not.be.visible");
+      cy.findByText("Need help connecting?").should("not.be.visible");
 
       // ================
       // Data Preferences
@@ -156,7 +149,7 @@ describe("scenarios > setup", () => {
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
-      cy.findByText("Next").click();
+      cy.findByText("Finish").click();
 
       // ==================
       // Finish & Subscribe
@@ -174,9 +167,7 @@ describe("scenarios > setup", () => {
     cy.visit(`/setup#123456`);
 
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
 
     cy.findByText("What's your preferred language?");
     cy.findByTestId("language-option-en");
@@ -208,9 +199,7 @@ describeWithSnowplow("scenarios > setup", () => {
 
     // 2 - setup/step_seen
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
 
     // 3 - setup/step_seen
     cy.findByText("What's your preferred language?");
@@ -224,9 +213,7 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     cy.findByText("Welcome to Metabase");
-    cy.findByText("Let's get started")
-      .should("be.visible")
-      .click();
+    cy.findByTextEnsureVisible("Let's get started").click();
     cy.findByText("What's your preferred language?");
 
     // One backend event should be recorded (on new instance initialization)

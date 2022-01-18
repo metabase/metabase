@@ -270,17 +270,17 @@ export const CustomFormFooter = (
     cancelTitle = t`Cancel`,
     onCancel,
     footerExtraButtons,
-    isReverse,
+    fullWidth,
   },
   { isModal },
 ) => {
   return (
     <div
       className={cx("flex align-center", {
-        "flex-reverse": isReverse || isModal,
+        "flex-reverse": isModal,
       })}
     >
-      <CustomFormSubmit>{submitTitle}</CustomFormSubmit>
+      <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
       {onCancel && (
         <Button className="mx1" onClick={onCancel}>
           {cancelTitle}

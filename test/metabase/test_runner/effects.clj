@@ -8,7 +8,8 @@
 
   This would not have had the random namespace that requires these helpers and the run fails.
   "
-  (:require [clojure.test :as t]
+  (:require [clojure.data :as data]
+            [clojure.test :as t]
             [metabase.util.date-2 :as date-2]
             [metabase.util.i18n.impl :as i18n.impl]
             [schema.core :as s]))
@@ -43,3 +44,27 @@
        :actual   actual#
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
+
+(defn query=-report
+  "Impl for [[t/assert-expr]] `query=`."
+  [message expected actual]
+  (let [pass? (= expected actual)]
+    (merge
+     {:type     (if pass? :pass :fail)
+      :message  message
+      :expected expected
+      :actual   actual}
+     ;; don't bother adding names unless the test actually failed
+     (when-not pass?
+       (let [add-names (requiring-resolve 'dev.debug-qp/add-names)]
+         {:expected (add-names expected)
+          :actual   (add-names actual)
+          :diffs    (let [[only-in-actual only-in-expected] (data/diff actual expected)]
+                      [[(add-names actual) [(add-names only-in-expected) (add-names only-in-actual)]]])})))))
+
+;; basically the same as normal `=` but will add comment forms to MBQL queries for Field clauses and source tables
+;; telling you the name of the referenced Fields/Tables
+(defmethod t/assert-expr 'query=
+  [message [_ expected actual]]
+  `(t/do-report
+    (query=-report ~message ~expected ~actual)))

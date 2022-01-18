@@ -314,9 +314,25 @@
                                  :unit :month
                                  :last-change 1.333333
                                  :col "value"
-                                 :last-value 40.0}]}]
+                                 :last-value 40.0}]}
+            ;; by "dumb" it is meant "without nonnil insights"
+            dumbres {:cols [{:name         "value",
+                             :display_name "VALUE",
+                             :base_type    :type/Decimal}
+                            {:name           "time",
+                             :display_name   "TIME",
+                             :base_type      :type/DateTime
+                             :effective_type :type/DateTime}]
+                     :rows [[20.0 :month-before]]
+                     :insights [{:previous-value nil
+                                 :unit nil
+                                 :last-change nil
+                                 :col "value"
+                                 :last-value 20.0}]}]
         (is (= "40.00\nUp 133.33%. Was 30.00 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
+        (is (= "20.0\nNothing to compare to."
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
                       :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
@@ -418,6 +434,9 @@
 (defn- render-bar-graph [results]
   (body/render :bar :inline pacific-tz render.tu/test-card nil results))
 
+(defn- render-multiseries-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-combo-card nil results))
+
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
     (is (has-inline-image?
@@ -434,28 +453,41 @@
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-bar-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
 
+(defn- render-multiseries-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
+
 (deftest render-area-graph-tet
   (testing "Render an area graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
-         (render-area-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-area-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-waterfall [results]
   (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
@@ -465,6 +497,10 @@
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
+    (is (has-inline-image?
+          (render-waterfall {:cols default-columns
+                             :rows [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns

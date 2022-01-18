@@ -1,18 +1,19 @@
 import React, { Fragment } from "react";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CollectionSection from "../CollectionSection";
+import DatabaseSection from "../DatabaseSection";
+import GreetingSection from "../GreetingSection";
+import StartSection from "../StartSection";
+import XraySection from "../XraySection";
+import SyncingSection from "../SyncingSection/SyncingSection";
+import { HomepageRoot } from "./Homepage.styled";
 import {
   Collection,
   Dashboard,
   Database,
   DatabaseCandidate,
   User,
-} from "../../types";
-import CollectionSection from "../CollectionSection";
-import DatabaseSection from "../DatabaseSection";
-import GreetingSection from "../GreetingSection";
-import StartSection from "../StartSection";
-import XraySection from "../XraySection";
-import { LandingRoot } from "./Homepage.styled";
-import SyncingSection from "../SyncingSection/SyncingSection";
+} from "metabase-types/api";
 
 export interface HomepageProps {
   user: User;
@@ -21,7 +22,6 @@ export interface HomepageProps {
   dashboards?: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
   showData?: boolean;
-  showXrays?: boolean;
   showPinMessage?: boolean;
   showSyncingModal?: boolean;
   onHideData?: () => void;
@@ -40,7 +40,6 @@ const Homepage = ({
   dashboards,
   databaseCandidates,
   showData,
-  showXrays,
   showPinMessage,
   showSyncingModal,
   onHideData,
@@ -52,9 +51,9 @@ const Homepage = ({
   onDatabaseClick,
 }: HomepageProps): JSX.Element => {
   return (
-    <LandingRoot>
+    <HomepageRoot>
       <GreetingSection user={user} />
-      {databases && collections && dashboards && (
+      {databases && collections && dashboards ? (
         <Fragment>
           <StartSection
             user={user}
@@ -66,9 +65,7 @@ const Homepage = ({
           />
           <XraySection
             user={user}
-            dashboards={dashboards}
             databaseCandidates={databaseCandidates}
-            showXrays={showXrays}
             onHideXrays={onHideXrays}
           />
           <CollectionSection
@@ -86,13 +83,14 @@ const Homepage = ({
           <SyncingSection
             user={user}
             databases={databases}
-            showXrays={showXrays}
             showSyncingModal={showSyncingModal}
             onHideSyncingModal={onHideSyncingModal}
           />
         </Fragment>
+      ) : (
+        <LoadingAndErrorWrapper loading />
       )}
-    </LandingRoot>
+    </HomepageRoot>
   );
 };
 

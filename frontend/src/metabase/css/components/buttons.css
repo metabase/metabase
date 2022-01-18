@@ -207,3 +207,7 @@
 .Button--withIcon {
   line-height: 1;
 }
+
+.Button--fullWidth {
+  width: 100%;
+}

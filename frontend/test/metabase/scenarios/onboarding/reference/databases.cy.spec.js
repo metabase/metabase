@@ -84,7 +84,9 @@ describe("scenarios > reference > databases", () => {
 
     popover().within(() => {
       // check for the table's description
-      cy.contains("This is our product catalog");
+      cy.contains(
+        "Includes a catalog of all the products ever sold by the famed Sample Company.",
+      );
 
       // check for table column metadata
       cy.findByText("8 columns");

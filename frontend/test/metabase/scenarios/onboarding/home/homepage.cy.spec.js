@@ -13,10 +13,10 @@ describe("scenarios > home > homepage", () => {
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByText("Add my data").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
 
       cy.visit("/");
-      cy.findByText("invite a teammate").click();
+      cy.findByText("invite another teammate").click();
       cy.findByText("New user");
 
       cy.visit("/");
@@ -29,12 +29,12 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Other users' personal collections");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByText("Learn about our data");
 
       cy.visit("/");
       cy.findByText("Add a database").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
     });
 
     it("should show pinned dashboards", () => {
@@ -68,10 +68,11 @@ describe("scenarios > home > homepage", () => {
       mockSyncingDatabase();
       cy.visit("/");
 
-      cy.findByText("Great, we're taking a look at your database!");
+      cy.findByText("Start here");
       cy.findByText("Explore sample data").click();
-      cy.findByText("I'm done exploring for now").click();
+      cy.findByText("Orders table over time");
 
+      cy.visit("/");
       cy.findByText("Start here");
       cy.findByText("Explore sample data").should("not.exist");
     });
@@ -96,7 +97,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Dataset").click();
       cy.findByText("Learn about our data");
     });
 
@@ -139,6 +140,7 @@ const mockSyncingDatabase = () => {
         const userDatabase = {
           ...sampleDatabase,
           id: sampleDatabase.id + 1,
+          name: "H2",
           creator_id: user.id,
           is_sample: false,
           initial_sync_status: "incomplete",

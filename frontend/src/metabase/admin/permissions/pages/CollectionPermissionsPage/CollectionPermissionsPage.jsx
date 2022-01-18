@@ -25,6 +25,7 @@ import {
   getCollectionsPermissionEditor,
   getCollectionEntity,
   getIsDirty,
+  collectionsQuery,
 } from "../../selectors/collection-permissions";
 import {
   PermissionsSidebar,
@@ -105,7 +106,7 @@ function CollectionsPermissionsPage({
 
       {!permissionEditor && (
         <PermissionsEditorEmptyState
-          icon="all"
+          icon="folder"
           message={t`Select a collection to see its permissions`}
         />
       )}
@@ -124,7 +125,7 @@ CollectionsPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Collections.loadList({
-    query: () => ({ tree: true }),
+    entityQuery: collectionsQuery,
   }),
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
