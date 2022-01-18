@@ -58,9 +58,9 @@ export default class CardTagEditor extends Component {
     return (
       <SelectButton>
         {tag["card-id"] == null ? (
-          <span className="text-medium">{t`Pick a saved question`}</span>
+          <span className="text-medium">{t`Pick a question or a model`}</span>
         ) : this.errorMessage() ? (
-          <span className="text-medium">{t`Pick a different question`}</span>
+          <span className="text-medium">{t`Pick a different question or a model`}</span>
         ) : question ? (
           question.name
         ) : (
@@ -84,7 +84,9 @@ export default class CardTagEditor extends Component {
           {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link to={this.getQuestionUrl()}>{t`Question #${cardId}`}</Link>
+            <Link to={this.getQuestionUrl()}>
+              {question.dataset ? t`Model #${cardId}` : t`Question #${cardId}`}
+            </Link>
           )}
         </h3>
         {loading ? (

@@ -482,7 +482,7 @@ describe("scenarios > models", () => {
         parseSpecialCharSequences: false,
       });
       sidebar()
-        .findByText("Pick a saved question")
+        .findByText("Pick a question or a model")
         .click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");
