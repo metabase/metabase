@@ -455,7 +455,6 @@ commands:
         type: boolean
         default: false
     steps:
-      - attach-workspace
       - when:
           condition: << parameters.skip-when-no-change >>
           steps:
@@ -546,6 +545,7 @@ jobs:
     executor: builder
     steps:
       - checkout
+      - attach-workspace
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
@@ -835,6 +835,7 @@ jobs:
   shared-tests-cljs:
     executor: builder
     steps:
+      - attach-workspace
       - run-yarn-command:
           command-name: Run Cljs tests for shared/ code
           command: run test-cljs
