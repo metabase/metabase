@@ -41,7 +41,7 @@
                 :trial    false}))
 
 (deftest fetch-token-status-test
-  (tt/with-temp User [user {:email "admin@example.com"}]
+  (tt/with-temp User [_user {:email "admin@example.com"}]
     (let [token       "fa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3ebfa3e"
           print-token "fa3e...fa3e"]
 
@@ -50,7 +50,7 @@
                             (#'premium-features/fetch-token-status* token))
               pr-str-logs (mapv pr-str logs)]
           (is (every? (complement #(re-find (re-pattern token) %)) pr-str-logs))
-          (is (= 2 (count (filter #(re-find (re-pattern print-token) %) pr-str-logs))))))
+          (is (= 1 (count (filter #(re-find (re-pattern print-token) %) pr-str-logs))))))
 
       (testing "With the backend unavailable"
         (let [result (token-status-response token {:status 500})]

@@ -65,7 +65,6 @@
     (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." print-token))
     (deref
      (future
-       (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url print-token))))
        (try (some-> (token-status-url token)
                     (http/get {:query-params {:users (active-user-count)}})
                     :body
