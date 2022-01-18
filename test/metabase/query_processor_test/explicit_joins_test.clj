@@ -615,7 +615,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset sample-dataset
-        (mt/with-bigquery-fks :bigquery-cloud-sdk
+        (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}
                                      :alias        "Q 1"
