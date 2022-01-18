@@ -10,7 +10,7 @@ A pop-up box will appear, prompting you to give your question a name and descrip
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
 
-You can also convert a question to a [dataset][datasets].
+You can also convert a question to a [model][model].
 
 ## Downloading Your Results
 
@@ -52,9 +52,9 @@ Verified questions are also more likely to show up higher in search suggestions 
 
 If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
-### Question and dataset history
+### Question and model history
 
-You can see the history of a question or dataset, including edits and verifications, in the **History** section of the **Question detail sidebar**.
+You can see the history of a question or [model][model], including edits and verifications, in the **History** section of the **Question detail sidebar**.
 
 Below each edit entry in the timeline, you can click on **Revert** to reinstate the question at the time of the edit.
 
@@ -82,4 +82,4 @@ Next, we'll learn about how to organize our questions in [collections][collectio
 [collections]: collections.html
 [collection-permissions]: collections.md#collection-permissions
 [dashboards]: 07-dashboards.md
-[datasets]: datasets.md
+[model]: models.md

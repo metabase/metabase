@@ -14,7 +14,7 @@ You can use Models to do things ike use complex SQL queries to create models (de
 
 You can use Models to:
 
-- Create models, like a "customer" dataset, or 
+- Create models, like a "customer", or 
 - Summary tables that aggregate data from multiple tables, or
 - Clean up tables with unnecessary columns and rows removed, or
 - Results of a SQL question plus metadata to describe it's columns.
@@ -23,14 +23,14 @@ Or whatever else you want to create. The idea with Models is to give other peopl
 
 ## Create a model
 
-First, look for models that already exist. If you can't find one that meets your needs, you can create a dataset like so:
+First, look for models that already exist. If you can't find one that meets your needs, you can create a model like so:
 
 1. [Ask a question][question] using either the query builder or the SQL editor.
 2. Save the question.
 3. Click on the down arrow next the question title to open the question details sidebar.
 4. Click on the model icon to turn the question into a model. 
 
-Convert the question to a dataset (from the sidebar). You can add metadata for each column (especially useful for SQL questions), and edit the underlying query if you need to. People will be able to select models in the data picker as the starting point for a new question, and you can place models in collections for people to discover.
+Convert the question to a model (from the sidebar). You can add metadata for each column (especially useful for SQL questions), and edit the underlying query if you need to. People will be able to select models in the data picker as the starting point for a new question, and you can place models in collections for people to discover.
 
 ## Add metadata to columns in a model
 
