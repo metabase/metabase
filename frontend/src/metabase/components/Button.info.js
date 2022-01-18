@@ -1,5 +1,5 @@
 import React from "react";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import { t } from "ttag";
 export const component = Button;
 export const category = "input";

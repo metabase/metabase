@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
 

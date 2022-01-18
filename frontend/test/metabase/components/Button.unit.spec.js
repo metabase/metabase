@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 describe("Button", () => {
   const title = "Clickity click";
