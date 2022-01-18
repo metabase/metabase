@@ -76,7 +76,7 @@
         field-clause))))
 
 (defn- upgrade-field-literals-one-level [{:keys [source-metadata], :as inner-query}]
-  (let [source-aliases    (into #{} (comp (map :source_alias) (filter some?)) source-metadata)
+  (let [source-aliases    (into #{} (keep :source_alias) source-metadata)
         field-name->field (merge (u/key-by :name source-metadata)
                                  (u/key-by (comp str/lower-case :name) source-metadata))]
     (mbql.u/replace inner-query
