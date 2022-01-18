@@ -106,8 +106,14 @@
   (binding [*read-eval* false]
     (read-string (str \( s \)))))
 
-(def ^:private sql-keywords
+;; This is not meant to be a complete list. Just the ones we want to show up on their own lines with [[sql->sql-map]]
+;; and [[query->sql-map]] below. It's only for test purposes anyway so we can add more stuff here if we need it.
+(def ^:private sql-keywords-that-should-get-newlines
   '#{[LEFT JOIN]
+     [RIGHT JOIN]
+     [INNER JOIN]
+     [OUTER JOIN]
+     [FULL JOIN]
      [GROUP BY]
      [ORDER BY]
      SELECT
@@ -126,20 +132,20 @@
     (loop [m {}, current-key nil, [x & [y :as more]] symbols]
       (cond
         ;; two-word "keywords"
-        (sql-keywords [x y])
+        (sql-keywords-that-should-get-newlines [x y])
         (let [x-y (keyword (str/lower-case (format "%s-%s" (name x) (name y))))]
           (recur m x-y (rest more)))
 
         ;; one-word keywords
-        (sql-keywords x)
+        (sql-keywords-that-should-get-newlines x)
         (let [x (keyword (str/lower-case x))]
           (recur m x more))
 
         ;; if we stumble upon a nested sequence that starts with SQL keyword(s) then recursively transform that into a
         ;; map (e.g. for things like subselects)
         (and (sequential? x)
-             (or (sql-keywords (take 2 x))
-                 (sql-keywords (first x))))
+             (or (sql-keywords-that-should-get-newlines (take 2 x))
+                 (sql-keywords-that-should-get-newlines (first x))))
         (recur m current-key (cons (sql-map x) more))
 
         :else

@@ -226,8 +226,12 @@
 
 (s/defn ^:private field->clause :- mbql.s/field
   [driver {table-id :table_id, base-type :base_type, field-id :id, :as field} param-type]
-  ;; hopefully the Field is already fetched, but the QP store will check and skip if that's the case, so duplicate calls
-  ;; don't hurt.
+  ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
+  ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
+  ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
+  ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
+  ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
+  ;; I haven't figured out what that is yet
   (qp.store/fetch-and-store-fields! #{field-id})
   (qp.store/fetch-and-store-tables! #{table-id})
   [:field

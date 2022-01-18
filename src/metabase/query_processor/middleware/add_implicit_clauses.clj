@@ -85,8 +85,11 @@
   ;; if someone is trying to include an explicit `source-query` but isn't specifiying `source-metadata` warn that
   ;; there's nothing we can do to help them
   (when (and source-query
-             (empty? source-metadata))
-    (log/debug "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))
+             (empty? source-metadata)
+             (qp.store/initialized?))
+    ;; by 'caching' this result, this log message will only be shown once for a given QP run.
+    (qp.store/cached [::should-add-implicit-fields-warning]
+        (log/warn "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))

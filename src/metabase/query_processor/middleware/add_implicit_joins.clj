@@ -26,6 +26,9 @@
 ;; What if someone has an explict join named `TABLE__via__SOME_COLUMN`? That would be a case of trying to intentionally
 ;; break things, but it would still break.
 (defn- join-alias [dest-table-name source-fk-field-name]
+  ;; @howonlee mentioned this in #19659 but we should actually be looking at the number of *bytes* in the string, not
+  ;; the *length*, because most Databases are restricted by bytes, and CJK strings for example are a lot more bytes than
+  ;; they are characters
   (apply str (take 30 (str dest-table-name "__via__" source-fk-field-name))))
 
 (defn- fk-ids->join-infos

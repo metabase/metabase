@@ -403,31 +403,37 @@
 ;; - Remove `:order-by` without a corresponding `:limit` inside a `:join` (since it usually doesn't really accomplish
 ;;   anything anyway; if you really need it you can always specify a limit yourself)
 ;;
+;;   TODO - I'm not actually sure about this. What about a RIGHT JOIN? Postgres at least seems to ignore the ORDER BY
+;;   inside a subselect RIGHT JOIN, altho I can imagine other DBMSes actually returning results in that order. I guess
+;;   we will see what happens down the road.
+;;
 ;; - Add a max-results `:limit` to source queries if there's not already one
 
-(defn- in-source-query? [path]
-  (= (last path) :source-query))
-
-(defn- in-join-source-query? [path]
-  (and (in-source-query? path)
-       (= (last (butlast path)) :joins)))
-
-(defn- has-order-by-without-limit? [m]
-  (and (map? m)
-       (:order-by m)
-       (not (:limit m))))
-
-(defn- remove-order-by? [path m]
-  (and (has-order-by-without-limit? m)
-       (in-join-source-query? path)))
-
-(defn- add-limit? [path m]
-  (and (has-order-by-without-limit? m)
-       (not (in-join-source-query? path))
-       (in-source-query? path)))
-
 (defn- fix-order-bys [inner-query]
-  (letfn []
+  (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
+          ;; `:limit`, and the only two possible parents there are `:query` (for top-level queries) or `:source-query`.
+          (in-source-query? [path]
+            (= (last path) :source-query))
+          ;; `in-join-source-query?` = whether the parent is `:source-query`, and the grandparent is `:joins`, i.e. we
+          ;; are a source query being joined against. In this case it's apparently ok to remove the ORDER BY.
+          ;;
+          ;; What about source-query in source-query in Join? Not sure about that case. Probably better to be safe and
+          ;; not do the aggressive optimizations. See
+          ;; https://github.com/metabase/metabase/pull/19384#discussion_r787002558 for more details.
+          (in-join-source-query? [path]
+            (and (in-source-query? path)
+                 (= (last (butlast path)) :joins)))
+          (has-order-by-without-limit? [m]
+            (and (map? m)
+                 (:order-by m)
+                 (not (:limit m))))
+          (remove-order-by? [path m]
+            (and (has-order-by-without-limit? m)
+                 (in-join-source-query? path)))
+          (add-limit? [path m]
+            (and (has-order-by-without-limit? m)
+                 (not (in-join-source-query? path))
+                 (in-source-query? path)))]
     (mbql.u/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))

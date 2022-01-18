@@ -183,8 +183,8 @@
 
 (defmethod temporal-type TypedHoneySQLForm
   [form]
-  (if (contains? (meta form) :bigquery-cloud-sqk/temporal-type)
-    (:bigquery-cloud-sqk/temporal-type (meta form))
+  (if (contains? (meta form) :bigquery-cloud-sdk/temporal-type)
+    (:bigquery-cloud-sdk/temporal-type (meta form))
     (let [{::hx/keys [database-type]} (hx/type-info form)]
       (or (database-type->temporal-type database-type)
           (temporal-type (hx/unwrap-typed-honeysql-form form))))))
@@ -200,8 +200,8 @@
 (defmethod temporal-type :field
   [[_ id-or-name {:keys [base-type temporal-unit]} :as clause]]
   (cond
-    (contains? (meta clause) :bigquery-cloud-sqk/temporal-type)
-    (:bigquery-cloud-sqk/temporal-type (meta clause))
+    (contains? (meta clause) :bigquery-cloud-sdk/temporal-type)
+    (:bigquery-cloud-sdk/temporal-type (meta clause))
 
     ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
     ;;

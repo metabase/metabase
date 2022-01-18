@@ -28,7 +28,6 @@
     [:field field-form nil]
     (mbql.u/match-one field-form :field)))
 
-;; TODO -- I'm not 100% sure we need this code anymore.
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field` clause if needed."
   [field-id-or-form]
