@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
+import { merge } from "icepick";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
@@ -19,7 +20,7 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
-import { isSameField } from "metabase/lib/query/field_ref";
+import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -42,10 +43,12 @@ import {
 const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
+  metadata: PropTypes.object,
   result: PropTypes.object,
   height: PropTypes.number,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
+  setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
@@ -72,7 +75,13 @@ const mapDispatchToProps = { setDatasetEditorTab };
 
 function getSidebar(
   props,
-  { datasetEditorTab, focusedField, focusedFieldIndex, focusFirstField },
+  {
+    datasetEditorTab,
+    focusedField,
+    focusedFieldIndex,
+    focusFirstField,
+    onFieldMetadataChange,
+  },
 ) {
   const {
     question: dataset,
@@ -85,8 +94,12 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    if (!focusedField) {
+      // Returning a div, so the sidebar is visible while the data is loading.
+      // The field metadata sidebar will appear with an animation once a query completes
+      return <div />;
+    }
     const isLastField =
-      focusedField &&
       focusedFieldIndex === dataset.getResultMetadata().length - 1;
     return (
       <DatasetFieldMetadataSidebar
@@ -94,6 +107,7 @@ function getSidebar(
         field={focusedField}
         isLastField={isLastField}
         handleFirstFieldFocus={focusFirstField}
+        onFieldMetadataChange={onFieldMetadataChange}
       />
     );
   }
@@ -123,18 +137,40 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
     : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
+const FIELDS = [
+  "id",
+  "display_name",
+  "description",
+  "semantic_type",
+  "fk_target_field_id",
+  "visibility_type",
+  "has_field_values",
+  "settings",
+];
+
+function compareFields(fieldRef1, fieldRef2) {
+  const compareExact = !isLocalField(fieldRef1) || !isLocalField(fieldRef2);
+  return isSameField(fieldRef1, fieldRef2, compareExact);
+}
+
 function DatasetEditor(props) {
   const {
     question: dataset,
     datasetEditorTab,
     result,
+    metadata,
     height,
     setQueryBuilderMode,
     setDatasetEditorTab,
+    setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
   } = props;
+
+  const fields = useMemo(() => result?.data?.results_metadata?.columns ?? [], [
+    result,
+  ]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -143,21 +179,62 @@ function DatasetEditor(props) {
     isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
   );
 
-  const [focusedField, setFocusedField] = useState();
+  const [focusedFieldRef, setFocusedFieldRef] = useState();
+
+  const focusedFieldIndex = useMemo(() => {
+    if (!focusedFieldRef) {
+      return -1;
+    }
+    return fields.findIndex(field =>
+      compareFields(focusedFieldRef, field.field_ref),
+    );
+  }, [focusedFieldRef, fields]);
+
+  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
+
+  const focusedField = useMemo(() => {
+    const field = fields[focusedFieldIndex];
+    if (field) {
+      const fieldMetadata = metadata.field(field.id);
+      return {
+        ...fieldMetadata,
+        ...field,
+      };
+    }
+  }, [focusedFieldIndex, fields, metadata]);
 
   const focusFirstField = useCallback(() => {
-    const [firstField] = dataset.getResultMetadata() || [];
-    setFocusedField(firstField);
-  }, [dataset]);
+    const [firstField] = fields;
+    setFocusedFieldRef(firstField.field_ref);
+  }, [fields, setFocusedFieldRef]);
 
   useEffect(() => {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedField && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults) {
       focusFirstField();
     }
-  }, [result, focusedField, focusFirstField]);
+  }, [result, focusedFieldRef, focusFirstField]);
+
+  const inheritMappedFieldProperties = useCallback(
+    changes => {
+      const mappedField = metadata.field(changes.id).getPlainObject();
+      const inheritedProperties = _.pick(mappedField, ...FIELDS);
+      return mappedField ? merge(inheritedProperties, changes) : changes;
+    },
+    [metadata],
+  );
+
+  const onFieldMetadataChange = useCallback(
+    _changes => {
+      const changes = _changes.id
+        ? inheritMappedFieldProperties(_changes)
+        : _changes;
+      setFieldMetadata({ field_ref: focusedFieldRef, changes });
+    },
+    [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
+  );
 
   const [
     isTabHintVisible,
@@ -193,12 +270,9 @@ function DatasetEditor(props) {
 
   const handleColumnSelect = useCallback(
     column => {
-      const field = dataset
-        .getResultMetadata()
-        .find(f => isSameField(column?.field_ref, f?.field_ref));
-      setFocusedField(field);
+      setFocusedFieldRef(column.field_ref);
     },
-    [dataset],
+    [setFocusedFieldRef],
   );
 
   const handleTableElementClick = useCallback(
@@ -207,20 +281,11 @@ function DatasetEditor(props) {
         clickedObject?.column && Object.keys(clickedObject)?.length === 1;
 
       if (isColumnClick) {
-        handleColumnSelect(clickedObject.column);
+        setFocusedFieldRef(clickedObject.column.field_ref);
       }
     },
-    [handleColumnSelect],
+    [setFocusedFieldRef],
   );
-
-  const focusedFieldIndex = useMemo(() => {
-    const fields = dataset.getResultMetadata();
-    return fields.findIndex(f =>
-      isSameField(focusedField?.field_ref, f?.field_ref),
-    );
-  }, [dataset, focusedField]);
-
-  const previousFocusedFieldIndex = usePrevious(focusedFieldIndex);
 
   // This value together with focusedFieldIndex is used to
   // horizontally scroll the InteractiveTable to the focused column
@@ -244,7 +309,7 @@ function DatasetEditor(props) {
       <TableHeaderColumnName
         tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
         onFocus={() => handleColumnSelect(column)}
-        isSelected={isSameField(column?.field_ref, focusedField?.field_ref)}
+        isSelected={compareFields(column?.field_ref, focusedField?.field_ref)}
       >
         <Icon name="three_dots" size={14} />
         <span>{column.display_name}</span>
@@ -261,11 +326,20 @@ function DatasetEditor(props) {
     [datasetEditorTab, renderSelectableTableColumnHeader],
   );
 
+  const canSaveChanges = useMemo(() => {
+    if (dataset.query().isEmpty()) {
+      return false;
+    }
+    const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
+    return !hasFieldWithoutDisplayName;
+  }, [dataset, fields]);
+
   const sidebar = getSidebar(props, {
     datasetEditorTab,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
+    onFieldMetadataChange,
   });
 
   return (
@@ -290,6 +364,7 @@ function DatasetEditor(props) {
           >{t`Cancel`}</Button>,
           <ActionButton
             key="save"
+            disabled={!canSaveChanges}
             actionFn={handleSave}
             normalText={t`Save changes`}
             activeText={t`Saving…`}
@@ -317,6 +392,7 @@ function DatasetEditor(props) {
                 className="spread"
                 noHeader
                 queryBuilderMode="dataset"
+                hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingMetadata && TABLE_HEADER_HEIGHT}
                 renderTableHeaderWrapper={renderTableHeaderWrapper}

@@ -7,6 +7,8 @@ import { titleize, humanize } from "metabase/lib/formatting";
  */
 
 export default class Schema extends Base {
+  id?: string;
+
   displayName() {
     return titleize(humanize(this.name));
   }
