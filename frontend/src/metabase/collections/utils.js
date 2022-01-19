@@ -1,6 +1,24 @@
 import { t } from "ttag";
 import { canonicalCollectionId } from "metabase/entities/collections";
 
+export type Item = {
+  name: string,
+  description: string | null,
+  collection_position?: number | null,
+  id: number,
+  getIcon: () => { name: string },
+  getUrl: () => string,
+  setArchived: (isArchived: boolean) => void,
+  copy?: boolean,
+  setCollection?: boolean,
+  model: string,
+};
+
+export type Collection = {
+  can_write: boolean,
+  name: string,
+};
+
 export function nonPersonalOrArchivedCollection(collection) {
   // @TODO - should this be an API thing?
   return !isPersonalCollection(collection) && !collection.archived;

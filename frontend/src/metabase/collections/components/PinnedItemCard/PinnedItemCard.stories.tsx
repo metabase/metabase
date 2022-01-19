@@ -25,6 +25,7 @@ Question.args = {
   item: {
     id: 1,
     collection_position: 1,
+    model: "card",
     name: "Question",
     description: "This is a description of the question",
     getIcon: () => ({ name: "question" }),
@@ -45,6 +46,7 @@ Dashboard.args = {
   },
   item: {
     id: 1,
+    model: "dashboard",
     collection_position: 1,
     name: "Dashboard",
     description: Array(20)
@@ -66,6 +68,7 @@ Model.args = {
   },
   item: {
     id: 1,
+    model: "dataset",
     collection_position: 1,
     name: "Model",
     description: "This is a description of the model",

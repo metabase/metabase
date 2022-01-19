@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 
 import Tooltip from "metabase/components/Tooltip";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import { Item, Collection } from "metabase/collections/utils";
 
 import {
   ItemLink,
@@ -13,22 +14,6 @@ import {
   Description,
   HoverMenu,
 } from "./PinnedItemCard.styled";
-
-type Item = {
-  name: string;
-  description: string | null;
-  collection_position?: number | null;
-  id: number;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  copy?: boolean;
-  setCollection?: boolean;
-};
-
-type Collection = {
-  can_write: boolean;
-};
 
 type Props = {
   className?: string;
@@ -79,8 +64,8 @@ function PinnedItemCard({
   }, [item]);
 
   return (
-    <ItemLink to={item.getUrl()}>
-      <ItemCard className={className}>
+    <ItemLink className={className} to={item.getUrl()}>
+      <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon} />
