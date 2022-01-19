@@ -2,7 +2,7 @@
 
 Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, and they're meant to be used as the starting point for new questions.
 
-Models can:
+Models:
 
 - Let you update column descriptions and customize metadata to create great starting points for exploration.
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
@@ -10,31 +10,64 @@ Models can:
 
 ## How to use models
 
-You can use Models to do things ike use complex SQL queries to create models (derived tables) that can be used as starting data in a question just like any other table in your database.
+You can use models to do things like use complex SQL queries to create models (derived tables) that can be used as starting data in a question (just like you can start questions from a raw table or saved question).
 
 You can use Models to:
 
-- Create models, like a "customer", or 
-- Summary tables that aggregate data from multiple tables, or
-- Clean up tables with unnecessary columns and rows removed, or
-- Results of a SQL question plus metadata to describe it's columns.
+- Create models like a "customer table" that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column.
+- Create summary tables that aggregate data from multiple tables.
+- Clean up tables with unnecessary columns and rows filtered out.
 
-Or whatever else you want to create. The idea with Models is to give other people a good "starting point table" that makes it easier to answer any questions they have. In this sense, they're like a special sort of saved question that you can add metadata to.
+The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about that the subject being modeled. In this sense, models are like a special sort of saved question that you can add metadata to.
 
 ## Create a model
 
-First, look for models that already exist. If you can't find one that meets your needs, you can create a model like so:
+First, search for models that already exist. If you can't find one that meets your needs, you can create a model like so:
 
 1. [Ask a question][question] using either the query builder or the SQL editor.
 2. Save the question.
 3. Click on the down arrow next the question title to open the question details sidebar.
 4. Click on the model icon to turn the question into a model. 
 
-Convert the question to a model (from the sidebar). You can add metadata for each column (especially useful for SQL questions), and edit the underlying query if you need to. People will be able to select models in the data picker as the starting point for a new question, and you can place models in collections for people to discover.
-
 ## Add metadata to columns in a model
 
-You can optionally add metadata to each of the columns in Metabase, which is especially useful for SQL questions. When you write a SQL query in Metabase, Metabase can display the results, but it can't "know" what kind of data it's returning. What's not the case with questions built using the query builder; Metabase does some work behind the scenes to keep track of what kind of data it's working with, which is why you can click on the results and drill through the data. Normally, when you create a SQL question, you can't drill through the results, because Metabase can't parse SQL, so it doesn't understand what the results are. With Models, however, you can tell Metabase what kind of data is in each of the resulting columns so that it can still do its drill through magic, 
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
+
+### Display name
+
+What people will see as the column's name.
+
+### Description
+
+A place to write helpful context for the column.
+
+### Column type
+
+You can set the [column type][column-type]. The default is "No special type". Be sure to set the Column type so people can interact with the results.
+
+## This column should appear in
+
+- Table and detail views
+- Detail views only
+
+### Column settings
+
+You can specify whether a column should appear in the table view, or just in a detail view (when you click on the entity/primary key for the row).
+
+### Display as
+
+- Text
+- Link
+
+### Filtering on this field
+
+- Search box
+- A list of all values (a dropdown)
+- Plain input box
+
+### Editing the model's query
+
+You can edit the model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares). 
 
 ## Start a question from a model
 
@@ -42,7 +75,7 @@ See [asking questions][question].
 
 ## Refer to a model in the SQL query editor
 
-You can refer to model in a SQL query like so:
+You can refer to a model in a SQL query just like you can refer to a saved question:
 
 ```
 {% raw %}
@@ -50,7 +83,7 @@ SELECT * FROM {{#1}}
 {% endraw %}
 ```
 
-Or as a [CTE][CTE]:
+Or as a [common table expression (CTE)][CTE]:
 
 ```
 {% raw %}
@@ -60,6 +93,6 @@ FROM model;
 {% endraw %}
 ```
 
+[column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
-
 [question]: 04-asking-questions.md
