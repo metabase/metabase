@@ -14,7 +14,7 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 Fresh out of the box, Metabase will show you a few things on the home page:
 
-- A prompt to [connect your data to Metabase](01-managing-databases.md) (if you haven't already).
+- A prompt to [connect your data to Metabase](../administration-guide/01-managing-databases.md) (if you haven't already).
 - Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them. (Administrators can permanently hide this section by clicking the **X** that appears on hover.)
 - An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
 - A list of the databases you've connected to Metabase. (As with X-rays, administrators can permanently hide this section by clicking the **X** that appears on hover. You can always click on **Browse Data** from the main nav bar to see your databases and tables.)
@@ -39,7 +39,7 @@ Click the **+ New** button in the top-right of Metabase to create a new:
 
 - **Question** using Metabase's [graphical query builder](04-asking-questions.md).
 - **SQL query** to ask a question using the [SQL editor](./writing-sql.md).
-- **Dashboard** to create a [dashboard](./07-dashboard.md) to gather and arrange questions and text cards on a grid. You can add filters to dashboards, and share and embed them, and subscribe to them via email or Slack. See [Dashboards](./07-dashboards.md).
+- **Dashboard** to create a [dashboard](./07-dashboards.md) to gather and arrange questions and text cards on a grid. You can add filters to dashboards, and share and embed them, and subscribe to them via email or Slack. See [Dashboards](./07-dashboards.md).
 - **Collections** to create a new [collection](./collections.md) that organizes questions, dashboards, and models.
 
 To [create a new model](./models.md), ask a question using either the query builder or the SQL editor, then convert the results to a model.

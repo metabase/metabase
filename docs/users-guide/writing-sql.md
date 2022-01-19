@@ -47,4 +47,4 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 Now that you have an answer to your question, you can learn about [visualizing answers](05-visualizing-results.md).
 
 [learn-sql]: https://www.metabase.com/learn/sql-questions 
-[ref-models]: referencing-saved-questions-in-your-queries.md
+[ref-models]: ./referencing-saved-questions-in-queries.md
