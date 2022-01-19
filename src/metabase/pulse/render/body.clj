@@ -21,8 +21,23 @@
             [schema.core :as s])
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
+(def ^:private card-error-rendered-info
+  "Default rendered-info map when there is an error displaying a card on the card run.
+  Is a delay due to the call to `trs`."
+  (delay {:attachments
+          nil
+
+          :content
+          [:div {:style (style/style
+                         (style/font-style)
+                         {:color       style/color-error
+                          :font-weight 700
+                          :padding     :16px})}
+           (trs "There was a problem with this question.")]}))
+
 (def ^:private error-rendered-info
-  "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
+  "Default rendered-info map when there is an error displaying a card on the static viz side.
+  Is a delay due to the call to `trs`."
   (delay {:attachments
           nil
 
@@ -838,6 +853,11 @@
     (trs "We were unable to display this Pulse.")
     [:br]
     (trs "Please view this card in Metabase.")]})
+
+(s/defmethod render :card-error :- common/RenderedPulseCard
+  "Card error means that the error is in the card, not the static viz rendering apparatus"
+  [_ _ _ _ _ _]
+  @card-error-rendered-info)
 
 (s/defmethod render :error :- common/RenderedPulseCard
   [_ _ _ _ _ _]

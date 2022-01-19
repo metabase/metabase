@@ -133,7 +133,7 @@
   [render-type timezone-id :- (s/maybe s/Str) card dashcard {:keys [data error], :as results}]
   (try
     (when error
-      (throw (ex-info (tru "Card has errors: {0}" error) results)))
+      (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
     (let [chart-type (or (detect-pulse-chart-type card dashcard data)
                          (when (is-attached? card)
                            :attached)
@@ -142,7 +142,9 @@
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      (body/render :error nil nil nil nil nil))))
+      (if (:card-error (ex-data e))
+        (body/render :card-error nil nil nil nil nil)
+        (body/render :error nil nil nil nil nil))))
 
 (defn- card-href
   [card]
