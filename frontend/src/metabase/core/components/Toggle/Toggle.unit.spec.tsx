@@ -8,8 +8,20 @@ describe("Toggle", () => {
     const onChange = jest.fn();
 
     render(<Toggle value={false} onChange={onChange} />);
-    userEvent.click(screen.getByRole("checkbox"));
 
+    const toggle = screen.getByRole("checkbox");
+    userEvent.click(toggle);
+
+    expect(toggle).toHaveFocus();
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("should receive focus on tab", () => {
+    render(<Toggle value={false} />);
+
+    const toggle = screen.getByRole("checkbox");
+    userEvent.tab();
+
+    expect(toggle).toHaveFocus();
   });
 });

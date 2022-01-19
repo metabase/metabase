@@ -1,8 +1,8 @@
-import React, { AnchorHTMLAttributes } from "react";
+import React, { ChangeEvent, InputHTMLAttributes, useCallback } from "react";
 import { ToggleRoot } from "./Toggle.styled";
 
 export interface ToggleProps
-  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "onChange"> {
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
   className?: string;
   value: boolean;
   small?: boolean;
@@ -18,20 +18,19 @@ const Toggle = ({
   onChange,
   ...rest
 }: ToggleProps): JSX.Element => {
-  const handleClick = () => {
-    onChange && onChange(!value);
-  };
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    onChange && onChange(event.currentTarget.checked);
+  }, []);
 
   return (
     <ToggleRoot
       {...rest}
       className={className}
-      role="checkbox"
-      aria-checked={value}
-      isSmall={small}
-      isSelected={value}
+      type="checkbox"
+      checked={value}
+      small={small}
       currentColor={color}
-      onClick={handleClick}
+      onChange={handleChange}
     />
   );
 };
