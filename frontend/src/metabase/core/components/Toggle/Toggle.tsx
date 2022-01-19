@@ -19,9 +19,12 @@ const Toggle = forwardRef(function Toggle(
   { className, value, small, color, onChange, ...rest }: ToggleProps,
   ref: any,
 ): JSX.Element {
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    onChange && onChange(event.currentTarget.checked);
-  }, []);
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChange && onChange(event.currentTarget.checked);
+    },
+    [onChange],
+  );
 
   return (
     <ToggleRoot
