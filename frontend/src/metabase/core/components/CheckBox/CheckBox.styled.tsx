@@ -2,6 +2,8 @@ import styled from "styled-components";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
+const ICON_PADDING = 4;
+
 export const CheckBoxRoot = styled.label`
   display: block;
 `;
@@ -9,6 +11,7 @@ export const CheckBoxRoot = styled.label`
 export const CheckBoxInput = styled.input`
   appearance: none;
   display: block;
+  margin: 0;
 `;
 
 export interface CheckBoxContainerProps {
@@ -23,17 +26,20 @@ export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
 
 export interface CheckBoxIconProps {
   checked?: boolean;
+  iconSize: number;
   uncheckedColor: string;
 }
 
 export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
   display: block;
   color: ${props => color(props.checked ? "white" : props.uncheckedColor)};
+  width: ${props => `${props.iconSize - ICON_PADDING}px`};
+  height: ${props => `${props.iconSize - ICON_PADDING}px`};
 `;
 
 export interface CheckBoxIconContainerProps {
-  size: number;
   checked: boolean | undefined;
+  iconSize: number;
   checkedColor: string;
   uncheckedColor: string;
 }
@@ -42,8 +48,8 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
   display: flex;
   justify-content: center;
   align-items: center;
-  width: ${props => `${props.size}px`};
-  height: ${props => `${props.size}px`};
+  width: ${props => `${props.iconSize}px`};
+  height: ${props => `${props.iconSize}px`};
   border: 0.125rem solid
     ${props => color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;

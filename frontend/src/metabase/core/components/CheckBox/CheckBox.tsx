@@ -1,4 +1,10 @@
-import React, { forwardRef, LabelHTMLAttributes, ReactNode } from "react";
+import React, {
+  ChangeEventHandler,
+  FocusEventHandler,
+  forwardRef,
+  LabelHTMLAttributes,
+  ReactNode,
+} from "react";
 import {
   CheckBoxContainer,
   CheckBoxIcon,
@@ -8,7 +14,15 @@ import {
   CheckBoxRoot,
 } from "./CheckBox.styled";
 
-export interface CheckBoxProps extends LabelHTMLAttributes<HTMLLabelElement> {
+const DEFAULT_SIZE = 16;
+const DEFAULT_CHECKED_COLOR = "brand";
+const DEFAULT_UNCHECKED_COLOR = "text-light";
+
+export interface CheckBoxProps
+  extends Omit<
+    LabelHTMLAttributes<HTMLLabelElement>,
+    "onChange" | "onFocus" | "onBlur"
+  > {
   label?: ReactNode;
   checked?: boolean;
   indeterminate?: boolean;
@@ -16,6 +30,9 @@ export interface CheckBoxProps extends LabelHTMLAttributes<HTMLLabelElement> {
   size?: number;
   checkedColor?: string;
   uncheckedColor?: string;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
+  onFocus?: FocusEventHandler<HTMLInputElement>;
+  onBlur?: FocusEventHandler<HTMLInputElement>;
 }
 
 const CheckBox = forwardRef(
@@ -25,27 +42,40 @@ const CheckBox = forwardRef(
       checked,
       indeterminate,
       disabled,
-      size = 16,
-      checkedColor = "brand",
-      uncheckedColor = "text-light",
+      size = DEFAULT_SIZE,
+      checkedColor = DEFAULT_CHECKED_COLOR,
+      uncheckedColor = DEFAULT_UNCHECKED_COLOR,
+      onChange,
+      onFocus,
+      onBlur,
+      ...props
     }: CheckBoxProps,
     ref: any,
   ): JSX.Element => {
     return (
-      <CheckBoxRoot innerRef={ref}>
-        <CheckBoxInput type="checkbox" checked={checked} />
+      <CheckBoxRoot innerRef={ref} {...props}>
+        <CheckBoxInput
+          type="checkbox"
+          checked={checked}
+          onChange={onChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
+        />
         <CheckBoxContainer disabled={disabled}>
           <CheckBoxIconContainer
             checked={checked}
-            size={size}
+            iconSize={size}
             checkedColor={checkedColor}
             uncheckedColor={uncheckedColor}
           >
-            <CheckBoxIcon
-              name={indeterminate ? "dash" : "check"}
-              checked={checked}
-              uncheckedColor={uncheckedColor}
-            />
+            {(checked || indeterminate) && (
+              <CheckBoxIcon
+                name={indeterminate ? "dash" : "check"}
+                checked={checked}
+                iconSize={size}
+                uncheckedColor={uncheckedColor}
+              />
+            )}
           </CheckBoxIconContainer>
           {label && <CheckBoxLabel>{label}</CheckBoxLabel>}
         </CheckBoxContainer>
