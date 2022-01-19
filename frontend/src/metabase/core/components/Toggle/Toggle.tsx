@@ -15,28 +15,26 @@ export interface ToggleProps
   onChange?: (value: boolean) => void;
 }
 
-const Toggle = forwardRef(
-  (
-    { className, value, small, color, onChange, ...rest }: ToggleProps,
-    ref: any,
-  ): JSX.Element => {
-    const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-      onChange && onChange(event.currentTarget.checked);
-    }, []);
+const Toggle = forwardRef(function Toggle(
+  { className, value, small, color, onChange, ...rest }: ToggleProps,
+  ref: any,
+): JSX.Element {
+  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    onChange && onChange(event.currentTarget.checked);
+  }, []);
 
-    return (
-      <ToggleRoot
-        {...rest}
-        innerRef={ref}
-        className={className}
-        type="checkbox"
-        checked={value}
-        small={small}
-        currentColor={color}
-        onChange={handleChange}
-      />
-    );
-  },
-);
+  return (
+    <ToggleRoot
+      {...rest}
+      innerRef={ref}
+      className={className}
+      type="checkbox"
+      checked={value}
+      small={small}
+      currentColor={color}
+      onChange={handleChange}
+    />
+  );
+});
 
 export default Toggle;
