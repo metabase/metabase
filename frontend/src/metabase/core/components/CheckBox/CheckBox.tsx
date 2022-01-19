@@ -2,7 +2,9 @@ import React, {
   ChangeEventHandler,
   FocusEventHandler,
   forwardRef,
+  Fragment,
   HTMLAttributes,
+  isValidElement,
   ReactNode,
 } from "react";
 import {
@@ -74,7 +76,12 @@ const CheckBox = forwardRef(
               />
             )}
           </CheckBoxIconContainer>
-          {label && <CheckBoxLabel>{label}</CheckBoxLabel>}
+          {label && (
+            <Fragment>
+              {isValidElement(label) && label}
+              {!isValidElement(label) && <CheckBoxLabel>{label}</CheckBoxLabel>}
+            </Fragment>
+          )}
         </CheckBoxContainer>
       </CheckBoxRoot>
     );
