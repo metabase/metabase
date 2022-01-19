@@ -3,9 +3,11 @@ import {
   modal,
   popover,
   getNotebookStep,
+  openNativeEditor,
   openNewCollectionItemFlowFor,
   visualize,
   mockSessionProperty,
+  sidebar,
 } from "__support__/e2e/cypress";
 
 import {
@@ -451,6 +453,46 @@ describe("scenarios > models", () => {
 
       cy.findByText("Saved Questions");
       cy.findByText("Sample Dataset");
+    });
+  });
+
+  describe("listing", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });
+    });
+
+    it("should allow adding models to dashboards", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("fetchDashboard");
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        cy.visit(`/dashboard/${dashboardId}`);
+        cy.icon("pencil").click();
+        cy.get(".QueryBuilder-section .Icon-add").click();
+        sidebar()
+          .findByText("Orders Model")
+          .click();
+        cy.button("Save").click();
+        cy.wait("@fetchDashboard");
+        cy.findByText("Orders Model");
+      });
+    });
+
+    it("should allow using models in native queries", () => {
+      cy.intercept("POST", "/api/dataset").as("query");
+      openNativeEditor().type("select * from {{#}}", {
+        parseSpecialCharSequences: false,
+      });
+      sidebar()
+        .findByText("Pick a question or a model")
+        .click();
+      selectFromDropdown("Orders Model");
+      cy.get("@editor").contains("select * from {{#1}}");
+      cy.get(".NativeQueryEditor .Icon-play").click();
+      cy.wait("@query");
+      cy.get(".TableInteractive").within(() => {
+        cy.findByText("USER_ID");
+        cy.findByText("PRODUCT_ID");
+        cy.findByText("TAX");
+      });
     });
   });
 });
