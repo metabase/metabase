@@ -34,8 +34,8 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
     <Container>
       <SidebarPaddedContent>
         <QuestionActionButtons
+          question={question}
           canWrite={canWrite}
-          isDataset={question.isDataset()}
           onOpenModal={onOpenModal}
         />
         <ClampedDescription
