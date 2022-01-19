@@ -1,6 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 
+import Button from "metabase/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import ModalContent from "metabase/components/ModalContent";
 
@@ -30,12 +31,14 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
       title={t`Variables in models aren't supported yet`}
       onClose={onClose}
     >
-      <p>{t`This saved question has some variables in it that models can't handle quite yet. To solve this, remove your variables, create your model, then set up your column metadata to tell Metabase which field each one corresponds to.`}</p>
-      <p>{jt`Note: it's okay to use ${(
+      <p className="text-paragraph">{jt`To solve this, just remove the variables in this question and try again. (It's okay to use ${(
         <SQLSnippetsDocLink key="link-1" />
       )} or ${(
         <ReferencingQuestionsDocLink key="link-2" />
-      )} in your query.`}</p>
+      )} in your query.)`}</p>
+      <div className="Form-actions flex justify-center py1">
+        <Button primary onClick={onClose}>{t`Okay`}</Button>
+      </div>
     </ModalContent>
   );
 }
