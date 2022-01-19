@@ -52,7 +52,7 @@ Verified questions are also more likely to show up higher in search suggestions 
 
 If someone modifies a verified question, the question will lose its verified status, and an administrator will need to review and verify the question again to restore its verified status.
 
-### Question and model history
+### Question and model histories
 
 You can see the history of a question or [model][model], including edits and verifications, in the **History** section of the **Question detail sidebar**.
 

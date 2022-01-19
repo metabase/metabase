@@ -13,9 +13,9 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 
 You can start a question from:
 
-- **[A model][model]**. A special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
+- **A model**. A [model][model] is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
 - **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
-- A **Saved question**. You can use the results of any question as the starting point for a new question.
+- A **saved question**. You can use the results of any question as the starting point for a new question.
 
 Note that there are some kinds of saved questions that can't be used as source data:
 
@@ -37,8 +37,8 @@ This is the query builder's notebook editor. It has three default steps.
 - [Filtering](#filtering)
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
-Under each step you'll see buttons to add more steps after the current one. To the right of each step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
-
+To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
+ 
 ![Previewing results](./images/notebook/preview-table.png)
 
 ## Picking data
@@ -63,11 +63,11 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
-Once you're happy with your filter, click **Done**, and your data will be updated with your filter applied. If you want to edit your filter, just click the little purple filter at the top of the screen.
+Once you're happy with your filter, click **Add filter**, and visualize your results, and your data will be updated with the filter applied. 
 
 ![An active filter](./images/notebook/filter-badge.png)
 
-If you click on the X, you'll remove your filter. You can add as many filters as you need.
+If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
 ### Filtering by date
 
@@ -187,7 +187,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor, using this generated SQL as a starting point. It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
 
 ## Play around with saved questions
 

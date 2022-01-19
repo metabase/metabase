@@ -10,15 +10,13 @@ Models:
 
 ## How to use models
 
-You can use models to do things like use complex SQL queries to create models (derived tables) that can be used as starting data in a question (just like you can start questions from a raw table or saved question).
+You can use models to:
 
-You can use Models to:
-
-- Create models like a "customer table" that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column.
+- Create, uh, models, with model here meaning a simplified description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
 - Create summary tables that aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
-The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about that the subject being modeled. In this sense, models are like a special sort of saved question that you can add metadata to.
+The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about the subject being modeled. In this sense, models are like a special sort of saved question that you can add metadata to.
 
 ## Create a model
 
@@ -27,7 +25,7 @@ First, search for models that already exist. If you can't find one that meets yo
 1. [Ask a question][question] using either the query builder or the SQL editor.
 2. Save the question.
 3. Click on the down arrow next the question title to open the question details sidebar.
-4. Click on the model icon to turn the question into a model. 
+4. Click on the model icon to turn the question into a model.
 
 ## Add metadata to columns in a model
 
@@ -45,7 +43,7 @@ A place to write helpful context for the column.
 
 You can set the [column type][column-type]. The default is "No special type". Be sure to set the Column type so people can interact with the results.
 
-## This column should appear in
+## This column should appear in...
 
 - Table and detail views
 - Detail views only
@@ -57,7 +55,7 @@ You can specify whether a column should appear in the table view, or just in a d
 ### Display as
 
 - Text
-- Link
+- Link (it's a URL people should be able to click on)
 
 ### Filtering on this field
 
@@ -67,7 +65,7 @@ You can specify whether a column should appear in the table view, or just in a d
 
 ### Editing the model's query
 
-You can edit the model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares). 
+You can edit the model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
 
 ## Start a question from a model
 
@@ -83,7 +81,7 @@ SELECT * FROM {{#1}}
 {% endraw %}
 ```
 
-Or as a [common table expression (CTE)][CTE]:
+Or as a [common table expression (CTE)][cte]:
 
 ```
 {% raw %}
@@ -93,6 +91,17 @@ FROM model;
 {% endraw %}
 ```
 
+## Model history
+
+Just like with saved questions, you can click on the model name with the down arrow to bring up the model's sidebar, then click on **History** at the bottom to bring up a list of the changes made to the model over time, and by whom.
+
+## Verifying a model
+
+{% include plans-blockquote.html feature="Model verification" %}
+
+Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
+
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
+[measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
 [question]: 04-asking-questions.md
