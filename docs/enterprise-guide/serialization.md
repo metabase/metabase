@@ -17,7 +17,6 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 - Saved questions
 - Pulses
 - Segments and Metrics defined in the Data Model
-- Archived collections, dashboards, saved questions, or pulses
 - Public sharing settings for questions and dashboards
 
 **They also contain a number of system settings:**
