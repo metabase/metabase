@@ -64,7 +64,9 @@ export function getNextTemplateTagVisibilityState({
     if (queryBuilderMode !== "dataset") {
       return "visible";
     }
-    return nextTags.every(isSupportedTemplateTagForModel);
+    return nextTags.every(isSupportedTemplateTagForModel)
+      ? "visible"
+      : "hidden";
   }
 
   if (nextTags.length === 0 && isTemplateTagEditorVisible) {
