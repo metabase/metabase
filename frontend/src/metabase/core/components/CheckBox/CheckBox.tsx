@@ -2,7 +2,7 @@ import React, {
   ChangeEventHandler,
   FocusEventHandler,
   forwardRef,
-  LabelHTMLAttributes,
+  HTMLAttributes,
   ReactNode,
 } from "react";
 import {
@@ -19,10 +19,7 @@ const DEFAULT_CHECKED_COLOR = "brand";
 const DEFAULT_UNCHECKED_COLOR = "text-light";
 
 export interface CheckBoxProps
-  extends Omit<
-    LabelHTMLAttributes<HTMLLabelElement>,
-    "onChange" | "onFocus" | "onBlur"
-  > {
+  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
   label?: ReactNode;
   checked?: boolean;
   indeterminate?: boolean;

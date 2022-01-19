@@ -21,6 +21,7 @@ export interface CheckBoxContainerProps {
 export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: flex;
   align-items: center;
+  cursor: ${props => (props.disabled ? "" : "pointer")};
   opacity: ${props => (props.disabled ? "0.4" : "")};
 `;
 
