@@ -404,11 +404,9 @@
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
-    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
-          tables       (Table :db_id (u/the-id db-filtered))]
-      (is (not (empty? tables)))
-      (doseq [table (Table :db_id (u/the-id db-filtered))]
-        (assert-table-fn table)))))
+    (sync/sync-database! db-filtered {:scan :schema})
+    (doseq [table (Table :db_id (u/the-id db-filtered))]
+      (assert-table-fn table))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
