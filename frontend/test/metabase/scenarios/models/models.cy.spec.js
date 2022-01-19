@@ -9,7 +9,7 @@ import {
   mockSessionProperty,
   sidebar,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 import {
   turnIntoModel,
   assertIsModel,
