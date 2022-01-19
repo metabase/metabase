@@ -83,19 +83,28 @@ function PinnedItemCard({
         <Body>
           <Header>
             <ItemIcon name={icon} />
-            <HoverMenu
-              item={item}
-              onPin={collection.can_write ? handlePin : null}
-              onMove={
-                collection.can_write && item.setCollection ? handleMove : null
-              }
-              onCopy={item.copy ? handleCopy : null}
-              onArchive={
-                collection.can_write && item.setArchived ? handleArchive : null
-              }
-              analyticsContext={ANALYTICS_CONTEXT}
-              className={undefined}
-            />
+            <div
+              onClick={e => {
+                e.stopPropagation();
+                e.preventDefault();
+              }}
+            >
+              <HoverMenu
+                item={item}
+                onPin={collection.can_write ? handlePin : null}
+                onMove={
+                  collection.can_write && item.setCollection ? handleMove : null
+                }
+                onCopy={item.copy ? handleCopy : null}
+                onArchive={
+                  collection.can_write && item.setArchived
+                    ? handleArchive
+                    : null
+                }
+                analyticsContext={ANALYTICS_CONTEXT}
+                className={undefined}
+              />
+            </div>
           </Header>
           <Title>{name}</Title>
           <Tooltip
