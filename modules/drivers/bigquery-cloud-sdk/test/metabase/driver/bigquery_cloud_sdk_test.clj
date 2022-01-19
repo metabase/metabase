@@ -276,7 +276,7 @@
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
                                     "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
           (testing " has project-id-from-credentials set correctly"
-            (is (= "metabase-bigquery-driver" (get-in temp-db [:details :project-id-from-credentials])))))))))
+            (is (= "metabase-bigquery-ci" (get-in temp-db [:details :project-id-from-credentials])))))))))
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
@@ -399,8 +399,8 @@
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
                   (check-card-query-res temp-card)
-                  (is (= "metabase-bigquery-driver" (get-in (Database db-id)
-                                                            [:details :project-id-from-credentials]))))))))))))
+                  (is (= "metabase-bigquery-ci" (get-in (Database db-id)
+                                                        [:details :project-id-from-credentials]))))))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]

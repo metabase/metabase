@@ -85,7 +85,7 @@
                                       :dataset-id           "office_checkins"
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
-                                      :project-id           "metabase-bigquery-driver"}
+                                      :project-id           "metabase-bigquery-ci"}
                         :id          2
                         :engine      :bigquery})]
     (testing "sensitive fields are redacted when database details are encoded"
@@ -129,7 +129,7 @@
                                  "dataset-id"           "office_checkins"
                                  "service-account-json" "**MetabasePass**"
                                  "use-jvm-timezone"     false
-                                 "project-id"           "metabase-bigquery-driver"}
+                                 "project-id"           "metabase-bigquery-ci"}
                   "id"          2
                   "engine"      "bigquery"}
                  (encode-decode bq-db))))))))
