@@ -17,6 +17,7 @@ import {
 } from "./CheckBox.styled";
 
 const DEFAULT_SIZE = 16;
+const DEFAULT_ICON_PADDING = 4;
 const DEFAULT_CHECKED_COLOR = "brand";
 const DEFAULT_UNCHECKED_COLOR = "text-light";
 
@@ -66,7 +67,7 @@ const CheckBox = forwardRef(
         <CheckBoxContainer disabled={disabled}>
           <CheckBoxIconContainer
             checked={checked}
-            iconSize={size}
+            size={size}
             checkedColor={checkedColor}
             uncheckedColor={uncheckedColor}
           >
@@ -74,7 +75,7 @@ const CheckBox = forwardRef(
               <CheckBoxIcon
                 name={indeterminate ? "dash" : "check"}
                 checked={checked}
-                iconSize={size}
+                size={size - DEFAULT_PADDING}
                 uncheckedColor={uncheckedColor}
               />
             )}
