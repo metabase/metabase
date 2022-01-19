@@ -11,13 +11,18 @@ export const CheckBoxInput = styled.input`
   display: block;
 `;
 
-export const CheckBoxContainer = styled.span`
+export interface CheckBoxContainerProps {
+  disabled: boolean | undefined;
+}
+
+export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
   display: flex;
   align-items: center;
+  opacity: ${props => (props.disabled ? "0.4" : "")};
 `;
 
 export interface CheckBoxIconProps {
-  checked: boolean;
+  checked?: boolean;
   uncheckedColor: string;
 }
 
@@ -28,7 +33,7 @@ export const CheckBoxIcon = styled(Icon)<CheckBoxIconProps>`
 
 export interface CheckBoxIconContainerProps {
   size: number;
-  checked: boolean;
+  checked: boolean | undefined;
   checkedColor: string;
   uncheckedColor: string;
 }
