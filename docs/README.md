@@ -47,7 +47,6 @@
 ### Alerts
 
 - [Setting and getting alerts](./users-guide/15-alerts.html)
-- [Get answers in Slack with Metabot](./users-guide/11-metabot.html)
 
 ## Dashboards
 

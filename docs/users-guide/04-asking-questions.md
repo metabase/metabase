@@ -7,7 +7,7 @@ Metabase's two core concepts are questions and their corresponding answers. Ever
 
 This page covers how to ask a question using Metabase's graphical query builder, the "Question" option.
 
-## Create a new question
+## Creating a new question with the query builder
 
 From the **+ New** dropdown, select **Question**, then pick your starting data:
 
@@ -33,33 +33,35 @@ Once you select your data, Metabase will take you to the notebook editor of the 
 
 This is the query builder's notebook editor. It has three default steps.
 
-- [Data](#data)
-- [Filter](#filter)
-- [Summarize and group by](#summarize-and-group-by)
+- [Picking data](#picking-data)
+- [Filtering](#filtering)
+- [Summarizing and grouping by](#summarizing-and-grouping-by)
 
 Under each step you'll see buttons to add more steps after the current one. To the right of each step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
 ![Previewing results](./images/notebook/preview-table.png)
 
-## Data
+## Picking data
 
 The data section is where you select the data you want to work with. Here you'll pick a [Model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
 
 You can also select multiple tables from the same data source by [joining them](./join.md).
 
-## Filter
+## Filtering
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Borges," or pictures of people wearing olive-colored pants reading Jorge Luis Borges.
 
 ![Filtering](./images/notebook/filter-step.png)
 
-When you add a filter step, you can select one or more columns to filter on. Depending on the type of column you pick, you'll get different options, like a calendar for date columns. [Learn more about filtering](04-asking-questions.md). Broadly speaking, there are three types of columns, each with their own set of filtering options:
+When you add a filter step, you can select one or more columns to filter on. Depending on the type of column you pick, you'll get different options, like a calendar for date columns.
+
+Broadly speaking, there are three types of columns, each with their own set of filtering options:
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
 - **Date** columns give you a calendar or input box so that you can select specific time ranges, or choose all days before or after a certain date.
 
-You can add subsequent filter steps after every Summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
+You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
 Once you're happy with your filter, click **Done**, and your data will be updated with your filter applied. If you want to edit your filter, just click the little purple filter at the top of the screen.
 
@@ -82,15 +84,17 @@ If your Metabase administrators have created special named filters for the table
 
 ![Filter expression](./images/expressions/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick "Custom Expression" from the add-filter menu create a filter expression. You can use comparison operators like greater than (>) or less than (<), as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md).
+If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
 
-## Summarize and Group By
+## Summarizing and grouping by
+
+![Summarizing](./images/notebook/summarize-step.png)
 
 When we have a question like "how many people downloaded our app each day last week?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more _numbers_ we care about (called a "metric" in data-speak), and how we want to see that number _grouped_ or _broken out_. To answer that example question of "How many people downloaded our app each day last week?"
 
-- The metric would be the count of people who downloaded the app (the count of rows)
+- The metric would be the count of people who downloaded the app (the count of rows).
 - We want that metric to be grouped by "each day."
-- And we want to filter the rows for "last week"
+- And we want to filter the rows for "last week."
 
 There are two common ways you'll tend to summarize your data:
 
@@ -117,8 +121,6 @@ Common metrics include:
 - **Minimum of …:** The minimum value present in the selected field.
 - **Maximum of …:** The maximum value present in the selected field.
 
-![Summarizing](./images/notebook/summarize-step.png)
-
 If you summarize and add a grouping you can then summarize _again_. You can also add steps to filter and/or join in between. For example, your first summarization step could be to get the count of orders per month, and you could then add a second summarization step to get the average monthly order total by selecting the `Average of…` your `count` column.
 
 ![Multiple summarize steps](./images/notebook/multiple-summarize-steps.png)
@@ -141,9 +143,9 @@ Some grouping columns will give you the option of choosing how big or small to m
 
 ![Multiple groupings](./images/notebook/histogram-bins.png)
 
-Once you're done setting your metrics and groupings, click Done to close the Summarize sidebar and see your results in all their glory.
+Once you're done setting your metrics and groupings, click **Done** to close the Summarize sidebar and see your results in all their glory.
 
-## Visualize your data
+## Visualizing your data
 
 If you want to jump ahead and learn about [how to change the visualization](05-visualizing-results.md) of your results, by all means, feel free.
 
@@ -155,7 +157,7 @@ To return to the notebook editor for a question, click on the show editor button
 
 ## Viewing an individual record's details
 
-Click on a record's ID number (or primary key) to see more information about a given user, order, venue, etc. You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. Press the right or left arrow keys, or click on the arrows to the right or left of the screen to page through the other records in the current list.
+To see more info about a given record (a user, order, venue, etc), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
 
 ![Record details](./images/notebook/record-details.png)
 
@@ -197,7 +199,7 @@ Feel free to play around with any saved question, as you won't have any effect o
 
 ![The graphical query builder](./images/asking-questions/simple-mode.png)
 
-When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from. If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model] to let others know it's a good starting place.
+If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
 
 ---
 
