@@ -85,7 +85,7 @@ export default class CardTagEditor extends Component {
             t`Question #…`
           ) : (
             <Link to={this.getQuestionUrl()}>
-              {question.dataset ? t`Model #${cardId}` : t`Question #${cardId}`}
+              {question?.dataset ? t`Model #${cardId}` : t`Question #${cardId}`}
             </Link>
           )}
         </h3>
