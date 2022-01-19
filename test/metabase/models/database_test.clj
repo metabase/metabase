@@ -59,6 +59,7 @@
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
+        project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
         pg-db         (mdb/map->DatabaseInstance
                        {:description nil
@@ -85,7 +86,7 @@
                                       :dataset-id           "office_checkins"
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
-                                      :project-id           "metabase-bigquery-driver"}
+                                      :project-id           project-id}
                         :id          2
                         :engine      :bigquery})]
     (testing "sensitive fields are redacted when database details are encoded"
@@ -129,7 +130,7 @@
                                  "dataset-id"           "office_checkins"
                                  "service-account-json" "**MetabasePass**"
                                  "use-jvm-timezone"     false
-                                 "project-id"           "metabase-bigquery-driver"}
+                                 "project-id"           project-id}
                   "id"          2
                   "engine"      "bigquery"}
                  (encode-decode bq-db))))))))
