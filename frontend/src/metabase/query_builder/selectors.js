@@ -55,7 +55,6 @@ const getRawQueryResults = state => state.qb.queryResults;
 export const getQueryResults = createSelector(
   [getRawQueryResults, getMetadataDiff],
   (queryResults, metadataDiff) => {
-    // return queryResults;
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
     }
