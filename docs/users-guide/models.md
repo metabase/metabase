@@ -1,6 +1,6 @@
 # Models
 
-Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, and they're meant to be used as the starting point for new questions.
+Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions.
 
 Models:
 
@@ -16,7 +16,7 @@ You can use models to:
 - Create summary tables that aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
-The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about the subject being modeled. In this sense, models are like a special sort of saved question that you can add metadata to.
+The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about the subject being modeled.
 
 ## Create a model
 
