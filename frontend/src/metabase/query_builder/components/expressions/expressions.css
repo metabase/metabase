@@ -2,6 +2,10 @@
   overflow: initial;
 }
 
+.expression-editor-textfield textarea {
+  min-height: 5px;
+}
+
 .expression-editor-textfield .ace_content * {
   font-family: monospace !important;
 }
