@@ -75,7 +75,7 @@ const CheckBox = forwardRef(
               <CheckBoxIcon
                 name={indeterminate ? "dash" : "check"}
                 checked={checked}
-                size={size - DEFAULT_PADDING}
+                size={size - DEFAULT_ICON_PADDING}
                 uncheckedColor={uncheckedColor}
               />
             )}
