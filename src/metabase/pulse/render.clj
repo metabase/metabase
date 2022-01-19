@@ -144,7 +144,7 @@
       (log/error e (trs "Pulse card render error"))
       (if (:card-error (ex-data e))
         (body/render :card-error nil nil nil nil nil)
-        (body/render :error nil nil nil nil nil))))
+        (body/render :error nil nil nil nil nil)))))
 
 (defn- card-href
   [card]

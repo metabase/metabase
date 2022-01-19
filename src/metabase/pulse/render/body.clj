@@ -855,7 +855,6 @@
     (trs "Please view this card in Metabase.")]})
 
 (s/defmethod render :card-error :- common/RenderedPulseCard
-  "Card error means that the error is in the card, not the static viz rendering apparatus"
   [_ _ _ _ _ _]
   @card-error-rendered-info)
 
