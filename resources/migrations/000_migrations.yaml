@@ -9868,10 +9868,19 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v420.00-070
+      id: v42.00-070
       author: camsaul
       comment: >-
         Added 0.42.0 - add Database.settings column to implement Database-local Settings
+      # This migration was originally misnumbered, so now that it has a correct number it may get triggered a second
+      # time. That's fine
+      preConditions:
+        - onFail: MARK_RAN
+        - onUpdateSQL: RUN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: settings
       changes:
         - addColumn:
             tableName: metabase_database
