@@ -61,7 +61,7 @@ See a [list of languages Metabase supports](https://www.metabase.com/docs/latest
 
 ### First day of the week
 
-If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in GUI queries ([simple](../users-guide/04-asking-questions.html) and [custom questions](../users-guide/custom-questions.html) composed in the notebook editor). This setting does not affect [SQL queries](../users-guide/writing-sql.html).
+If you need to, you can change the first day of the week for your instance (the default is Sunday). Setting the first day of the week affects things like grouping by week and filtering in question built using the [query builder](../users-guide/04-asking-questions.html). This setting doesn't affect [SQL queries](../users-guide/writing-sql.html).
 
 ### Localization options
 

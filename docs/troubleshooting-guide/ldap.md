@@ -6,7 +6,7 @@
 - [Current limitations](#current-limitations)
 </div>
 
-Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. You may also want to check [our troubleshooting guide for logging in](./loggingin.html).
+Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. You may also want to check [our troubleshooting guide for logging in](./cant-log-in.md).
 
 <h2 id="ldap-sample-configuration">LDAP sample configuration</h2>
 
