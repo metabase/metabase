@@ -454,7 +454,7 @@
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (let [query (mt/mbql-query nil
                       {:source-query {:source-query {:source-table $$products
                                                      :aggregation  [[:count]]

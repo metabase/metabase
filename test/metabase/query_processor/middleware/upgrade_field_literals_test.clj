@@ -90,7 +90,7 @@
 
 (deftest attempt-case-insensitive-match-test
   (testing "Attempt to fix things even if the name used is the wrong case (#16389)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-everything-store
         (is (query= (mt/mbql-query orders
                       {:source-query {:source-table $$orders

@@ -586,7 +586,7 @@
 (deftest join-against-saved-question-with-sort-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Should be able to join against a Saved Question that is sorted (#13744)"
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (let [query (mt/mbql-query products
                       {:joins    [{:source-query {:source-table $$products
                                                   :aggregation  [[:count]]
@@ -614,7 +614,7 @@
 (deftest join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query products
                         {:joins    [{:source-query {:source-table $$orders}

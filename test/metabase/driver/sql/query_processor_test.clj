@@ -502,7 +502,7 @@
 
 (deftest join-inside-source-query-test
   (testing "Make sure a JOIN inside a source query gets compiled as expected"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-everything-store
         (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
                  :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -524,7 +524,7 @@
 
 (deftest join-against-source-query-test
   (testing "Make sure a JOIN referencing fields from the source query use correct aliases/etc"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (mt/with-everything-store
         (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                  :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -603,7 +603,7 @@
 
 (deftest expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                           count (*)         AS count]
                :from     [{:select [PRODUCTS.ID                  AS ID
@@ -631,7 +631,7 @@
 
 (deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count
@@ -797,7 +797,7 @@
 
 (deftest join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
                            source.count                         AS count
                            Reviews.ID                           AS Reviews__ID
@@ -830,7 +830,7 @@
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= '{:select    [Q1.CATEGORY  AS Q1__CATEGORY
                            source.count AS count
                            source.CC    AS CC
@@ -879,7 +879,7 @@
 
 (deftest mega-query-test
   (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)"
-    (mt/dataset sample-dataset
+    (mt/dataset sample-database
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count

@@ -1248,7 +1248,7 @@
                       :basic-aggregations
                       :foreign-keys
                       :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (let [query (mt/mbql-query orders
                       {:source-query {:source-table $$orders
                                       :aggregation  [[:count]]
@@ -1281,7 +1281,7 @@
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
       ;; is broken
-      (mt/dataset sample-dataset
+      (mt/dataset sample-database
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
