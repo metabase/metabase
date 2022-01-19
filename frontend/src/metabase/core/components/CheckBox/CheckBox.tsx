@@ -1,6 +1,6 @@
 import React, {
-  ChangeEventHandler,
-  FocusEventHandler,
+  ChangeEvent,
+  FocusEvent,
   forwardRef,
   Fragment,
   HTMLAttributes,
@@ -31,9 +31,9 @@ export interface CheckBoxProps
   checkedColor?: string;
   uncheckedColor?: string;
   autoFocus?: boolean;
-  onChange?: ChangeEventHandler<HTMLInputElement>;
-  onFocus?: FocusEventHandler<HTMLInputElement>;
-  onBlur?: FocusEventHandler<HTMLInputElement>;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 const CheckBox = forwardRef(function Checkbox(
