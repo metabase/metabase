@@ -117,13 +117,6 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(mt/defdataset dots-in-names
-  [["objects.stuff"
-    [{:field-name "dotted.name", :base-type :type/Text}]
-    [["toucan_cage"]
-     ["four_loko"]
-     ["ouija_board"]]]])
-
 (deftest edge-case-identifiers-test
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
