@@ -10,6 +10,7 @@ export const FormMessageStyled = styled.span`
   opacity: 0;
   padding-bottom: ${space(3)};
   transition: none;
+  width: 100%;
 
   ${({ visible }) =>
     visible &&
