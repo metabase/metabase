@@ -2,7 +2,15 @@ import styled from "styled-components";
 import { space, width } from "styled-system";
 import { color, alpha } from "metabase/lib/colors";
 
-const Card = styled.div`
+type CardProps = {
+  className?: string;
+  dark?: boolean;
+  hoverable?: boolean;
+  flat?: boolean;
+  compact?: boolean;
+};
+
+const Card = styled.div<CardProps>`
   ${width}
   ${space}
   background-color: ${props => (props.dark ? color("text-dark") : "white")};
