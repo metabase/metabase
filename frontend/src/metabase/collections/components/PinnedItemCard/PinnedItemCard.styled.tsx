@@ -11,12 +11,7 @@ export const ItemCard = styled(Card)``;
 
 export const ItemLink = styled(Link)`
   display: block;
-
-  &:focus {
-    ${ItemCard} {
-      outline: 1px solid ${color("brand")};
-    }
-  }
+  height: min-content;
 `;
 
 export const ItemIcon = styled(Icon)`
@@ -28,15 +23,6 @@ export const ItemIcon = styled(Icon)`
 export const HoverMenu = styled(EntityItem.Menu)`
   visibility: hidden;
   color: ${color("text-medium")};
-
-  &:hover {
-    color: ${color("text-dark")};
-  }
-
-  &.EntityMenu--open {
-    visibility: visible;
-    color: ${color("text-dark")};
-  }
 `;
 
 export const Title = styled.div`
