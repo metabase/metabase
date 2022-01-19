@@ -49,7 +49,11 @@ class EntityMenu extends Component {
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
-      <div className={cx("relative", className)}>
+      <div
+        className={cx("relative", className, {
+          "EntityMenu--open": open,
+        })}
+      >
         <EntityMenuTrigger
           trigger={trigger}
           icon={triggerIcon}
