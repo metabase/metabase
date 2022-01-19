@@ -13,7 +13,7 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 
 You can start a question from:
 
-- **[A Model][model]**. A special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
+- **[A model][model]**. A special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
 - **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **Saved question**. You can use the results of any question as the starting point for a new question.
 

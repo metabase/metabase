@@ -66,7 +66,7 @@ You don't explicitly set permissions on [dashboards subscriptions][dashboard-sub
 
 Here's what you can do with dashboard subscriptions based on Collection permissions for the collection the dashboard is in:
 
-- [ ] **Curate access**: You can view and edit all subscriptions for the dashboard, including subscriptions created by other people.
+- **Curate access**: You can view and edit all subscriptions for the dashboard, including subscriptions created by other people.
 - **View access**: You can view all subscriptions for that dashboard. You can also create subscriptions and edit ones that you’ve created, but you can’t edit ones that other people created. You can also unsubscribe from a subscription that somebody else created.
 - **No access**: You can’t view any of the dashboard's subscriptions, including, for example, subscriptions you created before an administrator revoked your access to the collection.
 
