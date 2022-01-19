@@ -160,7 +160,7 @@
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= [[(sql.qp/->SQLSourceQuery "SELECT * FROM VENUES;" [])
+        (is (= [[(sql.qp/sql-source-query "SELECT * FROM VENUES;" [])
                  (hx/identifier :table-alias "card")]
                 [:=
                  (hx/with-database-type-info (hx/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
