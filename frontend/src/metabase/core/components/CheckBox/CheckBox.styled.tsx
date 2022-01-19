@@ -17,10 +17,14 @@ export interface CheckBoxContainerProps {
 }
 
 export const CheckBoxContainer = styled.span<CheckBoxContainerProps>`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
   opacity: ${props => (props.disabled ? "0.4" : "")};
+
+  ${CheckBoxInput}:focus-visible + & {
+    outline: 2px solid ${color("brand-light")};
+  }
 `;
 
 export interface CheckBoxIconProps {
