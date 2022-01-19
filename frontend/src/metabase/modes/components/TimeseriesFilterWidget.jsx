@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import Button from "metabase/core/components/Button";
 
 import * as Query from "metabase/lib/query/query";
