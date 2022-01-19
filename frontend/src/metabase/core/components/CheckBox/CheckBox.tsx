@@ -36,61 +36,59 @@ export interface CheckBoxProps
   onBlur?: FocusEventHandler<HTMLInputElement>;
 }
 
-const CheckBox = forwardRef(
-  (
-    {
-      label,
-      checked,
-      indeterminate,
-      disabled,
-      size = DEFAULT_SIZE,
-      checkedColor = DEFAULT_CHECKED_COLOR,
-      uncheckedColor = DEFAULT_UNCHECKED_COLOR,
-      autoFocus,
-      onChange,
-      onFocus,
-      onBlur,
-      ...props
-    }: CheckBoxProps,
-    ref: any,
-  ): JSX.Element => {
-    return (
-      <CheckBoxRoot innerRef={ref} {...props}>
-        <CheckBoxInput
-          type="checkbox"
+const CheckBox = forwardRef(function Checkbox(
+  {
+    label,
+    checked,
+    indeterminate,
+    disabled,
+    size = DEFAULT_SIZE,
+    checkedColor = DEFAULT_CHECKED_COLOR,
+    uncheckedColor = DEFAULT_UNCHECKED_COLOR,
+    autoFocus,
+    onChange,
+    onFocus,
+    onBlur,
+    ...props
+  }: CheckBoxProps,
+  ref: any,
+): JSX.Element {
+  return (
+    <CheckBoxRoot innerRef={ref} {...props}>
+      <CheckBoxInput
+        type="checkbox"
+        checked={checked}
+        autoFocus={autoFocus}
+        onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
+      />
+      <CheckBoxContainer disabled={disabled}>
+        <CheckBoxIconContainer
           checked={checked}
-          autoFocus={autoFocus}
-          onChange={onChange}
-          onFocus={onFocus}
-          onBlur={onBlur}
-        />
-        <CheckBoxContainer disabled={disabled}>
-          <CheckBoxIconContainer
-            checked={checked}
-            size={size}
-            checkedColor={checkedColor}
-            uncheckedColor={uncheckedColor}
-          >
-            {(checked || indeterminate) && (
-              <CheckBoxIcon
-                name={indeterminate ? "dash" : "check"}
-                checked={checked}
-                size={size - DEFAULT_ICON_PADDING}
-                uncheckedColor={uncheckedColor}
-              />
-            )}
-          </CheckBoxIconContainer>
-          {label && (
-            <Fragment>
-              {isValidElement(label) && label}
-              {!isValidElement(label) && <CheckBoxLabel>{label}</CheckBoxLabel>}
-            </Fragment>
+          size={size}
+          checkedColor={checkedColor}
+          uncheckedColor={uncheckedColor}
+        >
+          {(checked || indeterminate) && (
+            <CheckBoxIcon
+              name={indeterminate ? "dash" : "check"}
+              checked={checked}
+              size={size - DEFAULT_ICON_PADDING}
+              uncheckedColor={uncheckedColor}
+            />
           )}
-        </CheckBoxContainer>
-      </CheckBoxRoot>
-    );
-  },
-);
+        </CheckBoxIconContainer>
+        {label && (
+          <Fragment>
+            {isValidElement(label) && label}
+            {!isValidElement(label) && <CheckBoxLabel>{label}</CheckBoxLabel>}
+          </Fragment>
+        )}
+      </CheckBoxContainer>
+    </CheckBoxRoot>
+  );
+});
 
 export default Object.assign(CheckBox, {
   Label: CheckBoxLabel,
