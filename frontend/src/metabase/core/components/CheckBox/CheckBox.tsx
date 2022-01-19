@@ -1,4 +1,4 @@
-import React, { LabelHTMLAttributes, ReactNode } from "react";
+import React, { forwardRef, LabelHTMLAttributes, ReactNode } from "react";
 import {
   CheckBoxContainer,
   CheckBoxIcon,
@@ -18,35 +18,40 @@ export interface CheckBoxProps extends LabelHTMLAttributes<HTMLLabelElement> {
   uncheckedColor?: string;
 }
 
-const CheckBox = ({
-  label,
-  checked,
-  indeterminate,
-  disabled,
-  size = 16,
-  checkedColor = "brand",
-  uncheckedColor = "text-light",
-}: CheckBoxProps): JSX.Element => {
-  return (
-    <CheckBoxRoot>
-      <CheckBoxInput type="checkbox" checked={checked} />
-      <CheckBoxContainer disabled={disabled}>
-        <CheckBoxIconContainer
-          checked={checked}
-          size={size}
-          checkedColor={checkedColor}
-          uncheckedColor={uncheckedColor}
-        >
-          <CheckBoxIcon
-            name={indeterminate ? "dash" : "check"}
+const CheckBox = forwardRef(
+  (
+    {
+      label,
+      checked,
+      indeterminate,
+      disabled,
+      size = 16,
+      checkedColor = "brand",
+      uncheckedColor = "text-light",
+    }: CheckBoxProps,
+    ref: any,
+  ): JSX.Element => {
+    return (
+      <CheckBoxRoot innerRef={ref}>
+        <CheckBoxInput type="checkbox" checked={checked} />
+        <CheckBoxContainer disabled={disabled}>
+          <CheckBoxIconContainer
             checked={checked}
+            size={size}
+            checkedColor={checkedColor}
             uncheckedColor={uncheckedColor}
-          />
-        </CheckBoxIconContainer>
-        {label && <CheckBoxLabel>{label}</CheckBoxLabel>}
-      </CheckBoxContainer>
-    </CheckBoxRoot>
-  );
-};
+          >
+            <CheckBoxIcon
+              name={indeterminate ? "dash" : "check"}
+              checked={checked}
+              uncheckedColor={uncheckedColor}
+            />
+          </CheckBoxIconContainer>
+          {label && <CheckBoxLabel>{label}</CheckBoxLabel>}
+        </CheckBoxContainer>
+      </CheckBoxRoot>
+    );
+  },
+);
 
 export default CheckBox;
