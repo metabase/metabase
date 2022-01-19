@@ -17,7 +17,8 @@
 
 .List-section-header {
   color: var(--color-text-dark);
-  border: 2px solid transparent; /* so that spacing matches .List-item */
+  border: 2px solid transparent;
+  /* so that spacing matches .List-item */
 }
 
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
@@ -44,6 +45,12 @@
   margin-top: 2px;
   margin-bottom: 2px;
 }
+
+.List-item:focus {
+  outline: none;
+  background-color: color-mod(var(--color-text-light) alpha(-80%));
+}
+
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected:not(.List-item--disabled) {
   background-color: currentColor;
@@ -55,9 +62,11 @@
 .List-item-title {
   color: var(--color-text-dark);
 }
+
 .List-item--disabled .List-item-title {
   color: var(--color-text-medium);
 }
+
 .List-item:not(.List-item--disabled):hover .List-item-title,
 .List-item--selected:not(.List-item--disabled) .List-item-title {
   color: white;
@@ -69,9 +78,11 @@
   margin-bottom: 0;
   color: var(--color-text-medium);
 }
+
 .List-item--disabled .List-item-description {
   color: var(--color-text-dark);
 }
+
 .List-item:not(.List-item--disabled):hover .List-item-description,
 .List-item--selected:not(.List-item--disabled) .List-item-description {
   color: rgba(255, 255, 255, 0.5);
