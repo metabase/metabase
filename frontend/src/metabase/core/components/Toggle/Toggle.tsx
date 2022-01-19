@@ -1,4 +1,9 @@
-import React, { ChangeEvent, InputHTMLAttributes, useCallback } from "react";
+import React, {
+  ChangeEvent,
+  InputHTMLAttributes,
+  forwardRef,
+  useCallback,
+} from "react";
 import { ToggleRoot } from "./Toggle.styled";
 
 export interface ToggleProps
@@ -10,29 +15,28 @@ export interface ToggleProps
   onChange?: (value: boolean) => void;
 }
 
-const Toggle = ({
-  className,
-  value,
-  small,
-  color,
-  onChange,
-  ...rest
-}: ToggleProps): JSX.Element => {
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    onChange && onChange(event.currentTarget.checked);
-  }, []);
+const Toggle = forwardRef(
+  (
+    { className, value, small, color, onChange, ...rest }: ToggleProps,
+    ref: any,
+  ): JSX.Element => {
+    const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+      onChange && onChange(event.currentTarget.checked);
+    }, []);
 
-  return (
-    <ToggleRoot
-      {...rest}
-      className={className}
-      type="checkbox"
-      checked={value}
-      small={small}
-      currentColor={color}
-      onChange={handleChange}
-    />
-  );
-};
+    return (
+      <ToggleRoot
+        {...rest}
+        innerRef={ref}
+        className={className}
+        type="checkbox"
+        checked={value}
+        small={small}
+        currentColor={color}
+        onChange={handleChange}
+      />
+    );
+  },
+);
 
 export default Toggle;
