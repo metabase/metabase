@@ -679,7 +679,7 @@
 
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; set up GTAP against reviews
       (mt/with-gtaps (mt/$ids reviews
                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
@@ -728,7 +728,7 @@
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
     ;; Sandbox ORDERS and PRODUCTS
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (mt/with-gtaps (mt/$ids nil
                        {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                      :products {:remappings {:user_cat [:dimension $products.category]}}}
@@ -803,7 +803,7 @@
 
 (deftest drill-thru-on-implicit-joins-test
   (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; create Sandbox on ORDERS
       (mt/with-gtaps (mt/$ids nil
                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
@@ -872,7 +872,7 @@
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (let [mbql-sandbox-results (mt/with-gtaps {:gtaps      (mt/$ids
                                                                {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
                                                                 :products {:remappings {"user_cat" [:dimension $products.category]}}})
@@ -927,7 +927,7 @@
                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                     :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-gtaps {:gtaps      (mt/$ids
                                       {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                        :products {:remappings {:user_cat [:dimension $products.category]}}})

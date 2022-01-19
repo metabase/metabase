@@ -354,7 +354,7 @@
                   bigquery/*page-callback* (fn []
                                              (log/debug "*page-callback* called, sending cancel message")
                                              (a/>!! canceled-chan ::cancel))]
-          (mt/dataset sample-database
+          (mt/dataset sample-dataset
             (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
                   row-count (count rows)]
               (log/debugf "Loaded %d rows before BigQuery query was canceled" row-count)
@@ -371,7 +371,7 @@
           (binding [bigquery/*page-size*     page-size
                     bigquery/*page-callback* (fn []
                                                (swap! num-page-callbacks inc))]
-            (mt/dataset sample-database
+            (mt/dataset sample-dataset
               (let [rows (mt/rows (mt/process-query (mt/query orders {:query {:limit max-rows}})))]
                 (is (= max-rows (count rows)))
                 (is (= (/ max-rows page-size) @num-page-callbacks))))))))))

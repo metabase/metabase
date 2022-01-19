@@ -350,7 +350,7 @@
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
                                                                  :effective_type    :type/Instant}
           (let [query         (mt/mbql-query reviews

@@ -352,7 +352,7 @@
 (deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-temp-vals-in-db Field (mt/id :reviews :rating) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
                                                                  :effective_type    :type/Instant}
           (let [query         (mt/mbql-query reviews
@@ -806,7 +806,7 @@
 
 (deftest custom-expression-args-quoted
   (mt/test-driver :bigquery-cloud-sdk
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
