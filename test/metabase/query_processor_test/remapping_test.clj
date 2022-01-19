@@ -197,9 +197,9 @@
             (is (seq metadata))
             (is (= [[1 1  14 37.65  2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
                     [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
-                   (remappings-with-metadata metadata)))))))))
+                   (remappings-with-metadata metadata)))))
         ;; doesn't currently work with any other metadata.
-
+        ))))
 
 (deftest remappings-with-implicit-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)

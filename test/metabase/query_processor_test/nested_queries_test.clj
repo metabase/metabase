@@ -981,18 +981,19 @@
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
     (mt/dataset sample-dataset
-      (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-              ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-              ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
-             (mt/rows
-               (mt/run-mbql-query orders
-                 {:filter       [:> *count/Integer 5]
-                  :source-query {:source-table $$orders
-                                 :aggregation  [[:count]]
-                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
-                  :limit        5})))))))
+      (let [query (mt/mbql-query orders
+                    {:filter       [:> *count/Integer 5]
+                     :source-query {:source-table $$orders
+                                    :aggregation  [[:count]]
+                                    :breakout     [!month.created_at !month.product_id->products.created_at]}
+                     :limit        5})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
@@ -1147,23 +1148,25 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        (is (= [["Awesome Bronze Plate" 115.23]
-                ["Mediocre Rubber Shoes" 101.04]
-                ["Mediocre Wooden Bench" 117.03]
-                ["Sleek Steel Table" 134.91]
-                ["Small Marble Hat" 102.8]]
-               (mt/formatted-rows [str 2.0]
-                 (mt/run-mbql-query orders
-                   {:source-query {:source-query {:source-table $$orders
-                                                  :filter       [:= $user_id 1]
-                                                  :aggregation  [[:sum $total]]
-                                                  :breakout     [!day.created_at
-                                                                 $product_id->products.title
-                                                                 $product_id->products.category]}
-                                   :filter       [:> *sum/Float 100]
-                                   :aggregation  [[:sum *sum/Float]]
-                                   :breakout     [*products.title]}
-                    :filter       [:> *sum/Float 100]}))))))))
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-query {:source-table $$orders
+                                                     :filter       [:= $user_id 1]
+                                                     :aggregation  [[:sum $total]]
+                                                     :breakout     [!day.created_at
+                                                                    $product_id->products.title
+                                                                    $product_id->products.category]}
+                                      :filter       [:> *sum/Float 100]
+                                      :aggregation  [[:sum *sum/Float]]
+                                      :breakout     [*products.title]}
+                       :filter       [:> *sum/Float 100]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Awesome Bronze Plate" 115.23]
+                    ["Mediocre Rubber Shoes" 101.04]
+                    ["Mediocre Wooden Bench" 117.03]
+                    ["Sleek Steel Table" 134.91]
+                    ["Small Marble Hat" 102.8]]
+                   (mt/formatted-rows [str 2.0]
+                     (qp/process-query query))))))))))
 
 (deftest date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
