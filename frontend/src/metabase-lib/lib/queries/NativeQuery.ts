@@ -14,7 +14,11 @@ import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 import Question from "metabase-lib/lib/Question";
 import { DatasetQuery, NativeDatasetQuery } from "metabase-types/types/Card";
-import { TemplateTags, TemplateTag } from "metabase-types/types/Query";
+import {
+  DependentMetadataItem,
+  TemplateTags,
+  TemplateTag,
+} from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
@@ -79,10 +83,10 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   canRun() {
-    return (
+    return Boolean(
       this.hasData() &&
-      this.queryText().length > 0 &&
-      this.allTemplateTagsAreValid()
+        this.queryText().length > 0 &&
+        this.allTemplateTagsAreValid(),
     );
   }
 
@@ -481,7 +485,7 @@ export default class NativeQuery extends AtomicQuery {
     return {};
   }
 
-  dependentMetadata() {
+  dependentMetadata(): DependentMetadataItem[] {
     const templateTags = this.templateTags();
     return templateTags
       .filter(

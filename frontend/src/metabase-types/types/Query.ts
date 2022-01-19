@@ -303,3 +303,16 @@ export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
 export type FieldsClause = ConcreteField[];
+
+export type DependentTable = {
+  id: number | string;
+  type: "table";
+  foreignTables?: boolean;
+};
+
+export type DependentField = {
+  id: number;
+  type: "field";
+};
+
+export type DependentMetadataItem = DependentTable | DependentField;

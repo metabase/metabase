@@ -21,6 +21,7 @@ import {
   Filter,
   LimitClause,
   OrderBy,
+  DependentMetadataItem,
 } from "metabase-types/types/Query";
 import {
   DatasetQuery,
@@ -1588,7 +1589,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Metadata this query needs to display correctly
    */
-  dependentMetadata({ foreignTables = true } = {}) {
+  dependentMetadata({ foreignTables = true } = {}): DependentMetadataItem[] {
     const dependencies = [];
 
     function addDependency(dep) {
