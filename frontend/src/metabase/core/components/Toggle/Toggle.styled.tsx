@@ -33,6 +33,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   position: relative;
   display: inline-block;
   color: ${props => props.currentColor ?? color("brand")};
+  cursor: pointer;
   box-sizing: border-box;
   width: ${props => (props.small ? "28px" : "48px")};
   height: ${props => (props.small ? "17px" : "24px")};
