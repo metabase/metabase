@@ -131,7 +131,7 @@ If your admins have created any named metrics that are specific to your company 
 
 ## Grouping your metrics
 
-Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this (you can click the green **Summarize** button to view the summarize side bar).
+Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this (you can click the green **Summarize** button to view the summarize sidebar).
 
 ![Grouping by a date column](./images/notebook/summarize-timeseries.png)
 
@@ -157,7 +157,7 @@ To return to the notebook editor for a question, click on the show editor button
 
 ## Viewing an individual record's details
 
-To see more info about a given record (a user, order, venue, etc), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
+To see more info about a given record (a user, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
 
 ![Record details](./images/notebook/record-details.png)
 
@@ -165,7 +165,7 @@ To see more info about a given record (a user, order, venue, etc), click on a re
 
 ![Custom expression](./images/expressions/aggregation-expression.png)
 
-Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md)
+Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md).
 
 ### Creating custom columns
 
@@ -173,7 +173,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Note that columns you add in a custom question are not permanently added to your table; they'll only be present in the given question.
 
-You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. You can [learn more about writing expressions here](./expressions.md).
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. 
 
 ## Sorting results
 
