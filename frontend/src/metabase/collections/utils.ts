@@ -2,35 +2,46 @@ import { t } from "ttag";
 import { canonicalCollectionId } from "metabase/entities/collections";
 
 export type Item = {
-  name: string,
-  description: string | null,
-  collection_position?: number | null,
-  id: number,
-  getIcon: () => { name: string },
-  getUrl: () => string,
-  setArchived: (isArchived: boolean) => void,
-  copy?: boolean,
-  setCollection?: boolean,
-  model: string,
+  name: string;
+  description: string | null;
+  collection_position?: number | null;
+  id: number;
+  getIcon: () => { name: string };
+  getUrl: () => string;
+  setArchived: (isArchived: boolean) => void;
+  copy?: boolean;
+  setCollection?: boolean;
+  model: string;
 };
+
+type CollectionId = number;
 
 export type Collection = {
-  can_write: boolean,
-  name: string,
+  id: CollectionId;
+  can_write: boolean;
+  name: string;
+  archived: boolean;
+  personal_owner_id: number | unknown;
+  children: Collection[];
+  originalName?: string;
+  effective_ancestors?: Collection[];
+  location?: string;
 };
 
-export function nonPersonalOrArchivedCollection(collection) {
+export function nonPersonalOrArchivedCollection(
+  collection: Collection,
+): boolean {
   // @TODO - should this be an API thing?
   return !isPersonalCollection(collection) && !collection.archived;
 }
 
-export function isPersonalCollection(collection) {
+export function isPersonalCollection(collection: Collection): boolean {
   return typeof collection.personal_owner_id === "number";
 }
 
 // Replace the name for the current user's collection
 // @Question - should we just update the API to do this?
-function preparePersonalCollection(c) {
+function preparePersonalCollection(c: Collection): Collection {
   return {
     ...c,
     name: t`Your personal collection`,
@@ -39,13 +50,19 @@ function preparePersonalCollection(c) {
 }
 
 // get the top level collection that matches the current user ID
-export function currentUserPersonalCollections(collectionList, userID) {
+export function currentUserPersonalCollections(
+  collectionList: Collection[],
+  userID: number,
+): Collection[] {
   return collectionList
     .filter(l => l.personal_owner_id === userID)
     .map(preparePersonalCollection);
 }
 
-export function getParentPath(collections, targetId) {
+export function getParentPath(
+  collections: Collection[],
+  targetId: CollectionId,
+): CollectionId[] | null {
   if (collections.length === 0) {
     return null; // not found!
   }
@@ -65,7 +82,7 @@ export function getParentPath(collections, targetId) {
   return null; // didn't find it under any collection
 }
 
-function getNonRootParentId(collection) {
+function getNonRootParentId(collection: Collection) {
   if (Array.isArray(collection.effective_ancestors)) {
     // eslint-disable-next-line no-unused-vars
     const [root, nonRootParent] = collection.effective_ancestors;
@@ -76,11 +93,14 @@ function getNonRootParentId(collection) {
   return canonicalCollectionId(nonRootParentId);
 }
 
-export function isPersonalCollectionChild(collection, collectionList) {
+export function isPersonalCollectionChild(
+  collection: Collection,
+  collectionList: Collection[],
+): boolean {
   const nonRootParentId = getNonRootParentId(collection);
   if (!nonRootParentId) {
     return false;
   }
   const parentCollection = collectionList.find(c => c.id === nonRootParentId);
-  return parentCollection && !!parentCollection.personal_owner_id;
+  return Boolean(parentCollection && !!parentCollection.personal_owner_id);
 }
