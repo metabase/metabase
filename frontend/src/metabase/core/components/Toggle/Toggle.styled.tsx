@@ -40,8 +40,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   border: 1px solid ${color("border")};
   background-color: ${color("bg-medium")};
   background-color: ${getBackgroundColor};
-  transition: all 0.3s;
-  text-decoration: none;
+  transition: background-color 0.3s;
 
   &:after {
     content: "";
@@ -52,11 +51,11 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     top: 1px;
     left: ${getLeft};
     background-color: ${color("white")};
-    transition: all 0.3s;
+    transition: left 0.3s;
     box-shadow: 2px 2px 6px ${color("shadow")};
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-brand-light);
+    outline: 2px solid ${color("brand-light")};
   }
 `;
