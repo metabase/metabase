@@ -7,7 +7,7 @@ export interface ToggleRootProps {
   currentColor?: string;
 }
 
-const getLeft = ({ checked, small }: ToggleRootProps): string => {
+const getTranslateX = ({ checked, small }: ToggleRootProps): string => {
   if (!checked) {
     return "1px";
   } else if (!small) {
@@ -49,9 +49,9 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     border-radius: 99px;
     position: absolute;
     top: 1px;
-    left: ${getLeft};
+    transform: translateX(${getTranslateX});
     background-color: ${color("white")};
-    transition: left 0.3s;
+    transition: transform 0.3s;
     box-shadow: 2px 2px 6px ${color("shadow")};
   }
 
