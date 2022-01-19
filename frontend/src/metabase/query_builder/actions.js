@@ -1034,8 +1034,12 @@ export const updateQuestion = (
       isTemplateTagEditorVisible,
       queryBuilderMode: mode,
     });
-    if (typeof nextTagEditorVisibilityState === "boolean") {
-      dispatch(setIsShowingTemplateTagsEditor(nextTagEditorVisibilityState));
+    if (nextTagEditorVisibilityState !== "deferToCurrentState") {
+      dispatch(
+        setIsShowingTemplateTagsEditor(
+          nextTagEditorVisibilityState === "visible",
+        ),
+      );
     }
 
     try {

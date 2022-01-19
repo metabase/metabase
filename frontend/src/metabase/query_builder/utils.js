@@ -62,12 +62,14 @@ export function getNextTemplateTagVisibilityState({
 
   if (nextTags.length > previousTags.length) {
     if (queryBuilderMode !== "dataset") {
-      return true;
+      return "visible";
     }
     return nextTags.every(isSupportedTemplateTagForModel);
   }
 
   if (nextTags.length === 0 && isTemplateTagEditorVisible) {
-    return false;
+    return "hidden";
   }
+
+  return "deferToCurrentState";
 }
