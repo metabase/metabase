@@ -22,7 +22,7 @@ import {
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
