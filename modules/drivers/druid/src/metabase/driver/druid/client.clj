@@ -24,10 +24,11 @@
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
   ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
-  (let [auth-token (:auth-token options)
+  (let [{:keys [auth-enabled auth-username auth-token]} options
         options (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
                   (:body options) (update :body json/generate-string)
-                  auth-token      (assoc "Authorization" (str "Basic " auth-token)))]
+                  auth-enabled (assoc :basic-auth (str auth-username ":" auth-token)))]
+
     (try
       (let [{:keys [status body]} (request-fn url options)]
         (when (not= status 200)
@@ -62,8 +63,13 @@
   [details query]
   {:pre [(map? details) (map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
+                       (prn query)
     (try
-      (POST (details->url details-with-tunnel "/druid/v2"), :body query :auth-token (:auth-token details))
+      (POST (details->url details-with-tunnel "/druid/v2"),
+        :body           query
+        :auth-enabled  (details :auth-enabled)
+        :auth-token    (details :auth-token)
+        :auth-username (details :auth-username))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -83,7 +89,10 @@
       (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
       (try
         (log/debug (trs "Canceling Druid query with ID {0}" query-id))
-        (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)) :auth-token (:auth-token details))
+        (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
+          :auth-enabled  (details :auth-enabled)
+          :auth-token    (details :auth-token)
+          :auth-username (details :auth-username))
         (catch Exception cancel-e
           (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id)))))))
 

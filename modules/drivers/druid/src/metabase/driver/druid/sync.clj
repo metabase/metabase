@@ -51,6 +51,8 @@
   {:pre [(map? (:details database))]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [druid-datasources (client/GET (client/details->url details-with-tunnel "/druid/v2/datasources")
-                                        :auth-token (-> database :details :auth-token))]
+                              :auth-enabled (-> database :details :auth-enabled)
+                              :auth-token (-> database :details :auth-token)
+                              :auth-username (-> database :details :auth-username))]
       {:tables (set (for [table-name druid-datasources]
                       {:schema nil, :name table-name}))})))
