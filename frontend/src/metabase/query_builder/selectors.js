@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn, merge } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -47,9 +47,49 @@ export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
-export const getQueryResults = state => state.qb.queryResults;
-export const getFirstQueryResult = state =>
-  state.qb.queryResults && state.qb.queryResults[0];
+
+export const getMetadataDiff = state => state.qb.metadataDiff;
+
+const getRawQueryResults = state => state.qb.queryResults;
+
+export const getQueryResults = createSelector(
+  [getRawQueryResults, getMetadataDiff],
+  (queryResults, metadataDiff) => {
+    if (!Array.isArray(queryResults) || !queryResults.length) {
+      return null;
+    }
+
+    const [result] = queryResults;
+    const { cols, results_metadata } = result.data;
+
+    if (!results_metadata) {
+      return queryResults;
+    }
+
+    function applyMetadataDiff(column) {
+      const columnDiff = metadataDiff[column.field_ref];
+      return columnDiff ? merge(column, columnDiff) : column;
+    }
+
+    return [
+      {
+        ...result,
+        data: {
+          ...result.data,
+          cols: cols.map(applyMetadataDiff),
+          results_metadata: {
+            ...results_metadata,
+            columns: results_metadata.columns.map(applyMetadataDiff),
+          },
+        },
+      },
+    ];
+  },
+);
+
+export const getFirstQueryResult = createSelector([getQueryResults], results =>
+  Array.isArray(results) ? results[0] : null,
+);
 
 // get instance settings, used for determining whether to display certain actions
 export const getSettings = state => state.settings.values;

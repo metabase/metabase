@@ -4,7 +4,7 @@ import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { getIn, assocIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn, merge } from "icepick";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -27,6 +27,7 @@ import {
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
+import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 
@@ -765,6 +766,20 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+  const queryBuilderMode = getQueryBuilderMode(getState());
+  const datasetEditorTab = getDatasetEditorTab(getState());
+  const isEditingDatasetMetadata =
+    queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+  const changedSettings = Object.keys(settings);
+  const isColumnWidthResetEvent =
+    changedSettings.length === 1 &&
+    changedSettings.includes("table.column_widths") &&
+    settings["table.column_widths"] === undefined;
+
+  if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
+    return;
+  }
+
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
       run: "auto",
@@ -1569,4 +1584,40 @@ export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
       actions: [apiUpdateQuestion(dataset, { rerunQuery: true })],
     }),
   );
+};
+
+export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
+export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
+
+export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
+export const setMetadataDiff = createAction(SET_METADATA_DIFF);
+
+export const setFieldMetadata = ({ field_ref, changes }) => (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  const resultsMetadata = getResultsMetadata(getState());
+
+  const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
+    const compareExact =
+      !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
+    const isTargetField = isSameField(
+      field_ref,
+      fieldMetadata.field_ref,
+      compareExact,
+    );
+    return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
+  });
+
+  const nextResultsMetadata = {
+    ...resultsMetadata,
+    columns: nextColumnMetadata,
+  };
+
+  const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
+
+  dispatch(updateQuestion(nextQuestion));
+  dispatch(setMetadataDiff({ field_ref, changes }));
+  dispatch(setResultsMetadata(nextResultsMetadata));
 };

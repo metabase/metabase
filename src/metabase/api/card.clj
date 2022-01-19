@@ -27,7 +27,6 @@
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
@@ -185,16 +184,14 @@
   "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the
   `metadata` passed in seems valid,and, if so, return a channel that returns the value as-is; otherwise, we'll run the
   query ourselves to get the right values, and return a channel where you can listen for the results."
-  [query metadata checksum]
-  (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate qr/ResultsMetadata metadata))]
+  [query metadata]
+  (let [valid-metadata? (s/validate qr/ResultsMetadata metadata)]
     (log/info
-     (cond
-       valid-metadata? (trs "Card results metadata passed in to API is VALID. Thanks!")
-       metadata        (trs "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata.")
-       :else           (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
+     (if valid-metadata?
+       (trs "Card results metadata passed in to API is VALID. Thanks!")
+       (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
     (if valid-metadata?
-      (a/to-chan [metadata])
+      (a/to-chan! [metadata])
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
@@ -242,14 +239,15 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata metadata_checksum], :as card-data}]
+  [{:keys [dataset_query result_metadata], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*)
-        result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
+                                    :creator_id api/*current-user-id*
+                                    :dataset (boolean (:dataset card-data)))
+        result-metadata-chan (result-metadata-async dataset_query result_metadata)
         out-chan             (a/promise-chan)]
     (a/go
       (try
@@ -266,7 +264,7 @@
 
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
+  [:as {{:keys [collection_id collection_position dataset_query description display name
                 result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
@@ -275,7 +273,6 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
@@ -310,12 +307,12 @@
   will know not to update the value in the DB.)
 
   Either way, results are returned asynchronously on a channel."
-  [card query metadata checksum]
+  [card query metadata]
   (if (and query
-             (not= query (:dataset_query card)))
-    (result-metadata-async query metadata checksum)
-    (u/prog1 (a/chan)
-      (a/close! <>))))
+           (not= query (:dataset_query card)))
+    (result-metadata-async query metadata)
+    (doto (a/chan)
+      (a/onto-chan! (when (seq metadata) [metadata])))))
 
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
@@ -495,7 +492,7 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum
+                   collection_position enable_embedding embedding_params result_metadata
                    cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
@@ -510,7 +507,6 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
@@ -522,8 +518,7 @@
     (let [result-metadata-chan (result-metadata-for-updating-async
                                 card-before-update
                                 dataset_query
-                                result_metadata
-                                metadata_checksum)
+                                result_metadata)
           out-chan             (a/promise-chan)
           card-updates         (merge card-updates
                                       (when dataset

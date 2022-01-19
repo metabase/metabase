@@ -1,8 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/components/Select";
+
+import Databases from "metabase/entities/databases";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -15,11 +18,22 @@ type FieldObject = {
   };
 };
 
-type Props = {
-  field: FieldObject;
+type StateProps = {
   IDFields: Field[];
-  onChange: () => void;
+  fetchDatabaseIDFields: (payload: { id: number }) => Promise<void>;
 };
+
+type OwnProps = {
+  field: {
+    value: number | null;
+    onChange: (e: { target: { value: number } }) => void;
+  };
+  formField: {
+    databaseId: number;
+  };
+};
+
+type Props = OwnProps & StateProps;
 
 function getOptionValue(option: FieldObject) {
   return option.id;
@@ -39,7 +53,33 @@ const SEARCH_PROPERTIES = [
   "table.schema_name",
 ];
 
-function FKTargetPicker({ field, IDFields, onChange }: Props) {
+function mapStateToProps(
+  state: Record<string, unknown>,
+  { formField }: OwnProps,
+) {
+  const { databaseId } = formField;
+  return {
+    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+  };
+}
+
+const mapDispatchToProps = {
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+};
+
+function FKTargetPicker({
+  field,
+  formField,
+  IDFields,
+  fetchDatabaseIDFields,
+}: Props) {
+  const { value, onChange } = field;
+  const { databaseId } = formField;
+
+  useEffect(() => {
+    fetchDatabaseIDFields({ id: databaseId });
+  }, [databaseId, fetchDatabaseIDFields]);
+
   const options = useMemo(
     () => _.sortBy(IDFields, field => getFieldName(field)),
     [IDFields],
@@ -48,7 +88,7 @@ function FKTargetPicker({ field, IDFields, onChange }: Props) {
   return (
     <Select
       placeholder={t`Select a target`}
-      value={field.fk_target_field_id}
+      value={value}
       options={options}
       onChange={onChange}
       searchable
@@ -60,4 +100,4 @@ function FKTargetPicker({ field, IDFields, onChange }: Props) {
   );
 }
 
-export default FKTargetPicker;
+export default connect(mapStateToProps, mapDispatchToProps)(FKTargetPicker);

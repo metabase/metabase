@@ -22,7 +22,6 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
@@ -388,8 +387,7 @@
             ;; create a card with the metadata
             (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query card-name)
                                                                  :collection_id      (u/the-id collection)
-                                                                 :result_metadata    metadata
-                                                                 :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
+                                                                 :result_metadata    metadata))
             ;; now check the metadata that was saved in the DB
             (is (= [{:base_type    :type/Integer
                      :display_name "Count Chocula"
@@ -399,15 +397,13 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
-      (let [card        (card-with-name-and-query)
-            md-checksum (#'results-metadata/metadata-checksum [])]
+      (let [card        (card-with-name-and-query)]
         (is (schema= {:id su/IntGreaterThanZero, s/Keyword s/Any}
                      (mt/user-http-request :rasta
                                            :post
                                            202
                                            "card"
-                                           (assoc card :result_metadata   []
-                                                       :metadata_checksum md-checksum))))))))
+                                           (assoc card :result_metadata []))))))))
 
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
@@ -464,8 +460,7 @@
             (mt/user-http-request :rasta :post 202 "card"
                                   (assoc (card-with-name-and-query card-name)
                                          :collection_id      (u/the-id collection)
-                                         :result_metadata    (map fingerprint-integers->doubles metadata)
-                                         :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
+                                         :result_metadata    (map fingerprint-integers->doubles metadata)))
             (testing "check the metadata that was saved in the DB"
               (is (= [{:base_type     :type/Integer
                        :display_name  "Count Chocula"
@@ -477,20 +472,13 @@
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type     :type/BigInteger
-                        :display_name  "Count Chocula"
-                        :name          "count_chocula"
-                        :semantic_type :type/Quantity}]
-            card-name (mt/random-name)]
+      (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
             (mt/user-http-request :rasta :post 202 "card"
                                   (assoc (card-with-name-and-query card-name)
-                                         :collection_id      (u/the-id collection)
-                                         :result_metadata    metadata
-                                         ;; bad checksum
-                                         :metadata_checksum  "ABCDEF"))
+                                         :collection_id      (u/the-id collection)))
             (testing "check the correct metadata was fetched and was saved in the DB"
               (is (= [{:base_type     :type/BigInteger
                        :display_name  "Count"
@@ -523,9 +511,7 @@
                  :rasta :post 202 "card"
                  (assoc (card-with-name-and-query card-name)
                         :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
-                        :collection_id      (u/the-id collection)
-                        :result_metadata    metadata
-                        :metadata_checksum  "ABCDEF"))) ; bad checksum
+                        :collection_id      (u/the-id collection))))
               (testing "check the correct metadata was fetched and was saved in the DB"
                 (is (= [{:base_type     (count-base-type)
                          :effective_type (count-base-type)
@@ -752,44 +738,6 @@
                                 {:embedding_params {:abc "enabled"}})
           (is (= {:abc "enabled"}
                  (db/select-one-field :embedding_params Card :id (u/the-id card)))))))))
-
-(deftest make-sure-when-updating-a-card-the-query-metadata-is-saved--if-correct-
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"}]]
-    (mt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                              {:dataset_query     (mbql-count-query)
-                               :result_metadata   metadata
-                               :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
-        ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type    :type/Integer
-                 :display_name "Count Chocula"
-                 :name         "count_chocula"}]
-               (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
-
-(deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (let [metadata [{:base_type     :type/BigInteger
-                   :display_name  "Count Chocula"
-                   :name          "count_chocula"
-                   :semantic_type :type/Quantity}]]
-    (mt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                              {:dataset_query     (mbql-count-query)
-                               :result_metadata   metadata
-                               :metadata_checksum "ABC123"}) ; invalid checksum
-        ;; now check the metadata that was saved in the DB
-        (is (= [{:base_type     :type/BigInteger
-                 :display_name  "Count"
-                 :name          "count"
-                 :semantic_type :type/Quantity
-                 :source        :aggregation
-                 :field_ref     [:aggregation 0]}]
-               (db/select-one-field :result_metadata Card :id (u/the-id card))))))))
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (mt/with-temp Card [card]
