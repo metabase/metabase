@@ -364,7 +364,7 @@
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
             (mt/with-everything-store
-              (is (= [(str "timestamp_millis(v3_sample_database.reviews.rating)"
+              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
                      (hsql/format-predicate (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))
@@ -737,7 +737,7 @@
                                     Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
                         :from      [v3_test_data.checkins]
                         :left-join [v3_test_data.Organização Organização__via__venue_id
-                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id ]
+                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id]
                         :limit     [1]}
                       query))))))))
 
@@ -811,8 +811,8 @@
         (is (= {:mbql?      true
                 :params     nil
                 :table-name "orders"
-                :query      (str "SELECT APPROX_QUANTILES(`v3_sample_database.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
-                                 " FROM `v3_sample_database.orders` LIMIT 10")}
+                :query      (str "SELECT APPROX_QUANTILES(`v3_sample_dataset.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
+                                 " FROM `v3_sample_dataset.orders` LIMIT 10")}
               (qp/query->native (mt/mbql-query orders
                                   {:aggregation [[:aggregation-options
                                                   [:percentile $orders.quantity 0.5]

@@ -1721,7 +1721,7 @@
 (deftest dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query"
     (mt/test-drivers (pivots/applicable-drivers)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                         Card          [card (pivots/pivot-card)]
                         DashboardCard [_ {:dashboard_id dashboard-id, :card_id (u/the-id card)}]]

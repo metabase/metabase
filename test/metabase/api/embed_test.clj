@@ -926,7 +926,7 @@
 
 (deftest pivot-embed-query-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
@@ -964,7 +964,7 @@
 
 (deftest pivot-dashcard-success-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
                                        :card     (pivots/pivot-card)
@@ -977,7 +977,7 @@
             (is (= 1144 (count rows)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (mt/with-temporary-setting-values [enable-embedding false]
       (with-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
@@ -987,7 +987,7 @@
                  (http/client :get 400 (pivot-dashcard-url dashcard)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-for-card-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                      :card     (pivots/pivot-card)
@@ -996,7 +996,7 @@
                (http/client :get 400 (pivot-dashcard-url dashcard))))))))
 
 (deftest pivot-dashcard-signing-check-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                   "with the wrong key")
       (with-embedding-enabled-and-new-secret-key
@@ -1007,7 +1007,7 @@
                  (http/client :get 400 (with-new-secret-key (pivot-dashcard-url dashcard))))))))))
 
 (deftest pivot-dashcard-locked-params-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "locked"}
@@ -1036,7 +1036,7 @@
                  (http/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=100")))))))))
 
 (deftest pivot-dashcard-disabled-params-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "disabled"}
@@ -1053,7 +1053,7 @@
                  (http/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=200")))))))))
 
 (deftest pivot-dashcard-enabled-params-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "enabled"}

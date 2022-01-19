@@ -149,7 +149,7 @@
 (deftest nested-with-aggregations-at-both-levels
   (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-temp* [Card [{card-id :id :as card}
                               {:dataset_query
                                (mt/$ids :products
@@ -795,7 +795,7 @@
 
 (deftest remapped-fks-test
   (testing "Should be able to use a question with remapped FK columns as a Saved Question (#10474)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; Add column remapping from Orders Product ID -> Products.Title
       (mt/with-temp Dimension [_ (mt/$ids orders
                                    {:field_id                %product_id
@@ -827,7 +827,7 @@
 
 (deftest nested-query-with-joins-test-2
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (letfn [(do-test [f]
                 (let [results (mt/run-mbql-query orders
                                 {:source-query {:source-table $$orders
@@ -857,7 +857,7 @@
 
 (deftest inception-metadata-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> result result
@@ -893,7 +893,7 @@
 
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
           (letfn [(run-query []
@@ -948,7 +948,7 @@
                        (mt/first-row result)))))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (testing "References to joined fields should be handled correctly (#14766)"
       ;; using `$products.id` should give you the same results as properly referring to it with `&Products.products.id`
       (let [expected-result (mt/run-mbql-query orders
@@ -980,7 +980,7 @@
 
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
               ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
               ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
@@ -996,7 +996,7 @@
 
 (deftest nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; create the query we'll use as a source query
       (let [query    (mt/mbql-query orders
                        {:joins    [{:source-table $$products
@@ -1056,7 +1056,7 @@
 
 (deftest support-legacy-filter-clauses-test
   (testing "We should handle legacy usage of field-literal inside filter clauses"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "against joins (#14809)"
         (is (schema= {:status   (s/eq :completed)
                       s/Keyword s/Any}
@@ -1079,7 +1079,7 @@
 
 (deftest support-legacy-dashboard-parameters-test
   (testing "We should handle legacy usage of field-literal inside (Dashboard) parameters (#14810)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (schema= {:status   (s/eq :completed)
                     s/Keyword s/Any}
                    (qp/process-query
@@ -1097,7 +1097,7 @@
 
 (deftest nested-queries-with-expressions-and-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "Do nested queries in combination with joins and expressions still work correctly? (#14969)"
         (is (= (cond-> [["Twitter" "Widget" 0 498.59]
                         ["Twitter" nil      0 401.51]]
@@ -1146,7 +1146,7 @@
 (deftest multi-level-aggregations-with-post-aggregation-filtering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (is (= [["Awesome Bronze Plate" 115.23]
                 ["Mediocre Rubber Shoes" 101.04]
                 ["Mediocre Wooden Bench" 117.03]
@@ -1168,7 +1168,7 @@
 (deftest date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Date ranges should work the same in nested queries as is regular queries (#15352)"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (let [q1        (mt/mbql-query orders
                           {:aggregation [[:count]]
                            :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
@@ -1219,7 +1219,7 @@
                       :basic-aggregations
                       :expression-aggregations
                       :foreign-keys)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                    {:filter      [:between $total 30 60]
                                                     :aggregation [[:aggregation-options
@@ -1248,7 +1248,7 @@
                       :basic-aggregations
                       :foreign-keys
                       :left-join)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (let [query (mt/mbql-query orders
                       {:source-query {:source-table $$orders
                                       :aggregation  [[:count]]
@@ -1281,7 +1281,7 @@
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
       ;; is broken
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders

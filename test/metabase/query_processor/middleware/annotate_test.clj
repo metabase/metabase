@@ -634,7 +634,7 @@
 
 (deftest inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
@@ -664,7 +664,7 @@
 
 ;; metabase#14787
 (deftest col-info-for-fields-from-card-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (let [card-1-query (mt/mbql-query orders
                          {:joins [{:fields       :all
                                    :source-table $$products

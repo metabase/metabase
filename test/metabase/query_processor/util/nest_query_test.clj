@@ -513,7 +513,7 @@
 
 (deftest multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (query= (mt/$ids orders
                     (merge {:source-query (let [id                [:field %id {::add/source-table  $$orders
                                                                                ::add/source-alias  "ID"
@@ -624,7 +624,7 @@
 
 (deftest uniquify-aliases-test
   (driver/with-driver :h2
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (query= (mt/$ids products
                       {:source-query       {:source-table $$products

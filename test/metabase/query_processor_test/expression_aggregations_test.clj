@@ -277,7 +277,7 @@
 (deftest order-by-named-aggregation-test
   (testing "Ordering by a named aggregation whose alias has uppercase letters works (#18211)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (is (= [["Doohickey" 156.6]
                 ["Widget" 170.3]
                 ["Gadget" 181.9]
@@ -291,7 +291,7 @@
 #_(deftest multiple-cumulative-sums-test
    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
      (testing "The results of divide or multiply two CumulativeSum should be correct (#15118)"
-       (mt/dataset sample-database
+       (mt/dataset sample-dataset
          (is (= [["2016-01-01T00:00:00Z" 3236  2458.0  5694.0   1]
                  ["2017-01-01T00:00:00Z" 17587 14995.0 32582.0  2]
                  ["2018-01-01T00:00:00Z" 40381 35366.5 75747.5  3]

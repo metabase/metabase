@@ -1820,7 +1820,7 @@
 
 (deftest pivot-card-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
         (mt/with-temp Card [card (pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))

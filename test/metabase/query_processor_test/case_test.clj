@@ -87,7 +87,7 @@
 (deftest two-case-functions-test
   (testing "We should support expressions with two case statements (#15107)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (is (= [[1
                  "1018947080336"
                  "Rustic Paper Wallet"

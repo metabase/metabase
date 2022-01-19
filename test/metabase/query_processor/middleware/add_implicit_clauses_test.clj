@@ -166,7 +166,7 @@
 
 (deftest add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (let [expected-cols (fn [query]
                             (qp/query->expected-cols
                              {:database (mt/id)

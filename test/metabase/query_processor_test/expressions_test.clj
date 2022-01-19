@@ -394,7 +394,7 @@
 (deftest expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use expression with same column name as table (#14267)"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (is (= [["Doohickey2" 42]]
                (mt/formatted-rows [str int]
                  (mt/run-mbql-query products
@@ -407,7 +407,7 @@
 (deftest fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (let [results (mt/run-mbql-query orders
                         {:expressions {"CE" [:case
                                              [[[:> $discount 0] $created_at]]
@@ -454,7 +454,7 @@
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :left-join)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (let [query (mt/mbql-query nil
                       {:source-query {:source-query {:source-table $$products
                                                      :aggregation  [[:count]]

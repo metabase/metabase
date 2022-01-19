@@ -280,7 +280,7 @@
 
 (deftest ambiguous-field-metadata-test
   (testing "With queries that refer to the same field more than once, can we generate sane SQL?"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= (str "SELECT"
                   " ORDERS.ID AS ID,"
                   " ORDERS.PRODUCT_ID AS PRODUCT_ID,"
@@ -315,7 +315,7 @@
 
 (deftest multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= (str "SELECT source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY,"
                   " source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE,"
                   " parsedatetime(year(source.CREATED_AT), 'yyyy') AS CREATED_AT,"
@@ -502,7 +502,7 @@
 
 (deftest join-inside-source-query-test
   (testing "Make sure a JOIN inside a source query gets compiled as expected"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
                  :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -524,7 +524,7 @@
 
 (deftest join-against-source-query-test
   (testing "Make sure a JOIN referencing fields from the source query use correct aliases/etc"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                  :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -603,7 +603,7 @@
 
 (deftest expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                           count (*)         AS count]
                :from     [{:select [PRODUCTS.ID                  AS ID
@@ -631,7 +631,7 @@
 
 (deftest join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count
@@ -707,7 +707,7 @@
      :limit        2}))
 
 (deftest source-aliases-test
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (mt/with-everything-store
       (let [query       (mega-query)
             small-query (get-in query [:query :source-query])]
@@ -724,7 +724,7 @@
                  (:source-fields (#'sql.qp/source-aliases :h2 (:query query))))))))))
 
 (defn mini-query []
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (qp/query->preprocessed
      (mt/mbql-query orders
        {:source-table $$orders
@@ -745,7 +745,7 @@
 
 (deftest use-correct-source-aliases-test
   (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)")
-  (mt/dataset sample-database
+  (mt/dataset sample-dataset
     (is (= (->> ["SELECT source.P1__CATEGORY AS P1__CATEGORY,"
                  "       source.People__SOURCE AS People__SOURCE,"
                  "       source.count AS count,"
@@ -797,7 +797,7 @@
 
 (deftest join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
                            source.count                         AS count
                            Reviews.ID                           AS Reviews__ID
@@ -830,7 +830,7 @@
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= '{:select    [Q1.CATEGORY  AS Q1__CATEGORY
                            source.count AS count
                            source.CC    AS CC
@@ -879,7 +879,7 @@
 
 (deftest mega-query-test
   (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count

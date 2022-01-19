@@ -322,7 +322,7 @@
 
 (deftest pivot-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/pivot-query))
@@ -372,7 +372,7 @@
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/filters-query))
@@ -389,7 +389,7 @@
 
 (deftest pivot-parameter-dataset-test
   (mt/test-drivers (pivots/applicable-drivers)
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (pivots/parameters-query))

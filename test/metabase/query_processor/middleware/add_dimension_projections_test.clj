@@ -284,7 +284,7 @@
 
 (deftest dimension-remappings-test
   (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (let [query (mt/mbql-query orders
                     {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
                      :joins    [{:fields       :all

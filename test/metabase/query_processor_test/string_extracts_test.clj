@@ -99,7 +99,7 @@
 (deftest regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (let [query (mt/mbql-query orders
                       {:joins       [{:source-table $$products
                                       :alias        "Products"

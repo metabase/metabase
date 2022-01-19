@@ -265,7 +265,7 @@
 
 (deftest nested-queries-test
   (testing "Datetime fields inside nested MBQL queries should get auto-bucketed the same way as at the top-level (#15352)"
-    (mt/dataset sample-database
+    (mt/dataset sample-dataset
       (let [q1 (mt/mbql-query orders
                  {:aggregation [[:count]]
                   :filter      [:between $created_at "2020-02-01" "2020-02-29"]})]

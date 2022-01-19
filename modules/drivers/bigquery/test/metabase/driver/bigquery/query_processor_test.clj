@@ -362,7 +362,7 @@
                                  :limit    1})
                 filter-clause (get-in query [:query :filter])]
             (mt/with-everything-store
-              (is (= [(str "timestamp_millis(v3_sample_database.reviews.rating)"
+              (is (= [(str "timestamp_millis(v3_sample_dataset.reviews.rating)"
                            " = "
                            "timestamp_trunc(timestamp_add(current_timestamp(), INTERVAL -30 day), day)")]
                      (hsql/format-predicate (sql.qp/->honeysql :bigquery filter-clause)))))

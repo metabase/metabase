@@ -142,7 +142,7 @@
 (deftest implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
-      (mt/dataset sample-database
+      (mt/dataset sample-dataset
         (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
                 ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0 89]
                 ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0 276]
