@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { ButtonHTMLAttributes, forwardRef } from "react";
 
 import {
   SelectButtonRoot,
@@ -6,7 +6,7 @@ import {
   SelectButtonContent,
 } from "./SelectButton.styled";
 
-interface SelectButtonProps {
+interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
@@ -23,6 +23,7 @@ const SelectButton = forwardRef(function SelectButton(
     hasValue = true,
     disabled,
     fullWidth = true,
+    ...rest
   }: SelectButtonProps,
   ref,
 ) {
@@ -34,11 +35,9 @@ const SelectButton = forwardRef(function SelectButton(
       hasValue={hasValue}
       disabled={disabled}
       fullWidth={fullWidth}
-      data-testid="select-button"
+      {...rest}
     >
-      <SelectButtonContent data-testid="select-button-content">
-        {children}
-      </SelectButtonContent>
+      <SelectButtonContent>{children}</SelectButtonContent>
       <SelectButtonIcon name="chevrondown" size={12} />
     </SelectButtonRoot>
   );
