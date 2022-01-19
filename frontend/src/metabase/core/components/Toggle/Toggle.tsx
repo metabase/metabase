@@ -1,5 +1,5 @@
 import React, { AnchorHTMLAttributes } from "react";
-import { ToggleRoot } from "metabase/components/Toggle/Toggle.styled";
+import { ToggleRoot } from "./Toggle.styled";
 
 export interface ToggleProps
   extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "onChange"> {
