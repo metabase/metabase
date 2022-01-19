@@ -9876,7 +9876,6 @@ databaseChangeLog:
       # time. That's fine
       preConditions:
         - onFail: MARK_RAN
-        - onUpdateSQL: RUN
         - not:
             - columnExists:
                 tableName: metabase_database
