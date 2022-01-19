@@ -516,6 +516,7 @@ describe("scenarios > models", () => {
         cy.get(".ace_content")
           .should("be.visible")
           .as("editor")
+          .type("{movetoend}")
           .type(" WHERE {{F", {
             parseSpecialCharSequences: false,
           });
