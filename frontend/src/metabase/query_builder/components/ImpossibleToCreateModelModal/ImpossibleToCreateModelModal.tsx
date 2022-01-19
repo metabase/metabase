@@ -36,7 +36,7 @@ export function ImpossibleToCreateModelModal({ onClose }: Props) {
       )} or ${(
         <ReferencingQuestionsDocLink key="link-2" />
       )} in your query.)`}</p>
-      <div className="Form-actions flex justify-center py1">
+      <div className="flex justify-center py1">
         <Button primary onClick={onClose}>{t`Okay`}</Button>
       </div>
     </ModalContent>
