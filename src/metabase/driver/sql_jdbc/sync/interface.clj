@@ -22,7 +22,9 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti have-select-privilege?
-  "Check if we have SELECT privileges for given `table`."
+  "Check if we have SELECT privileges for given `table`.
+
+  Default impl is in [[metabase.driver.sql-jdbc.sync.describe-database]]."
   {:arglists '([driver ^java.sql.Connection connection ^String table-schema ^String table-name])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

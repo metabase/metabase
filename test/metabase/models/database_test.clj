@@ -15,6 +15,7 @@
             [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -212,3 +213,11 @@
                 (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
                   (is (nil? (db/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+
+(driver/register! ::test, :abstract? true)
+
+(deftest preserve-driver-namespaces-test
+  (testing "Make sure databases preserve namespaced driver names"
+    (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
+      (is (= ::test
+             (db/select-one-field :engine Database :id db-id))))))

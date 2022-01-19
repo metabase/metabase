@@ -2,7 +2,6 @@
   "Amazon Redshift Driver."
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
@@ -66,10 +65,6 @@
           :dest-table       {:name   (:dest-table-name fk)
                              :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
-
-(defmethod driver/format-custom-field-name :redshift
-  [_ custom-field-name]
-  (str/lower-case custom-field-name))
 
 ;; The docs say TZ should be allowed at the end of the format string, but it doesn't appear to work
 ;; Redshift is always in UTC and doesn't return it's timezone

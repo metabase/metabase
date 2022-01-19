@@ -11,6 +11,7 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.email-test :as et]
             [metabase.http-client :as http]
             [metabase.plugins.classloader :as classloader]
@@ -61,6 +62,7 @@
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
+  sql.qp-test-util/keep-me
   test-users/keep-me
   tt/keep-me
   tu/keep-me
@@ -155,6 +157,9 @@
 
  [sql-jdbc.tu
   sql-jdbc-drivers]
+
+ [sql.qp-test-util
+  with-native-query-testing-context]
 
  [test-users
   fetch-user
