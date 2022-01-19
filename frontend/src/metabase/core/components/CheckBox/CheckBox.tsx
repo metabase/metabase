@@ -92,4 +92,6 @@ const CheckBox = forwardRef(
   },
 );
 
-export default CheckBox;
+export default Object.assign(CheckBox, {
+  Label: CheckBoxLabel,
+});
