@@ -835,6 +835,7 @@
     (db/transaction
       (doseq [[k v] settings]
         (metabase.models.setting/set! k v)))
+    settings
     (catch Throwable e
       (cache/restore-cache!)
       (throw e))))
