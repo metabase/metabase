@@ -55,8 +55,9 @@ function PinnedItemCard({
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
   ) => {
     const target = event.target as HTMLDivElement;
-    // check if the description is wider than the card
-    if (target && target.scrollWidth > target.clientWidth) {
+    const isDescriptionWiderThanCard =
+      target?.scrollWidth > target?.clientWidth;
+    if (isDescriptionWiderThanCard) {
       setShowDescriptionTooltip(true);
     }
   };
