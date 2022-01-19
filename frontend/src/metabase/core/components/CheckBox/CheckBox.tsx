@@ -29,6 +29,7 @@ export interface CheckBoxProps
   size?: number;
   checkedColor?: string;
   uncheckedColor?: string;
+  autoFocus?: boolean;
   onChange?: ChangeEventHandler<HTMLInputElement>;
   onFocus?: FocusEventHandler<HTMLInputElement>;
   onBlur?: FocusEventHandler<HTMLInputElement>;
@@ -44,6 +45,7 @@ const CheckBox = forwardRef(
       size = DEFAULT_SIZE,
       checkedColor = DEFAULT_CHECKED_COLOR,
       uncheckedColor = DEFAULT_UNCHECKED_COLOR,
+      autoFocus,
       onChange,
       onFocus,
       onBlur,
@@ -56,6 +58,7 @@ const CheckBox = forwardRef(
         <CheckBoxInput
           type="checkbox"
           checked={checked}
+          autoFocus={autoFocus}
           onChange={onChange}
           onFocus={onFocus}
           onBlur={onBlur}
