@@ -9,7 +9,7 @@ import {
   mockSessionProperty,
   sidebar,
 } from "__support__/e2e/cypress";
-
+import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 import {
   turnIntoModel,
   assertIsModel,
@@ -21,6 +21,8 @@ import {
   openDetailsSidebar,
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
+
+const { PRODUCTS } = SAMPLE_DATASET;
 
 describe("scenarios > models", () => {
   beforeEach(() => {
@@ -453,6 +455,75 @@ describe("scenarios > models", () => {
 
       cy.findByText("Saved Questions");
       cy.findByText("Sample Dataset");
+    });
+  });
+
+  it("shouldn't allow to turn native questions with variables into models", () => {
+    cy.createNativeQuestion(
+      {
+        native: {
+          query: "SELECT * FROM products WHERE {{ID}}",
+          "template-tags": {
+            ID: {
+              id: "6b8b10ef-0104-1047-1e1b-2492d5954322",
+              name: "ID",
+              display_name: "ID",
+              type: "dimension",
+              dimension: ["field", PRODUCTS.ID, null],
+              "widget-type": "category",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openDetailsSidebar();
+    getDetailsSidebarActions().within(() => {
+      cy.icon("model").click();
+    });
+    modal().within(() => {
+      cy.findByText("Variables in models aren't supported yet");
+      cy.button("Turn this into a model").should("not.exist");
+      cy.icon("close").click();
+    });
+    assertIsQuestion();
+
+    cy.findByText(/Open editor/i).click();
+    cy.get(".ace_content").type(
+      "{leftarrow}{leftarrow}{backspace}{backspace}#",
+    );
+    cy.findByTestId("tag-editor-sidebar").within(() => {
+      cy.get(".AdminSelect").click();
+    });
+    selectFromDropdown("Orders");
+    cy.findByText("Save").click();
+    modal()
+      .findByText("Save")
+      .click();
+
+    turnIntoModel();
+    assertIsModel();
+  });
+
+  it("shouldn't allow using variables in native models", () => {
+    cy.createNativeQuestion({
+      native: { query: "SELECT * FROM products" },
+    }).then(({ body: { id: modelId } }) => {
+      cy.request("PUT", `/api/card/${modelId}`, { dataset: true }).then(() => {
+        cy.visit(`/model/${modelId}/query`);
+        cy.get(".ace_content")
+          .should("be.visible")
+          .as("editor")
+          .type("{movetoend}")
+          .type(" WHERE {{F", {
+            parseSpecialCharSequences: false,
+          });
+        cy.findByTestId("tag-editor-sidebar").should("not.exist");
+        cy.get("@editor").type("{leftarrow}{leftarrow}{backspace}#");
+        cy.findByTestId("tag-editor-sidebar").should("be.visible");
+      });
     });
   });
 
