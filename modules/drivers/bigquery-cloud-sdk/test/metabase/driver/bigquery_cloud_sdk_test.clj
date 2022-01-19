@@ -176,9 +176,10 @@
 (def ^:private bignumeric-val "-7.5E30")
 (def ^:private bigdecimal-val "5.2E35")
 
-(def ^:private bigquery-project-id (-> (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json)
-                                       bigquery.common/service-account-json->service-account-credential
-                                       (.getProjectId)))
+(defn- bigquery-project-id []
+  (-> (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json)
+      bigquery.common/service-account-json->service-account-credential
+      (.getProjectId)))
 
 (defmacro with-numeric-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
@@ -282,7 +283,7 @@
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
                                     "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
           (testing " has project-id-from-credentials set correctly"
-            (is (= bigquery-project-id (get-in temp-db [:details :project-id-from-credentials])))))))))
+            (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
@@ -405,17 +406,15 @@
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
                   (check-card-query-res temp-card)
-                  (is (= bigquery-project-id
+                  (is (= (bigquery-project-id)
                          (get-in (Database db-id)
                                  [:details :project-id-from-credentials]))))))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
-    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
-          tables       (Table :db_id (u/the-id db-filtered))]
-      (is (not (empty? tables)))
-      (doseq [table (Table :db_id (u/the-id db-filtered))]
-        (assert-table-fn table)))))
+    (sync/sync-database! db-filtered {:scan :schema})
+    (doseq [table (Table :db_id (u/the-id db-filtered))]
+      (assert-table-fn table))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
