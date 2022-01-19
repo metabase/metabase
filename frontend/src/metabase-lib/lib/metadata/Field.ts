@@ -43,7 +43,7 @@ import Base from "./Base";
 
 export default class Field extends Base {
   name: string;
-  table: Table;
+  table?: Table;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;

@@ -98,16 +98,16 @@ function MappedFieldPicker({
   // Until it's fetched, we need to pass `null` as `selectedTableId` to avoid invalid selector state
   // This should be removed once DataSelector handles prop changes better
   const selectedTableId =
-    !fieldObject || isVirtualCardId(fieldObject.table.id)
+    !fieldObject || isVirtualCardId(fieldObject.table?.id)
       ? null
-      : fieldObject?.table.id;
+      : fieldObject?.table?.id;
 
   return (
     <SchemaTableAndFieldDataSelector
       className="flex flex-full justify-center align-center"
       selectedDatabaseId={databaseId}
       selectedTableId={selectedTableId}
-      selectedSchemaId={fieldObject?.table.schema?.id}
+      selectedSchemaId={fieldObject?.table?.schema?.id}
       selectedFieldId={selectedFieldId}
       getTriggerElementContent={renderTriggerElement}
       hasTriggerExpandControl={false}
