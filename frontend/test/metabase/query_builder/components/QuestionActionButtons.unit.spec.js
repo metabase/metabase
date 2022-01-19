@@ -21,6 +21,10 @@ const testIdActionPairs = [
 
 describe("QuestionActionButtons", () => {
   let onOpenModal;
+  const question = {
+    isDataset: () => false,
+  };
+
   beforeEach(() => {
     onOpenModal = jest.fn();
   });
@@ -29,7 +33,11 @@ describe("QuestionActionButtons", () => {
     beforeEach(() => {
       const canWrite = false;
       render(
-        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />,
+        <QuestionActionButtons
+          question={question}
+          canWrite={canWrite}
+          onOpenModal={onOpenModal}
+        />,
       );
     });
 
@@ -51,7 +59,11 @@ describe("QuestionActionButtons", () => {
     beforeEach(() => {
       const canWrite = true;
       render(
-        <QuestionActionButtons canWrite={canWrite} onOpenModal={onOpenModal} />,
+        <QuestionActionButtons
+          question={question}
+          canWrite={canWrite}
+          onOpenModal={onOpenModal}
+        />,
       );
     });
 
