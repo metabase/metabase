@@ -88,16 +88,6 @@
   border-color: var(--color-error);
 }
 
-.Form-message {
-  opacity: 0;
-  transition: none;
-}
-
-.Form-message.Form-message--visible {
-  opacity: 1;
-  transition: opacity 500ms linear;
-}
-
 .Form-input:focus:not(.no-focus),
 .Form-field:hover .Form-input:not(.no-focus) {
   border-color: var(--color-brand);

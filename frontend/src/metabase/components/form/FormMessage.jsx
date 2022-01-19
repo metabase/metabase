@@ -1,7 +1,9 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import cx from "classnames";
 import { t } from "ttag";
+
+import { FormMessageStyled } from "./FormMessage.styled";
+
 export const SERVER_ERROR_MESSAGE = t`Server error encountered`;
 export const UNKNOWN_ERROR_MESSAGE = t`Unknown error encountered`;
 
@@ -17,13 +19,15 @@ export default class FormMessage extends Component {
       }
     }
 
-    const classes = cx("Form-message", "px2", className, {
-      "Form-message--visible": !!message,
-      "text-success": formSuccess,
-      "text-error": formError,
-    });
-
-    return <span className={classes}>{message}</span>;
+    return (
+      <FormMessageStyled
+        className={className}
+        visible={!!message}
+        hasSucceeded={formSuccess}
+      >
+        {message}
+      </FormMessageStyled>
+    );
   }
 }
 

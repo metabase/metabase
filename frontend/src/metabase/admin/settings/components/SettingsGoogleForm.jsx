@@ -76,7 +76,7 @@ export default class SettingsGoogleForm extends Component {
           {...settingField("google-auth-auto-create-accounts-domain")}
           title={t`Domain`}
         />
-        <div>
+        <div styled={{ background: "red" }}>
           <FormMessage />
         </div>
         <div>
