@@ -3,7 +3,7 @@ import {
   visualize,
   changeBinningForDimension,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS_ID,
@@ -12,7 +12,7 @@ const {
   PEOPLE,
   PRODUCTS_ID,
   PRODUCTS,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {

@@ -737,7 +737,7 @@
                                     Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
                         :from      [v3_test_data.checkins]
                         :left-join [v3_test_data.Organização Organização__via__venue_id
-                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id ]
+                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id]
                         :limit     [1]}
                       query))))))))
 

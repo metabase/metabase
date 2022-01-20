@@ -15,7 +15,7 @@ export function assertQuestionIsBasedOnModel({
   cy.findAllByText(collection);
   cy.findByText(model);
 
-  cy.findByText("Sample Dataset").should("not.exist");
+  cy.findByText("Sample Database").should("not.exist");
   cy.findByText(table).should("not.exist");
 }
 
@@ -69,7 +69,7 @@ export function assertIsModel() {
     cy.icon("model").should("not.exist");
   });
   cy.findByText("Model management");
-  cy.findByText("Sample Dataset").should("not.exist");
+  cy.findByText("Sample Database").should("not.exist");
 
   // For native
   cy.findByText("This question is written in SQL.").should("not.exist");
@@ -82,7 +82,7 @@ export function assertIsQuestion() {
     cy.icon("model");
   });
   cy.findByText("Model management").should("not.exist");
-  cy.findByText("Sample Dataset");
+  cy.findByText("Sample Database");
 }
 
 export function turnIntoModel() {

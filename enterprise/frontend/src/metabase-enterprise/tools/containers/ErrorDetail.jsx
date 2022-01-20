@@ -10,7 +10,7 @@ import { getIn } from "icepick";
 
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/components/Link";
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";

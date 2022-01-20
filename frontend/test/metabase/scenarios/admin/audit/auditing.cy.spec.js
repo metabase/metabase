@@ -1,8 +1,8 @@
 import { restore, describeWithToken } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { normal } = USERS;
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 const TOTAL_USERS = Object.entries(USERS).length;
 
 const year = new Date().getFullYear();
@@ -117,7 +117,7 @@ describeWithToken("audit > auditing", () => {
 
       cy.findAllByText("Orders, Count").should("have.length", 1);
       cy.findAllByText(ADMIN_QUESTION).should("have.length", 1);
-      cy.findAllByText("Sample Dataset").should("have.length", 4);
+      cy.findAllByText("Sample Database").should("have.length", 4);
       cy.findByText(NORMAL_DASHBOARD);
     });
   });
@@ -135,7 +135,7 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/databases/all");
       cy.findByPlaceholderText("Database name");
       cy.findByText("No results!").should("not.exist");
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText(/Sync Schedule/i);
       cy.contains(year);
     });
@@ -145,7 +145,7 @@ describeWithToken("audit > auditing", () => {
       // Overview tab
       cy.visit("/admin/audit/schemas/overview");
       cy.get("svg").should("have.length", 2);
-      cy.findAllByText("Sample Dataset PUBLIC");
+      cy.findAllByText("Sample Database PUBLIC");
       cy.findAllByText("No results!").should("not.exist");
 
       // All schemas tab
@@ -159,12 +159,12 @@ describeWithToken("audit > auditing", () => {
       cy.visit("/admin/audit/tables/overview");
       cy.findByText("Most-queried tables");
       cy.findAllByText("No results!").should("not.exist");
-      cy.findAllByText("Sample Dataset PUBLIC ORDERS");
+      cy.findAllByText("Sample Database PUBLIC ORDERS");
 
       // *** Will fail when code below works again
-      cy.findAllByText("Sample Dataset PUBLIC PRODUCTS").should("not.exist");
+      cy.findAllByText("Sample Database PUBLIC PRODUCTS").should("not.exist");
       // *** Products were there when creating qs by hand. Creating them by calling the api changes the result here.
-      // cy.wait(1000).findAllByText("Sample Dataset PUBLIC PRODUCTS");
+      // cy.wait(1000).findAllByText("Sample Database PUBLIC PRODUCTS");
       // cy.get(".rowChart")
       //   .first()
       //   .find('[height="30"]')
@@ -197,7 +197,7 @@ describeWithToken("audit > auditing", () => {
       // All questions tab
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
-      cy.findAllByText("Sample Dataset").should("have.length", 5);
+      cy.findAllByText("Sample Database").should("have.length", 5);
       cy.findByText(NORMAL_QUESTION);
       cy.findByText("Orders, Count, Grouped by Created At (year)");
       cy.findByText("4").should("not.exist");

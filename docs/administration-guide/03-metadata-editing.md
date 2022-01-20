@@ -11,6 +11,8 @@ The **Data Model** section of the **Admin Panel** contains settings to edit meta
 
 This page focuses on editing table and column metadata; another page covers [segments and metrics](07-segments-and-metrics.md).
 
+Or are you instead looking for docs on [models](../users-guide/models.md)?
+
 ## Accessing the Data Model page
 
 Click the settings gear in the top right of the Metabase navigation bar, and select **Admin**. Then click on **Data Model** tab from the top menu.

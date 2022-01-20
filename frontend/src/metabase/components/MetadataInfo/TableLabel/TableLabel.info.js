@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 
-import { PRODUCTS } from "__support__/sample_dataset_fixture";
+import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import TableLabel from "./TableLabel";

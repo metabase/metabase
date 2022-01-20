@@ -815,3 +815,12 @@
       (test-integer-setting "-2")
       (is (= -2
              (test-integer-setting))))))
+
+(deftest retired-settings-test
+  (testing "Should not be able to define a setting with a retired name"
+    (with-redefs [setting/retired-setting-names #{"retired-setting"}]
+      (try
+        (defsetting retired-setting (deferred-tru "A retired setting name"))
+        (catch Exception e
+          (is (= "Setting name 'retired-setting' is retired; use a different name instead"
+                 (ex-message e))))))))

@@ -10,8 +10,11 @@ import {
   turnDatasetIntoQuestion,
 } from "metabase/query_builder/actions";
 
+import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {
   Button,
+  MetadataIndicatorContainer,
+  Row,
   SectionContent,
   SectionTitle,
 } from "./DatasetManagementSection.styled";
@@ -28,11 +31,20 @@ DatasetManagementSection.propTypes = {
 };
 
 function DatasetManagementSection({
+  dataset,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
 }) {
   const onEditQueryDefinitionClick = () => {
-    setQueryBuilderMode("dataset");
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "query",
+    });
+  };
+
+  const onCustomizeMetadataClick = () => {
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "metadata",
+    });
   };
 
   return (
@@ -43,6 +55,15 @@ function DatasetManagementSection({
           icon="notebook"
           onClick={onEditQueryDefinitionClick}
         >{t`Edit query definition`}</Button>
+        <Row>
+          <Button
+            icon="label"
+            onClick={onCustomizeMetadataClick}
+          >{t`Customize metadata`}</Button>
+          <MetadataIndicatorContainer>
+            <DatasetMetadataStrengthIndicator dataset={dataset} />
+          </MetadataIndicatorContainer>
+        </Row>
         <Button
           icon="model_framed"
           onClick={turnDatasetIntoQuestion}

@@ -13,6 +13,21 @@
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]))
 
+(deftest sql-source-query-validation-test
+  (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
+    (doseq [params [nil [1000]]]
+      (testing (format "Params = %s" (pr-str params))
+        (is (instance? metabase.driver.sql.query_processor.SQLSourceQuery
+                       (sql.qp/sql-source-query "SELECT *" params)))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Expected native source query to be a string, got: clojure.lang.PersistentArrayMap"
+         (sql.qp/sql-source-query {:native "SELECT *"} nil)))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Expected native source query parameters to be sequential, got: java.lang.Long"
+         (sql.qp/sql-source-query "SELECT *" 1000)))))
+
 (deftest process-mbql-query-keys-test
   (testing "make sure our logic for deciding which order to process keys in the query works as expected"
     (is (= [:source-table :breakout :aggregation :fields :abc :def]
@@ -160,7 +175,7 @@
   (testing "Joins against native SQL queries should get converted appropriately! make sure correct HoneySQL is generated"
     (mt/with-everything-store
       (driver/with-driver :h2
-        (is (= [[(sql.qp/->SQLSourceQuery "SELECT * FROM VENUES;" [])
+        (is (= [[(sql.qp/sql-source-query "SELECT * FROM VENUES;" [])
                  (hx/identifier :table-alias "card")]
                 [:=
                  (hx/with-database-type-info (hx/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
@@ -807,11 +822,12 @@
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/dataset sample-dataset
-      (is (= '{:select    [Q1.CATEGORY  AS Q1__CATEGORY
-                           source.count AS count
-                           source.CC    AS CC
-                           Q1.count     AS Q1__count
-                           Q1.CC        AS Q1__CC]
+      (is (= '{:select    [source.CATEGORY AS CATEGORY
+                           source.count    AS count
+                           source.CC       AS CC
+                           Q1.CATEGORY     AS Q1__CATEGORY
+                           Q1.count        AS Q1__count
+                           Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
                                      (1 + 1)         AS CC]

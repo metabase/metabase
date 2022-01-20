@@ -451,7 +451,7 @@
 
 (defmacro with-bigquery-fks
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
-  other relevant columns (for `sample-dataset`) marked as foreign keys and with `:foreign-keys` a supported feature
+  other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
   when testing against BigQuery, for the BigQuery based driver `driver-or-drivers`. BigQuery does not support Foreign Key
   constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
   manually marked FK relationships for BigQuery."

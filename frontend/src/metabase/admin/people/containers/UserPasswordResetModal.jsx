@@ -11,7 +11,7 @@ import { getUserTemporaryPassword } from "../selectors";
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 

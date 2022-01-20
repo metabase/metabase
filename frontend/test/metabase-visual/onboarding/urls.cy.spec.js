@@ -20,7 +20,7 @@ describe("visual tests > onboarding > URLs", () => {
 
     cy.findByText("Reviews table");
     cy.findByText("First collection");
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
 
     cy.percySnapshot();
   });
@@ -44,17 +44,17 @@ describe("visual tests > onboarding > URLs", () => {
     cy.visit("/browse/");
 
     cy.wait("@database");
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
 
     cy.percySnapshot();
   });
 
-  it("browse/1 (Sample Dataset)", () => {
+  it("browse/1 (Sample Database)", () => {
     cy.intercept("GET", `api/database/1/schemas`).as("schemas");
     cy.visit("/browse/1");
 
     cy.wait("@schemas");
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
     cy.findByText("Reviews");
 
     cy.percySnapshot();

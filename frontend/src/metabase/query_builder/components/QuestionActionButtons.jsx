@@ -6,7 +6,7 @@ import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 import { Container } from "./QuestionActionButtons.styled";
 

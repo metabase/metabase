@@ -27,7 +27,7 @@ To change how the answer to your question is displayed, click on the **Visualiza
 
 If a particular visualization doesn’t really make sense for your answer, that option will appear grayed out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
 
-Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](07-dashboards.md) or [pulse](10-pulses.md).
+Once a question returns results, you can save the question, download the results, or add the question to a [dashboard](07-dashboards.md).
 
 ## Visualization types and options
 
@@ -156,7 +156,7 @@ Pivot tables are not currently available for the following databases in Metabase
 - Google Analytics
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. See [Picking your starting data](custom-questions.md#picking-your-starting-data).
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. 
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 
@@ -314,7 +314,7 @@ When you select the **Map** visualization setting, Metabase will automatically t
 
 ![Region map](images/visualizations/map.png)
 
-- **Pin Map**. If your results contains a latitude and longitude field, Metabase will try to display the results as a pin map of the world. Metabase will put one pin on the map for each row in your table, based on the latitude and longitude fields. You can try this with the Sample Dataset that's included in Metabase: start a new question and select the People table, use `raw data` for your view, and choose the Map option for your visualization. You'll see a map of the world, with each dot representing the latitude and longitude coordinates of a single person from the People table.
+- **Pin Map**. If your results contains a latitude and longitude field, Metabase will try to display the results as a pin map of the world. Metabase will put one pin on the map for each row in your table, based on the latitude and longitude fields. You can try this with the Sample Database that's included in Metabase: start a new question and select the People table, use `raw data` for your view, and choose the Map option for your visualization. You'll see a map of the world, with each dot representing the latitude and longitude coordinates of a single person from the People table.
 
 ![Pin map](images/visualizations/pin-map.png)
 
