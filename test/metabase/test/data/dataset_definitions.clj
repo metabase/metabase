@@ -210,3 +210,10 @@
        (t/offset-time t)                ; time-ltz
        (t/offset-time t)                ; time-tz
        cnt])]])                              ; num-crows
+
+(tx/defdataset dots-in-names
+  [["objects.stuff"
+    [{:field-name "dotted.name", :base-type :type/Text}]
+    [["toucan_cage"]
+     ["four_loko"]
+     ["ouija_board"]]]])

@@ -4,7 +4,6 @@ import path from "path";
 import { spawn } from "child_process";
 
 import fetch from "isomorphic-fetch";
-import { delay } from "../../src/metabase/lib/promise";
 
 export const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
@@ -69,6 +68,17 @@ export const BackendResource = createSharedResource("BackendResource", {
                 process.env["ENTERPRISE_TOKEN"]) ||
               undefined,
             MB_FIELD_FILTER_OPERATORS_ENABLED: "true",
+            MB_USER_DEFAULTS: JSON.stringify({
+              token: "123456",
+              user: {
+                first_name: "Testy",
+                last_name: "McTestface",
+                email: "testy@metabase.test",
+                site_name: "Epic Team",
+              },
+            }),
+            MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
+            MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
@@ -175,4 +185,9 @@ function createSharedResource(
       }
     },
   };
+}
+
+// Copied here from `frontend/src/metabase/lib/promise.js` to decouple Cypress from Typescript
+function delay(duration) {
+  return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }

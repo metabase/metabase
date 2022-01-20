@@ -16,8 +16,11 @@
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- normalize-tests {:style/indent 0} [& {:as group->input->expected}]
-  (tests 'normalize-tokens #'normalize/normalize-tokens group->input->expected))
+(defn- normalize-tests
+  "Convenience for generating a bunch normalization tests. Args should alternate a [[t/testing]] context string and maps
+  of input query -> expected normalized query."
+  [& {:as group-and-input->expected-pairs}]
+  (tests 'normalize-tokens #'normalize/normalize-tokens group-and-input->expected-pairs))
 
 (t/deftest normalize-tokens-test
   (normalize-tests
@@ -232,32 +235,6 @@
                     :target [:dimension [:template-tag "checkin_date"]]
                     :value  "2015-04-01~2015-05-01"}]}}
 
-    "oh yeah, also we don't want to go around trying to normalize template-tag names"
-    {{:type   "native"
-      :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
-               :template_tags {:checkin_date {:name         "checkin_date"
-                                              :display_name "Checkin Date"
-                                              :type         :dimension
-                                              :dimension    ["field-id" 14]}}}}
-     {:type   :native
-      :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
-               :template-tags {"checkin_date" {:name         "checkin_date"
-                                               :display-name "Checkin Date"
-                                               :type         :dimension
-                                               :dimension    [:field-id 14]}}}}}
-
-    "native template tags `:type` should get normalized"
-    {{:native {:query          "SELECT * FROM CATEGORIES WHERE {{names_list}}"
-               "template_tags" {:names_list {:name         "names_list"
-                                             :display_name "Names List"
-                                             :type         "dimension"
-                                             :dimension    ["field-id" 49]}}}}
-     {:native {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
-               :template-tags {"names_list" {:name         "names_list"
-                                             :display-name "Names List"
-                                             :type         :dimension
-                                             :dimension    [:field-id 49]}}}}}
-
     "`:parameters` `:type` should get normalized, but `:value` should not."
     {{:type       "native"
       :parameters [{:type   "text"
@@ -278,6 +255,136 @@
       :parameters [{:type   :text
                     :target [:dimension [:template-tag "names_list"]]
                     :value  ["=" 10 20]}]}}))
+
+(t/deftest normalize-template-tags-test
+  (letfn [(query-with-template-tags [template-tags]
+            {:type   :native
+             :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+                      :template-tags template-tags}})]
+    (normalize-tests
+     "`:template-tags` key should get normalized"
+     {{:type   :native
+       :native {:query          "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+                "template_tags" {"checkin_date" {:name         "checkin_date"
+                                                 :display-name "Checkin Date"
+                                                 :type         :dimension
+                                                 :dimension    [:field 14 nil]}}}}
+      {:type   :native
+       :native {:query         "SELECT COUNT(*) FROM \"PUBLIC\".\"CHECKINS\" WHERE {{checkin_date}}"
+                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                :display-name "Checkin Date"
+                                                :type         :dimension
+                                                :dimension    [:field 14 nil]}}}}}
+
+     "Don't try to normalize template-tag name/display name. Names should get converted to strings."
+     {(query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display_name "looks/like-a-keyword"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "looks/like-a-keyword"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})
+
+      (query-with-template-tags
+       {:checkin_date {:name         :checkin_date
+                       :display-name "Checkin Date"
+                       :type         :dimension
+                       :dimension    [:field 14 nil]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})}
+
+     "Actually, `:name` should just get copied over from the map key if it's missing or different"
+     {(query-with-template-tags
+       {"checkin_date" {:display_name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})
+
+      (query-with-template-tags
+       {"checkin_date" {:name         "something_else"
+                        :display_name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field 14 nil]}})}
+
+     "`:type` should get normalized"
+     {(query-with-template-tags
+       {:names_list {:name         "names_list"
+                     :display_name "Names List"
+                     :type         "dimension"
+                     :dimension    ["field-id" 49]}})
+      (query-with-template-tags
+       {"names_list" {:name         "names_list"
+                      :display-name "Names List"
+                      :type         :dimension
+                      :dimension    [:field-id 49]}})}
+
+     "`:widget-type` should get normalized"
+     {(query-with-template-tags
+       {:names_list {:name         "names_list"
+                     :display_name "Names List"
+                     :type         "dimension"
+                     :widget-type  "string/="
+                     :dimension    ["field-id" 49]}})
+      (query-with-template-tags
+       {"names_list" {:name         "names_list"
+                      :display-name "Names List"
+                      :type         :dimension
+                      :widget-type  :string/=
+                      :dimension    [:field-id 49]}})}
+
+     "`:dimension` should get normalized"
+     ;; doesn't get converted to `:field` here because that happens during the canonicalization step.
+     {(query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display_name "Checkin Date"
+                        :type         :dimension
+                        :dimension    ["field_id" 14]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :dimension    [:field-id 14]}})}
+
+     "Don't normalize `:default` values"
+     {(query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :widget-type  :string/=
+                        :dimension    [:field 1 nil]
+                        :default      ["a" "b"]}})
+      (query-with-template-tags
+       {"checkin_date" {:name         "checkin_date"
+                        :display-name "Checkin Date"
+                        :type         :dimension
+                        :widget-type  :string/=
+                        :dimension    [:field 1 nil]
+                        :default      ["a" "b"]}})}
+
+     "Don't keywordize keys that aren't present in template tag maps"
+     {{:database 1
+       :type     :native
+       :native   {:template-tags {"x" {}}}}
+
+      ;; `:name` still gets copied over from the map key.
+      {:database 1
+       :type     :native
+       :native   {:template-tags {"x" {:name "x"}}}}})))
 
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
@@ -307,16 +414,7 @@
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
      {:database 4,
       :type     :query
-      :query    {:source-query {:source-table 1, :aggregation :rows}}}}
-
-    "Don't keywordize keys that aren't present in template tag maps"
-    {{:database 1
-      :type     :native
-      :native   {:template-tags {"x" {}}}}
-
-     {:database 1
-      :type     :native
-      :native   {:template-tags {"x" {}}}}}))
+      :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
 
 
 

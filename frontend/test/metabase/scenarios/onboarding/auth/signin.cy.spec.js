@@ -1,7 +1,10 @@
 import { browse, restore } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
-const sizes = [[1280, 800], [640, 360]];
+const sizes = [
+  [1280, 800],
+  [640, 360],
+];
 const { admin } = USERS;
 
 describe("scenarios > auth > signin", () => {
@@ -83,7 +86,7 @@ describe("scenarios > auth > signin", () => {
       cy.url().should("contain", "auth/login");
       cy.findByText("I seem to have forgotten my password").click();
       cy.url().should("contain", "auth/forgot_password");
-      cy.findByText("Back to login").click();
+      cy.findByText("Back to sign in").click();
       cy.url().should("contain", "auth/login");
     });
   });

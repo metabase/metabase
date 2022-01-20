@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -15,35 +16,7 @@ import FilterPopoverFooter from "./FilterPopoverFooter";
 import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-
-import type Dimension from "metabase-lib/lib/Dimension";
-
-type Props = {
-  query: StructuredQuery,
-  filter?: Filter,
-  onChange?: (filter: ?Filter) => void,
-  // NOTE: this should probably be called onCommit
-  onChangeFilter?: (filter: Filter) => void,
-  onClose: () => void,
-
-  style?: {},
-  className?: string,
-
-  fieldPickerTitle?: string,
-  showFieldPicker?: boolean,
-  isTopLevel?: boolean,
-  isSidebar?: boolean,
-
-  showCustom?: boolean,
-};
-
-type State = {
-  filter: ?Filter,
-  choosingField: boolean,
-  editingFilter: boolean,
-};
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -53,16 +26,13 @@ const CUSTOM_SECTION_NAME = t`Custom Expression`;
 // NOTE: this is duplicated from FilterPopover but allows you to add filters on
 // the last two "stages" of a nested query, e.x. post aggregation filtering
 export default class ViewFilterPopover extends Component {
-  props: Props;
-  state: State;
-
   static defaultProps = {
     style: {},
     showFieldPicker: true,
     showCustom: true,
   };
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     const filter = props.filter instanceof Filter ? props.filter : null;
     this.state = {
@@ -72,7 +42,7 @@ export default class ViewFilterPopover extends Component {
     };
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
     if (filter && this.props.query !== nextProps.query) {
@@ -82,14 +52,14 @@ export default class ViewFilterPopover extends Component {
     }
   }
 
-  setFilter(filter: ?Filter) {
+  setFilter(filter) {
     this.setState({ filter });
     if (this.props.onChange) {
       this.props.onChange(filter);
     }
   }
 
-  handleUpdateAndCommit = (newFilter: ?Filter) => {
+  handleUpdateAndCommit = newFilter => {
     const base = this.state.filter || new Filter([], null, this.props.query);
     const filter = base.set(newFilter);
     this.setState({ filter }, () => {
@@ -101,7 +71,7 @@ export default class ViewFilterPopover extends Component {
     this.handleCommitFilter(this.state.filter, this.props.query);
   };
 
-  handleCommitFilter = (filter: ?Filter, query: StructuredQuery) => {
+  handleCommitFilter = (filter, query) => {
     if (filter && !(filter instanceof Filter)) {
       filter = new Filter(filter, null, query);
     }
@@ -113,7 +83,7 @@ export default class ViewFilterPopover extends Component {
     }
   };
 
-  handleDimensionChange = (dimension: Dimension) => {
+  handleDimensionChange = dimension => {
     let filter = this.state.filter;
     if (!filter || filter.query() !== dimension.query()) {
       filter = new Filter(
@@ -128,7 +98,7 @@ export default class ViewFilterPopover extends Component {
     this.setState({ choosingField: false });
   };
 
-  handleFilterChange = (newFilter: ?Filter) => {
+  handleFilterChange = newFilter => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
     this.setFilter(filter.set(newFilter));
   };

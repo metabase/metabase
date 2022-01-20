@@ -1,10 +1,11 @@
 import {
   restore,
   popover,
-  createNativeQuestion,
   openOrdersTable,
   remapDisplayValueToFK,
   visitQuestionAdhoc,
+  visualize,
+  getDimensionByName,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
@@ -196,11 +197,16 @@ describe("scenarios > question > nested", () => {
   });
 
   it.skip("should show all filter options for a nested question (metabase#13186)", () => {
-    cy.log("Create and save native question Q1");
+    const nativeQuestionDetails = {
+      name: "13816_Q1",
+      native: {
+        query: "SELECT * FROM PRODUCTS",
+      },
+    };
 
-    createNativeQuestion("13816_Q1", "SELECT * FROM PRODUCTS").then(
+    cy.createNativeQuestion(nativeQuestionDetails).then(
       ({ body: { id: Q1_ID } }) => {
-        cy.log("Convert it to `query` and save as Q2");
+        cy.log("Convert Q1 to `query` and save as Q2");
         cy.createQuestion({
           name: "13816_Q2",
           query: {
@@ -210,7 +216,7 @@ describe("scenarios > question > nested", () => {
       },
     );
 
-    cy.createDashboard("13186D").then(({ body: { id: DASBOARD_ID } }) => {
+    cy.createDashboard().then(({ body: { id: DASBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASBOARD_ID}`);
     });
 
@@ -223,7 +229,8 @@ describe("scenarios > question > nested", () => {
 
     // Add filter to the dashboard...
     cy.icon("filter").click();
-    cy.findByText("Other Categories").click();
+    cy.findByText("Text or Category").click();
+    cy.findByText("Dropdown").click();
     // ...and try to connect it to the question
     cy.findByText("Select…").click();
 
@@ -378,7 +385,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it.skip("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
+  it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
@@ -416,13 +423,11 @@ describe("scenarios > question > nested", () => {
      *  Extract it if we have the need for it anywhere else
      */
     function isSelected(text) {
-      cy.findByText(text)
-        .closest(".List-item")
-        .should($el => {
-          const className = $el[0].className;
-
-          expect(className).to.contain("selected");
-        });
+      getDimensionByName({ name: text }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
     }
   });
 
@@ -478,7 +483,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  describe.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+  describe("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
     it("should work with 'between' date filter (metabase#15352-1)", () => {
       assertOnFilter({
         name: "15352-1",
@@ -566,7 +571,8 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
+      visualize();
+
       cy.get("@consoleWarn").should(
         "not.be.calledWith",
         "Removing invalid MBQL clause",
@@ -578,12 +584,12 @@ describe("scenarios > question > nested", () => {
       cy.findByText("Pick a column to group by").click();
       cy.findByText("CAT").click();
 
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
+      visualize();
+
       cy.findAllByRole("button")
         .contains("Summarize")
         .click();
-      cy.findByText("Add a metric").click();
+      cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
       popover()
         .findByText("VAL")

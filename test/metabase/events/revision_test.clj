@@ -23,6 +23,7 @@
    :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
+   :dataset                false
    :description            nil
    :display                :table
    :enable_embedding       false
@@ -38,6 +39,7 @@
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
+   :cache_ttl    nil
    :name         (:name dashboard)})
 
 (deftest card-create-test

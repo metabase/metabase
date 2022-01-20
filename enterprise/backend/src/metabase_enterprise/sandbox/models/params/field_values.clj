@@ -6,7 +6,7 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [pretty.core :as pretty]
             [toucan.db :as db]
@@ -29,7 +29,7 @@
       :field_id (u/the-id field)})
    ;; TODO -- shouldn't we return sandboxed human-readable values as well??
    ;;
-   ;; Expire entires older than 30 days so we don't have entries for users and/or fields that
+   ;; Expire entries older than 30 days so we don't have entries for users and/or fields that
    ;; no longer exists hanging around.
    ;; (`clojure.core.cache/TTLCacheQ` (which `memoize` uses underneath) evicts all stale entries on
    ;; every cache miss)
@@ -83,5 +83,5 @@
   "Enterprise version of the fetch FieldValues for current User logic. Uses our EE strategy pattern adapter: if EE
   features *are* enabled, forwards method invocations to `impl`; if EE features *are not* enabled, forwards method
   invocations to the default OSS impl."
-  (ee-strategy-impl/reify-ee-strategy-impl #'settings.metastore/enable-sandboxes? impl params.field-values/default-impl
+  (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-sandboxes? impl params.field-values/default-impl
     params.field-values/FieldValuesForCurrentUser))

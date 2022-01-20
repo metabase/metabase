@@ -1,6 +1,5 @@
 .babel_cache
 docs/*
-OSX/*
 target/*
 .circleci
 .cpcache

@@ -18,7 +18,7 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  UPDATE_TEMPLATE_TAG,
+  SET_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
   UPDATE_QUESTION,
   RUN_QUERY,
@@ -36,6 +36,7 @@ import {
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
+  CANCEL_DATASET_CHANGES,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -65,7 +66,7 @@ const DEFAULT_UI_CONTROLS = {
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" or "notebook"
+  queryBuilderMode: false, // "view" | "notebook" | "dataset"
   snippetCollectionId: null,
 };
 
@@ -258,7 +259,9 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
+    [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
+
+    [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
@@ -335,6 +338,7 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
@@ -350,6 +354,7 @@ export const queryResults = handleActions(
       next: (state, { payload }) => (payload ? [payload] : state),
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
@@ -380,6 +385,9 @@ export const queryStartTime = handleActions(
 
 export const parameterValues = handleActions(
   {
+    [INITIALIZE_QB]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
         value == null ? dissoc(state, id) : assoc(state, id, value),

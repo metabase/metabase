@@ -9,7 +9,7 @@
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
-            [metabase.public-settings.metastore-test :as metastore-test]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -32,23 +32,23 @@
 (deftest sso-prereqs-test
   (testing "SSO requests fail if SAML hasn't been enabled"
     (mt/with-temporary-setting-values [jwt-enabled false]
-      (saml-test/with-valid-metastore-token
+      (saml-test/with-valid-premium-features-token
         (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))
 
-      (testing "SSO requests fail if they don't have a valid metastore token"
-        (metastore-test/with-metastore-token-features nil
+      (testing "SSO requests fail if they don't have a valid premium-features token"
+        (premium-features-test/with-premium-features nil
           (is (= "SSO requires a valid token"
                  (saml-test/client :get 403 "/auth/sso")))))))
 
   (testing "SSO requests fail if SAML is enabled but hasn't been configured"
-    (saml-test/with-valid-metastore-token
+    (saml-test/with-valid-premium-features-token
       (mt/with-temporary-setting-values [jwt-enabled true]
         (is (= "JWT SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))))
 
   (testing "The IdP provider certificate must also be included for SSO to be configured"
-    (saml-test/with-valid-metastore-token
+    (saml-test/with-valid-premium-features-token
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri]
         (is (= "JWT SSO has not been enabled and/or configured"
@@ -63,7 +63,7 @@
 (defmacro ^:private with-jwt-default-setup [& body]
   `(disable-other-sso-types
     (fn []
-      (saml-test/with-valid-metastore-token
+      (saml-test/with-valid-premium-features-token
         (saml-test/call-with-login-attributes-cleared!
          (fn []
            (call-with-default-jwt-config
@@ -77,7 +77,16 @@
                                                          {:request-options {:redirect-strategy :none}}
                                                          :redirect default-redirect-uri)
             redirect-url (get-in result [:headers "Location"])]
-        (is (str/starts-with? redirect-url default-idp-uri))))))
+        (is (str/starts-with? redirect-url default-idp-uri)))))
+  (testing (str "JWT configured with a redirect-uri containing query params, "
+                "a GET request should result in a redirect to the IdP as a correctly formatted URL (#13078)")
+    (with-jwt-default-setup
+      (mt/with-temporary-setting-values [jwt-identity-provider-uri "http://test.idp.metabase.com/login?some_param=yes"]
+        (let [result       (saml-test/client-full-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :redirect default-redirect-uri)
+              redirect-url (get-in result [:headers "Location"])]
+          (is (str/includes? redirect-url "&return_to=")))))))
 
 (deftest happy-path-test
   (testing (str "Happy path login, valid JWT, checks to ensure the user was logged in successfully and the redirect to "

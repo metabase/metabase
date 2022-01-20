@@ -88,14 +88,17 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
           },
           display: "line",
         }).then(({ body: { id: CARD_ID } }) => {
-          cy.createDashboard(DASHBOARD_NAME).then(
+          cy.createDashboard({ name: DASHBOARD_NAME }).then(
             ({ body: { id: DASHBOARD_ID } }) => {
               // Prepare to wait for this specific XHR:
               // We need to do this because Cypress sees the string that is "card title" before card is fully rendered.
               // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
               // Cypress was complaining it cannot click on a detached element.
               cy.server();
-              cy.route("POST", `/api/card/${CARD_ID}/query`).as("cardQuery");
+              cy.route(
+                "POST",
+                `/api/dashboard/${DASHBOARD_ID}/card/${CARD_ID}/query`,
+              ).as("cardQuery");
 
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -139,68 +142,71 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             ],
           },
         }).then(({ body: { id: QUESTION_ID } }) => {
-          cy.createDashboard("13415D").then(
-            ({ body: { id: DASHBOARD_ID } }) => {
-              cy.log("Add filter with the default value to the dashboard");
+          cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+            cy.log("Add filter with the default value to the dashboard");
 
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-                parameters: [
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              parameters: [
+                {
+                  id: "91bace6e",
+                  name: "Category",
+                  slug: "category",
+                  type: "category",
+                  default: ["Doohickey"],
+                },
+              ],
+            });
+
+            cy.log("Add previously created question to the dashboard");
+
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              cy.log("Connect filter to that question");
+
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
                   {
-                    id: "91bace6e",
-                    name: "Category",
-                    slug: "category",
-                    type: "category",
-                    default: ["Doohickey"],
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 10,
+                    sizeY: 8,
+                    parameter_mappings: [
+                      {
+                        parameter_id: "91bace6e",
+                        card_id: QUESTION_ID,
+                        target: [
+                          "dimension",
+                          [
+                            "field",
+                            PRODUCTS.CATEGORY,
+                            { "source-field": ORDERS.PRODUCT_ID },
+                          ],
+                        ],
+                      },
+                    ],
                   },
                 ],
               });
+            });
+            cy.server();
+            cy.route(
+              "POST",
+              `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+            ).as("cardQuery");
+            cy.route("POST", `/api/dataset`).as("dataset");
 
-              cy.log("Add previously created question to the dashboard");
+            cy.visit(`/dashboard/${DASHBOARD_ID}`);
 
-              cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cardId: QUESTION_ID,
-              }).then(({ body: { id: DASH_CARD_ID } }) => {
-                cy.log("Connect filter to that question");
+            cy.wait("@cardQuery");
+            cy.findByText(QUESTION_NAME).click();
 
-                cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                  cards: [
-                    {
-                      id: DASH_CARD_ID,
-                      card_id: QUESTION_ID,
-                      row: 0,
-                      col: 0,
-                      sizeX: 10,
-                      sizeY: 8,
-                      parameter_mappings: [
-                        {
-                          parameter_id: "91bace6e",
-                          card_id: QUESTION_ID,
-                          target: [
-                            "dimension",
-                            ["field", PRODUCTS.CATEGORY, null],
-                          ],
-                        },
-                      ],
-                    },
-                  ],
-                });
-              });
-              cy.server();
-              cy.route("POST", `/api/card/${QUESTION_ID}/query`).as(
-                "cardQuery",
-              );
-              cy.route("POST", `/api/dataset`).as("dataset");
-
-              cy.visit(`/dashboard/${DASHBOARD_ID}`);
-
-              cy.wait("@cardQuery");
-              cy.findByText(QUESTION_NAME).click();
-
-              cy.wait("@dataset");
-              cy.findByText("Category is Doohickey");
-              cy.findByText("177"); // Doohickeys for 2016
-            },
-          );
+            cy.wait("@dataset");
+            cy.findByText("Category is Doohickey");
+            cy.findByText("177"); // Doohickeys for 2016
+          });
         });
       });
     });
@@ -216,14 +222,16 @@ function clickScalarCardTitle(card_name) {
 }
 
 function addCardToNewDashboard(dashboard_name, card_id) {
-  cy.createDashboard(dashboard_name).then(({ body: { id: DASHBOARD_ID } }) => {
-    // Add a card to it (with predefined size 6,4 simply for readability)
-    cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-      cardId: card_id,
-      sizeX: 6,
-      sizeY: 4,
-    });
-    // Visit newly created dashboard
-    cy.visit(`/dashboard/${DASHBOARD_ID}`);
-  });
+  cy.createDashboard({ name: dashboard_name }).then(
+    ({ body: { id: DASHBOARD_ID } }) => {
+      // Add a card to it (with predefined size 6,4 simply for readability)
+      cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+        cardId: card_id,
+        sizeX: 6,
+        sizeY: 4,
+      });
+      // Visit newly created dashboard
+      cy.visit(`/dashboard/${DASHBOARD_ID}`);
+    },
+  );
 }

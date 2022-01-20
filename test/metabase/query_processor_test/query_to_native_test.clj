@@ -5,6 +5,7 @@
             [metabase.models.permissions :as perms]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [schema.core :as s]))
 
 (deftest query->native-test
@@ -29,7 +30,16 @@
               :type       :native
               :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
                            :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
-              :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "3"}]})))))
+              :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "3"}]}))))
+  (testing "If query is already native, `query->native` should not execute the query (metabase#13572)"
+    ;; 1000,000,000 rows, no way this will finish in 2 seconds if executed
+    (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]
+      (u/with-timeout 2000
+        (is (= {:query long-query}
+               (qp/query->native
+                {:database (mt/id)
+                 :type     :native
+                 :native   {:query long-query}})))))))
 
 ;; If user permissions are bound, we should do permissions checking when you call `query->native`; you should need
 ;; native query execution permissions for the DB in question plus the perms needed for the original query in order to
@@ -39,7 +49,7 @@
   (try
     (binding [api/*current-user-id*              Integer/MAX_VALUE
               api/*current-user-permissions-set* (delay (cond-> #{}
-                                                          object-perms? (conj (perms/object-path database-id "PUBLIC" source-table-id))
+                                                          object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
                                                           native-perms? (conj (perms/adhoc-native-query-path database-id))))]
       (qp/query->native query))
     (catch clojure.lang.ExceptionInfo e

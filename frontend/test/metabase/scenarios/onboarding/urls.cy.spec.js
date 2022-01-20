@@ -1,5 +1,5 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 
 describe("URLs", () => {
   beforeEach(() => {
@@ -11,7 +11,7 @@ describe("URLs", () => {
     ["/", "/browse"].forEach(url => {
       it(`should slugify database name when opening it from "${url}"`, () => {
         cy.visit(url);
-        cy.findByText("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Dataset").click();
         cy.findByText("Sample Dataset");
         cy.location("pathname").should("eq", "/browse/1-sample-dataset");
       });

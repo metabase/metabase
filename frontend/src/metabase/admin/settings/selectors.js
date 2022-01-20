@@ -3,8 +3,10 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
+import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -13,14 +15,13 @@ import {
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
-import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-
-import { SettingsCloudStoreLink } from "./components/SettingsCloudStoreLink";
+import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
-import SettingsSlackForm from "./components/SettingsSlackForm";
+import SlackSettings from "./slack/containers/SlackSettings";
+import { trackTrackingPermissionChanged } from "./analytics";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -36,10 +37,12 @@ function updateSectionsWithPlugins(sections) {
     // the update functions may change the key ordering inadvertently
     // see: https://github.com/aearly/icepick/issues/48
     // therefore, re-sort the reduced object according to the original key order
-    const reSortFn = ([, aVal], [, bVal]) =>
-      aVal && bVal && aVal.order - bVal.order;
+    const sortByOrder = (
+      [, { order: order1 = Number.MAX_VALUE }],
+      [, { order: order2 = Number.MAX_VALUE }],
+    ) => order1 - order2;
 
-    return Object.fromEntries(Object.entries(reduced).sort(reSortFn));
+    return Object.fromEntries(Object.entries(reduced).sort(sortByOrder));
   } else {
     return sections;
   }
@@ -85,6 +88,12 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
         type: "boolean",
+        onChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
+        onBeforeChanged: (oldValue, newValue) => {
+          trackTrackingPermissionChanged(newValue);
+        },
       },
       {
         key: "humanization-strategy",
@@ -179,27 +188,8 @@ const SECTIONS = updateSectionsWithPlugins({
   slack: {
     name: "Slack",
     order: 5,
-    component: SettingsSlackForm,
-    settings: [
-      {
-        key: "slack-token",
-        display_name: t`Slack API Token`,
-        description: "",
-        placeholder: t`Enter the token you received from Slack`,
-        type: "string",
-        required: false,
-        autoFocus: true,
-      },
-      {
-        key: "metabot-enabled",
-        display_name: "MetaBot",
-        type: "boolean",
-        // TODO: why do we have "defaultValue" here in addition to the "default" specified by the backend?
-        defaultValue: false,
-        required: true,
-        autoFocus: false,
-      },
-    ],
+    component: SlackSettings,
+    settings: [],
   },
   authentication: {
     name: t`Authentication`,
@@ -336,8 +326,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings => !settings["enable-embedding"],
       },
       {
-        widget: EmbeddingLevel,
-        getHidden: settings => !settings["enable-embedding"],
+        widget: EmbeddingCustomizationInfo,
+        getHidden: settings =>
+          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
       },
       {
         key: "embedding-secret-key",
@@ -357,11 +348,22 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: EmbeddedQuestionListing,
         getHidden: settings => !settings["enable-embedding"],
       },
+      {
+        widget: PremiumEmbeddingLinkWidget,
+        getHidden: settings =>
+          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+      },
     ],
+  },
+  license: {
+    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
+    order: 11,
+    component: SettingsLicense,
+    settings: [],
   },
   caching: {
     name: t`Caching`,
-    order: 11,
+    order: 12,
     settings: [
       {
         key: "enable-query-caching",
@@ -393,22 +395,6 @@ const SECTIONS = updateSectionsWithPlugins({
   },
 });
 
-if (MetabaseSettings.isHosted()) {
-  const allSections = Object.values(SECTIONS);
-  const lastSection = _.max(allSections, "order");
-  SECTIONS.cloud = {
-    name: t`Cloud`,
-    order: lastSection.order + 1,
-    settings: [
-      {
-        key: "store-link",
-        display_name: t`Cloud Settings`,
-        widget: SettingsCloudStoreLink,
-      },
-    ],
-  };
-}
-
 export const getSettings = createSelector(
   state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
@@ -420,52 +406,43 @@ export const getSettings = createSelector(
     ),
 );
 
-export const getSettingValues = createSelector(
-  getSettings,
-  settings => {
-    const settingValues = {};
-    for (const setting of settings) {
-      settingValues[setting.key] = setting.value;
-    }
-    return settingValues;
-  },
-);
+export const getSettingValues = createSelector(getSettings, settings => {
+  const settingValues = {};
+  for (const setting of settings) {
+    settingValues[setting.key] = setting.value;
+  }
+  return settingValues;
+});
 
-export const getNewVersionAvailable = createSelector(
-  getSettings,
-  settings => {
-    return MetabaseSettings.newVersionAvailable(settings);
-  },
-);
+export const getNewVersionAvailable = createSelector(getSettings, settings => {
+  return MetabaseSettings.newVersionAvailable(settings);
+});
 
-export const getSections = createSelector(
-  getSettings,
-  settings => {
-    if (!settings || _.isEmpty(settings)) {
-      return {};
-    }
+export const getSections = createSelector(getSettings, settings => {
+  if (!settings || _.isEmpty(settings)) {
+    return {};
+  }
 
-    const settingsByKey = _.groupBy(settings, "key");
-    const sectionsWithAPISettings = {};
-    for (const [slug, section] of Object.entries(SECTIONS)) {
-      const settings = section.settings.map(function(setting) {
-        const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key][0];
-        if (apiSetting) {
-          return {
-            placeholder: apiSetting.default,
-            ...apiSetting,
-            ...setting,
-          };
-        } else {
-          return setting;
-        }
-      });
-      sectionsWithAPISettings[slug] = { ...section, settings };
-    }
-    return sectionsWithAPISettings;
-  },
-);
+  const settingsByKey = _.groupBy(settings, "key");
+  const sectionsWithAPISettings = {};
+  for (const [slug, section] of Object.entries(SECTIONS)) {
+    const settings = section.settings.map(function(setting) {
+      const apiSetting =
+        settingsByKey[setting.key] && settingsByKey[setting.key][0];
+      if (apiSetting) {
+        return {
+          placeholder: apiSetting.default,
+          ...apiSetting,
+          ...setting,
+        };
+      } else {
+        return setting;
+      }
+    });
+    sectionsWithAPISettings[slug] = { ...section, settings };
+  }
+  return sectionsWithAPISettings;
+});
 
 export const getActiveSectionName = (state, props) => props.params.splat;
 

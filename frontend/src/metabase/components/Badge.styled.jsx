@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
 const propTypes = {
-  to: PropTypes.string,
+  to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
 };
 
 function RawMaybeLink({ to, ...props }) {
@@ -25,7 +25,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   align-items: center;
   font-size: 0.875em;
   font-weight: bold;
-  color: ${color("text-medium")};
+  color: ${props => color(props.inactiveColor)};
 
   :hover {
     ${props => (props.to || props.onClick) && hoverStyle}

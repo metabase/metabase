@@ -2,34 +2,37 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getElevatedEngines } from "metabase/lib/engine";
 import ExternalLink from "metabase/components/ExternalLink";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
-import getFieldsForMongo from "./mongo-fields";
 
+import getFieldsForMongo from "./mongo-fields";
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
+import EngineWidget from "metabase/admin/databases/components/widgets/EngineWidget";
 
 const DATABASE_DETAIL_OVERRIDES = {
-  "tunnel-enabled": (engine, details, id) => ({
-    title: t`Use an SSH-tunnel for database connections`,
-    description: t`Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.`,
+  "tunnel-enabled": () => ({
+    title: t`Use an SSH-tunnel`,
+    description: getSshDescription(),
   }),
-  "use-jvm-timezone": (engine, details, id) => ({
+  "use-jvm-timezone": () => ({
     title: t`Use the Java Virtual Machine (JVM) timezone`,
-    description: t`We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.`,
+    description: t`We suggest you leave this off unless you plan on doing a lot of manual timezone casting with this data.`,
   }),
-  "include-user-id-and-hash": (engine, details, id) => ({
+  "include-user-id-and-hash": () => ({
     title: t`Include User ID and query hash in queries`,
-    description: t`When on, Metabase User ID and query hash get appended to queries on this database, which can be useful for auditing and debugging. However, this causes each query to look distinct, preventing BigQuery from returning cached results, which may increase your costs.`,
+    description: t`This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.`,
   }),
-  "use-srv": (engine, details, id) => ({
-    title: t`Use DNS SRV when connecting`,
-    description: t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`,
+  "use-srv": () => ({
+    title: t`Connect using DNS SRV`,
+    description: t`If you're connecting to an Atlas cluster, you might need to turn this on. Note that your provided host must be a fully qualified domain name.`,
   }),
-  "client-id": (engine, details, id) => ({
+  "client-id": (engine, details) => ({
     description: getClientIdDescription(engine, details),
   }),
-  "auth-code": (engine, details, id) => ({
+  "auth-code": (engine, details) => ({
     description: (
       <div>
         <div>{getAuthCodeLink(engine, details)}</div>
@@ -55,27 +58,101 @@ const DATABASE_DETAIL_OVERRIDES = {
       return null;
     },
   }),
-  "tunnel-private-key": (engine, details, id) => ({
+  "tunnel-private-key": () => ({
     title: t`SSH private key`,
     placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
-  "tunnel-private-key-passphrase": (engine, details, id) => ({
+  "tunnel-private-key-passphrase": () => ({
     title: t`Passphrase for the SSH private key`,
   }),
-  "tunnel-auth-option": (engine, details, id) => ({
-    title: t`SSH Authentication`,
+  "tunnel-auth-option": () => ({
+    title: t`SSH authentication`,
     options: [
       { name: t`SSH Key`, value: "ssh-key" },
       { name: t`Password`, value: "password" },
     ],
   }),
-  "ssl-cert": (engine, details, id) => ({
+  "ssl-cert": () => ({
     title: t`Server SSL certificate chain`,
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "schedules.metadata_sync": () => ({
+    name: "schedules.metadata_sync",
+    type: MetadataSyncScheduleWidget,
+    normalize: value => value,
+  }),
+  "schedules.cache_field_values": () => ({
+    name: "schedules.cache_field_values",
+    type: CacheFieldValuesScheduleWidget,
+    normalize: value => value,
+  }),
+  auto_run_queries: () => ({
+    name: "auto_run_queries",
+    initial: undefined,
+  }),
+  refingerprint: () => ({
+    name: "refingerprint",
+  }),
 };
+
+function getEngineName(engine) {
+  const engineInfo = ENGINES[engine];
+  return engineInfo != null ? engineInfo["driver-name"] : t`Database`;
+}
+
+function getEngineInfo(engine, details, id) {
+  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
+  switch (engine) {
+    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
+    case "bigquery":
+      return getFieldsForBigQuery(details);
+    // Mongo has special logic to switch between a connection URI and broken out fields
+    case "mongo":
+      return getFieldsForMongo(details, engineInfo, id);
+    default:
+      return engineInfo;
+  }
+}
+
+function shouldShowEngineProvidedField(field, details) {
+  const detailAndValueRequiredToShowField = field.visibleIf;
+
+  if (detailAndValueRequiredToShowField) {
+    const pred = currentValue => {
+      const [detail, expectedDetailValue] = currentValue;
+
+      if (Array.isArray(expectedDetailValue)) {
+        // if the expectedDetailValue is itself an array, then consider the condition satisfied if any of those values
+        // match the current detail value
+        return expectedDetailValue.includes(details[detail]);
+      } else {
+        return details[detail] === expectedDetailValue;
+      }
+    };
+
+    // check all entries in the visible-if map, and only show this field if all key/values are satisfied
+    // (i.e. boolean AND)
+    return Object.entries(detailAndValueRequiredToShowField).every(pred);
+  }
+
+  return true;
+}
+
+function getSshDescription() {
+  const link = (
+    <ExternalLink
+      href={MetabaseSettings.docsUrl(
+        "administration-guide/ssh-tunnel-for-database-connections",
+      )}
+    >
+      {t`Learn more`}
+    </ExternalLink>
+  );
+
+  return jt`If a direct connection to your database isn't possible, you may want to use an SSH tunnel. ${link}.`;
+}
 
 const AUTH_URL_PREFIXES = {
   bigquery:
@@ -96,21 +173,6 @@ const CREDENTIALS_URL_PREFIXES = {
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
   googleanalytics:
     "https://console.developers.google.com/apis/credentials/oauthclient?project=",
-};
-
-export const DEFAULT_SCHEDULES = {
-  cache_field_values: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: 0,
-    schedule_type: "daily",
-  },
-  metadata_sync: {
-    schedule_day: null,
-    schedule_frame: null,
-    schedule_hour: null,
-    schedule_type: "hourly",
-  },
 };
 
 function concatTrimmed(a, b) {
@@ -165,6 +227,7 @@ function getAuthCodeLink(engine, details) {
     );
   }
 }
+
 function getAuthCodeEnableAPILink(engine, details) {
   // for Google Analytics we need to show a link for people to go to the Console to enable the GA API
   if (AUTH_URL_PREFIXES[engine] && details["client-id"]) {
@@ -192,48 +255,6 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
-function getEngineInfo(engine, details, id) {
-  const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
-  switch (engine) {
-    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
-    case "bigquery":
-      return getFieldsForBigQuery(details);
-    // Mongo has special logic to switch between a connection URI and broken out fields
-    case "mongo":
-      return getFieldsForMongo(details, engineInfo, id);
-    default:
-      return engineInfo;
-  }
-}
-
-function isHiddenField(field, details) {
-  // NOTE: special case to hide tunnel settings if tunnel is disabled
-  const isDisabledTunnelSettingsField =
-    field.name.startsWith("tunnel-") &&
-    field.name !== "tunnel-enabled" &&
-    !details["tunnel-enabled"];
-
-  // hide the auth settings based on which auth method is selected
-  // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
-  const isTunnelPrivateFieldWithoutProperAuthMethod =
-    field.name.startsWith("tunnel-private-") &&
-    details["tunnel-auth-option"] !== "ssh-key";
-
-  // username / password auth uses tunnel-pass
-  const isTunnelPassFieldWithoutProperAuthMethod =
-    field.name === "tunnel-pass" && details["tunnel-auth-option"] === "ssh-key";
-
-  // NOTE: special case to hide the SSL cert field if SSL is disabled
-  const isDisabledSslField = field.name === "ssl-cert" && !details["ssl"];
-
-  return (
-    isDisabledTunnelSettingsField ||
-    isTunnelPrivateFieldWithoutProperAuthMethod ||
-    isTunnelPassFieldWithoutProperAuthMethod ||
-    isDisabledSslField
-  );
-}
-
 function getDefaultValue(field) {
   return "default" in field ? field.default : null;
 }
@@ -254,10 +275,10 @@ function normalizeFieldValue(value, field) {
 function getEngineFormFields(engine, details, id) {
   const engineInfo = getEngineInfo(engine, details, id);
   const engineFields = engineInfo ? engineInfo["details-fields"] : [];
+  const cachingField = getDatabaseCachingField();
 
   // convert database details-fields to Form fields
   return engineFields
-    .filter(field => !isHiddenField(field, details))
     .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
@@ -273,16 +294,24 @@ function getEngineFormFields(engine, details, id) {
         horizontal: field.type === "boolean",
         initial: field.default,
         readOnly: field.readOnly || false,
+        helperText: field["helper-text"],
+        visibleIf: field["visible-if"],
         ...(overrides && overrides(engine, details, id)),
       };
-    });
+    })
+    .concat(cachingField ? [cachingField] : [])
+    .filter(field => shouldShowEngineProvidedField(field, details));
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
+const ELEVATED_ENGINES = getElevatedEngines();
+
 const ENGINE_OPTIONS = Object.entries(ENGINES)
   .map(([engine, info]) => ({
-    name: info["driver-name"],
     value: engine,
+    name: info["driver-name"],
+    official: info["official"] ?? true, // TODO remove default
+    index: ELEVATED_ENGINES.indexOf(engine),
   }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -323,65 +352,37 @@ function getEngineOptions(currentEngine) {
   });
 }
 
+function getDatabaseCachingField() {
+  const hasField =
+    PLUGIN_CACHING.databaseCacheTTLFormField &&
+    MetabaseSettings.get("enable-query-caching");
+  return hasField ? PLUGIN_CACHING.databaseCacheTTLFormField : null;
+}
+
 const forms = {
   details: {
-    fields: ({ id, engine, details = {} } = {}) => [
-      {
-        name: "engine",
-        title: t`Database type`,
-        type: "select",
-        options: getEngineOptions(engine),
-        placeholder: t`Select a database`,
-      },
-      {
-        name: "name",
-        title: t`Name`,
-        placeholder: t`How would you like to refer to this database?`,
-        validate: value => !value && t`required`,
-        hidden: !engine,
-      },
-      ...(getEngineFormFields(engine, details, id) || []),
-      {
-        name: "auto_run_queries",
-        type: "boolean",
-        title: t`Automatically run queries when doing simple filtering and summarizing`,
-        description: t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`,
-        hidden: !engine,
-      },
-      {
-        name: "details.let-user-control-scheduling",
-        type: "boolean",
-        title: t`This is a large database, so let me choose when Metabase syncs and scans`,
-        description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`,
-        hidden: !engine,
-      },
-      {
-        name: "refingerprint",
-        type: "boolean",
-        title: t`Periodically refingerprint tables`,
-        description: t`When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.`,
-        hidden: !engine,
-      },
-      { name: "is_full_sync", type: "hidden" },
-      { name: "is_on_demand", type: "hidden" },
-      {
-        name: "schedules.metadata_sync",
-        type: MetadataSyncScheduleWidget,
-        title: t`Database syncing`,
-        description: t`This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.`,
-        hidden: !engine || !details["let-user-control-scheduling"],
-      },
-      {
-        name: "schedules.cache_field_values",
-        type: CacheFieldValuesScheduleWidget,
-        title: t`Scanning for Filter Values`,
-        description:
-          t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
-          " " +
-          t`When should Metabase automatically scan and cache field values?`,
-        hidden: !engine || !details["let-user-control-scheduling"],
-      },
-    ],
+    fields: ({ id, engine, details = {} } = {}) =>
+      [
+        {
+          name: "engine",
+          title: t`Database type`,
+          type: "select",
+          options: getEngineOptions(engine),
+          placeholder: t`Select a database`,
+          isHosted: MetabaseSettings.isHosted(),
+        },
+        {
+          name: "name",
+          title: t`Display name`,
+          placeholder: t`Our ${getEngineName(engine)}`,
+          validate: value => !value && t`required`,
+          hidden: !engine,
+          helperText: t`Choose what this data will be called in Metabase.`,
+        },
+        ...(getEngineFormFields(engine, details, id) || []),
+        { name: "is_full_sync", type: "hidden" },
+        { name: "is_on_demand", type: "hidden" },
+      ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
         // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
@@ -396,27 +397,30 @@ const forms = {
   },
 };
 
-// partial forms for tabbed view:
+forms.setup = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
+      type: field.name === "engine" ? EngineWidget : field.type,
+      title: field.name === "engine" ? null : field.title,
+      hidden: field.hidden || ADVANCED_FIELDS.has(field.name),
+    })),
+};
+
 forms.connection = {
   ...forms.details,
   fields: (...args) =>
     forms.details.fields(...args).map(field => ({
       ...field,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
-    })),
-};
-forms.scheduling = {
-  ...forms.details,
-  fields: (...args) =>
-    forms.details.fields(...args).map(field => ({
-      ...field,
-      hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden,
     })),
 };
 
-const SCHEDULING_FIELDS = new Set([
-  "schedules.metadata_sync",
-  "schedules.cache_field_values",
+const ADVANCED_FIELDS = new Set([
+  "auto_run_queries",
+  "details.let-user-control-scheduling",
+  "cache_ttl",
 ]);
 
 export default forms;

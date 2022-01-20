@@ -7,13 +7,16 @@ import Pulses from "metabase/entities/pulses";
 import { getEditingPulse, getPulseFormInput } from "./selectors";
 import { setErrorPage } from "metabase/redux/app";
 
-import { getDefaultChannel, createChannel } from "metabase/lib/pulse";
+import {
+  getDefaultChannel,
+  createChannel,
+  NEW_PULSE_TEMPLATE,
+} from "metabase/lib/pulse";
 
 export const SET_EDITING_PULSE = "SET_EDITING_PULSE";
 export const UPDATE_EDITING_PULSE = "UPDATE_EDITING_PULSE";
 export const SAVE_PULSE = "SAVE_PULSE";
 export const SAVE_EDITING_PULSE = "SAVE_EDITING_PULSE";
-export const DELETE_PULSE = "DELETE_PULSE";
 export const TEST_PULSE = "TEST_PULSE";
 
 export const FETCH_PULSE_FORM_INPUT = "FETCH_PULSE_FORM_INPUT";
@@ -43,12 +46,9 @@ export const setEditingPulse = createThunkAction(SET_EDITING_PULSE, function(
         (await PulseApi.form_input()).channels;
       const defaultChannelSpec = getDefaultChannel(channels);
       return {
-        name: null,
-        cards: [],
+        ...NEW_PULSE_TEMPLATE,
         channels: defaultChannelSpec ? [createChannel(defaultChannelSpec)] : [],
-        skip_if_empty: false,
         collection_id: initialCollectionId,
-        parameters: [],
       };
     }
   };

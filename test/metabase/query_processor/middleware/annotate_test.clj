@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.annotate-test
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.models :refer [Field]]
+            [metabase.models :refer [Card Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -52,7 +52,8 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id)))
+   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+                           :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
@@ -416,6 +417,7 @@
       (is (= {:cols [{:name         "metric"
                       :display_name "Total Events"
                       :base_type    :type/Text
+                      :effective_type :type/Text
                       :source       :aggregation
                       :field_ref    [:aggregation 0]}]}
              (add-column-info
@@ -437,10 +439,71 @@
   (-> (add-column-info (mt/mbql-query venues {:expressions {"expr" expr}
                                               :fields      [[:expression "expr"]]
                                               :limit       10})
-                                      {})
+                       {})
       :cols
       first
       (select-keys [:base_type :semantic_type])))
+
+(deftest computed-columns-inference
+  (letfn [(infer [expr] (-> (mt/mbql-query venues
+                                           {:expressions {"expr" expr}
+                                            :fields [[:expression "expr"]]
+                                            :limit 10})
+                            (add-column-info {})
+                            :cols
+                            first))]
+    (testing "Coalesce"
+      (testing "Uses the first clause"
+        (testing "Gets the type information from the field"
+          (is (= {:semantic_type :type/Name,
+                  :coercion_strategy nil,
+                  :name "expr",
+                  :expression_name "expr",
+                  :source :fields,
+                  :field_ref [:expression "expr"],
+                  :effective_type :type/Text,
+                  :display_name "expr",
+                  :base_type :type/Text}
+                 (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
+          (testing "Does not contain a field id in its analysis (#18513)"
+            (is (false? (contains? (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])
+                                   :id)))))
+        (testing "Gets the type information from the literal"
+          (is (= {:base_type :type/Text,
+                  :name "expr",
+                  :display_name "expr",
+                  :expression_name "expr",
+                  :field_ref [:expression "expr"],
+                  :source :fields}
+                 (infer [:coalesce "bar" [:field (mt/id :venues :name) nil]]))))))
+    (testing "Case"
+      (testing "Uses first available type information"
+        (testing "From a field"
+          (is (= {:semantic_type :type/Name,
+                  :coercion_strategy nil,
+                  :name "expr",
+                  :expression_name "expr",
+                  :source :fields,
+                  :field_ref [:expression "expr"],
+                  :effective_type :type/Text,
+                  :display_name "expr",
+                  :base_type :type/Text}
+                 (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])))
+          (testing "does not contain a field id in its analysis (#17512)"
+            (is (false?
+                 (contains? (infer [:coalesce [:field (mt/id :venues :name) nil] "bar"])
+                            :id))))))
+      (is (= {:base_type :type/Text}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
+      (is (= {:base_type :type/Float}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
+                                        [:+ [:field (mt/id :venues :price) nil] 1]]]])))
+      (testing "Make sure we skip nils when infering case return type"
+        (is (= {:base_type :type/Number}
+               (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
+                                         [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
+      (is (= {:base_type :type/Float}
+             (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))))
 
 (deftest test-string-extracts
   (is (= {:base_type :type/Text}
@@ -469,23 +532,11 @@
           :semantic_type :type/Name}
          (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
-(deftest test-case
-  (is (= {:base_type :type/Text}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] "big"]]])))
-  (is (= {:base_type :type/Float}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2]
-                                    [:+ [:field (mt/id :venues :price) nil] 1]]]])))
-  (testing "Make sure we skip nils when infering case return type"
-    (is (= {:base_type :type/Number}
-           (infered-col-type [:case [[[:< [:field (mt/id :venues :price) nil] 10] [:value nil {:base_type :type/Number}]]
-                                     [[:> [:field (mt/id :venues :price) nil] 2] 10]]]))))
-  (is (= {:base_type :type/Float}
-         (infered-col-type [:case [[[:> [:field (mt/id :venues :price) nil] 2] [:+ [:field (mt/id :venues :price) nil] 1]]]]))))
-
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
     (is (= {:cols
             [{:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count"
               :display_name  "count"
@@ -495,14 +546,17 @@
               :name         "sum"
               :display_name "sum"
               :base_type    :type/Number
+              :effective_type :type/Number
               :field_ref    [:aggregation 1]}
              {:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count_2"
               :display_name  "count"
               :source        :aggregation
               :field_ref     [:aggregation 2]}
              {:base_type     :type/Number
+              :effective_type :type/Number
               :semantic_type :type/Quantity
               :name          "count_3"
               :display_name  "count_2"
@@ -607,3 +661,59 @@
                               :id           %ean
                               :field_ref    &Products.ean})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))
+
+;; metabase#14787
+(deftest col-info-for-fields-from-card-test
+  (mt/dataset sample-dataset
+    (let [card-1-query (mt/mbql-query orders
+                         {:joins [{:fields       :all
+                                   :source-table $$products
+                                   :condition    [:= $product_id &Products.products.id]
+                                   :alias        "Products"}]})]
+      (mt/with-temp* [Card [{card-1-id :id} {:dataset_query card-1-query}]
+                      Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
+        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
+          (mt/$ids nil
+            (let [base-query (qp/query->preprocessed
+                              (mt/mbql-query nil
+                                {:source-table (str "card__" card-1-id)
+                                 :joins        [{:fields       :all
+                                                 :source-table (str "card__" card-2-id)
+                                                 :condition    [:= $orders.user_id &Products.products.id]
+                                                 :alias        "Q"}]
+                                 :limit        1}))
+                  fields     #{%orders.discount %products.title %people.source}]
+              (is (= [{:display_name "Discount" :field_ref [:field %orders.discount nil]}
+                      {:display_name "Products → Title" :field_ref [:field %products.title nil]}
+                      {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
+                     (->> (:cols (add-column-info base-query {}))
+                          (filter #(fields (:id %)))
+                          (map #(select-keys % [:display_name :field_ref])))))))))))
+
+  (testing "Has the correct display names for joined fields from cards"
+    (letfn [(native [query] {:type :native
+                             :native {:query query :template-tags {}}
+                             :database (mt/id)})]
+      (mt/with-temp* [Card [{card1-id :id} {:dataset_query
+                                            (native "select 'foo' as A_COLUMN")}]
+                      Card [{card2-id :id} {:dataset_query
+                                            (native "select 'foo' as B_COLUMN")}]]
+        (doseq [card-id [card1-id card2-id]]
+          ;; populate metadata
+          (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
+        (let [query {:database (mt/id)
+                     :type :query
+                     :query {:source-table (str "card__" card1-id)
+                             :joins [{:fields "all"
+                                      :source-table (str "card__" card2-id)
+                                      :condition [:=
+                                                  [:field "A_COLUMN" {:base-type :type/Text}]
+                                                  [:field "B_COLUMN" {:base-type :type/Text
+                                                                      :join-alias "alias"}]]
+                                      :alias "alias"}]}}
+              results (qp/process-query query)]
+          (is (= "alias → B Column" (-> results :data :cols second :display_name))
+              "cols has wrong display name")
+          (is (= "alias → B Column" (-> results :data :results_metadata
+                                        :columns second :display_name))
+              "Results metadata cols has wrong display name"))))))

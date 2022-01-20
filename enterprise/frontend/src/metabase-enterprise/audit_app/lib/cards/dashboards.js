@@ -1,23 +1,11 @@
-//  DEPRECATED: use `views-and-saves-by-time ` instead.
-export const viewsPerDay = () => ({
-  card: {
-    name: "Total dashboard views per day",
-    display: "line",
-    dataset_query: {
-      type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/views-per-day",
-      args: [],
-    },
-  },
-});
-
 export const viewsAndSavesByTime = () => ({
   card: {
     name: "Dashboard views and saves per day",
     display: "line",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/views-and-saves-by-time",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/views-and-saves-by-time",
       args: ["day"],
     },
     visualization_settings: {
@@ -33,7 +21,7 @@ export const mostPopularAndSpeed = () => ({
     dataset_query: {
       type: "internal",
       fn:
-        "metabase-enterprise.audit.pages.dashboards/most-popular-with-avg-speed",
+        "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed",
       args: [],
     },
   },
@@ -45,19 +33,20 @@ export const mostCommonQuestions = () => ({
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/most-common-questions",
+      fn:
+        "metabase-enterprise.audit-app.pages.dashboards/most-common-questions",
       args: [],
     },
   },
 });
 
-export const table = (searchString?: string) => ({
+export const table = searchString => ({
   card: {
     name: "Dashboards",
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.dashboards/table",
+      fn: "metabase-enterprise.audit-app.pages.dashboards/table",
       args: [],
     },
     visualization_settings: {
@@ -67,6 +56,7 @@ export const table = (searchString?: string) => ({
         { name: "average_execution_time_ms", enabled: true },
         { name: "cards", enabled: true },
         { name: "saved_by_id", enabled: true },
+        { name: "cache_ttl", enabled: true },
         {
           name: "public_link",
           enabled: true,

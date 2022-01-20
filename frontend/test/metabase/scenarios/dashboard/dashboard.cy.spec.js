@@ -4,9 +4,10 @@ import {
   selectDashboardFilter,
   expectedRouteCalls,
   showDashboardCardActions,
-  modal,
   filterWidget,
+  sidebar,
 } from "__support__/e2e/cypress";
+import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -27,11 +28,14 @@ describe("scenarios > dashboard", () => {
     // Create dashboard
     cy.visit("/");
     cy.icon("add").click();
-    cy.findByText("New dashboard").click();
-    cy.findByLabelText("Name").type("Test Dash");
-    cy.findByLabelText("Description").type("Desc");
-    cy.findByText("Create").click();
+    cy.findByText("Dashboard").click();
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Test Dash");
+      cy.findByLabelText("Description").type("Desc");
+      cy.findByText("Create").click();
+    });
     cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
 
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");
@@ -97,7 +101,7 @@ describe("scenarios > dashboard", () => {
       visualization_settings: {},
     });
 
-    cy.createDashboard("dash:11007");
+    cy.createDashboard({ name: "dash:11007" });
 
     cy.visit("/collection/root");
     // enter newly created dashboard
@@ -149,7 +153,7 @@ describe("scenarios > dashboard", () => {
       },
       display: "map",
     }).then(({ body: { id: questionId } }) => {
-      cy.createDashboard("13597D").then(({ body: { id: dashboardId } }) => {
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
         // add filter (ID) to the dashboard
         cy.request("PUT", `/api/dashboard/${dashboardId}`, {
           parameters: [
@@ -216,14 +220,16 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should display column options for cross-filter (metabase#14473)", () => {
-    cy.createNativeQuestion({
+    const questionDetails = {
       name: "14473",
       native: { query: "SELECT COUNT(*) FROM PRODUCTS", "template-tags": {} },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.createDashboard("14473D").then(({ body: { id: DASHBOARD_ID } }) => {
+    };
+
+    cy.createNativeQuestionAndDashboard({ questionDetails }).then(
+      ({ body: { dashboard_id } }) => {
         cy.log("Add 4 filters to the dashboard");
 
-        cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
           parameters: [
             { name: "ID", slug: "id", id: "729b6456", type: "id" },
             { name: "ID 1", slug: "id_1", id: "bb20f59e", type: "id" },
@@ -242,14 +248,9 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        cy.log("Add previously created question to the dashboard");
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-        });
-
-        cy.visit(`/dashboard/${DASHBOARD_ID}`);
-      });
-    });
+        cy.visit(`/dashboard/${dashboard_id}`);
+      },
+    );
 
     // Add cross-filter click behavior manually
     cy.icon("pencil").click();
@@ -329,7 +330,7 @@ describe("scenarios > dashboard", () => {
     expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
   });
 
-  it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
+  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
     cy.request("GET", "/api/user/current").then(
       ({ body: { personal_collection_id } }) => {
         // Save new dashboard in admin's personal collection
@@ -410,33 +411,25 @@ describe("scenarios > dashboard", () => {
     assertScrollBarExists();
   });
 
-  it.skip("should show values of added dashboard card via search immediately (metabase#15959)", () => {
-    /**
-     * For the reason I don't udnerstand, I could reproduce this issue ONLY if I use these specific functions in this order:
-     *  1. realType()
-     *  2. type()
-     */
+  it("should show values of added dashboard card via search immediately (metabase#15959)", () => {
+    cy.intercept("GET", "/api/search").as("search");
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
     cy.icon("add")
       .last()
-      .as("addQuestion")
       .click();
-    cy.icon("search")
-      .last()
-      .as("searchModal")
-      .click();
-    cy.findByPlaceholderText("Search").realType("Orders{enter}"); /* [1] */
-    modal()
-      .findByText("Orders, Count")
-      .realClick();
-    cy.get("@addQuestion").click();
-    cy.get("@searchModal").click();
-    cy.findByPlaceholderText("Search").type("Orders{enter}"); /* [2] */
-    modal()
-      .findByText("Orders, Count")
-      .realClick();
-    cy.get(".LoadingSpinner").should("not.exist");
+
+    sidebar().within(() => {
+      // From the list
+      cy.findByText("Orders, Count").click();
+
+      // From search
+      cy.findByPlaceholderText("Search…").type("Orders{enter}");
+      cy.wait("@search");
+      cy.findByText("Orders, Count").click();
+    });
+
+    cy.findByTestId("loading-spinner").should("not.exist");
     cy.findAllByText("18,760").should("have.length", 2);
   });
 });
@@ -460,6 +453,6 @@ function assertScrollBarExists() {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window()
       .its("innerWidth")
-      .should("be.gt", bodyWidth);
+      .should("be.gte", bodyWidth);
   });
 }

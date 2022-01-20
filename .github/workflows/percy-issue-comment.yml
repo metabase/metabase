@@ -49,9 +49,10 @@ jobs:
         with:
           node-version: 14.x
       - name: Prepare JDK 8
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
           java-version: 8
+          distribution: "temurin"
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
@@ -67,6 +68,11 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - name: Get node_modules cache
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
       - name: Get M2 cache
         uses: actions/cache@v2
         with:
@@ -107,9 +113,10 @@ jobs:
         with:
           node-version: 14.x
       - name: Prepare JDK 8
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
           java-version: 8
+          distribution: "temurin"
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
@@ -124,7 +131,7 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-
+      - run: yarn install --frozen-lockfile --prefer-offline
       - uses: actions/download-artifact@v2
         name: Retrieve uberjar artifact
         with:
@@ -133,11 +140,10 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
-
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
       - name: Percy Test
-        uses: percy/exec-action@v0.3.1
-        with:
-          command: "yarn run test-visual-no-build"
+        run: yarn run test-visual-no-build
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
           PERCY_COMMIT: ${{ needs.pr_info.outputs.commit_sha }}

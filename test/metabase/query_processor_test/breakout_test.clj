@@ -167,7 +167,7 @@
     (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = default"
         ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :bin-width
                                                                                  :min-value 10.0
@@ -179,10 +179,10 @@
                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type)))))
+                   (dissoc :base_type :effective_type)))))
 
       (testing "binning-strategy = num-bins: 5"
-        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type :effective_type)
                       :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
                       :field_ref    [:field (mt/id :venues :latitude) {:binning {:strategy  :num-bins
                                                                                  :min-value 7.5
@@ -194,7 +194,7 @@
                       :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 5}}]]})
                    qp.test/cols
                    first
-                   (dissoc :base_type))))))))
+                   (dissoc :base_type :effective_type))))))))
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
@@ -224,9 +224,11 @@
       (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
                                 (mt/mbql-query nil
                                   {:source-query {:source-table $$venues}}))]
-        (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
-               (mt/formatted-rows [1.0 int]
-                 (qp/process-query (nested-venues-query card)))))))
+        (let [query (nested-venues-query card)]
+          (mt/with-native-query-testing-context query
+            (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+                   (mt/formatted-rows [1.0 int]
+                     (qp/process-query query))))))))
 
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]

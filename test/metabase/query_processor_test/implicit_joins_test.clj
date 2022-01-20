@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Tests for joins that are created automatically when an `:fk->` column is present."
-  (:require [clojure.test :refer :all]
+  (:require [clj-time.core :as time]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.test :as mt]))
 
@@ -139,8 +140,7 @@
                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
 (deftest implicit-joins-with-expressions-test
-  ;; Redshift excluded for now since the sample dataset seems to hang for Redshift -- see #14784
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys :expressions) :redshift)
+  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
       (mt/dataset sample-dataset
         (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0 263]
@@ -158,6 +158,6 @@
                     :filter      [:and
                                   [:= $user_id->people.source "Facebook" "Google"]
                                   [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                  [:time-interval $created_at -2 :year]]
+                                  [:time-interval $created_at (- 2019 (.getYear (time/now))) :year]]
                     :expressions {:pivot-grouping [:abs 0]}
                     :limit       5}))))))))

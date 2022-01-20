@@ -64,22 +64,42 @@
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
     [{:name     \"A\"
+      :below    #{:card :dataset}
       :children [{:name \"B\"}
                  {:name     \"C\"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     \"D\"
+                              :here     #{:dataset}
                               :children [{:name \"E\"}]}
                              {:name     \"F\"
+                              :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
-     {:name \"H\"}]"
-  [namespace]
-  {namespace (s/maybe su/NonBlankString)}
-  (collection/collections->tree
-   (db/select Collection
-     {:where [:and
-              [:= :namespace namespace]
-              (collection/visible-collection-ids->honeysql-filter-clause
-               :id
-               (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})))
+     {:name \"H\"}]
+
+  The here and below keys indicate the types of items at this particular level of the tree (here) and in its
+  subtree (below)."
+  [exclude-archived namespace]
+  {exclude-archived (s/maybe su/BooleanString)
+   namespace        (s/maybe su/NonBlankString)}
+  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as x}]
+                                (update acc (if dataset :dataset :card) conj collection_id))
+                              {:dataset #{}
+                               :card    #{}}
+                              (db/reducible-query {:select    [:collection_id :dataset]
+                                                   :modifiers [:distinct]
+                                                   :from      [:report_card]
+                                                   :where     [:= :archived false]}))]
+    (collection/collections->tree
+     coll-type-ids
+     (db/select Collection
+                {:where [:and
+                         (when exclude-archived
+                           [:= :archived false])
+                         [:= :namespace namespace]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]}))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -87,7 +107,7 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by endpoints in this namespace.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card" "collection" "dashboard" "pulse" "snippet" "no_models"})
+  #{"card" "dataset" "collection" "dashboard" "pulse" "snippet" "no_models"})
 
 (def ^:private ModelString
   (apply s/enum valid-model-param-values))
@@ -182,9 +202,9 @@
   (for [row rows]
     (dissoc row :description :collection_position :display :authority_level :moderated_status)))
 
-(defmethod collection-children-query :card
-  [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display [(hx/literal "card") :model]
+(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
+                   [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]
@@ -214,8 +234,21 @@
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
-                   [:= :archived (boolean archived?)]]}
+                   [:= :archived (boolean archived?)]
+                   [:= :dataset dataset?]]}
       (h/merge-where (pinned-state->clause pinned-state))))
+
+(defmethod collection-children-query :dataset
+  [_ collection options]
+  (card-query true collection options))
+
+(defmethod post-process-collection-children :dataset
+  [_ rows]
+  (post-process-collection-children :card rows))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query false collection options))
 
 (defmethod post-process-collection-children :card
   [_ rows]
@@ -309,6 +342,7 @@
   (case (keyword model-name)
     :collection Collection
     :card       Card
+    :dataset    Card
     :dashboard  Dashboard
     :pulse      Pulse
     :snippet    NativeQuerySnippet))
@@ -348,9 +382,10 @@
   [select-clause model]
   (let [rankings {:dashboard  1
                   :pulse      2
-                  :card       3
-                  :snippet    4
-                  :collection 5}]
+                  :dataset    3
+                  :card       4
+                  :snippet    5
+                  :collection 6}]
     (conj select-clause [(get rankings model 100)
                          :model_ranking])))
 
@@ -443,7 +478,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw [:collection :card :dashboard :pulse :snippet]
+  (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -629,9 +664,9 @@
   users just as if they had be archived individually via the card API."
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
-    (when-let [alerts (seq (apply pulse/retrieve-alerts-for-cards (db/select-ids Card
-                                                                    :collection_id (u/the-id collection-before-update))))]
-        (card-api/delete-alert-and-notify-archived! alerts))))
+    (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
+                            {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
+      (card-api/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."

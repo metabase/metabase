@@ -52,11 +52,15 @@
 (s/def ::click-behavior (s/keys))
 (s/def ::visualization-settings (s/keys :opt [::column-settings ::click-behavior]))
 
-(s/def ::field-id-vec (s/tuple (partial = "ref") (s/tuple (partial = "field")
-                                                   (s/or :field-id int? :field-str string?)
-                                                   (s/or :field-metadata map? :nil nil?))))
+(s/def ::field-id-vec (s/tuple #{"ref"}
+                               (s/tuple #{"field"}
+                                        (s/or :field-id int? :field-str string?)
+                                        (s/or :field-metadata map? :nil nil?))))
+
+(s/def ::expression-vec (s/tuple #{"ref"} (s/tuple #{"expression"} string?)))
 
 (s/def ::db-column-ref-vec (s/or :field ::field-id-vec
+                                 :expression ::expression-vec
                                  :column-name (s/tuple (partial = "name") string?)))
 
 (s/def ::click-behavior-type keyword? #_(s/or :cross-filter ::cross-filter
@@ -196,7 +200,10 @@
                       :field-str {::field-str v})
                     (some? field-md) (assoc ::field-metadata field-md)))
           :column-name
-          {::column-name (nth parts 1)})))))
+          {::column-name (nth parts 1)}
+          :expression
+          (let [[_expression [_ref [_expression column-name]]] parsed]
+           {::column-name column-name}))))))
 
 (s/fdef db->norm-column-ref
   :args (s/cat :column-ref ::db-column-ref-vec)
@@ -415,6 +422,7 @@
 (def ^:private db->norm-table-columns-keys
   {:name     ::table-column-name
    ; for now, do not translate the value of this key (the field vector)
+   :fieldref ::table-column-field-ref
    :fieldRef ::table-column-field-ref
    :enabled  ::table-column-enabled})
 
@@ -512,6 +520,13 @@
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
+(defn- db->norm-time-style
+  "Converts the deprecated k:mm format to HH:mm (#18112)"
+  [v]
+  (if (= v "k:mm")
+    "HH:mm"
+    v))
+
 (defn- db->norm-table-columns [v]
   (-> v
     (assoc ::table-columns (mapv (fn [tbl-col]
@@ -524,7 +539,12 @@
   `norm->db-column-settings-entry`."
   [m k v]
   (case k
-    :click_behavior (assoc m ::click-behavior (db->norm-click-behavior v))
+    :click_behavior
+    (assoc m ::click-behavior (db->norm-click-behavior v))
+
+    :time_style
+    (assoc m ::time-style (db->norm-time-style v))
+
     (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn db->norm-column-settings-entries
@@ -533,13 +553,17 @@
   (reduce-kv db->norm-column-settings-entry {} entries))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
   [settings]
-  (m/map-kv (fn [k v]
-              (let [k1 (parse-db-column-ref k)
-                    v1 (db->norm-column-settings-entries v)]
-                [k1 v1]))
-            settings))
+  (reduce-kv (fn [m k v]
+               (try
+                 (let [k1 (parse-db-column-ref k)
+                       v1 (db->norm-column-settings-entries v)]
+                   (assoc m k1 v1))
+                 (catch #?(:clj Throwable :cljs js/Error) e
+                   m)))
+             {}
+             settings))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent

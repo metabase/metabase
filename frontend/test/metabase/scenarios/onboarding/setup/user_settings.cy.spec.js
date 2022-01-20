@@ -1,7 +1,7 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
 import { restore } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
-const { first_name, last_name, email } = USERS.normal;
+const { first_name, last_name, email, password } = USERS.normal;
 
 const CURRENT_USER = {
   email: "normal@metabase.test",
@@ -32,7 +32,7 @@ describe("user > settings", () => {
   });
 
   it("should show user details with disabled submit button", () => {
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.findByText("Account settings");
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
@@ -43,7 +43,7 @@ describe("user > settings", () => {
   it("should update the user without fetching memberships", () => {
     cy.server();
     cy.route("GET", "/api/permissions/membership").as("membership");
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.findByDisplayValue(first_name)
       .click()
       .clear()
@@ -62,15 +62,29 @@ describe("user > settings", () => {
     cy.server();
     cy.route("GET", "/api/user/current").as("getUser");
 
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.wait("@getUser");
     cy.findByText("Password").should("exist");
   });
 
-  it.skip("it should redirect to the login page when user is signed out but tries to visit `/user/edit_current` (metabase#15471)", () => {
+  it("should redirect to the login page when the user has signed out but tries to visit `/account/profile` (metabase#15471)", () => {
     cy.signOut();
-    cy.visit("/user/edit_current");
+    cy.visit("/account/profile");
     cy.url().should("include", "/auth/login");
+    cy.findByText("Sign in to Metabase");
+  });
+
+  it("should redirect to the login page when the user has changed the password and logged out (metabase#18151)", () => {
+    cy.visit("/account/password");
+
+    cy.findByLabelText("Current password").type(password);
+    cy.findByLabelText("Create a password").type(password);
+    cy.findByLabelText("Confirm your password").type(password);
+    cy.findByText("Save").click();
+    cy.findByText("Success");
+
+    cy.findByLabelText("gear icon").click();
+    cy.findByText("Sign out").click();
     cy.findByText("Sign in to Metabase");
   });
 
@@ -85,7 +99,7 @@ describe("user > settings", () => {
         }),
       ).as("getUser");
 
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.wait("@getUser");
     });
 
@@ -105,7 +119,7 @@ describe("user > settings", () => {
         }),
       ).as("getUser");
 
-      cy.visit("/user/edit_current");
+      cy.visit("/account/profile");
       cy.wait("@getUser");
     });
 

@@ -1,7 +1,6 @@
 import _ from "underscore";
 import {
   restore,
-  setupLocalHostEmail,
   modal,
   popover,
   openOrdersTable,
@@ -29,7 +28,6 @@ const [admin, collection, sub_collection] = [
   },
 ];
 
-const pulse_name = "Test pulse";
 const dashboard_name = "Test Dashboard";
 
 describe("scenarios > collection_defaults", () => {
@@ -179,33 +177,10 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      it("should be in the root collection", () => {
-        // Configure email
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection").then(() => {
-          cy.icon("pulse");
-        });
-
-        // cy.request("/api/pulse").then((response) => {
-        //     // *** Should the value here really be nll or should it be "root"?
-        //     expect(response.body[0].collection_id).to.have.value(null);
-        // });
-      });
-    });
-
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.createDashboard(dashboard_name);
+        cy.createDashboard({ name: dashboard_name });
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
@@ -219,28 +194,10 @@ describe("scenarios > collection_defaults", () => {
       cy.signInAsNormalUser();
     });
 
-    // [quarantine]: cannot run tests that rely on email setup in CI (yet)
-    describe.skip("a new pulse", () => {
-      beforeEach(() => {
-        cy.visit("/admin/settings/email");
-        setupLocalHostEmail();
-      });
-
-      it("should be in the root collection", () => {
-        // Make new pulse
-        createPulse();
-
-        // Check for pulse in root collection
-        cy.visit("/collection/root");
-        cy.findByText("My personal collection");
-        cy.icon("pulse");
-      });
-    });
-
     describe("a new dashboard", () => {
       it("should be in the root collection", () => {
         // Make new dashboard and check collection name
-        cy.createDashboard(dashboard_name);
+        cy.createDashboard({ name: dashboard_name });
 
         cy.visit("/collection/root");
         cy.findByText(dashboard_name);
@@ -329,7 +286,7 @@ describe("scenarios > collection_defaults", () => {
       });
     });
 
-    it.skip("sub-collection should be available in save and move modals (#14122)", () => {
+    it("sub-collection should be available in save and move modals (#14122)", () => {
       const COLLECTION = "14122C";
       // Create Parent collection within `Our analytics`
       cy.request("POST", "/api/collection", {
@@ -600,7 +557,7 @@ describe("scenarios > collection_defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      _.times(50, i => cy.createDashboard(`Dashboard ${i}`));
+      _.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
@@ -608,24 +565,6 @@ describe("scenarios > collection_defaults", () => {
     });
   });
 });
-
-function createPulse() {
-  cy.visit("/pulse/create");
-  cy.findByPlaceholderText("Important metrics").type(pulse_name);
-  cy.findByText("Select a question").click();
-  cy.findByText("Orders").click();
-  cy.findByPlaceholderText(
-    "Enter email addresses you'd like this data to go to",
-  )
-    .click()
-    .clear();
-  cy.contains("Bobby").click();
-  cy.findByText("To:").click();
-
-  cy.findByText("Robert Tableton").should("not.exist");
-  cy.findByText("Bobby Tables");
-  cy.findByText("Create pulse").click();
-}
 
 function openEllipsisMenuFor(item) {
   cy.findByText(item)

@@ -11,49 +11,28 @@ import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase-types/types/Card";
-import type { TableId } from "metabase-types/types/Table";
-import type { Database } from "metabase-types/types/Database";
-import type { TemplateTag } from "metabase-types/types/Query";
-import type { Field as FieldObject } from "metabase-types/types/Field";
-
-type Props = {
-  query: NativeQuery,
-
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  updateTemplateTag: (tag: TemplateTag) => void,
-
-  databaseFields: FieldObject[],
-  databases: Database[],
-  sampleDatasetId: TableId,
-
-  onClose: () => void,
-};
-type State = {
-  section: "help" | "settings",
-};
 
 export default class TagEditorSidebar extends React.Component {
-  props: Props;
-  state: State = {
+  state = {
     section: "settings",
   };
 
   static propTypes = {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
-    updateTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
-    setDatasetQuery: PropTypes.func.isRequired,
     sampleDatasetId: PropTypes.number,
+    setDatasetQuery: PropTypes.func.isRequired,
+    setTemplateTag: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
   };
 
   setSection(section) {
     this.setState({ section: section });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Template Tag Editor Section Change",
       section,
@@ -67,7 +46,8 @@ export default class TagEditorSidebar extends React.Component {
       sampleDatasetId,
       setDatasetQuery,
       query,
-      updateTemplateTag,
+      setTemplateTag,
+      setParameterValue,
       onClose,
     } = this.props;
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
@@ -85,7 +65,7 @@ export default class TagEditorSidebar extends React.Component {
 
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div>
+        <div data-testid="tag-editor-sidebar">
           <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
               className={cx("Button flex-full Button--small", {
@@ -105,12 +85,13 @@ export default class TagEditorSidebar extends React.Component {
             <SettingsPane
               tags={tags}
               parametersById={parametersById}
-              onUpdate={updateTemplateTag}
               databaseFields={databaseFields}
               database={database}
               databases={databases}
               query={query}
               setDatasetQuery={setDatasetQuery}
+              setTemplateTag={setTemplateTag}
+              setParameterValue={setParameterValue}
             />
           ) : (
             <TagEditorHelp
@@ -129,12 +110,13 @@ export default class TagEditorSidebar extends React.Component {
 const SettingsPane = ({
   tags,
   parametersById,
-  onUpdate,
   databaseFields,
   database,
   databases,
   query,
   setDatasetQuery,
+  setTemplateTag,
+  setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
@@ -149,10 +131,11 @@ const SettingsPane = ({
           <TagEditorParam
             tag={tag}
             parameter={parametersById[tag.id]}
-            onUpdate={onUpdate}
             databaseFields={databaseFields}
             database={database}
             databases={databases}
+            setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
           />
         )}
       </div>
@@ -162,8 +145,9 @@ const SettingsPane = ({
 
 SettingsPane.propTypes = {
   tags: PropTypes.array.isRequired,
-  onUpdate: PropTypes.func.isRequired,
-  setDatasetQuery: PropTypes.func.isRequired,
   query: NativeQuery,
   databaseFields: PropTypes.array,
+  setDatasetQuery: PropTypes.func.isRequired,
+  setTemplateTag: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func.isRequired,
 };

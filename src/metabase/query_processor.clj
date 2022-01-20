@@ -32,6 +32,7 @@
             [metabase.query-processor.middleware.desugar :as desugar]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
@@ -68,7 +69,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (u/ignore-exceptions
-  (classloader/require '[metabase-enterprise.audit.query-processor.middleware.handle-audit-queries :as ee.audit]
+  (classloader/require '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
                        '[metabase-enterprise.sandbox.query-processor.middleware
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))
@@ -91,6 +92,7 @@
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'viz-settings/update-viz-settings
+   #'fix-bad-refs/fix-bad-references-middleware
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
@@ -171,9 +173,11 @@
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
   Especially helpful for debugging or testing driver QP implementations."
   [query]
-  (preprocess-query query {:preprocessedf
-                           (fn [query context]
-                             (context/raisef (qp.reducible/quit query) context))}))
+  ;; Make sure the caching middleware doesn't try to return any cached results. That will totally break things
+  (preprocess-query (assoc-in query [:middleware :ignore-cached-results?] true)
+                    {:preprocessedf
+                     (fn [query context]
+                       (context/raisef (qp.reducible/quit query) context))}))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
@@ -243,9 +247,8 @@
          args))
 
 (s/defn process-query-and-save-execution!
-  "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
-  etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
-  DB."
+  "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, etc). Returns
+  results in a format appropriate for consumption by FE client. Saves QueryExecution row in application DB."
   ([query info]
    (process-userland-query (assoc query :info info)))
 

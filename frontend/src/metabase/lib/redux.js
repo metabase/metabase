@@ -287,7 +287,8 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
         // return existing data if
         if (
           // we don't want to reload
-          !reload &&
+          // the check is a workaround for EntityListLoader passing reload function to children
+          reload !== true &&
           // and we have a an non-error request state or have a list of properties that all exist on the object
           (loading || loaded || hasRequestedProperties)
         ) {
@@ -300,7 +301,7 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
       };
 }
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
   // thunk decorator:
@@ -319,7 +320,7 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
           const action = get(actionOrFn, { category });
           const label = get(labelOrFn, { category, action });
           const value = get(valueOrFn, { category, action, label });
-          MetabaseAnalytics.trackEvent(category, action, label, value);
+          MetabaseAnalytics.trackStructEvent(category, action, label, value);
         } catch (error) {
           console.warn("withAnalytics threw an error:", error);
         }

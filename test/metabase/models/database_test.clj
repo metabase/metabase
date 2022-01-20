@@ -2,18 +2,24 @@
   (:require [cheshire.core :refer [decode encode]]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
             [metabase.models.database :as mdb]
             [metabase.models.permissions :as perms]
+            [metabase.models.secret :as secret :refer [Secret]]
             [metabase.models.user :as user]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
             [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]
@@ -26,7 +32,7 @@
     (mt/with-temp Database [db]
       (is (= true
              (perms/set-has-full-permissions? (user/permissions-set (mt/user->id :rasta))
-                                              (perms/object-path db)))))))
+                                              (perms/data-perms-path db)))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
@@ -54,6 +60,7 @@
 
 (deftest sensitive-data-redacted-test
   (let [encode-decode (fn [obj] (decode (encode obj)))
+        project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
         pg-db         (mdb/map->DatabaseInstance
                        {:description nil
@@ -80,7 +87,7 @@
                                       :dataset-id           "office_checkins"
                                       :service-account-json "SERVICE-ACCOUNT-JSON-HERE"
                                       :use-jvm-timezone     false
-                                      :project-id           "metabase-bigquery-driver"}
+                                      :project-id           project-id}
                         :id          2
                         :engine      :bigquery})]
     (testing "sensitive fields are redacted when database details are encoded"
@@ -124,7 +131,7 @@
                                  "dataset-id"           "office_checkins"
                                  "service-account-json" "**MetabasePass**"
                                  "use-jvm-timezone"     false
-                                 "project-id"           "metabase-bigquery-driver"}
+                                 "project-id"           project-id}
                   "id"          2
                   "engine"      "bigquery"}
                  (encode-decode bq-db))))))))
@@ -155,3 +162,63 @@
            (mdb/sensitive-fields-for-db nil)))
     (is (= driver.u/default-sensitive-fields
            (mdb/sensitive-fields-for-db {})))))
+
+(deftest secret-db-details-integration-test
+  (testing "manipulating secret values in db-details works correctly"
+    (mt/with-driver :secret-test-driver
+      (binding [api/*current-user-id* (mt/user->id :crowberto)]
+        (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
+              check-db-fn (fn [{:keys [details] :as database} exp-secret]
+                            (is (not (contains? details :password-value)) "password-value was removed from details")
+                            (is (some? (:password-created-at details)) "password-created-at was populated in details")
+                            (is (= (mt/user->id :crowberto) (:password-creator-id details))
+                                "password-creator-id was populated in details")
+                            (is (= (if-let [src (:source exp-secret)]
+                                     (name src)
+                                     nil) (:password-source details))
+                                "password-source matches the value from the secret")
+                            (is (contains? details :password-id) "password-id was added to details")
+                            (let [secret-id                                  (:password-id details)
+                                  {:keys [created_at updated_at] :as secret} (secret/latest-for-id secret-id)]
+                              (swap! secret-ids conj secret-id)
+                              (is (some? secret) "Loaded Secret instance by ID")
+                              (is (some? created_at) "created_at populated for the secret instance")
+                              (is (some? updated_at) "updated_at populated for the secret instance")
+                              (doseq [[exp-key exp-val] exp-secret]
+                                (testing (format "%s=%s in secret" exp-key exp-val)
+                                  (is (= exp-val (cond-> (exp-key secret)
+                                                   (string? exp-val)
+                                                   (String.)
+
+                                                   :else
+                                                   identity)))))))]
+          (testing "values for referenced secret IDs are resolved in a new DB"
+            (mt/with-temp Database [{:keys [id details] :as database} {:engine  :secret-test-driver
+                                                                       :name    "Test DB with secrets"
+                                                                       :details {:host           "localhost"
+                                                                                 :password-value "new-password"}}]
+              (testing " and saved db-details looks correct"
+                (check-db-fn database {:kind    :password
+                                       :source  nil
+                                       :version 1
+                                       :value   "new-password"})
+                (testing " updating the value works as expected"
+                  (db/update! Database id :details (assoc details :password-path  "/path/to/my/password-file"))
+                  (check-db-fn (Database id) {:kind    :password
+                                              :source  :file-path
+                                              :version 2
+                                              :value   "/path/to/my/password-file"}))))
+            (testing "Secret instances are deleted from the app DB when the DatabaseInstance is deleted"
+              (is (seq @secret-ids) "At least one Secret instance should have been created")
+              (doseq [secret-id @secret-ids]
+                (testing (format "Secret ID %d should have been deleted after the Database was" secret-id)
+                  (is (nil? (db/select-one Secret :id secret-id))
+                      (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
+
+(driver/register! ::test, :abstract? true)
+
+(deftest preserve-driver-namespaces-test
+  (testing "Make sure databases preserve namespaced driver names"
+    (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
+      (is (= ::test
+             (db/select-one-field :engine Database :id db-id))))))

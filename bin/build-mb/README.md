@@ -17,7 +17,7 @@ All dependencies have licenses
 If there are dependencies with missing license information you will see output like
 
 ```shell
-build-mb % clojure -X build/list-lacking-license
+build-mb % clojure -X build/list-without-license
 $ "lein" "with-profile" "-dev,+ee,+include-all-drivers" "classpath"
 Missing License: /Users/dan/.m2/repository/org/eclipse/jetty/jetty-webapp/9.3.19.v20170502/jetty-webapp-9.3.19.v20170502.jar
 Missing License: /Users/dan/.m2/repository/org/fusesource/leveldbjni/leveldbjni-all/1.8/leveldbjni-all-1.8.jar

@@ -26,7 +26,9 @@ describe("snapshots", () => {
           SAMPLE_DATASET,
         );
       });
+
       snapshot("default");
+
       restore("blank");
     });
   });
@@ -46,7 +48,7 @@ describe("snapshots", () => {
       },
     );
     // Dismiss `it's ok to play around` modal for admin
-    cy.request("PUT", `/api/user/1/qbnewb`, {});
+    cy.request("PUT", `/api/user/1/modal/qbnewb`, {});
   }
 
   function updateSettings() {
@@ -152,7 +154,7 @@ describe("snapshots", () => {
     });
 
     // dashboard 1: Orders in a dashboard
-    cy.createDashboard("Orders in a dashboard");
+    cy.createDashboard({ name: "Orders in a dashboard" });
     cy.request("POST", `/api/dashboard/1/cards`, { cardId: 1 }).then(
       ({ body: { id: dashCardId } }) => {
         cy.request("PUT", `/api/dashboard/1/cards`, {
@@ -177,6 +179,7 @@ describe("snapshots", () => {
     it("withSqlite", () => {
       restore("default");
       cy.signInAsAdmin();
+
       cy.request("POST", "/api/database", {
         engine: "sqlite",
         name: "sqlite",

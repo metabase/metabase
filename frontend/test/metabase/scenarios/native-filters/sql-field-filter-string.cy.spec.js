@@ -1,8 +1,4 @@
-import {
-  restore,
-  mockSessionProperty,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
@@ -15,8 +11,6 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery(
@@ -33,7 +27,7 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
   });
 
   Object.entries(STRING_FILTER_SUBTYPES).forEach(
-    ([subType, { value, representativeResult }]) => {
+    ([subType, { searchTerm, value, representativeResult }]) => {
       describe(`should work for ${subType}`, () => {
         it("when set through the filter widget", () => {
           FieldFilter.setWidgetType(subType);
@@ -54,7 +48,10 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
           SQLFilter.toggleRequired();
 
           FieldFilter.openEntryForm({ isFilterRequired: true });
-          FieldFilter.addDefaultStringFilter(value);
+
+          searchTerm
+            ? FieldFilter.pickDefaultValue(searchTerm, value)
+            : FieldFilter.addDefaultStringFilter(value);
 
           SQLFilter.runQuery();
 

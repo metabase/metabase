@@ -1,18 +1,5 @@
 ###################
-# STAGE 1.1: builder frontend
-###################
-
-FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as frontend
-
-ARG MB_EDITION=oss
-
-WORKDIR /home/circleci
-
-COPY --chown=circleci . .
-RUN NODE_ENV=production MB_EDITION=$MB_EDITION yarn --frozen-lockfile && yarn build && bin/i18n/build-translation-resources
-
-###################
-# STAGE 1.4: main builder
+# STAGE 1: builder
 ###################
 
 FROM metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers as builder
@@ -21,12 +8,8 @@ ARG MB_EDITION=oss
 
 WORKDIR /home/circleci
 
-# try to reuse caching as much as possible
-COPY --from=frontend /home/circleci/.m2/repository/. /home/circleci/.m2/repository/.
-COPY --from=frontend /home/circleci/. .
-
-# build the app
-RUN INTERACTIVE=false MB_EDITION=$MB_EDITION bin/build version drivers uberjar
+COPY --chown=circleci . .
+RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build
 
 # ###################
 # # STAGE 2: runner

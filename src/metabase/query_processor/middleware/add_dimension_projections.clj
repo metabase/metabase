@@ -265,7 +265,7 @@
                                 (keep-indexed col->dim-map)
                                 (filter identity))]
     {:internal-only-dims internal-only-dims
-     ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
+     ;; Get the entries we're going to add to `:cols` for each of the remapped values we add
      :internal-only-cols (map :new-column internal-only-dims)}))
 
 (defn- add-remapped-cols

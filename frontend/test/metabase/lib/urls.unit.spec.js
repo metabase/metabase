@@ -35,6 +35,51 @@ describe("urls", () => {
         );
       });
     });
+
+    describe("question ids", () => {
+      it("returns the correct url", () => {
+        expect(question(null)).toEqual("/question");
+        expect(question({ id: 1 })).toEqual("/question/1");
+
+        /**
+         * If we're dealing with the question in a dashboard, we're reading the dashCard properties.
+         * Make sure `card_id` gets assigned to the question url.
+         */
+
+        expect(question({ id: 1, card_id: 42, name: "Foo" })).toEqual(
+          "/question/42-foo",
+        );
+
+        /** Symbol-based languages are unsupported. Such names result in the `name` being dropped.
+         * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
+         *
+         * * We still have to make sure links to questions in a dashboard render correctly.
+         */
+
+        expect(question({ id: 1, card_id: 42 })).toEqual("/question/42");
+
+        expect(question({ id: 1, card_id: 42, name: "ベーコン" })).toEqual(
+          "/question/42",
+        );
+        expect(question({ id: 1, card_id: 42, name: "培根" })).toEqual(
+          "/question/42",
+        );
+      });
+    });
+
+    describe("model", () => {
+      it("returns /model URLS", () => {
+        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
+          "/model/1-foo",
+        );
+        expect(
+          question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
+        ).toEqual("/model/42-foo");
+        expect(
+          question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
+        ).toEqual("/model/42-foo");
+      });
+    });
   });
 
   describe("query", () => {

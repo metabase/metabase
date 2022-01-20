@@ -21,8 +21,9 @@ export const PLUGIN_ADMIN_ROUTES = [];
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
 
-// admin permissions grid
+// admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS = {
   controlled: [],
@@ -36,6 +37,10 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
 
 // user form fields, e.x. login attributes
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = [];
+
+// menu items in people management tab
+export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
+export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
 // authentication providers
 export const PLUGIN_AUTH_PROVIDERS = [];
@@ -86,4 +91,23 @@ export const PLUGIN_MODERATION = {
   getStatusIconForQuestion: object,
   getStatusIcon: object,
   getModerationTimelineEvents: array,
+};
+
+export const PLUGIN_CACHING = {
+  dashboardCacheTTLFormField: null,
+  databaseCacheTTLFormField: null,
+  questionCacheTTLFormField: null,
+  getQuestionsImplicitCacheTTL: () => null,
+};
+
+export const PLUGIN_ADVANCED_PERMISSIONS = {
+  DataPermissionsHelp: null,
+  addDatabasePermissionOptions: (permissions, _value) => permissions,
+  addSchemaPermissionOptions: (permissions, _value) => permissions,
+  addTablePermissionOptions: (permissions, _value) => permissions,
+  isBlockPermission: _value => false,
+};
+
+export const PLUGIN_LICENSE_PAGE = {
+  LicenseAndBillingSettings: PluginPlaceholder,
 };

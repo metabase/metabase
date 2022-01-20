@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
@@ -8,6 +9,7 @@ import cx from "classnames";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 import {
   KEYCODE_ESCAPE,
@@ -25,76 +27,11 @@ const defaultStyleValue = {
   fontWeight: 700,
 };
 
-type Value = any;
-type Option = any;
-
-export type LayoutRendererProps = {
-  valuesList: React.Element,
-  optionsList: ?React.Element,
-  isFocused: boolean,
-  isAllSelected: boolean,
-  onClose: () => void,
-};
-
-type Props = {
-  value: Value[],
-  onChange: (value: Value[]) => void,
-
-  options: Option[],
-
-  placeholder?: string,
-  autoFocus?: boolean,
-  multi?: boolean,
-
-  style: { [key: string]: string | number },
-  color: string,
-
-  valueKey: string | number | (() => any),
-  labelKey: string | number | (() => string),
-
-  removeSelected?: boolean,
-  filterOption: (option: Option, searchValue: string) => boolean,
-
-  onInputChange?: string => string,
-  onInputKeyDown?: event => void,
-  onFocus?: () => void,
-  onBlur?: () => void,
-
-  updateOnInputChange: boolean,
-  updateOnInputBlur?: boolean,
-  // if provided, parseFreeformValue parses the input string into a value,
-  // or returns null to indicate an invalid value
-  parseFreeformValue: (value: string) => ?Value,
-
-  valueRenderer: (value: Value) => React.Element,
-  optionRenderer: (option: Option) => React.Element,
-  layoutRenderer: (props: LayoutRendererProps) => React.Element,
-
-  style?: any,
-  className?: string,
-  valueStyle?: any,
-  optionsStyle?: any,
-  optionsClassName?: string,
-};
-
-type State = {
-  inputValue: string,
-  searchValue: string,
-  filteredOptions: Option[],
-  selectedOptionValue: ?Value,
-  isFocused: boolean,
-  isAllSelected: boolean,
-  listIsHovered: boolean,
-};
-
 // somewhat matches react-select's API: https://github.com/JedWatson/react-select
 export default class TokenField extends Component {
-  props: Props;
-  state: State;
+  scrollElement = null;
 
-  scrollElement: ?HTMLDivElement = null;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -119,6 +56,7 @@ export default class TokenField extends Component {
     valueRenderer: value => <span>{value}</span>,
     optionRenderer: option => <span>{option}</span>,
     layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
+    validateValue: () => true,
 
     color: "brand",
 
@@ -131,12 +69,12 @@ export default class TokenField extends Component {
     this._updateFilteredValues(this.props);
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps: Props) {
-    this._updateFilteredValues((nextProps: Props));
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    this._updateFilteredValues(nextProps);
   }
 
-  setInputValue(inputValue: string, setSearchValue: boolean = true) {
-    const newState: { inputValue: string, searchValue?: string } = {
+  setInputValue(inputValue, setSearchValue = true) {
+    const newState = {
       inputValue,
     };
     if (setSearchValue) {
@@ -145,25 +83,37 @@ export default class TokenField extends Component {
     this.setState(newState, () => this._updateFilteredValues(this.props));
   }
 
-  clearInputValue(clearSearchValue: boolean = true) {
+  clearInputValue(clearSearchValue = true) {
     this.setInputValue("", clearSearchValue);
   }
 
-  _value(option: Option) {
+  _id(value) {
+    const { idKey } = this.props;
+
+    if (typeof idKey === "function") {
+      return idKey(value);
+    } else if (typeof idKey === "string") {
+      return value[idKey];
+    } else {
+      return value;
+    }
+  }
+
+  _value(option) {
     const { valueKey } = this.props;
     return typeof valueKey === "function" ? valueKey(option) : option[valueKey];
   }
 
-  _label(option: Option) {
+  _label(option) {
     const { labelKey } = this.props;
     return typeof labelKey === "function" ? labelKey(option) : option[labelKey];
   }
 
-  _key(option: Option) {
+  _key(option) {
     return JSON.stringify(this._value(option));
   }
 
-  _isLastFreeformValue(inputValue: string) {
+  _isLastFreeformValue(inputValue) {
     const { value, parseFreeformValue, updateOnInputChange } = this.props;
     if (parseFreeformValue && updateOnInputChange) {
       const freeformValue = parseFreeformValue(inputValue);
@@ -173,10 +123,12 @@ export default class TokenField extends Component {
     }
   }
 
-  _updateFilteredValues = (props: Props) => {
+  _updateFilteredValues = props => {
     let { options = [], value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValueIds = new Set(
+      value.map(v => JSON.stringify(this._id(v))),
+    );
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -185,8 +137,8 @@ export default class TokenField extends Component {
 
     let selectedCount = 0;
     const filteredOptions = options.filter(option => {
-      const isSelected = selectedValues.has(
-        JSON.stringify(this._value(option)),
+      const isSelected = selectedValueIds.has(
+        JSON.stringify(this._id(this._value(option))),
       );
       const isLastFreeform =
         this._isLastFreeformValue(this._value(option)) &&
@@ -413,13 +365,13 @@ export default class TokenField extends Component {
     }
   }
 
-  addOption = (option: Option) => {
+  addOption = option => {
     const replaceLast = this._isLastFreeformValue(this.state.inputValue);
     // add the option's value to the current value
     this.addValue(this._value(option), replaceLast);
   };
 
-  addValue(valueToAdd: Value, replaceLast: boolean = false) {
+  addValue(valueToAdd, replaceLast = false) {
     const { value, onChange, multi } = this.props;
     if (!Array.isArray(valueToAdd)) {
       valueToAdd = [valueToAdd];
@@ -439,7 +391,7 @@ export default class TokenField extends Component {
     // )
   }
 
-  removeValue(valueToRemove: Value) {
+  removeValue(valueToRemove) {
     const { value, onChange } = this.props;
     const values = value.filter(v => !this._valueIsEqual(v, valueToRemove));
     onChange(values);
@@ -447,11 +399,13 @@ export default class TokenField extends Component {
     // this.setInputValue("");
   }
 
-  _valueIsEqual(v1: any, v2: any) {
+  _valueIsEqual(v1, v2) {
     return JSON.stringify(v1) === JSON.stringify(v2);
   }
 
-  componentDidUpdate(prevProps: Props, prevState: State) {
+  componentDidUpdate(prevProps, prevState) {
+    const input = this.inputRef.current;
+
     if (
       prevState.selectedOptionValue !== this.state.selectedOptionValue &&
       this.scrollElement != null
@@ -461,12 +415,21 @@ export default class TokenField extends Component {
         element.scrollIntoView({ block: "nearest" });
       }
     }
+
     // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
-      const input = this.inputRef.current;
       if (input && isObscured(input)) {
         input.scrollIntoView({ block: "nearest" });
       }
+    }
+
+    // We focus on the input here, and not on the input itself as a prop
+    // (say by passing prop autoFocus={isFocused})
+    // because certain TokenFields will live in position: fixed containers.
+    // Autofocusing like that would make the page jump in scroll position.
+    // One example: parameter filters in dashboard pages.
+    if (this.state.isFocused) {
+      input.focus({ preventScroll: true });
     }
   }
 
@@ -476,6 +439,7 @@ export default class TokenField extends Component {
       placeholder,
       multi,
 
+      validateValue,
       parseFreeformValue,
       updateOnInputChange,
 
@@ -541,11 +505,7 @@ export default class TokenField extends Component {
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
-          <li
-            key={index}
-            className={cx("flex align-center mr1 mb1 px1 rounded bg-medium")}
-            style={{ paddingTop: "12px", paddingBottom: "12px" }}
-          >
+          <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
               className={multi ? "pl1 pr0" : "px1"}
@@ -553,8 +513,8 @@ export default class TokenField extends Component {
               {valueRenderer(v)}
             </span>
             {multi && (
-              <a
-                className="text-medium flex align-center text-error-hover px1"
+              <TokenFieldAddon
+                isValid={validateValue(v)}
                 onClick={e => {
                   e.preventDefault();
                   this.removeValue(v);
@@ -562,9 +522,9 @@ export default class TokenField extends Component {
                 onMouseDown={e => e.preventDefault()}
               >
                 <Icon name="close" className="flex align-center" size={12} />
-              </a>
+              </TokenFieldAddon>
             )}
-          </li>
+          </TokenFieldItem>
         ))}
         <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
           <input
@@ -575,7 +535,6 @@ export default class TokenField extends Component {
             size={10}
             placeholder={placeholder}
             value={inputValue}
-            autoFocus={isFocused}
             onKeyDown={this.onInputKeyDown}
             onChange={this.onInputChange}
             onFocus={this.onInputFocus}

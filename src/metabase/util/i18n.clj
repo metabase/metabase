@@ -14,9 +14,9 @@
 (p/import-vars
  [impl
   available-locale?
+  fallback-locale
   locale
   normalized-locale-string
-  parent-locale
   translate])
 
 (def ^:dynamic *user-locale*
@@ -24,10 +24,16 @@
   *use*, use the `user-locale` function instead."
   nil)
 
+(def ^:dynamic *site-locale-override*
+  "Bind this to a string, keyword, or `Locale` to override the value returned by `site-locale`. For testing purposes,
+  such as when swapping out an application database temporarily, when the setting table may not even exist."
+  nil)
+
 (defn site-locale
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
-  (locale (or (impl/site-locale-from-setting)
+  (locale (or *site-locale-override*
+              (impl/site-locale-from-setting)
               ;; if DB is not initialized yet fall back to English
               "en")))
 
@@ -43,7 +49,9 @@
   "Returns all locale abbreviations and their full names"
   []
   (for [locale-name (impl/available-locale-names)]
-    [locale-name (.getDisplayName (locale locale-name))]))
+    ;; Abbreviation must be normalized or the language picker will show incorrect saved value
+    ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
+    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
 
 (defn translate-site-locale
   "Translate a string with the System locale."

@@ -42,7 +42,7 @@ const QueryDownloadWidget = ({
   >
     <Box
       p={2}
-      w={result.data && result.data.rows_truncated != null ? 300 : 260}
+      width={result.data && result.data.rows_truncated != null ? 300 : 260}
     >
       <Box p={1}>
         <h4>{t`Download full results`}</h4>
@@ -55,7 +55,7 @@ const QueryDownloadWidget = ({
       )}
       <Box>
         {EXPORT_FORMATS.map(type => (
-          <Box key={type} w={"100%"}>
+          <Box key={type} width={"100%"}>
             {dashcardId && token ? (
               <DashboardEmbedQueryButton
                 key={type}

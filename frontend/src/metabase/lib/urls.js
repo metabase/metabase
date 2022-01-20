@@ -1,8 +1,9 @@
 import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
-import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/constants";
+import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
+import { stringifyHashOptions } from "metabase/lib/browser";
 
 function appendSlug(path, slug) {
   return slug ? `${path}-${slug}` : path;
@@ -28,24 +29,49 @@ export function question(card, hash = "", query = "") {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
   }
+
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }
+
   if (hash && hash.charAt(0) !== "#") {
     hash = "#" + hash;
   }
+
   if (query && query.charAt(0) !== "?") {
     query = "?" + query;
   }
+
   if (!card || !card.id) {
     return `/question${query}${hash}`;
   }
-  if (!card.name) {
-    return `/question/${card.id}${query}${hash}`;
+
+  const { card_id, id, name } = card;
+  const basePath =
+    card?.dataset || card?.model === "dataset" ? "model" : "question";
+
+  /**
+   * If the question has been added to the dashboard we're reading the dashCard's properties.
+   * In that case `card_id` is the actual question's id, while `id` corresponds with the dashCard itself.
+   *
+   * There can be multiple instances of the same question in a dashboard, hence this distinction.
+   */
+  const questionId = card_id || id;
+
+  /**
+   * Although it's not possible to intentionally save a question without a name,
+   * it is possible that the `name` is not recognized if it contains symbols.
+   *
+   * Please see: https://github.com/metabase/metabase/pull/15989#pullrequestreview-656646149
+   */
+  if (!name) {
+    return `/${basePath}/${questionId}${query}${hash}`;
   }
-  const path = appendSlug(`/question/${card.id}`, slugg(card.name));
+
+  const path = appendSlug(`/${basePath}/${questionId}`, slugg(name));
+
   return `${path}${query}${hash}`;
 }
 
@@ -53,7 +79,7 @@ export function serializedQuestion(card) {
   return question(null, card);
 }
 
-export const extractQueryParams = (query: Object): Array => {
+export const extractQueryParams = query => {
   return [].concat(...Object.entries(query).map(flattenParam));
 };
 
@@ -65,8 +91,8 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function newQuestion({ mode, ...options } = {}) {
-  const url = Question.create(options).getUrl();
+export function newQuestion({ mode, creationType, ...options } = {}) {
+  const url = Question.create(options).getUrl({ creationType });
   if (mode) {
     return url.replace(/^\/question/, `/question\/${mode}`);
   } else {
@@ -74,13 +100,19 @@ export function newQuestion({ mode, ...options } = {}) {
   }
 }
 
-export function dashboard(dashboard, { addCardWithId } = {}) {
+export function dataset(...args) {
+  return question(...args);
+}
+
+export function dashboard(dashboard, { addCardWithId, editMode } = {}) {
+  const options = {
+    ...(addCardWithId ? { add: addCardWithId } : {}),
+    ...(editMode ? { edit: editMode } : {}),
+  };
+
   const path = appendSlug(dashboard.id, slugg(dashboard.name));
-  return addCardWithId != null
-    ? // NOTE: no-color-literals rule thinks #add is a color, oops
-      // eslint-disable-next-line no-color-literals
-      `/dashboard/${path}#add=${addCardWithId}`
-    : `/dashboard/${path}`;
+  const hash = stringifyHashOptions(options);
+  return hash ? `/dashboard/${path}#${hash}` : `/dashboard/${path}`;
 }
 
 function prepareModel(item) {
@@ -94,13 +126,19 @@ function prepareModel(item) {
 }
 
 export function modelToUrl(item) {
+  const modelData = prepareModel(item);
+
   switch (item.model) {
     case "card":
-      return question(prepareModel(item));
+      return question(modelData);
+    case "dataset":
+      return dataset(modelData);
     case "dashboard":
-      return dashboard(prepareModel(item));
+      return dashboard(modelData);
     case "pulse":
-      return pulse(item.model_id);
+      return pulse(modelData.id);
+    case "table":
+      return tableRowsQuery(modelData.db_id, modelData.id);
     default:
       return null;
   }
@@ -194,7 +232,7 @@ export function embedDashboard(token) {
 }
 
 export function accountSettings() {
-  return `/user/edit_current`;
+  return `/account/profile`;
 }
 
 export function newUser() {
@@ -219,6 +257,18 @@ export function deactivateUser(userId) {
 
 export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+export function newDatabase() {
+  return `/admin/databases/create`;
+}
+
+export function editDatabase(databaseId) {
+  return `/admin/databases/${databaseId}`;
+}
+
+export function exploreDatabase(database) {
+  return `/explore/${database.id}`;
 }
 
 export function browseDatabase(database) {

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [clojure.set :as set]
+  (:require [clj-time.core :as time]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivot.test-utils]
@@ -34,9 +35,9 @@
 (deftest breakout-combinations-test
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= [[0 1 2]
-            [0 1  ]
-            [0    ]
-            [     ]]
+            [0 1]
+            [0]
+            []]
            (#'pivot/breakout-combinations 3 [0 1 2] [])))
     (is (= (sort-by
             (partial #'pivot/group-bitmask 4)
@@ -46,24 +47,24 @@
              [0     3]
              [0 1   3]
              ;; row totals
-             [0 1 2  ]
+             [0 1 2]
              ;; subtotal rows within "row totals"
-             [0      ]
-             [0 1    ]
+             [0]
+             [0 1]
              ;; "grand totals" row
              [      3]
              ;; bottom right corner
-             [       ]])
+             []])
            (#'pivot/breakout-combinations 4 [0 1 2] [3])))
     (testing "If pivot-rows and pivot-cols aren't specified, then just return the powerset"
       (is (= [[0 1 2]
               [  1 2]
               [0   2]
               [    2]
-              [0 1  ]
-              [  1  ]
-              [0    ]
-              [     ]]
+              [0 1]
+              [  1]
+              [0]
+              []]
              (#'pivot/breakout-combinations 3 [] []))))))
 
 (deftest validate-pivot-rows-cols-test
@@ -76,11 +77,11 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'pivot/breakout-combinations 3 [] [0 1 2 3]))))
+         (#'pivot/breakout-combinations 3 [] [0 1 2 3])))))
   ;; TODO -- we should require these columns to be distinct as well (I think?)
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
-  )
+
 
 (defn- test-query []
   (mt/dataset sample-dataset
@@ -95,7 +96,7 @@
                       :filter       [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at -2 :year {}]]}
+                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]}
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
@@ -164,20 +165,20 @@
               "Count"]
              (map :display_name (mt/cols results))))
       (is (apply distinct? rows))
-      (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0  263 ]
-              ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0  89  ]
-              ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0  276 ]
-              ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0  100 ]
-              ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0  361 ]
-              ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0  113 ]
-              ["Gizmo"     "Google"   "2019-01-01T00:00:00Z" 0  325 ]
-              ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0  101 ]
-              ["Doohickey" "Facebook" nil                    4  352 ]
-              ["Doohickey" "Google"   nil                    4  376 ]
-              ["Gizmo"     "Facebook" nil                    4  474 ]
-              ["Gizmo"     "Google"   nil                    4  426 ]
-              ["Doohickey" nil        nil                    6  728 ]
-              ["Gizmo"     nil        nil                    6  900 ]
+      (is (= [["Doohickey" "Facebook" "2019-01-01T00:00:00Z" 0  263]
+              ["Doohickey" "Facebook" "2020-01-01T00:00:00Z" 0  89]
+              ["Doohickey" "Google"   "2019-01-01T00:00:00Z" 0  276]
+              ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0  100]
+              ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0  361]
+              ["Gizmo"     "Facebook" "2020-01-01T00:00:00Z" 0  113]
+              ["Gizmo"     "Google"   "2019-01-01T00:00:00Z" 0  325]
+              ["Gizmo"     "Google"   "2020-01-01T00:00:00Z" 0  101]
+              ["Doohickey" "Facebook" nil                    4  352]
+              ["Doohickey" "Google"   nil                    4  376]
+              ["Gizmo"     "Facebook" nil                    4  474]
+              ["Gizmo"     "Google"   nil                    4  426]
+              ["Doohickey" nil        nil                    6  728]
+              ["Gizmo"     nil        nil                    6  900]
               [nil         nil        nil                    7  1628]]
              rows)))))
 
@@ -238,10 +239,12 @@
                        :pivot-cols [1])]
       (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
                     "`:fields` (#14604)")
-        (is (= (m/dissoc-in (pivot/run-pivot-query query)
-                            [:data :results_metadata :checksum])
-               (m/dissoc-in (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
-                            [:data :results_metadata :checksum]))))
+        (is (= (-> (pivot/run-pivot-query query)
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form]))
+               (-> (pivot/run-pivot-query (assoc-in query [:query :expressions] {"Don't include me pls" [:+ 1 1]}))
+                   (m/dissoc-in [:data :results_metadata :checksum])
+                   (m/dissoc-in [:data :native_form])))))
 
       (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
         ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
@@ -278,7 +281,7 @@
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category $user_id->people.source]})]
-          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (perms/revoke-data-perms! (group/all-users) (mt/db))
           (testing "User without perms shouldn't be able to run the query normally"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo

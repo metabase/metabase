@@ -12,6 +12,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import { Box, Flex } from "grid-styled";
 
@@ -27,68 +28,74 @@ import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
 
+// TODO
 const STEP_UI = {
   data: {
     title: t`Data`,
-    color: c("brand"),
     component: DataStep,
+    getColor: () => c("brand"),
   },
   join: {
     title: t`Join data`,
-    color: c("brand"),
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
+    getColor: () => c("brand"),
   },
   expression: {
     title: t`Custom column`,
-    color: c("bg-dark"),
     icon: "add_data",
     component: ExpressionStep,
+    getColor: () => c("bg-dark"),
   },
   filter: {
     title: t`Filter`,
-    color: c("accent7"),
     icon: "filter",
     component: FilterStep,
     priority: 10,
+    getColor: () => c("accent7"),
   },
   summarize: {
     title: t`Summarize`,
-    color: c("accent1"),
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   aggregate: {
     title: t`Aggregate`,
-    color: c("accent1"),
     icon: "sum",
     component: AggregateStep,
     priority: 5,
+    getColor: () => c("accent1"),
   },
   breakout: {
     title: t`Breakout`,
-    color: c("accent4"),
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
+    getColor: () => c("accent4"),
   },
   sort: {
     title: t`Sort`,
-    color: c("bg-dark"),
     icon: "smartscalar",
     component: SortStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
   limit: {
     title: t`Row limit`,
-    color: c("bg-dark"),
     icon: "list",
     component: LimitStep,
     compact: true,
+    getColor: () => c("bg-dark"),
   },
 };
+
+function getTestId(step) {
+  const { type, stageIndex, itemIndex } = step;
+  return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
+}
 
 const CONTENT_WIDTH = [11 / 12, 8 / 12];
 
@@ -107,9 +114,10 @@ export default class NotebookStep extends React.Component {
     } = this.props;
     const { showPreview } = this.state;
 
-    const { title, color, component: NotebookStepComponent } =
+    const { title, getColor, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
+    const color = getColor();
     const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 
@@ -119,53 +127,52 @@ export default class NotebookStep extends React.Component {
 
     const actions = [];
     actions.push(
-      ...step.actions.map(action => ({
-        priority: (STEP_UI[action.type] || {}).priority,
-        button: (
-          <ActionButton
-            mr={isLastStep ? 2 : 1}
-            mt={isLastStep ? 2 : null}
-            large={largeActionButtons}
-            {...(STEP_UI[action.type] || {})}
-            key={`actionButton_${STEP_UI[action.type].title}`}
-            onClick={() => action.action({ query: step.query, openStep })}
-          />
-        ),
-      })),
+      ...step.actions.map(action => {
+        const stepUi = STEP_UI[action.type];
+
+        return {
+          priority: stepUi.priority,
+          button: (
+            <ActionButton
+              mr={isLastStep ? 2 : 1}
+              mt={isLastStep ? 2 : null}
+              color={stepUi.getColor()}
+              large={largeActionButtons}
+              {...stepUi}
+              key={`actionButton_${stepUi.title}`}
+              onClick={() => action.action({ query: step.query, openStep })}
+            />
+          ),
+        };
+      }),
     );
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    let onRemove = null;
-    if (step.revert) {
-      const reverted = step.revert(step.query).clean();
-      if (reverted.isValid()) {
-        onRemove = () => reverted.update(updateQuery);
-      }
-    }
-
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
-        <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
-          {(title || onRemove) && (
-            <Flex
-              mb={1}
-              width={CONTENT_WIDTH}
-              className="text-bold"
-              style={{ color }}
-            >
-              {title}
-              {onRemove && (
-                <Icon
-                  name="close"
-                  className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-                  tooltip={t`Remove`}
-                  onClick={onRemove}
-                />
-              )}
-            </Flex>
-          )}
+        <Box
+          mb={[1, 2]}
+          pb={[1, 2]}
+          className="hover-parent hover--visibility"
+          data-testid={getTestId(step)}
+        >
+          <Flex
+            mb={1}
+            width={CONTENT_WIDTH}
+            className="text-bold"
+            style={{ color }}
+          >
+            {title}
+            <Icon
+              name="close"
+              className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+              tooltip={t`Remove`}
+              onClick={() => step.revert(step.query).update(updateQuery)}
+              data-testid="remove-step"
+            />
+          </Flex>
 
           {NotebookStepComponent && (
             <Flex align="center">
@@ -200,14 +207,18 @@ export default class NotebookStep extends React.Component {
             />
           )}
 
-          {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
+          {actionButtons.length > 0 && (
+            <Box mt={1} data-testid="action-buttons">
+              {actionButtons}
+            </Box>
+          )}
         </Box>
       </ExpandingContent>
     );
   }
 }
 
-const ColorButton = styled(Button)`
+const ColorButton = forwardRefToInnerRef(styled(Button)`
   border: none;
   color: ${({ color }) => (color ? color : c("text-medium"))};
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
@@ -217,7 +228,7 @@ const ColorButton = styled(Button)`
       color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
   }
   transition: background 300ms;
-`;
+`);
 
 const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
   const button = (

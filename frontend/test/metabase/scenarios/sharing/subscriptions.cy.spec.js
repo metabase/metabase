@@ -1,9 +1,10 @@
 import {
   restore,
-  setupDummySMTP,
+  setupSMTP,
   describeWithToken,
   popover,
-  mockSessionProperty,
+  sidebar,
+  mockSlackConfigured,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { admin } = USERS;
@@ -14,8 +15,8 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not allow sharing if there are no dashboard cards", () => {
-    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+  it.skip("should not allow sharing if there are no dashboard cards", () => {
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     cy.findByText("This dashboard is looking empty.");
@@ -31,7 +32,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
-    cy.createDashboard("15077D").then(({ body: { id: DASHBOARD_ID } }) => {
+    cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       cy.visit(`/dashboard/${DASHBOARD_ID}`);
     });
     cy.icon("pencil").click();
@@ -65,18 +66,27 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("with email set up", () => {
     beforeEach(() => {
-      cy.request("DELETE", "http://localhost:80/email/all");
-      cy.request("PUT", "/api/setting", {
-        "email-smtp-host": "localhost",
-        "email-smtp-port": "25",
-        "email-smtp-username": "admin",
-        "email-smtp-password": "admin",
-        "email-smtp-security": "none",
-        "email-from-address": "mailer@metabase.test",
-      });
+      setupSMTP();
     });
 
     describe("with no existing subscriptions", () => {
+      it("should not enable subscriptions without the recipient (metabase#17657)", () => {
+        openDashboardSubscriptions();
+
+        cy.findByText("Email it").click();
+
+        // Make sure no recipients have been assigned
+        cy.findByPlaceholderText("Enter user names or email addresses");
+
+        // Change the schedule to "Monthly"
+        cy.findByText("Hourly").click();
+        cy.findByText("Monthly").click();
+
+        sidebar().within(() => {
+          cy.button("Done").should("be.disabled");
+        });
+      });
+
       it("should allow creation of a new email subscription", () => {
         createEmailSubscription();
         cy.findByText("Emailed hourly");
@@ -143,10 +153,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText(/^Emailed monthly on the first (?!null)/);
     });
 
-    it.skip("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
-      // In order to reproduce this test, we need to use the old syntac for dashboard filters
-      mockSessionProperty("field-filter-operators-enabled?", false);
-
+    it("should work when using dashboard default filter value on native query with required parameter (metabase#15705)", () => {
       cy.createNativeQuestion({
         name: "15705",
         native: {
@@ -162,48 +169,50 @@ describe("scenarios > dashboard > subscriptions", () => {
           },
         },
       }).then(({ body: { id: QUESTION_ID } }) => {
-        cy.createDashboard("15705D").then(({ body: { id: DASHBOARD_ID } }) => {
-          // Add filter to the dashboard
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
-            // Using the old dashboard filter syntax
-            parameters: [
-              {
-                name: "Quantity",
-                slug: "quantity",
-                id: "930e4001",
-                type: "category",
-                default: "20",
-              },
-            ],
-          });
-
-          // Add question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION_ID,
-          }).then(({ body: { id: DASH_CARD_ID } }) => {
-            // Connect filter to that question
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+        cy.createDashboard({ name: "15705D" }).then(
+          ({ body: { id: DASHBOARD_ID } }) => {
+            // Add filter to the dashboard
+            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+              // Using the old dashboard filter syntax
+              parameters: [
                 {
-                  id: DASH_CARD_ID,
-                  card_id: QUESTION_ID,
-                  row: 0,
-                  col: 0,
-                  sizeX: 12,
-                  sizeY: 10,
-                  parameter_mappings: [
-                    {
-                      parameter_id: "930e4001",
-                      card_id: QUESTION_ID,
-                      target: ["variable", ["template-tag", "qty"]],
-                    },
-                  ],
+                  name: "Quantity",
+                  slug: "quantity",
+                  id: "930e4001",
+                  type: "category",
+                  default: "3",
                 },
               ],
             });
-          });
-          assignRecipient({ dashboard_id: DASHBOARD_ID });
-        });
+
+            // Add question to the dashboard
+            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+              cardId: QUESTION_ID,
+            }).then(({ body: { id: DASH_CARD_ID } }) => {
+              // Connect filter to that question
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
+                cards: [
+                  {
+                    id: DASH_CARD_ID,
+                    card_id: QUESTION_ID,
+                    row: 0,
+                    col: 0,
+                    sizeX: 12,
+                    sizeY: 10,
+                    parameter_mappings: [
+                      {
+                        parameter_id: "930e4001",
+                        card_id: QUESTION_ID,
+                        target: ["variable", ["template-tag", "qty"]],
+                      },
+                    ],
+                  },
+                ],
+              });
+            });
+            assignRecipient({ dashboard_id: DASHBOARD_ID });
+          },
+        );
       });
       // Click anywhere outside to close the popover
       cy.findByText("15705D").click();
@@ -213,10 +222,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(body[0].html).not.to.include(
           "An error occurred while displaying this card.",
         );
+        expect(body[0].html).to.include("2,738");
       });
     });
 
-    it.skip("should include text cards (metabase#15744)", () => {
+    it("should include text cards (metabase#15744)", () => {
       const TEXT_CARD = "FooBar";
 
       cy.visit("/dashboard/1");
@@ -268,7 +278,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     beforeEach(() => {
       cy.skipOn(!!Cypress.env("HAS_ENTERPRISE_TOKEN"));
       cy.visit(`/dashboard/1`);
-      setupDummySMTP();
+      setupSMTP();
     });
 
     describe("with parameters", () => {
@@ -289,7 +299,7 @@ describe("scenarios > dashboard > subscriptions", () => {
   describeWithToken("EE email subscriptions", () => {
     beforeEach(() => {
       cy.visit(`/dashboard/1`);
-      setupDummySMTP();
+      setupSMTP();
     });
 
     describe("with no parameters", () => {
@@ -421,37 +431,4 @@ function addParametersToDashboard() {
   cy.findByText("Save").click();
   // wait for dashboard to save
   cy.contains("You're editing this dashboard.").should("not.exist");
-}
-
-function mockSlackConfigured() {
-  // Stubbing the response in advance (Cypress will intercept it when we navigate to "Dashboard subscriptions")
-  cy.server();
-  cy.route("GET", "/api/pulse/form_input", {
-    channels: {
-      email: {
-        type: "email",
-        name: "Email",
-        allows_recipients: false,
-        recipients: ["user", "email"],
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        configured: false,
-      },
-      slack: {
-        type: "slack",
-        name: "Slack",
-        allows_recipients: true,
-        schedules: ["hourly", "daily", "weekly", "monthly"],
-        fields: [
-          {
-            name: "channel",
-            type: "select",
-            displayName: "Post to",
-            options: ["#work", "#play"],
-            required: true,
-          },
-        ],
-        configured: true,
-      },
-    },
-  });
 }

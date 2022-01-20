@@ -9,7 +9,7 @@ import {
   removeCardReview,
 } from "metabase-enterprise/moderation/actions";
 
-import { BorderedModerationActions } from "./QuestionModerationSection.styled";
+import ModerationActions from "../ModerationActions/ModerationActions";
 import ModerationReviewBanner from "../ModerationReviewBanner/ModerationReviewBanner";
 
 const mapStateToProps = (state, props) => ({
@@ -54,9 +54,10 @@ function QuestionModerationSection({
 
   return (
     <React.Fragment>
-      <BorderedModerationActions
+      <ModerationActions
         moderationReview={latestModerationReview}
         onVerify={isModerator && onVerify}
+        isDataset={question.isDataset()}
       />
       {latestModerationReview && (
         <ModerationReviewBanner

@@ -1,5 +1,6 @@
 (ns metabase.models.interface
-  (:require [cheshire.core :as json]
+  (:require [buddy.core.codecs :as codecs]
+            [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -68,7 +69,7 @@
   (cond-> query
     (seq query) normalize/normalize))
 
-(defn- catch-normalization-exceptions
+(defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
   letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
@@ -84,6 +85,16 @@
 (models/add-type! :metabase-query
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
+
+(defn normalize-parameters-list
+  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
+  [parameters]
+  (or (normalize/normalize-fragment [:parameters] parameters)
+      []))
+
+(models/add-type! :parameters-list
+  :in  (comp json-in normalize-parameters-list)
+  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
 (def ^:private MetricSegmentDefinition
   {(s/optional-key :filter)      (s/maybe mbql.s/Filter)
@@ -123,23 +134,16 @@
                (cond-> form
                  (mbql-field-clause? form) normalize/normalize))
              form))]
-    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings"))
+    (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
-      true                                 normalize-mbql-clauses)))
+      true                                 normalize-mbql-clauses
+      ;; exclude graph.metrics from normalization as it may start with
+      ;; the word "expression" but it is not MBQL (metabase#15882)
+      (get viz-settings "graph.metrics")   (assoc :graph.metrics (get viz-settings "graph.metrics")))))
 
 (models/add-type! :visualization-settings
   :in  json-in
   :out (comp normalize-visualization-settings json-out-without-keywordization))
-
-;; For DashCard parameter lists
-(defn- normalize-parameter-mapping-targets [parameter-mappings]
-  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
-      []))
-
-(models/add-type! :parameter-mappings
-  :in  (comp json-in normalize-parameter-mapping-targets)
-  :out (comp (catch-normalization-exceptions normalize-parameter-mapping-targets) json-out-with-keywordization))
-
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
@@ -162,11 +166,23 @@
   :in  encryption/maybe-encrypt
   :out encryption/maybe-decrypt)
 
+(defn- blob->bytes [^Blob b]
+  (.getBytes ^Blob b 0 (.length ^Blob b)))
+
+(defn- maybe-blob->bytes [v]
+  (if (instance? Blob v)
+    (blob->bytes v)
+    v))
+
+(models/add-type! :secret-value
+  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
+
 (defn decompress
   "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
-    (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
+    (recur (blob->bytes compressed-bytes))
     (with-open [bis     (ByteArrayInputStream. compressed-bytes)
                 bif     (BufferedInputStream. bis)
                 gz-in   (GZIPInputStream. bif)
@@ -220,7 +236,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p.types/defprotocol+ IObjectPermissions
-  "Methods for determining whether the current user has read/write permissions for a given object."
+  "Methods for determining whether the current user has read/write permissions for a given object. See documentation
+  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
 
   (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This

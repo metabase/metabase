@@ -4,11 +4,19 @@ import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import { FieldRow, Label, InfoIcon, InputContainer } from "./FormField.styled";
+import {
+  FieldRow,
+  Label,
+  InfoIcon,
+  InputContainer,
+  FieldContainer,
+} from "./FormField.styled";
+import { FormFieldDecription } from "./FormFieldDescription";
 
 const formFieldCommon = {
   title: PropTypes.string,
   description: PropTypes.string,
+  descriptionPosition: PropTypes.oneOf(["top", "bottom"]),
   info: PropTypes.string,
   hidden: PropTypes.bool,
   horizontal: PropTypes.bool,
@@ -44,6 +52,9 @@ function FormField(props) {
     formField,
     title = formField && formField.title,
     description = formField && formField.description,
+    descriptionPosition = descriptionPosition ||
+      (formField && formField.descriptionPosition) ||
+      "top",
     info = formField && formField.info,
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
@@ -75,7 +86,7 @@ function FormField(props) {
   return (
     <div id={formFieldId} className={rootClassNames}>
       {(title || description) && (
-        <div>
+        <FieldContainer horizontal={horizontal}>
           <FieldRow>
             {title && (
               <Label
@@ -93,10 +104,15 @@ function FormField(props) {
               </Tooltip>
             )}
           </FieldRow>
-          {description && <div className="mb1">{description}</div>}
-        </div>
+          {description && descriptionPosition === "top" && (
+            <FormFieldDecription className="mb1" description={description} />
+          )}
+        </FieldContainer>
       )}
       <InputContainer horizontal={horizontal}>{children}</InputContainer>
+      {description && descriptionPosition === "bottom" && (
+        <FormFieldDecription className="mt1" description={description} />
+      )}
     </div>
   );
 }

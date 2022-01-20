@@ -24,11 +24,10 @@ import {
 import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import { findDOMNode } from "react-dom";
 
-const PIVOT_BG_LIGHT = lighten(color("brand"), 0.65);
-const PIVOT_BG_DARK = lighten(color("brand"), 0.6);
+const getBgLightColor = () => lighten(color("brand"), 0.65);
+const getBgDarkColor = () => lighten(color("brand"), 0.6);
 
 const partitions = [
   {
@@ -62,7 +61,6 @@ const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
 
 export default class PivotTable extends Component {
-  props: VisualizationProps;
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
   static iconName = "pivot_table";
@@ -288,7 +286,7 @@ export default class PivotTable extends Component {
       return (
         <div
           key={key}
-          style={{ ...style, backgroundColor: PIVOT_BG_LIGHT }}
+          style={{ ...style, backgroundColor: getBgLightColor() }}
           className={cx("overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
@@ -400,7 +398,7 @@ export default class PivotTable extends Component {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
-                    backgroundColor: PIVOT_BG_LIGHT,
+                    backgroundColor: getBgLightColor(),
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     width: leftHeaderWidth,
@@ -567,7 +565,7 @@ function RowToggleIcon({
       style={{
         padding: "4px",
         borderRadius: "4px",
-        backgroundColor: isCollapsed ? PIVOT_BG_LIGHT : PIVOT_BG_DARK,
+        backgroundColor: isCollapsed ? getBgLightColor() : getBgDarkColor(),
       }}
       onClick={e => {
         e.stopPropagation();
@@ -597,7 +595,7 @@ function Cell({
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
-        ...(isSubtotal ? { backgroundColor: PIVOT_BG_DARK } : {}),
+        ...(isSubtotal ? { backgroundColor: getBgDarkColor() } : {}),
       }}
       className={cx(
         "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",
@@ -619,9 +617,9 @@ function Cell({
 
 function updateValueWithCurrentColumns(storedValue, columns) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
-  const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)),
-  );
+  const currentSettingFieldRefs = Object.values(
+    storedValue,
+  ).flatMap(fieldRefs => fieldRefs.map(field_ref => JSON.stringify(field_ref)));
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 

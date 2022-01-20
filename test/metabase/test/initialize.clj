@@ -83,6 +83,15 @@
   (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
 
+;; initialize test drivers that are not shipped as part of the product
+;; this is needed because if DRIVERS=all in the environment, then only the directories within modules are searched to
+;; determine the set of available drivers, so the "test only" drivers that live under test_modules will never be
+;; registered
+(define-initialization :test-drivers
+  (classloader/require 'metabase.test.initialize.plugins)
+  ((resolve 'metabase.test.initialize.plugins/init-test-drivers!)
+   [:driver-deprecation-test-legacy :driver-deprecation-test-new :secret-test-driver]))
+
 ;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
 ;; a JDBC backend!)
 (define-initialization :db

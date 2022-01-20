@@ -3,6 +3,7 @@ import {
   popover,
   openTable,
   visitQuestionAdhoc,
+  getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -109,7 +110,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Total" });
       getTitle("Count by Total: Auto binned");
 
-      openPopoverFromSelectedBinningOption("Total", "Auto binned");
+      openBinningListForDimension("Total", "Auto binned");
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
     });
 
@@ -117,7 +118,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({ table: ORDERS_ID, column: "Created At" });
       getTitle("Count by Created At: Month");
 
-      openPopoverFromSelectedBinningOption("Created At", "by month");
+      openBinningListForDimension("Created At", "by month");
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
     });
 
@@ -125,7 +126,7 @@ describe("scenarios > binning > binning options", () => {
       chooseInitialBinningOption({ table: PEOPLE_ID, column: "Longitude" });
       getTitle("Count by Longitude: Auto binned");
 
-      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      openBinningListForDimension("Longitude", "Auto binned");
       getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
   });
@@ -141,7 +142,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: Auto binned");
 
       cy.findByText("Total: Auto binned").click();
-      openPopoverFromSelectedBinningOption("Total", "Auto binned");
+      openBinningListForDimension("Total", "Auto binned");
 
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
     });
@@ -156,7 +157,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       cy.findByText("Created At: Month").click();
-      openPopoverFromSelectedBinningOption("Created At", "by month");
+      openBinningListForDimension("Created At", "by month");
 
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
     });
@@ -171,7 +172,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Longitude: Auto binned");
 
       cy.findByText("Longitude: Auto binned").click();
-      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      openBinningListForDimension("Longitude", "Auto binned");
 
       getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
@@ -200,7 +201,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Birth Date",
       });
 
-      openPopoverFromSelectedBinningOption("Birth Date", "by month");
+      openBinningListForDimension("Birth Date", "by month");
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
     });
 
@@ -210,7 +211,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Price",
       });
 
-      openPopoverFromSelectedBinningOption("Price", "Auto binned");
+      openBinningListForDimension("Price", "Auto binned");
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
     });
 
@@ -220,7 +221,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Longitude",
       });
 
-      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      openBinningListForDimension("Longitude", "Auto binned");
       getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
   });
@@ -236,7 +237,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Birth Date",
       });
 
-      openPopoverFromSelectedBinningOption("Birth Date", "by month");
+      openBinningListForDimension("Birth Date", "by month");
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
     });
 
@@ -246,7 +247,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Price",
       });
 
-      openPopoverFromSelectedBinningOption("Price", "Auto binned");
+      openBinningListForDimension("Price", "Auto binned");
       getAllOptions({ options: NUMBER_BUCKETS, isSelected: "Auto bin" });
     });
 
@@ -256,7 +257,7 @@ describe("scenarios > binning > binning options", () => {
         column: "Longitude",
       });
 
-      openPopoverFromSelectedBinningOption("Longitude", "Auto binned");
+      openBinningListForDimension("Longitude", "Auto binned");
       getAllOptions({ options: LONGITUDE_BUCKETS, isSelected: "Auto bin" });
     });
   });
@@ -285,9 +286,7 @@ function chooseInitialBinningOptionForExplicitJoin({
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
   cy.wait("@dataset");
-  cy.findByText("Summarize")
-    .should("be.visible")
-    .click();
+  cy.findByTextEnsureVisible("Summarize").click();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition
@@ -295,15 +294,8 @@ function chooseInitialBinningOptionForExplicitJoin({
   });
 }
 
-function openPopoverFromSelectedBinningOption(column, binning) {
-  cy.get(".List-item--selected")
-    .should("be.visible")
-    .as("targetListItem")
-    .should("contain", column);
-
-  cy.get("@targetListItem")
-    .find(".Field-extra")
-    .as("listItemSelectedBinning")
+function openBinningListForDimension(column, binning) {
+  getBinningButtonForDimension({ name: column, isSelected: true })
     .should("contain", binning)
     .click();
 }
@@ -331,6 +323,6 @@ function getAllOptions({ options, isSelected } = {}) {
         cy
           .findByText(selectedOption)
           .closest("li")
-          .should("have.class", "List-item--selected");
+          .should("have.attr", "aria-selected", "true");
     });
 }

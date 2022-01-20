@@ -14,7 +14,7 @@ import {
   UnderlinedItem,
 } from "./Radio.styled";
 
-const optionShape = PropTypes.shape({
+export const optionShape = PropTypes.shape({
   name: PropTypes.oneOfType([
     PropTypes.string,
     PropTypes.element,
@@ -44,6 +44,7 @@ const propTypes = {
   // Modes
   variant: PropTypes.oneOf(["bubble", "normal", "underlined"]),
   vertical: PropTypes.bool,
+  colorScheme: PropTypes.oneOf(["admin", "default", "accent7"]),
 };
 
 const defaultNameGetter = option => option.name;
@@ -75,6 +76,7 @@ function Radio({
   yspace,
   py,
   showButtons = vertical && variant !== "bubble",
+  colorScheme = "default",
   ...props
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
@@ -102,6 +104,7 @@ function Radio({
             <Item
               id={labelId}
               htmlFor={id}
+              colorScheme={colorScheme}
               selected={selected}
               last={last}
               vertical={vertical}
@@ -117,6 +120,7 @@ function Radio({
             >
               {option.icon && <Icon name={option.icon} mr={1} />}
               <RadioInput
+                colorScheme={colorScheme}
                 id={id}
                 name={name}
                 value={value}
@@ -129,8 +133,10 @@ function Radio({
                 // Workaround for https://github.com/testing-library/dom-testing-library/issues/877
                 aria-labelledby={labelId}
               />
-              {showButtons && <RadioButton checked={selected} />}
-              {optionNameFn(option)}
+              {showButtons && (
+                <RadioButton colorScheme={colorScheme} checked={selected} />
+              )}
+              <span data-testid={`${id}-name`}>{optionNameFn(option)}</span>
             </Item>
           </li>
         );

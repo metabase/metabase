@@ -4,6 +4,7 @@
   `metabase.models.collection.graph`. `metabase.models.collection.graph`"
   (:refer-clojure :exclude [ancestors descendants])
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -11,7 +12,7 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.public-settings.metastore :as settings.metastore]
+            [metabase.public-settings.premium-features :as settings.premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
@@ -236,15 +237,15 @@
   You probably don't want to consume the results of this function directly -- most of the time, the reason you are
   calling this function in the first place is because you want add a `FILTER` clause to an application DB query (e.g.
   to only fetch Cards that belong to Collections visible to the current User). Use
-  `visible-collection-ids->honeysql-filter-clause` to generate a filter clause that handles all possible outputs of
+  [[visible-collection-ids->honeysql-filter-clause]] to generate a filter clause that handles all possible outputs of
   this function correctly.
 
   !!! IMPORTANT NOTE !!!
 
   Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
   SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
-  `visible-collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
-  [permissions-set :- #{perms/UserPath}]
+  [[visible-collection-ids->honeysql-filter-clause]] to generate appropriate HoneySQL."
+  [permissions-set :- #{perms/Path}]
   (if (contains? permissions-set "/")
     :all
     (set
@@ -293,7 +294,7 @@
   (let [parent-id           (or (:id parent-collection) "")
         child-literal       (if (collection.root/is-root-collection? parent-collection)
                               "/"
-                              (format "%%/%s/" (str parent-id))) ]
+                              (format "%%/%s/" (str parent-id)))]
     (into
       ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
       ; the [:= 1 1] is to prevent this
@@ -303,7 +304,7 @@
         ; meaning, the effective children are always the direct children. So check for being a direct child.
         [[:like :location (hx/literal child-literal)]]
         (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id)) ]
+              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
           (for [visible-collection-id disj-collection-ids]
             [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
@@ -368,7 +369,7 @@
   "Get the immediate parent `collection` id, if set."
   {:hydrate :parent_id}
   [{:keys [location]} :- CollectionWithLocationOrRoot]
-  (if location (location-path->parent-id location)))
+  (some-> location location-path->parent-id))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -497,7 +498,7 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn perms-for-archiving :- #{perms/ObjectPath}
+(s/defn perms-for-archiving :- #{perms/Path}
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -526,7 +527,7 @@
                             (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(s/defn perms-for-moving :- #{perms/ObjectPath}
+(s/defn perms-for-moving :- #{perms/Path}
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 
@@ -861,8 +862,10 @@
                      (db/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
+    ;;
+    ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (settings.metastore/enable-enhancements?)))
+             (not (settings.premium-features/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
@@ -1044,20 +1047,50 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
 
+(defn annotate-collections
+  "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
+  in the collection at that level."
+  [{:keys [dataset card] :as _coll-type-ids} collections]
+  (let [parent-info (reduce (fn [m {:keys [location id] :as _collection}]
+                              (let [parent-ids (set (location-path->ids location))]
+                                (cond-> m
+                                  (contains? dataset id)
+                                  (update :dataset set/union parent-ids)
+                                  (contains? card id)
+                                  (update :card set/union parent-ids))))
+                            {:dataset #{} :card #{}}
+                            collections)]
+    (map (fn [{:keys [id] :as collection}]
+           (let [types (cond-> #{}
+                         (contains? (:dataset parent-info) id)
+                         (conj :dataset)
+                         (contains? (:card parent-info) id)
+                         (conj :card))]
+             (cond-> collection
+               (seq types) (assoc :below types)
+               (contains? dataset id) (update :here (fnil conj #{}) :dataset)
+               (contains? card id) (update :here (fnil conj #{}) :card))))
+         collections)))
+
 (defn collections->tree
   "Convert a flat sequence of Collections into a tree structure e.g.
 
-    (collections->tree [A B C D E F G])
+    (collections->tree {:dataset #{C D} :card #{F C} [A B C D E F G])
     ;; ->
     [{:name     \"A\"
+      :below    #{:card :dataset}
       :children [{:name \"B\"}
                  {:name     \"C\"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     \"D\"
+                              :here     #{:dataset}
                               :children [{:name \"E\"}]}
                              {:name     \"F\"
+                              :here     #{:card}
                               :children [{:name \"G\"}]}]}]}
      {:name \"H\"}]"
-  [collections]
+  [coll-type-ids collections]
   (let [all-visible-ids (set (map :id collections))]
     (transduce
      identity
@@ -1093,4 +1126,4 @@
              (map #(update % :children ->tree))
              (sort-by (fn [{coll-name :name, coll-id :id}]
                         [((fnil u/lower-case-en "") coll-name) coll-id])))))
-     collections)))
+     (annotate-collections coll-type-ids collections))))

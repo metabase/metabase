@@ -1,8 +1,4 @@
-import {
-  restore,
-  mockSessionProperty,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 import { DATE_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
@@ -16,8 +12,6 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery(
@@ -65,6 +59,28 @@ describe("scenarios > filters > sql filters > field filter > Date", () => {
             cy.findByText(representativeResult);
           });
         });
+
+        it("when the widget type is changed (metabase#16756)", () => {
+          const anotherSubType = Object.keys(DATE_FILTER_SUBTYPES).find(
+            type => type !== subType,
+          );
+          const anotherValue = DATE_FILTER_SUBTYPES[anotherSubType].value;
+
+          FieldFilter.setWidgetType(anotherSubType);
+          dateFilterSelector({
+            filterType: anotherSubType,
+            filterValue: anotherValue,
+          });
+
+          FieldFilter.setWidgetType(subType);
+          dateFilterSelector({ filterType: subType, filterValue: value });
+
+          SQLFilter.runQuery();
+
+          cy.get(".Visualization").within(() => {
+            cy.findByText(representativeResult);
+          });
+        });
       });
     },
   );
@@ -96,10 +112,12 @@ function dateFilterSelector({
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Relative Date":

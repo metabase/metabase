@@ -9,8 +9,6 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
 const getGuiQueryEditor = query => (
   <GuiQueryEditor
     query={query}
@@ -25,7 +23,7 @@ const getGuiQueryEditor = query => (
 
 describe("GuiQueryEditor", () => {
   it("should allow adding the first breakout", () => {
-    const query: StructuredQuery = Question.create({
+    const query = Question.create({
       databaseId: SAMPLE_DATASET.id,
       tableId: ORDERS.id,
       metadata,
@@ -42,7 +40,7 @@ describe("GuiQueryEditor", () => {
   });
 
   it("should allow adding more than one breakout", () => {
-    const query: StructuredQuery = Question.create({
+    const query = Question.create({
       databaseId: SAMPLE_DATASET.id,
       tableId: ORDERS.id,
       metadata,

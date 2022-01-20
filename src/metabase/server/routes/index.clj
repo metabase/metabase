@@ -44,8 +44,8 @@
      (when-not (= locale-name "en")
        (try
          (slurp (or (io/resource (localization-json-file-name locale-name))
-                    (when-let [parent-locale (i18n/parent-locale locale-name)]
-                      (io/resource (localization-json-file-name (str parent-locale))))
+                    (when-let [fallback-locale (i18n/fallback-locale locale-name)]
+                      (io/resource (localization-json-file-name (str fallback-locale))))
                     ;; don't try to i18n the Exception message below, we have no locale to translate it to!
                     (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
          (catch Throwable e
@@ -72,7 +72,7 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? uri]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/properties :public)]
+   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map :public)]
      {:bootstrapJS        (load-inline-js "index_bootstrap")
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
@@ -91,7 +91,7 @@
     {:initJS (load-inline-js "init")}))
 
 (defn- entrypoint
-  "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
+  "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
     (-> (resp/response (if (init-status/complete?)

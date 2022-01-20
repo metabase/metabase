@@ -23,6 +23,7 @@ export default class TextWidget extends Component {
     commitImmediately: PropTypes.bool,
     placeholder: PropTypes.string,
     focusChanged: PropTypes.func,
+    disabled: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -48,6 +49,7 @@ export default class TextWidget extends Component {
       className,
       isEditing,
       focusChanged: parentFocusChanged,
+      disabled,
     } = this.props;
     const defaultPlaceholder = this.state.isFocused
       ? ""
@@ -89,6 +91,7 @@ export default class TextWidget extends Component {
         placeholder={
           isEditing ? t`Enter a default value...` : defaultPlaceholder
         }
+        disabled={disabled}
       />
     );
   }

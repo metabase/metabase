@@ -3,6 +3,9 @@ import {
   openOrdersTable,
   version,
   popover,
+  describeWithToken,
+  setupMetabaseCloud,
+  describeWithoutToken,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -197,7 +200,7 @@ describe("scenarios > admin > settings", () => {
       .find(".AdminSelect")
       .first()
       .click();
-    cy.findByText("2018/1/7").click();
+    cy.findByText("2018/1/7").click({ force: true });
     cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
@@ -356,16 +359,75 @@ describe("scenarios > admin > settings", () => {
       .contains(lastItem);
   });
 
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide self-hosted settings when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Site Name");
+    cy.findByText("Site URL").should("not.exist");
+
+    cy.findByText("Email").should("not.exist");
+    cy.findByText("Updates").should("not.exist");
+  });
+
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide the store link when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByLabelText("store icon").should("not.exist");
+  });
+
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
       cy.visit("/admin/settings/slack");
-      cy.contains("Answers sent right to your Slack");
-      cy.findByPlaceholderText("Enter the token you received from Slack")
-        .type("not-a-real-token")
-        .blur();
-      cy.findByText("Save changes").click();
-      cy.contains("Looks like we ran into some problems");
+
+      cy.findByText("Metabase on Slack");
+      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
+      cy.findByLabelText("Slack channel name").type("metabase_files");
+      cy.button("Save changes").click();
+
+      cy.findByText(": invalid token");
     });
+  });
+});
+
+describeWithoutToken("scenarios > admin > settings (OSS)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show the store link when running Metabase OSS", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByLabelText("store icon");
+  });
+});
+
+describeWithToken("scenarios > admin > settings (EE)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  // Unskip when mocking Cloud in Cypress is fixed (#18289)
+  it.skip("should hide Enterprise page when running Metabase Cloud", () => {
+    setupMetabaseCloud();
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Site Name");
+    cy.findByText("Enterprise").should("not.exist");
+  });
+
+  it("should hide the store link when running Metabase EE", () => {
+    cy.visit("/admin/settings/general");
+
+    cy.findByText("Metabase Admin");
+    cy.findByLabelText("store icon").should("not.exist");
   });
 });
 

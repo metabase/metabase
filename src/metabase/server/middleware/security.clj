@@ -30,10 +30,10 @@
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
    "Last-Modified"  (t/format :rfc-1123-date-time (t/zoned-date-time))})
 
- (defn- cache-far-future-headers
-   "Headers that tell browsers to cache a static resource for a long time."
-   []
-   {"Cache-Control" "public, max-age=31536000"})
+(defn- cache-far-future-headers
+  "Headers that tell browsers to cache a static resource for a long time."
+  []
+  {"Cache-Control" "public, max-age=31536000"})
 
 (def ^:private ^:const strict-transport-security-header
   "Tell browsers to only access this resource over HTTPS for the next year (prevent MTM attacks). (This only applies if
@@ -51,9 +51,10 @@
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://apis.google.com"
-                                   "https://www.google-analytics.com" ; Safari requires the protocol
                                    "https://*.googleapis.com"
                                    "*.gstatic.com"
+                                   (when (public-settings/anon-tracking-enabled)
+                                     "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
                                      "localhost:8080")
@@ -61,8 +62,8 @@
                                    ;; https://github.com/facebook/react/issues/17997
                                    (when config/is-dev?
                                      "'unsafe-inline'")]
-                                   (when-not config/is-dev?
-                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
+                                  (when-not config/is-dev?
+                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
@@ -76,6 +77,13 @@
                   :connect-src  ["'self'"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 ;; Google analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "www.google-analytics.com")
+                                 ;; Snowplow analytics
+                                 (when (public-settings/anon-tracking-enabled)
+                                   "sp.metabase.com")
+                                 ;; Webpack dev server
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]
                   :manifest-src ["'self'"]}]

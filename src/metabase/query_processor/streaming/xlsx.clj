@@ -24,6 +24,7 @@
 (def ^:private number-setting-keys
   "If any of these settings are present, we should format the column as a number."
   #{::mb.viz/number-style
+    ::mb.viz/number-separators
     ::mb.viz/currency
     ::mb.viz/currency-style
     ::mb.viz/currency-in-header
@@ -95,6 +96,7 @@
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
                      ::mb.viz/number-style
+                     ::mb.viz/number-separators
                      ::mb.viz/scale
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
@@ -111,10 +113,15 @@
               merged-settings (if is-currency?
                                 (merge-global-settings format-settings :type/Currency)
                                 format-settings)
+              base-string     (if (= (::mb.viz/number-separators format-settings) ".")
+                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; number separator settings, since custom separators are not supported in XLSX.
+                                "###0"
+                                "#,##0")
               base-strings    (if (default-number-format? merged-settings)
                                 ;; [int-format, float-format]
-                                ["#,##0", "#,##0.##"]
-                                (repeat 2 (apply str "#,##0" (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
+                                [base-string (str base-string ".##")]
+                                (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
           (condp = (::mb.viz/number-style merged-settings)
             "percent"
             (map #(str % "%") base-strings)
@@ -168,6 +175,11 @@
         time-format      (when base-time-format
                            (condp = (::mb.viz/time-style format-settings "h:mm A")
                              "HH:mm"
+                             (str "h" base-time-format)
+
+                             ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+                             ;; normalized, but we'll handle it here too just in case. (#18112)
+                             "k:mm"
                              (str "h" base-time-format)
 
                              "h:mm A"
@@ -287,7 +299,7 @@
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
   [value]
   (let [rounded (.setScale (bigdec value) 2 java.math.RoundingMode/HALF_UP)]
-    (== (int rounded) rounded)))
+    (== (bigint rounded) rounded)))
 
 (defmulti ^:private set-cell!
   "Sets a cell to the provided value, with an approrpiate style if necessary.
@@ -363,6 +375,11 @@
 (defmethod set-cell! nil [^Cell cell _ _]
   (.setBlank cell))
 
+(def ^:dynamic *parse-temporal-string-values*
+  "When true, XLSX exports will attempt to parse string values into corresponding java.time classes so that
+  formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
+  false)
+
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -373,13 +390,20 @@
                   (inc (.getLastRowNum sheet)))
         row (.createRow sheet row-num)]
     (doseq [[value col index] (map vector values cols (range (count values)))]
-      (let [id-or-name (or (:id col) (:name col))
-            settings   (or (get col-settings {::mb.viz/field-id id-or-name})
-                           (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val (if (and value (::mb.viz/scale settings))
-                         (* value (::mb.viz/scale settings))
-                         value)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) scaled-val id-or-name)))
+      (let [id-or-name   (or (:id col) (:name col))
+            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                             (get col-settings {::mb.viz/column-name id-or-name}))
+            scaled-val   (if (and value (::mb.viz/scale settings))
+                           (* value (::mb.viz/scale settings))
+                           value)
+            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+            parsed-value (if (and *parse-temporal-string-values* (string? value))
+                           (try (u.date/parse value)
+                                ;; Fallback to plain string value if it couldn't be parsed
+                                (catch Exception _ value))
+                           scaled-val)]
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
 
 (defn- column-titles
@@ -411,12 +435,17 @@
   This ensures the cells in the header row have enough room for the filter dropdown icon."
   (* 4 256))
 
+(def ^:private max-column-width
+  "Cap column widths at 255 characters"
+  (* 255 256))
+
 (defn- autosize-columns!
   "Adjusts each column to fit its largest value, plus a constant amount of extra padding."
   [sheet]
   (doseq [i (.getTrackedColumnsForAutoSizing ^SXSSFSheet sheet)]
     (.autoSizeColumn ^SXSSFSheet sheet i)
-    (.setColumnWidth ^SXSSFSheet sheet i (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width))
+    (.setColumnWidth ^SXSSFSheet sheet i (min max-column-width
+                                              (+ (.getColumnWidth ^SXSSFSheet sheet i) extra-column-width)))
     (.untrackColumnForAutoSizing ^SXSSFSheet sheet i)))
 
 (defn- setup-header-row!

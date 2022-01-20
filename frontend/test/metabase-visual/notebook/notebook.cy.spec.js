@@ -1,8 +1,8 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
-  const VIEWPORT_WIDTH = 2200;
-  const VIEWPORT_HEIGHT = 1200;
+  const VIEWPORT_WIDTH = 2500;
+  const VIEWPORT_HEIGHT = 1500;
 
   beforeEach(() => {
     restore();
@@ -13,11 +13,19 @@ describe("visual tests > notebook > major UI elements", () => {
   it("renders correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     addJoin({
       rightTable: "Products",
+    });
+    addJoinDimensions({
+      currentJoinsCount: 1,
+      leftField: "Created At",
+      rightField: "Created At",
+    });
+    addJoinDimensions({
+      currentJoinsCount: 2,
     });
 
     addCustomColumn({
@@ -46,6 +54,55 @@ describe("visual tests > notebook > major UI elements", () => {
   });
 });
 
+describe("visual tests > notebook > Run buttons", () => {
+  const VIEWPORT_WIDTH = 1920;
+  const VIEWPORT_HEIGHT = 1500;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.viewport(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+  });
+
+  // This tests that the run buttons are the correct size on the Custom question page
+  it("in Custom Question render correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Custom question").click();
+    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Orders").click();
+    // Waiting for notebook icon to load
+    cy.wait(1000);
+    cy.icon("notebook").click();
+    // Waiting for empty question to load
+    cy.wait(1000);
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > Run buttons in Custom Question render correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+        widths: [VIEWPORT_WIDTH],
+      },
+    );
+  });
+
+  // This tests that the run buttons are the correct size on the Native query page
+  it("in Native Query render correctly", () => {
+    cy.visit("/question/new");
+    cy.findByText("Native query").click();
+
+    // Check that we're on the blank question page
+    cy.findByText("Here's where your results will appear");
+    cy.percySnapshot(
+      "visual tests > notebook > Run buttons in Native Query render correctly",
+      {
+        minHeight: VIEWPORT_HEIGHT,
+        widths: [VIEWPORT_WIDTH],
+      },
+    );
+  });
+});
+
 function selectFromDropdown(itemName) {
   return popover().findByText(itemName);
 }
@@ -56,6 +113,19 @@ function addJoin({ rightTable }) {
     .click();
 
   selectFromDropdown(rightTable).click();
+}
+
+function addJoinDimensions({ currentJoinsCount, leftField, rightField }) {
+  const lastJoinIndex = currentJoinsCount - 1;
+
+  cy.findByTestId(`join-dimensions-pair-${lastJoinIndex}`).within(() => {
+    cy.icon("add").click();
+  });
+
+  if (leftField && rightField) {
+    selectFromDropdown(leftField).click();
+    selectFromDropdown(rightField).click();
+  }
 }
 
 function addCustomColumn({ name, formula }) {

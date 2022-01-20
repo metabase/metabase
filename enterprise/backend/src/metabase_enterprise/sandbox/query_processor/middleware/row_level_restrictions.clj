@@ -1,4 +1,7 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  "Apply segmented a.k.a. sandboxing anti-permissions to the query, i.e. replace sandboxed Tables with the
+  appropriate [[metabase-enterprise.sandbox.models.group-table-access-policy]]s (GTAPs). See dox
+  for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
   (:require [clojure.core.memoize :as memoize]
             [clojure.tools.logging :as log]
             [metabase-enterprise.sandbox.models.group-table-access-policy :as gtap :refer [GroupTableAccessPolicy]]
@@ -135,7 +138,7 @@
                          ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
-      (throw (ex-info (tru "Error preprocessing source query when applying GTAP")
+      (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
                       {:source-query source-query}
                       e)))))
 
@@ -236,7 +239,7 @@
       preprocess-source-query
       (source-query-form-ensure-metadata table-id card-id)))
 
-(s/defn ^:private gtap->perms-set :- #{perms/ObjectPath}
+(s/defn ^:private gtap->perms-set :- #{perms/Path}
   "Calculate the set of permissions needed to run the query associated with a GTAP; this set of permissions is excluded
   during the normal QP perms check.
 

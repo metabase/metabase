@@ -7,7 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 
-import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 
 import { color } from "metabase/lib/colors";
 
@@ -18,6 +18,7 @@ const SummarizePill = props => (
 const SummarizeButton = props => (
   <ViewButton
     medium
+    data-testid="toggle-summarize-sidebar-button"
     icon="insight"
     color={color("accent1")}
     labelBreakpoint="sm"
@@ -63,7 +64,11 @@ export function QuestionSummarizeWidget({
   );
 }
 
-QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionSummaries.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
@@ -71,12 +76,16 @@ QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
     .query()
     .topLevelQuery()
     .hasAggregations() &&
-  !question.isObjectDetail();
+  !isObjectDetail;
 
-QuestionSummarizeWidget.shouldRender = ({ question, queryBuilderMode }) =>
+QuestionSummarizeWidget.shouldRender = ({
+  question,
+  queryBuilderMode,
+  isObjectDetail,
+}) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
   question.query().isEditable() &&
   question.query().table() &&
-  !question.isObjectDetail();
+  !isObjectDetail;

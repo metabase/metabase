@@ -27,8 +27,8 @@
 (def ^:private ssh-key-with-passphrase "test_resources/ssh/ssh_test_passphrase")
 (def ^:private ssh-key-passphrase "Password1234")
 (def ^:private ssh-mock-server-with-password-port 12221)
-(def ^:private ssh-mock-server-with-publickey-port 12222)
-(def ^:private ssh-mock-server-with-publickey-passphrase-port 12223)
+(def ^:private ssh-mock-server-with-publickey-port 12222)   ; ED25519 pubkey
+(def ^:private ssh-mock-server-with-publickey-passphrase-port 12223) ; RSA pubkey
 
 ;;--------------
 ;; mock ssh server fixtures
@@ -263,11 +263,13 @@
               (mt/with-db db
                 (sync/sync-database! db)
                 (letfn [(check-data [] (is (= {:cols [{:base_type    :type/Text
+                                                       :effective_type :type/Text
                                                        :display_name "COL1"
                                                        :field_ref    [:field "COL1" {:base-type :type/Text}]
                                                        :name         "COL1"
                                                        :source       :native}
                                                       {:base_type    :type/Decimal
+                                                       :effective_type :type/Decimal
                                                        :display_name "COL2"
                                                        :field_ref    [:field "COL2" {:base-type :type/Decimal}]
                                                        :name         "COL2"

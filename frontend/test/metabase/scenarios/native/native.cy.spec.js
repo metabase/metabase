@@ -3,6 +3,8 @@ import {
   popover,
   modal,
   openNativeEditor,
+  openNotebookEditor,
+  visualize,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > native", () => {
@@ -43,7 +45,7 @@ describe("scenarios > question > native", () => {
     cy.contains("Question #…")
       .parent()
       .parent()
-      .contains("Pick a saved question")
+      .contains("Pick a question or a model")
       .click({ force: true });
 
     // selecting a question should update the query
@@ -103,22 +105,18 @@ describe("scenarios > question > native", () => {
     });
     cy.findByText("Not now").click();
 
-    cy.visit("/");
-    cy.findByText("Ask a question").click();
-    cy.findByText("Simple question").click();
+    openNotebookEditor();
     popover().within(() => {
       cy.findByText("Saved Questions").click();
       cy.findByText(QUESTION).click();
     });
 
-    cy.url("should.contain", "/question#");
+    visualize();
+
+    cy.url("should.contain", "/question/notebook#");
     cy.findByText("This has a value");
 
     FILTERS.forEach(filter => {
-      // Clicking on a question's name in UI resets previously applied filters
-      // We can ask variations of that question "on the fly"
-      cy.findByText(QUESTION).click();
-
       cy.log("Apply a filter");
       cy.findAllByText("Filter")
         .first()
@@ -148,6 +146,13 @@ describe("scenarios > question > native", () => {
         .click();
       cy.findByText("Done").click();
       cy.get(".ScalarValue").contains("1");
+
+      cy.icon("close").click();
+      cy.findAllByText("Summarize")
+        .first()
+        .click();
+      cy.icon("close").click();
+      cy.findByText("Done").click();
     });
   });
 

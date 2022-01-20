@@ -1,12 +1,9 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
+import { entityTypeForObject } from "metabase/lib/schema";
 
-import {
-  ObjectUnionSchema,
-  ENTITIES_SCHEMA_MAP,
-  entityTypeForObject,
-} from "metabase/schema";
+import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
 
 import { canonicalCollectionId } from "metabase/entities/collections";
 

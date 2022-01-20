@@ -1,8 +1,10 @@
 (ns metabase.search.scoring
-  (:require [clojure.core.memoize :as memoize]
+  (:require [cheshire.core :as json]
+            [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.mbql.normalize :as normalize]
             [metabase.plugins.classloader :as classloader]
             [metabase.search.config :as search-config]
             [metabase.util :as u]
@@ -84,7 +86,7 @@
 (defn- text-score-with
   [weighted-scorers query-tokens search-result]
   (let [total-weight (reduce + (map :weight weighted-scorers))
-        scores       (for [column (search-config/searchable-columns-for-model (search-config/model-name->class (:model search-result)))
+        scores       (for [column (search-config/searchable-columns-for-model (:model search-result))
                            :let   [matched-text (-> search-result
                                                     (get column)
                                                     (search-config/column->string (:model search-result) column))
@@ -155,10 +157,7 @@
     :weight 2}])
 
 (def ^:private model->sort-position
-  (into {} (map-indexed (fn [i model]
-                          [(str/lower-case (name model)) i])
-                        ;; Reverse so that they're in descending order
-                        (reverse search-config/searchable-models))))
+  (zipmap (reverse search-config/all-models) (range)))
 
 (defn- model-score
   [{:keys [model]}]
@@ -227,6 +226,7 @@
                           :name            collection_name
                           :authority_level collection_authority_level}
          :scores          scores)
+        (update :dataset_query #(some-> % json/parse-string normalize/normalize))
         (dissoc
          :collection_id
          :collection_name

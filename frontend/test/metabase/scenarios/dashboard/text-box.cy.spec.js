@@ -50,13 +50,15 @@ describe("scenarios > dashboard > text-box", () => {
   describe("when text-box is the only element on the dashboard", () => {
     beforeEach(() => {
       cy.server();
-      cy.createDashboard("Test Dashboard");
+      cy.createDashboard().then(({ body: { id } }) => {
+        cy.intercept("PUT", `/api/dashboard/${id}`).as("dashboardUpdated");
+
+        cy.visit(`/dashboard/${id}`);
+      });
     });
 
     // fixed in metabase#11358
     it("should load after save/refresh (metabase#12873)", () => {
-      cy.visit(`/dashboard/2`);
-
       cy.findByText("Test Dashboard");
       cy.findByText("This dashboard is looking empty.");
 
@@ -68,7 +70,7 @@ describe("scenarios > dashboard > text-box", () => {
       cy.reload();
 
       // Page should still load
-      cy.findByText("Ask a question");
+      cy.findByText("New");
       cy.findByText("Loading...").should("not.exist");
       cy.findByText("Cannot read property 'type' of undefined").should(
         "not.exist",
@@ -80,10 +82,6 @@ describe("scenarios > dashboard > text-box", () => {
     });
 
     it("should have a scroll bar for long text (metabase#8333)", () => {
-      cy.intercept("PUT", "/api/dashboard/2").as("dashboardUpdated");
-
-      cy.visit(`/dashboard/2`);
-
       addTextBox(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
       );
@@ -95,6 +93,20 @@ describe("scenarios > dashboard > text-box", () => {
       cy.get(".text-card-markdown")
         .should("have.css", "overflow", "auto")
         .scrollTo("bottom");
+    });
+
+    it("should render html links, and not just the markdown flavor of them (metabase#18114)", () => {
+      addTextBox(
+        "- Visit https://www.metabase.com{enter}- Or go to [Metabase](https://www.metabase.com)",
+      );
+
+      cy.findByText("Save").click();
+      cy.findByText("You're editing this dashboard.").should("not.exist");
+
+      cy.get(".Card")
+        .findAllByRole("link")
+        .should("be.visible")
+        .and("have.length", 2);
     });
   });
 });

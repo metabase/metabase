@@ -1,14 +1,28 @@
-import type { DatasetData, Column } from "metabase-types/types/Dataset";
-import type { ClickObject } from "metabase-types/types/Visualization";
 import { isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 
-export function getTableClickedObjectRowData([series], rowIndex) {
+export function getTableClickedObjectRowData(
+  [series],
+  rowIndex,
+  columnIndex,
+  isPivoted,
+  data,
+) {
   const { rows, cols } = series.data;
 
-  return rows[rowIndex].map((value, index) => ({
-    value,
-    col: cols[index],
-  }));
+  // if pivoted, we need to find the original rowIndex from the pivoted row/columnIndex
+  const originalRowIndex = isPivoted
+    ? data.sourceRows[rowIndex][columnIndex]
+    : rowIndex;
+
+  // originalRowIndex may be null if the pivot table is empty in that cell
+  if (originalRowIndex === null) {
+    return null;
+  } else {
+    return rows[originalRowIndex].map((value, index) => ({
+      value,
+      col: cols[index],
+    }));
+  }
 }
 
 export function getTableCellClickedObject(
@@ -60,11 +74,7 @@ export function getTableCellClickedObject(
   }
 }
 
-export function getTableHeaderClickedObject(
-  data: DatasetData,
-  columnIndex: number,
-  isPivoted: boolean,
-): ?ClickObject {
+export function getTableHeaderClickedObject(data, columnIndex, isPivoted) {
   const column = data.cols[columnIndex];
   if (isPivoted) {
     // if it's a pivot table, the first column is
@@ -82,7 +92,7 @@ export function getTableHeaderClickedObject(
  * Returns whether the column should be right-aligned in a table.
  * Includes numbers and lat/lon coordinates, but not zip codes, IDs, etc.
  */
-export function isColumnRightAligned(column: Column) {
+export function isColumnRightAligned(column) {
   // handle remapped columns
   if (column && column.remapped_to_column) {
     column = column.remapped_to_column;

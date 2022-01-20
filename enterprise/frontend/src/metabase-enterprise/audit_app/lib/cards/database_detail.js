@@ -1,10 +1,10 @@
-export const auditLog = (databaseId: number) => ({
+export const auditLog = databaseId => ({
   card: {
     name: "Audit log",
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.database-detail/audit-log",
+      fn: "metabase-enterprise.audit-app.pages.database-detail/audit-log",
       args: [databaseId],
     },
     visualization_settings: {

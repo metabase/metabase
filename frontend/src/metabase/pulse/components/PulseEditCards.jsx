@@ -1,4 +1,4 @@
-/* eslint "react/prop-types": "warn" */
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -9,7 +9,7 @@ import PulseCardPreview from "./PulseCardPreview";
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
 // import Query from "metabase/lib/query";
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";
 
@@ -55,8 +55,8 @@ export default class PulseEditCards extends Component {
     });
   }
 
-  trackPulseEvent = (eventName: string, eventValue: string) => {
-    MetabaseAnalytics.trackEvent(
+  trackPulseEvent = (eventName, eventValue) => {
+    MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       eventName,
       eventValue,
@@ -103,7 +103,7 @@ export default class PulseEditCards extends Component {
         notices.push({
           type: "warning",
           head: t`Heads up`,
-          body: t`We'll show the first 10 columns and 20 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
+          body: t`We'll show the first 10 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
         });
       }
       if (cardPreview.pulse_card_type == null && !hasAttachment) {

@@ -7,6 +7,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
 import { SelectList } from "metabase/components/select-list";
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 
 import { EmptyStateContainer, QuestionListItem } from "./QuestionList.styled";
 
@@ -16,8 +17,6 @@ QuestionList.propTypes = {
   onSelect: PropTypes.func.isRequired,
   hasCollections: PropTypes.bool,
 };
-
-const SEARCH_LIMIT = 1000;
 
 export function QuestionList({
   searchText,
@@ -38,8 +37,8 @@ export function QuestionList({
 
   query = {
     ...query,
-    models: "card",
-    limit: SEARCH_LIMIT,
+    models: ["card", "dataset"],
+    limit: DEFAULT_SEARCH_LIMIT,
   };
 
   return (
@@ -62,7 +61,10 @@ export function QuestionList({
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
-                icon={item.getIcon().name}
+                icon={{
+                  name: item.getIcon().name,
+                  size: item.model === "dataset" ? 18 : 16,
+                }}
                 onSelect={onSelect}
                 rightIcon={PLUGIN_MODERATION.getStatusIcon(
                   item.moderated_status,

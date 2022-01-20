@@ -6,8 +6,10 @@
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
+            metabase.driver.h2
+            metabase.driver.mysql
+            metabase.driver.postgres
             [metabase.events :as events]
-            [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -20,6 +22,11 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [toucan.db :as db]))
+
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
+(comment metabase.driver.h2/keep-me
+         metabase.driver.mysql/keep-me
+         metabase.driver.postgres/keep-me)
 
 ;; don't i18n this, it's legalese
 (log/info
@@ -78,10 +85,6 @@
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
 
-  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
-  (classloader/require 'metabase.driver.h2 'metabase.driver.postgres 'metabase.driver.mysql)
-  (init-status/set-progress! 0.4)
-
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
   (mdb/setup-db!)
@@ -112,10 +115,7 @@
       ;; add the sample dataset DB for fresh installs
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!))
-
-    ;; start the metabot thread
-    (metabot/start-metabot!))
+      (sample-data/update-sample-dataset-if-needed!)))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
@@ -144,9 +144,9 @@
 
 (defn- maybe-enable-tracing
   []
-  (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
   (let [mb-trace-str (config/config-str :mb-ns-trace)]
     (when (not-empty mb-trace-str)
+      (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
       (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
         (try (require namespace)
              (catch Throwable _

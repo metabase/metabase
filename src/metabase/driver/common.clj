@@ -3,10 +3,12 @@
   (:require [clj-time.coerce :as tcoerce]
             [clj-time.core :as time]
             [clj-time.format :as tformat]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -65,7 +67,8 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :placeholder  "localhost"})
+   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :placeholder  "name.database.com"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
@@ -78,7 +81,7 @@
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
    :display-name (deferred-tru "Username")
-   :placeholder  (deferred-tru "What username do you use to login to the database?")
+   :placeholder  (deferred-tru "username")
    :required     true})
 
 (def default-password-details
@@ -98,15 +101,125 @@
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (deferred-tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)")
    :type         :boolean
    :default      false})
 
-(def default-additional-options-details
+(def additional-options
   "Map of the db `additional-options` details field, useful for `connection-properties` implementations. Should assoc a
   `:placeholder` key"
   {:name         "additional-options"
-   :display-name (deferred-tru "Additional JDBC connection string options")})
+   :display-name (deferred-tru "Additional JDBC connection string options")
+   :visible-if   {"advanced-options" true}})
+
+(def ssh-tunnel-preferences
+  "Configuration parameters to include in the add driver page on drivers that
+  support ssh tunnels"
+  [{:name         "tunnel-enabled"
+    :display-name (deferred-tru "Use an SSH tunnel")
+    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :type         :boolean
+    :default      false}
+   {:name         "tunnel-host"
+    :display-name (deferred-tru "SSH tunnel host")
+    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :placeholder  "hostname"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-port"
+    :display-name (deferred-tru "SSH tunnel port")
+    :type         :integer
+    :default      22
+    :required     false
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-user"
+    :display-name (deferred-tru "SSH tunnel username")
+    :helper-text  (deferred-tru "The username you use to login to your SSH tunnel.")
+    :placeholder  "username"
+    :required     true
+    :visible-if   {"tunnel-enabled" true}}
+   ;; this is entirely a UI flag
+   {:name         "tunnel-auth-option"
+    :display-name (deferred-tru "SSH Authentication")
+    :type         :select
+    :options      [{:name (deferred-tru "SSH Key") :value "ssh-key"}
+                   {:name (deferred-tru "Password") :value "password"}]
+    :default      "ssh-key"
+    :visible-if   {"tunnel-enabled" true}}
+   {:name         "tunnel-pass"
+    :display-name (deferred-tru "SSH tunnel password")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "password"}}
+   {:name         "tunnel-private-key"
+    :display-name (deferred-tru "SSH private key to connect to the tunnel")
+    :type         :string
+    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :required     true
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
+   {:name         "tunnel-private-key-passphrase"
+    :display-name (deferred-tru "Passphrase for SSH private key")
+    :type         :password
+    :placeholder  "******"
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
+
+(def advanced-options-start
+  "Map representing the start of the advanced option section in a DB connection form. Fields in this section should
+  have their visibility controlled using the `visible-if` property."
+  {:name    "advanced-options"
+   :type    :section
+   :default false})
+
+(def auto-run-queries
+  "Map representing the `auto-run-queries` option in a DB connection form."
+  {:name         "auto_run_queries"
+   :type         :boolean
+   :default      true
+   :display-name (deferred-tru "Rerun queries for simple explorations")
+   :description  (str (deferred-tru "We execute the underlying query when you explore data using Summarize or Filter.")
+                      " "
+                      (deferred-tru "This is on by default but you can turn it off if performance is slow."))
+   :visible-if   {"advanced-options" true}})
+
+(def let-user-control-scheduling
+  "Map representing the `let-user-control-scheduling` option in a DB connection form."
+  {:name         "let-user-control-scheduling"
+   :type         :boolean
+   :display-name (deferred-tru "Choose when syncs and scans happen")
+   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :visible-if   {"advanced-options" true}})
+
+(def metadata-sync-schedule
+  "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.metadata_sync"
+   :display-name (deferred-tru "Database syncing")
+   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
+                      " "
+                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def cache-field-values-schedule
+  "Map representing the `schedules.cache_field_values` option in a DB connection form, which should be only visible if
+  `let-user-control-scheduling` is enabled."
+  {:name "schedules.cache_field_values"
+   :display-name (deferred-tru "Scanning for Filter Values")
+   :description  (str (deferred-tru "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.")
+                      " "
+                      (deferred-tru "When should Metabase automatically scan and cache field values?"))
+   :visible-if   {"let-user-control-scheduling" true}})
+
+(def refingerprint
+  "Map representing the `refingerprint` option in a DB connection form."
+  {:name         "refingerprint"
+   :type         :boolean
+   :display-name (deferred-tru "Periodically refingerprint tables")
+   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :visible-if   {"advanced-options" true}})
+
+(def default-advanced-options
+  "Vector containing the three most common options present in the advanced option section of the DB connection form."
+  [auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -118,13 +231,32 @@
 
   See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
   for more details."
-  {:additional-options default-additional-options-details
-   :dbname             default-dbname-details
-   :host               default-host-details
-   :password           default-password-details
-   :port               default-port-details
-   :ssl                default-ssl-details
-   :user               default-user-details})
+  {:dbname                   default-dbname-details
+   :host                     default-host-details
+   :password                 default-password-details
+   :port                     default-port-details
+   :ssl                      default-ssl-details
+   :user                     default-user-details
+   :ssh-tunnel               ssh-tunnel-preferences
+   :additional-options       additional-options
+   :advanced-options-start   advanced-options-start
+   :default-advanced-options default-advanced-options})
+
+(def cloud-ip-address-info
+  "Map of the `cloud-ip-address-info` info field. The getter is invoked and converted to a `:placeholder` value prior
+  to being returned to the client, in [[metabase.driver.util/connection-props-server->client]]."
+  {:name   "cloud-ip-address-info"
+   :type   :info
+   :getter (fn []
+             (when-let [ips (public-settings/cloud-gateway-ips)]
+               (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
+                    "\n"
+                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
+
+(def default-connection-info-fields
+  "Default definitions for informational banners that can be included in a database connection form. These keys can be
+  added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
+  {:cloud-ip-address-info cloud-ip-address-info})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -191,13 +323,13 @@
   :hierarchy #'driver/hierarchy)
 
 (defn ^:deprecated current-db-time
-  "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
-  `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
-  the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided.
+  "Implementation of [[metabase.driver/current-db-time]] using the [[current-db-time-native-query]] and
+  [[current-db-time-date-formatters]] multimethods defined above. Execute a native query for the current time, and
+  parse the results using the date formatters, preserving the timezone. To use this implementation, you must implement
+  the aforementioned multimethods; no default implementation is provided.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   ^org.joda.time.DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver
@@ -222,8 +354,10 @@
                                 (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
                             (catch Exception e
                               (throw
-                               (Exception.
-                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+                               (ex-info (tru "Error querying database {0} for current time: {1}"
+                                             (pr-str (:name database)) (ex-message e))
+                                        {:driver driver, :query native-query}
+                                        e))))]
       (try
         (when time-str
           (first-successful-parse date-formatters time-str))
@@ -304,11 +438,19 @@
 (def ^:private days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
+(defn start-of-week->int
+  "Returns the int value for the current :start-of-week setting value, which ranges from 0 (:monday) to 6 (:sunday).
+  If the :start-of-week setting does not have a value, then `nil` is returned."
+  {:added "0.42.0"}
+  []
+  (when-let [v (setting/get-value-of-type :keyword :start-of-week)]
+    (.indexOf ^clojure.lang.PersistentVector days-of-week v)))
+
 (s/defn start-of-week-offset :- s/Int
   "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf ^clojure.lang.PersistentVector days-of-week (driver/db-start-of-week driver))
-        target-start-of-week (.indexOf ^clojure.lang.PersistentVector days-of-week (setting/get-keyword :start-of-week))
+        target-start-of-week (start-of-week->int)
         delta                (int (- target-start-of-week db-start-of-week))]
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))

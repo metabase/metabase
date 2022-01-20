@@ -17,14 +17,15 @@
 const hasEnterpriseToken =
   process.env["ENTERPRISE_TOKEN"] && process.env["MB_EDITION"] === "ee";
 
+const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
+const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
+
 const isQaDatabase = process.env["QA_DB_ENABLED"];
 
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 const webpack = require("@cypress/webpack-preprocessor");
 const { resolve } = require("../../../../webpack.config.js");
-
-const percyHealthCheck = require("@percy/cypress/task");
 
 const webpackPluginOptions = {
   webpackOptions: { resolve },
@@ -36,9 +37,6 @@ module.exports = (on, config) => {
   // `config` is the resolved Cypress config
   require("cypress-grep/src/plugin")(config);
 
-  // Required for Percy
-  on("task", percyHealthCheck);
-
   /********************************************************************
    **                          WEBPACK                               **
    ********************************************************************/
@@ -49,13 +47,22 @@ module.exports = (on, config) => {
    **                         BROWSERS                               **
    ********************************************************************/
 
-  //  Open dev tools in Chrome by default
   on("before:browser:launch", (browser = {}, launchOptions) => {
+    //  Open dev tools in Chrome by default
     if (browser.name === "chrome" || browser.name === "chromium") {
       launchOptions.args.push("--auto-open-devtools-for-tabs");
-
-      return launchOptions;
     }
+
+    // Start browsers with prefers-reduced-motion set to "reduce"
+    if (browser.family === "firefox") {
+      launchOptions.preferences["ui.prefersReducedMotion"] = 1;
+    }
+
+    if (browser.family === "chromium") {
+      launchOptions.args.push("--force-prefers-reduced-motion");
+    }
+
+    return launchOptions;
   });
 
   /********************************************************************
@@ -63,9 +70,12 @@ module.exports = (on, config) => {
    ********************************************************************/
 
   if (!isQaDatabase) {
-    config.ignoreTestFiles = "**/metabase-db/**";
+    config.ignoreTestFiles = "qa-db.cy.snap.js";
   }
+
   config.env.HAS_ENTERPRISE_TOKEN = hasEnterpriseToken;
+  config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
+  config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
   return config;
 };

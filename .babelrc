@@ -1,11 +1,14 @@
 {
   "plugins": [
     "babel-plugin-styled-components",
-    "@babel/plugin-transform-flow-strip-types",
     "@babel/plugin-proposal-export-default-from",
     ["@babel/plugin-proposal-decorators", { "legacy": true }]
   ],
-  "presets": ["@babel/preset-env", "@babel/preset-react"],
+  "presets": [
+    "@babel/preset-env",
+    "@babel/preset-react",
+    "@babel/preset-typescript"
+  ],
   "env": {
     "development": {
       "presets": []

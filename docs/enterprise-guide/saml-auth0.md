@@ -1,5 +1,7 @@
 # Setting up SAML with Auth0
 
+{% include plans-blockquote.html feature="SAML authentication" %}
+
 If you haven't already, check out our guide for [authenticating with SAML](authenticating-with-saml.html)
 
 ## Create an Application
@@ -63,3 +65,7 @@ Next, in the Auth0 Addon: SAML2 Web App popup, click on the **Usage** tab and th
 The "SAML Application Name" value can be left as the default (Metabase).
 
 Save your settings, then [enable SAML](authenticating-with-saml.md) in Metabase, and you should be good to go!
+
+## Troubleshooting
+
+For common issues, see our [SAML troubleshooting page][../troubleshooting-guide/saml.md).

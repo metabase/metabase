@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
 import { updateSlackSettings } from "../settings";
@@ -14,10 +14,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import _ from "underscore";
 import { t, jt } from "ttag";
 
-@connect(
-  null,
-  { updateSettings: updateSlackSettings },
-)
+@connect(null, { updateSettings: updateSlackSettings })
 export default class SettingsSlackForm extends Component {
   constructor(props, context) {
     super(props, context);
@@ -36,18 +33,8 @@ export default class SettingsSlackForm extends Component {
     updateSettings: PropTypes.func.isRequired,
   };
 
-  UNSAFE_componentWillMount() {
-    // this gives us an opportunity to load up our formData with any existing values for elements
-    const formData = {};
-    this.props.elements.forEach(function(element) {
-      formData[element.key] =
-        element.value == null ? element.defaultValue : element.value;
-    });
-
-    this.setState({ formData });
-  }
-
   componentDidMount() {
+    this.setFormData();
     this.validateForm();
   }
 
@@ -71,7 +58,7 @@ export default class SettingsSlackForm extends Component {
 
     switch (validationType) {
       case "email":
-        return !MetabaseUtils.validEmail(value)
+        return !MetabaseUtils.isEmail(value)
           ? validationMessage || t`That's not a valid email address`
           : null;
       case "integer":
@@ -79,6 +66,17 @@ export default class SettingsSlackForm extends Component {
           ? validationMessage || t`That's not a valid integer`
           : null;
     }
+  }
+
+  setFormData() {
+    // this gives us an opportunity to load up our formData with any existing values for elements
+    const formData = {};
+    this.props.elements.forEach(function(element) {
+      formData[element.key] =
+        element.value == null ? element.defaultValue : element.value;
+    });
+
+    this.setState({ formData });
   }
 
   validateForm() {
@@ -125,7 +123,11 @@ export default class SettingsSlackForm extends Component {
     });
 
     if (element.key === "metabot-enabled") {
-      MetabaseAnalytics.trackEvent("Slack Settings", "Toggle Metabot", value);
+      MetabaseAnalytics.trackStructEvent(
+        "Slack Settings",
+        "Toggle Metabot",
+        value,
+      );
     }
   }
 
@@ -162,7 +164,11 @@ export default class SettingsSlackForm extends Component {
             submitting: "success",
           });
 
-          MetabaseAnalytics.trackEvent("Slack Settings", "Update", "success");
+          MetabaseAnalytics.trackStructEvent(
+            "Slack Settings",
+            "Update",
+            "success",
+          );
 
           // show a confirmation for 3 seconds, then return to normal
           setTimeout(() => this.setState({ submitting: "default" }), 3000);
@@ -173,7 +179,11 @@ export default class SettingsSlackForm extends Component {
             formErrors: this.handleFormErrors(error),
           });
 
-          MetabaseAnalytics.trackEvent("Slack Settings", "Update", "error");
+          MetabaseAnalytics.trackStructEvent(
+            "Slack Settings",
+            "Update",
+            "error",
+          );
         },
       );
     }
@@ -200,7 +210,7 @@ export default class SettingsSlackForm extends Component {
           ? element.defaultValue
           : formData[element.key];
 
-      if (element.key === "slack-token") {
+      if (element.key === "slack-app-token") {
         return (
           <SettingsSetting
             key={element.key}

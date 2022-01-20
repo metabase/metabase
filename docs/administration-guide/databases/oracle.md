@@ -19,7 +19,7 @@ All you need to do is create the directory, move the JAR you just downloaded int
 
 ### Connecting with SSL
 
-To connect to Oracle via SSL and enable encryption, check the `Use a secure connection (SSL)?` option on the connection
+To connect to Oracle via SSL and enable encryption, check the `Use a secure connection (SSL)` option on the connection
 setup page.  You can add other SSL features (including client and/or server authentication) as explained below. You can
 use both client and server authentication (known as mutual authentication).
 
@@ -72,17 +72,6 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 /app/metabase.jar
 /app/plugins/ojdbc8.jar
 ```
-
-#### When running the Mac App
-
-If you're running Metabase from the Mac App, the plugins directory defaults to `~/Library/Application Support/Metabase/Plugins/`:
-
-```bash
-# example directory structure for running Metabase Mac App with Oracle support
-/Users/camsaul/Library/Application Support/Metabase/Plugins/ojdbc8.jar
-```
-
-Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.
 
 #### When running from Docker
 

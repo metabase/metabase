@@ -1,15 +1,16 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [compojure.core :refer [DELETE GET POST PUT]]
+  (:require [clojure.spec.alpha :as spec]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.permission-graph :as pg]
-            [metabase.metabot :as metabot]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
@@ -24,7 +25,7 @@
   "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (perms/graph))
+  (perms/data-perms-graph))
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
@@ -38,8 +39,14 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (perms/update-graph! (pg/converted-json->graph ::pg/data-permissions-graph body))
-  (perms/graph))
+  (let [graph (pg/converted-json->graph ::pg/data-permissions-graph body)]
+    (when (= graph :clojure.spec.alpha/invalid)
+      (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
+                           (spec/explain-str ::pg/data-permissions-graph body))
+                      {:status-code 400
+                       :error       (spec/explain-data ::pg/data-permissions-graph body)})))
+    (perms/update-data-perms-graph! graph))
+  (perms/data-perms-graph))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -61,12 +68,10 @@
       (map :members results))))
 
 (defn- ordered-groups
-  "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
+  "Return a sequence of ordered `PermissionsGroups`, excluding the `MetaBot` group."
   [limit offset]
   (db/select PermissionsGroup
-             (cond-> {:where    (if (metabot/metabot-enabled)
-                                  true
-                                  [:not= :id (u/the-id (group/metabot))])
+             (cond-> {:where    [:not= :id (u/the-id (group/metabot))]
                       :order-by [:%lower.name]}
                (some? limit)  (hh/limit  limit)
                (some? offset) (hh/offset offset))))

@@ -421,6 +421,7 @@
         "id": 5,
         "db_id": 4,
         "visibility_type": null,
+        "initial_sync_status": "complete",
         "display_name": "Table in First Schema",
         "created_at": "2017-06-14T23:22:55.825Z",
         "points_of_interest": null,
@@ -1009,7 +1010,7 @@
         "values": []
       },
       "21": {
-        "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+        "description": "The type of product, valid values include: Doohickey, Gadget, Gizmo and Widget",
         "table_id": 3,
         "semantic_type": "type/Category",
         "name": "CATEGORY",

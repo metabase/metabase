@@ -63,10 +63,7 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
   form: "fields",
   validate,
@@ -91,6 +88,7 @@ export default class FieldList extends Component {
     loadingError: PropTypes.object,
     submitting: PropTypes.bool,
     resetForm: PropTypes.func,
+    "data-testid": PropTypes.string,
   };
 
   render() {
@@ -123,6 +121,7 @@ export default class FieldList extends Component {
               this.props,
             ),
         )}
+        testID={this.props["data-testid"]}
       >
         {isEditing && (
           <EditHeader

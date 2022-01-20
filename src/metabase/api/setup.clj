@@ -1,7 +1,10 @@
 (ns metabase.api.setup
-  (:require [compojure.core :refer [GET POST]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST]]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
             [metabase.events :as events]
@@ -11,6 +14,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
+            [metabase.models.permissions-group :as group]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.session :refer [Session]]
@@ -22,7 +26,7 @@
             [metabase.setup :as setup]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -54,16 +58,23 @@
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
+(defn- setup-maybe-create-and-invite-user! [{:keys [email first_name last_name] :as user}, invitor]
+  (when email
+    (if-not (email/email-configured?)
+      (log/error (trs "Could not invite user because email is not configured."))
+      (u/prog1 (user/create-and-invite-user! user invitor true)
+        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])))))
+
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
-  [{:keys [name driver details schedules database]}]
+  [{:keys [name driver details schedules database creator-id]}]
   (when driver
     (when-not (some-> (u/ignore-exceptions (driver/the-driver driver)) driver/available?)
       (let [msg (tru "Cannot create Database: cannot find driver {0}." driver)]
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (db/insert! Database
       (merge
-       {:name name, :engine driver, :details details}
+       {:name name, :engine driver, :details details, :creator_id creator-id}
        (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))
@@ -81,46 +92,66 @@
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID."
+  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  set specific settings from the setup flow."
   [:as {{:keys                                          [token]
          {:keys [name engine details is_full_sync
                  is_on_demand schedules
                  auto_run_queries]
           :as   database}                               :database
          {:keys [first_name last_name email password]}  :user
+         {invited_first_name :first_name,
+          invited_last_name  :last_name,
+          invited_email      :email}                    :invite
          {:keys [allow_tracking site_name site_locale]} :prefs} :body, :as request}]
-  {token            SetupToken
-   site_name        su/NonBlankString
-   site_locale      (s/maybe su/ValidLocale)
-   first_name       su/NonBlankString
-   last_name        su/NonBlankString
-   email            su/Email
-   password         su/ValidPassword
-   allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
-   schedules        (s/maybe sync.schedules/ExpandedSchedulesMap)
-   auto_run_queries (s/maybe s/Bool)}
+  {token              SetupToken
+   site_name          su/NonBlankString
+   site_locale        (s/maybe su/ValidLocale)
+   first_name         su/NonBlankString
+   last_name          su/NonBlankString
+   email              su/Email
+   invited_first_name (s/maybe su/NonBlankString)
+   invited_last_name  (s/maybe su/NonBlankString)
+   invited_email      (s/maybe su/Email)
+   password           su/ValidPassword
+   allow_tracking     (s/maybe (s/cond-pre s/Bool su/BooleanString))
+   schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
+   auto_run_queries   (s/maybe s/Bool)}
   (letfn [(create! []
             (try
               (db/transaction
-                (let [user-info (setup-create-user!
-                                 {:email email, :first-name first_name, :last-name last_name, :password password})
-                      db        (setup-create-database!
-                                 {:name name, :driver engine, :details details, :schedules schedules, :database database})]
-                  (setup-set-settings!
-                   request
-                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                  ;; clear the setup token now, it's no longer needed
-                  (setup/clear-token!)
-                  (assoc user-info :database db)))
+               (let [user-info (setup-create-user!
+                                {:email email, :first-name first_name, :last-name last_name, :password password})
+                     db        (setup-create-database! {:name name
+                                                        :driver engine
+                                                        :details details
+                                                        :schedules schedules
+                                                        :database database
+                                                        :creator-id (:user-id user-info)})]
+                 (setup-maybe-create-and-invite-user! {:email invited_email,
+                                                       :first_name invited_first_name,
+                                                       :last_name invited_last_name}
+                                                      {:email email, :first_name first_name})
+                 (setup-set-settings!
+                  request
+                  {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                 ;; clear the setup token now, it's no longer needed
+                 (setup/clear-token!)
+                 (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
                 ;; this because there is `io!` in this block
                 (setting.cache/restore-cache!)
+                (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+      (snowplow/track-event! ::snowplow/new-user-created user-id)
+      (when database (snowplow/track-event! ::snowplow/database-connection-successful
+                                            user-id
+                                            {:database engine, :database-id (u/the-id database), :source :setup}))
       ;; return response with session ID and set the cookie as well
       (mw.session/set-session-cookie request {:id session-id} session))))
 
@@ -133,7 +164,11 @@
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
                                                              {:message m})})]
-    (database-api/test-database-connection engine details :invalid-response-handler invalid-response)))
+    (let [error-or-nil (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+      (when error-or-nil (snowplow/track-event! ::snowplow/database-connection-failed
+                                                nil
+                                                {:database engine, :source :setup}))
+      error-or-nil)))
 
 
 ;;; Admin Checklist
@@ -164,7 +199,7 @@
   [_]
   {:title       (tru "Set Slack credentials")
    :group       (tru "Get connected")
-   :description (tru "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot.")
+   :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
    :link        "/admin/settings/slack"
    :completed   (slack/slack-configured?)
    :triggered   :always})
@@ -204,7 +239,7 @@
   {:title       (tru "Create metrics")
    :group       (tru "Curate your data")
    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
-   :link        "/admin/datamodel/database"
+   :link        "/admin/datamodel/metrics"
    :completed   (db/exists? Metric)
    :triggered   (>= (db/count Card) 30)})
 
@@ -213,7 +248,7 @@
   {:title       (tru "Create segments")
    :group       (tru "Curate your data")
    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
-   :link        "/admin/datamodel/database"
+   :link        "/admin/datamodel/segments"
    :completed   (db/exists? Segment)
    :triggered   (>= (db/count Card) 30)})
 
@@ -256,5 +291,15 @@
   (api/check-superuser)
   (admin-checklist))
 
+;; User defaults endpoint
+
+(api/defendpoint GET "/user_defaults"
+  "Returns object containing default user details for initial setup, if configured,
+   and if the provided token value matches the token in the configuration value."
+  [token]
+  (let [{config-token :token :as defaults} (config/mb-user-defaults)]
+    (api/check-404 config-token)
+    (api/check-403 (= token config-token))
+    (dissoc defaults :token)))
 
 (api/define-routes)

@@ -13,7 +13,11 @@ import ExternalLink from "metabase/components/ExternalLink";
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
   static propTypes = {
-    expression: PropTypes.array,
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.string,
+      PropTypes.array,
+    ]),
     name: PropTypes.string,
     query: PropTypes.object.isRequired,
     onChangeExpression: PropTypes.func.isRequired,

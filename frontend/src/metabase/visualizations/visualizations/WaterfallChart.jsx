@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import LineAreaBarChart from "../components/LineAreaBarChart";
 import { waterfallRenderer } from "../lib/LineAreaBarRenderer";
 import { assocIn } from "icepick";
 
@@ -17,19 +17,21 @@ export default class WaterfallChart extends LineAreaBarChart {
   static iconName = "waterfall";
   static noun = t`waterfall chart`;
 
+  static maxMetricsSupported = 1;
+
   static settings = {
     ...GRAPH_AXIS_SETTINGS,
     "waterfall.increase_color": {
       section: t`Display`,
       props: { title: t`Increase color` },
       widget: "color",
-      default: color("accent1"),
+      getDefault: () => color("accent1"),
     },
     "waterfall.decrease_color": {
       section: t`Display`,
       props: { title: t`Decrease color` },
       widget: "color",
-      default: color("accent3"),
+      getDefault: () => color("accent3"),
     },
     "waterfall.show_total": {
       section: t`Display`,
@@ -41,7 +43,7 @@ export default class WaterfallChart extends LineAreaBarChart {
       section: t`Display`,
       props: { title: t`Total color` },
       widget: "color",
-      default: color("text-dark"),
+      getDefault: () => color("text-dark"),
       getHidden: (series, vizSettings) =>
         vizSettings["waterfall.show_total"] !== true,
       readDependencies: ["waterfall.show_total"],

@@ -217,7 +217,7 @@
   ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
   (fingerprint-fields-for-db!* database tables log-progress-fn))
 
-(def max-refingerprint-field-count
+(def ^:private max-refingerprint-field-count
   "Maximum number of fields to refingerprint. Balance updating our fingerprinting values while not spending too much
   time in the db."
   1000)

@@ -73,4 +73,33 @@ describe("scenarios > admin > databases > list", () => {
     cy.contains("Sample Dataset").click();
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
+
+  it("should display a deprecated database warning", () => {
+    cy.intercept(/\/api\/database$/, req => {
+      req.reply(res => {
+        res.body.data = res.body.data.map(database => ({
+          ...database,
+          engine: "presto",
+        }));
+      });
+    });
+
+    cy.visit("/admin");
+
+    cy.findByRole("status").within(() => {
+      cy.findByText("Database driver");
+      cy.findByText(/which is now deprecated/);
+      cy.findByText("Database driver").click();
+    });
+
+    cy.findByRole("table").within(() => {
+      cy.findByText("Sample Dataset");
+    });
+
+    cy.findByRole("status").within(() => {
+      cy.findByLabelText("close icon").click();
+    });
+
+    cy.findByRole("status").should("not.exist");
+  });
 });

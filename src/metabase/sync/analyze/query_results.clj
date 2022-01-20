@@ -40,7 +40,7 @@
                                     mbql.s/FieldOrAggregationReference
                                     (s/pred
                                      (comp (complement (s/checker mbql.s/FieldOrAggregationReference))
-                                           mbql.normalize/normalize-tokens )
+                                           mbql.normalize/normalize-tokens)
                                      "Field or aggregation reference as it comes in to the API"))
    s/Keyword                       s/Any})
 

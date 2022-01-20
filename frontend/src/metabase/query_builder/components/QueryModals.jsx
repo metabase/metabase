@@ -19,6 +19,8 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
+import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
 export default class QueryModals extends React.Component {
@@ -201,6 +203,14 @@ export default class QueryModals extends React.Component {
           onClose={onCloseModal}
           onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
         />
+      </Modal>
+    ) : modal === MODAL_TYPES.TURN_INTO_DATASET ? (
+      <Modal small onClose={onCloseModal}>
+        <NewDatasetModal onClose={onCloseModal} />
+      </Modal>
+    ) : modal === MODAL_TYPES.CAN_NOT_CREATE_MODEL ? (
+      <Modal onClose={onCloseModal}>
+        <ImpossibleToCreateModelModal onClose={onCloseModal} />
       </Modal>
     ) : null;
   }

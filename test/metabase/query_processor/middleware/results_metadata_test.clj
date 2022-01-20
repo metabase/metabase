@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.results-metadata-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dimension]]
             [metabase.models.permissions :as perms]
@@ -29,36 +30,42 @@
   [{:name         "ID"
     :display_name "ID"
     :base_type    :type/BigInteger
+    :effective_type :type/BigInteger
     :semantic_type :type/PK
     :fingerprint  (:id mutil/venue-fingerprints)
     :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
    {:name         "NAME"
     :display_name "Name"
     :base_type    :type/Text
+    :effective_type :type/Text
     :semantic_type :type/Name
     :fingerprint  (:name mutil/venue-fingerprints)
     :field_ref    [:field "NAME" {:base-type :type/Text}]}
    {:name         "PRICE"
     :display_name "Price"
     :base_type    :type/Integer
+    :effective_type :type/Integer
     :semantic_type nil
     :fingerprint  (:price mutil/venue-fingerprints)
     :field_ref    [:field "PRICE" {:base-type :type/Integer}]}
    {:name         "CATEGORY_ID"
     :display_name "Category ID"
     :base_type    :type/Integer
+    :effective_type :type/Integer
     :semantic_type nil
     :fingerprint  (:category_id mutil/venue-fingerprints)
     :field_ref    [:field "CATEGORY_ID" {:base-type :type/Integer}]}
    {:name         "LATITUDE"
     :display_name "Latitude"
     :base_type    :type/Float
+    :effective_type :type/Float
     :semantic_type :type/Latitude
     :fingerprint  (:latitude mutil/venue-fingerprints)
     :field_ref    [:field "LATITUDE" {:base-type :type/Float}]}
    {:name         "LONGITUDE"
     :display_name "Longitude"
     :base_type    :type/Float
+    :effective_type :type/Float
     :semantic_type :type/Longitude
     :fingerprint  (:longitude mutil/venue-fingerprints)
     :field_ref    [:field "LONGITUDE" {:base-type :type/Float}]}])
@@ -176,7 +183,49 @@
                (get-in [:data :results_metadata])
                (update :checksum class)
                round-to-2-decimals
-               (->> (tu/round-fingerprint-cols [:columns])))))))
+               (->> (tu/round-fingerprint-cols [:columns]))))))
+  (testing "datasets"
+    (testing "metadata from datasets can be preserved"
+      (letfn [(choose [col] (select-keys col [:name :description :display_name :semantic_type]))
+              (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                         :type/Integer :type/Quantity
+                                         :type/Float :type/Cost
+                                         :type/Text :type/Name
+                                         base-type))
+              (add-preserved [cols] (map merge
+                                         cols
+                                         (repeat {:description "user description"
+                                                  :display_name "user display name"})
+                                         (map (comp
+                                               (fn [x] {:semantic_type x})
+                                               refine-type
+                                               :base_type)
+                                              cols)))]
+        (testing "native"
+          (let [fields (str/join ", " (map :name default-card-results-native))
+                native-query (str "SELECT " fields " FROM VENUES")
+                existing-metadata (add-preserved default-card-results-native)
+                results (qp/process-userland-query
+                         {:database (mt/id)
+                          :type :native
+                          :native {:query native-query}
+                          :info {:metadata/dataset-metadata existing-metadata}})]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))
+        (testing "mbql"
+          (let [query {:database (mt/id)
+                       :type :query
+                       :query {:source-table (mt/id :venues)}}
+                existing-metadata (add-preserved (-> query
+                                                     (qp/process-userland-query)
+                                                     :data :results_metadata :columns))
+                results (qp/process-userland-query
+                         (update query
+                                 :info
+                                 merge
+                                 {:metadata/dataset-metadata existing-metadata}))]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))))))
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
@@ -190,7 +239,7 @@
         :info     {:card-id    (u/the-id card)
                    :query-hash (qputil/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
-               :effective_type    :type/Date
+               :effective_type    :type/DateTime
                :coercion_strategy nil
                :display_name "Date"
                :name         "DATE"
@@ -202,6 +251,7 @@
                :id           (mt/id :checkins :date)
                :field_ref    [:field (mt/id :checkins :date) {:temporal-unit :year}]}
               {:base_type    :type/BigInteger
+               :effective_type :type/BigInteger
                :display_name "Count"
                :name         "count"
                :semantic_type :type/Quantity
@@ -239,6 +289,7 @@
                      :database (mt/id)}))]
       (testing "Sanity check: annotate should infer correct type from `:cols`"
         (is (= {:base_type    :type/DateTime,
+                :effective_type :type/DateTime
                 :display_name "D" :name "D"
                 :source       :native
                 :field_ref    [:field "D" {:base-type :type/DateTime}]}
@@ -246,6 +297,7 @@
 
       (testing "Results metadata should have the same type info")
       (is (= {:base_type    :type/DateTime
+              :effective_type :type/DateTime
               :display_name "D"
               :name         "D"
               :semantic_type nil

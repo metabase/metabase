@@ -1,4 +1,9 @@
-import { restore, openOrdersTable, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  openOrdersTable,
+  popover,
+  getAddDimensionButton,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
 const { PRODUCTS } = SAMPLE_DATASET;
@@ -56,12 +61,7 @@ describe("scenarios > question > view", () => {
 
       cy.contains("Count by Created At: Year");
 
-      cy.get("@sidebar")
-        .contains("Category")
-        .parent()
-        .parent()
-        .find(".Field-extra .Icon")
-        .click({ force: true }); // we need to force this because it only displays on hover
+      getAddDimensionButton({ name: "Category" }).click();
 
       cy.contains("Done").click();
 
@@ -72,34 +72,46 @@ describe("scenarios > question > view", () => {
     });
   });
 
-  // *** Test flaky/failing because of the .type() issue
-  describe.skip("filter sidebar", () => {
+  describe("filter sidebar", () => {
     it("should filter a table", () => {
       openOrdersTable();
       cy.contains("Filter").click();
       cy.contains("Vendor").click();
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
-        .type("Alfreda Konopelski II Group")
-        .blur();
+        .type("A");
+      cy.findByText("Alfreda Konopelski II Group").click();
+
       cy.contains("Add filter").click();
       cy.contains("Showing 91 rows");
+    });
+
+    // flaky test (#19454)
+    it.skip("should show info popover for dimension in the filter list", () => {
+      openOrdersTable();
+      cy.contains("Filter").click();
+
+      cy.contains("Name").trigger("mouseenter");
+      popover().contains("Name");
+      popover().contains("2,499 distinct values");
     });
   });
 
   describe("apply filters without data permissions", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
-      cy.visit("/admin/permissions/collections");
+      cy.visit("/admin/permissions/collections/root");
       cy.icon("close")
         .first()
         .click();
-      cy.findByText("View collection").click();
-      cy.findByText("Save Changes").click();
+      cy.findAllByRole("option")
+        .contains("View")
+        .click();
+      cy.findByText("Save changes").click();
       cy.findByText("Yes").click();
 
       // Native query saved in dasbhoard
-      cy.createDashboard("Dashboard");
+      cy.createDashboard();
 
       cy.createNativeQuestion({
         name: "Question",
@@ -134,14 +146,19 @@ describe("scenarios > question > view", () => {
 
     it("should give everyone view permissions", () => {});
 
-    it("should show filters by list for Category", () => {
+    it("should show filters by list for Category without a search box", () => {
       cy.visit("/question/4");
 
       cy.findAllByText("CATEGORY")
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search the list");
+        cy.findByText("Doohickey");
+        cy.findByText("Gizmo");
+        cy.findByText("Gadget");
+        cy.findByText("Widget");
+
+        cy.findByPlaceholderText("Search the list").should("not.exist");
         cy.findByPlaceholderText("Search by Category").should("not.exist");
       });
     });
@@ -165,14 +182,21 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findByPlaceholderText("VENDOR")
-        .click()
-        .clear()
-        .type("Balistreri-Muller");
-      cy.findByPlaceholderText("CATEGORY")
-        .click()
-        .clear()
-        .type("Widget");
+      cy.findAllByText("VENDOR")
+        .first()
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
+        cy.findByText("Add filter").click();
+      });
+      cy.findAllByText("CATEGORY")
+        .first()
+        .click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter some text").type("Widget");
+        cy.findByText("Add filter").click();
+      });
+
       cy.get(".RunButton")
         .last()
         .click();
@@ -194,7 +218,10 @@ describe("scenarios > question > view", () => {
         .first()
         .click();
       popover().within(() => {
-        cy.findByPlaceholderText("Search by Vendor").type("Balistreri-Muller");
+        cy.findByPlaceholderText("Search by Vendor")
+          .focus()
+          .clear()
+          .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
       cy.get(".RunButton")

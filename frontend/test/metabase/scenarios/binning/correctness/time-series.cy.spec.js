@@ -1,4 +1,9 @@
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  getBinningButtonForDimension,
+} from "__support__/e2e/cypress";
 
 const TIME_OPTIONS = {
   Minute: {
@@ -105,6 +110,8 @@ describe("scenarios > binning > correctness > time series", () => {
     restore();
     cy.signInAsAdmin();
 
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     openOrdersTable();
     cy.findByText("Summarize").click();
     openPopoverFromDefaultBucketSize("Created At", "by month");
@@ -121,11 +128,13 @@ describe("scenarios > binning > correctness > time series", () => {
       it(`should return correct values for ${bucketSize}`, () => {
         popover().within(() => {
           cy.findByText(bucketSize).click();
+          cy.wait("@dataset");
         });
 
-        cy.get(".List-item--selected")
-          .should("contain", "Created At")
-          .and("contain", selected);
+        getBinningButtonForDimension({
+          name: "Created At",
+          isSelected: true,
+        }).should("have.text", selected);
 
         cy.findByText("Done").click();
         cy.findByTestId("sidebar-right").should("not.be.visible");
@@ -142,18 +151,9 @@ describe("scenarios > binning > correctness > time series", () => {
   );
 });
 
-function openPopoverFromDefaultBucketSize(column, bucket) {
-  cy.findByTestId("sidebar-right")
-    .contains(column)
-    .first()
-    .closest(".List-item")
-    .should("be.visible")
-    .as("targetListItem");
-
-  cy.get("@targetListItem")
-    .find(".Field-extra")
-    .as("listItemSelectedBinning")
-    .should("contain", bucket)
+function openPopoverFromDefaultBucketSize(name, bucket) {
+  getBinningButtonForDimension({ name })
+    .should("have.text", bucket)
     .click();
 }
 

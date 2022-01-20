@@ -4,9 +4,7 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
 import { SettingsApi, EmailApi, SlackApi, LdapApi } from "metabase/services";
-
 import { refreshSiteSettings } from "metabase/redux/settings";
 
 // ACITON TYPES AND ACTION CREATORS
@@ -83,7 +81,9 @@ export const updateEmailSettings = createThunkAction(
   function(settings) {
     return async function(dispatch, getState) {
       try {
-        return await EmailApi.updateSettings(settings);
+        const result = await EmailApi.updateSettings(settings);
+        await dispatch(reloadSettings());
+        return result;
       } catch (error) {
         console.log("error updating email settings", settings, error);
         throw error;
@@ -118,7 +118,9 @@ export const updateSlackSettings = createThunkAction(
   function(settings) {
     return async function(dispatch, getState) {
       try {
-        await SlackApi.updateSettings(settings);
+        const result = await SlackApi.updateSettings(settings);
+        await dispatch(reloadSettings());
+        return result;
       } catch (error) {
         console.log("error updating slack settings", settings, error);
         throw error;
@@ -135,7 +137,9 @@ export const updateLdapSettings = createThunkAction(
   function(settings) {
     return async function(dispatch, getState) {
       try {
-        await LdapApi.updateSettings(settings);
+        const result = await LdapApi.updateSettings(settings);
+        await dispatch(reloadSettings());
+        return result;
       } catch (error) {
         console.log("error updating LDAP settings", settings, error);
         throw error;

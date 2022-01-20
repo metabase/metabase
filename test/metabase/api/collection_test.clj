@@ -176,10 +176,22 @@
                     :location          "/"
                     :namespace         nil
                     :children          []
-                    :authority_level nil}
+                    :authority_level   nil}
                    (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                             %)
-                         response)))))))))
+                         response))))))
+      (testing "Excludes archived collections (#19603)"
+        (mt/with-temp* [Collection [a {:name "A"}]
+                        Collection [b {:name     "B archived"
+                                       :location (collection/location-path a)
+                                       :archived true}]
+                        Collection [c {:name "C archived"
+                                       :archived true}]]
+          (let [ids      (set (map :id [a b c]))
+                response (mt/user-http-request :rasta :get 200
+                                               "collection/tree?exclude-archived=true")]
+            (is (= [{:name "A" :children []}]
+                   (collection-tree-names-only ids response)))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"
@@ -556,7 +568,32 @@
                    {:name "dash"}
                    {:name "subcollection" :authority_level "official"}}
                  (into #{} (map #(select-keys % [:name :authority_level]))
-                       items))))))))
+                       items))))))
+    (testing "Includes datasets"
+      (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
+                      Collection [_ {:name "subcollection"
+                                     :location (format "/%d/" collection-id)
+                                     :authority_level "official"}]
+                      Card       [_ {:name "card" :collection_id collection-id}]
+                      Card       [_ {:name "dataset" :dataset true :collection_id collection-id}]
+                      Dashboard  [_ {:name "dash" :collection_id collection-id}]]
+        (let [items (->> "/items?models=dashboard&models=card&models=collection"
+                         (str "collection/" collection-id)
+                         (mt/user-http-request :rasta :get 200)
+                         :data)]
+          (is (= #{"card" "dash" "subcollection"}
+                 (into #{} (map :name) items))))
+        (let [items (->> "/items?models=dashboard&models=card&models=collection&models=dataset"
+                         (str "collection/" collection-id)
+                         (mt/user-http-request :rasta :get 200)
+                         :data)]
+          (is (= #{"card" "dash" "subcollection" "dataset"}
+                 (into #{} (map :name) items))))
+        (let [items (->> (str "collection/" collection-id "/items")
+                         (mt/user-http-request :rasta :get 200)
+                         :data)]
+          (is (= #{"card" "dash" "subcollection" "dataset"}
+                 (into #{} (map :name) items))))))))
 
 (deftest children-sort-clause-test
   (testing "Default sort"

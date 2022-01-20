@@ -1,12 +1,18 @@
-/* eslint-disable react/prop-types */
 import React from "react";
+import PropTypes from "prop-types";
 import { t } from "ttag";
-
 import Button from "metabase/components/Button";
 
 const WIDTH = 384;
 
-function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
+const propTypes = {
+  closeIsDisabled: PropTypes.bool,
+  children: PropTypes.node,
+  onClose: PropTypes.func,
+  onCancel: PropTypes.func,
+};
+
+function Sidebar({ closeIsDisabled, children, onClose, onCancel }) {
   return (
     <aside
       style={{ width: WIDTH, minWidth: WIDTH }}
@@ -42,5 +48,7 @@ function Sidebar({ onClose, onCancel, closeIsDisabled, children }) {
     </aside>
   );
 }
+
+Sidebar.propTypes = propTypes;
 
 export default Sidebar;

@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor-test :as qp.test]
@@ -142,3 +143,92 @@
                                    :base-type :type/DateTime
                                    :database-position 0}}}
                        (driver/describe-table driver db (Table (mt/id :timestamp_table)))))))))))))
+
+(deftest select-query-datetime
+  (mt/test-driver :sqlite
+    (let [db-name "datetime_test"
+          details (mt/dbdef->connection-details :sqlite :db {:database-name db-name})]
+      (doseq [stmt ["DROP TABLE IF EXISTS datetime_table;"
+                    "CREATE TABLE datetime_table (
+                      test_case varchar,
+                      col_timestamp timestamp,
+                      col_date date,
+                      col_datetime datetime);"
+                    "INSERT INTO datetime_table
+                      (test_case,         col_timestamp,             col_date,      col_datetime) VALUES
+                      ('epoch',           1629865104000,             1629849600000, 1629865104000),
+                      ('iso8601-ms',      '2021-08-25 04:18:24.111', null,          '2021-08-25 04:18:24.111'),
+                      ('iso8601-no-ms',   '2021-08-25 04:18:24',     null,          '2021-08-25 04:18:24'),
+                      ('iso8601-no-time', null,                      '2021-08-25',  null),
+                      ('null',            null,                      null,          null);"]]
+        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
+                       [stmt]))
+      (mt/with-temp Database [db {:engine :sqlite :details (assoc details :dbname db-name)}]
+        (sync/sync-database! db)
+        ;; In SQLite, you can actually store any value in any date/timestamp column,
+        ;; let's test only values we'd reasonably run into.
+        ;; Caveat: TIMESTAMP stored as string doesn't get parsed and is returned as-is by the driver,
+        ;;         some upper layer will handle it.
+        (mt/with-db db
+          (testing "select datetime stored as unix epoch"
+            (is (= [["2021-08-25T04:18:24Z"                 ; TIMESTAMP
+                     "2021-08-25T00:00:00Z"                 ; DATE
+                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_date $col_datetime]
+                                         :filter [:= $test_case "epoch"]})))))
+          (testing "select datetime stored as string with milliseconds"
+            (is (= [["2021-08-25 04:18:24.111"              ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24.111Z"]]           ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_datetime]
+                                         :filter [:= $test_case "iso8601-ms"]})))))
+          (testing "select datetime stored as string without milliseconds"
+            (is (= [["2021-08-25 04:18:24"                  ; TIMESTAMP (raw string)
+                     "2021-08-25T04:18:24Z"]]               ; DATETIME
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_datetime]
+                                         :filter [:= $test_case "iso8601-no-ms"]})))))
+          (testing "select date stored as string without time"
+            (is (= [["2021-08-25T00:00:00Z"]]               ; DATE
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_date]
+                                         :filter [:= $test_case "iso8601-no-time"]})))))
+          (testing "select NULL"
+            (is (= [[nil nil nil]]
+                   (qp.test/rows
+                     (mt/run-mbql-query :datetime_table
+                                        {:fields [$col_timestamp $col_date $col_datetime]
+                                         :filter [:= $test_case "null"]}))))))))))
+
+(deftest duplicate-identifiers-test
+  (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
+    (mt/test-driver :sqlite
+      (mt/dataset sample-dataset
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+                            count (*)         AS count]
+                 :from     [{:select [products.id              AS id
+                                      products.ean             AS ean
+                                      products.title           AS title
+                                      products.category        AS category
+                                      products.vendor          AS vendor
+                                      products.price           AS price
+                                      products.rating          AS rating
+                                      products.created_at      AS created_at
+                                      (products.category || ?) AS CATEGORY_2]
+                             :from   [products]}
+                            source]
+                 :group-by [source.CATEGORY_2]
+                 :order-by [source.CATEGORY_2 ASC]
+                 :limit    [1]}
+               (sql.qp-test-util/query->sql-map
+                (mt/mbql-query products
+                  {:expressions {:CATEGORY [:concat $category "2"]}
+                   :breakout    [:expression :CATEGORY]
+                   :aggregation [:count]
+                   :order-by    [[:asc [:expression :CATEGORY]]]
+                   :limit       1}))))))))

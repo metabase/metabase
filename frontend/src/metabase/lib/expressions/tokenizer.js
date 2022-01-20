@@ -129,9 +129,6 @@ export function tokenize(expression) {
       }
       ++index;
     }
-    if (index <= start) {
-      return null;
-    }
     const dot = source[index];
     if (dot === ".") {
       ++index;
@@ -142,6 +139,13 @@ export function tokenize(expression) {
         }
         ++index;
       }
+      // just a dot?
+      if (index - start <= 1) {
+        index = start;
+        return null;
+      }
+    } else if (index <= start) {
+      return null;
     }
     const exp = source[index];
     if (exp === "e" || exp === "E") {
@@ -215,10 +219,17 @@ export function tokenize(expression) {
       }
     }
     const type = TOKEN.String;
-    const end = index;
-    const terminated = quote === source[end - 1];
-    const error = terminated ? null : t`Missing closing quotes`;
-    return { type, value, start, end, error };
+    let error = null;
+
+    const terminated = quote === source[index - 1];
+    if (!terminated) {
+      // unterminated string, rewind after the opening quote
+      index = start + 1;
+      value = quote;
+      error = t`Missing closing quotes`;
+    }
+
+    return { type, value, start, end: index, error };
   };
 
   const scanBracketIdentifier = () => {
@@ -311,7 +322,8 @@ export function tokenize(expression) {
         if (error) {
           const message = error;
           const pos = t.start;
-          errors.push({ message, pos });
+          const len = t.end - t.start;
+          errors.push({ message, pos, len });
         }
       } else {
         const char = source[index];
@@ -319,20 +331,20 @@ export function tokenize(expression) {
           break;
         }
         const pos = index;
+        const len = 1;
         if (char === "]") {
           const prev = tokens[tokens.length - 1];
           const ref =
             prev && prev.type === TOKEN.Identifier
               ? source.slice(prev.start, prev.end)
               : null;
-          console.log({ prev, ref });
           const message = ref
             ? t`Missing an opening bracket for ${ref}`
             : t`Missing an opening bracket`;
-          errors.push({ message, pos });
+          errors.push({ message, pos, len });
         } else {
           const message = t`Invalid character: ${char}`;
-          errors.push({ message, pos });
+          errors.push({ message, pos, len });
         }
         ++index;
       }
@@ -341,13 +353,4 @@ export function tokenize(expression) {
   };
 
   return main();
-}
-
-// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(tokens) {
-  const isOpen = t => t.op === OPERATOR.OpenParenthesis;
-  const isClose = t => t.op === OPERATOR.CloseParenthesis;
-  const count = (c, token) =>
-    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
-  return tokens.reduce(count, 0);
 }

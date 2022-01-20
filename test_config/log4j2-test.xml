@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration>
   <Appenders>
-    <Console name="Console" target="SYSTEM_OUT">
+    <Console name="Console" target="SYSTEM_OUT" follow="true">
       <PatternLayout pattern="[%t] %-5level %logger{36} - %msg%n"/>
     </Console>
   </Appenders>

@@ -10,6 +10,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -115,13 +116,6 @@
 
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
-
-(mt/defdataset dots-in-names
-  [["objects.stuff"
-    [{:field-name "dotted.name", :base-type :type/Text}]
-    [["toucan_cage"]
-     ["four_loko"]
-     ["ouija_board"]]]])
 
 (deftest edge-case-identifiers-test
   (mt/test-driver :postgres
@@ -324,6 +318,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  "number"
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -340,6 +335,7 @@
                                              {:name         "user"
                                               :display_name "User ID"
                                               :type         "dimension"
+                                              :widget-type  :number
                                               :dimension    [:field (mt/id :users :user_id) nil]}}})
                        :parameters
                        [{:type   "text"
@@ -392,25 +388,31 @@
       (do-with-money-test-db
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"
+           (is (= "SELECT avg(bird_prices.price::numeric) AS avg FROM bird_prices"
+                  (sql.qp-test-util/query->sql
+                   (mt/mbql-query bird_prices
+                     {:aggregation [[:avg $price]]}))))
            (is (= [[14.995M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:aggregation [[:avg $price]]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:aggregation [[:avg $price]]})))))
+
          (testing "Should be able to filter on a money column"
            (is (= [["Katie Parakeet" 23.99M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:= $price 23.99]}))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:= $price 23.99]}))))
            (is (= []
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:filter [:!= $price $price]})))))
+                   (mt/run-mbql-query bird_prices
+                     {:filter [:!= $price $price]})))))
+
          (testing "Should be able to sort by price"
            (is (= [["Katie Parakeet" 23.99M]
                    ["Lucky Pigeon" 6.00M]]
                   (mt/rows
-                    (mt/run-mbql-query bird_prices
-                      {:order-by [[:desc $price]]}))))))))))
+                   (mt/run-mbql-query bird_prices
+                     {:order-by [[:desc $price]]}))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
@@ -588,6 +590,7 @@
         (testing "cols"
           (is (= [{:display_name "sleep"
                    :base_type    :type/Text
+                   :effective_type :type/Text
                    :source       :native
                    :field_ref    [:field "sleep" {:base-type :type/Text}]
                    :name         "sleep"}]
@@ -661,3 +664,14 @@
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/query->native query) :query pretty-sql))))))))
+
+(deftest postgres-ssl-connectivity-test
+  (mt/test-driver :postgres
+    (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")
+      (testing "We should be able to connect to a Postgres instance, providing our own root CA via a secret property"
+        (mt/with-env-keys-renamed-by #(str/replace-first % "mb-postgres-ssl-test" "mb-postgres-test")
+          (id-field-parameter-test)))
+      (println (u/format-color 'yellow
+                               "Skipping %s because %s env var is not set"
+                               "postgres-ssl-connectivity-test"
+                               "MB_POSTGRES_SSL_TEST_SSL")))))

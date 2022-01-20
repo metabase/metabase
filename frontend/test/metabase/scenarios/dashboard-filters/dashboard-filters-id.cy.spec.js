@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -16,18 +15,13 @@ describe("scenarios > dashboard > filters > ID", () => {
     restore();
     cy.signInAsAdmin();
 
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     cy.visit("/dashboard/1");
 
     editDashboard();
     setFilter("ID");
 
-    cy.findByText("Column to filter on")
-      .next("a")
-      .click();
+    cy.findByText("Select…").click();
   });
-
   describe("should work for the primary key", () => {
     beforeEach(() => {
       popover()

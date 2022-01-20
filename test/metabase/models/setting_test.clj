@@ -6,10 +6,11 @@
             [metabase.models.setting.cache :as cache]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.encryption-test :as encryption-test]
             [metabase.util.i18n :as i18n :refer [deferred-tru]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -45,7 +46,7 @@
   "Test setting - this only shows up in dev (6)"
   :visibility :internal
   :type :csv
-  :default "A,B,C")
+  :default ["A" "B" "C"])
 
 (defsetting test-env-setting
   "Test setting - this only shows up in dev (7)"
@@ -54,6 +55,13 @@
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
+
+(setting/defsetting test-setting-calculated-getter
+  "Test setting - this only shows up in dev (8)"
+  :type       :boolean
+  :setter     :none
+  :getter     (fn []
+                true))
 
 ;; ## HELPER FUNCTIONS
 
@@ -67,10 +75,19 @@
   [setting-name]
   (boolean (Setting :key (name setting-name))))
 
+(defn- test-assert-setting-has-tag [setting-var expected-tag]
+  (let [{:keys [tag arglists]} (meta setting-var)]
+    (testing "There should not be a tag on the var itself"
+      (is (nil? tag)))
+    (testing "Arglists should be tagged\n"
+      (doseq [arglist arglists]
+        (testing (binding [*print-meta* true] (pr-str arglist))
+          (is (= expected-tag
+                 (:tag (meta arglist)))))))))
+
 (deftest string-tag-test
-  (testing "String vars defined by `defsetting` should have correct `:tag` metadata"
-    (is (= 'java.lang.String
-           (:tag (meta #'test-setting-1))))))
+  (testing "String vars defined by `defsetting` should have correct `:tag` metadata\n"
+    (test-assert-setting-has-tag #'test-setting-1 'java.lang.String)))
 
 (deftest defsetting-getter-fn-test
   (testing "Test defsetting getter fn. Should return the value from env var MB_TEST_ENV_SETTING"
@@ -81,12 +98,18 @@
   (testing "Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value"
     (test-setting-2 nil)
     (is (= "[Default Value]"
-           (test-setting-2))))
+           (test-setting-2)))))
 
+(deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
     (test-setting-2 nil)
     (is (= nil
-           (setting/user-facing-value :test-setting-2)))))
+           (setting/user-facing-value :test-setting-2))))
+  (testing "`user-facing-value` should work correctly for calculated Settings (no underlying value)"
+    (is (= true
+           (test-setting-calculated-getter)))
+    (is (= true
+           (setting/user-facing-value :test-setting-calculated-getter)))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2 "FANCY NEW VALUE <3")
@@ -170,11 +193,14 @@
 ;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (do-with-temporary-setting-value setting db-value
+  (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (with-redefs [env/env {(keyword (str "mb-" (name setting))) env-var-value}]
-        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                :key :description)))))
+      (tu/do-with-temp-env-var-value
+       (keyword (str "mb-" (name setting)))
+       env-var-value
+       (fn []
+         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                 :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
@@ -209,8 +235,8 @@
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
            (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
 
-(deftest all-test
-  (testing "setting/all"
+(deftest admin-writable-settings-test
+  (testing `setting/admin-writable-settings
     (test-setting-1 nil)
     (test-setting-2 "TOUCANS")
     (is (= {:key            :test-setting-2
@@ -222,7 +248,7 @@
            (some (fn [setting]
                    (when (re-find #"^test-setting-2$" (name (:key setting)))
                      setting))
-                 (setting/all))))
+                 (setting/admin-writable-settings))))
 
     (testing "with a custom getter"
       (test-setting-1 nil)
@@ -236,7 +262,7 @@
              (some (fn [setting]
                      (when (re-find #"^test-setting-2$" (name (:key setting)))
                        setting))
-                   (setting/all :getter (comp count setting/get-string))))))
+                   (setting/admin-writable-settings :getter (comp count (partial setting/get-value-of-type :string)))))))
 
     ;; TODO -- probably don't need both this test and the "TOUCANS" test above, we should combine them
     (testing "test settings"
@@ -254,7 +280,7 @@
                :env_name       "MB_TEST_SETTING_2"
                :description    "Test setting - this only shows up in dev (2)"
                :default        "[Default Value]"}]
-             (for [setting (setting/all)
+             (for [setting (setting/admin-writable-settings)
                    :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
                setting))))))
 
@@ -268,7 +294,7 @@
                 (some (fn [{:keys [key description]}]
                         (when (= :test-i18n-setting key)
                           description))
-                      (setting/all)))]
+                      (setting/admin-writable-settings)))]
         (is (= "Test setting - with i18n"
                (description)))
         (mt/with-user-locale "zz"
@@ -280,8 +306,7 @@
 
 (deftest boolean-settings-tag-test
   (testing "Boolean settings should have correct `:tag` metadata"
-    (is (= 'java.lang.Boolean
-           (:tag (meta #'test-boolean-setting))))))
+    (test-assert-setting-has-tag #'test-boolean-setting 'java.lang.Boolean)))
 
 (deftest boolean-setting-user-facing-info-test
   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
@@ -302,8 +327,9 @@
 
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
-      (is (thrown?
+      (is (thrown-with-msg?
            Exception
+           #"Invalid value for string: must be either \"true\" or \"false\" \(case-insensitive\)"
            (test-boolean-setting "X"))))
 
     (testing "user-facing info should just return `nil` instead of failing entirely"
@@ -339,7 +365,7 @@
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
 (defn- fetch-csv-setting-value [v]
-  (with-redefs [setting/get-string (constantly v)]
+  (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
@@ -441,8 +467,7 @@
   :type :timestamp)
 
 (deftest timestamp-settings-test
-  (is (= 'java.time.temporal.Temporal
-         (:tag (meta #'test-timestamp-setting))))
+  (test-assert-setting-has-tag #'test-timestamp-setting 'java.time.temporal.Temporal)
 
   (testing "make sure we can set & fetch the value and that it gets serialized/deserialized correctly"
     (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
@@ -535,18 +560,17 @@
                     [metabase.util.i18n :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public)
         (catch Exception e
-          (is (= {:existing-setting
-                  {:description (deferred-tru "A testing setting"),
-                   :cache? true,
-                   :default nil,
-                   :name :foo,
-                   :munged-name "foo"
-                   :type :string,
-                   :sensitive? false,
-                   :tag 'java.lang.String,
-                   :namespace current-ns
-                   :visibility :public}}
-                 (ex-data e)))
+          (is (schema= {:existing-setting
+                        {:description (s/eq (deferred-tru "A testing setting"))
+                         :name        (s/eq :foo)
+                         :munged-name (s/eq "foo")
+                         :type        (s/eq :string)
+                         :sensitive?  (s/eq false)
+                         :tag         (s/eq 'java.lang.String)
+                         :namespace   (s/eq current-ns)
+                         :visibility  (s/eq :public)
+                         s/Keyword s/Any}}
+                       (ex-data e)))
           (is (= (str "Setting :foo already registered in " current-ns)
                  (ex-message e))))
         (finally (in-ns current-ns))))))
@@ -599,3 +623,204 @@
   (testing "Removes characters not-compliant with shells"
     (is (= "aa1aa-b2b_cc3c"
            (#'setting/munge-setting-name "aa1'aa@#?-b2@b_cc'3?c?")))))
+
+(deftest validate-default-value-for-type-test
+  (letfn [(validate [tag default]
+            (@#'setting/validate-default-value-for-type
+             {:tag tag, :default default, :name :a-setting, :type :fake-type}))]
+    (testing "No default value"
+      (is (nil? (validate `String nil))))
+    (testing "No tag"
+      (is (nil? (validate nil "abc"))))
+    (testing "tag is not a symbol or string"
+      (is (thrown-with-msg?
+           AssertionError
+           #"Setting :tag should be a symbol or string, got: \^clojure\.lang\.Keyword :string"
+           (validate :string "Green Friend"))))
+    (doseq [[tag valid-tag?]     {"String"           false
+                                  "java.lang.String" true
+                                  'STRING            false
+                                  `str               false
+                                  `String            true}
+            [value valid-value?] {"Green Friend" true
+                                  :green-friend  false}]
+      (testing (format "Tag = %s (valid = %b)" (pr-str tag) valid-tag?)
+        (testing (format "Value = %s (valid = %b)" (pr-str value) valid-value?)
+          (cond
+            (and valid-tag? valid-value?)
+            (is (nil? (validate tag value)))
+
+            (not valid-tag?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Cannot resolve :tag .+ to a class"
+                 (validate tag value)))
+
+            (not valid-value?)
+            (is (thrown-with-msg?
+                 Exception
+                 #"Wrong :default type: got \^clojure\.lang\.Keyword :green-friend, but expected a java\.lang\.String"
+                 (validate tag value)))))))))
+
+(defsetting ^:private test-database-local-only-setting
+  "test Setting"
+  :visibility     :internal
+  :type           :integer
+  :database-local :only)
+
+(defsetting ^:private test-database-local-allowed-setting
+  (deferred-tru "test Setting")
+  :visibility     :authenticated
+  :type           :integer
+  :database-local :allowed)
+
+(defsetting ^:private test-database-local-never-setting
+  "test Setting"
+  :visibility :internal
+  :type       :integer) ; `:never` should be the default
+
+(deftest database-local-settings-test
+  (doseq [[database-local-type {:keys [setting-name setting-fn returns]}]
+          {:only    {:setting-name :test-database-local-only-setting
+                     :setting-fn   test-database-local-only-setting
+                     :returns      [:database-local]}
+           :allowed {:setting-name :test-database-local-allowed-setting
+                     :setting-fn   test-database-local-allowed-setting
+                     :returns      [:database-local :site-wide]}
+           :never   {:setting-name :test-database-local-never-setting
+                     :setting-fn   test-database-local-never-setting
+                     :returns      [:site-wide]}}]
+    (testing (format "A Setting with :database-local = %s" database-local-type)
+      (doseq [site-wide-value         [1 nil]
+              database-local-value    [2 nil]
+              do-with-site-wide-value [(fn [thunk]
+                                         (testing "\nsite-wide value set in application DB"
+                                           ;; Set the setting directly instead of using
+                                           ;; [[mt/with-temporary-setting-values]] because that blows up when the
+                                           ;; Setting is Database-local-only
+                                           (db/delete! Setting :key (name setting-name))
+                                           (when site-wide-value
+                                             (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
+                                           (cache/restore-cache!)
+                                           (try
+                                             (thunk)
+                                             (finally
+                                               (db/delete! Setting :key (name setting-name))
+                                               (cache/restore-cache!)))))
+                                       (fn [thunk]
+                                         ()
+                                         (tu/do-with-temp-env-var-value
+                                          (keyword (str "mb-" (name setting-name)))
+                                          site-wide-value
+                                          thunk))]]
+        ;; clear out Setting if it was already set for some reason (except for `:only` where this is explicitly
+        ;; disallowed)
+        (when-not (= database-local-type :only)
+          (setting-fn nil))
+        ;; now set the Site-wide value
+        (testing (format "\nSite-wide value = %s\nDatabase-local value = %s"
+                         (pr-str site-wide-value) (pr-str database-local-value))
+          (do-with-site-wide-value
+           (fn []
+             ;; set the database-local-value
+             (binding [setting/*database-local-values* {setting-name (some-> database-local-value str)}]
+               ;; now fetch the value
+               (let [[expected-value-type expected-value] (some (fn [return-value-type]
+                                                                  (when-let [value ({:database-local database-local-value
+                                                                                     :site-wide      site-wide-value}
+                                                                                    return-value-type)]
+                                                                    [return-value-type value]))
+                                                                returns)]
+                 (testing (format "\nShould return %s value %s" (pr-str expected-value-type) (pr-str expected-value))
+                   (is (= expected-value
+                          (setting-fn)))))))))))))
+
+(defsetting ^:private test-boolean-database-local-setting
+  "test Setting"
+  :visibility     :internal
+  :type           :boolean
+  :database-local :allowed)
+
+(deftest boolean-database-local-settings-test
+  (testing "Boolean Database-local Settings\n"
+    (testing "Site-wide value is `true`"
+      (test-boolean-database-local-setting true)
+      (is (= true
+             (test-boolean-database-local-setting))))
+    (testing "Site-wide value is `false`"
+      (test-boolean-database-local-setting false)
+      (is (= false
+             (test-boolean-database-local-setting)))
+      (testing "Database-local value is `true`"
+        (binding [setting/*database-local-values* {:test-boolean-database-local-setting "true"}]
+          (is (= true
+                 (test-boolean-database-local-setting)))))
+      (testing "Database-local value is explicitly set to `nil` -- fall back to site-wide value"
+        (binding [setting/*database-local-values* {:test-boolean-database-local-setting nil}]
+          (is (= false
+                 (test-boolean-database-local-setting))))))))
+
+(defsetting ^:private test-database-local-only-setting-with-default
+  (deferred-tru "test Setting")
+  :visibility     :authenticated
+  :database-local :only
+  :default        "DEFAULT")
+
+(deftest database-local-only-settings-test
+  (testing "Disallow setting Database-local-only Settings"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Site-wide values are not allowed for Setting :test-database-local-only-setting"
+         (test-database-local-only-setting 2))))
+
+  (testing "Default values should be allowed for Database-local-only Settings"
+    (is (= "DEFAULT"
+           (test-database-local-only-setting-with-default)))
+    (binding [setting/*database-local-values* {:test-database-local-only-setting-with-default "WOW"}]
+      (is (= "WOW"
+             (test-database-local-only-setting-with-default))))))
+
+(deftest database-local-settings-api-functions-test
+  ;; we'll use `::not-present` below to signify that the Setting isn't returned AT ALL (as opposed to being returned
+  ;; with a `nil` value)
+  (doseq [[fn-name f] {`setting/admin-writable-settings
+                       (fn [k]
+                         (let [m (into {} (map (juxt :key :value)) (setting/admin-writable-settings))]
+                           (get m k ::not-present)))
+
+                       `setting/user-readable-values-map
+                       (fn [k]
+                         (get (setting/user-readable-values-map :authenticated) k ::not-present))}]
+    (testing fn-name
+      (testing "should return Database-local-allowed Settings (site-wide-value only)"
+        (mt/with-temporary-setting-values [test-database-local-allowed-setting 2]
+          (binding [setting/*database-local-values* {:test-database-local-allowed-setting "1"}]
+            (is (= 2
+                   (f :test-database-local-allowed-setting))))))
+      (testing "should not return Database-local-only Settings regardless of visibility even if they have a default value"
+        (is (= ::not-present
+               (f :test-database-local-only-setting-with-default)))))))
+
+(defsetting ^:private test-integer-setting
+  "test Setting"
+  :visibility :internal
+  :type       :integer)
+
+(deftest integer-setting-test
+  (testing "Should be able to set integer setting with a string"
+    (test-integer-setting "100")
+    (is (= 100
+           (test-integer-setting)))
+    (testing "should be able to set to a negative number (thanks Howon for spotting this)"
+      (test-integer-setting "-2")
+      (is (= -2
+             (test-integer-setting))))))
+
+(deftest retired-settings-test
+  (testing "Should not be able to define a setting with a retired name"
+    (with-redefs [setting/retired-setting-names #{"retired-setting"}]
+      (try
+        (defsetting retired-setting (deferred-tru "A retired setting name"))
+        (catch Exception e
+          (is (= "Setting name 'retired-setting' is retired; use a different name instead"
+                 (ex-message e))))))))

@@ -1,5 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -15,17 +13,15 @@ import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
+import Tooltip from "metabase/components/Tooltip";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
-import {
-  getMetadata,
-  makeGetMergedParameterFieldValues,
-} from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
-import {
-  getParameterIconName,
-  deriveFieldOperatorFromParameter,
-} from "metabase/meta/Parameter";
+import { getParameterIconName } from "metabase/parameters/utils/ui";
+import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
+import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
+import { hasFieldValues } from "metabase/parameters/utils/fields";
 
 import S from "./ParameterWidget.css";
 
@@ -42,10 +38,8 @@ const DATE_WIDGETS = {
 };
 
 const makeMapStateToProps = () => {
-  const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();
   const mapStateToProps = (state, props) => ({
     metadata: getMetadata(state),
-    values: getMergedParameterFieldValues(state, props),
   });
   return mapStateToProps;
 };
@@ -55,10 +49,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(
-  makeMapStateToProps,
-  mapDispatchToProps,
-)
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
@@ -75,13 +66,10 @@ export default class ParameterValueWidget extends Component {
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
 
-    // provided by @connect
-    values: PropTypes.array,
     metadata: PropTypes.object.isRequired,
   };
 
   static defaultProps = {
-    values: [],
     isEditing: false,
     noReset: false,
     commitImmediately: false,
@@ -95,7 +83,7 @@ export default class ParameterValueWidget extends Component {
 
     // In public dashboards we receive field values before mounting this component and
     // without need to call `fetchFieldValues` separately
-    if (_.isEmpty(this.props.values)) {
+    if (!hasFieldValues(this.props.parameter)) {
       this.updateFieldValues(this.props);
     }
 
@@ -157,36 +145,48 @@ export default class ParameterValueWidget extends Component {
       isFullscreen,
       noReset,
       className,
+      dashboard,
     } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
+    const isDashParamWithoutMapping = isDashboardParameterWithoutMapping(
+      parameter,
+      dashboard,
+    );
+    const isDashParamWithoutMappingText = t`This filter needs to be connected to a card.`;
     const WidgetDefinition = getWidgetDefinition(metadata, parameter);
     const { noPopover } = WidgetDefinition;
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
     if (noPopover) {
       return (
-        <div
-          className={cx(S.parameter, S.noPopover, className, {
-            [S.selected]: hasValue,
-            [S.isEditing]: isEditing,
-          })}
+        <Tooltip
+          tooltip={isDashParamWithoutMappingText}
+          isEnabled={isDashParamWithoutMapping}
         >
-          {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
-          <Widget
-            {...this.props}
-            onFocusChanged={this.onFocusChanged}
-            onPopoverClose={this.onPopoverClose}
-          />
-          <WidgetStatusIcon
-            isFullscreen={isFullscreen}
-            hasValue={hasValue}
-            noReset={noReset}
-            noPopover={noPopover}
-            isFocused={isFocused}
-            setValue={setValue}
-          />
-        </div>
+          <div
+            className={cx(S.parameter, S.noPopover, className, {
+              [S.selected]: hasValue,
+              [S.isEditing]: isEditing,
+            })}
+          >
+            {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
+            <Widget
+              {...this.props}
+              onFocusChanged={this.onFocusChanged}
+              onPopoverClose={this.onPopoverClose}
+              disabled={isDashParamWithoutMapping}
+            />
+            <WidgetStatusIcon
+              isFullscreen={isFullscreen}
+              hasValue={hasValue}
+              noReset={noReset}
+              noPopover={noPopover}
+              isFocused={isFocused}
+              setValue={setValue}
+            />
+          </div>
+        </Tooltip>
       );
     } else {
       const placeholderText = isEditing
@@ -194,37 +194,46 @@ export default class ParameterValueWidget extends Component {
         : placeholder || t`Select…`;
 
       return (
-        <PopoverWithTrigger
-          ref={this.valuePopover}
-          triggerElement={
-            <div
-              ref={this.trigger}
-              className={cx(S.parameter, className, { [S.selected]: hasValue })}
-            >
-              {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
-              <div className="mr1 text-nowrap">
-                {hasValue ? WidgetDefinition.format(value) : placeholderText}
-              </div>
-              <WidgetStatusIcon
-                isFullscreen={isFullscreen}
-                hasValue={hasValue}
-                noReset={noReset}
-                noPopover={noPopover}
-                isFocused={isFocused}
-                setValue={setValue}
-              />
-            </div>
-          }
-          target={this.getTargetRef}
-          // make sure the full date picker will expand to fit the dual calendars
-          autoWidth={parameter.type === "date/all-options"}
+        <Tooltip
+          tooltip={isDashParamWithoutMappingText}
+          isEnabled={isDashParamWithoutMapping}
         >
-          <Widget
-            {...this.props}
-            onFocusChanged={this.onFocusChanged}
-            onPopoverClose={this.onPopoverClose}
-          />
-        </PopoverWithTrigger>
+          <PopoverWithTrigger
+            ref={this.valuePopover}
+            triggerElement={
+              <div
+                ref={this.trigger}
+                className={cx(S.parameter, className, {
+                  [S.selected]: hasValue,
+                  "cursor-not-allowed": isDashParamWithoutMapping,
+                })}
+              >
+                {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
+                <div className="mr1 text-nowrap">
+                  {hasValue ? WidgetDefinition.format(value) : placeholderText}
+                </div>
+                <WidgetStatusIcon
+                  isFullscreen={isFullscreen}
+                  hasValue={hasValue}
+                  noReset={noReset}
+                  noPopover={noPopover}
+                  isFocused={isFocused}
+                  setValue={setValue}
+                />
+              </div>
+            }
+            target={this.getTargetRef}
+            // make sure the full date picker will expand to fit the dual calendars
+            autoWidth={parameter.type === "date/all-options"}
+          >
+            <Widget
+              {...this.props}
+              onFocusChanged={this.onFocusChanged}
+              onPopoverClose={this.onPopoverClose}
+              disabled={isDashParamWithoutMapping}
+            />
+          </PopoverWithTrigger>
+        </Tooltip>
       );
     }
   }
@@ -234,9 +243,12 @@ function getFields(metadata, parameter) {
   if (!metadata) {
     return [];
   }
-  return getFieldIds(parameter)
-    .map(id => metadata.field(id))
-    .filter(f => f != null);
+  return (
+    parameter.fields ??
+    getFieldIds(parameter)
+      .map(id => metadata.field(id))
+      .filter(f => f != null)
+  );
 }
 
 function getFieldIds(parameter) {
@@ -248,7 +260,6 @@ function Widget({
   parameter,
   metadata,
   value,
-  values,
   setValue,
   onPopoverClose,
   className,
@@ -258,9 +269,21 @@ function Widget({
   onFocusChanged,
   parameters,
   dashboard,
+  disabled,
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
   const fields = getFields(metadata, parameter);
+
+  if (disabled) {
+    return (
+      <TextWidget
+        className={cx(className, "cursor-not-allowed")}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    );
+  }
+
   if (DateWidget) {
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
@@ -294,6 +317,7 @@ function Widget({
     );
   }
 }
+
 Widget.propTypes = {
   ...ParameterValueWidget.propTypes,
   onPopoverClose: PropTypes.func.isRequired,

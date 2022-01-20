@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   openNativeEditor,
+  visualize,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
 
@@ -107,12 +108,13 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -126,7 +128,8 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("Created At").click();
 
-    cy.button("Visualize").click();
+    visualize();
+
     cy.contains("Visualization").click();
     cy.icon("waterfall").click();
 
@@ -135,7 +138,7 @@ describe("scenarios > visualizations > waterfall", () => {
     });
   });
 
-  it.skip("should not be enabled for multi-series questions (metabase#15152)", () => {
+  it("should show error for multi-series questions (metabase#15152)", () => {
     cy.server();
     cy.route("POST", "/api/dataset").as("dataset");
 
@@ -155,14 +158,18 @@ describe("scenarios > visualizations > waterfall", () => {
     });
 
     cy.wait("@dataset");
-    cy.findByText("Visualization").click();
 
-    cy.findByText("Waterfall")
-      .parent()
-      .should("not.have.css", "opacity", "1");
+    cy.findByText("Visualization").click();
+    cy.findByTestId("Waterfall-button").click();
+    cy.findByText("Waterfall chart does not support multiple series");
+
+    cy.findByTestId("remove-count").click();
+    cy.get(".CardVisualization svg"); // Chart renders after removing the second metric
+
+    cy.findByText("Add another series...").should("not.exist");
   });
 
-  it.skip("should work for unaggregated data (metabase#15465)", () => {
+  it("should work for unaggregated data (metabase#15465)", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",

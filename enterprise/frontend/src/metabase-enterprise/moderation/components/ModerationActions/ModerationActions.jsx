@@ -4,8 +4,7 @@ import { t } from "ttag";
 
 import { isItemVerified } from "metabase-enterprise/moderation/service";
 
-import { Container, Label, VerifyButton } from "./ModerationActions.styled";
-import Tooltip from "metabase/components/Tooltip";
+import { Container, VerifyButton } from "./ModerationActions.styled";
 
 export default ModerationActions;
 
@@ -13,22 +12,28 @@ ModerationActions.propTypes = {
   className: PropTypes.string,
   onVerify: PropTypes.func,
   moderationReview: PropTypes.object,
+  isDataset: PropTypes.bool,
 };
 
-function ModerationActions({ moderationReview, className, onVerify }) {
+function ModerationActions({
+  moderationReview,
+  className,
+  onVerify,
+  isDataset,
+}) {
   const isVerified = isItemVerified(moderationReview);
   const hasActions = !!onVerify;
 
+  const buttonTitle = isDataset
+    ? t`Verify this model`
+    : t`Verify this question`;
+
   return hasActions ? (
     <Container className={className}>
-      <Label>{t`Moderation`}</Label>
       {!isVerified && (
-        <Tooltip tooltip={t`Verify this`}>
-          <VerifyButton
-            data-testid="moderation-verify-action"
-            onClick={onVerify}
-          />
-        </Tooltip>
+        <VerifyButton data-testid="moderation-verify-action" onClick={onVerify}>
+          {buttonTitle}
+        </VerifyButton>
       )}
     </Container>
   ) : null;

@@ -4,6 +4,7 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import CheckBox from "metabase/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
@@ -16,19 +17,23 @@ export default function FieldsPicker({
   onSelectAll,
   onSelectNone,
   onToggleDimension,
+  triggerElement = t`Columns`,
+  disableSelected,
+  ...props
 }) {
   const selected = new Set(selectedDimensions.map(d => d.key()));
   return (
     <PopoverWithTrigger
-      triggerElement={t`Columns`}
+      triggerElement={triggerElement}
       triggerClasses={className}
       sizeToFit
+      {...props}
     >
       <ul className="pt1">
         {(onSelectAll || onSelectNone) && (
           <li className="px1 pb1 flex align-center border-bottom mb1">
             <StackedCheckBox
-              label={isAll && onSelectNone ? t`Select None` : t`Select All`}
+              label={isAll && onSelectNone ? t`Select none` : t`Select all`}
               checked={isAll}
               indeterminate={!isAll && !isNone}
               disabled={isAll && !onSelectNone}
@@ -44,16 +49,19 @@ export default function FieldsPicker({
           </li>
         )}
         {dimensions.map(dimension => (
-          <li key={dimension.key()} className="px1 pb1 flex align-center">
-            <CheckBox
-              checked={selected.has(dimension.key())}
-              label={dimension.displayName()}
-              onChange={() => {
-                onToggleDimension(dimension, !selected.has(dimension.key()));
-              }}
-              className="mr1"
-            />
-          </li>
+          <DimensionInfoPopover dimension={dimension} key={dimension.key()}>
+            <li className="px1 pb1 flex align-center">
+              <CheckBox
+                disabled={disableSelected && selected.has(dimension.key())}
+                checked={selected.has(dimension.key())}
+                label={dimension.displayName()}
+                onChange={() => {
+                  onToggleDimension(dimension, !selected.has(dimension.key()));
+                }}
+                className="mr1"
+              />
+            </li>
+          </DimensionInfoPopover>
         ))}
       </ul>
     </PopoverWithTrigger>

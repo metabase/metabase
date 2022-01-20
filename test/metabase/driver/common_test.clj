@@ -1,8 +1,12 @@
 (ns metabase.driver.common-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.models.setting :as setting]))
+            [metabase.driver.util :as driver.u]
+            [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]))
 
 (deftest base-type-inference-test
   (is (= :type/Text
@@ -38,8 +42,8 @@
 
 (defn- test-start-of-week-offset
   [db-start-of-week target-start-of-week]
-  (with-redefs [driver/db-start-of-week (constantly db-start-of-week)
-                setting/get-keyword     (constantly target-start-of-week)]
+  (with-redefs [driver/db-start-of-week   (constantly db-start-of-week)
+                setting/get-value-of-type (constantly target-start-of-week)]
     (driver.common/start-of-week-offset :sql)))
 
 (deftest start-of-week-offset-test
@@ -47,3 +51,14 @@
   (is (= -1 (test-start-of-week-offset :sunday :monday)))
   (is (= 1 (test-start-of-week-offset :monday :sunday)))
   (is (= 5 (test-start-of-week-offset :monday :wednesday))))
+
+(deftest cloud-ip-address-info-test
+  (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (let [connection-props (-> (driver.u/available-drivers-info)
+                                 :postgres
+                                 :details-fields)
+            ip-address-field (first
+                              (filter #(= (:name %) "cloud-ip-address-info") connection-props))]
+        (is (re-find #"If your database is behind a firewall" (:placeholder ip-address-field)))))))

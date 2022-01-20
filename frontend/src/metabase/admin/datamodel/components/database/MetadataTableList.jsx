@@ -14,17 +14,15 @@ import cx from "classnames";
 
 import { regexpEscape } from "metabase/lib/string";
 import { color } from "metabase/lib/colors";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
-@connect(
-  null,
-  {
-    setVisibilityForTables: (tables, visibility_type) =>
-      Tables.actions.bulkUpdate({
-        ids: tables.map(t => t.id),
-        visibility_type,
-      }),
-  },
-)
+@connect(null, {
+  setVisibilityForTables: (tables, visibility_type) =>
+    Tables.actions.bulkUpdate({
+      ids: tables.map(t => t.id),
+      visibility_type,
+    }),
+})
 export default class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -73,7 +71,7 @@ export default class MetadataTableList extends Component {
 
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
-        <li className="AdminList-section">
+        <li className="AdminList-section flex justify-between align-center">
           {(n =>
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
@@ -119,7 +117,7 @@ export default class MetadataTableList extends Component {
           />
         </div>
         {(this.props.onBack || this.props.schema) && (
-          <h4 className="p2 border-bottom">
+          <h4 className="p2 border-bottom break-anywhere">
             {this.props.onBack && (
               <span
                 className="text-brand cursor-pointer"
@@ -175,18 +173,20 @@ function TableRow({
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
-          { selected },
+          { selected, disabled: !isSyncCompleted(table) },
         )}
         onClick={() => selectTable(table)}
       >
         {table.display_name}
-        <div className="hover-child float-right">
-          <ToggleHiddenButton
-            tables={[table]}
-            isHidden={table.visibility_type != null}
-            setVisibilityForTables={setVisibilityForTables}
-          />
-        </div>
+        {isSyncCompleted(table) && (
+          <div className="hover-child float-right">
+            <ToggleHiddenButton
+              tables={[table]}
+              isHidden={table.visibility_type != null}
+              setVisibilityForTables={setVisibilityForTables}
+            />
+          </div>
+        )}
       </a>
     </li>
   );

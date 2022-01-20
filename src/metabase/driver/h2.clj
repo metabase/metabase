@@ -34,10 +34,17 @@
 
 (defmethod driver/connection-properties :h2
   [_]
-  [{:name         "db"
-    :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
-    :required     true}])
+  (->>
+   [{:name         "db"
+     :display-name (tru "Connection String")
+     :helper-text (deferred-tru "The local path relative to where Metabase is running from. Your string should not include the .mv.db extension.")
+     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
+     :required     true}
+    driver.common/cloud-ip-address-info
+    driver.common/advanced-options-start
+    driver.common/default-advanced-options]
+   (map u/one-or-many)
+   (apply concat)))
 
 (defmethod driver/db-start-of-week :h2
   [_]

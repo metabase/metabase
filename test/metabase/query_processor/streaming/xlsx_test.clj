@@ -61,7 +61,14 @@
         (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
         (is (= "[$$]#,##0" (format-string {::mb.viz/decimals -1,
                                            ::mb.viz/currency-in-header false,
-                                           ::mb.viz/number-style "currency"}))))
+                                           ::mb.viz/number-style "currency"})))
+
+        ;; Thousands separator can be omitted
+        (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."})))
+        ;; Custom separators are not supported
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))
 
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export
@@ -187,6 +194,7 @@
 
       (testing "time-style"
         (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"})))
+        (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"})))
         (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"})))
         (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"}))))
 
@@ -224,10 +232,26 @@
 ;;; |                                               XLSX export tests                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- parse-cell-content
+;; These are tests that generate an XLSX binary and then parse and assert on its contents, to test logic and value
+;; formatting that is specific to the XLSX format. These do NOT test any of the column ordering logic in
+;; `metabase.query-processor.streaming`, or anything that happens in the API handlers for generating exports.
+
+(defn parse-cell-content
+  "Parses an XLSX sheet and returns the raw data in each row"
   [sheet]
   (for [row (spreadsheet/into-seq sheet)]
     (map spreadsheet/read-cell row)))
+
+(defn parse-xlsx-results
+  "Given a byte array representing an XLSX document, parses the query result sheet using the provided `parse-fn`"
+  ([bytea]
+   (parse-xlsx-results bytea parse-cell-content))
+
+  ([bytea parse-fn]
+   (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+     (let [workbook (spreadsheet/load-workbook-from-stream is)
+           sheet    (spreadsheet/select-sheet "Query result" workbook)]
+       (parse-fn sheet)))))
 
 (defn- xlsx-export
   ([ordered-cols viz-settings rows]
@@ -243,10 +267,7 @@
                rows))
        (i/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
-       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-         (let [workbook (spreadsheet/load-workbook-from-stream is)
-               sheet    (spreadsheet/select-sheet "Query result" workbook)]
-           (parse-fn sheet)))))))
+       (parse-xlsx-results bytea parse-fn)))))
 
 (defn- parse-format-strings
   [sheet]
@@ -255,10 +276,10 @@
 
 (deftest export-format-test
   (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
-    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
            (rest (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
                               {}
-                              [[1] [1.23] [1.004] [1.005]]
+                              [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
                               parse-format-strings)))))
 
   (testing "Misc format strings are included correctly in exports"
@@ -389,6 +410,12 @@
   (testing "LocalTime"
     (is (= [#inst "1899-12-31T10:12:06.000-00:00"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06.681"]])))))
+  (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
+    (is (= ["2020-03-28T10:12:06.681"]
+           (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= [#inst "2020-03-28T10:12:06.681"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
     (binding [metabase.driver/*driver* :h2]
       (testing "OffsetDateTime"
@@ -399,7 +426,13 @@
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "10:12:06Z-03:21"]])))))
       (testing "ZonedDateTime"
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
-               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]]))))))))
+               (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
+  (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
+    (binding [xlsx/*parse-temporal-string-values* true]
+      (is (= ["GB"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
+      (is (= ["Portugal"]
+             (second (xlsx-export [{:id 0, :name "Col"}] {} [["Portugal"]])))))))
 
 (defrecord ^:private SampleNastyClass [^String v])
 
@@ -444,4 +477,10 @@
                                              {}
                                              [["abcdef"] ["abcedf"] ["abcdef"]]
                                              parse-column-width))]
-        (is (<= 2800 col-width 2900))))))
+        (is (<= 2800 col-width 2900)))))
+  (testing "An auto-sized column does not exceed max-column-width (the width of 255 characters)"
+    (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
+                                           {}
+                                           [[(apply str (repeat 256 "0"))]]
+                                           parse-column-width))]
+      (is (= 65280 col-width)))))

@@ -4,7 +4,7 @@ export const mostQueried = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.tables/most-queried",
+      fn: "metabase-enterprise.audit-app.pages.tables/most-queried",
       args: [],
     },
     visualization_settings: {
@@ -20,7 +20,7 @@ export const leastQueried = () => ({
     display: "row",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.tables/least-queried",
+      fn: "metabase-enterprise.audit-app.pages.tables/least-queried",
       args: [],
     },
     visualization_settings: {
@@ -30,13 +30,13 @@ export const leastQueried = () => ({
   },
 });
 
-export const table = (searchString?: string) => ({
+export const table = searchString => ({
   card: {
     name: "Tables",
     display: "table",
     dataset_query: {
       type: "internal",
-      fn: "metabase-enterprise.audit.pages.tables/table",
+      fn: "metabase-enterprise.audit-app.pages.tables/table",
       args: searchString ? [searchString] : [],
     },
   },

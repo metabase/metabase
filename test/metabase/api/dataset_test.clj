@@ -1,13 +1,14 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
-  `metabase.query-processor.streaming-test` and specifically for each format in
-  `metabase.query-processor.streaming.csv-test` etc."
+  [[metabase.query-processor.streaming-test]] and specifically for each format
+  in [[metabase.query-processor.streaming.csv-test]] etc."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivots]
+            [metabase.driver :as driver]
             [metabase.http-client :as http-client]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
@@ -147,7 +148,7 @@
                         :result_rows  (s/eq 0)
                         :row_count    (s/eq 0)
                         :context      (s/eq :ad-hoc)
-                        :error        (s/eq "Error executing query")
+                        :error        #"Syntax error in SQL statement"
                         :database_id  (s/eq (mt/id))
                         :executor_id  (s/eq (mt/user->id :rasta))
                         :native       (s/eq true)
@@ -206,7 +207,7 @@
         (testing "with data perms"
           (do-test))
         (testing "with collection perms only"
-          (perms/revoke-permissions! (group/all-users) (mt/db))
+          (perms/revoke-data-perms! (group/all-users) (mt/db))
           (do-test))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -227,6 +228,24 @@
             (is (= 101
                    (count (csv/read-csv result))))))))))
 
+(deftest export-with-remapped-fields
+  (testing "POST /api/dataset/:format"
+    (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
+      (let [query (json/generate-string {:database (mt/id)
+                                         :type     :query
+                                         :query    {:source-table (mt/id :venues)
+                                                    :limit 1}
+                                         :middleware
+                                         {:add-default-userland-constraints? true
+                                          :userland-query?                   true}})]
+        (mt/with-column-remappings [venues.category_id categories.name]
+          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                             :query query)]
+            (is (str/includes? result "Asian"))))
+        (mt/with-column-remappings [venues.category_id (values-of categories.name)]
+          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv"
+                                             :query query)]
+            (is (str/includes? result "Asian"))))))))
 
 (deftest non--download--queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
@@ -245,7 +264,7 @@
     (mt/with-temp-copy-of-db
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
-      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/revoke-data-perms! (group/all-users) (mt/id))
       (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
       (is (schema= {:status   (s/eq "failed")
                     :error    (s/eq "You do not have permissions to run this query.")
@@ -280,7 +299,7 @@
         (mt/suppress-output
           (mt/with-temp-copy-of-db
             ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (perms/revoke-data-perms! (group/all-users) (mt/id))
             (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
             (is (schema= {:permissions-error? (s/eq true)
                           :message            (s/eq "You do not have permissions to run this query.")
@@ -319,10 +338,10 @@
 
         ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
         ;; the GROUP BY expression
-        (when (#{:bigquery :mongo :presto :redshift :h2 :sqlite} metabase.driver/*driver*)
+        (when (#{:bigquery :mongo :presto :h2 :sqlite} driver/*driver*)
           (testing "with an added expression"
             ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on `metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test`.
+            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
             (let [query  (-> (pivots/pivot-query)
                              (assoc-in [:query :fields] [[:expression "test-expr"]])
                              (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
@@ -341,6 +360,7 @@
                         "test-expr"]
                        (map :display_name cols)))
                 (is (= {:base_type       "type/Integer"
+                        :effective_type  "type/Integer"
                         :name            "pivot-grouping"
                         :display_name    "pivot-grouping"
                         :expression_name "pivot-grouping"

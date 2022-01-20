@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { withRouter } from "react-router";
 
@@ -5,9 +6,10 @@ import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 import { parseHashOptions } from "metabase/lib/browser";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
-import Parameters from "metabase/parameters/components/Parameters/Parameters";
+import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import LogoBadge from "./LogoBadge";
 
 import cx from "classnames";
@@ -19,33 +21,9 @@ const DEFAULT_OPTIONS = {
   titled: true,
 };
 
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
-
-type Props = {
-  className?: string,
-  children?: any,
-  actionButtons?: any[],
-  name?: string,
-  description?: string,
-  dashboard?: DashboardWithCards,
-  location: { query: { [key: string]: string }, hash: string },
-  parameters?: Parameter[],
-  parameterValues?: { [key: string]: string },
-  setParameterValue: (id: string, value: string) => void,
-  setMultipleParameterValues: (parameterValues: {
-    [key: string]: string,
-  }) => void,
-};
-
-type State = {
-  innerScroll: boolean,
-};
-
 @withRouter
 export default class EmbedFrame extends Component {
-  props: Props;
-  state: State = {
+  state = {
     innerScroll: true,
   };
 
@@ -63,7 +41,6 @@ export default class EmbedFrame extends Component {
       parameters,
       parameterValues,
       setParameterValue,
-      setMultipleParameterValues,
     } = this.props;
     const { innerScroll } = this.state;
 
@@ -96,18 +73,15 @@ export default class EmbedFrame extends Component {
               )}
               {parameters && parameters.length > 0 ? (
                 <div className="flex ml-auto">
-                  <Parameters
+                  <SyncedParametersList
+                    className="mt1"
                     dashboard={this.props.dashboard}
-                    parameters={parameters.map(p => ({
-                      ...p,
-                      value: parameterValues && parameterValues[p.id],
-                    }))}
-                    query={location.query}
+                    parameters={getValuePopulatedParameters(
+                      parameters,
+                      parameterValues,
+                    )}
                     setParameterValue={setParameterValue}
-                    setMultipleParameterValues={setMultipleParameterValues}
-                    syncQueryString
                     hideParameters={hide_parameters}
-                    isQB
                   />
                 </div>
               ) : null}

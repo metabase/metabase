@@ -11,6 +11,7 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.email-test :as et]
             [metabase.http-client :as http]
             [metabase.plugins.classloader :as classloader]
@@ -61,6 +62,7 @@
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
+  sql.qp-test-util/keep-me
   test-users/keep-me
   tt/keep-me
   tu/keep-me
@@ -101,6 +103,8 @@
   email-to
   fake-inbox-email-fn
   inbox
+  received-email-body?
+  received-email-subject?
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
@@ -154,6 +158,9 @@
  [sql-jdbc.tu
   sql-jdbc-drivers]
 
+ [sql.qp-test-util
+  with-native-query-testing-context]
+
  [test-users
   fetch-user
   test-user?
@@ -175,6 +182,7 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
+  file->bytes
   is-uuid-string?
   obj->json->obj
   postwalk-pred
@@ -182,6 +190,8 @@
   random-name
   round-all-decimals
   scheduler-current-tasks
+  secret-value-equals?
+  select-keys-sequentially
   throw-if-called
   with-column-remappings
   with-discarded-collections-perms-changes
@@ -203,8 +213,9 @@
   with-open-channels]
 
  [tu.log
+  ns-log-level
+  set-ns-log-level!
   suppress-output
-  with-log-messages
   with-log-messages-for-level
   with-log-level]
 

@@ -49,8 +49,10 @@ describe("collection permissions", () => {
                     displaySidebarChildOf("First collection");
                     displaySidebarChildOf("Second collection");
                   });
-                  cy.icon("add").click();
-                  cy.findByText("New dashboard").click();
+                  cy.get(".Nav").within(() => {
+                    cy.icon("add").click();
+                  });
+                  cy.findByText("Dashboard").click();
                   cy.get(".AdminSelect").findByText("Second collection");
                 });
 
@@ -60,7 +62,7 @@ describe("collection permissions", () => {
                     cy.findByText("Orders in a dashboard").click();
                     cy.icon("add").click();
                     popover()
-                      .findByText("New dashboard")
+                      .findByText("Dashboard")
                       .click();
                     cy.get(".AdminSelect").findByText("Our analytics");
                   });
@@ -167,9 +169,10 @@ describe("collection permissions", () => {
                     cy.visit("collection/root");
                     openEllipsisMenuFor("Orders");
                     cy.findByText("Archive this item").click();
-                    cy.findByText("Archived question")
-                      .siblings(".Icon-close")
-                      .click();
+                    cy.findByTestId("toast-undo").within(() => {
+                      cy.findByText("Archived question");
+                      cy.icon("close").click();
+                    });
                     cy.findByText("View archive").click();
                     cy.location("pathname").should("eq", "/archive");
                     cy.findByText("Orders");
@@ -241,7 +244,9 @@ describe("collection permissions", () => {
                       .as("title")
                       .contains("Third collection");
                     // Creating new sub-collection at this point shouldn't be possible
-                    cy.icon("new_folder").should("not.exist");
+                    cy.findByTestId("collection-menu").within(() => {
+                      cy.icon("add").should("not.exist");
+                    });
                     // We shouldn't be able to change permissions for an archived collection (the root issue of #12489!)
                     cy.icon("lock").should("not.exist");
                     /**
@@ -384,7 +389,7 @@ describe("collection permissions", () => {
                 });
 
                 it("should be able to change title and description", () => {
-                  cy.findByText("Change title and description").click();
+                  cy.findByText("Edit dashboard details").click();
                   cy.location("pathname").should("eq", "/dashboard/1/details");
                   cy.findByLabelText("Name")
                     .click()
@@ -475,7 +480,7 @@ describe("collection permissions", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
-                cy.findByText("New dashboard").click();
+                cy.findByText("Dashboard").click();
 
                 // Coming from the root collection, the initial offered collection will be "Our analytics" (read-only access)
                 cy.findByText(
@@ -549,11 +554,11 @@ describe("collection permissions", () => {
             });
 
             describe("managing dashboard from the dashboard's edit menu", () => {
-              it("should not be offered to change title and description for dashboard in collections they have `read` access to (metabase#15280)", () => {
+              it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 popover()
-                  .findByText("Change title and description")
+                  .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
@@ -595,7 +600,7 @@ describe("collection permissions", () => {
 
       it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
         cy.signInAsAdmin();
-        cy.createDashboard("foo").then(({ body }) => {
+        cy.createDashboard().then(({ body }) => {
           visitAndEditDashboard(body.id);
         });
 
@@ -606,7 +611,7 @@ describe("collection permissions", () => {
 
         openRevisionHistory();
 
-        cy.findByText("First revision.");
+        cy.findByText("created this");
 
         cy.findAllByText("Revert").should("not.exist");
       });
@@ -654,15 +659,15 @@ describe("collection permissions", () => {
 
               it("should be able to get to the dashboard revision modal directly via url", () => {
                 cy.visit("/dashboard/1/history");
-                cy.findByText("First revision.");
+                cy.findByText("created this");
                 cy.findAllByRole("button", { name: "Revert" });
               });
 
-              it.skip("should be able to revert the dashboard (metabase#15237)", () => {
+              it("should be able to revert the dashboard (metabase#15237)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
                 cy.findByText("Revision history").click();
-                clickRevert("First revision.");
+                clickRevert("created this");
                 cy.wait("@revert").then(xhr => {
                   expect(xhr.status).to.eq(200);
                   expect(xhr.cause).not.to.exist;
@@ -670,6 +675,15 @@ describe("collection permissions", () => {
                 cy.findAllByText(/Revert/).should("not.exist");
                 // We reverted the dashboard to the state prior to adding any cards to it
                 cy.findByText("This dashboard is looking empty.");
+
+                // Should be able to revert back again
+                cy.findByText("Revision history").click();
+                clickRevert("rearranged the cards");
+                cy.wait("@revert").then(xhr => {
+                  expect(xhr.status).to.eq(200);
+                  expect(xhr.cause).not.to.exist;
+                });
+                cy.findByText("117.03");
               });
 
               it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {

@@ -69,53 +69,6 @@
                                hb-sec tunnel-user tunnel-host tunnel-port input-port host port))
     [session tracker]))
 
-(def ssh-tunnel-preferences
-  "Configuration parameters to include in the add driver page on drivers that
-  support ssh tunnels"
-  [{:name         "tunnel-enabled"
-    :display-name "Use SSH tunnel"
-    :placeholder  "Enable this ssh tunnel?"
-    :type         :boolean
-    :default      false}
-   {:name         "tunnel-host"
-    :display-name "SSH tunnel host"
-    :placeholder  "What hostname do you use to connect to the SSH tunnel?"
-    :required     true}
-   {:name         "tunnel-port"
-    :display-name "SSH tunnel port"
-    :type         :integer
-    :default      22
-    :required     false}
-   {:name         "tunnel-user"
-    :display-name "SSH tunnel username"
-    :placeholder  "What username do you use to login to the SSH tunnel?"
-    :required     true}
-   ;; this is entirely a UI flag
-   {:name         "tunnel-auth-option"
-    :display-name "SSH Authentication"
-    :type         :select
-    :options      [{:name "SSH Key" :value "ssh-key"}
-                   {:name "Password" :value "password"}]
-    :default      "ssh-key"}
-   {:name         "tunnel-pass"
-    :display-name "SSH tunnel password"
-    :type         :password
-    :placeholder  "******"}
-   {:name         "tunnel-private-key"
-    :display-name "SSH private key to connect to the tunnel"
-    :type         :string
-    :placeholder  "Paste the contents of an ssh private key here"
-    :required     true}
-   {:name         "tunnel-private-key-passphrase"
-    :display-name "Passphrase for SSH private key"
-    :type         :password
-    :placeholder  "******"}])
-
-(defn with-tunnel-config
-  "Add preferences for ssh tunnels to a drivers :connection-properties"
-  [driver-options]
-  (concat driver-options ssh-tunnel-preferences))
-
 (defn use-ssh-tunnel?
   "Is the SSH tunnel currently turned on for these connection details"
   [details]

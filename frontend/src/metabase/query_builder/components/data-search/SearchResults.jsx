@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-
+import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
 
-import { SearchResultItem } from "./SearchResultItem";
+import { SearchResultWithInfoPopover } from "./SearchResultWithInfoPopover";
 
 const propTypes = {
   databaseId: PropTypes.string,
@@ -18,8 +18,6 @@ const propTypes = {
   ),
 };
 
-const SEARCH_LIMIT = 1000;
-
 export function SearchResults({
   searchQuery,
   onSelect,
@@ -29,7 +27,7 @@ export function SearchResults({
   const query = {
     q: searchQuery,
     models: searchModels,
-    limit: SEARCH_LIMIT,
+    limit: DEFAULT_SEARCH_LIMIT,
   };
 
   if (databaseId) {
@@ -54,7 +52,7 @@ export function SearchResults({
           return (
             <ul>
               {list.map(item => (
-                <SearchResultItem
+                <SearchResultWithInfoPopover
                   key={`${item.id}_${item.model}`}
                   item={item}
                   onSelect={onSelect}

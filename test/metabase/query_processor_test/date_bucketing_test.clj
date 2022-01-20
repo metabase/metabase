@@ -20,7 +20,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test :as sql.qp.test]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -693,7 +693,8 @@
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
   ;; timezone (TIMEZONE FIXME)
   (testing "JVM timezone set to Pacific"
-    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery})
+    (mt/test-drivers (mt/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery
+                                                 :bigquery-cloud-sdk})
       (is (= (cond
                (= :sqlite driver/*driver*)
                (results-by-week u.date/parse
@@ -857,7 +858,7 @@
                                  ;;
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
-                                 (not (#{:vertica :bigquery} driver/*driver*)))
+                                 (not (#{:vertica :bigquery :bigquery-cloud-sdk} driver/*driver*)))
                           (sql.qp/add-interval-honeysql-form driver/*driver*
                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
                                                              (* i interval-seconds)
@@ -1106,7 +1107,7 @@
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
-             (sql.qp.test/pretty-sql
+             (sql.qp-test-util/pretty-sql
               (:query
                (qp/query->native
                 (mt/mbql-query checkins
@@ -1125,6 +1126,7 @@
                                                     {:name         "date_range"
                                                      :display-name "Date Range"
                                                      :type         :dimension
+                                                     :widget-type  :date/all-options
                                                      :dimension    (mt/$ids $checkins.timestamp)}}
                                     :parameters    [{:type   :date/range
                                                      :name   "created_at"

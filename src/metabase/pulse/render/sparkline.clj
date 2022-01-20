@@ -1,4 +1,5 @@
-(ns metabase.pulse.render.sparkline
+(ns ^{:deprecated "0.41.0"} metabase.pulse.render.sparkline
+  "Deprecated sparkline library. We are now using a bespoke javascript bundle that makes proper charts."
   (:require [java-time :as t]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -96,15 +97,21 @@
                            (/ (double (- v ymin)) yrange)))]
     (image-bundle/make-image-bundle render-type (render-sparkline-to-png x-axis-values y-axis-values))))
 
+(defn- comparable?
+  [column]
+  (or (types/temporal-field? column)
+      (types/field-is-type? :type/Number column)))
 
 (s/defn cleaned-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
   [timezone-id :- (s/maybe s/Str) card {:keys [rows cols], :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         format-val                  (format-val-fn timezone-id cols x-axis-rowfn)
-        present-rows                (common/non-nil-rows x-axis-rowfn y-axis-rowfn rows)
-        formatted-value             (comp format-val x-axis-rowfn)]
-    (if (> (formatted-value (first present-rows))
-           (formatted-value (last present-rows)))
+        present-rows                (common/row-preprocess x-axis-rowfn y-axis-rowfn rows)
+        formatted-value             (comp format-val x-axis-rowfn)
+        x-col                       (x-axis-rowfn cols)]
+    (if (and (comparable? x-col)
+             (> (formatted-value (first present-rows))
+                (formatted-value (last present-rows))))
       (reverse present-rows)
       present-rows)))

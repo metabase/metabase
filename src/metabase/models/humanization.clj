@@ -13,6 +13,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (declare humanization-strategy)
@@ -47,7 +48,7 @@
 ;; simple replaces hyphens and underscores with spaces and capitalizes
 (defmethod name->human-readable-name :simple
   ([s] (name->human-readable-name :simple s))
-  ([_, ^String s]
+  ([_ ^String s]
    ;; explode on hyphens, underscores, and spaces
    (when (seq s)
      (str/join " " (for [part  (str/split s #"[-_\s]+")
@@ -57,13 +58,12 @@
 ;; actual advanced method has been excised. this one just calls out to simple
 (defmethod name->human-readable-name :advanced
   ([s] (name->human-readable-name :simple s))
-  ([_, ^String s] (name->human-readable-name :simple s)))
+  ([_ ^String s] (name->human-readable-name :simple s)))
 
 ;; :none is just an identity implementation
 (defmethod name->human-readable-name :none
   ([s]   s)
   ([_ s] s))
-
 
 (defn- re-humanize-names!
   "Update all non-custom display names of all instances of `model` (e.g. Table or Field)."
@@ -80,32 +80,34 @@
                 :display_name new-strategy-display-name))))
         (db/select-reducible [model :id :name :display_name])))
 
-(defn- re-humanize-table-and-field-names!
+(s/defn ^:private re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
   the (obstensibly swapped implementation of) `name->human-readable-name`."
-  [old-strategy]
+  [old-strategy :- s/Keyword]
   (doseq [model ['Table 'Field]]
     (re-humanize-names! old-strategy model)))
 
 
 (defn- set-humanization-strategy! [new-value]
-  (let [new-strategy (or new-value "simple")]
+  (let [new-strategy (keyword (or new-value :simple))]
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
-    (when-not (get-method name->human-readable-name (keyword new-strategy))
+    (when-not (get-method name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
                     new-strategy (keys (methods name->human-readable-name))))))
-    (let [old-strategy (setting/get-string :humanization-strategy)]
+    (let [old-strategy (setting/get-value-of-type :keyword :humanization-strategy)]
       ;; ok, now set the new value
-      (setting/set-string! :humanization-strategy (some-> new-value name))
+      (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
-      (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''" old-strategy new-strategy))
+      (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
+                     (name old-strategy) (name new-strategy)))
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (str (deferred-tru "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them with spaces.")
        " "
        (deferred-tru "We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
-  :default "simple"
+  :type    :keyword
+  :default :simple
   :setter  set-humanization-strategy!)

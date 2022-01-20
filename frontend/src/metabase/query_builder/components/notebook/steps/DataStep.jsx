@@ -3,50 +3,69 @@ import React from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { NotebookCell, NotebookCellItem } from "../NotebookCell";
-
+import { CollectionDatasetOrDataSourceSelector } from "metabase/query_builder/components/DataSelector";
 import { getDatabasesList } from "metabase/query_builder/selectors";
 
-function DataStep({ color, query, databases, updateQuery }) {
+import { NotebookCell, NotebookCellItem } from "../NotebookCell";
+import {
+  FieldsPickerIcon,
+  FieldPickerContentContainer,
+  FIELDS_PICKER_STYLES,
+} from "../FieldsPickerIcon";
+import FieldsPicker from "./FieldsPicker";
+
+function DataStep({ color, query, updateQuery }) {
+  const question = query.question();
   const table = query.table();
+  const canSelectTableColumns = table && query.isRaw();
+
+  const hasCollectionDatasetsStep =
+    question &&
+    !question.isSaved() &&
+    !question.databaseId() &&
+    !question.tableId() &&
+    question.collectionId() !== undefined;
+
   return (
     <NotebookCell color={color}>
-      <DatabaseSchemaAndTableDataSelector
-        hasTableSearch
-        databaseQuery={{ saved: true }}
-        selectedDatabaseId={query.databaseId()}
-        selectedTableId={query.tableId()}
-        setSourceTableFn={tableId =>
-          query
-            .setTableId(tableId)
-            .setDefaultQuery()
-            .update(updateQuery)
-        }
-        isInitiallyOpen={!query.tableId()}
-        triggerElement={
-          !query.tableId() ? (
-            <NotebookCellItem color={color} inactive>
-              {t`Pick your starting data`}
-            </NotebookCellItem>
-          ) : (
-            <NotebookCellItem
-              color={color}
-              icon="table2"
-              data-testid="data-step-cell"
-            >
-              {table && table.displayName()}
-            </NotebookCellItem>
+      <NotebookCellItem
+        color={color}
+        inactive={!table}
+        right={
+          canSelectTableColumns && (
+            <DataFieldsPicker
+              query={query}
+              updateQuery={updateQuery}
+              triggerStyle={FIELDS_PICKER_STYLES.trigger}
+              triggerElement={FieldsPickerIcon}
+            />
           )
         }
-      />
-      {table && query.isRaw() && (
-        <DataFieldsPicker
-          className="ml-auto mb1 text-bold"
-          query={query}
-          updateQuery={updateQuery}
+        containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
+        rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
+        data-testid="data-step-cell"
+      >
+        <CollectionDatasetOrDataSourceSelector
+          hasTableSearch
+          collectionId={question.collectionId()}
+          hasCollectionDatasetsStep={hasCollectionDatasetsStep}
+          databaseQuery={{ saved: true }}
+          selectedDatabaseId={query.databaseId()}
+          selectedTableId={query.tableId()}
+          setSourceTableFn={tableId =>
+            query
+              .setTableId(tableId)
+              .setDefaultQuery()
+              .update(updateQuery)
+          }
+          isInitiallyOpen={!query.tableId()}
+          triggerElement={
+            <FieldPickerContentContainer>
+              {table ? table.displayName() : t`Pick your starting data`}
+            </FieldPickerContentContainer>
+          }
         />
-      )}
+      </NotebookCellItem>
     </NotebookCell>
   );
 }
@@ -55,35 +74,43 @@ export default connect(state => ({ databases: getDatabasesList(state) }))(
   DataStep,
 );
 
-import FieldsPicker from "./FieldsPicker";
-
-const DataFieldsPicker = ({ className, query, updateQuery }) => {
+const DataFieldsPicker = ({ query, updateQuery, ...props }) => {
   const dimensions = query.tableDimensions();
   const selectedDimensions = query.columnDimensions();
   const selected = new Set(selectedDimensions.map(d => d.key()));
   const fields = query.fields();
+
+  const handleSelectNone = () => {
+    query.setFields([dimensions[0].mbql()]).update(updateQuery);
+  };
+
+  const handleToggleDimension = dimension =>
+    query
+      .setFields(
+        dimensions
+          .filter(d => {
+            if (d === dimension) {
+              return !selected.has(d.key());
+            } else {
+              return selected.has(d.key());
+            }
+          })
+          .map(d => d.mbql()),
+      )
+      .update(updateQuery);
+
+  const hasOneColumnSelected = fields.length === 1;
+
   return (
     <FieldsPicker
-      className={className}
+      {...props}
       dimensions={dimensions}
       selectedDimensions={selectedDimensions}
       isAll={!fields || fields.length === 0}
       onSelectAll={() => query.clearFields().update(updateQuery)}
-      onToggleDimension={(dimension, enable) => {
-        query
-          .setFields(
-            dimensions
-              .filter(d => {
-                if (d === dimension) {
-                  return !selected.has(d.key());
-                } else {
-                  return selected.has(d.key());
-                }
-              })
-              .map(d => d.mbql()),
-          )
-          .update(updateQuery);
-      }}
+      onSelectNone={handleSelectNone}
+      disableSelected={hasOneColumnSelected}
+      onToggleDimension={handleToggleDimension}
     />
   );
 };

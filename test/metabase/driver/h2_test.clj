@@ -63,7 +63,7 @@
     (mt/with-temp Database [db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"^Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
            (qp/process-query {:database (:id db)
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
@@ -93,6 +93,7 @@
         (testing "cols"
           (is (= [{:display_name "NAME"
                    :base_type    :type/Text
+                   :effective_type :type/Text
                    :source       :native
                    :field_ref    [:field "NAME" {:base-type :type/Text}]
                    :name         "NAME"}]
@@ -103,6 +104,7 @@
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (= [{:display_name "D"
                :base_type    :type/DateTime
+               :effective_type :type/DateTime
                :source       :native
                :field_ref    [:field "D" {:base-type :type/DateTime}]
                :name         "D"}]
@@ -125,6 +127,7 @@
                             :template-tags {"date" {:name         "date"
                                                     :display-name "date"
                                                     :type         :dimension
+                                                    :widget-type  :date/all-options
                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]
