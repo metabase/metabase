@@ -6,6 +6,7 @@ import React, {
   HTMLAttributes,
   isValidElement,
   ReactNode,
+  Ref,
 } from "react";
 import {
   CheckBoxContainer,
@@ -51,10 +52,10 @@ const CheckBox = forwardRef(function Checkbox(
     onBlur,
     ...props
   }: CheckBoxProps,
-  ref: any,
+  ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
   return (
-    <CheckBoxRoot innerRef={ref} {...props}>
+    <CheckBoxRoot innerRef={ref as any} {...props}>
       <CheckBoxInput
         type="checkbox"
         checked={checked}
