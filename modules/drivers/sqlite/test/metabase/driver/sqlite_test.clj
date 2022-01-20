@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor-test :as qp.test]
@@ -203,3 +204,31 @@
                      (mt/run-mbql-query :datetime_table
                                         {:fields [$col_timestamp $col_date $col_datetime]
                                          :filter [:= $test_case "null"]}))))))))))
+
+(deftest duplicate-identifiers-test
+  (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
+    (mt/test-driver :sqlite
+      (mt/dataset sample-dataset
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+                            count (*)         AS count]
+                 :from     [{:select [products.id              AS id
+                                      products.ean             AS ean
+                                      products.title           AS title
+                                      products.category        AS category
+                                      products.vendor          AS vendor
+                                      products.price           AS price
+                                      products.rating          AS rating
+                                      products.created_at      AS created_at
+                                      (products.category || ?) AS CATEGORY_2]
+                             :from   [products]}
+                            source]
+                 :group-by [source.CATEGORY_2]
+                 :order-by [source.CATEGORY_2 ASC]
+                 :limit    [1]}
+               (sql.qp-test-util/query->sql-map
+                (mt/mbql-query products
+                  {:expressions {:CATEGORY [:concat $category "2"]}
+                   :breakout    [:expression :CATEGORY]
+                   :aggregation [:count]
+                   :order-by    [[:asc [:expression :CATEGORY]]]
+                   :limit       1}))))))))

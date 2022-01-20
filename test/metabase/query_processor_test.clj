@@ -418,33 +418,45 @@
     (is (= {:database 1, :type :query, :query {:source-query {:source-query {:native "wow"}}}}
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
-(defn do-with-bigquery-fks [d f]
-  (if-not (= driver/*driver* d)
-    (f)
-    (let [supports? driver/supports?]
-      (with-redefs [driver/supports? (fn [driver feature]
-                                       (if (= [driver feature] [d :foreign-keys])
-                                         true
-                                         (supports? driver feature)))]
-        (let [thunk (reduce
-                     (fn [thunk [source dest]]
-                       (fn []
-                         (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
-                                                                                :semantic_type      "type/FK"}
-                           (thunk))))
-                     f
-                     {[:checkins :user_id]   [:users :id]
-                      [:checkins :venue_id]  [:venues :id]
-                      [:venues :category_id] [:categories :id]})]
-          (thunk))))))
+(defn do-with-bigquery-fks [driver-or-drivers thunk]
+  {:pre [((some-fn keyword? coll?) driver-or-drivers)]}
+  (letfn [(add-fks? [driver]
+            (if (coll? driver-or-drivers)
+              (contains? (set driver-or-drivers) driver)
+              (= driver driver-or-drivers)))]
+    (if-not (add-fks? driver/*driver*)
+      (thunk)
+      (let [supports? driver/supports?]
+        (with-redefs [driver/supports? (fn [driver feature]
+                                         (if (and (add-fks? driver)
+                                                  (= feature :foreign-keys))
+                                           true
+                                           (supports? driver feature)))]
+          (let [thunk (reduce
+                       (fn [thunk [source dest]]
+                         (fn []
+                           (testing (format "With FK %s -> %s" source dest)
+                             (tu/with-temp-vals-in-db Field (apply data/id source) {:fk_target_field_id (apply data/id dest)
+                                                                                    :semantic_type      "type/FK"}
+                               (thunk)))))
+                       thunk
+                       (if (str/includes? (:name (data/db)) "sample")
+                         {[:orders :product_id]  [:products :id]
+                          [:orders :user_id]     [:people :id]
+                          [:reviews :product_id] [:products :id]}
+                         {[:checkins :user_id]   [:users :id]
+                          [:checkins :venue_id]  [:venues :id]
+                          [:venues :category_id] [:categories :id]}))]
+            (thunk)))))))
 
 (defmacro with-bigquery-fks
-  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` marked as foreign
-  keys and with `:foreign-keys` a supported feature when testing against BigQuery, for the BigQuery based driver `d`.
-  BigQuery does not support Foreign Key constraints, but we still let people mark them manually. The macro helps
-  replicate the situation where somebody has manually marked FK relationships for BigQuery."
-  [d & body]
-  `(do-with-bigquery-fks ~d (fn [] ~@body)))
+  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
+  other relevant columns (for `sample-dataset`) marked as foreign keys and with `:foreign-keys` a supported feature
+  when testing against BigQuery, for the BigQuery based driver `driver-or-drivers`. BigQuery does not support Foreign Key
+  constraints, but we still let people mark them manually. The macro helps replicate the situation where somebody has
+  manually marked FK relationships for BigQuery."
+  [driver-or-drivers & body]
+  `(do-with-bigquery-fks ~driver-or-drivers (fn [] ~@body)))
 
 (deftest query->preprocessed-caching-test
   (testing "`query->preprocessed` should work the same even if query has cached results (#18579)"

@@ -502,7 +502,7 @@ describe("scenarios > question > notebook", () => {
       cy.findAllByText(/Products? → Category/).should("have.length", 2);
     });
 
-    it.skip("should join saved question with sorted metric (metabase#13744)", () => {
+    it("should join saved question with sorted metric (metabase#13744)", () => {
       cy.server();
       // create first question based on repro steps in #13744
       cy.createQuestion({

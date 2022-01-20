@@ -20,7 +20,7 @@
       (u/prog1 query
         (resolve-fields-with-ids! ids))
       (catch Throwable e
-        (throw (ex-info (tru "Error resolving Fields in query")
+        (throw (ex-info (tru "Error resolving Fields in query: {0}" (ex-message e))
                         {:field-ids ids
                          :query     query
                          :type      qp.error-type/qp}
