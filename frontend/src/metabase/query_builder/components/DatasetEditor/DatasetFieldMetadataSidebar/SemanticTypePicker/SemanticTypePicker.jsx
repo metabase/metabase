@@ -3,8 +3,9 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Select from "metabase/components/Select";
+import SelectButon from "metabase/core/components/SelectButton";
 
-import { StyledSelectButton, FieldTypeIcon } from "./SemanticTypePicker.styled";
+import { FieldTypeIcon } from "./SemanticTypePicker.styled";
 
 const propTypes = {
   field: PropTypes.shape({
@@ -58,7 +59,7 @@ function SemanticTypePicker({
       };
 
       return (
-        <StyledSelectButton
+        <SelectButon
           hasValue={!!field.value}
           onKeyUp={handleKeyUp}
           onKeyDown={onKeyDown}
@@ -67,7 +68,7 @@ function SemanticTypePicker({
           left={<FieldTypeIcon name={icon} />}
         >
           {pickerLabel}
-        </StyledSelectButton>
+        </SelectButon>
       );
     },
     [field, icon, tabIndex, pickerLabel, onKeyDown],

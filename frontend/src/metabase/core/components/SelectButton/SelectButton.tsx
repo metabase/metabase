@@ -7,6 +7,7 @@ import {
 } from "./SelectButton.styled";
 
 interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
@@ -20,6 +21,7 @@ const SelectButton = forwardRef(function SelectButton(
     className,
     style,
     children,
+    left,
     hasValue = true,
     disabled,
     fullWidth = true,
@@ -37,6 +39,7 @@ const SelectButton = forwardRef(function SelectButton(
       fullWidth={fullWidth}
       {...rest}
     >
+      {React.isValidElement(left) && left}
       <SelectButtonContent>{children}</SelectButtonContent>
       <SelectButtonIcon name="chevrondown" size={12} />
     </SelectButtonRoot>

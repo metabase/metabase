@@ -8,7 +8,7 @@ import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/componen
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
 
-import { StyledSelectButton } from "./MappedFieldPicker.styled";
+import SelectButton from "metabase/core/components/SelectButton";
 
 type CollapsedPickerProps = {
   isTriggeredComponentOpen: boolean;
@@ -75,7 +75,7 @@ function MappedFieldPicker({
         ? fieldObject.displayName({ includeTable: true })
         : t`None`;
       return (
-        <StyledSelectButton
+        <SelectButton
           hasValue={!!fieldObject}
           tabIndex={tabIndex}
           onKeyUp={e => {
@@ -86,7 +86,7 @@ function MappedFieldPicker({
           ref={selectButtonRef}
         >
           {label}
-        </StyledSelectButton>
+        </SelectButton>
       );
     },
     [fieldObject, tabIndex],
