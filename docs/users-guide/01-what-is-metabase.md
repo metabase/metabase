@@ -26,7 +26,7 @@ Once you've created some [dashboards](07-dashboards.md), any of them that you pi
 
 ![Browse data](./images/browse-data.png)
 
-If you connected your database to Metabase during setup, you'll see it listed at the bottom of the homepage along with the sample dataset that Metabase comes with. Click on a database to see its contents. You can click on a table to see its rows, or you can also click on the bolt icon to x-ray a table and see an automatic exploration of it, or click on the book icon to go to the data reference view for that table to learn more about it.
+If you connected your database to Metabase during setup, you'll see it listed at the bottom of the homepage along with the sample database that Metabase comes with. Click on a database to see its contents. You can click on a table to see its rows, or you can also click on the bolt icon to x-ray a table and see an automatic exploration of it, or click on the book icon to go to the data reference view for that table to learn more about it.
 
 ### Explore your analytics
 

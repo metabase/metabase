@@ -4,7 +4,7 @@ import {
   getTargetsWithSourceFilters,
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
-import { metadata, PRODUCTS } from "__support__/sample_dataset_fixture";
+import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
 
 describe("metabase/lib/click-behavior", () => {

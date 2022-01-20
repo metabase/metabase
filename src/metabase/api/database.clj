@@ -532,13 +532,13 @@
     {:valid (not (false? (:valid details-or-error)))}))
 
 
-;;; --------------------------------------- POST /api/database/sample_dataset ----------------------------------------
+;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
-(api/defendpoint POST "/sample_dataset"
-  "Add the sample dataset as a new `Database`."
+(api/defendpoint POST "/sample_database"
+  "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
-  (sample-data/add-sample-dataset!)
+  (sample-data/add-sample-database!)
   (Database :is_sample true))
 
 

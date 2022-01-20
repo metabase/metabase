@@ -94,7 +94,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("when set through the filter widget", () => {
       filterWidget().click();
-      // Since we have fixed dates in Sample Dataset (dating back a couple of years), it'd be cumbersome to click back month by month.
+      // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
       cy.findByText("15").click();
       cy.findByText("Update filter").click();
