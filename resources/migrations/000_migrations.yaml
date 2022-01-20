@@ -9890,7 +9890,7 @@ databaseChangeLog:
                   remarks: "Serialized JSON containing Database-local Settings for this Database"
 
   - changeSet:
-      id: v42.00-086
+      id: v42.00-071
       author: noahmoss
       comment: >-
         Added 0.42.0 - migrates the Sample Dataset to the name "Sample Database"
