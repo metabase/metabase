@@ -59,6 +59,7 @@ const CheckBox = forwardRef(function Checkbox(
         type="checkbox"
         checked={checked}
         size={size}
+        disabled={disabled}
         autoFocus={autoFocus}
         onChange={onChange}
         onFocus={onFocus}

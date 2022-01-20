@@ -21,6 +21,7 @@ export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   height: 100%;
   margin: 0;
   padding: 0;
+  cursor: ${props => (props.disabled ? "" : "pointer")};
   opacity: 0;
   z-index: 1;
 `;
