@@ -15,7 +15,7 @@ export type Item = {
   model: string;
 };
 
-type CollectionId = number;
+type CollectionId = "root" | number;
 
 export type Collection = {
   id: CollectionId;
@@ -104,4 +104,8 @@ export function isPersonalCollectionChild(
   }
   const parentCollection = collectionList.find(c => c.id === nonRootParentId);
   return Boolean(parentCollection && !!parentCollection.personal_owner_id);
+}
+
+export function isRootCollection(collection: Collection): boolean {
+  return collection.id === "root";
 }

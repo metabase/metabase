@@ -3,7 +3,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard/PinnedItemCard";
-import { Item, Collection } from "metabase/collections/utils";
+import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 
@@ -54,7 +54,11 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
         <div>
           <SectionHeader>
             <h4>{t`Useful data`}</h4>
-            <div>{t`Start new explorations about {${collection.name}} here`}</div>
+            <div>
+              {isRootCollection(collection)
+                ? t`Start new explorations here`
+                : t`Start new explorations about ${collection.name} here`}
+            </div>
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
