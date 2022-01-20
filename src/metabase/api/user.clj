@@ -184,7 +184,8 @@
                                  @api/*current-user*
                                  false))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
-      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id})
+      (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
+                                                                           :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 

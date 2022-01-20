@@ -92,8 +92,8 @@
                  :user-id "1"}]
                (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2})
-        (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent"}
+        (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2, :source "admin"})
+        (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
                  :user-id "1"}]
                (pop-event-data-and-user-id!)))
 

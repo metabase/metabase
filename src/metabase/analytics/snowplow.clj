@@ -85,7 +85,7 @@
   "The most recent version for each event schema. This should be updated whenever a new version of a schema is added
   to SnowcatCloud, at the same time that the data sent to the collector is updated."
   {::account   "1-0-0"
-   ::invite    "1-0-0"
+   ::invite    "1-0-1"
    ::dashboard "1-0-0"
    ::database  "1-0-0"
    ::instance  "1-1-0"})
