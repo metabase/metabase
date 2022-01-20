@@ -239,6 +239,10 @@ describe("schema_metadata", () => {
       expect(getSemanticTypeIcon(TYPE.Boolean)).toBeUndefined();
       expect(getSemanticTypeIcon("foo")).toBeUndefined();
     });
+
+    it("should accept fallback argument for unknown types", () => {
+      expect(getSemanticTypeIcon("foo", "ellipsis")).toBe("ellipsis");
+    });
   });
 
   describe("getSemanticTypeName", () => {
