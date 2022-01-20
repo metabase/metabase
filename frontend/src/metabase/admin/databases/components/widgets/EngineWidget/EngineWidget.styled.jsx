@@ -3,7 +3,7 @@ import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 export const EngineSearchRoot = styled.div`
   display: block;

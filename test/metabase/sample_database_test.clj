@@ -1,5 +1,5 @@
-(ns metabase.sample-dataset-test
-  "Tests to make sure the Sample Dataset syncs the way we would expect."
+(ns metabase.sample-database-test
+  "Tests to make sure the Sample Database syncs the way we would expect."
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Database Field Table]]
             [metabase.sample-data :as sample-data]
@@ -13,16 +13,16 @@
 
 ;; These tools are pretty sophisticated for the amount of tests we have!
 
-(defn- sample-dataset-db []
+(defn- sample-database-db []
   {:details (#'sample-data/db-details)
    :engine  :h2
-   :name    "Sample Dataset"})
+   :name    "Sample Database"})
 
-(defmacro ^:private with-temp-sample-dataset-db
-  "Execute `body` with a temporary Sample Dataset DB bound to `db-binding`."
+(defmacro ^:private with-temp-sample-database-db
+  "Execute `body` with a temporary Sample Database DB bound to `db-binding`."
   {:style/indent 1}
   [[db-binding] & body]
-  `(mt/with-temp Database [db# (sample-dataset-db)]
+  `(mt/with-temp Database [db# (sample-database-db)]
      (sync/sync-database! db#)
      (let [~db-binding db#]
        ~@body)))
@@ -40,10 +40,10 @@
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
-(deftest sync-sample-dataset-test
-  (testing (str "Make sure the Sample Dataset is getting synced correctly. For example PEOPLE.NAME should be "
+(deftest sync-sample-database-test
+  (testing (str "Make sure the Sample Database is getting synced correctly. For example PEOPLE.NAME should be "
                 "has_field_values = search instead of `list`.")
-    (with-temp-sample-dataset-db [db]
+    (with-temp-sample-database-db [db]
       (is (= {:description      "The name of the user who owns an account"
               :database_type    "VARCHAR"
               :semantic_type    :type/Name

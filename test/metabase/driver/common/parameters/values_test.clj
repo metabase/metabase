@@ -119,7 +119,7 @@
              :type         :dimension
              :widget-type  :date/all-options
              :dimension    [:field (mt/id :checkins :date) nil]}
-             nil))))
+            nil))))
 
   (testing "id requiring casting"
     (is (= {:field (extra-field-info
@@ -148,7 +148,7 @@
                    :widget-type  :date/all-options
                    :required     true
                    :dimension    [:field (mt/id :checkins :date) nil]}
-                   nil))))
+                  nil))))
 
   (testing "required and default specified"
     (is (= {:field (extra-field-info
@@ -168,7 +168,7 @@
              :required     true
              :default      "2015-04-01~2015-05-01"
              :dimension    [:field (mt/id :checkins :date) nil]}
-             nil))))
+            nil))))
 
 
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
@@ -213,7 +213,7 @@
              :dimension    [:field (mt/id :checkins :date) nil]
              :default      "past5days"
              :widget-type  :date/all-options}
-             nil))))
+            nil))))
   (testing "Make sure nil values result in no value"
     (is (= {:field (extra-field-info
                     {:id             (mt/id :checkins :date)

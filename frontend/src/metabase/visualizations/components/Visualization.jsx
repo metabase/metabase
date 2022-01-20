@@ -65,7 +65,6 @@ export default class Visualization extends React.PureComponent {
     isEditing: false,
     isSettings: false,
     isQueryBuilder: false,
-    isClickable: true,
     onUpdateVisualizationSettings: () => {},
     // prefer passing in a function that doesn't cause the application to reload
     onChangeLocation: location => {
@@ -184,12 +183,17 @@ export default class Visualization extends React.PureComponent {
     if (!metadata || !card) {
       return;
     }
+    const { isQueryBuilder, queryBuilderMode } = this.props;
     const question = new Question(card, metadata);
 
     // Datasets in QB should behave as raw tables opened in simple mode
     // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
     // Ideally, this logic should happen somewhere else
-    return question.isDataset() ? question.composeDataset() : question;
+    return question.isDataset() &&
+      isQueryBuilder &&
+      queryBuilderMode !== "dataset"
+      ? question.composeDataset()
+      : question;
   }
 
   getClickActions(clicked) {
@@ -214,8 +218,8 @@ export default class Visualization extends React.PureComponent {
   }
 
   visualizationIsClickable = clicked => {
-    const { onChangeCardAndRun, isClickable } = this.props;
-    if (!onChangeCardAndRun || !isClickable) {
+    const { onChangeCardAndRun } = this.props;
+    if (!onChangeCardAndRun) {
       return false;
     }
     try {
@@ -227,6 +231,8 @@ export default class Visualization extends React.PureComponent {
   };
 
   handleVisualizationClick = clicked => {
+    const { handleVisualizationClick } = this.props;
+
     if (clicked) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
@@ -235,6 +241,11 @@ export default class Visualization extends React.PureComponent {
           clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
         }`,
       );
+    }
+
+    if (typeof handleVisualizationClick === "function") {
+      handleVisualizationClick(clicked);
+      return;
     }
 
     if (

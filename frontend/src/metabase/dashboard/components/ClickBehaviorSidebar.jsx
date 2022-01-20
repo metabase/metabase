@@ -8,7 +8,7 @@ import cx from "classnames";
 import { color, darken } from "metabase/lib/colors";
 
 import AccordionList from "metabase/components/AccordionList";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ModalContent from "metabase/components/ModalContent";

@@ -107,7 +107,7 @@
           "nested-queries",
           "regex"
         ],
-        "name": "Sample Dataset",
+        "name": "Sample Database",
         "caveats": null,
         "tables": [1, 2, 3, 4],
         "is_full_sync": true,
@@ -132,7 +132,7 @@
           "native-parameters",
           "expressions"
         ],
-        "name": "Sample Empty Dataset",
+        "name": "Sample Empty Database",
         "caveats": null,
         "tables": [],
         "is_full_sync": true,

@@ -1,7 +1,7 @@
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 // After January 1st, 2020
 const dashboardFilter = {
