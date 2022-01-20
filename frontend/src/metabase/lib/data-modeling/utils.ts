@@ -7,15 +7,14 @@ export function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return tag.type === "card";
 }
 
-export function checkDatabaseSupportsModels(database: Database) {
-  return database.hasFeature("nested-queries");
+export function checkDatabaseSupportsModels(database?: Database | null) {
+  return database && database.hasFeature("nested-queries");
 }
 
 export function checkCanBeModel(question: Question) {
   const query = question.query();
-  const db = query.database();
 
-  if (!db || !checkDatabaseSupportsModels(db)) {
+  if (!checkDatabaseSupportsModels(query.database())) {
     return false;
   }
 
