@@ -1,7 +1,8 @@
 import styled from "styled-components";
 import { Flex } from "grid-styled";
 
-import { alpha, color, darken, lighten } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -51,11 +52,11 @@ export const EntityMenuContainer = styled(Flex)`
   color: ${color("text-medium")};
 `;
 
-export const PinButton = styled(Button)`
+export const PinButton = forwardRefToInnerRef(styled(Button)`
   color: ${color("text-medium")};
   border: none;
 
   &:hover {
     color: ${color("brand")};
   }
-`;
+`);

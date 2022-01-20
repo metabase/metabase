@@ -9,7 +9,7 @@ import Swapper from "metabase/components/Swapper";
 import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Tooltip from "metabase/components/Tooltip";
 
 import {
   EntityIconWrapper,
@@ -125,7 +125,11 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {!isPinned && <PinButton icon="pin" onClick={onPin} />}
+      {!isPinned && (
+        <Tooltip tooltip={t`Pin this`}>
+          <PinButton icon="pin" onClick={onPin} />
+        </Tooltip>
+      )}
       <EntityMenu
         className={cx(className, "hover-child")}
         triggerIcon="ellipsis"
