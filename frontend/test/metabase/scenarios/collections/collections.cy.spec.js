@@ -391,9 +391,6 @@ describe("scenarios > collection_defaults", () => {
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
-      // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
-      cy.icon("info").click();
-
       cy.get("[class*=CollectionSidebar]")
         .as("sidebar")
         .within(() => {
