@@ -80,7 +80,7 @@
 (deftest track-event-test
   (with-fake-snowplow-collector
     (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
-           with keys converted into snake-case strings, and the subject's user ID being converted to a string."
+             with keys converted into snake-case strings, and the subject's user ID being converted to a string."
       (snowplow/track-event! ::snowplow/new-instance-created)
       (is (= [{:data    {"event" "new_instance_created"}
                :user-id nil}]
@@ -128,7 +128,6 @@
 
 (deftest instance-creation-test
   (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
-    (def my-original-value original-value)
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
         (db/delete! Setting {:key "instance-creation"})
