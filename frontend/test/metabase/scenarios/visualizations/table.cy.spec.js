@@ -83,19 +83,29 @@ describe("scenarios > visualizations > table", () => {
       [
         "ID",
         () => {
+          // semantic type
+          cy.contains("Entity Key");
+          // description
           cy.contains("A unique identifier given to each user.");
         },
       ],
       [
         "City",
         () => {
+          // semantic type
+          cy.contains("City");
+          // description
           cy.contains("The city of the account’s billing address");
+          // fingerprint
           cy.findByText("1,966 distinct values");
         },
       ],
       [
         "State",
         () => {
+          // semantic type
+          cy.contains("State");
+          // fingerprint
           cy.findByText("49 distinct values");
           cy.contains("AK, AL, AR");
         },
@@ -103,6 +113,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "Birth Date",
         () => {
+          // semantic type
+          cy.contains("No special type");
+          // fingerprint
           cy.findByText("America/Los_Angeles");
           cy.findByText("April 26, 1958, 12:00 AM");
           cy.findByText("April 3, 2000, 12:00 AM");
@@ -111,6 +124,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "Latitude",
         () => {
+          // semantic type
+          cy.contains("Latitude");
+          // fingerprint
           cy.contains("39.88");
           cy.findByText("25.78");
           cy.findByText("70.64");
@@ -119,6 +135,9 @@ describe("scenarios > visualizations > table", () => {
       [
         "CustomColumn",
         () => {
+          // semantic type
+          cy.contains("No special type");
+          // description
           cy.findByText("No description");
         },
       ],
@@ -128,7 +147,6 @@ describe("scenarios > visualizations > table", () => {
         .trigger("mouseenter");
 
       popover().within(() => {
-        cy.contains(column);
         test();
       });
 
@@ -151,7 +169,7 @@ describe("scenarios > visualizations > table", () => {
       .trigger("mouseenter");
 
     popover().within(() => {
-      cy.contains("Count");
+      cy.contains("No special type");
       cy.findByText("No description");
     });
   });
@@ -163,7 +181,7 @@ describe("scenarios > visualizations > table", () => {
     cy.findByText("Product ID").trigger("mouseenter");
 
     popover().within(() => {
-      cy.contains("Product ID");
+      cy.contains("Foreign Key");
       cy.contains("The product ID.");
     });
   });
@@ -176,7 +194,7 @@ describe("scenarios > visualizations > table", () => {
       .contains("CATEGORY")
       .trigger("mouseenter");
     popover().within(() => {
-      cy.contains("CATEGORY");
+      cy.contains("No special type");
       cy.findByText("No description");
     });
   });
