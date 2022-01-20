@@ -66,7 +66,7 @@
       (when-not (some
                  (partial isa? k)
                  ancestor-types)
-        (let [message (tru "Invalid value for Field column {0}: {1} is not an ancestor of any of these types: {2}"
+        (let [message (tru "Invalid value for Field column {0}: {1} is not an descendant of any of these types: {2}"
                            (pr-str k) (pr-str column-name) (pr-str ancestor-types))]
           (throw (ex-info message
                           {:status-code       400
