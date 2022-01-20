@@ -22,7 +22,7 @@
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
 (def ^:private card-error-rendered-info
-  "Default rendered-info map when there is an error displaying a card on the card run.
+  "Default rendered-info map when there is an error running a card on the card run.
   Is a delay due to the call to `trs`."
   (delay {:attachments
           nil
