@@ -53,7 +53,7 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
-            <h4>{t`Models`}</h4>
+            <h4>{t`Useful data`}</h4>
             <div>{t`Start new explorations about {${collection.name}} here`}</div>
           </SectionHeader>
           <Grid>
