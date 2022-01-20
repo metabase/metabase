@@ -8,7 +8,7 @@ import {
 import Dimension from "metabase-lib/lib/Dimension";
 import Card from "metabase/components/Card";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import DimensionInfo from "./DimensionInfo";
 

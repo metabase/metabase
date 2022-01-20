@@ -8,7 +8,7 @@ import { capitalize } from "metabase/lib/formatting";
 
 import { entities as entityDefs } from "metabase/redux/entities";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
 import Link from "metabase/components/Link";
 

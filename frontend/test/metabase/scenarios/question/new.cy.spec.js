@@ -384,7 +384,8 @@ describe("scenarios > question > new", () => {
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
 
-          cy.findByText("Created At")
+          cy.findAllByText("Created At")
+            .eq(0)
             .closest("li")
             .contains("by month")
             // realHover() or mousemove don't work for whatever reason

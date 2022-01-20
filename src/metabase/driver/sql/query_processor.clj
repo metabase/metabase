@@ -39,6 +39,7 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+;; use [[sql-source-query]] below to construct this pls
 (p/deftype+ SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
@@ -56,6 +57,23 @@
          (= sql    (.sql ^SQLSourceQuery other))
          (= params (.params ^SQLSourceQuery other)))))
 
+(alter-meta! #'->SQLSourceQuery assoc :private true)
+
+(defn sql-source-query
+  "Preferred way to construct an instance of [[SQLSourceQuery]]. Does additional validation."
+  [sql params]
+  (when-not (string? sql)
+    (throw (ex-info (tru "Expected native source query to be a string, got: {0}"
+                         (.getCanonicalName (class sql)))
+                    {:type  qp.error-type/invalid-query
+                     :query sql})))
+  (when-not ((some-fn nil? sequential?) params)
+    (throw (ex-info (tru "Expected native source query parameters to be sequential, got: {0}"
+                         (.getCanonicalName (class params)))
+                    {:type  qp.error-type/invalid-query
+                     :query params})))
+  (SQLSourceQuery. sql params))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -72,7 +90,7 @@
 
 (defmulti current-datetime-honeysql-form
   "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`. Should ideally
-  include the database type info on the form (ex: via `hx/with-type-info`)."
+  include the database type info on the form (ex: via [[hx/with-type-info]])."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -717,7 +735,7 @@
   [driver {:keys [source-table source-query]}]
   (cond
     (and source-query (:native source-query))
-    (SQLSourceQuery. (:native source-query) (:params source-query))
+    (sql-source-query (:native source-query) (:params source-query))
 
     source-query
     (mbql->honeysql driver {:query source-query})
@@ -870,7 +888,7 @@
   [driver honeysql-form {{:keys [native params], :as source-query} :source-query}]
   (assoc honeysql-form
          :from [[(if native
-                   (SQLSourceQuery. native params)
+                   (sql-source-query native params)
                    (apply-clauses driver {} source-query))
                  (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 

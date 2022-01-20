@@ -10,7 +10,6 @@
             metabase.driver.mysql
             metabase.driver.postgres
             [metabase.events :as events]
-            [metabase.metabot :as metabot]
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
@@ -116,10 +115,7 @@
       ;; add the sample database DB for fresh installs
       (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-database-if-needed!))
-
-    ;; start the metabot thread
-    (metabot/start-metabot!))
+      (sample-data/update-sample-database-if-needed!)))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))

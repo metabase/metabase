@@ -7,7 +7,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { DimensionInfo } from "./DimensionInfo";
 
 const fieldDimension = Dimension.parseMBQL(
-  ["field", PRODUCTS.CREATED_AT.id, null],
+  ["field", PRODUCTS.CATEGORY.id, null],
   metadata,
 );
 
@@ -21,18 +21,16 @@ function setup(dimension, fieldValues) {
 }
 
 describe("DimensionInfo", () => {
-  it("should show the given dimension's display name", () => {
-    setup(expressionDimension);
+  it("should show the given dimension's semantic type name", () => {
+    setup(fieldDimension);
 
-    expect(screen.getByText("Hello World")).toBeInTheDocument();
+    expect(screen.getByText("Category")).toBeInTheDocument();
   });
 
   it("should display the given dimension's description", () => {
     setup(fieldDimension);
 
-    expect(
-      screen.getByText(PRODUCTS.CREATED_AT.description),
-    ).toBeInTheDocument();
+    expect(screen.getByText(PRODUCTS.CATEGORY.description)).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {

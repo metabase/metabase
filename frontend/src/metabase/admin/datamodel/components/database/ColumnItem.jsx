@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isCurrency } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";

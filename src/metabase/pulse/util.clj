@@ -13,9 +13,8 @@
 (defn execute-card
   "Execute the query for a single Card. `options` are passed along to the Query Processor."
   [{pulse-creator-id :creator_id} card-or-id & {:as options}]
-  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
-  {:pre [(or (integer? pulse-creator-id)
-             (= (:context options) :metabot))]}
+  ;; The Card must either be executed in the context of a User
+  {:pre [(integer? pulse-creator-id)]}
   (let [card-id (u/the-id card-or-id)]
     (try
       (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Radio from "metabase/components/Radio";
 
 export const FilterRadio = styled(Radio).attrs({
