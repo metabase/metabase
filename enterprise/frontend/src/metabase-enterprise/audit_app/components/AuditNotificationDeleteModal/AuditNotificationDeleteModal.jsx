@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { formatChannels } from "metabase/lib/notifications";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import ModalContent from "metabase/components/ModalContent";

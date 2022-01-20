@@ -8,7 +8,7 @@ import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatab
 import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 const propTypes = {
   database: PropTypes.object.isRequired,

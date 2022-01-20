@@ -45,6 +45,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   white?: boolean;
   purple?: boolean;
 
+  disabled?: boolean;
   round?: boolean;
   borderless?: boolean;
   onlyIcon?: boolean;

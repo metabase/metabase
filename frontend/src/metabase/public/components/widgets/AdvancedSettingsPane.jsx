@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ParametersList from "metabase/parameters/components/ParametersList";
 import Select, { Option } from "metabase/components/Select";
 

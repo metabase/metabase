@@ -5,7 +5,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";

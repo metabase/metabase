@@ -8,7 +8,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 
 import _ from "underscore";

@@ -8,27 +8,21 @@ module.exports = {
     "../frontend/**/*.stories.mdx",
     "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
-  addons: [
-    {
-      name: "@storybook/addon-essentials",
-    },
-    {
-      name: "@storybook/addon-links",
-    },
-    {
-      name: "@storybook/addon-postcss",
-      options: {
-        postcssLoaderOptions: {
-          implementation: require("postcss"),
-        },
-      },
-    },
-  ],
+  addons: ["@storybook/addon-essentials", "@storybook/addon-links"],
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
+    module: {
+      ...storybookConfig.module,
+      rules: [
+        ...storybookConfig.module.rules.filter(rule => !isCSSRule(rule)),
+        ...appConfig.module.rules.filter(rule => isCSSRule(rule)),
+      ],
+    },
     resolve: {
       ...storybookConfig.resolve,
       alias: appConfig.resolve.alias,
     },
   }),
 };
+
+const isCSSRule = rule => rule.test.toString() === "/\\.css$/";

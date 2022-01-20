@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 
 export default class RemoveFromDashboardModal extends Component {
