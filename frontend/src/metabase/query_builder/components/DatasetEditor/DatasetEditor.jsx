@@ -20,11 +20,11 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 import { EDITOR_TAB_INDEXES } from "./constants";
-import { getColumnTypeIcon } from "./utils";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import EditorTabs from "./EditorTabs";
@@ -318,7 +318,7 @@ function DatasetEditor(props) {
           isSelected={isSelected}
         >
           <FieldTypeIcon
-            name={getColumnTypeIcon(column)}
+            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
             isSelected={isSelected}
           />
           <span>{column.display_name}</span>

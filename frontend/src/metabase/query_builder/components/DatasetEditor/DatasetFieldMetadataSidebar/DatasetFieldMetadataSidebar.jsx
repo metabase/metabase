@@ -17,7 +17,7 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
-import { isFK } from "metabase/lib/schema_metadata";
+import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
 import RootForm from "metabase/containers/Form";
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -29,7 +29,6 @@ import ColumnSettings, {
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
-import { getColumnTypeIcon } from "../utils";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 import {
@@ -100,9 +99,7 @@ function getFormFields({ dataset }) {
         title: t`Column type`,
         widget: SemanticTypePicker,
         options: getSemanticTypeOptions(),
-        icon: getColumnTypeIcon({
-          semantic_type: fieldFormValues.semantic_type,
-        }),
+        icon: getSemanticTypeIcon(fieldFormValues.semantic_type, "ellipsis"),
       },
       {
         name: "fk_target_field_id",
