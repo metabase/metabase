@@ -64,7 +64,7 @@ If you're an administrator of your Metabase instance, you'll be able to see and 
 
 ![Recipients](./images/alerts/recipients.png)
 
-Just like with [Pulses](10-pulses.md), you can add any Metabase user, email address, or even a Slack channel as a recipient of an alert. Admins can add or remove recipients on any alert, even ones that they did not create themselves.
+You can add any Metabase user, email address, or even a Slack channel as a recipient of an alert. Admins can add or remove recipients on any alert, even ones that they did not create themselves.
 
 Here's more information about [setting up email integration](../administration-guide/02-setting-up-email.md) and [setting up Slack integration](../administration-guide/09-setting-up-slack.md).
 
