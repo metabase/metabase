@@ -150,9 +150,9 @@ function CollectionContent({
               <PinnedItemOverview
                 items={pinnedItems}
                 collection={collection}
-                onDrop={clear}
                 onMove={handleMove}
                 onCopy={handleCopy}
+                onToggleSelected={toggleItem}
               />
               <Search.ListLoader
                 query={unpinnedQuery}

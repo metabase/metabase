@@ -10,18 +10,11 @@ import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 type Props = {
   items: Item[];
   collection: Collection;
-  onToggleSelected: (item: Item) => void;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
 };
 
-function PinnedItemOverview({
-  items,
-  collection,
-  onToggleSelected,
-  onCopy,
-  onMove,
-}: Props) {
+function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
   const sortedItems = _.sortBy(items, item => item.name);
   const {
     card: cardItems = [],
@@ -38,7 +31,6 @@ function PinnedItemOverview({
               key={item.id}
               item={item}
               collection={collection}
-              onToggleSelected={onToggleSelected}
               onCopy={onCopy}
               onMove={onMove}
             />
@@ -52,7 +44,6 @@ function PinnedItemOverview({
               key={item.id}
               item={item}
               collection={collection}
-              onToggleSelected={onToggleSelected}
               onCopy={onCopy}
               onMove={onMove}
             />
@@ -71,7 +62,6 @@ function PinnedItemOverview({
                 key={item.id}
                 item={item}
                 collection={collection}
-                onToggleSelected={onToggleSelected}
                 onCopy={onCopy}
                 onMove={onMove}
               />

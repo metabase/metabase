@@ -9,6 +9,7 @@ export type Item = {
   getIcon: () => { name: string };
   getUrl: () => string;
   setArchived: (isArchived: boolean) => void;
+  setPinned: (isPinned: boolean) => void;
   copy?: boolean;
   setCollection?: boolean;
   model: string;
@@ -21,8 +22,8 @@ export type Collection = {
   can_write: boolean;
   name: string;
   archived: boolean;
-  personal_owner_id: number | unknown;
-  children: Collection[];
+  personal_owner_id?: number | unknown;
+  children?: Collection[];
   originalName?: string;
   effective_ancestors?: Collection[];
   location?: string;

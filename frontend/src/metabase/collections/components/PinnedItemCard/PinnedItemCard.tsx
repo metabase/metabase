@@ -19,7 +19,6 @@ type Props = {
   className?: string;
   item: Item;
   collection: Collection;
-  onToggleSelected: (item: Item) => void;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
 };
@@ -28,7 +27,6 @@ function PinnedItemCard({
   className,
   item,
   collection,
-  onToggleSelected,
   onCopy,
   onMove,
 }: Props) {
@@ -48,8 +46,8 @@ function PinnedItemCard({
   };
 
   const handlePin = useCallback(() => {
-    onToggleSelected(item);
-  }, [item, onToggleSelected]);
+    item.setPinned(false);
+  }, [item]);
 
   const handleCopy = useCallback(() => {
     onCopy([item]);

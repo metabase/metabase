@@ -9,6 +9,13 @@ export default {
   component: PinnedItemCard,
 };
 
+const collection = {
+  can_write: true,
+  id: 1,
+  name: "Collection Foo",
+  archived: false,
+};
+
 const onToggleSelected = action("onToggleSelected");
 const onCopy = action("onCopy");
 const onMove = action("onMove");
@@ -19,9 +26,7 @@ const Template: ComponentStory<typeof PinnedItemCard> = args => {
 
 export const Question = Template.bind({});
 Question.args = {
-  collection: {
-    can_write: true,
-  },
+  collection,
   item: {
     id: 1,
     collection_position: 1,
@@ -31,19 +36,17 @@ Question.args = {
     getIcon: () => ({ name: "question" }),
     getUrl: () => "/question/1",
     setArchived: action("setArchived"),
+    setPinned: action("setPinned"),
     copy: true,
     setCollection: true,
   },
-  onToggleSelected,
   onCopy,
   onMove,
 };
 
 export const Dashboard = Template.bind({});
 Dashboard.args = {
-  collection: {
-    can_write: true,
-  },
+  collection,
   item: {
     id: 1,
     model: "dashboard",
@@ -55,17 +58,15 @@ Dashboard.args = {
     getIcon: () => ({ name: "dashboard" }),
     getUrl: () => "/dashboard/1",
     setArchived: action("setArchived"),
+    setPinned: action("setPinned"),
   },
-  onToggleSelected,
   onCopy,
   onMove,
 };
 
 export const Model = Template.bind({});
 Model.args = {
-  collection: {
-    can_write: true,
-  },
+  collection,
   item: {
     id: 1,
     model: "dataset",
@@ -75,8 +76,8 @@ Model.args = {
     getIcon: () => ({ name: "model" }),
     getUrl: () => "/question/1",
     setArchived: action("setArchived"),
+    setPinned: action("setPinned"),
   },
-  onToggleSelected,
   onCopy,
   onMove,
 };
