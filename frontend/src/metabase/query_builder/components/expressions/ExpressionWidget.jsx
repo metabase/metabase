@@ -76,9 +76,7 @@ export default class ExpressionWidget extends Component {
               <ExternalLink
                 className="link"
                 target="_blank"
-                href={MetabaseSettings.docsUrl(
-                  "users-guide/expressions"
-                )}
+                href={MetabaseSettings.docsUrl("users-guide/expressions")}
               >{t`Learn more`}</ExternalLink>
             </p>
           </div>
