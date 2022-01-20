@@ -19,7 +19,7 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
-    dataset: datasetItems = [],
+    dataset: dataModelItems = [],
   } = _.groupBy(sortedItems, "model");
 
   return items.length ? (
@@ -50,14 +50,14 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
           ))}
         </Grid>
       )}
-      {datasetItems.length > 0 && (
+      {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
-            <h4>{t`Datasets`}</h4>
+            <h4>{t`Models`}</h4>
             <div>{t`Start new explorations about {${collection.name}} here`}</div>
           </SectionHeader>
           <Grid>
-            {datasetItems.map(item => (
+            {dataModelItems.map(item => (
               <PinnedItemCard
                 key={item.id}
                 item={item}
