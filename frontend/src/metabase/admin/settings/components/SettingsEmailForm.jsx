@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { Flex } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
 
 import SettingsBatchForm from "./SettingsBatchForm";

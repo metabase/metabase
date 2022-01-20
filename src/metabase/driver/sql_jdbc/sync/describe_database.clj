@@ -2,6 +2,7 @@
   "SQL JDBC impl for `describe-database`."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -61,10 +62,17 @@
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+    (log/tracef "Checking for SELECT privileges for %s with query %s"
+                (str (when table-schema
+                       (str (pr-str table-schema) \.))
+                     (pr-str table-name))
+                (pr-str sql-args))
     (try
       (execute-select-probe-query driver conn sql-args)
-      true
+      (do (log/trace "SELECT privileges confirmed")
+          true)
       (catch Throwable _
+        (log/trace "No SELECT privileges")
         false))))
 
 (defn- db-tables

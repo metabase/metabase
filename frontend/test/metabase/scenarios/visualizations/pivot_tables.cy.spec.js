@@ -5,7 +5,7 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -15,7 +15,7 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
 const DASHBOARD_NAME = "Pivot Table Dashboard";
@@ -134,7 +134,7 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should be able to use binned numeric dimension as a grouping (metabase#14136)", () => {
-    // Sample dataset Orders > Count by Subtotal: Auto binned
+    // Sample database Orders > Count by Subtotal: Auto binned
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",

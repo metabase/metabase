@@ -6,7 +6,7 @@ import Metrics from "metabase/entities/metrics";
 import MetricItem from "metabase/admin/datamodel/components/MetricItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/components/Link";
 
 @Metrics.loadList({ wrapped: true })

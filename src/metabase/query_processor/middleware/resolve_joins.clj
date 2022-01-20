@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-joins
-  "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
-  the query about what joins should be done and how they should be performed."
+  "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
+  options, and adds information to the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
   (:require [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -106,10 +106,6 @@
   [joins]
   (reduce concat (filter sequential? (map :fields joins))))
 
-(defn- remove-joins-fields [joins]
-  (vec (for [join joins]
-         (dissoc join :fields))))
-
 (defn- should-add-join-fields?
   "Should we append the `:fields` from `:joins` to the parent-level query's `:fields`? True unless the parent-level
   query has breakouts or aggregations."
@@ -125,7 +121,12 @@
   [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
   (let [join-fields (when (should-add-join-fields? inner-query)
                       (joins->fields joins))
-        inner-query (update inner-query :joins remove-joins-fields)]
+        ;; remove remaining keyword `:fields` like `:none` from joins
+        inner-query (update inner-query :joins (fn [joins]
+                                                 (mapv (fn [{:keys [fields], :as join}]
+                                                         (cond-> join
+                                                           (keyword? fields) (dissoc :fields)))
+                                                       joins)))]
     (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 

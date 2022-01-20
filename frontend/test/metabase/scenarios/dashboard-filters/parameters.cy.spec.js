@@ -4,11 +4,11 @@ import {
   restore,
   openNativeEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -236,7 +236,7 @@ describe("scenarios > dashboard > parameters", () => {
       .click();
     cy.findByText("Field Filter").click();
     popover().within(() => {
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Orders").click();
       cy.findByText("Created At").click();
     });

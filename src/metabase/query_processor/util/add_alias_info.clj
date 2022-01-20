@@ -1,4 +1,49 @@
 (ns metabase.query-processor.util.add-alias-info
+  "Walks query and adds generates appropriate aliases for every selected column; and adds extra keys to the
+  corresponding MBQL clauses with this information. Deduplicates aliases and calls [[metabase.driver/escape-alias]]
+  with the generated aliases. Adds information about the aliases in source queries and joins that correspond to
+  columns in the parent level.
+
+  This code is currently opt-in, and is currently only used by SQL drivers ([[metabase.driver.sql.query-processor]]
+  manually calls [[add-alias-info]] inside of [[metabase.driver.sql.query-processor/mbql->native]]) but at some point
+  in the future this may become general QP middleware that can't be opted out of.
+
+  [[add-alias-info]] adds some or all of the following keys to every `:field` clause, `:expression` reference, and
+  `:aggregation` reference:
+
+  ##### `::source-table`
+
+  String name, integer Table ID, the keyword `::source`, or the keyword `::none`. Use this alias to qualify the clause
+  during compilation.
+
+  - String names are aliases for joins. This name should be used literally.
+
+  - An integer Table ID means this comes from the `:source-table`; use the Table's schema and name to qualify the
+    clause. (Some databases also need to qualify Fields with the Database name.)
+
+  - `::source` means this clause comes from the `:source-query`; the alias to use is theoretically driver-specific but
+    in practice is `source` (see [[metabase.driver.sql.query-processor/source-query-alias]]).
+
+  - `::none` means this clause SHOULD NOT be qualified at all. `::none` is currently only used in some very special
+     circumstances, specially by the Spark SQL driver when compiling Field Filter replacement snippets. But it's here
+     for those sorts of cases where we need it.
+
+  TODO -- consider allowing vectors of multiple qualifiers e.g. `[schema table]` or `[database schema table]` as well
+  -- so drivers that need to modify these can rewrite this info appropriately.
+
+  ##### `::source-alias`
+
+  String name to use to refer to this clause during compilation.
+
+  ##### `::desired-alias`
+
+  If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
+  this alias. This alias is guaranteed to be unique.
+
+  ##### `::position`
+
+  If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
+  column index)."
   (:require [clojure.string :as str]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
@@ -7,28 +52,11 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
 
-;; these methods were moved from [[metabase.driver.sql.query-processor]] in 0.42.0
-
-(defmulti prefix-field-alias
-  "Create a Field alias by combining a `prefix` string with `field-alias` string. The default implementation just joins
-  the two strings with `__` -- override this if you need to do something different."
-  {:arglists '([driver prefix field-alias]), :added "0.38.1"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod prefix-field-alias :default
-  [_driver prefix field-alias]
+(defn prefix-field-alias
+  "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
+  columns that are the result of joins."
+  [prefix field-alias]
   (str prefix "__" field-alias))
-
-(defmulti ^String escape-alias
-  "Return the String that should be emitted in the query for the generated `alias-name`, which will follow the
-  equivalent of a SQL `AS` clause. This is to allow for escaping names that particular databases may not allow as
-  aliases for custom expressions or fields (even when quoted).
-
-  Defaults to identity (i.e. returns `alias-name` unchanged)."
-  {:added "0.41.0" :arglists '([driver alias-name])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
 
 (defn- make-unique-alias-fn
   "Creates a function with the signature
@@ -43,17 +71,14 @@
                         ;; TODO -- we should probably limit the length somehow like we do in
                         ;; [[metabase.query-processor.middleware.add-implicit-joins/join-alias]], and also update this
                         ;; function and that one to append a short suffix if we are limited by length. See also
-                        ;; [[escape-alias]] above
+                        ;; [[driver/escape-alias]]
                         :unique-alias-fn (fn [original suffix]
-                                           (escape-alias driver/*driver* (str original \_ suffix))))]
+                                           (driver/escape-alias driver/*driver* (str original \_ suffix))))]
     (fn unique-alias-fn [position original-alias]
-      (unique-name-fn position (escape-alias driver/*driver* original-alias)))))
+      (unique-name-fn position (driver/escape-alias driver/*driver* original-alias)))))
 
 ;; TODO -- this should probably limit the resulting alias, and suffix a short hash as well if it gets too long. See also
 ;; [[unique-alias-fn]] below.
-(defmethod escape-alias :default
-  [_driver alias-name]
-  alias-name)
 
 (defn- remove-namespaced-options [options]
   (when options
@@ -221,7 +246,7 @@
    [_ _id-or-name {:keys [join-alias]}, :as field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
-    (and join-alias (not join-is-this-level?)) (prefix-field-alias driver/*driver* join-alias field-name)
+    (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
     (and join-is-this-level? alias-from-join)  alias-from-join
     alias-from-source-query                    alias-from-source-query
     :else                                      field-name))
@@ -233,7 +258,7 @@
    [_ _id-or-name {:keys [join-alias]} :as field-clause]
    {:keys [field-name alias-from-join alias-from-source-query]}]
   (cond
-    join-alias              (prefix-field-alias driver/*driver* join-alias (or alias-from-join field-name))
+    join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
     alias-from-source-query alias-from-source-query
     :else                   field-name))
 
@@ -261,7 +286,7 @@
                       {:type   qp.error-type/invalid-query
                        :clause ag-ref-clause
                        :query  inner-query})))
-    (let [[_ ag-name _ :as matching-ag] (nth aggregations index)]
+    (let [[_ _ {ag-name :name} :as matching-ag] (nth aggregations index)]
       ;; make sure we have an `:aggregation-options` clause like we expect. This is mostly a precondition check
       ;; since we should never be running this code on not-preprocessed queries, so it's not i18n'ed
       (when-not (mbql.u/is-clause? :aggregation-options matching-ag)
@@ -277,17 +302,37 @@
     {::desired-alias (unique-alias-fn position expression-name)
      ::position      position}))
 
+(defn- add-info-to-aggregation-definition
+  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as ag-clause] ag-index]
+  (let [position     (clause->position inner-query [:aggregation ag-index])
+        unique-alias (unique-alias-fn position original-ag-name)]
+    [:aggregation-options wrapped-ag-clause (assoc opts
+                                                   :name           unique-alias
+                                                   ::position      position
+                                                   ::desired-alias unique-alias)]))
+
+(defn- add-info-to-aggregation-definitions [{aggregations :aggregation, :as inner-query} unique-alias-fn]
+  (cond-> inner-query
+    (seq aggregations)
+    (update :aggregation (fn [aggregations]
+                           (into
+                            []
+                            (map-indexed (fn [i aggregation]
+                                           (add-info-to-aggregation-definition inner-query unique-alias-fn aggregation i)))
+                            aggregations)))))
+
 (defn- add-alias-info* [inner-query]
   (assert (not (:strategy inner-query)) "add-alias-info* should not be called on a join") ; not user-facing
   (let [unique-alias-fn (make-unique-alias-fn)]
-    (mbql.u/replace inner-query
-      ;; don't rewrite anything inside any source queries or source metadata.
-      (_ :guard (constantly (some (partial contains? (set &parents))
-                                  [:source-query :source-metadata])))
-      &match
+    (-> (mbql.u/replace inner-query
+          ;; don't rewrite anything inside any source queries or source metadata.
+          (_ :guard (constantly (some (partial contains? (set &parents))
+                                      [:source-query :source-metadata])))
+          &match
 
-      #{:field :aggregation :expression}
-      (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))))
+          #{:field :aggregation :expression}
+          (mbql.u/update-field-options &match merge (clause-alias-info inner-query unique-alias-fn &match)))
+        (add-info-to-aggregation-definitions unique-alias-fn))))
 
 (defn add-alias-info
   "Add extra info to `:field` clauses, `:expression` references, and `:aggregation` references in `query`. `query` must

@@ -2,7 +2,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
@@ -219,12 +219,12 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
 const TagEditorHelp = ({
   database,
   setDatasetQuery,
-  sampleDatasetId,
+  sampleDatabaseId,
   switchToSettings,
 }) => {
   const driver = database && database.engine;
   const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
-  const datasetId = driver === "mongo" ? database.id : sampleDatasetId;
+  const datasetId = driver === "mongo" ? database.id : sampleDatabaseId;
 
   let setQueryWithDatasetId = null;
   if (datasetId != null) {

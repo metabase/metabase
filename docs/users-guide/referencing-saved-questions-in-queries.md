@@ -4,7 +4,7 @@ With SQL databases, we can use a [model][model] or an an existing question as th
 
 For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
-Here's how it works. First, create and save a question that returns the result set you'd like to make available for people to query. Using the sample dataset included with Metabase as an example, let's say we want to provide a result set (a "table") that only has orders from 2019, and only includes orders for products in the Gizmo category.
+Here's how it works. First, create and save a question that returns the result set you'd like to make available for people to query. Using the sample database included with Metabase as an example, let's say we want to provide a result set (a "table") that only has orders from 2019, and only includes orders for products in the Gizmo category.
 
 We could create this model using the notebook editor, like so:
 

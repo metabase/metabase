@@ -1,10 +1,14 @@
 import React from "react";
 
-import { PRODUCTS, ORDERS, metadata } from "__support__/sample_dataset_fixture";
+import {
+  PRODUCTS,
+  ORDERS,
+  metadata,
+} from "__support__/sample_database_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 import Card from "metabase/components/Card";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import DimensionInfo from "./DimensionInfo";
 

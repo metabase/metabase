@@ -2,7 +2,7 @@ import { getMode } from "metabase/modes/lib/modes";
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 import SegmentMode from "metabase/modes/components/modes/SegmentMode";
 
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 describe("modes", () => {
   describe("getMode", () => {

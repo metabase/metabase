@@ -1,7 +1,7 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import FieldFingerprintInfo from "./FieldFingerprintInfo";

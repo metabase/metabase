@@ -1,4 +1,4 @@
-# Data sandboxes 
+# Data sandboxes
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
@@ -24,7 +24,7 @@ Metabase gives you two options for filtering a sandboxed table:
 ### Option 1: filter using a column in the table
 
 The simplest way to filter a sandboxed table is to pick a column in the sandboxed table and match it up with a user attribute so that any time a user with sandboxed access to this table views it, they’ll only see rows in the table where that column’s value is equal to the value that user has for that attribute.
-	
+
 ### Option 2: create a custom view of the table with a saved question
 
 Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question.  For example, you might have columns in your Orders table that you don’t want any of your users to see. You can create a SQL-based saved question that only returns the columns you want users to see. For even more surgical access controls, you can map variables in a SQL question to user attributes in order to customize the view for that user. For example, if you only want users to see _their_ order data, you could map a variable in the `where` clause of the filtering saved question to one of their user attributes, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}`, and the user would only have access to order information related to that user ID.
@@ -37,7 +37,7 @@ First we’ve made sure our example user has an attribute that we’ll be able t
 
 ![User details](images/sandboxing/edit-user-details.png)
 
-Then we’ll head over to the Permissions section of the Admin Panel, and we’ll click on View Tables next to the Sample Dataset to see the permissions our user groups have for the tables in this database. We want to give the Customers group sandboxed access to the Orders table, so we’ll click on that box in the permissions grid and choose “Grant sandboxed access:”
+Then we’ll head over to the Permissions section of the Admin Panel, and we’ll click on View Tables next to the Sample Database to see the permissions our user groups have for the tables in this database. We want to give the Customers group sandboxed access to the Orders table, so we’ll click on that box in the permissions grid and choose “Grant sandboxed access:”
 
 ![Grant sandboxed access](images/sandboxing/grant-sandboxed-access.png)
 
@@ -51,7 +51,7 @@ Next we’ll see a worksheet that will ask us how we want to filter this table f
 
 We’ll click Done, then we’ll click Save Changes at the top of the screen to save the changes we’ve made to our permissions. If we ever want to edit how this table should be filtered for users in this group, we can just click on the __Data access__ dropdown for that group and select __Edit sandboxed access__.
 
-To test this out, we’ll open up a new incognito browser window and log in with our test user account. We’ll click on the Sample Dataset on the home page and then pick the Orders table. As you can see here, this user correctly only sees orders where the User ID column is equal to 1, because that’s what this user’s user_id attribute is.
+To test this out, we’ll open up a new incognito browser window and log in with our test user account. We’ll click on the Sample Database on the home page and then pick the Orders table. As you can see here, this user correctly only sees orders where the User ID column is equal to 1, because that’s what this user’s user_id attribute is.
 
 ![Filtered table](images/sandboxing/filtered-table.png)
 
@@ -104,12 +104,12 @@ And here's the code:
 ```
 SELECT
   id,
-  created_at, 
-  product_id, 
-  quantity, 
-  total, 
-  user_id 
-FROM 
+  created_at,
+  product_id,
+  quantity,
+  total,
+  user_id
+FROM
   orders
 [[WHERE user_id = {%raw%}{{cid}}{%endraw%}]]
 ```
@@ -143,7 +143,7 @@ If you're using data sandboxing, groups with people that you want sandboxed shou
 1. The native SQL editor for that data.
 2. Any collections with saved SQL queries that use that data.
 
-The reason is that Metabase doesn't currently parse the contents of native SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. 
+The reason is that Metabase doesn't currently parse the contents of native SQL queries, and therefore can't know conclusively which table(s) are referenced in a query.
 
 There are three specific situations to be aware of when it comes to SQL and sandboxes:
 

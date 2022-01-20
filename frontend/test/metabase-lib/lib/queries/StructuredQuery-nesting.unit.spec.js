@@ -1,4 +1,4 @@
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
