@@ -501,7 +501,7 @@ describe("scenarios > collection_defaults", () => {
 
           cy.findByTestId("bulk-action-bar").within(() => {
             // Select all
-            cy.findByRole("checkbox").should("be.visible");
+            cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
             cy.findByText("4 items selected");
