@@ -20,11 +20,11 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
+  (:import clojure.lang.PersistentList
+           [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
                                       Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
-                                      TableResult]
-           clojure.lang.PersistentList))
+                                      TableResult]))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
