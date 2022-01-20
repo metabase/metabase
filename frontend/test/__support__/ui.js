@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { render } from "@testing-library/react";
+import { merge } from "icepick";
 import { createMemoryHistory } from "history";
 import { Router, Route } from "react-router";
 import { Provider } from "react-redux";
@@ -35,13 +36,16 @@ export function renderWithProviders(
   {
     currentUser,
     reducers,
+    storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
     withDND = false,
     ...options
   } = {},
 ) {
-  const initialReduxState = withSampleDatabase ? sampleDatabaseReduxState : {};
+  const initialReduxState = withSampleDatabase
+    ? merge(withSampleDatabase, storeInitialState)
+    : storeInitialState;
 
   const store = getStore(
     {
