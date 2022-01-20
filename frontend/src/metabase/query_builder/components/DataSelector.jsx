@@ -1015,6 +1015,11 @@ export class UnconnectedDataSelector extends Component {
     }[selectedDataBucketId];
   };
 
+  hasDataAccess = () => {
+    const { hasDataAccess, databases } = this.props;
+    return hasDataAccess || databases?.length > 0;
+  };
+
   render() {
     const {
       searchText,
@@ -1022,7 +1027,7 @@ export class UnconnectedDataSelector extends Component {
       selectedDataBucketId,
       selectedTable,
     } = this.state;
-    const { canChangeDatabase, selectedDatabaseId, hasDataAccess } = this.props;
+    const { canChangeDatabase, selectedDatabaseId } = this.props;
 
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
@@ -1050,7 +1055,7 @@ export class UnconnectedDataSelector extends Component {
       >
         {this.isLoadingDatasets() ? (
           <LoadingAndErrorWrapper loading />
-        ) : hasDataAccess ? (
+        ) : this.hasDataAccess() ? (
           <>
             {this.showTableSearch() && (
               <ListSearchField
