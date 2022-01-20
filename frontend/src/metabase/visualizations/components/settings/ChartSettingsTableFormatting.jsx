@@ -3,7 +3,7 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/components/Select";
 import Radio from "metabase/components/Radio";

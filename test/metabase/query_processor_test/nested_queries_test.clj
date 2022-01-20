@@ -642,15 +642,17 @@
           (testing "Try to save in the Root Collection"
             (mt/with-temp Collection [source-card-collection]
               (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-              (is (= "You don't have permissions to do that."
-                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
+              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                            s/Keyword s/Any}
+                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp* [Collection [source-card-collection]
                             Collection [dest-card-collection]]
               (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-              (is (= "You don't have permissions to do that."
-                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
+              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                            s/Keyword s/Any}
+                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
 (deftest infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)

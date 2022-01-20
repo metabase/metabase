@@ -1,7 +1,7 @@
 import React from "react";
 
 import SettingInput from "../SettingInput";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
 import { t } from "ttag";
 import { UtilApi } from "metabase/services";

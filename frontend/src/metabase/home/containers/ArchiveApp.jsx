@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
 import ArchivedItem from "../../components/ArchivedItem";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Card from "metabase/components/Card";
 import PageHeading from "metabase/components/type/PageHeading";

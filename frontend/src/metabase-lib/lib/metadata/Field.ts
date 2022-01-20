@@ -42,6 +42,7 @@ import Dimension from "../Dimension";
 
 export default class Field extends Base {
   name: string;
+  semantic_type: string | null;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
