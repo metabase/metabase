@@ -21,6 +21,7 @@ export const Container = styled(Flex)`
 
 export const MenuContainer = styled(Flex)`
   margin-top: ${space(1)};
+  align-self: start;
 `;
 
 export const ToggleMobileSidebarIcon = styled(Icon).attrs({
@@ -46,4 +47,11 @@ export const DescriptionTooltipIcon = styled(Icon).attrs({
   &:hover {
     color: ${color("brand")};
   }
+`;
+
+export const DescriptionHeading = styled.div`
+  font-size: 1.15rem;
+  line-height: 1.7rem;
+  padding-top: 1.15rem;
+  max-width: 400px;
 `;

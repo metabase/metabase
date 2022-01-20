@@ -8,6 +8,7 @@ import {
   Table,
   SortingIcon,
   SortingControlContainer,
+  Tbody,
 } from "./BaseItemsTable.styled";
 
 const sortingOptsShape = PropTypes.shape({
@@ -119,7 +120,7 @@ function BaseItemsTable({
         <col />
         <col style={{ width: "140px" }} />
         <col style={{ width: "140px" }} />
-        <col style={{ width: "60px" }} />
+        <col style={{ width: "100px" }} />
       </colgroup>
       {!headless && (
         <thead
@@ -161,7 +162,7 @@ function BaseItemsTable({
           </tr>
         </thead>
       )}
-      <tbody>{items.map(itemRenderer)}</tbody>
+      <Tbody>{items.map(itemRenderer)}</Tbody>
     </Table>
   );
 }
