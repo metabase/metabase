@@ -69,28 +69,20 @@ function MappedFieldPicker({
     [onChange],
   );
 
-  const renderTriggerElement = useCallback(
-    ({ open }: CollapsedPickerProps) => {
-      const label = fieldObject
-        ? fieldObject.displayName({ includeTable: true })
-        : t`None`;
-      return (
-        <SelectButton
-          hasValue={!!fieldObject}
-          tabIndex={tabIndex}
-          onKeyUp={e => {
-            if (e.key === "Enter") {
-              open();
-            }
-          }}
-          ref={selectButtonRef}
-        >
-          {label}
-        </SelectButton>
-      );
-    },
-    [fieldObject, tabIndex],
-  );
+  const renderTriggerElement = useCallback(() => {
+    const label = fieldObject
+      ? fieldObject.displayName({ includeTable: true })
+      : t`None`;
+    return (
+      <SelectButton
+        hasValue={!!fieldObject}
+        tabIndex={tabIndex}
+        ref={selectButtonRef}
+      >
+        {label}
+      </SelectButton>
+    );
+  }, [fieldObject, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)

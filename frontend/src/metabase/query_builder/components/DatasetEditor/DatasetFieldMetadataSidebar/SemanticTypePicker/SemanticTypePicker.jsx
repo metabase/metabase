@@ -50,29 +50,19 @@ function SemanticTypePicker({
     return item?.name ?? t`None`;
   }, [field, options]);
 
-  const renderSelectButton = useCallback(
-    ({ open }) => {
-      const handleKeyUp = e => {
-        if (e.key === "Enter") {
-          open();
-        }
-      };
-
-      return (
-        <SelectButon
-          hasValue={!!field.value}
-          onKeyUp={handleKeyUp}
-          onKeyDown={onKeyDown}
-          tabIndex={tabIndex}
-          ref={selectButtonRef}
-          left={<FieldTypeIcon name={icon} />}
-        >
-          {pickerLabel}
-        </SelectButon>
-      );
-    },
-    [field, icon, tabIndex, pickerLabel, onKeyDown],
-  );
+  const renderSelectButton = useCallback(() => {
+    return (
+      <SelectButon
+        hasValue={!!field.value}
+        onKeyDown={onKeyDown}
+        tabIndex={tabIndex}
+        ref={selectButtonRef}
+        left={<FieldTypeIcon name={icon} />}
+      >
+        {pickerLabel}
+      </SelectButon>
+    );
+  }, [field, icon, tabIndex, pickerLabel, onKeyDown]);
 
   return (
     <Select
