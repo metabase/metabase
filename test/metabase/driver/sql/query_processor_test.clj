@@ -822,11 +822,12 @@
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
     (mt/dataset sample-dataset
-      (is (= '{:select    [Q1.CATEGORY  AS Q1__CATEGORY
-                           source.count AS count
-                           source.CC    AS CC
-                           Q1.count     AS Q1__count
-                           Q1.CC        AS Q1__CC]
+      (is (= '{:select    [source.CATEGORY AS CATEGORY
+                           source.count    AS count
+                           source.CC       AS CC
+                           Q1.CATEGORY     AS Q1__CATEGORY
+                           Q1.count        AS Q1__count
+                           Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
                                      (1 + 1)         AS CC]
