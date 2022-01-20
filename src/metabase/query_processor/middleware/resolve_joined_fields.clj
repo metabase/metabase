@@ -60,13 +60,10 @@
 
 (s/defn ^:private add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
-  [{:keys [source-table source-query joins], :as form} :- InnerQuery]
+  [{:keys [source-query joins], :as form} :- InnerQuery]
+  ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
   (let [source-table (primary-source-table-id form)
-        form         (mbql.u/replace form
-                       ;; don't replace stuff in child `:join` or `:source-query` forms
-                       (_ :guard (constantly (some (set &parents) [:joins :source-query])))
-                       &match
-
+        form         (mbql.u/replace (dissoc form :joins :source-query)
                        ;; don't add `:join-alias` to anything that already has one
                        [:field _ (_ :guard :join-alias)]
                        &match
@@ -76,7 +73,11 @@
                         (field-id :guard (every-pred integer?
                                                      #(not= (:table_id (qp.store/field %)) source-table)))
                         _]
-                       (add-join-alias (qp.store/field field-id) form &match))]
+                       (add-join-alias (qp.store/field field-id) form &match))
+        ;; add :joins and :source-query back which we removed above.
+        form (cond-> form
+               (seq joins)  (assoc :joins joins)
+               source-query (assoc :source-query source-query))]
     ;; now deduplicate :fields clauses
     (mbql.u/replace form
       (m :guard (every-pred map? :fields))
