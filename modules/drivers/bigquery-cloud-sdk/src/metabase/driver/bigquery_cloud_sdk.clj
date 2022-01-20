@@ -23,8 +23,7 @@
   (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
                                       Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
-                                      TableResult]
-           java.util.LinkedList))
+                                      TableResult]))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
@@ -39,14 +38,14 @@
   Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly.  We use the standard bigquery
   scope, as well as the drive scope (allowing for configured Drive external tables to be queried, as per
   `https://cloud.google.com/bigquery/external-data-drive`)."
-  ["https://www.googleapis.com/auth/bigquery"
-   "https://www.googleapis.com/auth/drive"])
+  '("https://www.googleapis.com/auth/bigquery"
+    "https://www.googleapis.com/auth/drive"))
 
 (defn- ^BigQuery database->client
   [database]
   (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds (LinkedList. bigquery-scopes))))]
+                  (.setCredentials (.createScoped creds bigquery-scopes)))]
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
