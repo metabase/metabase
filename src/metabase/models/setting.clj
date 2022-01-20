@@ -74,7 +74,6 @@
             [clojure.tools.logging :as log]
             [environ.core :as env]
             [medley.core :as m]
-            [metabase.events :as events]
             [metabase.models.setting.cache :as cache]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -98,6 +97,11 @@
 
   TODO -- we should probably also bind this in sync contexts e.g. functions in [[metabase.sync]]."
   nil)
+
+(def ^:private retired-setting-names
+  "A set of setting names which existed in previous versions of Metabase, but are no longer used. New settings may not use
+  these names to avoid unintended side-effects if an application database still stores values for these settings."
+  #{"metabot-enabled"})
 
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
@@ -640,6 +644,10 @@
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
+      (when (retired-setting-names (name setting-name))
+        (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
+                        {:retired-setting-name (name setting-name)
+                         :new-setting          (dissoc <> :on-change :getter :setter)})))
       (swap! registered-settings assoc setting-name <>))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -827,15 +835,10 @@
     (db/transaction
       (doseq [[k v] settings]
         (metabase.models.setting/set! k v)))
+    settings
     (catch Throwable e
       (cache/restore-cache!)
-      (throw e)))
-  ;; TODO - This event is no longer neccessary or desirable. This is used in only a single place, to stop or restart
-  ;; the MetaBot when settings are updated ; this only works if the setting is updated via this specific function.
-  ;; Instead, we should define a custom setter for the relevant setting that additionally performs the desired
-  ;; operations when the value is updated. This pattern is easier to understand, works no matter how the setting is
-  ;; changed, and doesn't run when irrelevant changes (to other settings) are made.
-  (events/publish-event! :settings-update settings))
+      (throw e))))
 
 (defn- obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
