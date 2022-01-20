@@ -656,6 +656,7 @@
                                        :alias        "Q2"
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
+                       :order-by     [[:asc !month.&Products.products.created_at]]
                        :limit        3})]
           (mt/with-native-query-testing-context query
             (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
