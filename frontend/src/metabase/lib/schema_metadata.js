@@ -791,10 +791,9 @@ export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
 }
 
-export function getSemanticTypeIcon(semanticType, fallback = "unknown") {
+export function getSemanticTypeIcon(semanticType, fallback) {
   const semanticTypeMetadata = field_semantic_types_map[semanticType];
-  const { icon } = semanticTypeMetadata || {};
-  return icon && icon !== "unknown" ? semanticTypeMetadata.icon : fallback;
+  return semanticTypeMetadata?.icon ?? fallback;
 }
 
 export function getSemanticTypeName(semanticType) {
