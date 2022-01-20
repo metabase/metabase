@@ -2,7 +2,11 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { isItemVerified } from "metabase-enterprise/moderation/service";
+import {
+  isItemVerified,
+  MODERATION_STATUS,
+  getStatusIcon,
+} from "metabase-enterprise/moderation/service";
 
 import { Container, VerifyButton } from "./ModerationActions.styled";
 
@@ -41,10 +45,13 @@ function ModerationActions({
     return null;
   }
 
+  const { name: verifiedIconName } = getStatusIcon(MODERATION_STATUS.verified);
+
   return renderActions({
     className,
     isVerified,
     onVerify,
+    verifiedIconName,
     testID: "moderation-verify-action",
   });
 }
