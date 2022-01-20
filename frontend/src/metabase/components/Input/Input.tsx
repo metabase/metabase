@@ -10,13 +10,10 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: ReactNode;
 }
 
-const Input = ({
-  className,
-  error,
-  fullWidth,
-  helperText,
-  ...rest
-}: InputProps) => {
+const Input = forwardRef(function Input(
+  { className, error, fullWidth, helperText, ...rest }: InputProps,
+  ref,
+) {
   return (
     <InputRoot className={className} fullWidth={fullWidth}>
       <InputField
@@ -24,6 +21,7 @@ const Input = ({
         hasError={error}
         hasTooltip={Boolean(helperText)}
         fullWidth={fullWidth}
+        ref={ref}
       />
       {helperText && (
         <Tooltip tooltip={helperText} placement="right" offset={[0, 24]}>
@@ -32,7 +30,7 @@ const Input = ({
       )}
     </InputRoot>
   );
-};
+});
 
 const InputHelpContent = forwardRef(function InputHelpContent(props, ref: any) {
   return (

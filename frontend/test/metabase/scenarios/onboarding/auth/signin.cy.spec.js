@@ -57,7 +57,7 @@ describe("scenarios > auth > signin", () => {
     cy.visit("/");
     // Browse data moved to an icon
     browse().click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
     cy.contains("37.65");
 

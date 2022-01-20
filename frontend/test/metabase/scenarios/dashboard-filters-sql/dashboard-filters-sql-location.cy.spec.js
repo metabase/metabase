@@ -10,9 +10,9 @@ import {
 import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {

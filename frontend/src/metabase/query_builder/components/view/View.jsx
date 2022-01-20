@@ -299,6 +299,7 @@ export default class View extends React.Component {
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal
+            question={this.props.question}
             onClose={() => this.props.closeQbNewbModal()}
           />
         )}

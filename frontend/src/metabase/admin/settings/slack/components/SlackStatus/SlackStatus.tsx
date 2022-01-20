@@ -1,7 +1,7 @@
 import React, { ComponentType, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import Modal from "metabase/components/Modal";
 import SlackBadge from "../SlackBadge";

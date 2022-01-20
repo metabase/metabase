@@ -11,6 +11,7 @@ import {
   InputContainer,
   FieldContainer,
 } from "./FormField.styled";
+import { FormFieldDecription } from "./FormFieldDescription";
 
 const formFieldCommon = {
   title: PropTypes.string,
@@ -104,13 +105,13 @@ function FormField(props) {
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <div className="mb1">{description}</div>
+            <FormFieldDecription className="mb1" description={description} />
           )}
         </FieldContainer>
       )}
       <InputContainer horizontal={horizontal}>{children}</InputContainer>
       {description && descriptionPosition === "bottom" && (
-        <div className="mt1">{description}</div>
+        <FormFieldDecription className="mt1" description={description} />
       )}
     </div>
   );

@@ -210,7 +210,7 @@ export const MetabaseApi = {
   db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
-  db_add_sample_dataset: POST("/api/database/sample_dataset"),
+  db_add_sample_database: POST("/api/database/sample_database"),
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
