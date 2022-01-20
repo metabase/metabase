@@ -68,7 +68,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.wait("@dataset");
     });
 
-    it("should work for time series", () => {
+    it.only("should work for time series", () => {
       changeBinningForDimension({
         name: "People → Birth Date",
         fromBinning: "by month",
@@ -82,7 +82,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -150,7 +150,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -215,7 +215,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();

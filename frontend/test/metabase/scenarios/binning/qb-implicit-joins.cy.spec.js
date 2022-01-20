@@ -31,7 +31,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderState works as well
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Month").click();
@@ -97,7 +97,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderStateter works as well
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Month").click();

@@ -9,7 +9,7 @@ import { filterWidget, popover } from "__support__/e2e/cypress";
  * @param {("Text"|"Number"|"Date"|"Field Filter")} filterType
  */
 export function openTypePickerFromSelectedFilterType(filterType) {
-  cy.findByTestId("select-button-content")
+  cy.findAllByTestId("select-button-content")
     .contains(filterType)
     .click();
 }

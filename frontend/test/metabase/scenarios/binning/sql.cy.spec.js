@@ -168,7 +168,7 @@ describe("scenarios > binning > from a saved sql question", () => {
       cy.get("circle");
 
       // Open a popover with bucket options from the time series footer
-      cy.findByTestId("select-button-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();

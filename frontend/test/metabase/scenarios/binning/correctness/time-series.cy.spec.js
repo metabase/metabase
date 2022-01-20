@@ -189,11 +189,11 @@ function assertOnXAxisTicks(values) {
 }
 
 function assertOnTimeSeriesFooter(regex) {
-  cy.findByTestId("select-button-content")
+  cy.findAllByTestId("select-button-content")
     .first()
     .invoke("text")
     .should("eq", "All Time");
-  cy.findByTestId("select-button-content")
+  cy.findAllByTestId("select-button-content")
     .last()
     .invoke("text")
     .should("match", regex);

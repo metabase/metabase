@@ -36,7 +36,7 @@ export function setAdHocFilter({
   includeCurrent = false,
 } = {}) {
   if (condition) {
-    cy.findByTestId("select-button")
+    cy.findAllByTestId("select-button")
       .contains("Previous")
       .click();
 
@@ -53,7 +53,7 @@ export function setAdHocFilter({
   }
 
   if (timeBucket) {
-    cy.findByTestId("select-button")
+    cy.findAllByTestId("select-button")
       .contains("Days")
       .click();
 

@@ -231,7 +231,7 @@ describe("scenarios > dashboard > parameters", () => {
       parseSpecialCharSequences: false,
     });
     // make {{filter}} a "Field Filter" connected to `Orders > Created At`
-    cy.findByTestId("select-button")
+    cy.findAllByTestId("select-button")
       .contains("Text")
       .click();
     cy.findByText("Field Filter").click();
