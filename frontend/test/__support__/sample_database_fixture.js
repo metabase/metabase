@@ -6,10 +6,10 @@ import { getStore } from "metabase/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { chain } from "icepick";
 
-import state from "./sample_dataset_fixture.json";
-export { default as state } from "./sample_dataset_fixture.json";
+import state from "./sample_database_fixture.json";
+export { default as state } from "./sample_database_fixture.json";
 
-export const SAMPLE_DATASET_ID = 1;
+export const SAMPLE_DATABASE_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
 export const MULTI_SCHEMA_DATABASE_ID = 4;
@@ -19,7 +19,7 @@ export const MAIN_METRIC_ID = 1;
 
 function aliasTablesAndFields(metadata) {
   // alias DATABASE.TABLE.FIELD for convienence in tests
-  // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Dataset
+  // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Database
   for (const database of Object.values(metadata.databases)) {
     for (const table of database.tables) {
       if (!(table.name in database)) {
@@ -43,7 +43,7 @@ export function createMetadata(updateState = state => state) {
 
 export const metadata = createMetadata();
 
-export const SAMPLE_DATASET = metadata.database(SAMPLE_DATASET_ID);
+export const SAMPLE_DATABASE = metadata.database(SAMPLE_DATABASE_ID);
 export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
 export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID);
 export const MULTI_SCHEMA_DATABASE = metadata.database(
@@ -53,10 +53,10 @@ export const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
   OTHER_MULTI_SCHEMA_DATABASE_ID,
 );
 
-export const ORDERS = SAMPLE_DATASET.ORDERS;
-export const PRODUCTS = SAMPLE_DATASET.PRODUCTS;
-export const PEOPLE = SAMPLE_DATASET.PEOPLE;
-export const REVIEWS = SAMPLE_DATASET.REVIEWS;
+export const ORDERS = SAMPLE_DATABASE.ORDERS;
+export const PRODUCTS = SAMPLE_DATABASE.PRODUCTS;
+export const PEOPLE = SAMPLE_DATABASE.PEOPLE;
+export const REVIEWS = SAMPLE_DATABASE.REVIEWS;
 
 export function makeMetadata(metadata) {
   metadata = {

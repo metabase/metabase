@@ -6,7 +6,7 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { state as sampleState } from "__support__/sample_dataset_fixture";
+import { state as sampleState } from "__support__/sample_database_fixture";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return {

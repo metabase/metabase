@@ -65,6 +65,7 @@ export default class AccordionList extends Component {
     // section getters/render props
     renderSectionIcon: PropTypes.func,
     renderSectionExtra: PropTypes.func,
+    renderSearchSection: PropTypes.func,
 
     // item getters/render props
     itemIsSelected: PropTypes.func,
@@ -86,6 +87,8 @@ export default class AccordionList extends Component {
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
+    searchInputProps: PropTypes.object,
+    hideEmptySectionsInSearch: PropTypes.bool,
 
     itemTestId: PropTypes.string,
   };
@@ -100,6 +103,7 @@ export default class AccordionList extends Component {
     alwaysTogglable: false,
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
+    hideEmptySectionsInSearch: false,
 
     // section getters/render props
     renderSectionIcon: section =>
@@ -245,6 +249,10 @@ export default class AccordionList extends Component {
     }
   };
 
+  checkSectionHasItemsMatchingSearch = (section, searchFilter) => {
+    return section.items.filter(searchFilter).length > 0;
+  };
+
   render() {
     const {
       id,
@@ -256,6 +264,7 @@ export default class AccordionList extends Component {
       alwaysTogglable,
       alwaysExpanded,
       hideSingleSectionTitle,
+      hideEmptySectionsInSearch,
     } = this.props;
 
     const openSection = this.getOpenSection();
@@ -292,7 +301,13 @@ export default class AccordionList extends Component {
         section.name &&
         (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
       ) {
-        rows.push({ type: "header", section, sectionIndex, isLastSection });
+        if (
+          !searchable ||
+          !hideEmptySectionsInSearch ||
+          this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+        ) {
+          rows.push({ type: "header", section, sectionIndex, isLastSection });
+        }
       } else {
         rows.push({
           type: "header-hidden",
@@ -476,9 +491,11 @@ const AccordionListCell = ({
   renderItemIcon,
   renderItemExtra,
   renderItemWrapper,
+  renderSearchSection,
   searchText,
   onChangeSearchText,
   searchPlaceholder,
+  searchInputProps,
   showItemArrows,
   itemTestId,
   getItemClassName,
@@ -542,16 +559,25 @@ const AccordionListCell = ({
       </div>
     );
   } else if (type === "search") {
-    content = (
-      <ListSearchField
-        hasClearButton
-        className="bg-white m1"
-        onChange={onChangeSearchText}
-        value={searchText}
-        placeholder={searchPlaceholder}
-        autoFocus
-      />
-    );
+    const searchFieldProps = {
+      autoFocus: true,
+      hasClearButton: true,
+      value: searchText,
+      onChange: onChangeSearchText,
+      placeholder: searchPlaceholder,
+      ...searchInputProps,
+    };
+    content =
+      typeof renderSearchSection === "function" ? (
+        renderSearchSection(
+          <ListSearchField
+            {...searchFieldProps}
+            className="bg-white flex flex-full"
+          />,
+        )
+      ) : (
+        <ListSearchField {...searchFieldProps} className="bg-white m1" />
+      );
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex);

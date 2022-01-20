@@ -1,7 +1,7 @@
 Cypress.Commands.add(
-  "addH2SampleDataset",
+  "addH2SampleDatabase",
   ({ name, auto_run_queries = false, is_full_sync = false } = {}) => {
-    cy.log(`Add another H2 sample dataset DB called "${name}"`);
+    cy.log(`Add another H2 sample database DB called "${name}"`);
     cy.request("POST", "/api/database", {
       engine: "h2",
       name,

@@ -3,9 +3,9 @@ import {
   popover,
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 // This token (simliar to what's done in parameters-embedded.cy.spec.js) just encodes the dashboardId=2 and dashboard parameters
 // See this link for details: https://jwt.io/#debugger-io?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjJ9LCJwYXJhbXMiOnt9LCJpYXQiOjE2MDc5NzUwMTMsIl9lbWJlZGRpbmdfcGFyYW1zIjp7InN0YXRlIjoiZW5hYmxlZCIsImNpdHkiOiJlbmFibGVkIn19.nqy_ibysLb6QB9o3loG5SNgOoE5HdexuUjCjA_KS1kM

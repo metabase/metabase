@@ -110,7 +110,7 @@ Form.contextTypes = {
   style: PropTypes.object,
 };
 
-export class CustomFormField extends React.Component {
+class RawCustomFormField extends React.Component {
   static contextTypes = {
     fields: PropTypes.object,
     formFieldsByName: PropTypes.object,
@@ -141,8 +141,18 @@ export class CustomFormField extends React.Component {
       this.context.unregisterFormField(this._getFieldDefinition());
     }
   }
+
+  onChange = (...args) => {
+    const { name, onChange } = this.props;
+    const { fields } = this.context;
+    const field = getIn(fields, name.split("."));
+
+    field.onChange(...args);
+    onChange(...args);
+  };
+
   render() {
-    const { name } = this.props;
+    const { name, innerRef } = this.props;
     const { fields, formFieldsByName, values, onChangeField } = this.context;
 
     const field = getIn(fields, name.split("."));
@@ -151,21 +161,37 @@ export class CustomFormField extends React.Component {
       return null;
     }
 
+    const hasCustomOnChangeHandler = typeof this.props.onChange === "function";
+
     const props = {
       ...this.props,
       values,
       onChangeField,
-      field,
       formField,
+      field: hasCustomOnChangeHandler
+        ? {
+            ...field,
+            onChange: this.onChange,
+          }
+        : field,
     };
+
+    const hasCustomWidget =
+      !formField.type && typeof formField.widget === "function";
+
+    const Widget = hasCustomWidget ? formField.widget : FormWidget;
 
     return (
       <FormField {...props}>
-        <FormWidget {...props} />
+        <Widget {...props} ref={innerRef} />
       </FormField>
     );
   }
 }
+
+export const CustomFormField = React.forwardRef((props, ref) => (
+  <RawCustomFormField {...props} innerRef={ref} />
+));
 
 export const CustomFormSubmit = (
   { children, ...props },

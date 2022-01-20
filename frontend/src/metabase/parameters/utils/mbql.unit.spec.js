@@ -4,7 +4,7 @@ import {
   numberParameterValueToMBQL,
   parameterToMBQLFilter,
 } from "./mbql";
-import { metadata, PRODUCTS } from "__support__/sample_dataset_fixture";
+import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 
 describe("parameters/utils/mbql", () => {
   describe("dateParameterValueToMBQL", () => {

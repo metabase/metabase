@@ -9,9 +9,9 @@ import {
   openNotebookEditor,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // test various entry points into the query builder
 
@@ -94,7 +94,7 @@ describe("scenarios > question > new", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
       browse().click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
     });
@@ -124,7 +124,7 @@ describe("scenarios > question > new", () => {
           .findByTestId("search-result-item-name")
           .click();
         cy.url().should("include", "question#");
-        cy.findByText("Sample Dataset");
+        cy.findByText("Sample Database");
         cy.findByText("Orders");
       });
     });
@@ -153,7 +153,7 @@ describe("scenarios > question > new", () => {
         visualize();
 
         cy.url().should("include", "question#");
-        cy.findByText("Sample Dataset");
+        cy.findByText("Sample Database");
         cy.findByText("Orders");
       });
     });
@@ -260,7 +260,7 @@ describe("scenarios > question > new", () => {
     it("should load orders table", () => {
       cy.visit("/question/new");
       cy.contains("Simple question").click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
     });
@@ -345,7 +345,7 @@ describe("scenarios > question > new", () => {
       // this url check is just to give some time for the render to finish
       cy.url().should("include", "/question#");
 
-      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Dataset)
+      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
         .should("contain", 2) // quantity for order ID#1
         .click();
@@ -384,7 +384,8 @@ describe("scenarios > question > new", () => {
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
 
-          cy.findByText("Created At")
+          cy.findAllByText("Created At")
+            .eq(0)
             .closest("li")
             .contains("by month")
             // realHover() or mousemove don't work for whatever reason
@@ -435,7 +436,7 @@ describe("scenarios > question > new", () => {
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       visualize();
@@ -445,7 +446,7 @@ describe("scenarios > question > new", () => {
 
     it("should show a table info popover when hovering over the table name in the header", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       visualize();

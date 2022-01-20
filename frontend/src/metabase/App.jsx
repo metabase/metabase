@@ -44,7 +44,7 @@ const getErrorComponent = ({ status, data, context }) => {
   }
 };
 
-const PATHS_WITHOUT_NAVBAR = [/\/dataset\/.*\/query/];
+const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
 @connect(mapStateToProps)
 export default class App extends Component {
