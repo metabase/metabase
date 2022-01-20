@@ -75,7 +75,6 @@
   "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `actual` diff that's not
   in the original `expected` form."
   [expected actual]
-  (println "(pr-str expected) (pr-str actual):" (pr-str expected) (pr-str actual)) ; NOCOMMIT
   (cond
     (and (map? expected) (map? actual))
     (into {}
