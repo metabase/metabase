@@ -63,7 +63,7 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
-Once you're happy with your filter, click **Add filter**, and visualize your results, and your data will be updated with the filter applied. 
+Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied. 
 
 ![An active filter](./images/notebook/filter-badge.png)
 
@@ -84,7 +84,7 @@ If your Metabase administrators have created special named filters for the table
 
 ![Filter expression](./images/expressions/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
+If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](expressions-list.md).
 
 ## Summarizing and grouping by
 
@@ -171,7 +171,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 ![Custom column](./images/expressions/custom-column.png)
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Note that columns you add in a custom question are not permanently added to your table; they'll only be present in the given question.
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. 
 

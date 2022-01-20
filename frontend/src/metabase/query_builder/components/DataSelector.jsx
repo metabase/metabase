@@ -1464,9 +1464,7 @@ const TablePicker = ({
             {t`Is a question missing?`}
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "users-guide/custom-questions",
-                "picking-your-starting-data",
-              )}
+                "users-guide/referencing-saved-questions-in-queries")}
               target="_blank"
               className="block link"
             >
