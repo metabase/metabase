@@ -31,6 +31,7 @@ QuestionModerationSection.propTypes = {
   removeCardReview: PropTypes.func.isRequired,
   isModerator: PropTypes.bool.isRequired,
   renderActions: PropTypes.func,
+  reviewBannerClassName: PropTypes.string,
 };
 
 function QuestionModerationSection({
@@ -39,6 +40,7 @@ function QuestionModerationSection({
   removeCardReview,
   isModerator,
   renderActions,
+  reviewBannerClassName,
 }) {
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
@@ -63,6 +65,7 @@ function QuestionModerationSection({
       />
       {latestModerationReview && (
         <ModerationReviewBanner
+          className={reviewBannerClassName}
           moderationReview={latestModerationReview}
           onRemove={isModerator && onRemoveModerationReview}
         />
