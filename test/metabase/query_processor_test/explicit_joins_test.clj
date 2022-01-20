@@ -664,7 +664,7 @@
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
                     ["2016-08-01T00:00:00Z" 2 nil nil]]
                    (mt/formatted-rows [str int str int]
-                     (qp/process-query query))))))))))                   
+                     (qp/process-query query))))))))))
 
 (deftest join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
