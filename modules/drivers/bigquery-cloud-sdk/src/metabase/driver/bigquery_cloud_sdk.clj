@@ -24,7 +24,7 @@
                                       BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
                                       Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
                                       TableResult]
-           (clojure.lang PersistentList)))
+           clojure.lang.PersistentList))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 

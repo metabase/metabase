@@ -480,7 +480,7 @@
 
 (deftest query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "Google Sheets external tables can be queried via BigQuery"
+    (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
       ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on
       ;; https://docs.google.com/spreadsheets/d/1ETIY759w8Xd8ZXcL-IullMxWjKdO-sKSIUOfG1KYh8U/edit?usp=sharing
       ;; the service account to which our CI credentials are associated:
