@@ -17,8 +17,7 @@
             [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
-            [pjstadig.humane-test-output :as humane-test-output]
-            [metabase.util :as u]))
+            [pjstadig.humane-test-output :as humane-test-output]))
 
 ;; initialize Humane Test Output if it's not already initialized.
 (humane-test-output/activate!)
@@ -167,13 +166,9 @@
 
   To use our test runner from the REPL, use [[run]] instead."
   [options]
-  (let [start-ms    (System/currentTimeMillis)
-        summary     (run (tests options) options)
-        duration-ms (- (System/currentTimeMillis) start-ms)
-        fail?       (pos? (+ (:error summary) (:fail summary)))]
+  (let [summary (run (tests options) options)
+        fail?   (pos? (+ (:error summary) (:fail summary)))]
     (pprint/pprint summary)
-    (printf "Ran %d tests in parallel, %d single-threaded in %s.\n"
-            (:parallel summary 0) (:single-threaded summary 0)
-            (u/format-milliseconds duration-ms))
+    (printf "Ran %d tests in parallel, %d single-threaded.\n" (:parallel summary 0) (:single-threaded summary 0))
     (println (if fail? "Tests failed." "All tests passed."))
     (System/exit (if fail? 1 0))))
