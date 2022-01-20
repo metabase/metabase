@@ -666,7 +666,7 @@
                  (some-> (qp/query->native query) :query pretty-sql))))))))
 
 (deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
-  (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary"
+  (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
       (mt/dataset sample-dataset
         (let [query (mt/mbql-query people
