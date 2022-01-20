@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.analytics.snowplow-test :as snowplow-test]
             [metabase.api.setup :as setup-api]
             [metabase.email :as email]
             [metabase.events :as events]
@@ -92,25 +93,31 @@
 
 (deftest invite-user-test
   (testing "POST /api/setup"
-    (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully"
+    (testing "Check that a second admin can be created during setup, and that an invite email is sent successfully and
+             a Snowplow analytics event is sent"
       (mt/with-fake-inbox
-        (let [email (mt/random-email)
-              first-name (mt/random-name)
-              last-name (mt/random-name)
-              invitor-first-name (mt/random-name)]
-          (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
-                       :user {:first_name invitor-first-name}
-                       :site_name "Metabase"}
-            (let [invited-user (User :email email)]
-              (is (= (:first_name invited-user) first-name))
-              (is (= (:last_name invited-user) last-name))
-              (is (:is_superuser invited-user)))
-            (let [invite-email (-> (mt/regex-email-bodies
-                                    (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
-                                   (get email)
-                                   first)]
-             (is (= {(str invitor-first-name " could use your help setting up Metabase.*") true}
-                    (:body invite-email))))))))
+        (snowplow-test/with-fake-snowplow-collector
+          (let [email (mt/random-email)
+                first-name (mt/random-name)
+                last-name (mt/random-name)
+                invitor-first-name (mt/random-name)]
+            (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
+                         :user {:first_name invitor-first-name}
+                         :site_name "Metabase"}
+              (let [invited-user (User :email email)]
+                (is (= (:first_name invited-user) first-name))
+                (is (= (:last_name invited-user) last-name))
+                (is (:is_superuser invited-user))
+                (is (partial= [{:data {"event"           "invite_sent",
+                                       "invited_user_id" (u/the-id invited-user)
+                                       "source"          "setup"}}]
+                              (snowplow-test/pop-event-data-and-user-id!))))
+              (let [invite-email (-> (mt/regex-email-bodies
+                                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
+                                     (get email)
+                                     first)]
+                (is (= {(str invitor-first-name " could use your help setting up Metabase.*") true}
+                       (:body invite-email)))))))))
 
     (testing "No second user is created if email is not set up"
       (mt/with-temporary-setting-values [email-smtp-host nil]

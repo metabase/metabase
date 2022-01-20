@@ -13,7 +13,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(def ^:dynamic ^:private *snowplow-collector*
+(def ^:dynamic *snowplow-collector*
   "Fake Snowplow collector"
   (atom []))
 
@@ -36,13 +36,13 @@
         context (->> event .getContext first .getMap normalize-map)]
     (swap! *snowplow-collector* conj {:properties properties, :subject subject, :context context})))
 
-(defn- do-with-fake-snowplow-collector
+(defn do-with-fake-snowplow-collector
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
-  (mt/with-temporary-setting-values [snowplow-available true]
-    (binding [*snowplow-collector* (atom [])]
-      (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
-        (f)))))
+  (mt/with-temporary-setting-values [snowplow-available    true
+                                     anon-tracking-enabled true]
+    (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
+      (f))))
 
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
@@ -57,7 +57,7 @@
   []
   (reset! *snowplow-collector* []))
 
-(defn- pop-event-data-and-user-id!
+(defn pop-event-data-and-user-id!
   "Returns a vector containing the event data from each tracked event in the Snowplow collector as well as the user ID
   of the profile associated with each event, and clears the collector."
   []
@@ -81,46 +81,45 @@
   (with-fake-snowplow-collector
     (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
            with keys converted into snake-case strings, and the subject's user ID being converted to a string."
-      (mt/with-temporary-setting-values [anon-tracking-enabled true]
-        (snowplow/track-event! ::snowplow/new-instance-created)
-        (is (= [{:data    {"event" "new_instance_created"}
-                 :user-id nil}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/new-instance-created)
+      (is (= [{:data    {"event" "new_instance_created"}
+               :user-id nil}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/new-user-created 1)
-        (is (= [{:data    {"event" "new_user_created"}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/new-user-created 1)
+      (is (= [{:data    {"event" "new_user_created"}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2, :source "admin"})
-        (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/invite-sent 1 {:invited-user-id 2, :source "admin"})
+      (is (= [{:data    {"invited_user_id" 2, "event" "invite_sent", "source" "admin"}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
-        (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
+      (is (= [{:data    {"dashboard_id" 1, "event" "dashboard_created"}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/question-added-to-dashboard 1 {:dashboard-id 1, :question-id 2})
-        (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/question-added-to-dashboard 1 {:dashboard-id 1, :question-id 2})
+      (is (= [{:data    {"dashboard_id" 1, "event" "question_added_to_dashboard", "question_id" 2}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/database-connection-successful
-                               1
-                               {:database :postgres, :database-id 1, :source :admin})
-        (is (= [{:data    {"database" "postgres"
-                           "database_id" 1
-                           "event" "database_connection_successful"
-                           "source" "admin"}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!)))
+      (snowplow/track-event! ::snowplow/database-connection-successful
+                             1
+                             {:database :postgres, :database-id 1, :source :admin})
+      (is (= [{:data    {"database" "postgres"
+                         "database_id" 1
+                         "event" "database_connection_successful"
+                         "source" "admin"}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
-        (snowplow/track-event! ::snowplow/database-connection-failed 1 {:database :postgres, :source :admin})
-        (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
-                 :user-id "1"}]
-               (pop-event-data-and-user-id!))))
+      (snowplow/track-event! ::snowplow/database-connection-failed 1 {:database :postgres, :source :admin})
+      (is (= [{:data    {"database" "postgres", "event" "database_connection_failed", "source" "admin"}
+               :user-id "1"}]
+             (pop-event-data-and-user-id!)))
 
       (testing "Snowplow events are not sent when tracking is disabled"
         (mt/with-temporary-setting-values [anon-tracking-enabled false]
