@@ -27,7 +27,7 @@ Note that there are some kinds of saved questions that can't be used as source d
 
 ## The query builder
 
-Once you select your data, Metabase will take you to the notebook editor of the query builder. Say you selected **Raw data** > **Sample Dataset** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample databse** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](./images/asking-questions/notebook-editor.png)
 
@@ -143,7 +143,7 @@ Some grouping columns will give you the option of choosing how big or small to m
 
 ![Multiple groupings](./images/notebook/histogram-bins.png)
 
-Once you're done setting your metrics and groupings, click **Done** to close the Summarize sidebar and see your results in all their glory.
+Once you're done setting your metrics and groupings, click **Visualize** to see your results in all their glory.
 
 ## Visualizing your data
 

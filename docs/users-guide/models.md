@@ -1,6 +1,6 @@
 # Models
 
-Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions.
+Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. You can base a model on a SQL or query builder question, which means you can include custom, calculated columns in your model.
 
 Models:
 
@@ -12,7 +12,7 @@ Models:
 
 You can use models to:
 
-- Create, uh, models, with model here meaning a simplified description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
+- Create, uh, models, with model here meaning an intuitive description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
 - Create summary tables that aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
@@ -29,7 +29,9 @@ First, search for models that already exist. If you can't find one that meets yo
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+
+If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
 ### Display name
 
@@ -45,12 +47,10 @@ You can set the [column type][column-type]. The default is "No special type". Be
 
 ## This column should appear in...
 
+You can specify whether a column should appear in the table view, or just in a detail view (when you click on the entity/primary key for the row).
+
 - Table and detail views
 - Detail views only
-
-### Column settings
-
-You can specify whether a column should appear in the table view, or just in a detail view (when you click on the entity/primary key for the row).
 
 ### Display as
 
