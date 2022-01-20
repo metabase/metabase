@@ -65,7 +65,7 @@ function getFieldType(type) {
   return cy
     .findByText("Field Type")
     .closest("section")
-    .find(".AdminSelect-content")
+    .find(".select-button-content")
     .contains(type);
 }
 

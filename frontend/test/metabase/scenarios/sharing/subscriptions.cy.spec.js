@@ -136,15 +136,15 @@ describe("scenarios > dashboard > subscriptions", () => {
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       cy.findByText("To:").click();
-      cy.get(".AdminSelect")
+      cy.findByTestId("select-button")
         .contains("Hourly")
         .click();
       cy.findByText("Monthly").click();
-      cy.get(".AdminSelect")
+      cy.findByTestId("select-button")
         .contains("First")
         .click();
       cy.findByText("15th (Midpoint)").click();
-      cy.get(".AdminSelect")
+      cy.findByTestId("select-button")
         .contains("15th (Midpoint)")
         .click();
       cy.findByText("First").click();

@@ -82,7 +82,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -150,7 +150,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -215,7 +215,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findByTestId("select-button-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();

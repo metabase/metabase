@@ -343,7 +343,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText(NEW_COLLECTION).click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains(NEW_COLLECTION);
+      cy.findByTestId("select-button-content").contains(NEW_COLLECTION);
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")
@@ -383,7 +383,7 @@ describe("scenarios > collection_defaults", () => {
           .click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains("Our analytics");
+      cy.findByTestId("select-button-content").contains("Our analytics");
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")

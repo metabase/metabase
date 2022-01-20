@@ -53,7 +53,7 @@ describe("scenarios > filters > sql filters > field filter > Category", () => {
 
     cy.findByText("Filter widget type")
       .parent()
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .contains("String");
   });
 });

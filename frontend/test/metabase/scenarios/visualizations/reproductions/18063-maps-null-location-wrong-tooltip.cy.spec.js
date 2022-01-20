@@ -19,7 +19,7 @@ describe.skip("issue 18063", () => {
 
     // Select a Pin map
     cy.findByTestId("viz-settings-button").click();
-    cy.get(".AdminSelect")
+    cy.findByTestId("select-button")
       .contains("Region map")
       .click();
 

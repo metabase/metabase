@@ -31,6 +31,7 @@ const SelectButton = forwardRef(function SelectButton(
 ) {
   return (
     <SelectButtonRoot
+      data-testid="select-button"
       innerRef={ref as any}
       className={className}
       style={style}
@@ -40,7 +41,9 @@ const SelectButton = forwardRef(function SelectButton(
       {...rest}
     >
       {React.isValidElement(left) && left}
-      <SelectButtonContent>{children}</SelectButtonContent>
+      <SelectButtonContent data-testid="select-button-content">
+        {children}
+      </SelectButtonContent>
       <SelectButtonIcon name="chevrondown" size={12} />
     </SelectButtonRoot>
   );
