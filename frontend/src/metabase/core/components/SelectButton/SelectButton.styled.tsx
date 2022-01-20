@@ -1,16 +1,13 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
 }
 
-export const SelectButtonRoot = forwardRefToInnerRef(styled.button<
-  SelectButtonRootProps
->`
+export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   display: flex;
   width: ${props => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
@@ -34,7 +31,7 @@ export const SelectButtonRoot = forwardRefToInnerRef(styled.button<
     color: ${color("text-medium")};
     pointer-events: none;
   }
-`);
+`;
 
 export const SelectButtonIcon = styled(Icon)`
   display: flex;

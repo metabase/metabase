@@ -29,7 +29,7 @@ const SelectButton = forwardRef(function SelectButton(
 ) {
   return (
     <SelectButtonRoot
-      ref={ref}
+      innerRef={ref as any}
       className={className}
       style={style}
       hasValue={hasValue}
