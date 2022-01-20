@@ -30,6 +30,7 @@ QuestionModerationSection.propTypes = {
   verifyCard: PropTypes.func.isRequired,
   removeCardReview: PropTypes.func.isRequired,
   isModerator: PropTypes.bool.isRequired,
+  renderActions: PropTypes.func,
 };
 
 function QuestionModerationSection({
@@ -37,6 +38,7 @@ function QuestionModerationSection({
   verifyCard,
   removeCardReview,
   isModerator,
+  renderActions,
 }) {
   const latestModerationReview = getLatestModerationReview(
     question.getModerationReviews(),
@@ -57,7 +59,7 @@ function QuestionModerationSection({
       <ModerationActions
         moderationReview={latestModerationReview}
         onVerify={isModerator && onVerify}
-        isDataset={question.isDataset()}
+        renderActions={renderActions}
       />
       {latestModerationReview && (
         <ModerationReviewBanner

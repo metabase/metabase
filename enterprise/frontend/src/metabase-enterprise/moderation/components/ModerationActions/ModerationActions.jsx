@@ -13,28 +13,38 @@ ModerationActions.propTypes = {
   onVerify: PropTypes.func,
   moderationReview: PropTypes.object,
   isDataset: PropTypes.bool,
+  renderActions: PropTypes.func,
 };
+
+function defaultRender({ className, isVerified, onVerify, testID }) {
+  return (
+    <Container className={className}>
+      {!isVerified && (
+        <VerifyButton data-testid={testID} onClick={onVerify}>
+          {t`Verify this question`}
+        </VerifyButton>
+      )}
+    </Container>
+  );
+}
 
 function ModerationActions({
   moderationReview,
   className,
   onVerify,
-  isDataset,
+  renderActions = defaultRender,
 }) {
   const isVerified = isItemVerified(moderationReview);
   const hasActions = !!onVerify;
 
-  const buttonTitle = isDataset
-    ? t`Verify this model`
-    : t`Verify this question`;
+  if (!hasActions) {
+    return null;
+  }
 
-  return hasActions ? (
-    <Container className={className}>
-      {!isVerified && (
-        <VerifyButton data-testid="moderation-verify-action" onClick={onVerify}>
-          {buttonTitle}
-        </VerifyButton>
-      )}
-    </Container>
-  ) : null;
+  return renderActions({
+    className,
+    isVerified,
+    onVerify,
+    testID: "moderation-verify-action",
+  });
 }
