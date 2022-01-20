@@ -65,7 +65,7 @@ function getFieldType(type) {
   return cy
     .findByText("Field Type")
     .closest("section")
-    .find(".select-button-content")
+    .find("[data-testid='select-button-content']")
     .contains(type);
 }
 

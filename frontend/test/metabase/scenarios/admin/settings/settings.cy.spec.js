@@ -197,7 +197,7 @@ describe("scenarios > admin > settings", () => {
 
     cy.contains("Date style")
       .closest("li")
-      .findByTestId("select-button")
+      .find("[data-testid='select-button']")
       .first()
       .click();
     cy.findByText("2018/1/7").click({ force: true });
