@@ -665,6 +665,23 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/query->native query) :query pretty-sql))))))))
 
+(deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+  (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary"
+    (mt/test-driver :postgres
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query people
+                      {:fields [!month.birth_date
+                                !month.created_at
+                                !month.id]
+                       :limit  1})]
+          (is (sql= '{:select [date_trunc ("month" people.birth_date)             AS birth_date
+                               date_trunc ("month" people.created_at)             AS created_at
+                               ;; non-temporal types should still get casted.
+                               date_trunc ("month" CAST (people.id AS timestamp)) AS id]
+                      :from   [people]
+                      :limit  [1]}
+                    query)))))))
+
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
     (if (System/getenv "MB_POSTGRES_SSL_TEST_SSL")

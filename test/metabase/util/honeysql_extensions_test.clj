@@ -110,11 +110,12 @@
     (is (= ["SELECT 0.1 AS one_tenth"]
            (hsql/format {:select [[(/ 1 10) :one_tenth]]})))))
 
+(defn- ->sql [expr]
+  (hsql/format {:select [expr]}))
+
 (deftest maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"
-    (letfn [(->sql [expr]
-              (hsql/format {:select [expr]}))
-            (maybe-cast [expr]
+    (letfn [(maybe-cast [expr]
               (->sql (hx/maybe-cast "text" expr)))]
       (is (= ["SELECT CAST(field AS text)"]
              (maybe-cast :field)))
@@ -135,6 +136,16 @@
                  (hx/maybe-cast "text" (hx/maybe-cast "text" :field))))
           (is (= ["SELECT CAST(field AS text)"]
                  (maybe-cast (hx/maybe-cast "text" :field)))))))))
+
+(deftest cast-unless-type-in-test
+  (letfn [(cast-unless-type-in [expr]
+            (first (->sql (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz"} expr))))]
+    (is (= "SELECT field"
+           (cast-unless-type-in (hx/with-type-info :field {::hx/database-type "timestamp"}))))
+    (is (= "SELECT field"
+           (cast-unless-type-in (hx/with-type-info :field {::hx/database-type "timestamptz"}))))
+    (is (= "SELECT CAST(field AS timestamp)"
+           (cast-unless-type-in (hx/with-type-info :field {::hx/database-type "date"}))))))
 
 (def ^:private typed-form (hx/with-type-info :field {::hx/database-type "text"}))
 
