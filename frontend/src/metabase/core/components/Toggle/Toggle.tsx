@@ -3,6 +3,7 @@ import React, {
   InputHTMLAttributes,
   forwardRef,
   useCallback,
+  Ref,
 } from "react";
 import { ToggleRoot } from "./Toggle.styled";
 
@@ -17,7 +18,7 @@ export interface ToggleProps
 
 const Toggle = forwardRef(function Toggle(
   { className, value, small, color, onChange, ...rest }: ToggleProps,
-  ref: any,
+  ref: Ref<HTMLInputElement>,
 ): JSX.Element {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -29,7 +30,7 @@ const Toggle = forwardRef(function Toggle(
   return (
     <ToggleRoot
       {...rest}
-      innerRef={ref}
+      innerRef={ref as any}
       className={className}
       type="checkbox"
       checked={value}
