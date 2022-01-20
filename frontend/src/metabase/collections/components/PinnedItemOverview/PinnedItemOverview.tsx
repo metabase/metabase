@@ -2,7 +2,8 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import PinnedItemCard from "metabase/collections/components/PinnedItemCard/PinnedItemCard";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 
@@ -11,11 +12,20 @@ import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 type Props = {
   items: Item[];
   collection: Collection;
+  metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
+  onCardTitleClick: (state: unknown) => void;
 };
 
-function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
+function PinnedItemOverview({
+  items,
+  collection,
+  metadata,
+  onCopy,
+  onMove,
+  onCardTitleClick,
+}: Props) {
   const sortedItems = _.sortBy(items, item => item.name);
   const {
     card: cardItems = [],
@@ -32,8 +42,10 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
               key={item.id}
               item={item}
               collection={collection}
+              metadata={metadata}
               onCopy={onCopy}
               onMove={onMove}
+              onCardTitleClick={onCardTitleClick}
             />
           ))}
         </Grid>

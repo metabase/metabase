@@ -3,11 +3,14 @@ import React, { useState, useCallback } from "react";
 import { Box } from "grid-styled";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getMetadata } from "metabase/selectors/metadata";
+import { question as questionUrl } from "metabase/lib/urls";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -31,8 +34,13 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 function mapStateToProps(state) {
   return {
     isAdmin: getUserIsAdmin(state),
+    metadata: getMetadata(state),
   };
 }
+
+const mapDispatchToProps = {
+  push,
+};
 
 function CollectionContent({
   collection,
@@ -41,6 +49,8 @@ function CollectionContent({
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
+  metadata,
+  push,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
@@ -107,6 +117,10 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
+  const handleCardTitleClick = ({ nextCard }) => {
+    push(questionUrl(nextCard));
+  };
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -150,9 +164,11 @@ function CollectionContent({
               <PinnedItemOverview
                 items={pinnedItems}
                 collection={collection}
+                metadata={metadata}
                 onMove={handleMove}
                 onCopy={handleCopy}
                 onToggleSelected={toggleItem}
+                onCardTitleClick={handleCardTitleClick}
               />
               <Search.ListLoader
                 query={unpinnedQuery}
@@ -255,5 +271,5 @@ export default _.compose(
     id: (_, props) => props.collectionId,
     reload: true,
   }),
-  connect(mapStateToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(CollectionContent);

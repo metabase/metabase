@@ -1,42 +1,23 @@
 /* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
-import { connect } from "react-redux";
 import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
 import Question from "metabase-lib/lib/Question";
-import { push } from "react-router-redux";
-
-import { getMetadata } from "metabase/selectors/metadata";
-import { question as questionUrl } from "metabase/lib/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-import {
-  HEIGHT,
-  HoverMenu,
-  VizCard,
-} from "./CollectionCardVisualization.styled";
-
-// todo -- move this to containers
-const mapStateToProps = (state, props) => ({
-  metadata: getMetadata(state),
-});
-
-const mapDispatchToProps = {
-  push,
-};
+import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
 
 function CollectionCardVisualization({
   item,
   collection,
   metadata,
-  dispatch,
-  push,
   onCopy,
   onMove,
+  onCardTitleClick,
 }) {
   const handlePin = useCallback(() => {
     item.setPinned(false);
@@ -80,14 +61,10 @@ function CollectionCardVisualization({
                     noWrapper
                   >
                     <Visualization
-                      onChangeCardAndRun={({ nextCard }) =>
-                        push(questionUrl(nextCard))
-                      }
-                      onChangeLocation={push}
+                      onChangeCardAndRun={onCardTitleClick}
                       isDashboard
                       showTitle
                       metadata={metadata}
-                      dispatch={dispatch}
                       {...resultProps}
                     />
                   </LoadingAndErrorWrapper>
@@ -101,7 +78,4 @@ function CollectionCardVisualization({
   );
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(CollectionCardVisualization);
+export default CollectionCardVisualization;
