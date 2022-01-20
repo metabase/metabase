@@ -26,12 +26,12 @@
 }
 
 .Button:focus {
-   outline: 2px solid var(--color-brand-light);
+  outline: 2px solid var(--color-brand-light);
 }
 
 .Button:focus:not(:focus-visible) {
-   outline: none;
- }
+  outline: none;
+}
 
 @media screen and (--breakpoint-min-lg) {
   .Button {
