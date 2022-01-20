@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 
 import Tooltip from "metabase/components/Tooltip";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import { Item, Collection } from "metabase/collections/utils";
 
 import {
   ItemLink,
@@ -14,27 +15,10 @@ import {
   HoverMenu,
 } from "./PinnedItemCard.styled";
 
-type Item = {
-  name: string;
-  description: string | null;
-  collection_position?: number | null;
-  id: number;
-  getIcon: () => { name: string };
-  getUrl: () => string;
-  setArchived: (isArchived: boolean) => void;
-  copy?: boolean;
-  setCollection?: boolean;
-};
-
-type Collection = {
-  can_write: boolean;
-};
-
 type Props = {
   className?: string;
   item: Item;
   collection: Collection;
-  onToggleSelected: (item: Item) => void;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
 };
@@ -43,7 +27,6 @@ function PinnedItemCard({
   className,
   item,
   collection,
-  onToggleSelected,
   onCopy,
   onMove,
 }: Props) {
@@ -63,8 +46,8 @@ function PinnedItemCard({
   };
 
   const handlePin = useCallback(() => {
-    onToggleSelected(item);
-  }, [item, onToggleSelected]);
+    item.setPinned(false);
+  }, [item]);
 
   const handleCopy = useCallback(() => {
     onCopy([item]);
@@ -79,8 +62,8 @@ function PinnedItemCard({
   }, [item]);
 
   return (
-    <ItemLink to={item.getUrl()}>
-      <ItemCard className={className}>
+    <ItemLink className={className} to={item.getUrl()}>
+      <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon} />
