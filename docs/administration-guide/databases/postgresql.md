@@ -32,11 +32,11 @@ Here you can add on to your connection string.
 
 ### Rerun queries for simple exploration
 
-We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.
+We execute the underlying query when you explore data using Summarize or Filter. This is on by default, but you can turn it off if performance is slow.
 
 ### Choose when syncs and scans happen
 
-This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
+This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.
 
 ### Periodically refingerprint tables
 

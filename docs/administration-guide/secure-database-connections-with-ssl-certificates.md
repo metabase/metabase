@@ -42,7 +42,7 @@ You'll need to specify the location of the certificate on the server that's runn
 
 For example, when connecting to a PostgreSQL database, you'll need to add two parameters:
 
-- `sslmode`. You can see the full list of options in PostgreSQL's documentation. We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
+- `sslmode`. You can see the full list of options in [PostgreSQL's documentation](https://www.postgresql.org/docs/current/libpq-ssl.html). We recommend you use `verify-full`; it's the most secure, and overhead is minimal.
 - `sslrootcert`. Here you'll specify the file path for the certificate.
 
 You'll add an ampersand (`&`) to separate each parameter. For example, In the **Add additional connection string options** field, you'd add something like:
@@ -66,3 +66,16 @@ You'll need to include the full connection string here, including the db host, p
 ```
 jdbc:postgresql://db.example.com:port/mydb?user=dbuser&password=dbpassword&ssl=true&sslmode=verify-full&sslrootcert=/path/to/certificate.pem
 ```
+Both can be provided to support mutual authentication scenarios.
+
+## Truststores and keystores
+
+With some databases, like PostgreSQL and Oracle, you can secure connections using truststores and keystores.
+
+### Truststores
+
+If a truststore is provided to verify credentials, the client (your Metabase) can authenticate the server (the database) and ensure its identity is what's expected.
+
+### Keystores
+
+If a keystore is used to provide credentials, then the server (the database server) can request the client (your Metabase) authenticate itself using that keystore. Keystores are used less frequently, and in some cases it's not possible to use a keystore (Amazon's RDS doesn't allow keystores, for example). But you may want to use a keystore if you're hosting on prem.

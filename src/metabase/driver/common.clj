@@ -186,7 +186,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru "Syncing is a lightweight process that checks for updates to this database’s schema..")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
@@ -194,9 +194,7 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
-   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
-                      " "
-                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
+   :description  (deferred-tru "In most cases, you should be fine leaving this set to sync hourly.")
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
