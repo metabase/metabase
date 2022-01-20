@@ -1434,9 +1434,10 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
           (mt/with-model-cleanup [Card]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "card"
-                                         (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
+            (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :rasta :post 403 "card"
+                                               (assoc (card-with-name-and-query) :collection_id (u/the-id collection)))))))))))
 
 (deftest set-card-collection-id-test
   (testing "Should be able to set the Collection ID of a Card in the Root Collection (i.e., `collection_id` is nil)"

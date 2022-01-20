@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { Grid, GridItem } from "metabase/components/Grid";
 import BulkActionBar from "metabase/components/BulkActionBar";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 

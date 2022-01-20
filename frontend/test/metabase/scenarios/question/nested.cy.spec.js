@@ -483,7 +483,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  describe.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+  describe("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
     it("should work with 'between' date filter (metabase#15352-1)", () => {
       assertOnFilter({
         name: "15352-1",
