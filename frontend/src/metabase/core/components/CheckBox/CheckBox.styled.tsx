@@ -4,12 +4,25 @@ import { color } from "metabase/lib/colors";
 
 export const CheckBoxRoot = styled.label`
   display: block;
+  position: relative;
 `;
 
-export const CheckBoxInput = styled.input`
+export interface CheckBoxInputProps {
+  size: number;
+}
+
+export const CheckBoxInput = styled.input<CheckBoxInputProps>`
   appearance: none;
   display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: ${props => `${props.size}px`};
+  height: 100%;
   margin: 0;
+  padding: 0;
+  opacity: 0;
+  z-index: 1;
 `;
 
 export interface CheckBoxContainerProps {
