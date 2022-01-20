@@ -265,7 +265,7 @@
         (thunk)))))
 
 (defmacro with-clock
-  "Same as `t/with-clock`, but adds `testing` context, and also supports using `ZonedDateTime` instances
+  "Same as [[t/with-clock]], but adds [[testing]] context, and also supports using `ZonedDateTime` instances
   directly (converting them to a mock clock automatically).
 
     (mt/with-clock #t \"2019-12-10T00:00-08:00[US/Pacific]\"
