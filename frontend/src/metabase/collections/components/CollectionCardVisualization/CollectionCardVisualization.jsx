@@ -9,6 +9,7 @@ import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
+import { ItemLink } from "../PinnedItemCard/PinnedItemCard.styled";
 import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
 
 function CollectionCardVisualization({
@@ -17,7 +18,6 @@ function CollectionCardVisualization({
   metadata,
   onCopy,
   onMove,
-  onCardTitleClick,
 }) {
   const handlePin = useCallback(() => {
     item.setPinned(false);
@@ -36,45 +36,57 @@ function CollectionCardVisualization({
   }, [item]);
 
   return (
-    <VizCard flat>
-      <HoverMenu
-        item={item}
-        onPin={collection.can_write ? handlePin : null}
-        onMove={collection.can_write && item.setCollection ? handleMove : null}
-        onCopy={item.copy ? handleCopy : null}
-        onArchive={
-          collection.can_write && item.setArchived ? handleArchive : null
-        }
-        analyticsContext={ANALYTICS_CONTEXT}
-      />
-      <Questions.Loader id={item.id}>
-        {({ question: card }) => {
-          const question = new Question(card, metadata);
-          return (
-            <QuestionResultLoader question={question}>
-              {({ loading, error, reload, ...resultProps }) => {
-                const shouldShowLoader = loading && resultProps.results == null;
-                return (
-                  <LoadingAndErrorWrapper
-                    loading={shouldShowLoader}
-                    error={error || resultProps?.result?.error}
-                    noWrapper
-                  >
-                    <Visualization
-                      onChangeCardAndRun={onCardTitleClick}
-                      isDashboard
-                      showTitle
-                      metadata={metadata}
-                      {...resultProps}
-                    />
-                  </LoadingAndErrorWrapper>
-                );
-              }}
-            </QuestionResultLoader>
-          );
-        }}
-      </Questions.Loader>
-    </VizCard>
+    <ItemLink to={item.getUrl()}>
+      <VizCard flat>
+        <div
+          onClick={e => {
+            e.stopPropagation();
+            e.preventDefault();
+          }}
+        >
+          <HoverMenu
+            item={item}
+            onPin={collection.can_write ? handlePin : null}
+            onMove={
+              collection.can_write && item.setCollection ? handleMove : null
+            }
+            onCopy={item.copy ? handleCopy : null}
+            onArchive={
+              collection.can_write && item.setArchived ? handleArchive : null
+            }
+            analyticsContext={ANALYTICS_CONTEXT}
+          />
+        </div>
+        <Questions.Loader id={item.id}>
+          {({ question: card }) => {
+            const question = new Question(card, metadata);
+            return (
+              <QuestionResultLoader question={question}>
+                {({ loading, error, reload, ...resultProps }) => {
+                  const shouldShowLoader =
+                    loading && resultProps.results == null;
+                  return (
+                    <LoadingAndErrorWrapper
+                      loading={shouldShowLoader}
+                      error={error || resultProps?.result?.error}
+                      noWrapper
+                    >
+                      <Visualization
+                        onChangeCardAndRun={_.noop}
+                        isDashboard
+                        showTitle
+                        metadata={metadata}
+                        {...resultProps}
+                      />
+                    </LoadingAndErrorWrapper>
+                  );
+                }}
+              </QuestionResultLoader>
+            );
+          }}
+        </Questions.Loader>
+      </VizCard>
+    </ItemLink>
   );
 }
 

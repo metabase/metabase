@@ -15,7 +15,6 @@ type Props = {
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-  onCardTitleClick: (state: unknown) => void;
 };
 
 function PinnedItemOverview({
@@ -24,7 +23,6 @@ function PinnedItemOverview({
   metadata,
   onCopy,
   onMove,
-  onCardTitleClick,
 }: Props) {
   const sortedItems = _.sortBy(items, item => item.name);
   const {
@@ -45,7 +43,6 @@ function PinnedItemOverview({
               metadata={metadata}
               onCopy={onCopy}
               onMove={onMove}
-              onCardTitleClick={onCardTitleClick}
             />
           ))}
         </Grid>
