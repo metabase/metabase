@@ -66,11 +66,13 @@
       (when-not (some
                  (partial isa? k)
                  ancestor-types)
-        (let [message (tru "Invalid Field {0} {1}" column-name k)]
+        (let [message (tru "Invalid value for Field column {0}: {1} is not an ancestor of any of these types: {2}"
+                           (pr-str k) (pr-str column-name) (pr-str ancestor-types))]
           (throw (ex-info message
-                          {:status-code 400
-                           :errors      {column-name message}
-                           :value       k}))))
+                          {:status-code       400
+                           :errors            {column-name message}
+                           :value             k
+                           :allowed-ancestors ancestor-types}))))
       (u/qualified-name k))))
 
 (defn- hierarchy-keyword-out [column-name & {:keys [fallback-type ancestor-types]}]
