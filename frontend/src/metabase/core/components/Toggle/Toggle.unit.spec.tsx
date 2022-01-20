@@ -9,7 +9,7 @@ describe("Toggle", () => {
 
     render(<Toggle value={false} onChange={onChange} />);
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("switch");
     userEvent.tab();
 
     expect(checkbox).toHaveFocus();
@@ -20,7 +20,7 @@ describe("Toggle", () => {
 
     render(<Toggle value={false} onChange={onChange} />);
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("switch");
     userEvent.tab();
     userEvent.type(checkbox, "{enter}");
 
@@ -32,7 +32,7 @@ describe("Toggle", () => {
 
     render(<Toggle value={false} onChange={onChange} />);
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("switch");
     userEvent.tab();
     userEvent.type(checkbox, "{space}");
 
@@ -44,7 +44,7 @@ describe("Toggle", () => {
 
     render(<Toggle value={false} onChange={onChange} />);
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("switch");
     userEvent.click(checkbox);
 
     expect(checkbox).toHaveFocus();

@@ -10,7 +10,7 @@ import { ToggleRoot } from "./Toggle.styled";
 export interface ToggleProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> {
   className?: string;
-  value: boolean;
+  value?: boolean;
   small?: boolean;
   color?: string;
   onChange?: (value: boolean) => void;
@@ -33,7 +33,9 @@ const Toggle = forwardRef(function Toggle(
       innerRef={ref as any}
       className={className}
       type="checkbox"
+      role="switch"
       checked={value}
+      aria-checked={value}
       small={small}
       currentColor={color}
       onChange={handleChange}
