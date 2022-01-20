@@ -11,12 +11,13 @@ export const HoverMenu = styled(EntityItem.Menu)`
   color: ${color("text-medium")};
 
   position: absolute;
-  top: 3px;
-  right: 3px;
+  top: 5px;
+  right: 5px;
   z-index: 3;
 `;
 
 export const VizCard = styled(Card)`
+  padding: 0.5rem 0;
   position: relative;
   line-height: inherit;
   height: ${HEIGHT}px;
