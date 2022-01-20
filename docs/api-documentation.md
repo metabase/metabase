@@ -23,17 +23,16 @@ Get the list of 10 things the current user has been viewing most recently.
 
 /api/alert endpoints.
 
-  - [DELETE /api/alert/:id](#delete-apialertid)
+  - [DELETE /api/alert/:id/subscription](#delete-apialertidsubscription)
   - [GET /api/alert/](#get-apialert)
   - [GET /api/alert/:id](#get-apialertid)
   - [GET /api/alert/question/:id](#get-apialertquestionid)
   - [POST /api/alert/](#post-apialert)
   - [PUT /api/alert/:id](#put-apialertid)
-  - [PUT /api/alert/:id/unsubscribe](#put-apialertidunsubscribe)
 
-### `DELETE /api/alert/:id`
+### `DELETE /api/alert/:id/subscription`
 
-Delete an Alert. (DEPRECATED -- don't delete a Alert anymore -- archive it instead.).
+Unsubscribes a user from the given alert.
 
 ##### PARAMS:
 
@@ -106,14 +105,6 @@ Update a `Alert` with ID.
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`alert-updates`** 
-
-### `PUT /api/alert/:id/unsubscribe`
-
-Unsubscribes a user from the given alert.
-
-##### PARAMS:
-
-*  **`id`** 
 
 
 ## Automagic dashboards
@@ -385,8 +376,6 @@ Create a new `Card`.
 
 *  **`result_metadata`** value may be nil, or if non-nil, value must be an array of valid results column metadata maps.
 
-*  **`metadata_checksum`** value may be nil, or if non-nil, value must be a non-blank string.
-
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`name`** value must be a non-blank string.
@@ -433,8 +422,10 @@ Run the query associated with a Card.
 
 ### `POST /api/card/:card-id/query/:export-format`
 
-Run the query associated with a Card, and return its results as a file in the specified format. Note that this
-  expects the parameters as serialized JSON in the 'parameters' parameter.
+Run the query associated with a Card, and return its results as a file in the specified format.
+
+  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
+  is normally used to power 'Download Results' buttons that use HTML `form` actions).
 
 ##### PARAMS:
 
@@ -483,6 +474,8 @@ Update a `Card`.
 
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
+*  **`dataset`** value may be nil, or if non-nil, value must be a boolean.
+
 *  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
@@ -490,8 +483,6 @@ Update a `Card`.
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`result_metadata`** value may be nil, or if non-nil, value must be an array of valid results column metadata maps.
-
-*  **`metadata_checksum`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`enable_embedding`** value may be nil, or if non-nil, value must be a boolean.
 
@@ -567,7 +558,7 @@ Fetch a specific Collection's items with the following options:
 
 *  **`id`** 
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -613,7 +604,7 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ##### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `no_models`, `pulse`, `snippet`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -630,15 +621,25 @@ Fetch objects that the current user should see at their root level. As mentioned
 Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
     [{:name     "A"
+      :below    #{:card :dataset}
       :children [{:name "B"}
                  {:name     "C"
+                  :here     #{:dataset :card}
+                  :below    #{:dataset :card}
                   :children [{:name     "D"
+                              :here     #{:dataset}
                               :children [{:name "E"}]}
                              {:name     "F"
+                              :here     #{:card}
                               :children [{:name "G"}]}]}]}
-     {:name "H"}].
+     {:name "H"}]
+
+  The here and below keys indicate the types of items at this particular level of the tree (here) and in its
+  subtree (below).
 
 ##### PARAMS:
+
+*  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -715,6 +716,9 @@ You must be a superuser to do this.
   - [GET /api/dashboard/params/valid-filter-fields](#get-apidashboardparamsvalid-filter-fields)
   - [GET /api/dashboard/public](#get-apidashboardpublic)
   - [POST /api/dashboard/](#post-apidashboard)
+  - [POST /api/dashboard/:dashboard-id/card/:card-id/query](#post-apidashboarddashboard-idcardcard-idquery)
+  - [POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format](#post-apidashboarddashboard-idcardcard-idqueryexport-format)
+  - [POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query](#post-apidashboarddashboard-idcardpivotcard-idquery)
   - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpublic_link)
   - [POST /api/dashboard/:from-dashboard-id/copy](#post-apidashboardfrom-dashboard-idcopy)
   - [POST /api/dashboard/:id/cards](#post-apidashboardidcards)
@@ -897,6 +901,50 @@ Create a new Dashboard.
 
 *  **`dashboard`** 
 
+### `POST /api/dashboard/:dashboard-id/card/:card-id/query`
+
+Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
+
+### `POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format`
+
+Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
+  its results as a file in the specified format.
+
+  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
+  is normally used to power 'Download Results' buttons that use HTML `form` actions).
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
+
+*  **`card-id`** 
+
+*  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+*  **`request-parameters`** 
+
+### `POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query`
+
+Pivot table version of `POST /api/dashboard/:dashboard-id/card/:card-id`.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
+
 ### `POST /api/dashboard/:dashboard-id/public_link`
 
 Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
@@ -1023,19 +1071,21 @@ Update a Dashboard.
 
 Update `Cards` on a Dashboard. Request body should have the form:
 
-    {:cards [{:id     ...
-              :sizeX  ...
-              :sizeY  ...
-              :row    ...
-              :col    ...
-              :series [{:id 123
-                        ...}]} ...]}.
+    {:cards [{:id                 ... ; DashboardCard ID
+              :sizeX              ...
+              :sizeY              ...
+              :row                ...
+              :col                ...
+              :parameter_mappings ...
+              :series             [{:id 123
+                                    ...}]}
+             ...]}.
 
 ##### PARAMS:
 
 *  **`id`** 
 
-*  **`cards`** 
+*  **`cards`** value must be an array. Each value must be a valid DashboardCard map. The array cannot be empty.
 
 
 ## Database
@@ -1052,6 +1102,8 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [GET /api/database/:id/schema/](#get-apidatabaseidschema)
   - [GET /api/database/:id/schema/:schema](#get-apidatabaseidschemaschema)
   - [GET /api/database/:id/schemas](#get-apidatabaseidschemas)
+  - [GET /api/database/:virtual-db/datasets](#get-apidatabasevirtual-dbdatasets)
+  - [GET /api/database/:virtual-db/datasets/:schema](#get-apidatabasevirtual-dbdatasetsschema)
   - [GET /api/database/:virtual-db/metadata](#get-apidatabasevirtual-dbmetadata)
   - [GET /api/database/:virtual-db/schema/:schema](#get-apidatabasevirtual-dbschemaschema)
   - [GET /api/database/:virtual-db/schemas](#get-apidatabasevirtual-dbschemas)
@@ -1061,7 +1113,7 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
   - [POST /api/database/:id/sync](#post-apidatabaseidsync)
   - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
-  - [POST /api/database/sample_dataset](#post-apidatabasesample_dataset)
+  - [POST /api/database/sample_database](#post-apidatabasesample_database)
   - [POST /api/database/validate](#post-apidatabasevalidate)
   - [PUT /api/database/:id](#put-apidatabaseid)
 
@@ -1179,6 +1231,18 @@ Returns a list of all the schemas found for the database `id`.
 
 *  **`id`** 
 
+### `GET /api/database/:virtual-db/datasets`
+
+Returns a list of all the datasets found for the saved questions virtual database.
+
+### `GET /api/database/:virtual-db/datasets/:schema`
+
+Returns a list of Tables for the datasets virtual database.
+
+##### PARAMS:
+
+*  **`schema`** 
+
 ### `GET /api/database/:virtual-db/metadata`
 
 Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
@@ -1262,9 +1326,9 @@ You must be a superuser to do this.
 
 *  **`id`** 
 
-### `POST /api/database/sample_dataset`
+### `POST /api/database/sample_database`
 
-Add the sample dataset as a new `Database`.
+Add the sample database as a new `Database`.
 
 You must be a superuser to do this.
 
@@ -1853,6 +1917,8 @@ Update `Field` with ID.
 
 Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -2725,7 +2791,7 @@ Revert an object to a prior revision.
 ### `GET /api/search/`
 
 Search within a bunch of models for the substring `q`.
-  For the list of models, check `metabase.search.config/searchable-models.
+  For the list of models, check `metabase.search.config/all-models.
 
   To search in archived portions of models, pass in `archived=true`.
   If you want, while searching tables, only tables of a certain DB id,
@@ -2907,8 +2973,6 @@ Send a reset email when user has forgotten their password.
 
 ##### PARAMS:
 
-*  **`server-name`** 
-
 *  **`email`** value must be a valid email address.
 
 *  **`request`** 
@@ -2988,6 +3052,7 @@ You must be a superuser to do this.
 ## Setup
 
   - [GET /api/setup/admin_checklist](#get-apisetupadmin_checklist)
+  - [GET /api/setup/user_defaults](#get-apisetupuser_defaults)
   - [POST /api/setup/](#post-apisetup)
   - [POST /api/setup/validate](#post-apisetupvalidate)
 
@@ -2997,10 +3062,20 @@ Return various "admin checklist" steps and whether they've been completed. You m
 
 You must be a superuser to do this.
 
+### `GET /api/setup/user_defaults`
+
+Returns object containing default user details for initial setup, if configured,
+   and if the provided token value matches the token in the configuration value.
+
+##### PARAMS:
+
+*  **`token`** 
+
 ### `POST /api/setup/`
 
 Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
-  returns a session ID.
+  returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
+  set specific settings from the setup flow.
 
 ##### PARAMS:
 
@@ -3009,6 +3084,8 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 *  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
 
 *  **`allow_tracking`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a boolean. 2) value must be a valid boolean string ('true' or 'false').
+
+*  **`invited_last_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`site_locale`** value may be nil, or if non-nil, String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
@@ -3023,6 +3100,10 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 *  **`password`** password is too common.
 
 *  **`name`** 
+
+*  **`invited_email`** value may be nil, or if non-nil, value must be a valid email address.
+
+*  **`invited_first_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`is_full_sync`** 
 
@@ -3055,7 +3136,14 @@ Validate that we can connect to a database given a set of details.
 
 /api/slack endpoints.
 
+  - [GET /api/slack/manifest](#get-apislackmanifest)
   - [PUT /api/slack/settings](#put-apislacksettings)
+
+### `GET /api/slack/manifest`
+
+Returns the YAML manifest file that should be used to bootstrap new Slack apps.
+
+You must be a superuser to do this.
 
 ### `PUT /api/slack/settings`
 
@@ -3065,11 +3153,9 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`slack-token`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`slack-app-token`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`metabot-enabled`** value must be a boolean.
-
-*  **`slack-settings`** 
+*  **`slack-files-channel`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
 ## Table
@@ -3262,9 +3348,9 @@ You must be a superuser to do this.
 
 `/api/tiles` endpoints.
 
-  - [GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/](#get-apitileszoomxylat-field-idlon-field-idlat-col-idxlon-col-idx)
+  - [GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field](#get-apitileszoomxylat-fieldlon-field)
 
-### `GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/`
+### `GET /api/tiles/:zoom/:x/:y/:lat-field/:lon-field`
 
 This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
@@ -3279,13 +3365,9 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 
 *  **`y`** value must be a valid integer.
 
-*  **`lat-field-id`** value must be an integer greater than zero.
+*  **`lat-field`** value must be a string.
 
-*  **`lon-field-id`** value must be an integer greater than zero.
-
-*  **`lat-col-idx`** value must be a valid integer.
-
-*  **`lon-col-idx`** value must be a valid integer.
+*  **`lon-field`** value must be a string.
 
 *  **`query`** value must be a valid JSON string.
 
@@ -3318,8 +3400,8 @@ Look up a database schema transform.
   - [POST /api/user/](#post-apiuser)
   - [POST /api/user/:id/send_invite](#post-apiuseridsend_invite)
   - [PUT /api/user/:id](#put-apiuserid)
+  - [PUT /api/user/:id/modal/:modal](#put-apiuseridmodalmodal)
   - [PUT /api/user/:id/password](#put-apiuseridpassword)
-  - [PUT /api/user/:id/qbnewb](#put-apiuseridqbnewb)
   - [PUT /api/user/:id/reactivate](#put-apiuseridreactivate)
 
 ### `DELETE /api/user/:id`
@@ -3421,6 +3503,16 @@ Update an existing, active `User`.
 
 *  **`locale`** value may be nil, or if non-nil, String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
+### `PUT /api/user/:id/modal/:modal`
+
+Indicate that a user has been informed about the vast intricacies of 'the' Query Builder.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`modal`** 
+
 ### `PUT /api/user/:id/password`
 
 Update a user's password.
@@ -3432,14 +3524,6 @@ Update a user's password.
 *  **`password`** password is too common.
 
 *  **`old_password`** 
-
-### `PUT /api/user/:id/qbnewb`
-
-Indicate that a user has been informed about the vast intricacies of 'the' Query Builder.
-
-##### PARAMS:
-
-*  **`id`** 
 
 ### `PUT /api/user/:id/reactivate`
 
