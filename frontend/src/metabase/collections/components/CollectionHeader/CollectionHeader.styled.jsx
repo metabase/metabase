@@ -50,8 +50,8 @@ export const DescriptionTooltipIcon = styled(Icon).attrs({
 `;
 
 export const DescriptionHeading = styled.div`
-  font-size: 1.15rem;
-  line-height: 1.7rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
   padding-top: 1.15rem;
   max-width: 400px;
 `;
