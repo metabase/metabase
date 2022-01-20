@@ -22,6 +22,7 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "enable-public-sharing": false,
   "enable-xrays": false,
   engines: createMockEngines(),
+  "is-hosted?": false,
   "deprecation-notice-version": undefined,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,

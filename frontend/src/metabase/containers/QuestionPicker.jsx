@@ -11,7 +11,7 @@ const QuestionPicker = ({ value, onChange, maxHeight, ...props }) => (
     style={maxHeight != null ? { maxHeight } : {}}
     value={value === undefined ? undefined : { model: "card", id: value }}
     onChange={question => onChange(question ? question.id : undefined)}
-    models={["card"]}
+    models={["card", "dataset"]}
   />
 );
 

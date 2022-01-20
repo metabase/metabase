@@ -5,12 +5,14 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
+            [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.models :refer [Card Database Field Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+            [metabase.test.data.interface :as tx]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db])
@@ -174,6 +176,11 @@
 (def ^:private bignumeric-val "-7.5E30")
 (def ^:private bigdecimal-val "5.2E35")
 
+(defn- bigquery-project-id []
+  (-> (tx/db-test-env-var-or-throw :bigquery-cloud-sdk :service-account-json)
+      bigquery.common/service-account-json->service-account-credential
+      (.getProjectId)))
+
 (defmacro with-numeric-types-table [[table-name-binding] & body]
   `(do-with-temp-obj "table_%s"
                      (fn [tbl-nm#] [(str "CREATE TABLE `v3_test_data.%s` AS SELECT "
@@ -276,7 +283,7 @@
                        {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
                                     "67794e631648a002f88d4b7f3ab0bcb6a9ed306a"]})))))
           (testing " has project-id-from-credentials set correctly"
-            (is (= "metabase-bigquery-driver" (get-in temp-db [:details :project-id-from-credentials])))))))))
+            (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
 (deftest bigquery-specific-types-test
   (testing "Table with decimal types"
@@ -399,16 +406,15 @@
                 (mt/with-db (Database db-id)
                   ;; having only changed the driver old->new, the existing card query should produce the same results
                   (check-card-query-res temp-card)
-                  (is (= "metabase-bigquery-driver" (get-in (Database db-id)
-                                                            [:details :project-id-from-credentials]))))))))))))
+                  (is (= (bigquery-project-id)
+                         (get-in (Database db-id)
+                                 [:details :project-id-from-credentials]))))))))))))
 
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
-    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
-          tables       (Table :db_id (u/the-id db-filtered))]
-      (is (not (empty? tables)))
-      (doseq [table (Table :db_id (u/the-id db-filtered))]
-        (assert-table-fn table)))))
+    (sync/sync-database! db-filtered {:scan :schema})
+    (doseq [table (Table :db_id (u/the-id db-filtered))]
+      (assert-table-fn table))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -445,14 +451,29 @@
                                         :db_id (u/the-id db)}]
                       Table    [table2 {:name "Table 2"
                                         :db_id (u/the-id db)}]]
-        ;; so we need to manually update the temp DB again here, to force the "old" structure
-        (let [updated? (db/update! Database (u/the-id db) :details {:dataset-id "my-dataset"})]
-          (is updated?)
-          (let [updated (Database (u/the-id db))]
-            (is (nil? (get-in updated [:details :dataset-id])))
-            ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
-            (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
-            (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
-            (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
-              ;; and the existing tables should have been updated with that schema
-              (is (= "my-dataset" (:schema table))))))))))
+        (let [db-id      (u/the-id db)
+              call-count (atom 0)
+              orig-fn    @#'bigquery/convert-dataset-id-to-filters!]
+          (with-redefs [bigquery/convert-dataset-id-to-filters! (fn [database dataset-id]
+                                                                  (swap! call-count inc)
+                                                                  (orig-fn database dataset-id))]
+            ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
+            (doseq [_ (range 5)]
+              (is (nil? (get-in (Database db-id) [:details :dataset-id]))))
+            ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
+            ;; that runs at the end of creating the temp object, above ^
+            ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
+            ;; queries the domain object, they should see that as having already been done
+            ;; hence, assert it was not called anymore here
+            (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
+          ;; now, so we need to manually update the temp DB again here, to force the "old" structure
+          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+            (is updated?)
+            (let [updated (Database db-id)]
+              (is (nil? (get-in updated [:details :dataset-id])))
+              ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
+              (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))
+              (is (= "inclusion" (get-in updated [:details :dataset-filters-type])))
+              (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
+                ;; and the existing tables should have been updated with that schema
+                (is (= "my-dataset" (:schema table)))))))))))

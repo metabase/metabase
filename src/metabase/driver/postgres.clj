@@ -17,12 +17,13 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models :refer [Field]]
             [metabase.models.secret :as secret]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]]
+            [potemkin :as p]
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
@@ -220,13 +221,15 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
+(p/defrecord+ RegexMatchFirst [identifier pattern]
+  hformat/ToSql
+  (to-sql [_]
+    (str "substring(" (hformat/to-sql identifier) " FROM " (hformat/to-sql pattern) ")")))
+
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (let [col-name (hformat/to-sql (sql.qp/->honeysql driver arg))]
-    (reify
-      hformat/ToSql
-      (to-sql [_]
-        (str "substring(" col-name " FROM " (hformat/to-sql pattern) ")")))))
+  (let [identifier (sql.qp/->honeysql driver arg)]
+    (->RegexMatchFirst identifier pattern)))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
@@ -245,10 +248,12 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defmethod sql.qp/->honeysql [:postgres (class Field)]
-  [driver {database-type :database_type, :as field}]
-  (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
-        identifier    (parent-method driver field)]
+(defmethod sql.qp/->honeysql [:postgres :field]
+  [driver [_ id-or-name _opts :as clause]]
+  (let [{database-type :database_type} (when (integer? id-or-name)
+                                         (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
     (if (= database-type "money")
       (pg-conversion identifier :numeric)
       identifier)))

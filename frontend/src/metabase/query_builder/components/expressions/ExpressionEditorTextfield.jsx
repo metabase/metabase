@@ -12,16 +12,11 @@ import { processSource } from "metabase/lib/expressions/process";
 import { diagnose } from "metabase/lib/expressions/diagnostics";
 import { tokenize } from "metabase/lib/expressions/tokenizer";
 
-import MetabaseSettings from "metabase/lib/settings";
-import colors from "metabase/lib/colors";
-
-import ExternalLink from "metabase/components/ExternalLink";
-import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { isExpression } from "metabase/lib/expressions";
 
+import HelpText from "./ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "./ExpressionEditorSuggestions";
 import {
   EditorContainer,
@@ -32,47 +27,9 @@ import ExpressionMode from "./ExpressionMode";
 
 import "./expressions.css";
 
-const HelpText = ({ helpText, width }) =>
-  helpText ? (
-    <Popover
-      tetherOptions={{
-        attachment: "top left",
-        targetAttachment: "bottom left",
-      }}
-      style={{ width }}
-      isOpen
-    >
-      {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-      <div onMouseDown={e => e.preventDefault()}>
-        <p
-          className="p2 m0 text-monospace text-bold"
-          style={{ background: colors["bg-yellow"] }}
-        >
-          {helpText.structure}
-        </p>
-        <div className="p2 border-top">
-          <p className="mt0 text-bold">{helpText.description}</p>
-          <p className="text-code m0 text-body">{helpText.example}</p>
-        </div>
-        <div className="p2 border-top">
-          {helpText.args.map(({ name, description }, index) => (
-            <div key={index}>
-              <h4 className="text-medium">{name}</h4>
-              <p className="mt1 text-bold">{description}</p>
-            </div>
-          ))}
-          <ExternalLink
-            className="link text-bold block my1"
-            target="_blank"
-            href={MetabaseSettings.docsUrl("users-guide/expressions")}
-          >
-            <Icon name="reference" size={12} className="mr1" />
-            {t`Learn more`}
-          </ExternalLink>
-        </div>
-      </div>
-    </Popover>
-  ) : null;
+import * as ace from "ace-builds/src-noconflict/ace";
+
+ace.config.set("basePath", "/assets/ui/");
 
 const ErrorMessage = ({ error }) => {
   return (
@@ -94,7 +51,11 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [expressionObj, source]
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.number,
+      PropTypes.array,
+    ]),
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -244,6 +205,12 @@ export default class ExpressionEditorTextfield extends React.Component {
     if (this.input.current) {
       const { editor } = this.input.current;
       this.handleCursorChange(editor.selection);
+
+      // workaround some unknown issue on Firefox
+      // without explicit focus, the editor is vertically shifted
+      setTimeout(() => {
+        editor.focus();
+      }, 0);
     }
   };
 

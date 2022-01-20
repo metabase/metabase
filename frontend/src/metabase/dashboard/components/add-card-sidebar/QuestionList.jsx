@@ -37,7 +37,7 @@ export function QuestionList({
 
   query = {
     ...query,
-    models: "card",
+    models: ["card", "dataset"],
     limit: DEFAULT_SEARCH_LIMIT,
   };
 
@@ -61,7 +61,10 @@ export function QuestionList({
                 key={item.id}
                 id={item.id}
                 name={item.getName()}
-                icon={item.getIcon().name}
+                icon={{
+                  name: item.getIcon().name,
+                  size: item.model === "dataset" ? 18 : 16,
+                }}
                 onSelect={onSelect}
                 rightIcon={PLUGIN_MODERATION.getStatusIcon(
                   item.moderated_status,

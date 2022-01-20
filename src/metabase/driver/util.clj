@@ -181,22 +181,21 @@
                 {:name (trs "All except...")
                  :value "exclusion"}]
       :default "all"}
-     {:name        (str prop-name "-info-top-inclusion")
-      :type        :info
-      :placeholder (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
-      :visible-if  {(keyword type-prop-nm) "inclusion"}}
-     {:name        (str prop-name "-info-top-exclusion")
-      :type        :info
-      :placeholder (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
-      :visible-if  {(keyword type-prop-nm) "exclusion"}}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :visible-if  {(keyword type-prop-nm) ["inclusion" "exclusion"]}}
-     {:name (str prop-name "-info-bottom")
-      :type :info
-      :placeholder (trs "You can use patterns like auth* to match multiple {0}" (str/lower-case disp-name))
-      :visible-if {(keyword type-prop-nm) ["inclusion" "exclusion"]}}]))
+      :description (trs "Comma separated names of {0} that <strong>should</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "inclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}
+     {:name (str prop-name "-patterns")
+      :type "text"
+      :placeholder "E.x. public,auth*"
+      :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "exclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}
+      ]))
 
 
 (defn connection-props-server->client

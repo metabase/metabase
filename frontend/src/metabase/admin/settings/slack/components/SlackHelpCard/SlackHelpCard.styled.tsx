@@ -6,9 +6,14 @@ import ExternalLink from "metabase/components/ExternalLink";
 export const CardRoot = styled(ExternalLink)`
   display: block;
   padding: 1.5rem;
+  border: 1px solid ${color("border")};
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 6px ${color("shadow")};
+
+  &:hover {
+    background-color: ${color("bg-light")};
+  }
 `;
 
 export const CardHeader = styled.span`

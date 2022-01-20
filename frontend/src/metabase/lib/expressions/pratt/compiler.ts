@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   /* ALL_ASTYPES */ ADD,
   FIELD,
@@ -37,7 +39,7 @@ type CompileFn = (node: Node, opts: Options) => Expr;
 export function compile(node: Node, opts: Options): Expr {
   assert(node.type === ROOT, "Must be root node");
   if (node.children.length > 1) {
-    throw new CompileError("Unexpected expression", {
+    throw new CompileError(t`Unexpected expression`, {
       node: node.children[1],
       token: node.children[1].token,
     });
@@ -142,7 +144,7 @@ function compileArgList(node: Node, opts: Options): Expr[] {
   return node.children.map(child => {
     const func = getCompileFunction(child);
     if (!func) {
-      throw new CompileError("Invalid node type", { node: child });
+      throw new CompileError(t`Invalid node type`, { node: child });
     }
     const expr = func(child, opts);
     return (expr as any).node ? expr : withNode(expr, child);
@@ -157,7 +159,7 @@ function compileNumber(node: Node): Expr {
   try {
     return parseFloat(node.token.text);
   } catch (err) {
-    throw new CompileError("Invalid number format", {
+    throw new CompileError(t`Invalid number format`, {
       node,
       token: node.token,
     });
@@ -201,16 +203,16 @@ function compileSubtractionOp(node: Node, opts: Options): Expr {
 
 function compileUnaryOp(node: Node) {
   if (node.children.length > 1) {
-    throw new CompileError("Unexpected expression", {
+    throw new CompileError(t`Unexpected expression`, {
       node: node.children[1],
       token: node.children[1].token,
     });
   } else if (node.children.length === 0) {
-    throw new CompileError("Expected expression", { node, token: node.token });
+    throw new CompileError(t`Expected expression`, { node, token: node.token });
   }
   const func = getCompileFunction(node.children[0]);
   if (!func) {
-    throw new CompileError("Invalid node type", {
+    throw new CompileError(t`Invalid node type`, {
       node: node.children[0],
       token: node.children[0].token,
     });
@@ -220,23 +222,23 @@ function compileUnaryOp(node: Node) {
 
 function compileInfixOp(node: Node, opts: Options) {
   if (node.children.length > 2) {
-    throw new CompileError("Unexpected expression", {
+    throw new CompileError(t`Unexpected expression`, {
       node: node.children[2],
       token: node.children[2].token,
     });
   } else if (node.children.length === 0) {
-    throw new CompileError("Expected expression", { node, token: node.token });
+    throw new CompileError(t`Expected expression`, { node, token: node.token });
   }
   const leftFn = getCompileFunction(node.children[0]);
   if (!leftFn) {
-    throw new CompileError("Invalid node type", {
+    throw new CompileError(t`Invalid node type`, {
       node: node.children[0],
       token: node.children[0].token,
     });
   }
   const rightFn = getCompileFunction(node.children[1]);
   if (!rightFn) {
-    throw new CompileError("Invalid node type", {
+    throw new CompileError(t`Invalid node type`, {
       node: node.children[1],
       token: node.children[1].token,
     });
@@ -290,7 +292,7 @@ const COMPILE = new Map<NodeType, CompileFn>([
 function getCompileFunction(node: Node): (node: Node, opts: Options) => Expr {
   const func = COMPILE.get(node.type);
   if (!func) {
-    throw new CompileError("Invalid node type", { node, token: node.token });
+    throw new CompileError(t`Invalid node type`, { node, token: node.token });
   }
   return func;
 }

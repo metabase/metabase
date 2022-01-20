@@ -11,9 +11,53 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sqlserver :as sqlserver]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]))
+
+(deftest fix-order-bys-test
+  (testing "Remove order-by from joins"
+    (let [original {:joins [{:alias        "C3"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]}}
+                            {:alias        "C4"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]
+                                            :limit        10}}]}
+          expected {:joins [{:alias        "C3"
+                             :source-query {:source-table 1}}
+                            {:alias        "C4"
+                             :source-query {:source-table 1
+                                            :order-by     [[:asc [:field 2 nil]]]
+                                            :limit        10}}]}]
+      (is (query= expected
+                  (#'sqlserver/fix-order-bys original)))
+      (testing "Inside `:source-query`"
+        (is (query= {:source-query expected}
+                    (#'sqlserver/fix-order-bys {:source-query original})))))
+
+    (testing "Add limit for :source-query order bys"
+      (mt/$ids nil
+        (let [original {:source-table 1
+                        :order-by     [[:asc 2]]}]
+          (testing "Not in a source query -- don't do anything"
+            (is (query= original
+                        (#'sqlserver/fix-order-bys original))))
+          (testing "In source query -- add `:limit`"
+            (is (query= {:source-query (assoc original :limit qp.i/absolute-max-results)}
+                        (#'sqlserver/fix-order-bys {:source-query original}))))
+          (testing "In source query in source query-- add `:limit` at both levels"
+            (is (query= {:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)
+                                        :order-by     [[:asc [:field 1]]]
+                                        :limit        qp.i/absolute-max-results}}
+                        (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                                   :order-by     [[:asc [:field 1]]]}}))))
+          (testing "In source query inside source query for join -- add `:limit`"
+            (is (query= {:joins [{:source-query {:source-query (assoc original :limit qp.i/absolute-max-results)}}]}
+                        (#'sqlserver/fix-order-bys
+                         {:joins [{:source-query {:source-query original}}]})))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -63,19 +107,15 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query (str "SELECT TOP 1048575 \"source\".\"name\" AS \"name\" "
-                          "FROM ("
-                          "SELECT TOP 1048575 "
-                          "\"dbo\".\"venues\".\"name\" AS \"name\" "
-                          "FROM \"dbo\".\"venues\" "
-                          "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
-                          " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
-              :params nil}
-             (qp/query->native
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :fields       [$name]
-                                :order-by     [[:asc $id]]}})))))))
+      (is (sql= '{:select [TOP 1048575 source.name AS name]
+                  :from   [{:select   [TOP 1048575 dbo.venues.name AS name]
+                            :from     [dbo.venues]
+                            :order-by [dbo.venues.id ASC]}
+                           source]}
+                (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :fields       [$name]
+                                  :order-by     [[:asc $id]]}}))))))
 
 (deftest preserve-existing-top-clauses
   (mt/test-driver :sqlserver

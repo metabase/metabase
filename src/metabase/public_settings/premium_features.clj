@@ -60,10 +60,11 @@
   [token :- ValidToken]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
   ;; reasonable amount of time throw a timeout exception
-  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
+  (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
+                 ;; ValidToken will ensure the length of token is 64 chars long
+                 (str (subs token 0 4) "..." (subs token 60 64))))
   (deref
    (future
-     (log/info (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
                   (http/get {:query-params {:users (active-user-count)}})
                   :body
