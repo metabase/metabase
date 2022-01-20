@@ -4,7 +4,7 @@ import {
   TemplateTagType,
   TemplateTags,
 } from "metabase-types/types/Query";
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 import { checkCanBeModel } from "./utils";
 
 function getNativeQuestion(tags: TemplateTags = {}) {

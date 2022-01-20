@@ -5,7 +5,7 @@ import {
   visitQuestionAdhoc,
   getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS_ID,
@@ -14,7 +14,7 @@ const {
   PEOPLE,
   PRODUCTS_ID,
   PRODUCTS,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const ordersJoinPeopleQuery = {
   type: "query",

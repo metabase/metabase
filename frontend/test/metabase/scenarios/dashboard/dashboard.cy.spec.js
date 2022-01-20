@@ -9,9 +9,9 @@ import {
 } from "__support__/e2e/cypress";
 import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 function saveDashboard() {
   cy.findByText("Save").click();

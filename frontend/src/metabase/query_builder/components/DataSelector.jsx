@@ -294,6 +294,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleDatabase: false,
     hasTableSearch: false,
     canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -456,6 +457,7 @@ export class UnconnectedDataSelector extends Component {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
     const {
+      activeStep,
       selectedDatabase,
       selectedSchema,
       selectedTable,
@@ -467,6 +469,13 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema.database.id !== selectedDatabase.id &&
       selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
+    const onStepMissingSchemaAndTable =
+      !selectedSchema &&
+      !selectedTable &&
+      (activeStep === TABLE_STEP || activeStep === FIELD_STEP);
+
+    const onStepMissingTable = !selectedTable && activeStep === FIELD_STEP;
+
     const invalidTable =
       selectedSchema &&
       selectedTable &&
@@ -477,13 +486,13 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
-    if (invalidSchema) {
+    if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
         selectedTableId: null,
         selectedFieldId: null,
       });
-    } else if (invalidTable) {
+    } else if (invalidTable || onStepMissingTable) {
       await this.switchToStep(TABLE_STEP, {
         selectedTableId: null,
         selectedFieldId: null,
@@ -789,13 +798,14 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedFieldId: field && field.id });
   };
 
-  getTriggerElement() {
+  getTriggerElement = triggerProps => {
     const {
       className,
       style,
       triggerIconSize,
       triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
 
     if (triggerElement) {
@@ -813,8 +823,9 @@ export class UnconnectedDataSelector extends Component {
           selectedDatabase,
           selectedTable,
           selectedField,
+          ...triggerProps,
         })}
-        {!this.props.readOnly && (
+        {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
             className="ml1"
             name="chevrondown"
@@ -823,7 +834,7 @@ export class UnconnectedDataSelector extends Component {
         )}
       </span>
     );
-  }
+  };
 
   getTriggerClasses() {
     if (this.props.triggerClasses) {
@@ -962,6 +973,7 @@ export class UnconnectedDataSelector extends Component {
 
   handleClose = () => {
     this.setState({ searchText: "" });
+    this.props?.onClose();
   };
 
   getSearchInputPlaceholder = () => {
@@ -1022,7 +1034,7 @@ export class UnconnectedDataSelector extends Component {
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         containerClassName={this.props.containerClassName}
-        triggerElement={this.getTriggerElement()}
+        triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}

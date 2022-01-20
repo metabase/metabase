@@ -1,10 +1,10 @@
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ANOTHER_DATABASE,
   ORDERS,
   PRODUCTS,
   MAIN_METRIC_ID,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -12,7 +12,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 function makeDatasetQuery(query = {}) {
   return {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": query["source-query"] ? undefined : ORDERS.id,
       ...query,
@@ -68,12 +68,12 @@ describe("StructuredQuery", () => {
     });
     describe("databaseId", () => {
       it("returns the Database ID of the wrapped query ", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DATASET.id);
+        expect(query.databaseId()).toBe(SAMPLE_DATABASE.id);
       });
     });
     describe("database", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DATASET.id);
+        expect(query.database().id).toBe(SAMPLE_DATABASE.id);
       });
     });
     describe("engine", () => {
@@ -137,7 +137,7 @@ describe("StructuredQuery", () => {
 
       it("retains the correct database id when setting a new table", () => {
         expect(query.setTable(PRODUCTS).table().database.id).toBe(
-          SAMPLE_DATASET.id,
+          SAMPLE_DATABASE.id,
         );
       });
     });

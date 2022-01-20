@@ -568,7 +568,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Dataset, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
   drivers to implement it at this time."
   {:arglists '([driver database table])}
   dispatch-on-initialized-driver

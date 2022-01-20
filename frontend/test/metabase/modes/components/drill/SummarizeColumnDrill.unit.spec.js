@@ -2,7 +2,7 @@
 
 import SummarizeColumnDrill from "metabase/modes/components/drill/SummarizeColumnDrill";
 
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 
 describe("SummarizeColumnDrill", () => {
   it("should not be valid for top level actions", () => {

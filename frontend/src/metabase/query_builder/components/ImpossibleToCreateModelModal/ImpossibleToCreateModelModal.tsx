@@ -1,7 +1,7 @@
 import React from "react";
 import { t, jt } from "ttag";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import ModalContent from "metabase/components/ModalContent";
 

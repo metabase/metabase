@@ -13,8 +13,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   ORDERS,
   PRODUCTS,
-  SAMPLE_DATASET,
-} from "__support__/sample_dataset_fixture";
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
 import JoinStep from "./JoinStep";
 
 // These tests appeared to be flaky, so they're disabled for now
@@ -24,7 +24,7 @@ import JoinStep from "./JoinStep";
 describe.skip("Notebook Editor > Join Step", () => {
   const TEST_QUERY = {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -70,7 +70,7 @@ describe.skip("Notebook Editor > Join Step", () => {
         step={TEST_STEP}
         onChange={onQueryChange}
       />,
-      { withSampleDataset: true },
+      { withSampleDatabase: true },
     );
 
     if (joinTable) {
@@ -175,7 +175,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     xhrMock.get("/api/database", {
       body: JSON.stringify({
         total: 1,
-        data: [SAMPLE_DATASET.getPlainObject()],
+        data: [SAMPLE_DATABASE.getPlainObject()],
       }),
     });
     xhrMock.get("/api/database/1/schemas", {
@@ -183,7 +183,7 @@ describe.skip("Notebook Editor > Join Step", () => {
     });
     xhrMock.get("/api/database/1/schema/PUBLIC", {
       body: JSON.stringify(
-        SAMPLE_DATASET.tables.filter(table => table.schema === "PUBLIC"),
+        SAMPLE_DATABASE.tables.filter(table => table.schema === "PUBLIC"),
       ),
     });
     xhrMock.get("/api/search?models=dataset&limit=1", {
@@ -213,7 +213,7 @@ describe.skip("Notebook Editor > Join Step", () => {
 
     const dataSelector = await screen.findByTestId("data-selector");
 
-    SAMPLE_DATASET.tables.forEach(table => {
+    SAMPLE_DATABASE.tables.forEach(table => {
       const tableName = new RegExp(table.display_name, "i");
       expect(within(dataSelector).queryByText(tableName)).toBeInTheDocument();
     });

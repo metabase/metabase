@@ -12,8 +12,8 @@ import {
   metadata,
   ORDERS,
   PRODUCTS,
-  SAMPLE_DATASET,
-} from "__support__/sample_dataset_fixture";
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
 
 const nestedQuestionCard = {
   table_id: null,
@@ -305,7 +305,7 @@ describe("Dimension", () => {
           });
           const query = new StructuredQuery(question, {
             type: "query",
-            database: SAMPLE_DATASET.id,
+            database: SAMPLE_DATABASE.id,
             query: {
               "source-table": ORDERS.id,
             },
@@ -738,7 +738,7 @@ describe("Dimension", () => {
       function aggregation(agg) {
         const query = new StructuredQuery(ORDERS.question(), {
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [agg],
@@ -851,7 +851,7 @@ describe("Dimension", () => {
     describe("dimension tag (ie a field filter)", () => {
       const templateTagClause = ["template-tag", "foo"];
       const query = new NativeQuery(PRODUCTS.question(), {
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
           query: "select * from PRODUCTS where {{foo}}",
@@ -1002,7 +1002,7 @@ describe("Dimension", () => {
     describe("variable tag", () => {
       const templateTagClause = ["template-tag", "cat"];
       const query = new NativeQuery(PRODUCTS.question(), {
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
           query: "select * from PRODUCTS where CATEGORY = {{cat}}",

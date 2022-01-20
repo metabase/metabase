@@ -6,7 +6,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.util.honeysql_extensions.Identifier))
 
-(deftest format-test
+(deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
     (is (= ["setting"]
            (hformat/format :setting))))
@@ -15,7 +15,7 @@
     (is (= ["\"SETTING\""]
            (hformat/format :setting :quoting :h2)))))
 
-(deftest literal-test
+(deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
     (is (= ["WHERE name = 'Cam'"]
            (hsql/format {:where [:= :name (hx/literal "Cam")]}))))
@@ -104,7 +104,7 @@
       (is (= ["\"SETTING\""]
              (hformat/format :setting :quoting :h2))))))
 
-(deftest ratios-test
+(deftest ^:parallel ratios-test
   (testing (str "test ToSql behavior for Ratios (#9246). Should convert to a double rather than leaving it as a "
                 "division operation. The double itself should get converted to a numeric literal")
     (is (= ["SELECT 0.1 AS one_tenth"]
@@ -113,7 +113,7 @@
 (defn- ->sql [expr]
   (hsql/format {:select [expr]}))
 
-(deftest maybe-cast-test
+(deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"
     (letfn [(maybe-cast [expr]
               (->sql (hx/maybe-cast "text" expr)))]
@@ -137,7 +137,7 @@
           (is (= ["SELECT CAST(field AS text)"]
                  (maybe-cast (hx/maybe-cast "text" :field)))))))))
 
-(deftest cast-unless-type-in-test
+(deftest ^:parallel cast-unless-type-in-test
   (letfn [(cast-unless-type-in [expr]
             (first (->sql (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz"} expr))))]
     (is (= "SELECT field"
@@ -149,12 +149,12 @@
 
 (def ^:private typed-form (hx/with-type-info :field {::hx/database-type "text"}))
 
-(deftest TypedHoneySQLForm-test
+(deftest ^:parallel TypedHoneySQLForm-test
   (testing "should generate readable output"
     (is (= (pr-str `(hx/with-type-info :field {::hx/database-type "text"}))
            (pr-str typed-form)))))
 
-(deftest type-info-test
+(deftest ^:parallel type-info-test
   (testing "should let you get info"
     (is (= {::hx/database-type "text"}
            (hx/type-info typed-form)))
@@ -162,7 +162,7 @@
            (hx/type-info :field)
            (hx/type-info nil)))))
 
-(deftest with-type-info-test
+(deftest ^:parallel with-type-info-test
   (testing "should let you update info"
     (is (= (hx/with-type-info :field {::hx/database-type "date"})
            (hx/with-type-info typed-form {::hx/database-type "date"})))
@@ -170,7 +170,7 @@
       (is (= (hx/with-type-info :field {::hx/database-type "date"})
              (hx/with-type-info typed-form {::hx/database-type "date"}))))))
 
-(deftest with-database-type-info-test
+(deftest ^:parallel with-database-type-info-test
   (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
     (is (= (hx/with-type-info :field {::hx/database-type "date"})
            (hx/with-database-type-info :field "date"))))
@@ -182,7 +182,7 @@
       (is (= :field
              (hx/with-database-type-info (hx/with-database-type-info :field "date") nil))))))
 
-(deftest is-of-type?-test
+(deftest ^:parallel is-of-type?-test
   (mt/are+ [expr tyype expected] (= expected (hx/is-of-type? expr tyype))
     typed-form     "text" true
     typed-form     "TEXT" true
@@ -197,7 +197,7 @@
     nil            nil    true
     :%current_date nil    true))
 
-(deftest unwrap-typed-honeysql-form-test
+(deftest ^:parallel unwrap-typed-honeysql-form-test
   (testing "should be able to unwrap"
     (is (= :field
            (hx/unwrap-typed-honeysql-form typed-form)

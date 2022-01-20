@@ -370,8 +370,8 @@
   :setter     :none
   :getter     driver.u/available-drivers-info)
 
-(defsetting has-sample-dataset?
-  "Whether this instance has a Sample Dataset database"
+(defsetting has-sample-database?
+  "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
   :getter     (fn [] (db/exists? 'Database, :is_sample true)))
