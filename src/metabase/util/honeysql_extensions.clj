@@ -262,6 +262,7 @@
 
     ;; cast to TIMESTAMP unless form is already a TIMESTAMP, TIMESTAMPTZ, or DATE
     (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
+  {:added "0.42.0"}
   [desired-type acceptable-types expr]
   (if (some (partial is-of-type? expr)
             acceptable-types)
