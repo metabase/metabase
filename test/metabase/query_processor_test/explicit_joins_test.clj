@@ -630,3 +630,36 @@
               (is (= [[1 448] [1 493]]
                      (mt/formatted-rows [int int]
                        (qp/process-query query)))))))))))
+
+(deftest joining-nested-queries-with-same-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
+                  "source queries (#18512)")
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query reviews
+                      {:source-query {:source-table $$reviews
+                                      :joins        [{:source-table $$products
+                                                      :alias        "Products"
+                                                      :condition    [:= $product_id &Products.products.id]
+                                                      :fields       :all}]
+                                      :breakout     [!month.&Products.products.created_at]
+                                      :aggregation  [[:distinct &Products.products.id]]
+                                      :filter       [:= &Products.products.category "Doohickey"]}
+                       :joins        [{:source-query {:source-table $$reviews
+                                                      :joins        [{:source-table $$products
+                                                                      :alias        "Products"
+                                                                      :condition    [:= $product_id &Products.products.id]
+                                                                      :fields       :all}]
+                                                      :breakout     [!month.&Products.products.created_at]
+                                                      :aggregation  [[:distinct &Products.products.id]]
+                                                      :filter       [:= &Products.products.category "Gizmo"]}
+                                       :alias        "Q2"
+                                       :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
+                                       :fields       :all}]
+                       :limit        3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
+                    ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
+                    ["2016-08-01T00:00:00Z" 2 nil nil]]
+                   (mt/formatted-rows [str int str int]
+                     (qp/process-query query))))))))))
