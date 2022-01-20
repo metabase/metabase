@@ -1,6 +1,7 @@
 export type FieldMetadata = {
   id?: number;
   name: string;
+  display_name: string;
   description?: string | null;
   semantic_type?: string | null;
 };
@@ -23,13 +24,13 @@ const MAX_FIELD_SCORE = 3;
  * @returns {number} — int between 0 and 3
  */
 function getFieldMetadataScore({
-  name,
+  display_name,
   description,
   semantic_type,
 }: FieldMetadata): number {
   let score = 0;
 
-  const isNameDirty = name.includes("→") || name.includes("_");
+  const isNameDirty = display_name.includes("→") || display_name.includes("_");
 
   if (!isNameDirty) {
     score++;
