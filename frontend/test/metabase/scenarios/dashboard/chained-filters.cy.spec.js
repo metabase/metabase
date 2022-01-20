@@ -169,7 +169,7 @@ describe("scenarios > dashboard > chained filter", () => {
           cy.findByText("Location")
             .parent()
             .within(() => {
-              cy.get("a").click();
+              cy.get("input").click();
             });
 
           // open up the list of linked columns
