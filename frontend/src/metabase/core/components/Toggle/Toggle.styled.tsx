@@ -55,7 +55,11 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     box-shadow: 2px 2px 6px ${color("shadow")};
   }
 
-  &:focus-visible {
+  &:focus {
     outline: 2px solid ${color("brand-light")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 `;
