@@ -14,7 +14,11 @@ import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
-import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
+import {
+  HEIGHT,
+  HoverMenu,
+  VizCard,
+} from "./CollectionCardVisualization.styled";
 
 // todo -- move this to containers
 const mapStateToProps = (state, props) => ({
@@ -24,9 +28,6 @@ const mapStateToProps = (state, props) => ({
 const mapDispatchToProps = {
   push,
 };
-
-const HEIGHT = 250;
-const style = { minHeight: HEIGHT };
 
 function CollectionCardVisualization({
   item,
@@ -54,7 +55,7 @@ function CollectionCardVisualization({
   }, [item]);
 
   return (
-    <VizCard style={style}>
+    <VizCard flat>
       <HoverMenu
         item={item}
         onPin={collection.can_write ? handlePin : null}
@@ -77,7 +78,6 @@ function CollectionCardVisualization({
                     loading={shouldShowLoader}
                     error={error || resultProps?.result?.error}
                     noWrapper
-                    style={style}
                   >
                     <Visualization
                       onChangeCardAndRun={({ nextCard }) =>
@@ -87,7 +87,6 @@ function CollectionCardVisualization({
                       isDashboard
                       showTitle
                       metadata={metadata}
-                      height={HEIGHT}
                       dispatch={dispatch}
                       {...resultProps}
                     />
