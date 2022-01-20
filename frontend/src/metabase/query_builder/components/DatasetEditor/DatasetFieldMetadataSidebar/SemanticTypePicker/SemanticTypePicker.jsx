@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Select from "metabase/components/Select";
 
-import { StyledSelectButton } from "./SemanticTypePicker.styled";
+import { StyledSelectButton, FieldTypeIcon } from "./SemanticTypePicker.styled";
 
 const propTypes = {
   field: PropTypes.shape({
@@ -13,6 +13,7 @@ const propTypes = {
   }).isRequired,
   formField: PropTypes.shape({
     options: PropTypes.array.isRequired,
+    icon: PropTypes.string,
   }),
   tabIndex: PropTypes.string,
   onChange: PropTypes.func.isRequired,
@@ -26,7 +27,7 @@ function SemanticTypePicker({
   onChange,
   onKeyDown,
 }) {
-  const { options } = formField;
+  const { options, icon } = formField;
 
   const selectButtonRef = useRef();
 
@@ -63,12 +64,13 @@ function SemanticTypePicker({
           onKeyDown={onKeyDown}
           tabIndex={tabIndex}
           ref={selectButtonRef}
+          left={<FieldTypeIcon name={icon} />}
         >
           {pickerLabel}
         </StyledSelectButton>
       );
     },
-    [field, tabIndex, pickerLabel, onKeyDown],
+    [field, icon, tabIndex, pickerLabel, onKeyDown],
   );
 
   return (

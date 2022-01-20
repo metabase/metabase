@@ -8,7 +8,6 @@ import { merge } from "icepick";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
-import Icon from "metabase/components/Icon";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 
@@ -21,6 +20,7 @@ import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
+import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
@@ -33,6 +33,7 @@ import { TabHintToast } from "./TabHintToast";
 import {
   Root,
   DatasetEditBar,
+  FieldTypeIcon,
   MainContainer,
   QueryEditorContainer,
   TableHeaderColumnName,
@@ -305,16 +306,25 @@ function DatasetEditor(props) {
   }, [focusedFieldIndex, previousFocusedFieldIndex]);
 
   const renderSelectableTableColumnHeader = useCallback(
-    (element, column, columnIndex) => (
-      <TableHeaderColumnName
-        tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
-        onFocus={() => handleColumnSelect(column)}
-        isSelected={compareFields(column?.field_ref, focusedField?.field_ref)}
-      >
-        <Icon name="three_dots" size={14} />
-        <span>{column.display_name}</span>
-      </TableHeaderColumnName>
-    ),
+    (element, column, columnIndex) => {
+      const isSelected = compareFields(
+        column?.field_ref,
+        focusedField?.field_ref,
+      );
+      return (
+        <TableHeaderColumnName
+          tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
+          onFocus={() => handleColumnSelect(column)}
+          isSelected={isSelected}
+        >
+          <FieldTypeIcon
+            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            isSelected={isSelected}
+          />
+          <span>{column.display_name}</span>
+        </TableHeaderColumnName>
+      );
+    },
     [focusedField, focusedFieldIndex, handleColumnSelect],
   );
 
