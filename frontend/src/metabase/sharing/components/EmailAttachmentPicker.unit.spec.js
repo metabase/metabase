@@ -22,7 +22,7 @@ describe("EmailAttachmentPicker", () => {
     it("should have a Toggle that is not toggled", () => {
       const toggle = screen.getByLabelText("Attach results");
       expect(toggle).toBeInTheDocument();
-      expect(toggle).toBeChecked();
+      expect(toggle).not.toBeChecked();
     });
 
     it("should have a clickable toggle that reveals attachment type and a checkbox per question", () => {
