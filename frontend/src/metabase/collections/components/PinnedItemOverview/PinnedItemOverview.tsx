@@ -22,8 +22,8 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
     dataset: datasetItems = [],
   } = _.groupBy(sortedItems, "model");
 
-  return (
-    <Container>
+  return items.length ? (
+    <Container data-testid="pinned-items">
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
@@ -70,7 +70,7 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
         </div>
       )}
     </Container>
-  );
+  ) : null;
 }
 
 export default PinnedItemOverview;

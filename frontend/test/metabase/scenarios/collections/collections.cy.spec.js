@@ -475,22 +475,9 @@ describe("scenarios > collection_defaults", () => {
       cy.findByText("First Collection");
     });
 
-    it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-      cy.visit("/collection/root");
-      openEllipsisMenuFor("Orders in a dashboard");
-      cy.findByText("Pin this item").click();
-      selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-      cy.findByText("1 item selected");
-    });
-
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          bulkSelectDeselectWorkflow();
-        });
-
-        it("should be possible to apply bulk selection when all items are pinned (metabase#16497)", () => {
-          pinAllRootItems();
           bulkSelectDeselectWorkflow();
         });
 
@@ -591,18 +578,4 @@ function getSidebarCollectionChildrenFor(item) {
     .closest("a")
     .parent()
     .parent();
-}
-
-function pinAllRootItems() {
-  cy.request("GET", "/api/collection/root/items").then(resp => {
-    const ALL_ITEMS = resp.body.data;
-
-    ALL_ITEMS.forEach(({ model, id }, index) => {
-      if (model !== "collection") {
-        cy.request("PUT", `/api/${model}/${id}`, {
-          collection_position: index++,
-        });
-      }
-    });
-  });
 }
