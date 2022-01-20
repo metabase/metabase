@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
@@ -19,67 +19,117 @@ const testIdActionPairs = [
   [ARCHIVE_TESTID, MODAL_TYPES.ARCHIVE],
 ];
 
-describe("QuestionActionButtons", () => {
-  let onOpenModal;
+function setup({
+  canWrite = true,
+  onOpenModal = jest.fn(),
+  areNestedQueriesEnabled = true,
+  questionDatabaseSupportsModels = true,
+  isDataModel = false,
+} = {}) {
   const question = {
-    isDataset: () => false,
+    query: () => ({
+      database: () => ({
+        hasFeature: feature =>
+          feature === "nested-queries" ? questionDatabaseSupportsModels : true,
+      }),
+    }),
+    isDataset: () => isDataModel,
   };
 
-  beforeEach(() => {
-    onOpenModal = jest.fn();
-  });
+  const settingsState = {
+    values: { "enable-nested-queries": areNestedQueriesEnabled },
+  };
 
+  renderWithProviders(
+    <QuestionActionButtons
+      question={question}
+      canWrite={canWrite}
+      onOpenModal={onOpenModal}
+    />,
+    {
+      storeInitialState: {
+        settings: settingsState,
+      },
+      reducers: {
+        settings: () => settingsState,
+      },
+    },
+  );
+
+  return { onOpenModal };
+}
+
+describe("QuestionActionButtons", () => {
   describe("when `canWrite` is falsy", () => {
-    beforeEach(() => {
-      const canWrite = false;
-      render(
-        <QuestionActionButtons
-          question={question}
-          canWrite={canWrite}
-          onOpenModal={onOpenModal}
-        />,
-      );
-    });
-
     it("only renders the 'add to dashboard'' button", () => {
-      screen.getByTestId(ADD_TO_DASH_TESTID);
+      setup({ canWrite: false });
       const buttons = screen.getAllByRole("button");
+
+      screen.getByTestId(ADD_TO_DASH_TESTID);
       expect(buttons.length).toBe(1);
     });
 
     it("should pass the correct action to the `onOpenModal` prop", () => {
-      const button = screen.getByTestId(ADD_TO_DASH_TESTID);
-      button.click();
-
+      const { onOpenModal } = setup({ canWrite: false });
+      screen.getByTestId(ADD_TO_DASH_TESTID).click();
       expect(onOpenModal).toHaveBeenCalledWith(MODAL_TYPES.ADD_TO_DASHBOARD);
+    });
+
+    it("shouldn't show the control for turning question into model", () => {
+      setup({ canWrite: false });
+      expect(screen.queryByLabelText("model icon")).not.toBeInTheDocument();
     });
   });
 
   describe("when `canWrite` is truthy", () => {
-    beforeEach(() => {
-      const canWrite = true;
-      render(
-        <QuestionActionButtons
-          question={question}
-          canWrite={canWrite}
-          onOpenModal={onOpenModal}
-        />,
-      );
-    });
-
     it("should show all buttons", () => {
+      setup();
       const buttons = screen.getAllByRole("button");
       expect(buttons.length).toBe(6);
     });
 
     it("should pass the correct action to the `onOpenModal`", () => {
+      const { onOpenModal } = setup();
+
       testIdActionPairs.forEach(([testId, action]) => {
         const button = screen.getByTestId(testId);
         button.click();
-
         expect(onOpenModal).toHaveBeenCalledWith(action);
         onOpenModal.mockClear();
       });
+    });
+
+    it("should show the control for turning question into model", () => {
+      setup();
+      expect(screen.getByLabelText("model icon")).toBeInTheDocument();
+    });
+  });
+
+  describe("when database supports models", () => {
+    it("should show the control for turning question into model", () => {
+      setup();
+      expect(screen.getByLabelText("model icon")).toBeInTheDocument();
+    });
+  });
+
+  describe("when database doesn't support models", () => {
+    it("shouldn't show the control for turning question into model", () => {
+      setup({ questionDatabaseSupportsModels: false });
+      expect(screen.queryByLabelText("model icon")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when nested queries are disabled", () => {
+    it("shouldn't show the control for turning question into model", () => {
+      setup({ areNestedQueriesEnabled: false });
+      expect(screen.queryByLabelText("model icon")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when displaying model actions", () => {
+    it("shouldn't show the control for turning question into model", () => {
+      setup({ isDataModel: true });
+      expect(screen.queryByLabelText("model icon")).not.toBeInTheDocument();
     });
   });
 });

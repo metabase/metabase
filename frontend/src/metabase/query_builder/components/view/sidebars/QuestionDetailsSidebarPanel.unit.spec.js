@@ -51,6 +51,10 @@ function getDataset(card) {
 function setup({ question } = {}) {
   const onOpenModal = jest.fn();
 
+  const settingsState = {
+    values: { "enable-nested-queries": true },
+  };
+
   renderWithProviders(
     <QuestionDetailsSidebarPanel
       question={question}
@@ -58,6 +62,12 @@ function setup({ question } = {}) {
     />,
     {
       withSampleDatabase: true,
+      storeInitialState: {
+        settings: settingsState,
+      },
+      reducers: {
+        settings: () => settingsState,
+      },
     },
   );
 
