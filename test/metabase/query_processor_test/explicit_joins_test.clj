@@ -579,8 +579,9 @@
                                               [:field "count" {:base-type :type/BigInteger}]]}
                          :limit        2})]
             (mt/with-native-query-testing-context query
-              (is (= [[4 89 0.46 41]]
-                     (mt/formatted-rows [int int 2.0 int]
+              ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
+              (is (= [[4 89 0.46 4 41]]
+                     (mt/formatted-rows [int int 2.0 int int]
                        (qp/process-query query)))))))))))
 
 (deftest join-against-saved-question-with-sort-test

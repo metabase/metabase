@@ -475,6 +475,7 @@
                                       [:desc [:field "count" {:base-type :type/Integer}]]]
                        :limit        1})]
           (mt/with-native-query-testing-context query
-            (is (= [["Doohickey" 54 2 42 2]]
-                   (mt/formatted-rows [str int int int int]
+            ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
+            (is (= [["Doohickey" 42 2 "Gadget" 53 2]]
+                   (mt/formatted-rows [str int int str int int]
                      (qp/process-query query))))))))))
