@@ -8,6 +8,7 @@ interface SelectButtonRootProps {
 }
 
 export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
+  cursor: pointer;
   display: flex;
   width: ${props => (props.fullWidth ? "100%" : "unset")};
   align-items: center;
@@ -21,9 +22,12 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${props =>
     props.hasValue ? color("text-dark") : color("text-light")};
 
-  &:focus,
-  &:hover {
+  &:focus {
     border-color: ${color("brand")};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${color("brand-light")};
   }
 
   &:disabled {
