@@ -25,8 +25,12 @@
   transition-property: color, border-color, background-color;
 }
 
-.Button:focus-visible {
+.Button:focus {
   outline: 2px solid var(--color-brand-light);
+}
+
+.Button:focus:not(:focus-visible) {
+  outline: none;
 }
 
 @media screen and (--breakpoint-min-lg) {

@@ -249,7 +249,7 @@ export default class Table extends Component {
     let defaultValue = !column.semantic_type || isURL(column) ? "link" : null;
 
     const options = [
-      { name: t`Off`, value: null },
+      { name: t`Text`, value: null },
       { name: t`Link`, value: "link" },
     ];
 
@@ -268,8 +268,8 @@ export default class Table extends Component {
 
     if (options.length > 1) {
       settings["view_as"] = {
-        title: t`View as link or image`,
-        widget: "select",
+        title: t`Display as`,
+        widget: options.length === 2 ? "radio" : "select",
         default: defaultValue,
         props: {
           options,

@@ -1,8 +1,8 @@
 import { restore, popover, visitAlias } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 

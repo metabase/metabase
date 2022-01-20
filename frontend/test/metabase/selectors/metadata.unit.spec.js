@@ -9,9 +9,9 @@ import Segment from "metabase-lib/lib/metadata/Segment";
 import {
   metadata, // connected graph,
   state, // the original non connected metadata objects,
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import {
   copyObjects,
@@ -60,7 +60,7 @@ describe("getMetadata", () => {
     });
 
     it("should have a parent database", () => {
-      expect(table.database).toEqual(metadata.database(SAMPLE_DATASET.id));
+      expect(table.database).toEqual(metadata.database(SAMPLE_DATABASE.id));
     });
   });
 

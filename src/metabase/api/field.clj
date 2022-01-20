@@ -292,7 +292,7 @@
 
 (defn- follow-fks
   "Automatically follow the target IDs in an FK `field` until we reach the PK it points to, and return that. For
-  non-FK Fields, returns them as-is. For example, with the Sample Dataset:
+  non-FK Fields, returns them as-is. For example, with the Sample Database:
 
      (follow-fks <PEOPLE.ID Field>)        ;-> <PEOPLE.ID Field>
      (follow-fks <REVIEWS.REVIEWER Field>) ;-> <PEOPLE.ID Field>
@@ -328,7 +328,7 @@
 
       [<value-of-field> <matching-value-of-search-field>].
 
-   For example, with the Sample Dataset, you could search for the first three IDs & names of People whose name
+   For example, with the Sample Database, you could search for the first three IDs & names of People whose name
   contains `Ma` as follows:
 
       (search-values <PEOPLE.ID Field> <PEOPLE.NAME Field> \"Ma\" 3)
@@ -373,7 +373,7 @@
 
    if a match is found.
 
-   For example, with the Sample Dataset, you could find the name of the Person with ID 20 as follows:
+   For example, with the Sample Database, you could find the name of the Person with ID 20 as follows:
 
       (remapped-value <PEOPLE.ID Field> <PEOPLE.NAME Field> 20)
       ;; -> [20 \"Peter Watsica\"]"

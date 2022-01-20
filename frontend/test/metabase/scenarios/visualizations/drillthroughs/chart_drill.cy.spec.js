@@ -8,7 +8,7 @@ import {
   visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -17,7 +17,7 @@ const {
   PRODUCTS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -440,7 +440,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       ({ body: { groups, revision } }) => {
         // This mutates the original `groups` object => we'll pass it next to the `PUT` request
         groups[DATA_GROUP] = {
-          // database_id = 1 (SAMPLE_DATASET)
+          // database_id = 1 (SAMPLE_DATABASE)
           1: { schemas: "all", native: "none" },
         };
 

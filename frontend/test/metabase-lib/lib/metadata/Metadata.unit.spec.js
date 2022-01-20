@@ -1,4 +1,4 @@
-import { state } from "__support__/sample_dataset_fixture";
+import { state } from "__support__/sample_database_fixture";
 
 import { getMetadata } from "metabase/selectors/metadata";
 

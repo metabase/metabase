@@ -1,8 +1,8 @@
 import { restore, popover } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, PEOPLE } = SAMPLE_DATASET;
+const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 
 const METABASE_SECRET_KEY =
   "24134bd93e081773fb178e8e1abb4e8a973822f7e19c872bd92c8d5a122ef63f";

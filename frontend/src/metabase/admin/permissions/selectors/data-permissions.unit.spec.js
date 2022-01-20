@@ -6,7 +6,7 @@ import { normalizedMetadata } from "./data-permissions.unit.spec.fixtures";
 
 const initialPermissions = {
   1: {
-    // Sample dataset
+    // Sample database
     1: {
       native: "write",
       schemas: "all",
@@ -23,7 +23,7 @@ const initialPermissions = {
     },
   },
   2: {
-    // Sample dataset
+    // Sample database
     1: {
       native: "none",
       schemas: "none",

@@ -183,7 +183,7 @@ export class SemanticTypeAndTargetPicker extends Component {
 
     let { idfields } = this.props;
 
-    // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
+    // If all FK target fields are in the same schema (like `PUBLIC` for sample database)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
       _.uniq(idfields.map(idField => idField.table.schema_name)).length > 1;

@@ -1057,7 +1057,7 @@
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
              (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))      )
+             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id
@@ -1367,7 +1367,7 @@
 
 (defn- add-query-params [url query-params]
   (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
-                                     (codec/form-encode {k v})))]
+                                         (codec/form-encode {k v})))]
     (cond-> url
       (seq query-params-str) (str "?" query-params-str))))
 
@@ -1505,8 +1505,8 @@
       (testing "GET /api/dashboard/:id/params/:param-key/values"
         (let-url [url (chain-filter-values-url dashboard "_ID_")]
           (is (= [[29 "20th Century Cafe"]
-                  [ 8 "25°"              ]
-                  [93 "33 Taps"          ]]
+                  [ 8 "25°"]
+                  [93 "33 Taps"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url)))))
         (let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
           (is (= [[55 "Dal Rae Restaurant"]

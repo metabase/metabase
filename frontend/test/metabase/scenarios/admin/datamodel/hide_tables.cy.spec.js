@@ -41,7 +41,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     cy.signInAsNormalUser();
     cy.visit("/question/new");
     cy.contains("Simple question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products");
     cy.contains("Orders").should("not.exist");
   });
