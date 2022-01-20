@@ -43,9 +43,9 @@ To the right of completed step is a **Preview** button (looks like a Play button
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [Model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
 
-You can also select multiple tables from the same data source by [joining them](./join.md).
+You can also select multiple tables from the same database by [joining them](./join.md).
 
 ## Filtering
 
