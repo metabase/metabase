@@ -3,6 +3,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard/PinnedItemCard";
+import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
@@ -27,7 +28,7 @@ function PinnedItemOverview({ items, collection, onCopy, onMove }: Props) {
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <PinnedItemCard
+            <CollectionCardVisualization
               key={item.id}
               item={item}
               collection={collection}
