@@ -476,6 +476,6 @@
                        :limit        1})]
           (mt/with-native-query-testing-context query
             ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
-            (is (= [["Doohickey" 42 2 "Gadget" 53 2]]
+            (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
                    (mt/formatted-rows [str int int str int int]
                      (qp/process-query query))))))))))
