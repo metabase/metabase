@@ -148,3 +148,8 @@ CollectionDatasetAllDataLink.Content = styled.span`
     margin-left: ${space(0)};
   }
 `;
+
+export const EmptyStateContainer = styled.div`
+  width: 300px;
+  padding: 80px 60px;
+`;

@@ -35,7 +35,12 @@ const EmptyState = ({
   ...rest
 }) => (
   <Box>
-    <Flex justify="center" flexDirection="column" align="center">
+    <Flex
+      className="text-centered"
+      justify="center"
+      flexDirection="column"
+      align="center"
+    >
       {illustrationElement && <Box mb={[2, 3]}>{illustrationElement}</Box>}
       <Box>
         <LegacyIcon {...rest} />

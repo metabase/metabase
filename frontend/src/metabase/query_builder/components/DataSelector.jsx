@@ -12,6 +12,7 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase/lib/saved-questions";
 
+import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
@@ -39,6 +40,7 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import {
   DataBucketList,
@@ -47,6 +49,7 @@ import {
   RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
+  EmptyStateContainer,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
 
@@ -209,6 +212,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
     }),
+    hasDataAccess: getHasDataAccess(state),
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
@@ -1018,7 +1022,8 @@ export class UnconnectedDataSelector extends Component {
       selectedDataBucketId,
       selectedTable,
     } = this.state;
-    const { canChangeDatabase, selectedDatabaseId } = this.props;
+    const { canChangeDatabase, selectedDatabaseId, hasDataAccess } = this.props;
+
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
@@ -1045,8 +1050,8 @@ export class UnconnectedDataSelector extends Component {
       >
         {this.isLoadingDatasets() ? (
           <LoadingAndErrorWrapper loading />
-        ) : (
-          <React.Fragment>
+        ) : hasDataAccess ? (
+          <>
             {this.showTableSearch() && (
               <ListSearchField
                 hasClearButton
@@ -1082,7 +1087,14 @@ export class UnconnectedDataSelector extends Component {
               ) : (
                 this.renderActiveStep()
               ))}
-          </React.Fragment>
+          </>
+        ) : (
+          <EmptyStateContainer>
+            <EmptyState
+              message={t`To pick some data, you'll need to add some first`}
+              icon="database"
+            />
+          </EmptyStateContainer>
         )}
       </PopoverWithTrigger>
     );
