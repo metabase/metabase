@@ -13,7 +13,7 @@ import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
-import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
+import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
@@ -45,10 +45,6 @@ function CollectionContent({
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
-    sort_column: "name",
-    sort_direction: "asc",
-  });
-  const [pinnedItemsSorting, setPinnedItemsSorting] = useState({
     sort_column: "name",
     sort_direction: "asc",
   });
@@ -96,10 +92,6 @@ function CollectionContent({
     [setPage],
   );
 
-  const handlePinnedItemsSortingChange = useCallback(sortingOpts => {
-    setPinnedItemsSorting(sortingOpts);
-  }, []);
-
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
@@ -127,7 +119,8 @@ function CollectionContent({
   const pinnedQuery = {
     collection: collectionId,
     pinned_state: "is_pinned",
-    ...pinnedItemsSorting,
+    sort_column: "name",
+    sort_direction: "asc",
   };
 
   return (
@@ -154,20 +147,13 @@ function CollectionContent({
                 )}
                 handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
-
-              <PinnedItemsTable
+              <PinnedItemOverview
                 items={pinnedItems}
                 collection={collection}
-                sortingOptions={pinnedItemsSorting}
-                onSortingOptionsChange={handlePinnedItemsSortingChange}
-                selectedItems={selected}
-                getIsSelected={getIsSelected}
-                onToggleSelected={toggleItem}
-                onDrop={clear}
                 onMove={handleMove}
                 onCopy={handleCopy}
+                onToggleSelected={toggleItem}
               />
-
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}
