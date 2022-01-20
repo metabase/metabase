@@ -68,7 +68,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.wait("@dataset");
     });
 
-    it.only("should work for time series", () => {
+    it("should work for time series", () => {
       changeBinningForDimension({
         name: "People → Birth Date",
         fromBinning: "by month",

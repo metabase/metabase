@@ -31,6 +31,7 @@ const SelectButton = forwardRef(function SelectButton(
 ) {
   return (
     <SelectButtonRoot
+      type="button"
       data-testid="select-button"
       innerRef={ref as any}
       className={className}
