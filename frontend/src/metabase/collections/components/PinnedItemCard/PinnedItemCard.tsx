@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
@@ -23,6 +24,14 @@ type Props = {
   onMove: (items: Item[]) => void;
 };
 
+function getDefaultDescription(model: string) {
+  return {
+    card: t`A question`,
+    dashboard: t`A dashboard`,
+    dataset: t`A model`,
+  }[model];
+}
+
 function PinnedItemCard({
   className,
   item,
@@ -32,7 +41,9 @@ function PinnedItemCard({
 }: Props) {
   const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
-  const { description, name } = item;
+  const { description, name, model } = item;
+
+  const defaultedDescription = description || getDefaultDescription(model);
 
   const maybeEnableDescriptionTooltip = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -97,9 +108,9 @@ function PinnedItemCard({
             maxWidth={450}
             isEnabled={showDescriptionTooltip}
           >
-            {description && (
+            {defaultedDescription && (
               <Description onMouseEnter={maybeEnableDescriptionTooltip}>
-                {description}
+                {defaultedDescription}
               </Description>
             )}
           </Tooltip>
