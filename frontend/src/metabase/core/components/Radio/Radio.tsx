@@ -3,12 +3,34 @@ import _ from "underscore";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
   RadioButton,
-  RadioContainer,
+  RadioContainerBubble,
+  RadioContainerNormal,
+  RadioContainerUnderlined,
   RadioInput,
-  RadioLabel,
-  RadioList,
+  RadioLabelBubble,
+  RadioLabelNormal,
+  RadioListBubble,
+  RadioListNormal,
   RadioText,
 } from "./Radio.styled";
+
+const VARIANTS = {
+  normal: {
+    RadioList: RadioListNormal,
+    RadioLabel: RadioLabelNormal,
+    RadioContainer: RadioContainerNormal,
+  },
+  underlined: {
+    RadioList: RadioListNormal,
+    RadioLabel: RadioLabelNormal,
+    RadioContainer: RadioContainerUnderlined,
+  },
+  bubble: {
+    RadioList: RadioListBubble,
+    RadioLabel: RadioLabelBubble,
+    RadioContainer: RadioContainerBubble,
+  },
+};
 
 export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>> {
   name?: string;
@@ -47,6 +69,7 @@ const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
   onChange,
   onOptionClick,
 }: RadioProps<TValue, TOption>): JSX.Element => {
+  const { RadioList } = VARIANTS[variant];
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
 
   return (
@@ -105,6 +128,8 @@ const RadioItem = <TValue extends Key, TOption>({
   onChange,
   onOptionClick,
 }: RadioItemProps<TValue>): JSX.Element => {
+  const { RadioLabel, RadioContainer } = VARIANTS[variant];
+
   const handleChange = useCallback(() => {
     onChange && onChange(value);
   }, []);

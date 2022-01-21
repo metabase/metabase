@@ -1,4 +1,4 @@
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
@@ -11,12 +11,14 @@ export interface RadioListProps {
 export const RadioList = styled.div<RadioListProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
-  ${props => props.variant === "normal" && RadioListNormal};
-  ${props => props.variant === "underlined" && RadioListNormal};
 `;
 
-const RadioListNormal = css<RadioListProps>`
+export const RadioListNormal = styled(RadioList)`
   font-weight: ${props => (props.showButtons ? "" : "bold")};
+`;
+
+export const RadioListBubble = styled(RadioList)`
+  display: flex;
 `;
 
 export interface RadioLabelProps {
@@ -26,19 +28,16 @@ export interface RadioLabelProps {
 
 export const RadioLabel = styled.label<RadioLabelProps>`
   display: block;
-  ${props => props.variant === "normal" && RadioLabelNormal};
-  ${props => props.variant === "underlined" && RadioLabelNormal};
-  ${props => props.variant === "bubble" && RadioLabelBubble};
 `;
 
-const RadioLabelNormal = css<RadioLabelProps>`
+export const RadioLabelNormal = styled(RadioLabel)`
   &:not(:last-child) {
     margin-right: ${props => (!props.vertical ? "2rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
   }
 `;
 
-const RadioLabelBubble = css<RadioLabelProps>`
+export const RadioLabelBubble = styled(RadioLabel)`
   &:not(:last-child) {
     margin-right: ${props => (!props.vertical ? "0.5rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
@@ -56,16 +55,13 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
-  ${props => props.variant === "normal" && RadioContainerNormal};
-  ${props => props.variant === "underlined" && RadioContainerUnderlined};
-  ${props => props.variant === "bubble" && RadioContainerBubble};
 `;
 
-const RadioContainerNormal = css<RadioContainerProps>`
+export const RadioContainerNormal = styled(RadioContainer)`
   color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
 `;
 
-const RadioContainerUnderlined = css<RadioContainerProps>`
+export const RadioContainerUnderlined = styled(RadioContainer)`
   color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
   border-bottom: 3px solid
     ${props =>
@@ -73,7 +69,7 @@ const RadioContainerUnderlined = css<RadioContainerProps>`
   padding: 1rem 0;
 `;
 
-const RadioContainerBubble = css<RadioContainerProps>`
+export const RadioContainerBubble = styled(RadioContainer)`
   padding: 0.5rem 1rem;
   border-radius: 10rem;
   font-weight: bold;
