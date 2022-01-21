@@ -42,7 +42,7 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
   colorScheme = "default",
   disabled = false,
   vertical = false,
-  showButtons = false,
+  showButtons = vertical && variant !== "bubble",
 }: RadioProps<TValue, TOption>): JSX.Element => {
   return (
     <RadioList variant={variant} vertical={vertical} showButtons={showButtons}>
@@ -55,8 +55,18 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
         return (
           <RadioContainer key={optionKey} variant={variant} vertical={vertical}>
             <RadioInput type="radio" name={name} checked={optionChecked} />
-            <RadioItem disabled={disabled}>
-              <RadioButton checked={optionChecked} colorScheme={colorScheme} />
+            <RadioItem
+              checked={optionChecked}
+              variant={variant}
+              colorScheme={colorScheme}
+              disabled={disabled}
+            >
+              {showButtons && (
+                <RadioButton
+                  checked={optionChecked}
+                  colorScheme={colorScheme}
+                />
+              )}
               <RadioText>{optionName}</RadioText>
             </RadioItem>
           </RadioContainer>

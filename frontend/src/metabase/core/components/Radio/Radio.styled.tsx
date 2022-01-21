@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
 export interface RadioListProps {
@@ -46,6 +46,9 @@ const RadioContainerBubble = css<RadioContainerProps>`
 `;
 
 export interface RadioItemProps {
+  checked: boolean;
+  variant: RadioVariant;
+  colorScheme: RadioColorScheme;
   disabled: boolean;
 }
 
@@ -53,6 +56,39 @@ export const RadioItem = styled.label<RadioItemProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
+  ${props => props.variant === "normal" && RadioItemNormal};
+  ${props => props.variant === "underlined" && RadioItemUnderlined};
+  ${props => props.variant === "bubble" && RadioItemBubble};
+`;
+
+const RadioItemNormal = css<RadioItemProps>`
+  color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
+`;
+
+const RadioItemUnderlined = css<RadioItemProps>`
+  color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
+  border-bottom: 3px solid
+    ${props =>
+      props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
+  padding: 1rem 0;
+`;
+
+const RadioItemBubble = css<RadioItemProps>`
+  padding: 0.5rem 1rem;
+  border-radius: 10rem;
+  font-weight: bold;
+  color: ${props =>
+    props.checked ? color("white") : getSchemeColor(props.colorScheme)};
+  background-color: ${props =>
+    props.checked
+      ? getSchemeColor(props.colorScheme)
+      : lighten(getSchemeColor(props.colorScheme))};
+
+  &:hover {
+    background-color: ${props =>
+      props.checked ? "" : lighten(getSchemeColor(props.colorScheme), 0.38)};
+    transition: background-color 300ms linear;
+  }
 `;
 
 export const RadioInput = styled.input`

@@ -13,7 +13,7 @@ const Template: ComponentStory<typeof Radio> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  value: "W",
+  value: "G",
   options: [
     { name: "Gadget", value: "G" },
     { name: "Widget", value: "W" },
