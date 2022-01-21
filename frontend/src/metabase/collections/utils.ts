@@ -109,3 +109,7 @@ export function isPersonalCollectionChild(
 export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
 }
+
+export function isItemPinned(item: Item) {
+  return item.collection_position != null;
+}
