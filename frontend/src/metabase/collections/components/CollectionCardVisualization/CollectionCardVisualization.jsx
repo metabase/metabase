@@ -73,13 +73,11 @@ function CollectionCardVisualization({
             const question = new Question(card, metadata);
             return (
               <QuestionResultLoader question={question}>
-                {({ loading, error, reload, ...resultProps }) => {
-                  const shouldShowLoader =
-                    loading && resultProps.results == null;
-
+                {({ loading, error, reload, rawSeries, results, result }) => {
+                  const shouldShowLoader = loading && results == null;
                   const { errorMessage, errorIcon } = getErrorProps(
                     error,
-                    resultProps,
+                    result,
                   );
 
                   return (
@@ -94,7 +92,7 @@ function CollectionCardVisualization({
                         metadata={metadata}
                         error={errorMessage}
                         errorIcon={errorIcon}
-                        {...resultProps}
+                        rawSeries={rawSeries}
                       />
                     </LoadingAndErrorWrapper>
                   );
@@ -112,8 +110,8 @@ CollectionCardVisualization.propTypes = propTypes;
 
 export default CollectionCardVisualization;
 
-function getErrorProps(error, resultProps) {
-  error = error || resultProps?.result?.error;
+function getErrorProps(error, result) {
+  error = error || result?.error;
   let errorMessage;
   let errorIcon;
   if (error) {
