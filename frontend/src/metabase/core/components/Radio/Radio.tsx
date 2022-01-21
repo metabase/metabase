@@ -1,10 +1,11 @@
-import React, { Key } from "react";
+import React, { Key, useCallback, useMemo } from "react";
+import _ from "underscore";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
   RadioButton,
   RadioContainer,
   RadioInput,
-  RadioItem,
+  RadioLabel,
   RadioList,
   RadioText,
 } from "./Radio.styled";
@@ -43,7 +44,11 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
   disabled = false,
   vertical = false,
   showButtons = vertical && variant !== "bubble",
+  onChange,
+  onOptionClick,
 }: RadioProps<TValue, TOption>): JSX.Element => {
+  const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
+
   return (
     <RadioList variant={variant} vertical={vertical} showButtons={showButtons}>
       {options.map(option => {
@@ -53,26 +58,81 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
         const optionChecked = value === optionValue;
 
         return (
-          <RadioContainer key={optionKey} variant={variant} vertical={vertical}>
-            <RadioInput type="radio" name={name} checked={optionChecked} />
-            <RadioItem
-              checked={optionChecked}
-              variant={variant}
-              colorScheme={colorScheme}
-              disabled={disabled}
-            >
-              {showButtons && (
-                <RadioButton
-                  checked={optionChecked}
-                  colorScheme={colorScheme}
-                />
-              )}
-              <RadioText>{optionName}</RadioText>
-            </RadioItem>
-          </RadioContainer>
+          <RadioItem
+            key={optionKey}
+            name={groupName}
+            checked={optionChecked}
+            label={optionName}
+            value={optionValue}
+            variant={variant}
+            colorScheme={colorScheme}
+            disabled={disabled}
+            vertical={vertical}
+            showButtons={showButtons}
+            onChange={onChange}
+            onOptionClick={onOptionClick}
+          />
         );
       })}
     </RadioList>
+  );
+};
+
+interface RadioItemProps<TValue> {
+  name: string;
+  checked: boolean;
+  label: string;
+  value: TValue;
+  variant: RadioVariant;
+  colorScheme: RadioColorScheme;
+  disabled: boolean;
+  vertical: boolean;
+  showButtons: boolean;
+  onChange?: (value: TValue) => void;
+  onOptionClick?: (value: TValue) => void;
+}
+
+const RadioItem = <TValue, TOption>({
+  checked,
+  name,
+  label,
+  value,
+  variant,
+  colorScheme,
+  disabled,
+  vertical,
+  showButtons,
+  onChange,
+  onOptionClick,
+}: RadioItemProps<TValue>): JSX.Element => {
+  const handleChange = useCallback(() => {
+    onChange && onChange(value);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    onOptionClick && onOptionClick(value);
+  }, []);
+
+  return (
+    <RadioLabel variant={variant} vertical={vertical} onClick={handleClick}>
+      <RadioInput
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={handleChange}
+      />
+      <RadioContainer
+        checked={checked}
+        variant={variant}
+        colorScheme={colorScheme}
+        disabled={disabled}
+      >
+        {showButtons && (
+          <RadioButton checked={checked} colorScheme={colorScheme} />
+        )}
+        <RadioText>{label}</RadioText>
+      </RadioContainer>
+    </RadioLabel>
   );
 };
 

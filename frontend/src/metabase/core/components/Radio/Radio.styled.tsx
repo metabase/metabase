@@ -19,53 +19,53 @@ const RadioListNormal = css<RadioListProps>`
   font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
-export interface RadioContainerProps {
+export interface RadioLabelProps {
   variant: RadioVariant;
   vertical: boolean;
 }
 
-export const RadioContainer = styled.label<RadioContainerProps>`
+export const RadioLabel = styled.label<RadioLabelProps>`
   display: block;
-  ${props => props.variant === "normal" && RadioContainerNormal};
-  ${props => props.variant === "underlined" && RadioContainerNormal};
-  ${props => props.variant === "bubble" && RadioContainerBubble};
+  ${props => props.variant === "normal" && RadioLabelNormal};
+  ${props => props.variant === "underlined" && RadioLabelNormal};
+  ${props => props.variant === "bubble" && RadioLabelBubble};
 `;
 
-const RadioContainerNormal = css<RadioContainerProps>`
+const RadioLabelNormal = css<RadioLabelProps>`
   &:not(:last-child) {
     margin-right: ${props => (!props.vertical ? "2rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
   }
 `;
 
-const RadioContainerBubble = css<RadioContainerProps>`
+const RadioLabelBubble = css<RadioLabelProps>`
   &:not(:last-child) {
     margin-right: ${props => (!props.vertical ? "0.5rem" : "")};
     margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
   }
 `;
 
-export interface RadioItemProps {
+export interface RadioContainerProps {
   checked: boolean;
   variant: RadioVariant;
   colorScheme: RadioColorScheme;
   disabled: boolean;
 }
 
-export const RadioItem = styled.label<RadioItemProps>`
+export const RadioContainer = styled.label<RadioContainerProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
-  ${props => props.variant === "normal" && RadioItemNormal};
-  ${props => props.variant === "underlined" && RadioItemUnderlined};
-  ${props => props.variant === "bubble" && RadioItemBubble};
+  ${props => props.variant === "normal" && RadioContainerNormal};
+  ${props => props.variant === "underlined" && RadioContainerUnderlined};
+  ${props => props.variant === "bubble" && RadioContainerBubble};
 `;
 
-const RadioItemNormal = css<RadioItemProps>`
+const RadioContainerNormal = css<RadioContainerProps>`
   color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
 `;
 
-const RadioItemUnderlined = css<RadioItemProps>`
+const RadioContainerUnderlined = css<RadioContainerProps>`
   color: ${props => (props.checked ? getSchemeColor(props.colorScheme) : "")};
   border-bottom: 3px solid
     ${props =>
@@ -73,7 +73,7 @@ const RadioItemUnderlined = css<RadioItemProps>`
   padding: 1rem 0;
 `;
 
-const RadioItemBubble = css<RadioItemProps>`
+const RadioContainerBubble = css<RadioContainerProps>`
   padding: 0.5rem 1rem;
   border-radius: 10rem;
   font-weight: bold;
