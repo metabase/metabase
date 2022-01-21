@@ -13,8 +13,9 @@ const Template: ComponentStory<typeof Radio> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
+  value: "W",
   options: [
-    { name: "Gadget", value: 0 },
-    { name: "Gizmo", value: 1 },
+    { name: "Gadget", value: "G" },
+    { name: "Widget", value: "W" },
   ],
 };
