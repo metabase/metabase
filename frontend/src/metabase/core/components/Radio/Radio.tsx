@@ -157,11 +157,11 @@ const RadioItem = <TValue extends Key, TOption>({
 
   const handleChange = useCallback(() => {
     onChange && onChange(value);
-  }, []);
+  }, [value, onChange]);
 
   const handleClick = useCallback(() => {
     onOptionClick && onOptionClick(value);
-  }, []);
+  }, [value, onOptionClick]);
 
   return (
     <RadioLabel
