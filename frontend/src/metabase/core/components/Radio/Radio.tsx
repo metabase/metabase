@@ -1,15 +1,12 @@
-import React, { ComponentType, Key } from "react";
+import React, { Key } from "react";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
-  RadioBubbleList,
   RadioButton,
+  RadioContainer,
   RadioInput,
   RadioItem,
-  RadioLabel,
-  RadioListProps,
-  RadioNormalList,
+  RadioList,
   RadioText,
-  RadioUnderlinedList,
 } from "./Radio.styled";
 
 export interface RadioProps<TValue, TOption = RadioOption<TValue>> {
@@ -45,10 +42,8 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
   vertical = false,
   showButtons = false,
 }: RadioProps<TValue, TOption>): JSX.Element => {
-  const RadioList = getListVariant(variant);
-
   return (
-    <RadioList vertical={vertical} showButtons={showButtons}>
+    <RadioList variant={variant} vertical={vertical} showButtons={showButtons}>
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
@@ -56,30 +51,17 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
         const optionChecked = value === optionValue;
 
         return (
-          <RadioLabel key={optionKey}>
+          <RadioContainer key={optionKey}>
             <RadioInput type="radio" name={name} checked={optionChecked} />
             <RadioItem>
               <RadioButton checked={optionChecked} colorScheme={colorScheme} />
               <RadioText>{optionName}</RadioText>
             </RadioItem>
-          </RadioLabel>
+          </RadioContainer>
         );
       })}
     </RadioList>
   );
-};
-
-const getListVariant = (
-  variant: RadioVariant,
-): ComponentType<RadioListProps> => {
-  switch (variant) {
-    case "normal":
-      return RadioNormalList;
-    case "underlined":
-      return RadioUnderlinedList;
-    case "bubble":
-      return RadioBubbleList;
-  }
 };
 
 const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {

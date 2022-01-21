@@ -1,49 +1,34 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
-import { RadioColorScheme } from "./types";
-
-const getSchemeColor = (colorScheme: RadioColorScheme): string => {
-  switch (colorScheme) {
-    case "default":
-      return color("brand");
-    case "accent7":
-      return color("accent7");
-  }
-};
+import { RadioColorScheme, RadioVariant } from "./types";
 
 export interface RadioListProps {
+  variant: RadioVariant;
   vertical: boolean;
   showButtons: boolean;
 }
 
+const RadioListNormal = css<RadioListProps>`
+  font-weight: ${props => (props.showButtons ? "" : "bold")};
+`;
+
 export const RadioList = styled.div<RadioListProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
-`;
-
-export const RadioNormalList = styled(RadioList)`
-  font-weight: ${props => (props.showButtons ? "" : "bold")};
-`;
-
-export const RadioUnderlinedList = styled(RadioList)`
-  display: flex;
-`;
-
-export const RadioBubbleList = styled(RadioList)`
-  font-weight: ${props => (props.showButtons ? "" : "bold")};
+  ${props => props.variant === "normal" && RadioListNormal};
 `;
 
 export interface RadioItemProps {
   disabled?: boolean;
 }
 
-export const RadioItem = styled.span<RadioItemProps>`
+export const RadioItem = styled.label<RadioItemProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
 `;
 
-export const RadioLabel = styled.label`
+export const RadioContainer = styled.label`
   display: block;
 `;
 
@@ -74,3 +59,12 @@ export const RadioButton = styled.span<RadioButtonProps>`
 export const RadioText = styled.span`
   display: block;
 `;
+
+const getSchemeColor = (colorScheme: RadioColorScheme): string => {
+  switch (colorScheme) {
+    case "default":
+      return color("brand");
+    case "accent7":
+      return color("accent7");
+  }
+};
