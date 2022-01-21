@@ -117,7 +117,7 @@
   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
