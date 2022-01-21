@@ -1,6 +1,9 @@
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main/sidebar content area
+export const POPOVER_ELEMENT = ".popover[data-state~='visible']";
+
 export function popover() {
-  return cy.get(".popover[data-state~='visible']");
+  cy.get(POPOVER_ELEMENT).should("be.visible");
+  return cy.get(POPOVER_ELEMENT);
 }
 
 export function modal() {
