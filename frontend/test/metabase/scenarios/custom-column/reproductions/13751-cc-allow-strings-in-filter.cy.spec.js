@@ -40,7 +40,7 @@ describe("issue 13751", () => {
     cy.findByText("Add filters to narrow your answer").click();
     popover().within(() => {
       cy.findByText(CC_NAME).click();
-      cy.get(".AdminSelect").click();
+      cy.findByTestId("select-button").click();
       cy.log(
         "**It fails here already because it doesn't find any condition for strings. Only numbers.**",
       );
