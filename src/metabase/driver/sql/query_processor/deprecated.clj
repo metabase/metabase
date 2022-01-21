@@ -41,14 +41,13 @@
   already using it. This multimethod will be removed in a future release.
 
   Drivers that need to access this information can look at the
-  `::metabase.query-processor.util.add-alias-info/desired-alias` information in the
+  `:metabase.query-processor.util.add-alias-info/desired-alias` information in the
   `:field`/`:expression`/`:aggregation` options map. See [[metabase.query-processor.util.add-alias]] for more
   information.
 
-  Drivers that need to customize the aliases used can override
-  the [[metabase.query-processor.util.add-alias-info/escape-alias]] multimethod, or change the values of
-  `::metabase.query-processor.util.add-alias-info/desired-alias` or
-  `::metabase.query-processor.util.add-alias-info/source-alias` in the appropriate [[->honeysql]] methods."
+  Drivers that need to customize the aliases used can override the [[metabase.driver/escape-alias]] multimethod, or
+  change the values of `:metabase.query-processor.util.add-alias-info/desired-alias` or
+  `:metabase.query-processor.util.add-alias-info/source-alias` in the appropriate [[->honeysql]] methods."
   {:arglists '([driver field]), :deprecated "0.41.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
