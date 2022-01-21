@@ -16,7 +16,7 @@ type Props = {
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-  onDrop: any;
+  onDrop: () => void;
 };
 
 function PinnedItemOverview({
