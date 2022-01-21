@@ -39,6 +39,8 @@
     "Token does not match the setup token."))
 
 (defn- setup-create-user! [{:keys [email first-name last-name password]}]
+  (assert (not (setup/has-user-setup))
+          "setup-create-user! can only be called when no users have been setup.")
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
                                :email        email

@@ -70,6 +70,7 @@ export type SettingName =
   | "ga-enabled"
   | "google-auth-client-id"
   | "has-sample-dataset?"
+  | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
@@ -166,6 +167,10 @@ class Settings {
 
   googleAuthEnabled() {
     return this.get("google-auth-client-id") != null;
+  }
+
+  hasUserSetup() {
+    return this.get("has-user-setup");
   }
 
   hasSetupToken() {
