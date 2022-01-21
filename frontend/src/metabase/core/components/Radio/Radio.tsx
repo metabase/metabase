@@ -178,23 +178,29 @@ const RadioItem = <TValue extends Key, TOption>({
   );
 };
 
-const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {
+const getDefaultOptionKey = <TValue extends Key, TOption>(
+  option: TOption,
+): Key => {
   if (isDefaultOption<TValue>(option)) {
-    return String(option.value);
+    return option.value;
   } else {
     throw new TypeError();
   }
 };
 
-const getDefaultOptionName = <TValue, TOption>(option: TOption): string => {
-  if (isDefaultOption<TValue>(option)) {
+const getDefaultOptionName = <TValue extends Key, TOption>(
+  option: TOption,
+): string => {
+  if (isDefaultOption(option)) {
     return option.name;
   } else {
     throw new TypeError();
   }
 };
 
-const getDefaultOptionValue = <TValue, TOption>(option: TOption): TValue => {
+const getDefaultOptionValue = <TValue extends Key, TOption>(
+  option: TOption,
+): TValue => {
   if (isDefaultOption<TValue>(option)) {
     return option.value;
   } else {
