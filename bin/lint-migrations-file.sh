@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-# switch to project root directory if we're not already there
-script_directory=`dirname "${BASH_SOURCE[0]}"`
-cd "$script_directory/.."
+script_dir=`dirname "${BASH_SOURCE[0]}"`
+cd "$script_dir/.."
+root=
 
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
