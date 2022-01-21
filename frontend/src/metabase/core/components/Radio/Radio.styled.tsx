@@ -8,18 +8,21 @@ export interface RadioListProps {
   showButtons: boolean;
 }
 
-const RadioListNormal = css<RadioListProps>`
-  font-weight: ${props => (props.showButtons ? "" : "bold")};
-`;
-
 export const RadioList = styled.div<RadioListProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
   ${props => props.variant === "normal" && RadioListNormal};
+  ${props => props.variant === "underlined" && RadioListNormal};
+`;
+
+const RadioListNormal = css<RadioListProps>`
+  font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
 export interface RadioItemProps {
-  disabled?: boolean;
+  variant: RadioVariant;
+  vertical: boolean;
+  disabled: boolean;
 }
 
 export const RadioItem = styled.label<RadioItemProps>`
