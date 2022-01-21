@@ -36,7 +36,7 @@ export function ModelEducationalModal({ isOpen, onClose }) {
           "
           />
           <Description>
-            {t`Instead of having your end users wade through your complex raw data, you can create custom datasets that are easy to find, understand, and explore.`}
+            {t`Instead of having your end users wade through your complex raw data, you can create custom models that are easy to find, understand, and explore.`}
           </Description>
           <CenteredRow>
             {/* TODO Add link */}
