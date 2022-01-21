@@ -24,6 +24,7 @@
             [metabase.query-processor.middleware.normalize-query :as normalize]
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
             [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
             [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
@@ -47,6 +48,7 @@
   ;;; Preprocessing is done from top to bottom.
   [#'normalize/normalize
    #'validate/validate-query
+   #'qp.perms/remove-perms-key
    #'fetch-source-query/resolve-card-id-source-tables ; TODO -- need to handle `::dataset?` in metadata.
    #'expand-macros/expand-macros
    #'resolve-referenced/resolve-referenced-card-resources
@@ -96,11 +98,16 @@
       (try
         (reduce
          (fn [query middleware]
-           (if middleware
-             (let [query' (middleware query)]
-               (assert query' (str "MIDDLEWARE DID NOT RETURN QUERY::" middleware))
-               query')
-             query))
+           (if-not middleware
+             query
+             (try
+               (middleware query)
+               (catch Throwable e
+                 (throw (ex-info (tru "Error pre-processing query in middleware {0}: {1}" (pr-str middleware) (ex-message e))
+                                 {:middleware (pr-str middleware)
+                                  :type       (:type (ex-data e) qp.error-type/qp)
+                                  :query      query}
+                                 e))))))
          query
          middleware)
         (catch Throwable e

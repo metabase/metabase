@@ -277,13 +277,14 @@
   (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)
         dataset?                (when card-id
                                   (boolean (db/select-one-field :dataset Card :id card-id)))]
-    (assoc query
-           ::qp.perms/card-id card-id
-           ::dataset? dataset?)))
+    (-> query
+        (assoc-in [::qp.perms/perms :card-id] card-id)
+        ;; add a `::dataset?` key to the query so we can keep track of whether it was a dataset. Then in
+        ;; [[add-dataset-metadata]] we'll add an entry in the metadata if we see it
+        (assoc ::dataset? dataset?))))
 
-;; TODO
 (defn add-dataset-metadata
-  "Post-processing middleware."
-  [qp]
-  (fn [query rff context]
-    (qp query rff context)))
+  "Add `:dataset` to the metadata if this query is for a Dataset Card."
+  [{::keys [dataset?]} rff]
+  (fn [metadata]
+    (rff (cond-> metadata dataset? (assoc :dataset dataset?)))))

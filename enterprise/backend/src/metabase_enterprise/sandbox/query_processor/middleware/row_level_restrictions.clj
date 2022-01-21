@@ -16,6 +16,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -318,30 +319,23 @@
 (defn- gtapped-query
   "Apply GTAPs to `query` and return the updated version of `query`."
   [query table-id->gtap context]
-  {:query   (apply-gtaps query table-id->gtap)
-   :context (update context :gtap-perms (fn [perms]
-                                          (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))})
-
-(defn- apply-row-level-permissions
-  "Does the work of swapping the given table the user was querying against with a nested subquery that restricts the
-  rows returned. Will return the original query if there are no segmented permissions found."
-  [qp]
-  (fn [query rff context]
-    (if-let [table-id->gtap (when *current-user-id*
-                              (query->table-id->gtap query))]
-      (let [{query' :query, context' :context} (gtapped-query query table-id->gtap context)]
-        (qp
-         query'
-         (fn [metadata]
-           (rff (merge-metadata query metadata)))
-         context'))
-      (qp query rff context))))
+  (-> (apply-gtaps query table-id->gtap)
+      (assoc ::original-query query)
+      (update-in [::qp.perms/perms :gtap] (fn [perms]
+                                            (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))
 
 (defn apply-row-level-permissions-pre
+  "Does the work of swapping the given table the user was querying against with a nested subquery that restricts the
+  rows returned. Will return the original query if there are no segmented permissions found."
   [query]
-  query)
+  (if-let [table-id->gtap (when *current-user-id*
+                            (query->table-id->gtap query))]
+    (gtapped-query query table-id->gtap)
+    query))
 
 (defn apply-row-level-permissions-post
-  [qp]
-  (fn [query rff context]
-    (qp query rff context)))
+  [{::keys [original-query]} rff]
+  (if-not original-query
+    rff
+    (fn [metadata]
+      (rff (merge-metadata original-query metadata)))))

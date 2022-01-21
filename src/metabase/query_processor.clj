@@ -20,6 +20,65 @@
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
             [schema.core :as s]
+            [clojure.tools.logging :as log]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
+            [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
+            [metabase.query-processor.middleware.add-implicit-clauses :as implicit-clauses]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+            [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.middleware.auto-bucket-datetimes :as bucket-datetime]
+            [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
+            [metabase.query-processor.middleware.binning :as binning]
+            [metabase.query-processor.middleware.cache :as cache]
+            [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+            [metabase.query-processor.middleware.check-features :as check-features]
+            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
+            [metabase.query-processor.middleware.desugar :as desugar]
+            [metabase.query-processor.middleware.expand-macros :as expand-macros]
+            [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
+            [metabase.query-processor.middleware.format-rows :as format-rows]
+            [metabase.query-processor.middleware.large-int-id :as large-int-id]
+            [metabase.query-processor.middleware.limit :as limit]
+            [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
+            [metabase.query-processor.middleware.normalize-query :as normalize]
+            [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+            [metabase.query-processor.middleware.parameters :as parameters]
+            [metabase.query-processor.middleware.permissions :as perms]
+            [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
+            [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+            [metabase.query-processor.middleware.resolve-database-and-driver :as resolve-database-and-driver]
+            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
+            [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
+            [metabase.query-processor.middleware.resolve-referenced :as resolve-referenced]
+            [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
+            [metabase.query-processor.middleware.store :as store]
+            [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
+            [metabase.query-processor.middleware.validate :as validate]
+            [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
+            [metabase.query-processor.middleware.visualization-settings :as viz-settings]
+            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [clojure.tools.logging :as log]))
 
 (u/ignore-exceptions
@@ -61,7 +120,7 @@
     (let [preprocessed (preprocess/preprocess query)
           _            (log/tracef "Preprocessed:\n%s" (u/pprint-to-str preprocessed))
           native       (compile/compile-preprocessed preprocessed)
-          rff          (postprocess/postprocessing-xform preprocessed rff)]
+          rff          (postprocess/post-processing-xform preprocessed rff)]
       (log/tracef "Compiled:\n%s" (u/pprint-to-str native))
       (driver/execute-reducible-query
        driver/*driver*
@@ -77,7 +136,8 @@
   []
   #_[#'cache/maybe-return-cached-results
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
-   #'perms/check-query-permissions])
+     #'perms/check-query-permissions
+     #'results-metadata/record-and-return-metadata!])
 
 (defn- base-qp
   [query rff context]

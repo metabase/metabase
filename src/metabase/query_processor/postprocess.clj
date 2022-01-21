@@ -10,7 +10,6 @@
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
             [metabase.query-processor.middleware.visualization-settings :as viz-settings]
             [metabase.query-processor.process-common :as process-common]
@@ -20,9 +19,8 @@
 (u/ignore-exceptions
   (classloader/require 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions))
 
-(def ^:private post-process-middleware
-  []
-  #_[#'limit/limit-result-rows
+(def ^:private middleware
+  [#'limit/limit-result-rows
    (resolve 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/apply-row-level-permissions-post)
    #'add-dim/add-remapping-post
    #'annotate/add-column-info
@@ -33,21 +31,30 @@
    #'add-timezone-info/add-timezone-info
    #'splice-params-in-response/splice-params-in-response
    #'fetch-source-query/add-dataset-metadata
-   #'add-rows-truncated/add-rows-truncated
-   #'results-metadata/record-and-return-metadata!])
+   #'add-rows-truncated/add-rows-truncated])
 
 ;; TODO -- can we make this `[metadata rf]` instead of `rff`?
-(defn postprocessing-xform [preprocessed-query rff]
+(defn post-processing-xform [preprocessed-query rff]
+  {:pre  [(map? preprocessed-query) (fn? rff)]
+   :post [(fn? %)]}
   (process-common/ensure-store-and-driver preprocessed-query
     (try
       (reduce
-       (fn [middleware rff]
-         (if middleware
-           (middleware preprocessed-query rff)
-           rff))
+       (fn [rff middleware]
+         (if-not middleware
+           rff
+           (try
+             (u/prog1 (middleware preprocessed-query rff)
+               (assert (fn? <>)))
+             (catch Throwable e
+               (throw (ex-info (tru "Error applying post-processing middleware {0}: {1}" (pr-str middleware) (ex-message e))
+                               {:middleware (pr-str middleware)
+                                :type       (:type (ex-data e) qp.error-type/qp)}
+                               e))))))
        rff
-       post-process-middleware)
+       middleware)
       (catch Throwable e
         (throw (ex-info (tru "Error building post-processing transform: {0}" (ex-message e))
                         {:query preprocessed-query
-                         :type  (:type (ex-data e) qp.error-type/qp)}))))))
+                         :type  (:type (ex-data e) qp.error-type/qp)}
+                        e))))))

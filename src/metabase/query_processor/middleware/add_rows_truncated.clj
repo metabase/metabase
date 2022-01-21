@@ -30,9 +30,6 @@
   "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
   results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
   a CSV are unaffected.)"
-  [qp]
-  (fn [query rff context]
-    (qp query
-        (fn [metadata]
-          (add-rows-truncated-xform (results-limit query) (rff metadata)))
-        context)))
+  [query rff]
+  (fn [metadata]
+    (add-rows-truncated-xform (results-limit query) (rff metadata))))

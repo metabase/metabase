@@ -16,7 +16,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:dynamic *card-id*
+(def ^:dynamic ^:deprecated *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
@@ -106,6 +106,12 @@
   (fn [query rff context]
     (check-query-permissions* query context)
     (qp query rff context)))
+
+(defn remove-perms-key
+  "Remove the `::perms/permissions` key from `query` before proceeding. This key is calculated by middleware and used
+  for permissions purposes, and we don't want users to be able to add it themselves."
+  [query]
+  (dissoc query ::perms/permissions))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -64,10 +64,8 @@
 (defn post-process-cumulative-aggregations
   "Post-processing middleware that sums the `cum-count` and `cum-sum` aggregations
   from [[rewrite-cumulative-aggregations]]."
-  [qp]
-  (fn [{::keys [replaced-indecies], :as query} rff context]
-    (if-not replaced-indecies
-      (qp query rff context)
-      (let [rff' (fn [metadata]
-                   (cumulative-ags-xform replaced-indecies (rff metadata)))]
-        (qp query rff' context)))))
+  [{::keys [replaced-indecies]} rff]
+  (if-not replaced-indecies
+    rff
+    (fn [metadata]
+      (cumulative-ags-xform replaced-indecies (rff metadata)))))

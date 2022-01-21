@@ -31,44 +31,36 @@
         (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
 (defn update-viz-settings-pre
-  ;; TODO
-  [query]
-  query)
-
-(defn update-viz-settings-post
-  ;; TODO
-  [qp]
-  (fn [query rff context]
-    (qp query rff context)))
-
-(defn- update-viz-settings
-  "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
-  into an export.
+  "Preprocessing middleware for fetching and processing a table's visualization settings so that they can be
+  incorporated into an export.
 
   Card-level visualization settings are either fetched from the DB (for saved cards) or passed from the frontend
   in the API call (for unsaved cards). These are merged with the base viz settings for each field that are fetched from
   the QP store (and defined in the data model settings).
 
-  For native queries, viz settings passed from the frontend are used, without modification.
+  For native queries, viz settings passed from the frontend are used, without modification."
+  [{{:keys [process-viz-settings?]} :middleware, :as query}]
+  (if-not process-viz-settings?
+    query
+    (let [card-viz-settings           (viz-settings query)
+          column-viz-settings         (::mb.viz/column-settings card-viz-settings)
+          fields                      (or (-> query :query :fields)
+                                          (-> query :query :source-query :fields))
+          field-ids                   (filter int? (map second fields))
+          updated-column-viz-settings (if (= (:type query) :query)
+                                        (update-card-viz-settings column-viz-settings field-ids)
+                                        column-viz-settings)
+          global-settings             (m/map-vals mb.viz/db->norm-column-settings-entries
+                                                  (public-settings/custom-formatting))
+          updated-card-viz-settings   (-> card-viz-settings
+                                          (assoc ::mb.viz/column-settings updated-column-viz-settings)
+                                          (assoc ::mb.viz/global-column-settings global-settings))]
+      (-> query
+          (dissoc :viz-settings)
+          (assoc ::updated-viz-settings updated-card-viz-settings)))))
 
-  Processed viz settings are added to the metadata under the key :viz-settings."
-  [qp]
-  (fn [{{:keys [process-viz-settings?]} :middleware, :as query} rff context]
-    (if process-viz-settings?
-      (let [card-viz-settings           (viz-settings query)
-            column-viz-settings         (::mb.viz/column-settings card-viz-settings)
-            fields                      (or (-> query :query :fields)
-                                            (-> query :query :source-query :fields))
-            field-ids                   (filter int? (map second fields))
-            updated-column-viz-settings (if (= (:type query) :query)
-                                          (update-card-viz-settings column-viz-settings field-ids)
-                                          column-viz-settings)
-            global-settings             (m/map-vals mb.viz/db->norm-column-settings-entries
-                                                    (public-settings/custom-formatting))
-            updated-card-viz-settings   (-> card-viz-settings
-                                            (assoc ::mb.viz/column-settings updated-column-viz-settings)
-                                            (assoc ::mb.viz/global-column-settings global-settings))
-            query'                      (dissoc query :viz-settings)
-            rff'                        (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (qp query' rff' context))
-      (qp query rff context))))
+(defn update-viz-settings-post
+  "Add the viz settings calculated by [[update-viz-settings-pre]] to results metadata under the key `:viz-settings`."
+  [{::keys [updated-viz-settings]} rff]
+  (fn [metadata]
+    (rff (assoc metadata :viz-settings updated-viz-settings))))

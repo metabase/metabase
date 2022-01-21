@@ -21,10 +21,8 @@
 
 (defn limit-result-rows
   "Post-processing middleware. Limit the maximum number of rows that can be taken from the results."
-  [qp]
-  (fn [query rff context]
-    (let [limit (default-limit query)
-          rff'   (fn limit-rff [metadata]
-                   (let [rf (rff metadata)]
-                     ((take limit) rf)))]
-      (qp query rff' context))))
+  [query rff]
+  (let [limit (default-limit query)]
+    (fn limit-rff [metadata]
+      (let [rf (rff metadata)]
+        ((take limit) rf)))))
