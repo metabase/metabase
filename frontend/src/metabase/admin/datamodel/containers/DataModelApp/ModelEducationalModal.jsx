@@ -23,13 +23,13 @@ export function ModelEducationalModal({ isOpen, onClose }) {
   return (
     <Modal isOpen={isOpen} medium onClose={onClose}>
       <ModalContent
-        title={t`Create Models to make it easier for your team to explore.`}
+        title={t`Create models to make it easier for your team to explore.`}
         centeredTitle
         onClose={onClose}
       >
         <Content>
           <img
-            width="90%"
+            width="520px"
             className="mx1"
             src="app/assets/img/models-education.png"
             srcSet="
