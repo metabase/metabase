@@ -111,7 +111,8 @@
                 (is (partial= [{:data {"event"           "invite_sent",
                                        "invited_user_id" (u/the-id invited-user)
                                        "source"          "setup"}}]
-                              (snowplow-test/pop-event-data-and-user-id!))))
+                              (filter #(= (get-in % [:data "event"]) "invite_sent")
+                                      (snowplow-test/pop-event-data-and-user-id!)))))
               (let [invite-email (-> (mt/regex-email-bodies
                                       (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
                                      (get email)
