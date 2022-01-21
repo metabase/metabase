@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import { space, SpaceProps } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
@@ -21,13 +22,14 @@ export const RadioListBubble = styled(RadioList)`
   display: flex;
 `;
 
-export interface RadioLabelProps {
+export interface RadioLabelProps extends SpaceProps {
   variant: RadioVariant;
   vertical: boolean;
 }
 
 export const RadioLabel = styled.label<RadioLabelProps>`
   display: block;
+  ${space};
 `;
 
 export const RadioLabelNormal = styled(RadioLabel)`
