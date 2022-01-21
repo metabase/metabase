@@ -82,3 +82,5 @@ function assertDefaultOption<TValue>(
     throw new TypeError();
   }
 }
+
+export default Radio;
