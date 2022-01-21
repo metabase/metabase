@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
+import PropTypes from "prop-types";
 import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
@@ -14,6 +14,14 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import { ItemLink } from "../PinnedItemCard/PinnedItemCard.styled";
 import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
+
+const propTypes = {
+  item: PropTypes.object.isRequired,
+  collection: PropTypes.object.isRequired,
+  metadata: PropTypes.object.isRequired,
+  onCopy: PropTypes.func.isRequired,
+  onMove: PropTypes.func.isRequired,
+};
 
 function CollectionCardVisualization({
   item,
@@ -99,6 +107,8 @@ function CollectionCardVisualization({
     </ItemLink>
   );
 }
+
+CollectionCardVisualization.propTypes = propTypes;
 
 export default CollectionCardVisualization;
 
