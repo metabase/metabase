@@ -299,13 +299,17 @@
                                  {:aggregation [[:count]]
                                   :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
 
-(deftest row-limit-override-test
+(deftest max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
       (mt/with-temp Database [db {:name    "SQL Server with ROWCOUNT override"
                                   :engine  "sqlserver"
                                   :details (-> (:details (mt/db))
                                                ;; SQL server considers a ROWCOUNT of 0 to be unconstrained
+                                               ;; we are putting this in the details map, since that's where connection
+                                               ;; properties go in a client save operation, but it will be MOVED to the
+                                               ;; settings map instead (which is where DB-local settings go), via the
+                                               ;; driver/normalize-db-details implementation for :sqlserver
                                                (assoc :rowcount-override 0))}]
         (mt/with-db db
           (is (= 3000 (-> {:query (str "DECLARE @DATA AS TABLE(\n"

@@ -565,8 +565,11 @@
         (.close stmt)
         (throw e)))))
 
-;; override the driver/row-limit-override method by returning the value from the database details (if defined)
-;; if not, then the default behavior takes effect (meaning, no override)
-(defmethod driver/row-limit-override :sqlserver
+(defmethod driver/normalize-db-details :sqlserver
   [_ database]
-  (get-in database [:details :rowcount-override]))
+  (if-let [rowcount-override (-> database :details :rowcount-override)]
+    ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
+    ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
+    (-> (update database :details #(dissoc % :rowcount-override))
+        (update :settings #(assoc % :max-results-bare-rows rowcount-override)))
+    database))

@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.constraints
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
-  `:add-default-userland-constraints?` `:middleware` option.")
+  `:add-default-userland-constraints?` `:middleware` option."
+  (:require [metabase.models.setting :as setting]
+            [metabase.util.i18n :refer [deferred-tru]]))
 
 (def ^:private max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -40,3 +42,9 @@
   [qp]
   (fn [query rff context]
     (qp (add-default-userland-constraints* query) rff context)))
+
+(setting/defsetting max-results-bare-rows
+  (deferred-tru "Controls the maximum number of rows that can ever be returned from a query.")
+  :visibility     :authenticated
+  :type           :integer
+  :database-local :allowed)

@@ -1,9 +1,8 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
+  (:require [metabase.mbql.util :as mbql.u]
             [metabase.models.database :refer [Database]]
+            [metabase.models.setting :as setting]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.util :as qputil]))
 
@@ -34,13 +33,12 @@
   "Given a `query`, return the max rows that should be returned.  This is the first non-nil value from (in decreasing
   priority order):
 
-  1. the output of `metabase.driver/row-limit-override` when called on the given query's driver and database
+  1. the value of the `metabase.query-processor.middleware.constraints/max-results-bare-rows` setting, which allows
+     for database-local override
   2. the output of `metabase.mbql.util/query->max-rows-limit` when called on the given query
   3. `metabase.query-processor.interface/absolute-max-results` (a constant, non-nil backstop value)"
   [query]
-  (or (when-let [db-id (:database query)]
-        (let [database (Database db-id)]
-          (driver/row-limit-override (driver.u/database->driver database) database)))
+  (or (setting/get-value-of-type :integer :max-results-bare-rows)
       (mbql.u/query->max-rows-limit query)
       i/absolute-max-results))
 
