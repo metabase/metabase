@@ -1,7 +1,8 @@
 import { ngettext, msgid, t } from "ttag";
 
-import { OPERATOR as OP } from "./tokenizer";
-import { MBQL_CLAUSES } from "./index";
+import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
+import { ResolverError } from "metabase/lib/expressions/pratt/types";
+import { MBQL_CLAUSES } from "metabase/lib/expressions";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
@@ -57,26 +58,34 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
-      return fn ? fn(kind, name) : [kind, name];
+      return fn ? fn(kind, name, expression.node) : [kind, name];
     }
 
     let operandType = null;
     if (LOGICAL_OPS.includes(op)) {
       operandType = "boolean";
-    } else if (NUMBER_OPS.includes(op) || op === "coalesce") {
+    } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
       const [firstOperand] = operands;
-      if (typeof firstOperand !== "undefined" && !Array.isArray(firstOperand)) {
-        throw new Error(t`Expecting field but found ${firstOperand}`);
+      if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
+        throw new ResolverError(
+          t`Expecting field but found ${firstOperand}`,
+          expression.node,
+        );
       }
     } else if (op === "concat") {
-      operandType = "string";
+      operandType = "expression";
+    } else if (op === "coalesce") {
+      operandType = type;
     } else if (op === "case") {
       const [pairs, options] = operands;
       if (pairs.length < 1) {
-        throw new Error(t`CASE expects 2 arguments or more`);
+        throw new ResolverError(
+          t`CASE expects 2 arguments or more`,
+          expression.node,
+        );
       }
 
       const resolvedPairs = pairs.map(([tst, val]) => [
@@ -103,12 +112,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
 
     const clause = findMBQL(op);
     if (!clause) {
-      throw new Error(t`Unknown function ${op}`);
+      throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
     const { displayName, args, multiple, hasOptions } = clause;
     if (!isCompatible(type, clause.type)) {
-      throw new Error(
+      throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
+        expression.node,
       );
     }
     if (!multiple) {
@@ -120,12 +130,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
         operands.length < expectedArgsLength ||
         operands.length > maxArgCount
       ) {
-        throw new Error(
+        throw new ResolverError(
           ngettext(
             msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
             `Function ${displayName} expects ${expectedArgsLength} arguments`,
             expectedArgsLength,
           ),
+          expression.node,
         );
       }
     }

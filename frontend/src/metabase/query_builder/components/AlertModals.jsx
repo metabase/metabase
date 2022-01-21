@@ -5,7 +5,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
@@ -504,9 +504,7 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
             ? t`Alert me when the line…`
             : t`Alert me when the progress bar…`
         }
-        trueText={
-          isTimeseries ? t`Goes above the goal line` : t`Reaches the goal`
-        }
+        trueText={isTimeseries ? t`Reaches the goal line` : t`Reaches the goal`}
         falseText={
           isTimeseries ? t`Goes below the goal line` : t`Goes below the goal`
         }

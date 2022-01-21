@@ -1,8 +1,8 @@
 import {
   restore,
-  mockSessionProperty,
   openNativeEditor,
   filterWidget,
+  popover,
 } from "__support__/e2e/cypress";
 
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
@@ -13,8 +13,6 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
   });
@@ -96,9 +94,10 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
     it("when set through the filter widget", () => {
       filterWidget().click();
-      // Since we have fixed dates in Sample Dataset (dating back a couple of years), it'd be cumbersome to click back month by month.
+      // Since we have fixed dates in Sample Database (dating back a couple of years), it'd be cumbersome to click back month by month.
       // Instead, let's choose the 15th of the current month and assert that there are no products / no results.
       cy.findByText("15").click();
+      cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
 
@@ -112,6 +111,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
 
       cy.findByText("Select a default value…").click();
       cy.findByText("15").click();
+      cy.findByText("Update filter").click();
 
       SQLFilter.runQuery();
 
@@ -119,5 +119,21 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
         cy.findByText("No results!");
       });
     });
+  });
+
+  // flaky test (#19454)
+  it.skip("should show an info popover when hovering over fields in the field filter field picker", () => {
+    SQLFilter.enterParameterizedQuery("SELECT * FROM products WHERE {{cat}}");
+
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+
+    popover().within(() => {
+      cy.findByText("People").click();
+      cy.findByText("City").trigger("mouseenter");
+    });
+
+    popover().contains("City");
+    popover().contains("1,966 distinct values");
   });
 });

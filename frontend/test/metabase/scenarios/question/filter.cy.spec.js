@@ -1,4 +1,5 @@
 import {
+  enterCustomColumnDetails,
   restore,
   openOrdersTable,
   openProductsTable,
@@ -10,7 +11,7 @@ import {
   visualize,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -19,7 +20,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > question > filter", () => {
   beforeEach(() => {
@@ -369,7 +370,7 @@ describe("scenarios > question > filter", () => {
     openProductsTable();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    typeInExpressionEditor("c");
+    enterCustomColumnDetails({ formula: "c" });
 
     // This issue has two problematic parts. We're testing for both:
     cy.log("Popover should display all custom expression options");
@@ -379,9 +380,7 @@ describe("scenarios > question > filter", () => {
     });
 
     cy.log("Should not display error prematurely");
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("ontains(");
+    enterCustomColumnDetails({ formula: "ontains(" });
     cy.findByText(/Checks to see if string1 contains string2 within it./i);
     cy.button("Done").should("not.be.disabled");
     cy.get(".text-error").should("not.exist");
@@ -430,9 +429,8 @@ describe("scenarios > question > filter", () => {
 
     cy.wait("@dataset");
     cy.findByText(/Created At > Product? → Created At/i).click();
-    cy.get("[contenteditable='true']").contains(
-      /\[Created At\] > \[Products? → Created At\]/,
-    );
+
+    cy.contains(/\[Created At\] > \[Products? → Created At\]/);
   });
 
   it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
@@ -471,13 +469,24 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  it("should reject Enter when the filter expression is invalid", () => {
+    openReviewsTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    enterCustomColumnDetails({ formula: "[Rating] > 2E{enter}" }); // there should numbers after 'E'
+
+    cy.findByText("Missing exponent");
+    cy.findByText("Rating is greater than 2").should("not.exist");
+  });
+
   it("should offer case expression in the auto-complete suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
-    typeInExpressionEditor("c");
+    enterCustomColumnDetails({ formula: "c" });
     popover().contains(/case/i);
 
-    typeInExpressionEditor("a");
+    cy.get("@formula").type("a");
 
     // "case" is still there after typing a bit
     popover().contains(/case/i);
@@ -488,14 +497,14 @@ describe("scenarios > question > filter", () => {
 
     openExpressionEditorFromFreshlyLoadedPage();
 
-    typeInExpressionEditor("c");
+    enterCustomColumnDetails({ formula: "c" });
 
     cy.contains("case")
       .closest("li")
       .should("have.css", "background-color")
       .and("not.eq", transparent);
 
-    typeInExpressionEditor("{downarrow}");
+    cy.get("@formula").type("{downarrow}");
 
     cy.contains("case")
       .closest("li")
@@ -511,11 +520,11 @@ describe("scenarios > question > filter", () => {
   it("should highlight the correct matching for suggestions", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
-    typeInExpressionEditor("[");
+    enterCustomColumnDetails({ formula: "[" });
 
     popover().findByText("Body");
 
-    typeInExpressionEditor("p");
+    cy.get("@formula").type("p");
 
     // only "P" (of Products etc) should be highlighted, and not "Pr"
     popover()
@@ -538,14 +547,9 @@ describe("scenarios > question > filter", () => {
     });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .as("inputField")
-      .click()
-      .type("su");
+    enterCustomColumnDetails({ formula: "su" });
     popover().contains(/Sum of Total/i);
-    cy.get("@inputField")
-      .click()
-      .type("m");
+    cy.get("@formula").type("m");
     popover().contains(/Sum of Total/i);
   });
 
@@ -554,10 +558,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
-      .click()
-      .clear()
-      .type("NOT IsNull([Rating])", { delay: 50 });
+    enterCustomColumnDetails({ formula: "NOT IsNull([Rating])" });
+
     cy.button("Done")
       .should("not.be.disabled")
       .click();
@@ -565,10 +567,12 @@ describe("scenarios > question > filter", () => {
     cy.get(".QueryBuilder .Icon-add").click();
 
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']")
-      .click()
+
+    cy.get("@formula")
+      .click({ force: true })
       .clear()
-      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+      .type("NOT IsEmpty([Reviewer])");
+
     cy.button("Done")
       .should("not.be.disabled")
       .click();
@@ -594,11 +598,10 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains("isempty([Reviewer])");
-    cy.get("[contenteditable='true']")
-      .click()
+    cy.contains("isempty([Reviewer])");
+    cy.get(".ace_text-input")
       .clear()
-      .type("NOT IsEmpty([Reviewer])", { delay: 50 });
+      .type("NOT IsEmpty([Reviewer])");
     cy.findByText("Done").click();
     cy.contains("Showing 1,112 rows");
   });
@@ -618,9 +621,8 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rating is empty").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains("isnull([Rating])");
-    cy.get("[contenteditable='true']")
-      .click()
+    cy.contains("isnull([Rating])");
+    cy.get(".ace_text-input")
       .clear()
       .type("NOT IsNull([Rating])", { delay: 50 });
     cy.findByText("Done").click();
@@ -647,9 +649,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains(
-      'NOT contains([Title], "Wallet", "case-insensitive")',
-    );
+    cy.contains('NOT contains([Title], "Wallet", "case-insensitive")');
   });
 
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
@@ -673,7 +673,7 @@ describe("scenarios > question > filter", () => {
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
     // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
-    cy.get("[contenteditable='true']");
+    cy.get(".ace_text-input");
   });
 
   it("should be able to convert time interval filter to custom expression (metabase#12457)", () => {
@@ -724,9 +724,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable='true']").contains(
-      'contains([Reviewer], "MULLER", "case-insensitive")',
-    );
+    cy.contains('contains([Reviewer], "MULLER", "case-insensitive")');
     cy.button("Done").click();
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.data.rows).to.have.lengthOf(1);
@@ -739,9 +737,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
-      .click()
-      .type("3.14159");
+    enterCustomColumnDetails({ formula: "3.14159" });
     cy.button("Done")
       .should("not.be.disabled")
       .click();
@@ -753,9 +749,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
 
-    cy.get("[contenteditable='true']")
-      .click()
-      .type('"TheAnswer"');
+    enterCustomColumnDetails({ formula: '"TheAnswer"' });
     cy.button("Done")
       .should("not.be.disabled")
       .click();
@@ -792,7 +786,9 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]").type("[Total] < [Subtotal]");
+
+    enterCustomColumnDetails({ formula: "[Total] < [Subtotal]" });
+
     cy.button("Done").click();
     cy.findByText("Total < Subtotal");
   });
@@ -801,7 +797,7 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("([ID] > 2 OR [Subtotal] = 100) and [Tax] < 4")
       .blur();
     cy.findByText(/^Expected closing parenthesis but found/).should(
@@ -816,10 +812,49 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("0 < [ID]")
       .blur();
     cy.findByText("Expecting field but found 0");
+  });
+
+  it("should allow switching focus with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+    cy.get(".ace_text-input").type("[Tax] > 0");
+
+    // Tab switches the focus to the "Done" button
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("contains", "Button");
+  });
+
+  it("should allow choosing a suggestion with Tab", () => {
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Filter").click();
+    cy.findByText("Custom Expression").click();
+
+    // Try to auto-complete Tax
+    cy.get(".ace_text-input").type("Ta");
+
+    // Suggestion popover shows up and this select the first one ([Created At])
+    cy.realPress("Tab");
+
+    // Focus remains on the expression editor
+    cy.focused()
+      .should("have.attr", "class")
+      .and("eq", "ace_text-input");
+
+    // Finish to complete a valid expression, i.e. [Tax] > 42
+    cy.get(".ace_text-input").type("> 42");
+
+    // Tab switches the focus to the "Done" button
+    cy.realPress("Tab");
+    cy.focused()
+      .should("have.attr", "class")
+      .and("contains", "Button");
   });
 
   it.skip("should work on twice summarized questions (metabase#15620)", () => {
@@ -929,7 +964,7 @@ describe("scenarios > question > filter", () => {
       openOrdersTable({ mode: "notebook" });
       cy.findByText("Filter").click();
       cy.findByText("Custom Expression").click();
-      cy.get("[contenteditable=true]")
+      cy.get(".ace_text-input")
         .type("[Total] < [Product → Price]")
         .blur();
       cy.button("Done").click();
@@ -960,7 +995,7 @@ describe("scenarios > question > filter", () => {
         .last()
         .click();
       cy.findByText("Custom Expression").click();
-      cy.get("[contenteditable=true]")
+      cy.get(".ace_text-input")
         .type("[Total] < [Product → Price]")
         .blur();
       cy.button("Done").click();
@@ -1081,10 +1116,4 @@ function openExpressionEditorFromFreshlyLoadedPage() {
   openReviewsTable({ mode: "notebook" });
   cy.findByText("Filter").click();
   cy.findByText("Custom Expression").click();
-}
-
-function typeInExpressionEditor(string) {
-  cy.get("[contenteditable='true']")
-    .click()
-    .type(string);
 }

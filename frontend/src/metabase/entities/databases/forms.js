@@ -78,6 +78,23 @@ const DATABASE_DETAIL_OVERRIDES = {
     placeholder: t`Paste the contents of the server's SSL certificate chain here`,
     type: "text",
   }),
+  "schedules.metadata_sync": () => ({
+    name: "schedules.metadata_sync",
+    type: MetadataSyncScheduleWidget,
+    normalize: value => value,
+  }),
+  "schedules.cache_field_values": () => ({
+    name: "schedules.cache_field_values",
+    type: CacheFieldValuesScheduleWidget,
+    normalize: value => value,
+  }),
+  auto_run_queries: () => ({
+    name: "auto_run_queries",
+    initial: undefined,
+  }),
+  refingerprint: () => ({
+    name: "refingerprint",
+  }),
 };
 
 function getEngineName(engine) {
@@ -100,7 +117,7 @@ function getEngineInfo(engine, details, id) {
 }
 
 function shouldShowEngineProvidedField(field, details) {
-  const detailAndValueRequiredToShowField = field["visible-if"];
+  const detailAndValueRequiredToShowField = field.visibleIf;
 
   if (detailAndValueRequiredToShowField) {
     const pred = currentValue => {
@@ -258,10 +275,10 @@ function normalizeFieldValue(value, field) {
 function getEngineFormFields(engine, details, id) {
   const engineInfo = getEngineInfo(engine, details, id);
   const engineFields = engineInfo ? engineInfo["details-fields"] : [];
+  const cachingField = getDatabaseCachingField();
 
   // convert database details-fields to Form fields
   return engineFields
-    .filter(field => shouldShowEngineProvidedField(field, details))
     .map(field => {
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
@@ -278,9 +295,12 @@ function getEngineFormFields(engine, details, id) {
         initial: field.default,
         readOnly: field.readOnly || false,
         helperText: field["helper-text"],
+        visibleIf: field["visible-if"],
         ...(overrides && overrides(engine, details, id)),
       };
-    });
+    })
+    .concat(cachingField ? [cachingField] : [])
+    .filter(field => shouldShowEngineProvidedField(field, details));
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
@@ -360,47 +380,8 @@ const forms = {
           helperText: t`Choose what this data will be called in Metabase.`,
         },
         ...(getEngineFormFields(engine, details, id) || []),
-        {
-          name: "auto_run_queries",
-          type: "boolean",
-          title: t`Rerun queries for simple explorations`,
-          description: t`We execute the underlying query when you explore data using Summarize or Filter. This is on by default but you can turn it off if performance is slow.`,
-          hidden: !engine,
-        },
-        {
-          name: "details.let-user-control-scheduling",
-          type: "boolean",
-          title: t`Choose when syncs and scans happen`,
-          description: t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.`,
-          hidden: !engine,
-        },
-        {
-          name: "refingerprint",
-          type: "boolean",
-          title: t`Periodically refingerprint tables`,
-          description: t`This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.`,
-          hidden: !engine,
-        },
-        getDatabaseCachingField(),
         { name: "is_full_sync", type: "hidden" },
         { name: "is_on_demand", type: "hidden" },
-        {
-          name: "schedules.metadata_sync",
-          type: MetadataSyncScheduleWidget,
-          title: t`Database syncing`,
-          description: t`This is a lightweight process that checks for updates to this database’s schema. In most cases, you should be fine leaving this set to sync hourly.`,
-          hidden: !engine || !details["let-user-control-scheduling"],
-        },
-        {
-          name: "schedules.cache_field_values",
-          type: CacheFieldValuesScheduleWidget,
-          title: t`Scanning for Filter Values`,
-          description:
-            t`Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.` +
-            " " +
-            t`When should Metabase automatically scan and cache field values?`,
-          hidden: !engine || !details["let-user-control-scheduling"],
-        },
       ].filter(Boolean),
     normalize: function(database) {
       if (!database.details["let-user-control-scheduling"]) {
@@ -427,33 +408,19 @@ forms.setup = {
     })),
 };
 
-// partial forms for tabbed view:
 forms.connection = {
   ...forms.details,
   fields: (...args) =>
     forms.details.fields(...args).map(field => ({
       ...field,
-      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+      hidden: field.hidden,
     })),
 };
-forms.scheduling = {
-  ...forms.details,
-  fields: (...args) =>
-    forms.details.fields(...args).map(field => ({
-      ...field,
-      hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
-    })),
-};
-
-const SCHEDULING_FIELDS = new Set([
-  "schedules.metadata_sync",
-  "schedules.cache_field_values",
-]);
 
 const ADVANCED_FIELDS = new Set([
   "auto_run_queries",
   "details.let-user-control-scheduling",
-  ...SCHEDULING_FIELDS,
+  "cache_ttl",
 ]);
 
 export default forms;

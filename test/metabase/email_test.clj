@@ -112,6 +112,22 @@
   [& regexes]
   (regex-email-bodies* regexes @inbox))
 
+(defn received-email-subject?
+  "Indicate whether user the user received an email whose subject matches the `regex`. User should be a keyword
+  like :rasta."
+  [user regex]
+  (let [address (:username (user/user->credentials user))
+        emails  (get @inbox address)]
+    (boolean (some #(re-find regex %) (map :subject emails)))))
+
+(defn received-email-body?
+  "Indicate whether user the user received an email whose body matches the `regex`. User should be a keyword
+  like :rasta."
+  [user regex]
+  (let [address (:username (user/user->credentials user))
+        emails  (get @inbox address)]
+    (boolean (some #(re-find regex %) (map (comp :content first :body) emails)))))
+
 (deftest regex-email-bodies-test
   (letfn [(email [body] {:to #{"mail"}
                          :body [{:content body}]})

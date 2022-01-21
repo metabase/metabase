@@ -1,30 +1,8 @@
 (ns metabase.driver.common.parameters
   "Various record types below are used as a convenience for differentiating the different param types."
-  (:require [metabase.models.setting :refer [defsetting]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
-            [metabase.util.schema :as su]
-            [potemkin.types :as p.types]
+  (:require [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]))
-
-(defsetting field-filter-operators-enabled?
-  (deferred-tru "Enable the new field-filter operators")
-  :type       :boolean
-  :visibility :public
-  :setter     :none)
-
-(defn throw-if-field-filter-operators-not-enabled
-  "Feature flag check for new field filter operations. Assumed already has been checked that `ops/operator?` is
-  true. Throws if the new field filter operators are not enabled. Intended to be removed when feature flag is no
-  longer necessary; designed so it can be used in a threading context and just raised out."
-  {:added "0.39.0"}
-  [field-filter]
-  (if (field-filter-operators-enabled?)
-    field-filter
-    (throw (ex-info (tru "New field filter operators are not enabled")
-                    {:type qp.error-type/invalid-parameter
-                     :operator (:type field-filter)}))))
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
 ;;
@@ -120,21 +98,6 @@
               s/Num
               s/Str
               s/Bool))
-
-(def ParamValue
-  "Schema for a parameter *value* during parsing by the `values` namespace, and also (confusingly) for the `:value` part
-  of a `FieldFilter`, which gets passed along to `substitution`. TODO - this is horribly confusing"
-  {:type                     s/Keyword ; TODO - what types are allowed? :text, ...?
-   (s/optional-key :target)  s/Any
-   ;; not specified if the param has no value. TODO - make this stricter
-   (s/optional-key :value)   s/Any
-   ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
-   ;; code that constructs the query params is doing. We can go ahead and ignore these when present.
-   (s/optional-key :slug)    su/NonBlankString
-   (s/optional-key :name)    su/NonBlankString
-   (s/optional-key :default) s/Any
-   ;; various other keys are used internally by the frontend
-   s/Keyword                 s/Any})
 
 ;; Sequence of multiple values for generating a SQL IN() clause. vales
 ;; `values` are a sequence of `[SingleValue]`

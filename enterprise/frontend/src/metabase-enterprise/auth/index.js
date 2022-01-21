@@ -20,7 +20,7 @@ import SettingsGoogleForm from "metabase/admin/settings/components/SettingsGoogl
 import SettingsSAMLForm from "./components/SettingsSAMLForm";
 import SettingsJWTForm from "./components/SettingsJWTForm";
 
-import SSOButton from "./components/SSOButton";
+import SSOButton from "./containers/SSOButton";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
   updateIn(sections, ["authentication", "settings"], settings => [

@@ -4,9 +4,9 @@ import {
   popover,
   visualize,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > joined questions", () => {
   beforeEach(() => {
@@ -30,13 +30,13 @@ describe("scenarios > question > joined questions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Products").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Products").click();
 
     cy.icon("join_left_outer").click();
 
     popover()
-      .findByText("Sample Dataset")
+      .findByText("Sample Database")
       .click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15578").click();

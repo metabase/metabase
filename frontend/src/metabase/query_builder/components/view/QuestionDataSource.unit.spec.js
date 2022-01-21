@@ -2,13 +2,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   MULTI_SCHEMA_DATABASE,
   ORDERS,
   PRODUCTS,
   PEOPLE,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import * as Urls from "metabase/lib/urls";
 import QuestionDataSource from "./QuestionDataSource";
@@ -18,7 +18,7 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -30,7 +30,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "select * from orders",
     },
@@ -80,7 +80,7 @@ const PEOPLE_JOIN = {
 
 const QUERY_WITH_PRODUCTS_JOIN = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     joins: [PRODUCTS_JOIN],
@@ -89,7 +89,7 @@ const QUERY_WITH_PRODUCTS_JOIN = {
 
 const QUERY_WITH_PRODUCTS_PEOPLE_JOIN = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     joins: [PRODUCTS_JOIN, PEOPLE_JOIN],
@@ -103,7 +103,7 @@ const ORDERS_PK_FILTER = ["=", ["field", ORDERS.ID.id, null], RANDOM_ORDER_ID];
 
 const ORDER_DETAIL_QUERY = {
   type: "query",
-  database: SAMPLE_DATASET.id,
+  database: SAMPLE_DATABASE.id,
   query: {
     "source-table": ORDERS.id,
     filter: ["and", ORDERS_PK_FILTER],
@@ -144,7 +144,7 @@ function getSavedNativeQuestion(overrides) {
 }
 
 function getNestedQuestionTableMock(isMultiSchemaDB) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   return {
     id: SOURCE_QUESTION_VIRTUAL_ID,
     db,
@@ -156,18 +156,16 @@ function getNestedQuestionTableMock(isMultiSchemaDB) {
       name: SOURCE_QUESTION_COLLECTION_SCHEMA_NAME,
       database: {
         id: -1337,
-        initial_sync: true,
         is_saved_questions: true,
       },
     },
-    initial_sync: true,
     displayName: () => SOURCE_QUESTION_NAME,
     hasSchema: () => isMultiSchemaDB,
   };
 }
 
 function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   const question = getAdHocQuestion({
     dataset_query: {
       type: "query",
@@ -184,7 +182,7 @@ function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
 }
 
 function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
-  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATASET;
+  const db = isMultiSchemaDB ? MULTI_SCHEMA_DATABASE : SAMPLE_DATABASE;
   const question = getSavedGUIQuestion({
     dataset_query: {
       type: "query",

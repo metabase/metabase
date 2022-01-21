@@ -16,7 +16,6 @@
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.card-favorite :refer [CardFavorite]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
@@ -26,15 +25,9 @@
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
@@ -191,16 +184,14 @@
   "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the
   `metadata` passed in seems valid,and, if so, return a channel that returns the value as-is; otherwise, we'll run the
   query ourselves to get the right values, and return a channel where you can listen for the results."
-  [query metadata checksum]
-  (let [valid-metadata? (and (results-metadata/valid-checksum? metadata checksum)
-                             (s/validate qr/ResultsMetadata metadata))]
+  [query metadata]
+  (let [valid-metadata? (s/validate qr/ResultsMetadata metadata)]
     (log/info
-     (cond
-       valid-metadata? (trs "Card results metadata passed in to API is VALID. Thanks!")
-       metadata        (trs "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata.")
-       :else           (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
+     (if valid-metadata?
+       (trs "Card results metadata passed in to API is VALID. Thanks!")
+       (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
     (if valid-metadata?
-      (a/to-chan [metadata])
+      (a/to-chan! [metadata])
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
@@ -248,14 +239,15 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata metadata_checksum], :as card-data}]
+  [{:keys [dataset_query result_metadata], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                                    :creator_id api/*current-user-id*)
-        result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
+                                    :creator_id api/*current-user-id*
+                                    :dataset (boolean (:dataset card-data)))
+        result-metadata-chan (result-metadata-async dataset_query result_metadata)
         out-chan             (a/promise-chan)]
     (a/go
       (try
@@ -272,7 +264,7 @@
 
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
-  [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
+  [:as {{:keys [collection_id collection_position dataset_query description display name
                 result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
@@ -281,7 +273,6 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
@@ -316,12 +307,12 @@
   will know not to update the value in the DB.)
 
   Either way, results are returned asynchronously on a channel."
-  [card query metadata checksum]
+  [card query metadata]
   (if (and query
-             (not= query (:dataset_query card)))
-    (result-metadata-async query metadata checksum)
-    (u/prog1 (a/chan)
-      (a/close! <>))))
+           (not= query (:dataset_query card)))
+    (result-metadata-async query metadata)
+    (doto (a/chan)
+      (a/onto-chan! (when (seq metadata) [metadata])))))
 
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
@@ -501,7 +492,7 @@
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata metadata_checksum
+                   collection_position enable_embedding embedding_params result_metadata
                    cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
@@ -516,7 +507,6 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   metadata_checksum      (s/maybe su/NonBlankString)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
@@ -528,8 +518,7 @@
     (let [result-metadata-chan (result-metadata-for-updating-async
                                 card-before-update
                                 dataset_query
-                                result_metadata
-                                metadata_checksum)
+                                result_metadata)
           out-chan             (a/promise-chan)
           card-updates         (merge card-updates
                                       (when dataset
@@ -656,82 +645,6 @@
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
-(defn- query-magic-ttl
-  "Compute a 'magic' cache TTL time (in seconds) for QUERY by multipling its historic average execution times by the
-  `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
-  utilized.)"
-  [query]
-  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
-    (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
-                                            1000.0)))]
-      (when-not (zero? ttl-seconds)
-        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
-                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
-                  (u/emoji "💾"))
-        ttl-seconds))))
-
-(defn- ttl-hierarchy
-  "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
-  dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
-  `query-magic-ttl`, which is based on average execution time."
-  [card dashboard database query]
-  (when (public-settings/enable-query-caching)
-    (let [ttls (map :cache_ttl [card dashboard database])
-          most-granular-ttl (first (filter some? ttls))]
-      (or (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
-            (* most-granular-ttl 3600))
-          (query-magic-ttl query)))))
-
-(defn query-for-card
-  "Generate a query for a saved Card"
-  [{query :dataset_query
-    :as   card} parameters constraints middleware & [ids]]
-  (let [query     (-> query
-                      ;; don't want default constraints overridding anything that's already there
-                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                      (assoc :constraints constraints
-                             :parameters  parameters
-                             :middleware  middleware))
-        dashboard (db/select-one [Dashboard :cache_ttl] :id (:dashboard-id ids))
-        database  (db/select-one [Database :cache_ttl] :id (:database_id card))
-        ttl-secs  (ttl-hierarchy card dashboard database query)]
-    (assoc query :cache-ttl ttl-secs)))
-
-(defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a
-  `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
-  returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are not
-  met before returning the `StreamingResponse`.
-
-  `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
-  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.mbql.schema/Context]] for all valid
-  options."
-  [card-id export-format
-   & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints constraints/default-query-constraints
-             context     :question
-             qp-runner   qp/process-query-and-save-execution!}}]
-  {:pre [(u/maybe? sequential? parameters)]}
-  (let [run   (or run
-                  ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                  ;; customize the `context` passed to the QP
-                  (^:once fn* [query info]
-                   (qp.streaming/streaming-response [context export-format (u/slugify (:card-name info))]
-                     (binding [qp.perms/*card-id* card-id]
-                       (qp-runner query info context)))))
-        card  (api/read-check (db/select-one [Card :id :name :dataset_query :database_id :cache_ttl :collection_id] :id card-id))
-        query (-> (assoc (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id}) :async? true)
-                  (update :middleware (fn [middleware]
-                                        (merge
-                                         {:js-int-to-string? true :ignore-cached-results? ignore_cache}
-                                         middleware))))
-        info  {:executed-by  api/*current-user-id*
-               :context      context
-               :card-id      card-id
-               :card-name    (:name card)
-               :dashboard-id dashboard-id}]
-    (api/check-not-archived card)
-    (run query info)))
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -743,7 +656,7 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
-  (run-query-for-card-async
+  (qp.card/run-query-for-card-async
    card-id :api
    :parameters   parameters
    :ignore_cache ignore_cache
@@ -758,7 +671,7 @@
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
-  (run-query-for-card-async
+  (qp.card/run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
@@ -827,7 +740,7 @@
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
-  (run-query-for-card-async card-id :api
+  (qp.card/run-query-for-card-async card-id :api
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))

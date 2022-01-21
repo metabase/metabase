@@ -3,13 +3,12 @@ import {
   openProductsTable,
   openOrdersTable,
   popover,
-  tippyPopover,
   sidebar,
   visitQuestionAdhoc,
   visualize,
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -18,7 +17,7 @@ const {
   PRODUCTS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -398,13 +397,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       clickLineDot({ index: 0 });
-      tippyPopover().within(() => {
+      popover().within(() => {
         cy.findByText("January 1, 2020");
         cy.findByText("10");
       });
 
       clickLineDot({ index: 1 });
-      tippyPopover().within(() => {
+      popover().within(() => {
         cy.findByText("January 2, 2020");
         cy.findByText("5");
       });
@@ -431,7 +430,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".bar")
       .last()
       .trigger("mousemove");
-    tippyPopover().findByText("12");
+    popover().findByText("12");
   });
 
   it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
@@ -441,7 +440,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       ({ body: { groups, revision } }) => {
         // This mutates the original `groups` object => we'll pass it next to the `PUT` request
         groups[DATA_GROUP] = {
-          // database_id = 1 (SAMPLE_DATASET)
+          // database_id = 1 (SAMPLE_DATABASE)
           1: { schemas: "all", native: "none" },
         };
 
@@ -614,7 +613,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .first()
       .as("doohickeyChart")
       .trigger("mousemove");
-    tippyPopover().within(() => {
+    popover().within(() => {
       cy.findByText("Doohickey");
       cy.findByText("42");
     });

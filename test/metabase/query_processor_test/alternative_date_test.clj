@@ -16,7 +16,10 @@
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
   (testing "throws if argument is not a descendant of `:Coercion/UNIXTime->Temporal`"
-    (is (thrown? AssertionError (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Semantic type must be a UNIXTimestamp"
+         (sql.qp/semantic-type->unix-timestamp-unit :type/Integer)))))
 
 (mt/defdataset toucan-microsecond-incidents
   [["incidents" [{:field-name "severity"
@@ -41,18 +44,18 @@
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)
-    (is (= 10
-           ;; There's a race condition with this test. If we happen to grab a
-           ;; connection that is in a session with the timezone set to pacific,
-           ;; we'll get 9 results even when the above if statement is true. It
-           ;; seems to be pretty rare, but explicitly specifying UTC will make
-           ;; the issue go away
-           (mt/with-temporary-setting-values [report-timezone "UTC"]
-             (count (mt/rows (mt/dataset sad-toucan-incidents
-                               (mt/run-mbql-query incidents
-                                 {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
-                                  :order-by [[:asc $timestamp]]}))))))
-        "There were 10 'sad toucan incidents' on 2015-06-02 in UTC")))
+    (mt/dataset sad-toucan-incidents
+      (let [query (mt/mbql-query incidents
+                     {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
+                      :order-by [[:asc $timestamp]]})]
+        ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
+        ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
+        ;; rare, but explicitly specifying UTC will make the issue go away
+        (mt/with-temporary-setting-values [report-timezone "UTC"]
+          (testing "There were 10 'sad toucan incidents' on 2015-06-02 in UTC"
+            (mt/with-native-query-testing-context query
+              (is (= 10
+                     (count (mt/rows (qp/process-query query))))))))))))
 
 (deftest results-test
   (mt/test-drivers (mt/normal-drivers)

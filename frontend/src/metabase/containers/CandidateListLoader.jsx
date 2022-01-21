@@ -19,7 +19,7 @@ class CandidateListLoader extends React.Component {
 
   async UNSAFE_componentWillMount() {
     // If we get passed in a database id, just use that.
-    // Don't fall back to the sample dataset
+    // Don't fall back to the sample database
     if (this.props.databaseId) {
       this.setState({ databaseId: this.props.databaseId }, () => {
         this._loadCandidates();
@@ -35,7 +35,7 @@ class CandidateListLoader extends React.Component {
           this._loadCandidates();
         });
         // If things are super slow for whatever reason,
-        // just load candidates for sample dataset
+        // just load candidates for sample database
         this._sampleTimeout = setTimeout(async () => {
           this._sampleTimeout = null;
           this.setState({

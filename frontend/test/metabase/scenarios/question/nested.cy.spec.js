@@ -8,9 +8,9 @@ import {
   getDimensionByName,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {
@@ -483,7 +483,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  describe.skip("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
+  describe("should use the same query for date filter in both base and nested questions (metabase#15352)", () => {
     it("should work with 'between' date filter (metabase#15352-1)", () => {
       assertOnFilter({
         name: "15352-1",

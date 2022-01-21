@@ -9,40 +9,32 @@ Problems, their causes, how to detect them, and how to fix them.
 ### Installation
 
 - [Running the Metabase JAR][running].
-
 - [Running Metabase on Docker][docker].
-
 - [Using or migrating from an H2 application database][appdb].
 
 ### Authentication
 
-- [Setting up LDAP][ldap].
-
 - [People can't log in to Metabase][login].
+- [LDAP][ldap].
+- [SAML][saml].
 
 ### Permissions
-- [Fixing permissions issues][permissions].
 
+- [Fixing permissions issues][permissions].
 - [Managing data sandboxing][sandbox].
 
 ### Data Sources
 
 - [Connecting to data warehouses with Metabase][datawarehouse].
-
 - [I can't see my tables][cant-see-tables].
-
 - [Fixing missing or out-of-sync tables and columns][sync-fingerprint-scan].
 
 ### Questions and dashboards
 
 - [Saving questions or dashboards][proxies].
-
 - [My dashboard is slow][slow-dashboard].
-
 - [The dates and times in my questions and charts are wrong][incorrect-times].
-
 - [My dashboard filters don't work][filters].
-
 - [My dashboard's linked filters don't work][linked-filters].
 
 ### Email and alerts
@@ -52,6 +44,10 @@ Problems, their causes, how to detect them, and how to fix them.
 ## Think you found a bug?
 
 Let us know by [filing a bug report][bugs].
+
+## Feature requests
+
+See [Requesting new features][feature-request].
 
 ## Metabase server and console logs
 
@@ -74,10 +70,6 @@ For tutorials that walk you through how to use Metabase features, check out [Lea
 
 To see if someone else has run into a similar issue, check out [our forum on Discourse][forum].
 
-## Frequently asked questions
-
-For quick answers to common questions, check out our [Frequently Asked Questions][faq].
-
 ## Upgrading Metabase
 
 Metabase adds new features and squashes bugs with each release. [Upgrading to the latest and greatest][upgrade] may resolve your issue. If you're using [Metabase Cloud][cloud], we'll handle the upgrades for you. You can checkout the [release notes][releases] to see what's new.
@@ -90,7 +82,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [datawarehouse]: ./datawarehouse.html
 [docker]: ./docker.html
 [edge]: https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium
-[faq]: /faq
+[feature-request]: requesting-new-features.html
 [filters]: ./filters.html
 [firefox]: https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console
 [forum]: https://discourse.metabase.com/
@@ -106,6 +98,7 @@ Metabase adds new features and squashes bugs with each release. [Upgrading to th
 [running]: ./running.html
 [safari]: https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac
 [server-logs]: ./server-logs.html
+[saml]: ./saml.md
 [sandbox]: ./sandboxing.html
 [slow-dashboard]: ./my-dashboard-is-slow.html
 [sync-fingerprint-scan]: ./sync-fingerprint-scan.html

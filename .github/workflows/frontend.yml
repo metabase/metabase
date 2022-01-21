@@ -91,7 +91,7 @@ jobs:
       name: Check types
 
   fe-tests-unit:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
@@ -124,7 +124,7 @@ jobs:
         flags: front-end
 
   fe-tests-timezones:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v2
@@ -150,3 +150,34 @@ jobs:
     - run: yarn install --frozen-lockfile --prefer-offline
     - run: yarn run test-timezones
       name: Run frontend timezones tests
+
+  fe-chromatic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Prepare Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Get yarn cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/yarn
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+      - name: Get node_modules cache
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+      - run: yarn install --frozen-lockfile --prefer-offline
+      - name: Publish to Chromatic
+        uses: chromaui/action@v1
+        env:
+          PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+        if: env.PUBLISH_CHROMATIC != null
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

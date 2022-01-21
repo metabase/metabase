@@ -30,6 +30,7 @@ export const CardRoot = styled(Link)`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 2px ${color("shadow")};
+  overflow: hidden;
 
   &:hover {
     color: ${color("brand")};
@@ -56,4 +57,16 @@ export const CardIconContainer = styled.span`
 export const CardTitle = styled.span`
   display: block;
   margin-left: 1rem;
+  overflow: hidden;
+`;
+
+export const SelectRoot = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+export const SelectTitle = styled.div`
+  color: ${color("text-medium")};
+  margin-right: 0.5rem;
 `;

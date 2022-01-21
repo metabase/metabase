@@ -6,7 +6,7 @@ import {
   getNativeEditorSelectedText,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import { state as sampleState } from "__support__/sample_dataset_fixture";
+import { state as sampleState } from "__support__/sample_database_fixture";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return {
@@ -269,7 +269,7 @@ describe("getIsResultDirty", () => {
     });
   });
 
-  describe("datasets", () => {
+  describe("models", () => {
     function getDataset(query) {
       return getBaseCard({
         id: 1,
@@ -284,7 +284,7 @@ describe("getIsResultDirty", () => {
 
     const dataset = getDataset({ "source-table": 1 });
 
-    it("should not be dirty if dataset is not changed", () => {
+    it("should not be dirty if model is not changed", () => {
       const state = getState({
         card: dataset,
         originalCard: dataset,
@@ -293,7 +293,7 @@ describe("getIsResultDirty", () => {
       expect(getIsResultDirty(state)).toBe(false);
     });
 
-    it("should be dirty if dataset is changed", () => {
+    it("should be dirty if model is changed", () => {
       const state = getState({
         card: dataset,
         originalCard: dataset,
@@ -302,7 +302,7 @@ describe("getIsResultDirty", () => {
       expect(getIsResultDirty(state)).toBe(false);
     });
 
-    it("should not be dirty if dataset simple mode is active", () => {
+    it("should not be dirty if model simple mode is active", () => {
       const adHocDatasetCard = getDataset({ "source-table": "card__1" });
       const state = getState({
         card: adHocDatasetCard,
@@ -312,7 +312,7 @@ describe("getIsResultDirty", () => {
       expect(getIsResultDirty(state)).toBe(false);
     });
 
-    it("should be dirty when building a new question on a dataset", () => {
+    it("should be dirty when building a new question on a model", () => {
       const card = getBaseCard({
         dataset_query: {
           type: "query",

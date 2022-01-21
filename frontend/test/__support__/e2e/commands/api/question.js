@@ -74,7 +74,7 @@ function question(
 
     if (loadMetadata || visitQuestion) {
       cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-      const url = dataset ? `/dataset/${body.id}` : `/question/${body.id}`;
+      const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);
 
       // Wait for `result_metadata` to load

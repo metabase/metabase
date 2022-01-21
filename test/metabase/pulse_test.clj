@@ -11,6 +11,7 @@
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as render.body]
             [metabase.pulse.test-util :refer :all]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -85,7 +86,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card pulse pulse-card display fixture], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -93,7 +94,7 @@
     (assert (fn? f))
     (testing (format "sent to %s channel" channel-type)
       (mt/with-temp* [Card          [{card-id :id} (merge {:name    card-name
-                                                           :display :line}
+                                                           :display (or display :line)}
                                                           card)]]
         (with-pulse-for-card [{pulse-id :id}
                               {:card       card-id
@@ -164,8 +165,8 @@
 
 (deftest basic-timeseries-test
   (do-test
-   {:card  (checkins-query-card {:breakout [!day.date]})
-    :pulse {:skip_if_empty false}
+   {:card    (checkins-query-card {:breakout [!day.date]})
+    :pulse   {:skip_if_empty false}
 
     :assert
     {:email
@@ -189,9 +190,9 @@
               (thunk->boolean pulse-results))))}}))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment"
-    {:card (checkins-query-card {:aggregation nil, :limit 9})
+    {:card    (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
@@ -252,8 +253,8 @@
                 #"More results have been included" #"ID</th>"))))}}))
 
 (deftest csv-test
-  (tests {:pulse {:skip_if_empty false}
-          :card  (checkins-query-card {:breakout [!day.date]})}
+  (tests {:pulse   {:skip_if_empty false}
+          :card    (checkins-query-card {:breakout [!day.date]})}
     "alert with a CSV"
     {:pulse-card {:include_csv true}
 
@@ -265,7 +266,7 @@
                (mt/summarize-multipart-email test-card-regex))))}}
 
     "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
-    {:card {:dataset_query (mt/mbql-query checkins)}
+    {:card {:display :table :dataset_query (mt/mbql-query checkins)}
 
      :assert
      {:email
@@ -281,6 +282,7 @@
     (do-test
      {:card       {:dataset_query (mt/mbql-query checkins)}
       :pulse-card {:include_xls true}
+      :display    :table
 
       :assert
       {:email
@@ -322,6 +324,7 @@
     (do-test
      {:card
       (checkins-query-card {:aggregation nil})
+      :display :table
 
       :fixture
       (fn [_ thunk]
@@ -457,6 +460,7 @@
       "too much data"
       {:card
        (checkins-query-card {:limit 21, :aggregation nil})
+       :display :table
 
        :assert
        {:email
@@ -562,8 +566,7 @@
 
 (deftest below-goal-alert-test
   (testing "Below goal alert"
-    (tests {:card  {:display                :bar
-                    :visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
+    (tests {:card  {:visualization_settings {:graph.show_goal true :graph.goal_value 1.1}}
             :pulse {:alert_condition  "goal"
                     :alert_first_only false
                     :alert_above_goal false}}
@@ -571,6 +574,7 @@
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-12" "2014-02-17"]
                              :breakout [!day.date]})
+       :display :line
 
        :assert
        {:email
@@ -583,6 +587,7 @@
       {:card
        (checkins-query-card {:filter   [:between $date "2014-02-10" "2014-02-12"]
                              :breakout [!day.date]})
+       :display :bar
 
        :assert
        {:email
@@ -602,6 +607,41 @@
           (is (= (rasta-alert-email "Alert: Test card has gone below its goal"
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
+
+(deftest goal-met-test
+  (let [alert-above-pulse {:alert_above_goal true}
+        alert-below-pulse {:alert_above_goal false}
+        progress-result (fn [val] [{:card {:display :progress
+                                            :visualization_settings {:progress.goal 5}}
+                                     :result {:data {:rows [[val]]}}}])
+        timeseries-result (fn [val] [{:card {:display :bar
+                                             :visualization_settings {:graph.goal_value 5}}
+                                      :result {:data {:cols [{:source :breakout}
+                                                             {:name "avg"
+                                                              :source :aggregation
+                                                              :base_type :type/Integer
+                                                              :effective-type :type/Integer
+                                                              :semantic_type :type/Quantity}]
+                                                      :rows [["2021-01-01T00:00:00Z" val]]}}}])
+        goal-met? (fn [pulse [first-result]] (#'metabase.pulse/goal-met? pulse [first-result]))]
+    (testing "Progress bar"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+    (testing "Timeseries"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
@@ -750,7 +790,7 @@
                                               :async?   true}}]
       (is (schema= {:card   (s/pred map?)
                     :result (s/pred map?)}
-                   (pulse/execute-card {:creator_id (mt/user->id :rasta)} card))))))
+                   (pu/execute-card {:creator_id (mt/user->id :rasta)} card))))))
 
 (deftest pulse-permissions-test
   (testing "Pulses should be sent with the Permissions of the user that created them."

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import { Box } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import NotebookSteps from "./NotebookSteps";
 

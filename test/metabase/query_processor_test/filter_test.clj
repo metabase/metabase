@@ -151,8 +151,9 @@
              (mt/first-row
                (mt/format-rows-by [int]
                  (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:not-null *date]}))))))))
+                   {:source-query {:source-table $$checkins}
+                    :aggregation  [[:count]]
+                    :filter       [:not-null *date]}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

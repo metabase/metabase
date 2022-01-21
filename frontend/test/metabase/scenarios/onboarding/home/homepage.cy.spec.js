@@ -13,10 +13,10 @@ describe("scenarios > home > homepage", () => {
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByText("Add my data").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
 
       cy.visit("/");
-      cy.findByText("invite a teammate").click();
+      cy.findByText("invite another teammate").click();
       cy.findByText("New user");
 
       cy.visit("/");
@@ -29,12 +29,12 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Other users' personal collections");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByText("Learn about our data");
 
       cy.visit("/");
       cy.findByText("Add a database").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
     });
 
     it("should show pinned dashboards", () => {
@@ -63,6 +63,19 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Remove").click();
       cy.findByText("Try these x-rays based on your data").should("not.exist");
     });
+
+    it("should show a modal when there is a newly created database", () => {
+      mockSyncingDatabase();
+      cy.visit("/");
+
+      cy.findByText("Start here");
+      cy.findByText("Explore sample data").click();
+      cy.findByText("Orders table over time");
+
+      cy.visit("/");
+      cy.findByText("Start here");
+      cy.findByText("Explore sample data").should("not.exist");
+    });
   });
 
   describe("as normal user", () => {
@@ -84,7 +97,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByText("Learn about our data");
     });
 
@@ -116,4 +129,25 @@ const clickOnCloseIconInSection = name => {
     .parent()
     .realHover()
     .within(() => cy.findByLabelText("close icon").click());
+};
+
+const mockSyncingDatabase = () => {
+  cy.request("GET", "/api/user/current").then(({ body: user }) => {
+    cy.intercept("GET", /api\/database$/, req => {
+      req.reply(({ body }) => {
+        const [sampleDatabase] = body.data;
+
+        const userDatabase = {
+          ...sampleDatabase,
+          id: sampleDatabase.id + 1,
+          name: "H2",
+          creator_id: user.id,
+          is_sample: false,
+          initial_sync_status: "incomplete",
+        };
+
+        body.data = [sampleDatabase, userDatabase];
+      });
+    });
+  });
 };

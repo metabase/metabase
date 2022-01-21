@@ -1,7 +1,7 @@
 import { restore, modal, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 const ORIGINAL_QUERY = "SELECT * FROM ORDERS WHERE {{filter}} LIMIT 2";
 

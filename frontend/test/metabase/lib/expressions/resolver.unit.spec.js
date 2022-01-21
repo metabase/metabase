@@ -102,9 +102,13 @@ describe("metabase/lib/expressions/resolve", () => {
     });
 
     // backward-compatibility
-    it("should reject a literal on the left-hand side of a comparison", () => {
+    it("should reject a number literal on the left-hand side of a comparison", () => {
       // 0 < [A]
       expect(() => filter(["<", 0, A])).toThrow();
+    });
+    it("should still allow a string literal on the left-hand side of a comparison", () => {
+      // "XYZ" < [B]
+      expect(() => filter(["<", "XYZ", B])).not.toThrow();
     });
 
     it("should work on functions with optional flag", () => {
@@ -139,6 +143,17 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(() => expr(["concat", "1", "2"])).not.toThrow();
       expect(() => expr(["concat", "1", "2", "3"])).not.toThrow();
     });
+
+    it("should accept COALESCE for number", () => {
+      expect(() => expr(["round", ["coalesce", 0]])).not.toThrow();
+    });
+    it("should accept COALESCE for string", () => {
+      expect(() => expr(["trim", ["coalesce", "B"]])).not.toThrow();
+    });
+
+    it("should honor CONCAT's implicit casting", () => {
+      expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
+    });
   });
 
   describe("for aggregations", () => {
@@ -165,6 +180,13 @@ describe("metabase/lib/expressions/resolve", () => {
     it("should accept PERCENTILE with two arguments", () => {
       // PERCENTILE(A, 0.5)
       expect(() => aggregation(["percentile", A, 0.5])).not.toThrow();
+    });
+
+    it("should handle Distinct/Min/Max aggregating over non-numbers", () => {
+      // DISTINCT(COALESCE("F")) also for MIN and MAX
+      expect(() => aggregation(["distinct", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["min", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["max", ["coalesce", "F"]]).not.toThrow());
     });
   });
 

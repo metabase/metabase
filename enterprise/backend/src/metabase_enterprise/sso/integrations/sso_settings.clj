@@ -42,7 +42,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
             ;; when setting the idp cert validate that it's something we
             (when new-value
               (validate-saml-idp-cert new-value))
-            (setting/set-string! :saml-identity-provider-certificate new-value)))
+            (setting/set-value-of-type! :string :saml-identity-provider-certificate new-value)))
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
@@ -90,7 +90,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing SAML to Metabase group mappings.")
   :type    :json
   :default {}
-  :setter (comp (partial setting/set-json! :saml-group-mappings) validate-group-mappings))
+  :setter (comp (partial setting/set-value-of-type! :json :saml-group-mappings) validate-group-mappings))
 
 (defn saml-configured?
   "Check if SAML is enabled and that the mandatory settings are configured."
@@ -113,7 +113,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)
                        "Invalid JWT Shared Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string)."))
-            (setting/set-string! :jwt-shared-secret new-value)))
+            (setting/set-value-of-type! :string :jwt-shared-secret new-value)))
 
 (defsetting jwt-attribute-email
   (deferred-tru "Key to retrieve the JWT user's email address")
@@ -141,7 +141,7 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "JSON containing JWT to Metabase group mappings.")
   :type    :json
   :default {}
-  :setter  (comp (partial setting/set-json! :jwt-group-mappings) validate-group-mappings))
+  :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings) validate-group-mappings))
 
 (defn jwt-configured?
   "Check if JWT is enabled and that the mandatory settings are configured."

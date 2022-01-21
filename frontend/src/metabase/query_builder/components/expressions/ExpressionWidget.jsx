@@ -13,7 +13,11 @@ import ExternalLink from "metabase/components/ExternalLink";
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
   static propTypes = {
-    expression: PropTypes.array,
+    expression: PropTypes.oneOfType([
+      PropTypes.number,
+      PropTypes.string,
+      PropTypes.array,
+    ]),
     name: PropTypes.string,
     query: PropTypes.object.isRequired,
     onChangeExpression: PropTypes.func.isRequired,
@@ -72,10 +76,7 @@ export default class ExpressionWidget extends Component {
               <ExternalLink
                 className="link"
                 target="_blank"
-                href={MetabaseSettings.docsUrl(
-                  "users-guide/custom-questions",
-                  "creating-custom-columns",
-                )}
+                href={MetabaseSettings.docsUrl("users-guide/expressions")}
               >{t`Learn more`}</ExternalLink>
             </p>
           </div>

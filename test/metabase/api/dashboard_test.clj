@@ -455,9 +455,10 @@
             ;; grant Permissions for only the *old* collection
             (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
             ;; now make an API call to move collections. Should fail
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
-                                         {:collection_id (u/the-id new-collection)})))))))))
+            (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
+                                               {:collection_id (u/the-id new-collection)})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1056,7 +1057,7 @@
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
              (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
       (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))      )
+             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id
@@ -1366,7 +1367,7 @@
 
 (defn- add-query-params [url query-params]
   (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
-                                     (codec/form-encode {k v})))]
+                                         (codec/form-encode {k v})))]
     (cond-> url
       (seq query-params-str) (str "?" query-params-str))))
 
@@ -1504,8 +1505,8 @@
       (testing "GET /api/dashboard/:id/params/:param-key/values"
         (let-url [url (chain-filter-values-url dashboard "_ID_")]
           (is (= [[29 "20th Century Cafe"]
-                  [ 8 "25°"              ]
-                  [93 "33 Taps"          ]]
+                  [ 8 "25°"]
+                  [93 "33 Taps"]]
                  (take 3 (mt/user-http-request :rasta :get 200 url)))))
         (let-url [url (chain-filter-values-url dashboard "_ID_" "_PRICE_" 4)]
           (is (= [[55 "Dal Rae Restaurant"]
@@ -1650,6 +1651,7 @@
                     (is (= "You don't have permissions to do that."
                            (mt/user-http-request :rasta :post 403 (url))))))))))))))
 
+;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
@@ -1666,13 +1668,7 @@
                              (mt/user-http-request :rasta :post 202 url
                                                    {:parameters [{:id    "_PRICE_"
                                                                   :type  :number/=
-                                                                  :value [1 2 3]}]}))))
-              (testing :number/<=
-                (is (schema= (dashboard-card-query-expected-results-schema :row-count 94)
-                             (mt/user-http-request :rasta :post 202 url
-                                                   {:parameters [{:id    "_PRICE_"
-                                                                  :type  :number/<=
-                                                                  :value [3]}]}))))))
+                                                                  :value [1 2 3]}]}))))))
           (testing "Should return error if parameter doesn't exist"
             (is (= "Dashboard does not have a parameter with ID \"_THIS_PARAMETER_DOES_NOT_EXIST_\"."
                    (mt/user-http-request :rasta :post 400 url

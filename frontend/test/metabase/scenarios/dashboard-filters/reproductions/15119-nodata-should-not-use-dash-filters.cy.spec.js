@@ -1,7 +1,7 @@
-import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, filterWidget, popover } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("issue 15119", () => {
   beforeEach(() => {
@@ -57,8 +57,10 @@ describe("issue 15119", () => {
       .contains("Category")
       .click();
 
-    cy.findByPlaceholderText("Search the list").type("Gizmo");
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
 
     cy.contains("Rustic Paper Wallet");
   });

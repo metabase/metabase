@@ -8,7 +8,7 @@ import _ from "underscore";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import { normalizeValue } from "./normalizeValue";
 
@@ -119,7 +119,11 @@ export default class ParameterFieldWidget extends Component {
     } else {
       return (
         <Popover hasArrow={false} onClose={() => focusChanged(false)}>
-          <div className={cx("relative", { p2: !isEqualsOp })}>
+          <div
+            className={cx("relative PopoverBody--marginBottom", {
+              p2: !isEqualsOp,
+            })}
+          >
             {verboseName && !isEqualsOp && (
               <div className="text-bold mb1">{verboseName}...</div>
             )}

@@ -16,11 +16,14 @@ import ListSearchField from "metabase/components/ListSearchField";
 import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
+import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -291,6 +294,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleDatabase: false,
     hasTableSearch: false,
     canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -453,6 +457,7 @@ export class UnconnectedDataSelector extends Component {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
     const {
+      activeStep,
       selectedDatabase,
       selectedSchema,
       selectedTable,
@@ -464,6 +469,13 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema.database.id !== selectedDatabase.id &&
       selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
+    const onStepMissingSchemaAndTable =
+      !selectedSchema &&
+      !selectedTable &&
+      (activeStep === TABLE_STEP || activeStep === FIELD_STEP);
+
+    const onStepMissingTable = !selectedTable && activeStep === FIELD_STEP;
+
     const invalidTable =
       selectedSchema &&
       selectedTable &&
@@ -474,13 +486,13 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
-    if (invalidSchema) {
+    if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
         selectedTableId: null,
         selectedFieldId: null,
       });
-    } else if (invalidTable) {
+    } else if (invalidTable || onStepMissingTable) {
       await this.switchToStep(TABLE_STEP, {
         selectedTableId: null,
         selectedFieldId: null,
@@ -497,6 +509,25 @@ export class UnconnectedDataSelector extends Component {
     return loaded && search?.length > 0;
   };
 
+  hasUsableDatasets = () => {
+    // As datasets are actually saved questions, nested queries must be enabled
+    return this.hasDatasets() && MetabaseSettings.get("enable-nested-queries");
+  };
+
+  getDatabases = () => {
+    const { databases } = this.state;
+
+    // When there is at least one dataset,
+    // "Saved Questions" are presented in a different picker step
+    // So it should be excluded from a regular databases list
+    const shouldRemoveSavedQuestionDatabaseFromList =
+      !MetabaseSettings.get("enable-nested-queries") || this.hasDatasets();
+
+    return shouldRemoveSavedQuestionDatabaseFromList
+      ? databases.filter(db => !db.is_saved_questions)
+      : databases;
+  };
+
   async hydrateActiveStep() {
     const { steps } = this.props;
     if (this.isSavedQuestionSelected()) {
@@ -507,7 +538,7 @@ export class UnconnectedDataSelector extends Component {
       await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+    } else if (steps[0] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
       await this.switchToStep(steps[1]);
     } else {
       await this.switchToStep(steps[0]);
@@ -523,7 +554,7 @@ export class UnconnectedDataSelector extends Component {
       this.props.useOnlyAvailableDatabase &&
       this.props.selectedDatabaseId == null
     ) {
-      const { databases } = this.state;
+      const databases = this.getDatabases();
       if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
@@ -572,7 +603,7 @@ export class UnconnectedDataSelector extends Component {
     }
 
     // data bucket step doesn't make a lot of sense when there're no datasets
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasDatasets()) {
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
       return null;
     }
 
@@ -718,7 +749,13 @@ export class UnconnectedDataSelector extends Component {
       this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
-    this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+    this.switchToStep(
+      DATABASE_STEP,
+      {
+        selectedDataBucketId,
+      },
+      false,
+    );
     const database = databases.find(db => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
@@ -761,13 +798,14 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedFieldId: field && field.id });
   };
 
-  getTriggerElement() {
+  getTriggerElement = triggerProps => {
     const {
       className,
       style,
       triggerIconSize,
       triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
 
     if (triggerElement) {
@@ -785,8 +823,9 @@ export class UnconnectedDataSelector extends Component {
           selectedDatabase,
           selectedTable,
           selectedField,
+          ...triggerProps,
         })}
-        {!this.props.readOnly && (
+        {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
             className="ml1"
             name="chevrondown"
@@ -795,7 +834,7 @@ export class UnconnectedDataSelector extends Component {
         )}
       </span>
     );
-  }
+  };
 
   getTriggerClasses() {
     if (this.props.triggerClasses) {
@@ -808,7 +847,10 @@ export class UnconnectedDataSelector extends Component {
 
   handleSavedQuestionPickerClose = () => {
     const { selectedDataBucketId } = this.state;
-    if (selectedDataBucketId === DATA_BUCKET.DATASETS || this.hasDatasets()) {
+    if (
+      selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.hasUsableDatasets()
+    ) {
       this.previousStep();
     }
     this.setState({ isSavedQuestionPickerShown: false });
@@ -816,16 +858,10 @@ export class UnconnectedDataSelector extends Component {
 
   renderActiveStep() {
     const { combineDatabaseSchemaSteps } = this.props;
-    const { databases } = this.state;
-
-    const showSavedQuestionsInDatabasePicker = !this.hasDatasets();
-    const filteredDatabases = showSavedQuestionsInDatabasePicker
-      ? databases
-      : databases?.filter(db => !db.is_saved_questions);
 
     const props = {
       ...this.state,
-      databases: filteredDatabases,
+      databases: this.getDatabases(),
 
       onChangeDataBucket: this.onChangeDataBucket,
       onChangeDatabase: this.onChangeDatabase,
@@ -856,7 +892,7 @@ export class UnconnectedDataSelector extends Component {
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasDatasets() && props.onBack}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
         ) : (
           <DatabasePicker {...props} />
@@ -865,7 +901,7 @@ export class UnconnectedDataSelector extends Component {
         return combineDatabaseSchemaSteps ? (
           <DatabaseSchemaPicker
             {...props}
-            hasBackButton={this.hasDatasets() && props.onBack}
+            hasBackButton={this.hasUsableDatasets() && props.onBack}
           />
         ) : (
           <SchemaPicker {...props} />
@@ -920,7 +956,9 @@ export class UnconnectedDataSelector extends Component {
 
   handleCollectionDatasetsPickerClose = () => {
     this.props.onCloseCollectionDatasets();
-    this.switchToStep(this.hasDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP);
+    this.switchToStep(
+      this.hasUsableDatasets() ? DATA_BUCKET_STEP : DATABASE_STEP,
+    );
   };
 
   handleSearchItemSelect = async item => {
@@ -935,6 +973,7 @@ export class UnconnectedDataSelector extends Component {
 
   handleClose = () => {
     this.setState({ searchText: "" });
+    this.props?.onClose();
   };
 
   getSearchInputPlaceholder = () => {
@@ -956,7 +995,10 @@ export class UnconnectedDataSelector extends Component {
 
   getSearchModels = () => {
     const { selectedDataBucketId, isSavedQuestionPickerShown } = this.state;
-    if (!this.hasDatasets()) {
+    if (!MetabaseSettings.get("enable-nested-queries")) {
+      return ["table"];
+    }
+    if (!this.hasUsableDatasets()) {
       return isSavedQuestionPickerShown ? ["card"] : ["card", "table"];
     }
     if (!selectedDataBucketId) {
@@ -992,7 +1034,7 @@ export class UnconnectedDataSelector extends Component {
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         containerClassName={this.props.containerClassName}
-        triggerElement={this.getTriggerElement()}
+        triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}
@@ -1097,7 +1139,7 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
             name={dataset.name}
             onSelect={() => onSelect(dataset)}
             size="small"
-            icon={{ name: "dataset", size: 16 }}
+            icon={{ name: "model", size: 16 }}
             rightIcon={PLUGIN_MODERATION.getStatusIcon(
               dataset.moderated_status,
             )}
@@ -1122,8 +1164,8 @@ const DataBucketPicker = ({ onChangeDataBucket }) => {
   const BUCKETS = [
     {
       id: DATA_BUCKET.DATASETS,
-      icon: "dataset",
-      name: t`Datasets`,
+      icon: "model",
+      name: t`Models`,
       description: t`The best starting place for new questions.`,
     },
     {
@@ -1266,7 +1308,7 @@ const DatabaseSchemaPicker = ({
       selectedDatabase.id === database.id &&
       database.schemas.length === 0 &&
       isLoading,
-    active: database.initial_sync,
+    active: database.is_saved_questions || isSyncCompleted(database),
   }));
 
   if (hasBackButton) {
@@ -1400,19 +1442,29 @@ const TablePicker = ({
               ? item.table.id === selectedTable.id
               : false
           }
-          itemIsClickable={item => item.table && item.table.initial_sync}
+          itemIsClickable={item => item.table && isSyncCompleted(item.table)}
           renderItemIcon={item =>
             item.table ? <Icon name="table2" size={18} /> : null
           }
           showItemArrows={hasNextStep}
+          renderItemWrapper={(itemContent, item) => {
+            if (item.table?.id != null) {
+              return (
+                <TableInfoPopover table={item.table}>
+                  {itemContent}
+                </TableInfoPopover>
+              );
+            }
+
+            return itemContent;
+          }}
         />
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "users-guide/custom-questions",
-                "picking-your-starting-data",
+                "users-guide/referencing-saved-questions-in-queries",
               )}
               target="_blank"
               className="block link"
@@ -1442,6 +1494,15 @@ const TablePicker = ({
 };
 
 class FieldPicker extends Component {
+  renderItemWrapper = (itemContent, item) => {
+    const dimension = item.field?.dimension?.();
+    return (
+      <DimensionInfoPopover dimension={dimension}>
+        {itemContent}
+      </DimensionInfoPopover>
+    );
+  };
+
   render() {
     const {
       isLoading,
@@ -1503,6 +1564,7 @@ class FieldPicker extends Component {
               <Icon name={item.field.dimension().icon()} size={18} />
             ) : null
           }
+          renderItemWrapper={this.renderItemWrapper}
         />
       </div>
     );

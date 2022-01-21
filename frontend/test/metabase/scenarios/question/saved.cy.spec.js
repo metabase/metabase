@@ -66,6 +66,7 @@ describe("scenarios > question > saved", () => {
     popover().within(() => cy.findByText("Filter by this column").click());
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
+      cy.findByText("100").click();
       cy.findByText("Update filter").click();
     });
     cy.findByText("Quantity is equal to 100");
@@ -123,7 +124,7 @@ describe("scenarios > question > saved", () => {
 
     cy.findByRole("button", { name: "Revert" }).click();
 
-    cy.findByText(/Reverted to an earlier revision/i);
+    cy.findByText(/This is a question/i).should("not.exist");
   });
 
   it("should be able to use integer filter on a saved native query (metabase#15808)", () => {
@@ -141,12 +142,18 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("sidebar-right")
       .findByText(/Rating/i)
       .click();
-    cy.get(".AdminSelect").findByText("Equal to");
+    cy.findByTestId("select-button").findByText("Equal to");
     cy.findByPlaceholderText("Enter a number").type("4");
     cy.button("Add filter")
       .should("not.be.disabled")
       .click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
+  });
+
+  it("should show table name in header with a table info popover on hover", () => {
+    cy.visit("/question/1");
+    cy.findByTestId("question-table-badges").trigger("mouseenter");
+    cy.findByText("9 columns");
   });
 });

@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { Collection, User } from "../../types";
+import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 import CollectionSection from "./CollectionSection";
 
 const CollectionListMock = () => <div>CollectionList</div>;
@@ -9,8 +9,8 @@ jest.mock("metabase/components/CollectionList", () => CollectionListMock);
 
 describe("CollectionSection", () => {
   it("should display the list when there are non-personal collections", () => {
-    const user = getUser();
-    const collections = [getCollection()];
+    const user = createMockUser({ personal_collection_id: 1 });
+    const collections = [createMockCollection({ id: 2 })];
 
     render(<CollectionSection user={user} collections={collections} />);
 
@@ -18,8 +18,10 @@ describe("CollectionSection", () => {
   });
 
   it("should display an empty state when there are no non-personal collections", () => {
-    const user = getUser();
-    const collections = [getCollection({ id: user.personal_collection_id })];
+    const user = createMockUser();
+    const collections = [
+      createMockCollection({ id: user.personal_collection_id }),
+    ];
 
     render(<CollectionSection user={user} collections={collections} />);
 
@@ -27,23 +29,13 @@ describe("CollectionSection", () => {
   });
 
   it("should display a special empty state for admins", () => {
-    const user = getUser({ is_superuser: true });
-    const collections = [getCollection({ id: user.personal_collection_id })];
+    const user = createMockUser({ is_superuser: true });
+    const collections = [
+      createMockCollection({ id: user.personal_collection_id }),
+    ];
 
     render(<CollectionSection user={user} collections={collections} />);
 
     expect(screen.getByText(/Save dashboards/)).toBeInTheDocument();
   });
-});
-
-const getUser = (opts?: Partial<User>): User => ({
-  first_name: "John",
-  is_superuser: false,
-  personal_collection_id: "personal",
-  ...opts,
-});
-
-const getCollection = (opts?: Partial<Collection>): Collection => ({
-  id: "root",
-  ...opts,
 });

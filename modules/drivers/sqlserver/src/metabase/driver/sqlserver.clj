@@ -75,7 +75,6 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
-
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
@@ -105,6 +104,16 @@
       ;; https://github.com/metabase/metabase/issues/7597
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+
+(def ^:private ^:dynamic *field-options*
+  "The options part of the `:field` clause we're currently compiling."
+  nil)
+
+(defmethod sql.qp/->honeysql [:sqlserver :field]
+  [driver [_ _ options :as field-clause]]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
+    (binding [*field-options* options]
+      (parent-method driver field-clause))))
 
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
@@ -140,7 +149,7 @@
   [_ _ expr]
   ;; `::optimized-bucketing?` is added by `optimized-temporal-buckets`; this signifies that we can use more efficient
   ;; SQL functions like `day()` that don't return a full DATE. See `optimized-temporal-buckets` below for more info.
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/day expr)
     (hsql/call :DateFromParts (hx/year expr) (hx/month expr) (hx/day expr))))
 
@@ -168,7 +177,7 @@
 
 (defmethod sql.qp/date [:sqlserver :month]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/month expr)
     (hsql/call :DateFromParts (hx/year expr) (hx/month expr) 1)))
 
@@ -191,7 +200,7 @@
 
 (defmethod sql.qp/date [:sqlserver :year]
   [_ _ expr]
-  (if (::optimized-bucketing? sql.qp/*field-options*)
+  (if (::optimized-bucketing? *field-options*)
     (hx/year expr)
     (hsql/call :DateFromParts (hx/year expr) 1 1)))
 
@@ -304,7 +313,7 @@
       (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
-  "Optimize `:order-by` `subclauses` using `optimized-temporal-buckets`, if possible."
+  "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
   [subclauses]
   (vec
    (mapcat
@@ -315,24 +324,13 @@
         [subclause]))
     subclauses)))
 
-;; From the dox:
-;;
-;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
-;; expressions, unless TOP, OFFSET or FOR XML is also specified.
-;;
-;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
-;; but not for `top-level` queries (since it's not needed there)
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
   [driver _ honeysql-form {:keys [limit], :as query}]
   ;; similar to the way we optimize GROUP BY above, optimize temporal bucketing in the ORDER BY if possible, because
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
-        add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
-        honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
-                       driver :order-by honeysql-form query)]
-    (if-not add-limit?
-      honeysql-form
-      (sql.qp/apply-top-level-clause driver :limit honeysql-form (assoc query :limit qp.i/absolute-max-results)))))
+        parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
+    (parent-method driver :order-by honeysql-form query)))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -394,6 +392,60 @@
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
+
+;; From the dox:
+;;
+;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
+;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this :
+;;
+;; - Remove `:order-by` without a corresponding `:limit` inside a `:join` (since it usually doesn't really accomplish
+;;   anything anyway; if you really need it you can always specify a limit yourself)
+;;
+;;   TODO - I'm not actually sure about this. What about a RIGHT JOIN? Postgres at least seems to ignore the ORDER BY
+;;   inside a subselect RIGHT JOIN, altho I can imagine other DBMSes actually returning results in that order. I guess
+;;   we will see what happens down the road.
+;;
+;; - Add a max-results `:limit` to source queries if there's not already one
+
+(defn- fix-order-bys [inner-query]
+  (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
+          ;; `:limit`, and the only two possible parents there are `:query` (for top-level queries) or `:source-query`.
+          (in-source-query? [path]
+            (= (last path) :source-query))
+          ;; `in-join-source-query?` = whether the parent is `:source-query`, and the grandparent is `:joins`, i.e. we
+          ;; are a source query being joined against. In this case it's apparently ok to remove the ORDER BY.
+          ;;
+          ;; What about source-query in source-query in Join? Not sure about that case. Probably better to be safe and
+          ;; not do the aggressive optimizations. See
+          ;; https://github.com/metabase/metabase/pull/19384#discussion_r787002558 for more details.
+          (in-join-source-query? [path]
+            (and (in-source-query? path)
+                 (= (last (butlast path)) :joins)))
+          (has-order-by-without-limit? [m]
+            (and (map? m)
+                 (:order-by m)
+                 (not (:limit m))))
+          (remove-order-by? [path m]
+            (and (has-order-by-without-limit? m)
+                 (in-join-source-query? path)))
+          (add-limit? [path m]
+            (and (has-order-by-without-limit? m)
+                 (not (in-join-source-query? path))
+                 (in-source-query? path)))]
+    (mbql.u/replace inner-query
+      ;; remove order by and then recurse in case we need to do more tranformations at another level
+      (m :guard (partial remove-order-by? &parents))
+      (fix-order-bys (dissoc m :order-by))
+
+      (m :guard (partial add-limit? &parents))
+      (fix-order-bys (assoc m :limit qp.i/absolute-max-results)))))
+
+(defmethod sql.qp/preprocess :sqlserver
+  [driver inner-query]
+  (let [parent-method (get-method sql.qp/preprocess :sql)]
+    (fix-order-bys (parent-method driver inner-query))))
 
 ;; In order to support certain native queries that might return results at the end, we have to use only prepared
 ;; statements (see #9940)

@@ -84,13 +84,13 @@
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
   :default {}
-  :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
+  :getter  (fn [] (merge (setting/get-value-of-type :json :custom-geojson) builtin-geojson))
   :setter  (fn [new-value]
              ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
              (let [new-value (not-empty (reduce dissoc new-value (keys builtin-geojson)))]
                (when new-value
                  (validate-geojson new-value))
-               (setting/set-json! :custom-geojson new-value)))
+               (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public)
 
 (api/defendpoint-async GET "/:key"
@@ -116,15 +116,18 @@
   {url su/NonBlankString}
   (api/check-superuser)
   (let [decoded-url (rc/url-decode url)]
-    (when-not (valid-geojson-url? decoded-url)
-      (raise (ex-info (invalid-location-msg) {:status-code 400})))
     (try
-      (with-open [reader (io/reader (or (io/resource decoded-url)
-                                        decoded-url))
-                  is     (ReaderInputStream. reader)]
-        (respond (-> (rr/response is)
-                     (rr/content-type "application/json"))))
+      (when-not (valid-geojson-url? decoded-url)
+        (throw (ex-info (invalid-location-msg) {:status-code 400})))
+      (try
+        (with-open [reader (io/reader (or (io/resource decoded-url)
+                                          decoded-url))
+                    is     (ReaderInputStream. reader)]
+          (respond (-> (rr/response is)
+                       (rr/content-type "application/json"))))
+        (catch Throwable _
+          (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
       (catch Throwable e
-        (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))))
+        (raise e)))))
 
 (api/define-routes)

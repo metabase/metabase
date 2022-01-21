@@ -290,3 +290,20 @@
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with String :id keys"
              (db/update! Dashboard id :parameters [{:id 100}])))))))
+
+(deftest normalize-parameters-test
+  (testing ":parameters should get normalized when coming out of the DB"
+    (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
+                               [:field-id 1000]              [:field 1000 nil]}]
+      (testing (format "target = %s" (pr-str target))
+        (mt/with-temp Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
+                                                                   :slug   "category_name"
+                                                                   :id     "_CATEGORY_NAME_"
+                                                                   :type   "category"
+                                                                   :target target}]}]
+          (is (= [{:name   "Category Name"
+                   :slug   "category_name"
+                   :id     "_CATEGORY_NAME_"
+                   :type   :category
+                   :target expected}]
+                 (db/select-one-field :parameters Dashboard :id dashboard-id))))))))

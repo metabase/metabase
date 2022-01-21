@@ -2,10 +2,12 @@
 // @ts-nocheck
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question";
+import Schema from "./Schema";
 import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
  * @typedef { import("./metadata").EntityType } EntityType
@@ -15,6 +17,11 @@ import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 /** This is the primary way people interact with tables */
 
 export default class Table extends Base {
+  id: number;
+  description?: string;
+  fks?: any[];
+  schema?: Schema;
+
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
   }
@@ -114,6 +121,15 @@ export default class Table extends Base {
   // @deprecated: use fieldsLookup
   get fields_lookup() {
     return this.fieldsLookup();
+  }
+
+  numFields(): number {
+    return this.fields?.length || 0;
+  }
+
+  connectedTables(): Table[] {
+    const fks = this.fks || [];
+    return fks.map(fk => new Table(fk.origin.table));
   }
 
   /**

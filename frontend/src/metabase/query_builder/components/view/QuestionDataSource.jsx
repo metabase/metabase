@@ -1,12 +1,19 @@
 import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
+
+import { color } from "metabase/lib/colors";
 import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
 import Questions from "metabase/entities/questions";
+
+import Tooltip from "metabase/components/Tooltip";
+
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
 
@@ -99,18 +106,33 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
         <HeadBreadcrumbs.Badge
           key="dataset-collection"
           to={Urls.collection(collection)}
-          icon="dataset"
+          icon="model"
           inactiveColor="text-light"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        <HeadBreadcrumbs.Badge
-          key="dataset-name"
-          to={Urls.question(dataset)}
-          inactiveColor="text-light"
-        >
-          {dataset.name}
-        </HeadBreadcrumbs.Badge>,
+        dataset.archived ? (
+          <Tooltip
+            key="dataset-name"
+            tooltip={t`This model is archived and shouldn't be used.`}
+            maxWidth="auto"
+            placement="bottom"
+          >
+            <HeadBreadcrumbs.Badge
+              inactiveColor="text-light"
+              icon={{ name: "warning", color: color("danger") }}
+            >
+              {dataset.name}
+            </HeadBreadcrumbs.Badge>
+          </Tooltip>
+        ) : (
+          <HeadBreadcrumbs.Badge
+            to={Urls.question(dataset)}
+            inactiveColor="text-light"
+          >
+            {dataset.name}
+          </HeadBreadcrumbs.Badge>
+        ),
       ]}
     />
   );
@@ -202,7 +224,9 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       to={hasLink ? getTableURL(table) : ""}
       inactiveColor={badgeInactiveColor}
     >
-      {table.displayName()}
+      <TableInfoPopover table={table} placement="bottom-start">
+        <span>{table.displayName()}</span>
+      </TableInfoPopover>
     </HeadBreadcrumbs.Badge>
   ));
 

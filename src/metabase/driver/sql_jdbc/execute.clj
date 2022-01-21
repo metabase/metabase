@@ -499,7 +499,7 @@
                ^ResultSet rs (try
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
-                                 (throw (ex-info (tru "Error executing query")
+                                 (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                  {:sql sql, :params params, :type qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)

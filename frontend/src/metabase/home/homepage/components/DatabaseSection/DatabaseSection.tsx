@@ -1,10 +1,11 @@
 import React, { ReactNode } from "react";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
+import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import * as Urls from "metabase/lib/urls";
-import { Database, User } from "../../types";
+import { Database, User } from "metabase-types/api";
 import Section, {
   SectionCloseIcon,
   SectionHeader,
@@ -19,14 +20,21 @@ import {
   ListRoot,
 } from "./DatabaseSection.styled";
 
-interface Props {
+export interface DatabaseSectionProps {
   user: User;
   databases: Database[];
   showData?: boolean;
   onHideData?: () => void;
+  onDatabaseClick?: (database: Database) => void;
 }
 
-const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
+const DatabaseSection = ({
+  user,
+  databases,
+  showData,
+  onHideData,
+  onDatabaseClick,
+}: DatabaseSectionProps): JSX.Element | null => {
   const hasAddLink = user.is_superuser;
   const hasUserDatabase = databases.some(d => !d.is_sample);
 
@@ -54,9 +62,12 @@ const DatabaseSection = ({ user, databases, showData, onHideData }: Props) => {
           <DatabaseCardRoot
             key={database.id}
             to={Urls.browseDatabase(database)}
+            onClick={() => onDatabaseClick?.(database)}
           >
             <CardIcon name="database" />
-            <CardTitle>{database.name}</CardTitle>
+            <CardTitle>
+              <Ellipsified>{database.name}</Ellipsified>
+            </CardTitle>
           </DatabaseCardRoot>
         ))}
         {hasAddLink && !hasUserDatabase && (
@@ -75,7 +86,10 @@ interface HideSectionModalProps {
   onSubmit?: () => void;
 }
 
-const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
+const HideSectionModal = ({
+  children,
+  onSubmit,
+}: HideSectionModalProps): JSX.Element => {
   return (
     <ModalWithTrigger
       title={t`Remove this section?`}

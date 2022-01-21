@@ -14,6 +14,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor-test.order-by-test :as qp-test.order-by-test] ; used for one SSL connectivity test
@@ -28,7 +29,8 @@
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.util.Base64))
 
 (deftest connection-details->spec-test
   (doseq [[^String message expected-spec details]
@@ -87,57 +89,63 @@
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
-    (let [expected [{:name "host"}
-                    {:name "port"}
-                    {:name "sid"}
-                    {:name "service-name"}
-                    {:name "user"}
-                    {:name "password"}
-                    {:name "cloud-ip-address-info"}
-                    {:name "ssl"}
-                    {:name "ssl-use-keystore"}
-                    {:name       "ssl-keystore-options"
-                     :type       "select"
-                     :options    [{:name  "Local file path"
-                                   :value "local"}
-                                  {:name  "Uploaded file path"
-                                   :value "uploaded"}]
-                     :visible-if {:ssl-use-keystore true}}
-                    {:name       "ssl-keystore-value"
-                     :type       "textFile"
-                     :visible-if {:ssl-keystore-options "uploaded"}}
-                    {:name       "ssl-keystore-path"
-                     :type       "string"
-                     :visible-if {:ssl-keystore-options "local"}}
-                    {:name "ssl-keystore-password-value"
-                     :type "password"}
-                    {:name "ssl-use-truststore"}
-                    {:name       "ssl-truststore-options"
-                     :type       "select"
-                     :options    [{:name  "Local file path"
-                                   :value "local"}
-                                  {:name  "Uploaded file path"
-                                   :value "uploaded"}]
-                     :visible-if {:ssl-use-truststore true}}
-                    {:name       "ssl-truststore-value"
-                     :type       "textFile"
-                     :visible-if {:ssl-truststore-options "uploaded"}}
-                    {:name       "ssl-truststore-path"
-                     :type       "string"
-                     :visible-if {:ssl-truststore-options "local"}}
-                    {:name "ssl-truststore-password-value"
-                     :type "password"}
-                    {:name "tunnel-enabled"}
-                    {:name "tunnel-host"}
-                    {:name "tunnel-port"}
-                    {:name "tunnel-user"}
-                    {:name "tunnel-auth-option"}
-                    {:name "tunnel-pass"}
-                    {:name "tunnel-private-key"}
-                    {:name "tunnel-private-key-passphrase"}]
-          actual   (->> (driver/connection-properties :oracle)
-                        (driver.u/connection-props-server->client :oracle))]
-      (is (= expected (mt/select-keys-sequentially expected actual))))))
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (let [expected [{:name "host"}
+                      {:name "port"}
+                      {:name "sid"}
+                      {:name "service-name"}
+                      {:name "user"}
+                      {:name "password"}
+                      {:name "ssl"}
+                      {:name "ssl-use-keystore"}
+                      {:name       "ssl-keystore-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {:ssl-use-keystore true}}
+                      {:name       "ssl-keystore-value"
+                       :type       "textFile"
+                       :visible-if {:ssl-keystore-options "uploaded"}}
+                      {:name       "ssl-keystore-path"
+                       :type       "string"
+                       :visible-if {:ssl-keystore-options "local"}}
+                      {:name "ssl-keystore-password-value"
+                       :type "password"}
+                      {:name "ssl-use-truststore"}
+                      {:name       "ssl-truststore-options"
+                       :type       "select"
+                       :options    [{:name  "Local file path"
+                                     :value "local"}
+                                    {:name  "Uploaded file path"
+                                     :value "uploaded"}]
+                       :visible-if {:ssl-use-truststore true}}
+                      {:name       "ssl-truststore-value"
+                       :type       "textFile"
+                       :visible-if {:ssl-truststore-options "uploaded"}}
+                      {:name       "ssl-truststore-path"
+                       :type       "string"
+                       :visible-if {:ssl-truststore-options "local"}}
+                      {:name "ssl-truststore-password-value"
+                       :type "password"}
+                      {:name "tunnel-enabled"}
+                      {:name "tunnel-host"}
+                      {:name "tunnel-port"}
+                      {:name "tunnel-user"}
+                      {:name "tunnel-auth-option"}
+                      {:name "tunnel-pass"}
+                      {:name "tunnel-private-key"}
+                      {:name "tunnel-private-key-passphrase"}
+                      {:name "advanced-options"}
+                      {:name "auto_run_queries"}
+                      {:name "let-user-control-scheduling"}
+                      {:name "schedules.metadata_sync"}
+                      {:name "schedules.cache_field_values"}
+                      {:name "refingerprint"}]
+            actual   (->> (driver/connection-properties :oracle)
+                          (driver.u/connection-props-server->client :oracle))]
+        (is (= expected (mt/select-keys-sequentially expected actual)))))))
 
 (deftest test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -308,33 +316,47 @@
       ;; swap out :oracle env vars with any :oracle-ssl ones that were defined
       (mt/with-env-keys-renamed-by #(str/replace-first % "mb-oracle-ssl-test" "mb-oracle-test")
         ;; need to get a fresh instance of details to pick up env key changes
-        (let [details      (->> (#'oracle.tx/connection-details)
-                                (driver.u/db-details-client->server :oracle))
+        (let [ssl-details  (#'oracle.tx/connection-details)
               orig-user-id api/*current-user-id*]
           (testing "Oracle can-connect? with SSL connection"
-            (is (driver/can-connect? :oracle details)))
+            (is (driver/can-connect? :oracle ssl-details)))
           (testing "Sync works with SSL connection"
             (binding [metabase.sync.util/*log-exceptions-and-continue?* false
                       api/*current-user-id* (mt/user->id :crowberto)]
-              (mt/with-temp Database [database {:engine :oracle,
-                                                :name (format "SSL connection version of %d" (mt/id)),
-                                                :details details}]
-                (mt/with-db database
-                  (sync/sync-database! database {:scan :schema})
-                  ;; should be four tables from test-data
-                  (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
-                  (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
-                            ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
-                            ;; actually the name of the database, and not some variation on the :name specified
-                            ;; above, so that the table names resolve correctly in the generated query we can't
-                            ;; simply call this new temp database "test-data", because then it will no longer be
-                            ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
-                            ;; database, and the logic within metabase.test.data.interface/metabase-instance would
-                            ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
-                            ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                            tx/*database-name-override* "test-data"]
-                    (testing "Execute query with SSL connection"
-                      (qp-test.order-by-test/order-by-test)))))))))
+              (doseq [[details variant] [[ssl-details "SSL with Truststore Path"]
+                                         ;; in the file upload scenario, the truststore bytes are base64 encoded
+                                         ;; to the -value suffix property, and the -path suffix property is removed
+                                         [(-> (assoc
+                                               ssl-details
+                                               :ssl-truststore-value
+                                               (.encodeToString (Base64/getEncoder)
+                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               :ssl-truststore-options
+                                               "uploaded")
+                                              (dissoc :ssl-truststore-path))
+                                          "SSL with Truststore Upload"]]]
+                (testing (str " " variant)
+                  (mt/with-temp Database [database {:engine  :oracle,
+                                                    :name    (format (str variant " version of %d") (mt/id)),
+                                                    :details (->> details
+                                                                  (driver.u/db-details-client->server :oracle))}]
+                    (mt/with-db database
+                      (testing " can sync correctly"
+                        (sync/sync-database! database {:scan :schema})
+                        ;; should be four tables from test-data
+                        (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                        (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
+                                  ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
+                                  ;; actually the name of the database, and not some variation on the :name specified
+                                  ;; above, so that the table names resolve correctly in the generated query we can't
+                                  ;; simply call this new temp database "test-data", because then it will no longer be
+                                  ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
+                                  ;; database, and the logic within metabase.test.data.interface/metabase-instance would
+                                  ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
+                                  ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
+                                  tx/*database-name-override* "test-data"]
+                          (testing " and execute a query correctly"
+                            (qp-test.order-by-test/order-by-test))))))))))))
       (println (u/format-color 'yellow
                                "Skipping %s because %s env var is not set"
                                "oracle-connect-with-ssl-test"
@@ -347,3 +369,20 @@
         (is (= [1M]
                (mt/first-row
                 (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
+
+(deftest custom-expression-between-test
+  (mt/test-driver :oracle
+    (testing "Custom :between expression should work (#15538)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str "select 42 as \"val\","
+                                                 " cast(to_timestamp('09-APR-2021') AS date) as \"date\","
+                                                 " to_timestamp('09-APR-2021') AS \"timestamp\" "
+                                                 "from dual")}
+                     :aggregation  [[:aggregation-options
+                                     [:sum-where
+                                      [:field "val" {:base-type :type/Decimal}]
+                                      [:between [:field "date" {:base-type :type/Date}] "2021-01-01" "2021-12-31"]]
+                                     {:name "CE", :display-name "CE"}]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [42M]
+                 (mt/first-row (qp/process-query query)))))))))

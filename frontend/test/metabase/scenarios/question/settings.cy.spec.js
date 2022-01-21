@@ -7,8 +7,8 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > settings", () => {
   beforeEach(() => {
@@ -99,8 +99,7 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByText("Settings").click();
-      cy.findByText("Click and drag to change their order")
-        .should("be.visible")
+      cy.findByTextEnsureVisible("Click and drag to change their order")
         .parent()
         .find(".cursor-grab")
         .as("sidebarColumns"); // Store all columns in an array
@@ -217,7 +216,7 @@ describe("scenarios > question > settings", () => {
 
       // create a new question to see if the "add to a dashboard" modal is still there
       browse().click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after

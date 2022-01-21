@@ -1,18 +1,17 @@
 (ns metabase.query-processor.middleware.results-metadata-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dimension]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
             [metabase.test.mock.util :as mutil]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [metabase.util.encryption :as encrypt]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -109,12 +108,6 @@
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
 
-(deftest valid-checksum-test
-  (is (= true
-         (boolean (results-metadata/valid-checksum? "ABCDE" (#'results-metadata/metadata-checksum "ABCDE")))))
-  (is (= false
-         (boolean (results-metadata/valid-checksum? "ABCD" (#'results-metadata/metadata-checksum "ABCDE"))))))
-
 (def ^:private example-metadata
   [{:base_type    :type/Text
     :display_name "Date"
@@ -131,58 +124,59 @@
                             :nil%           0.0},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
 
-(deftest valid-encrypted-checksum-test
-  (testing (str "While metadata checksums won't be exactly the same when using an encryption key, `valid-checksum?` "
-                "should still consider them to be valid checksums.")
-    (with-redefs [encrypt/default-secret-key (encrypt/secret-key->hash "0123456789abcdef")]
-      (let [checksum-1 (#'results-metadata/metadata-checksum example-metadata)
-            checksum-2 (#'results-metadata/metadata-checksum example-metadata)]
-        (is (not= checksum-1
-                  checksum-2))
-        (is (= true
-               (boolean (results-metadata/valid-checksum? example-metadata checksum-1))
-               (boolean (results-metadata/valid-checksum? example-metadata checksum-2))))))))
-
-(defn- array-map->hash-map
-  "Calling something like `(into (hash-map) ...)` will only return a hash-map if there are enough elements to push it
-  over the limit of an array-map. By passing the keyvals into `hash-map`, you can be sure it will be a hash-map."
-  [m]
-  (apply hash-map (apply concat m)))
-
-(defn- metadata-checksum
-  "Invoke `metadata-checksum` without a `default-secret-key` specified. If the key is specified, it will encrypt the
-  checksum. The encryption includes random data that will cause the checksum string to be different each time, so the
-  checksum strings can't be directly compared."
-  [metadata]
-  (with-redefs [encrypt/default-secret-key nil]
-    (#'results-metadata/metadata-checksum metadata)))
-
-(deftest consistent-checksums-test
-  (testing "metadata-checksum should be the same every time for identitcal objects"
-    (is (= (metadata-checksum example-metadata)
-           (metadata-checksum example-metadata))))
-
-  (testing "tests that the checksum is consistent when an array-map is switched to a hash-map"
-    (is (= (metadata-checksum example-metadata)
-           (metadata-checksum (mapv array-map->hash-map example-metadata)))))
-
-  (testing "tests that the checksum is consistent with an integer and with a double"
-    (is (= (metadata-checksum example-metadata)
-           (metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int))))))
-
 (deftest metadata-in-results-test
   (testing "make sure that queries come back with metadata"
-    (is (= {:checksum java.lang.String
-            :columns  (for [col default-card-results-native]
+    (is (= {:columns  (for [col default-card-results-native]
                         (-> col (update :semantic_type keyword) (update :base_type keyword)))}
            (-> (qp/process-userland-query
                 {:database (mt/id)
                  :type     :native
                  :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
                (get-in [:data :results_metadata])
-               (update :checksum class)
                round-to-2-decimals
-               (->> (tu/round-fingerprint-cols [:columns])))))))
+               (->> (tu/round-fingerprint-cols [:columns]))))))
+  (testing "datasets"
+    (testing "metadata from datasets can be preserved"
+      (letfn [(choose [col] (select-keys col [:name :description :display_name :semantic_type]))
+              (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                         :type/Integer :type/Quantity
+                                         :type/Float :type/Cost
+                                         :type/Text :type/Name
+                                         base-type))
+              (add-preserved [cols] (map merge
+                                         cols
+                                         (repeat {:description "user description"
+                                                  :display_name "user display name"})
+                                         (map (comp
+                                               (fn [x] {:semantic_type x})
+                                               refine-type
+                                               :base_type)
+                                              cols)))]
+        (testing "native"
+          (let [fields (str/join ", " (map :name default-card-results-native))
+                native-query (str "SELECT " fields " FROM VENUES")
+                existing-metadata (add-preserved default-card-results-native)
+                results (qp/process-userland-query
+                         {:database (mt/id)
+                          :type :native
+                          :native {:query native-query}
+                          :info {:metadata/dataset-metadata existing-metadata}})]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))
+        (testing "mbql"
+          (let [query {:database (mt/id)
+                       :type :query
+                       :query {:source-table (mt/id :venues)}}
+                existing-metadata (add-preserved (-> query
+                                                     (qp/process-userland-query)
+                                                     :data :results_metadata :columns))
+                results (qp/process-userland-query
+                         (update query
+                                 :info
+                                 merge
+                                 {:metadata/dataset-metadata existing-metadata}))]
+            (is (= (map choose existing-metadata)
+                   (map choose (-> results :data :results_metadata :columns))))))))))
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
@@ -201,6 +195,8 @@
                :display_name "Date"
                :name         "DATE"
                :unit         :year
+               :settings     nil
+               :description  nil
                :semantic_type nil
                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
                               :type   {:type/DateTime {:earliest "2013-01-03"

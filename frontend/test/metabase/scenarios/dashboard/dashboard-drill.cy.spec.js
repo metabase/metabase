@@ -2,12 +2,11 @@ import {
   restore,
   modal,
   popover,
-  tippyPopover,
   filterWidget,
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -16,7 +15,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard drill", () => {
   beforeEach(() => {
@@ -739,7 +738,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
             .first()
             .trigger("mousemove");
 
-          tippyPopover().within(() => {
+          popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
             testPairedTooltipValues("VALUE", "5");
           });
@@ -748,7 +747,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
             .last()
             .trigger("mousemove");
 
-          tippyPopover().within(() => {
+          popover().within(() => {
             testPairedTooltipValues("AXIS", "1");
             testPairedTooltipValues("VALUE", "10");
           });

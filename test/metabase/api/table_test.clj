@@ -275,7 +275,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :updated_at)
-                  (assoc-in [:db :details] (:details (mt/db))))
+                  (update :db merge (select-keys (mt/db) [:details :settings])))
               (db/select-one [Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
               {:description     "What a nice table!"
                :entity_type     nil
@@ -431,7 +431,7 @@
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
-   :semantic_type             nil
+   :semantic_type            nil
    :default_dimension_option nil
    :dimension_options        []})
 

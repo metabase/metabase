@@ -101,7 +101,7 @@ export default class Dimension {
    * Returns true if these two dimensions are identical to one another.
    */
   static isEqual(
-    a: (Dimension | null | undefined) | ConcreteField,
+    a: Dimension | null | undefined | ConcreteField,
     b: Dimension | null | undefined,
   ): boolean {
     const dimensionA: Dimension | null | undefined =
@@ -210,7 +210,7 @@ export default class Dimension {
   /**
    * Is this dimension idential to another dimension or MBQL clause
    */
-  isEqual(other: (Dimension | null | undefined) | ConcreteField): boolean {
+  isEqual(other: Dimension | null | undefined | ConcreteField): boolean {
     if (other == null) {
       return false;
     }
@@ -230,7 +230,7 @@ export default class Dimension {
    * Does this dimension have the same underlying base dimension, typically a field
    */
   isSameBaseDimension(
-    other: (Dimension | null | undefined) | ConcreteField,
+    other: Dimension | null | undefined | ConcreteField,
   ): boolean {
     if (other == null) {
       return false;
@@ -1121,7 +1121,7 @@ export class ExpressionDimension extends Dimension {
 
     if (query) {
       const datasetQuery = query.query();
-      const expressions = datasetQuery ? datasetQuery.expressions : {};
+      const expressions = datasetQuery?.expressions ?? {};
 
       const env = mbql => {
         const dimension = Dimension.parseMBQL(

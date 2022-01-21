@@ -1,7 +1,7 @@
-import { Link } from "react-router";
 import styled from "styled-components";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import Link from "metabase/components/Link";
+import { alpha, color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -28,29 +28,34 @@ export const ListRoot = styled.div<ListRootProps>`
 
 export const CardRoot = styled(Link)`
   display: block;
-  padding: 1.5rem;
+  padding: 2rem;
   color: ${color("text-dark")};
   border: 1px solid ${color("border")};
   border-radius: 0.375rem;
   background-color: ${color("white")};
-  box-shadow: 0 1px 2px ${color("shadow")};
+  box-shadow: 0 7px 20px ${color("shadow")};
+  overflow: hidden;
 
   &:hover {
     color: ${color("brand")};
+    box-shadow: 0 10px 22px ${alpha(color("shadow"), 0.09)};
   }
 `;
 
 export const CardIcon = styled(Icon)`
   display: block;
   color: ${color("brand")};
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
 `;
 
 export const CardTitle = styled.span`
   display: block;
+  margin-top: 1.875rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin-top: 2.25rem;
+  line-height: 1.5rem;
+  overflow: hidden;
 `;
 
 export const BannerIconContainer = styled.div`
@@ -94,6 +99,10 @@ export const BannerTitle = styled.div`
 export const BannerDescription = styled.div`
   color: ${color("text-medium")};
   margin-top: 0.5rem;
+`;
+
+export const BannerLink = styled(Link)`
+  display: block;
 `;
 
 export const BannerRoot = styled.div`

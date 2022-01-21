@@ -5,7 +5,7 @@ import {
   visitQuestionAdhoc,
   getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS_ID,
@@ -14,7 +14,7 @@ const {
   PEOPLE,
   PRODUCTS_ID,
   PRODUCTS,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const ordersJoinPeopleQuery = {
   type: "query",
@@ -187,7 +187,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       // Check all binning options from the footer
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
@@ -286,9 +286,7 @@ function chooseInitialBinningOptionForExplicitJoin({
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
   cy.wait("@dataset");
-  cy.findByText("Summarize")
-    .should("be.visible")
-    .click();
+  cy.findByTextEnsureVisible("Summarize").click();
 
   cy.findByTestId("sidebar-right").within(() => {
     cy.findByText("Count"); // Test fails without this because of some weird race condition

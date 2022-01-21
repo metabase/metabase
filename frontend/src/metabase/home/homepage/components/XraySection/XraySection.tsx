@@ -1,14 +1,11 @@
-import React, { ReactNode } from "react";
+import React, { ChangeEvent, ReactNode, useState } from "react";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
+import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Select, { Option } from "metabase/components/Select";
 import Tooltip from "metabase/components/Tooltip";
-import {
-  Dashboard,
-  DatabaseCandidate,
-  TableCandidate,
-  User,
-} from "../../types";
+import { DatabaseCandidate, TableCandidate, User } from "metabase-types/api";
 import Section, {
   SectionCloseIcon,
   SectionHeader,
@@ -20,26 +17,22 @@ import {
   CardRoot,
   CardTitle,
   ListRoot,
+  SelectRoot,
+  SelectTitle,
 } from "./XraySection.styled";
 
-interface Props {
+export interface XraySectionProps {
   user: User;
-  dashboards: Dashboard[];
   databaseCandidates?: DatabaseCandidate[];
-  showXrays?: boolean;
   onHideXrays?: () => void;
 }
 
 const XraySection = ({
   user,
-  dashboards,
   databaseCandidates = [],
-  showXrays,
   onHideXrays,
-}: Props) => {
-  const options = databaseCandidates.flatMap(database => database.tables);
-
-  if (!showXrays || dashboards.length || !options.length) {
+}: XraySectionProps): JSX.Element | null => {
+  if (!databaseCandidates.length) {
     return null;
   }
 
@@ -55,27 +48,63 @@ const XraySection = ({
           </HideSectionModal>
         )}
       </SectionHeader>
-      <ListRoot>
-        {options.map(option => (
-          <XrayCard key={option.url} option={option} />
-        ))}
-      </ListRoot>
+      <XrayContent databases={databaseCandidates} />
     </Section>
   );
 };
 
-interface XrayCardProps {
-  option: TableCandidate;
+interface XrayContentProps {
+  databases: DatabaseCandidate[];
 }
 
-const XrayCard = ({ option }: XrayCardProps) => {
+const XrayContent = ({ databases }: XrayContentProps): JSX.Element => {
+  const schemas = databases.map(d => d.schema);
+  const [schema, setSchema] = useState(schemas[0]);
+  const database = databases.find(d => d.schema === schema);
+
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSchema(event.target.value);
+  };
+
   return (
-    <CardRoot to={option.url}>
+    <div>
+      {schemas.length > 1 && (
+        <SelectRoot>
+          <SelectTitle>{t`Based on the schema`}</SelectTitle>
+          <Select value={schema} onChange={handleChange}>
+            {schemas.map(schema => (
+              <Option key={schema} value={schema}>
+                {schema}
+              </Option>
+            ))}
+          </Select>
+        </SelectRoot>
+      )}
+      {database && (
+        <ListRoot>
+          {database.tables.map(table => (
+            <XrayCard key={table.url} table={table} />
+          ))}
+        </ListRoot>
+      )}
+    </div>
+  );
+};
+
+interface XrayCardProps {
+  table: TableCandidate;
+}
+
+const XrayCard = ({ table }: XrayCardProps): JSX.Element => {
+  return (
+    <CardRoot to={table.url}>
       <CardIconContainer>
         <CardIcon name="bolt" />
       </CardIconContainer>
       <CardTitle>
-        {t`A look at your`} <strong>{option.title}</strong>
+        <Ellipsified>
+          {t`A look at your`} <strong>{table.title}</strong>
+        </Ellipsified>
       </CardTitle>
     </CardRoot>
   );
@@ -86,7 +115,10 @@ interface HideSectionModalProps {
   onSubmit?: () => void;
 }
 
-const HideSectionModal = ({ children, onSubmit }: HideSectionModalProps) => {
+const HideSectionModal = ({
+  children,
+  onSubmit,
+}: HideSectionModalProps): JSX.Element => {
   return (
     <ModalWithTrigger
       title={t`Remove these suggestions?`}

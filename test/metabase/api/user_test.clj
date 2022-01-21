@@ -239,12 +239,13 @@
     (testing "check that fetching current user will return extra fields like `is_active`"
       (is (= (-> (merge
                   @user-defaults
-                  {:email                  "rasta@metabase.com"
-                   :first_name             "Rasta"
-                   :last_name              "Toucan"
-                   :common_name            "Rasta Toucan"
-                   :group_ids              [(u/the-id (group/all-users))]
-                   :personal_collection_id true})
+                  {:email                   "rasta@metabase.com"
+                   :first_name              "Rasta"
+                   :last_name               "Toucan"
+                   :common_name             "Rasta Toucan"
+                   :group_ids               [(u/the-id (group/all-users))]
+                   :personal_collection_id  true
+                   :has_invited_second_user (= 1 (mt/user->id :rasta))})
                  (dissoc :is_qbnewb :last_login))
              (-> (mt/user-http-request :rasta :get 200 "user/current")
                  mt/boolean-ids-and-timestamps

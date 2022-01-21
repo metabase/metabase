@@ -1,0 +1,20 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: Metabase
+  description: Bringing the power of Metabase to your Slack #channels!
+  background_color: "#509EE3"
+features:
+  bot_user:
+    display_name: Metabase
+oauth_config:
+  scopes:
+    bot:
+      - users:read
+      - channels:read
+      - channels:join
+      - files:write
+      - chat:write
+      - chat:write.customize
+      - chat:write.public

@@ -23,7 +23,7 @@
        (deferred-tru "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
-  :getter     #(public-settings/uuid-nonce :analytics-uuid))
+  :type       ::public-settings/uuid-nonce)
 
 (defsetting snowplow-available
   (str (deferred-tru "Boolean indicating whether a Snowplow collector is available to receive analytics events.")
@@ -165,6 +165,6 @@
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
                   (let [value (or (first-user-creation) (java-time/offset-date-time))]
-                    (setting/set-timestamp! :instance-creation value)
+                    (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
-                (setting/get-timestamp :instance-creation)))
+                (setting/get-value-of-type :timestamp :instance-creation)))

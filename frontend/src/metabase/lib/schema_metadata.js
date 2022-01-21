@@ -6,6 +6,7 @@ import {
   isPK as isTypePK,
   TYPE,
 } from "metabase/lib/types";
+import { field_semantic_types_map } from "metabase/lib/core";
 
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
@@ -73,8 +74,8 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL],
-    exclude: [ENTITY, LOCATION],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    exclude: [LOCATION],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
@@ -788,6 +789,16 @@ export const ICON_MAPPING = {
 
 export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
+}
+
+export function getSemanticTypeIcon(semanticType, fallback) {
+  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  return semanticTypeMetadata?.icon ?? fallback;
+}
+
+export function getSemanticTypeName(semanticType) {
+  const semanticTypeMetadata = field_semantic_types_map[semanticType];
+  return semanticTypeMetadata?.name;
 }
 
 export function getFilterArgumentFormatOptions(filterOperator, index) {

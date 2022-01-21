@@ -7,6 +7,12 @@
             [metabase.pulse.render.test-util :as render.tu]
             [schema.core :as s]))
 
+(use-fixtures :each
+  (fn warn-possible-rebuild
+    [thunk]
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+      (thunk))))
+
 (def ^:private pacific-tz "America/Los_Angeles")
 
 (def ^:private test-columns
@@ -244,8 +250,16 @@
                                                {:cols test-columns-with-date-semantic-type :rows test-data}
                                                (count test-columns))))))
 
+(deftest error-test
+  (testing "renders error"
+    (= "An error occurred while displaying this card."
+       (-> (body/render :render-error nil nil nil nil nil) :content last)))
+  (testing "renders card error"
+    (= "There was a problem with this question."
+       (-> (body/render :card-error nil nil nil nil nil) :content last))))
+
 (defn- render-scalar-value [results]
-  (-> (body/render :scalar nil pacific-tz nil results)
+  (-> (body/render :scalar nil pacific-tz nil nil results)
       :content
       last))
 
@@ -286,13 +300,13 @@
                              :semantic_type nil}]
                      :rows [["foo"]]}]
         (is (= "foo"
-               (:render/text (body/render :scalar nil pacific-tz nil results))))
+               (:render/text (body/render :scalar nil pacific-tz nil nil results))))
         (is (schema= {:attachments (s/eq nil)
                       :content     [(s/one (s/eq :div) "div tag")
                                     (s/one {:style s/Str} "style map")
                                     (s/one (s/eq "foo") "content")]
                       :render/text (s/eq "foo")}
-                     (body/render :scalar nil pacific-tz nil results)))))
+                     (body/render :scalar nil pacific-tz nil nil results)))))
     (testing "for smartscalars"
       (let [results {:cols [{:name         "value",
                              :display_name "VALUE",
@@ -308,13 +322,29 @@
                                  :unit :month
                                  :last-change 1.333333
                                  :col "value"
-                                 :last-value 40.0}]}]
+                                 :last-value 40.0}]}
+            ;; by "dumb" it is meant "without nonnil insights"
+            dumbres {:cols [{:name         "value",
+                             :display_name "VALUE",
+                             :base_type    :type/Decimal}
+                            {:name           "time",
+                             :display_name   "TIME",
+                             :base_type      :type/DateTime
+                             :effective_type :type/DateTime}]
+                     :rows [[20.0 :month-before]]
+                     :insights [{:previous-value nil
+                                 :unit nil
+                                 :last-change nil
+                                 :col "value"
+                                 :last-value 20.0}]}]
         (is (= "40.00\nUp 133.33%. Was 30.00 last month"
-               (:render/text (body/render :smartscalar nil pacific-tz nil results))))
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
+        (is (= "20.0\nNothing to compare to."
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
                       :content     (s/pred vector? "hiccup vector")
                       :render/text (s/eq "40.00\nUp 133.33%. Was 30.00 last month")}
-                     (body/render :smartscalar nil pacific-tz nil results)))))))
+                     (body/render :smartscalar nil pacific-tz nil nil results)))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]
@@ -378,9 +408,6 @@
   [html-data]
   (tree-seq coll? seq html-data))
 
-(defn- render-bar-graph [results]
-  (body/render :bar :inline pacific-tz render.tu/test-card results))
-
 (def ^:private default-columns
   [{:name         "Price",
     :display_name "Price",
@@ -391,8 +418,32 @@
     :base_type    :type/BigInteger
     :semantic_type nil}])
 
+(def ^:private default-combo-columns
+  [{:name         "Price",
+    :display_name "Price",
+    :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "NumPurchased",
+    :display_name "NumPurchased",
+    :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "NumKazoos",
+    :display_name "NumKazoos",
+    :base_type    :type/BigInteger
+    :semantic_type nil}
+   {:name         "ExtraneousColumn",
+    :display_name "ExtraneousColumn",
+    :base_type    :type/BigInteger
+    :semantic_type nil}])
+
 (defn has-inline-image? [rendered]
   (some #{:img} (flatten-html-data rendered)))
+
+(defn- render-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-card nil results))
+
+(defn- render-multiseries-bar-graph [results]
+  (body/render :bar :inline pacific-tz render.tu/test-combo-card nil results))
 
 (deftest render-bar-graph-test
   (testing "Render a bar graph with non-nil values for the x and y axis"
@@ -410,22 +461,59 @@
   (testing "Check to make sure we allow nil values for both x and y on different rows"
     (is (has-inline-image?
          (render-bar-graph {:cols default-columns
-                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
+                            :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-bar-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
+(defn- render-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-card nil results))
+
+(defn- render-multiseries-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
+
+(deftest render-area-graph-tet
+  (testing "Render an area graph with non-nil values for the x and y axis"
+    (is (has-inline-image?
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (is (has-inline-image?
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
+  (testing "Check to make sure we allow nil values for both x and y on different rows"
+    (is (has-inline-image?
+          (render-area-graph {:cols default-columns
+                              :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]}))))
+  (testing "Check multiseries in one card but without explicit combo"
+    (is (has-inline-image?
+          (render-multiseries-area-graph
+            {:cols default-combo-columns
+             :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-waterfall [results]
-  (body/render :waterfall :inline pacific-tz render.tu/test-card results))
+  (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-waterfall-test
   (testing "Render a waterfall graph with non-nil values for the x and y axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
+    (is (has-inline-image?
+          (render-waterfall {:cols default-columns
+                             :rows [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
+  (testing "Check to make sure we allow nil values for the x-axis"
     (is (has-inline-image?
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]}))))
@@ -434,6 +522,26 @@
          (render-waterfall {:cols default-columns
                             :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})))))
 
+(defn- render-combo [results]
+  (body/render :combo :inline pacific-tz render.tu/test-combo-card nil results))
+
+(defn- render-combo-multi-x [results]
+  (body/render :combo :inline pacific-tz render.tu/test-combo-card-multi-x nil results))
+
+(deftest render-combo-test
+  (testing "Render a combo graph with non-nil values for the x and y axis"
+    (is (has-inline-image?
+          (render-combo {:cols default-combo-columns
+                         :rows [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]}))))
+  (testing "Render a combo graph with multiple x axes"
+    (is (has-inline-image?
+          (render-combo-multi-x {:cols default-combo-columns
+                                 :rows [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
+  (testing "Check to make sure we allow nil values for any axis"
+    (is (has-inline-image?
+          (render-combo {:cols default-combo-columns
+                         :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
+
 ;; Test rendering a sparkline
 ;;
 ;; Sparklines are a binary image either in-line or as an attachment, so there's not much introspection that we can do
@@ -441,7 +549,7 @@
 ;; attachment is included
 
 (defn- render-sparkline [results]
-  (body/render :sparkline :inline pacific-tz render.tu/test-card results))
+  (body/render :sparkline :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-sparkline-test
   (testing "Test that we can render a sparkline with all valid values"
@@ -471,7 +579,7 @@
            :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))
 
 (defn- render-funnel [results]
-  (body/render :funnel :inline pacific-tz render.tu/test-card results))
+  (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
 (deftest render-funnel-test
   (testing "Test that we can render a funnel with all valid values"
@@ -497,6 +605,7 @@
         render  (fn [rows]
                   (body/render :categorical/donut :inline pacific-tz
                                render.tu/test-card
+                               nil
                                {:cols columns :rows rows}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
@@ -523,6 +632,7 @@
         render  (fn [rows]
                   (body/render :progress :inline pacific-tz
                                render.tu/test-card
+                               nil
                                {:cols col :rows rows}))
         prune   (fn prune [html-tree]
                   (walk/prewalk (fn no-maps [x]
@@ -532,6 +642,9 @@
                                 html-tree))]
     (testing "Renders without error"
       (let [rendered-info (render [[25]])]
+        (is (has-inline-image? rendered-info))))
+    (testing "Renders negative value without error"
+      (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
 
 (def donut-info #'body/donut-info)

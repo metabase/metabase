@@ -152,7 +152,7 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids)))
+      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
@@ -181,7 +181,8 @@
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
-                                 @api/*current-user*))]
+                                 @api/*current-user*
+                                 false))]
       (maybe-set-user-permissions-groups! new-user-id group_ids)
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id})
       (-> (fetch-user :id new-user-id)
@@ -325,7 +326,7 @@
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email! user @api/*current-user* join-url)))
+      (email/send-new-user-email! user @api/*current-user* join-url false)))
   {:success true})
 
 (api/define-routes)

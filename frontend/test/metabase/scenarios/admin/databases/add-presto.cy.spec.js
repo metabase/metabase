@@ -32,6 +32,7 @@ describe("admin > database > add > Presto", () => {
     cy.findByLabelText("Username");
     cy.findByLabelText("Password");
     // Implicit assertion - reproduces metabase#18351
+    cy.findByText("Show advanced options").click();
     cy.findByLabelText("Additional JDBC options");
 
     cy.findByLabelText("Use a secure connection (SSL)");
@@ -58,12 +59,9 @@ describe("admin > database > add > Presto", () => {
     // This should be disabled but we'll not add that assertion until we mark all the required fields in the form
     cy.button("Save");
 
-    cy.findByText("Need help setting up your database?");
-    cy.findByRole("link", { name: "Our docs can help." });
+    cy.findByText("Need help connecting?");
 
-    cy.findByText(
-      "This is our new Presto driver, which is faster and more reliable.",
-    );
+    cy.contains("This is our new Presto driver.");
 
     // Switch to the deprecated old Presto driver
     cy.contains(
@@ -72,7 +70,7 @@ describe("admin > database > add > Presto", () => {
       .find("a")
       .click();
 
-    cy.get(".AdminSelect").contains("Presto (Deprecated Driver)");
+    cy.findAllByTestId("select-button").contains("Presto (Deprecated Driver)");
 
     // It should have persisted the previously set database name
     cy.findByDisplayValue("Foo");
@@ -109,18 +107,14 @@ describe("admin > database > add > Presto", () => {
       "",
     );
 
-    cy.findByText(
-      "This driver has been deprecated and will be removed in a future release.",
-    );
+    cy.contains("This driver will be removed in a future release. ");
 
     // Switch back to the new Presto driver
-    cy.contains(
-      "We recommend that you upgrade to the new Presto driver, which is faster and more reliable.",
-    )
+    cy.contains("We recommend you upgrade to the new Presto driver.")
       .find("a")
       .click();
 
-    cy.get(".AdminSelect")
+    cy.findAllByTestId("select-button")
       .contains("Presto")
       .click();
 

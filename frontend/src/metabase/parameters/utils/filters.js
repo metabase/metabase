@@ -13,20 +13,7 @@ export function fieldFilterForParameter(parameter) {
     case "category":
       return field => field.isCategory();
     case "location":
-      return field => {
-        switch (subtype) {
-          case "city":
-            return field.isCity();
-          case "state":
-            return field.isState();
-          case "zip_code":
-            return field.isZipCode();
-          case "country":
-            return field.isCountry();
-          default:
-            return field.isLocation();
-        }
-      };
+      return field => field.isLocation();
     case "number":
       return field => field.isNumber() && !field.isCoordinate();
     case "string":

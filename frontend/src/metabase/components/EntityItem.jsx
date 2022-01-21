@@ -6,7 +6,7 @@ import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
@@ -180,13 +180,6 @@ const EntityItem = ({
 
       <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
         {buttons}
-        {!loading && item.description && (
-          <Icon
-            tooltip={item.description}
-            name="info"
-            className="ml1 text-medium"
-          />
-        )}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
           item={item}

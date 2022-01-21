@@ -46,8 +46,12 @@ describe("parameters/utils/field-filters", () => {
       [
         { type: "location/city" },
         {
-          type: "city",
-          field: () => ({ ...field, isCity: () => true }),
+          type: "location",
+          field: () => ({
+            ...field,
+            isLocation: () => true,
+            isCity: () => true,
+          }),
         },
       ],
       [

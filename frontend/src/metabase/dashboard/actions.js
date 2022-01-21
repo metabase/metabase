@@ -18,8 +18,11 @@ import {
   setParameterDefaultValue as setParamDefaultValue,
   getMappingsByParameter,
   getDashboardParametersWithFieldMetadata,
+  getParametersMappedToDashcard,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
-import { applyParameters, questionUrlWithParameters } from "metabase/meta/Card";
+import { applyParameters } from "metabase/meta/Card";
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
@@ -54,6 +57,7 @@ import {
   getDashboardBeforeEditing,
   getDashboardComplete,
   getParameterValues,
+  getDashboardParameterValuesSearchCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -128,6 +132,9 @@ export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
+
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -683,7 +690,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     }
 
     if (dashboardType === "normal" || dashboardType === "transient") {
-      dispatch(loadMetadataForDashboard(result.ordered_cards));
+      await dispatch(loadMetadataForDashboard(result.ordered_cards));
     }
 
     // copy over any virtual cards from the dashcard to the underlying card/question
@@ -959,38 +966,31 @@ export const navigateToNewCardFromDashboard = createThunkAction(
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
-    const cardIsDirty = !_.isEqual(
-      previousCard.dataset_query,
-      nextCard.dataset_query,
-    );
     const cardAfterClick = getCardAfterVisualizationClick(
       nextCard,
       previousCard,
     );
 
-    const question = new Question(cardAfterClick, metadata);
+    let question = new Question(cardAfterClick, metadata);
+    if (question.query().isEditable()) {
+      question = question
+        .setDisplay(cardAfterClick.display || previousCard.display)
+        .setSettings(dashcard.card.visualization_settings)
+        .lockDisplay();
+    } else {
+      question = question.setCard(dashcard.card).setDashboardId(dashboard.id);
+    }
 
-    const cardWithVizSettings = question
-      .setDisplay(cardAfterClick.display || previousCard.display)
-      .setSettings(
-        cardAfterClick.visualization_settings ||
-          previousCard.visualization_settings,
-      )
-      .lockDisplay()
-      .card();
+    const parametersMappedToCard = getParametersMappedToDashcard(
+      dashboard,
+      dashcard,
+    );
 
     // when the query is for a specific object it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
     const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(cardWithVizSettings)
-      : questionUrlWithParameters(
-          cardWithVizSettings,
-          metadata,
-          dashboard.parameters,
-          parameterValues,
-          dashcard && dashcard.parameter_mappings,
-          cardIsDirty,
-        );
+      ? Urls.serializedQuestion(question.card())
+      : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
 
     open(url, {
       blankOnMetaOrCtrlKey: true,
@@ -1009,3 +1009,44 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
 
   return dispatch(loadMetadataForQueries(queries));
 };
+
+export const fetchDashboardParameterValues = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  ({ dashboardId, parameter, parameters, query }) => async (
+    dispatch,
+    getState,
+  ) => {
+    const parameterValuesSearchCache = getDashboardParameterValuesSearchCache(
+      getState(),
+    );
+    const filteringParameterValues = getFilteringParameterValuesMap(
+      parameter,
+      parameters,
+    );
+    const cacheKey = getParameterValuesSearchKey({
+      dashboardId,
+      parameterId: parameter.id,
+      query,
+      filteringParameterValues,
+    });
+
+    if (parameterValuesSearchCache[cacheKey]) {
+      return;
+    }
+
+    const endpoint = query
+      ? DashboardApi.parameterSearch
+      : DashboardApi.parameterValues;
+    const results = await endpoint({
+      paramId: parameter.id,
+      dashId: dashboardId,
+      query,
+      ...filteringParameterValues,
+    });
+
+    return {
+      cacheKey,
+      results: results.map(result => [].concat(result)),
+    };
+  },
+);

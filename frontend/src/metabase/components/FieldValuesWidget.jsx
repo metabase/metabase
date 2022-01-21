@@ -1,21 +1,23 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
+import { ListField } from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
 
-import { DashboardApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
+import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
+import { getDashboardParameterValuesCache } from "metabase/dashboard/selectors";
 
 import Fields from "metabase/entities/fields";
 
@@ -24,46 +26,22 @@ const MAX_SEARCH_RESULTS = 100;
 const fieldValuesWidgetPropTypes = {
   addRemappings: PropTypes.func,
   expand: PropTypes.bool,
-  isSidebar: PropTypes.bool,
 };
 
 const optionsMessagePropTypes = {
   message: PropTypes.string.isRequired,
 };
 
-// fetch the possible values of a parameter based on the values of the other parameters in a dashboard.
-// parameterId = the auto-generated ID of the parameter
-// parameters = all parameters in the current dashboard, as an array
-const fetchParameterPossibleValues = async (
-  dashboardId,
-  { id: paramId, filteringParameters = [] } = {},
-  parameters,
-  query,
-) => {
-  // build a map of parameter ID -> value for parameters that this parameter is filtered by
-  const otherValues = _.chain(parameters)
-    .filter(p => filteringParameters.includes(p.id) && p.value != null)
-    .map(p => [p.id, p.value])
-    .object()
-    .value();
-
-  const args = { paramId, query, dashId: dashboardId, ...otherValues };
-  const endpoint = query
-    ? DashboardApi.parameterSearch
-    : DashboardApi.parameterValues;
-  // now call the new chain filter API endpoint
-  const results = await endpoint(args);
-  return results.map(result => [].concat(result));
-};
-
 const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
+  fetchDashboardParameterValues,
 };
 
 function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
   return {
+    dashboardParameterValuesCache: getDashboardParameterValuesCache(state),
     fields: fields.map(
       field =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
@@ -102,7 +80,7 @@ export class FieldValuesWidget extends Component {
     return this.props.parameter && this.props.parameter.id;
   }
 
-  UNSAFE_componentWillMount() {
+  componentDidMount() {
     if (this.shouldList()) {
       if (this.useChainFilterEndpoints()) {
         this.fetchDashboardParamValues();
@@ -122,11 +100,13 @@ export class FieldValuesWidget extends Component {
     let options;
     try {
       const { dashboard, parameter, parameters } = this.props;
-      options = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
+      const args = {
+        dashboardId: dashboard?.id,
         parameter,
         parameters,
-      );
+      };
+      await this.props.fetchDashboardParameterValues(args);
+      options = this.props.dashboardParameterValuesCache.get(args);
     } finally {
       this.setState({
         loadingState: "LOADED",
@@ -262,12 +242,14 @@ export class FieldValuesWidget extends Component {
     let results;
     if (this.useChainFilterEndpoints()) {
       const { dashboard, parameter, parameters } = this.props;
-      results = await fetchParameterPossibleValues(
-        dashboard && dashboard.id,
+      const args = {
+        dashboardId: dashboard?.id,
         parameter,
         parameters,
-        value,
-      );
+        query: value,
+      };
+      await this.props.fetchDashboardParameterValues(args);
+      results = this.props.dashboardParameterValuesCache.get(args);
     } else {
       results = dedupeValues(
         await Promise.all(
@@ -420,72 +402,90 @@ export class FieldValuesWidget extends Component {
       options = [];
     }
 
+    const isLoading = loadingState === "LOADING";
+    const isFetchingList = this.shouldList() && isLoading;
+    const hasListData = this.hasList();
+
     return (
       <div
-        className={cx({ "PopoverBody--marginBottom": !this.props.isSidebar })}
         style={{
           width: this.props.expand ? this.props.maxWidth : null,
           minWidth: this.props.minWidth,
           maxWidth: this.props.maxWidth,
         }}
       >
-        <TokenField
-          value={value.filter(v => v != null)}
-          onChange={onChange}
-          placeholder={placeholder}
-          updateOnInputChange
-          // forwarded props
-          multi={multi}
-          autoFocus={autoFocus}
-          color={color}
-          style={{ ...style, minWidth: "inherit" }}
-          className={className}
-          parameter={this.props.parameter}
-          optionsStyle={!parameter ? { maxHeight: "none" } : {}}
-          // end forwarded props
-          options={options}
-          valueKey={0}
-          valueRenderer={value =>
-            this.renderValue(value, { autoLoad: true, compact: false })
-          }
-          optionRenderer={option =>
-            this.renderValue(option[0], { autoLoad: false })
-          }
-          layoutRenderer={props => (
-            <div>
-              {props.valuesList}
-              {this.renderOptions(props)}
-            </div>
-          )}
-          filterOption={(option, filterString) => {
-            const lowerCaseFilterString = filterString.toLowerCase();
-            return option.some(
-              value =>
-                value != null &&
-                String(value)
-                  .toLowerCase()
-                  .includes(lowerCaseFilterString),
-            );
-          }}
-          onInputChange={this.onInputChange}
-          parseFreeformValue={v => {
-            // trim whitespace
-            v = String(v || "").trim();
-            // empty string is not valid
-            if (!v) {
-              return null;
+        {isFetchingList && <LoadingState />}
+        {hasListData && (
+          <ListField
+            isDashboardFilter={parameter}
+            placeholder={this.getTokenFieldPlaceholder()}
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            options={options}
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
             }
-            // if the field is numeric we need to parse the string into an integer
-            if (fields[0].isNumeric()) {
-              if (/^-?\d+(\.\d+)?$/.test(v)) {
-                return parseFloat(v);
-              } else {
+          />
+        )}
+        {!hasListData && !isFetchingList && (
+          <TokenField
+            value={value.filter(v => v != null)}
+            onChange={onChange}
+            placeholder={placeholder}
+            updateOnInputChange
+            // forwarded props
+            multi={multi}
+            autoFocus={autoFocus}
+            color={color}
+            style={{ ...style, minWidth: "inherit" }}
+            className={className}
+            parameter={this.props.parameter}
+            optionsStyle={!parameter ? { maxHeight: "none" } : {}}
+            // end forwarded props
+            options={options}
+            valueKey={0}
+            valueRenderer={value =>
+              this.renderValue(value, { autoLoad: true, compact: false })
+            }
+            optionRenderer={option =>
+              this.renderValue(option[0], { autoLoad: false })
+            }
+            layoutRenderer={props => (
+              <div>
+                {props.valuesList}
+                {this.renderOptions(props)}
+              </div>
+            )}
+            filterOption={(option, filterString) => {
+              const lowerCaseFilterString = filterString.toLowerCase();
+              return option.some(
+                value =>
+                  value != null &&
+                  String(value)
+                    .toLowerCase()
+                    .includes(lowerCaseFilterString),
+              );
+            }}
+            onInputChange={this.onInputChange}
+            parseFreeformValue={v => {
+              // trim whitespace
+              v = String(v || "").trim();
+              // empty string is not valid
+              if (!v) {
                 return null;
               }
-            }
-            return v;
-          }}
-        />
+              // if the field is numeric we need to parse the string into an integer
+              if (fields[0].isNumeric()) {
+                if (/^-?\d+(\.\d+)?$/.test(v)) {
+                  return parseFloat(v);
+                } else {
+                  return null;
+                }
+              }
+              return v;
+            }}
+          />
+        )}
       </div>
     );
   }

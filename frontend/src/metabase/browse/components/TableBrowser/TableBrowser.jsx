@@ -3,11 +3,14 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase/lib/saved-questions";
 import Database from "metabase/entities/databases";
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
 import { Grid, GridItem } from "metabase/components/Grid";
+import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "../../constants";
 import BrowseHeader from "../BrowseHeader";
 import { TableActionLink, TableCard, TableLink } from "./TableBrowser.styled";
@@ -43,18 +46,22 @@ const TableBrowser = ({
       <Grid>
         {tables.map(table => (
           <GridItem key={table.id} width={ITEM_WIDTHS}>
-            <TableCard hoverable={table.initial_sync}>
-              <TableLink
-                to={table.initial_sync ? getTableUrl(table, metadata) : ""}
-                data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
-              >
-                <TableBrowserItem
-                  table={table}
-                  dbId={dbId}
-                  xraysEnabled={xraysEnabled}
-                />
-              </TableLink>
-            </TableCard>
+            <TableInfoPopover table={table} placement="bottom-start">
+              <TableCard hoverable={isSyncCompleted(table)}>
+                <TableLink
+                  to={
+                    isSyncCompleted(table) ? getTableUrl(table, metadata) : ""
+                  }
+                  data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                >
+                  <TableBrowserItem
+                    table={table}
+                    dbId={dbId}
+                    xraysEnabled={xraysEnabled}
+                  />
+                </TableLink>
+              </TableCard>
+            </TableInfoPopover>
           </GridItem>
         ))}
       </Grid>
@@ -77,10 +84,10 @@ const TableBrowserItem = ({ table, dbId, xraysEnabled }) => {
       name={table.display_name || table.name}
       iconName="table"
       iconColor={color("accent2")}
-      loading={!table.initial_sync}
-      disabled={!table.initial_sync}
+      loading={!isSyncCompleted(table)}
+      disabled={!isSyncCompleted(table)}
       buttons={
-        table.initial_sync && (
+        isSyncCompleted(table) && (
           <TableBrowserItemButtons
             tableId={table.id}
             dbId={dbId}

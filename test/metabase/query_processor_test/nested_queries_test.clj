@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Dimension Field Metric Segment Table]]
             [metabase.models.card :as card :refer [Card]]
@@ -108,7 +109,7 @@
                      [2 33.8894 8]
                      [2 33.9997 7]
                      [3 10.0646 2]
-                     [4 33.983 2]],
+                     [4 33.983 2]]
               :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
                      (qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :latitude))
                      (qp.test/aggregate-col :count)]}
@@ -145,16 +146,55 @@
                     :breakout     [$venue_id->venues.price $user_id]
                     :limit        5}))))))))
 
+(deftest nested-with-aggregations-at-both-levels
+  (testing "Aggregations in both nested and outer query have correct metadata (#19403)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+      (mt/dataset sample-dataset
+        (mt/with-temp* [Card [{card-id :id :as card}
+                              {:dataset_query
+                               (mt/$ids :products
+                                        {:type     :query
+                                         :database (mt/id)
+                                         :query    {:source-table $$products
+                                                    :aggregation
+                                                    [[:aggregation-options
+                                                      [:sum $price]
+                                                      {:name "sum"}]
+                                                     [:aggregation-options
+                                                      [:max $rating]
+                                                      {:name "max"}]]
+                                                    :breakout     $category
+                                                    :order-by     [[:asc $category]]}})}]]
+          (is (= {:cols [{:name "count" :display_name "Count"}
+                         {:name "avg" :display_name "Average of Sum of Price"}]
+                  :rows [[4 2787]]}
+                 (-> (mt/format-rows-by [int int]
+                       (qp/process-query {:type     :query
+                                          :database (mt/id)
+                                          :query    {:source-table (str "card__" card-id)
+                                                     :aggregation  [[:aggregation-options
+                                                                     [:count]
+                                                                     {:name "count"}]
+                                                                    [:aggregation-options
+                                                                     [:avg
+                                                                      [:field
+                                                                       "sum"
+                                                                       {:base-type :type/Float}]]
+                                                                     {:name "avg"}]]}}))
+                     :data
+                     (select-keys [:cols :rows])
+                     (update :cols #(map (fn [c] (select-keys c [:name :display_name])) %))))))))))
+
 (deftest sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
-      (is (= (breakout-results)
-             (qp.test/rows-and-cols
-               (mt/format-rows-by [int int]
-                 (mt/run-mbql-query venues
-                   {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
-                    :aggregation  [:count]
-                    :breakout     [$price]}))))))))
+      (is (= (:rows (breakout-results))
+             (mt/rows
+              (mt/format-rows-by [int int]
+                (mt/run-mbql-query venues
+                  {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
+                   :aggregation  [:count]
+                   :breakout     [*price]}))))))))
 
 
 (defn- mbql-card-def
@@ -307,18 +347,23 @@
                :aggregation  [[:avg *stddev/Integer]]}))))))
 
 (deftest handle-incorrect-field-forms-gracefully-test
-  (testing "make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense"
-    (is (= (honeysql->sql
-            {:select   [[:source.category_id :category_id]]
-             :from     [[venues-source-honeysql :source]]
-             :group-by [:source.category_id]
-             :order-by [[:source.category-id :asc]]
-             :limit    10})
-           (qp/query->native
-            (mt/mbql-query venues
-              {:source-query {:source-table $$venues}
-               :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
-               :limit        10}))))))
+  (testing "make sure that we handle [:field [:field <name> ...]] forms gracefully, despite that not making any sense"
+    (is (sql= '{:select   [source.CATEGORY_ID AS CATEGORY_ID]
+                :from     [{:select [VENUES.ID          AS ID
+                                     VENUES.NAME        AS NAME
+                                     VENUES.CATEGORY_ID AS CATEGORY_ID
+                                     VENUES.LATITUDE    AS LATITUDE
+                                     VENUES.LONGITUDE   AS LONGITUDE
+                                     VENUES.PRICE       AS PRICE]
+                            :from [VENUES]}
+                           source]
+                :group-by [source.CATEGORY_ID]
+                :order-by [source.CATEGORY_ID ASC]
+                :limit    [10]}
+              (mt/mbql-query venues
+                {:source-query {:source-table $$venues}
+                 :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                 :limit        10})))))
 
 (deftest filter-by-string-fields-test
   (testing "Make sure we can filter by string fields from a source query"
@@ -396,8 +441,8 @@
 
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
-                (assoc :field_ref [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
-                       :unit      :day)
+                (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
+                       :unit         :day)
                 ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
                 ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
@@ -597,15 +642,17 @@
           (testing "Try to save in the Root Collection"
             (mt/with-temp Collection [source-card-collection]
               (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-              (is (= "You don't have permissions to do that."
-                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
+              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                            s/Keyword s/Any}
+                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp* [Collection [source-card-collection]
                             Collection [dest-card-collection]]
               (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-              (is (= "You don't have permissions to do that."
-                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
+              (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
+                            s/Keyword s/Any}
+                           (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 
 (deftest infer-source-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -649,7 +696,7 @@
                   :fields       [$id]
                   :filter       [:= *date "2014-03-30"]})))))))
 
-(deftest apply-filters-test
+(deftest aapply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
     (testing "make sure filters in source queries are applied correctly!"
       (is (= [["Fred 62"     1]
@@ -936,18 +983,19 @@
 (deftest duplicate-column-names-in-nested-queries-test
   (testing "duplicate column names in nested queries (#10511)"
     (mt/dataset sample-dataset
-      (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
-              ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
-              ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
-              ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
-              ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
-             (mt/rows
-               (mt/run-mbql-query orders
-                 {:filter       [:> *count/Integer 5]
-                  :source-query {:source-table $$orders
-                                 :aggregation  [[:count]]
-                                 :breakout     [!month.created_at !month.product_id->products.created_at]}
-                  :limit        5})))))))
+      (let [query (mt/mbql-query orders
+                    {:filter       [:> *count/Integer 5]
+                     :source-query {:source-table $$orders
+                                    :aggregation  [[:count]]
+                                    :breakout     [!month.created_at !month.product_id->products.created_at]}
+                     :limit        5})]
+        (mt/with-native-query-testing-context query
+          (is (= [["2016-06-01T00:00:00Z" "2016-05-01T00:00:00Z" 13]
+                  ["2016-07-01T00:00:00Z" "2016-05-01T00:00:00Z" 16]
+                  ["2016-07-01T00:00:00Z" "2016-06-01T00:00:00Z" 10]
+                  ["2016-07-01T00:00:00Z" "2016-07-01T00:00:00Z" 7]
+                  ["2016-08-01T00:00:00Z" "2016-05-01T00:00:00Z" 12]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest nested-queries-with-joins-with-old-metadata-test
   (testing "Nested queries with joins using old pre-38 result metadata still work (#14788)"
@@ -1102,23 +1150,25 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset sample-dataset
-        (is (= [["Awesome Bronze Plate" 115.23]
-                ["Mediocre Rubber Shoes" 101.04]
-                ["Mediocre Wooden Bench" 117.03]
-                ["Sleek Steel Table" 134.91]
-                ["Small Marble Hat" 102.8]]
-               (mt/formatted-rows [str 2.0]
-                 (mt/run-mbql-query orders
-                   {:source-query {:source-query {:source-table $$orders
-                                                  :filter       [:= $user_id 1]
-                                                  :aggregation  [[:sum $total]]
-                                                  :breakout     [!day.created_at
-                                                                 $product_id->products.title
-                                                                 $product_id->products.category]}
-                                   :filter       [:> *sum/Float 100]
-                                   :aggregation  [[:sum *sum/Float]]
-                                   :breakout     [*products.title]}
-                    :filter       [:> *sum/Float 100]}))))))))
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-query {:source-table $$orders
+                                                     :filter       [:= $user_id 1]
+                                                     :aggregation  [[:sum $total]]
+                                                     :breakout     [!day.created_at
+                                                                    $product_id->products.title
+                                                                    $product_id->products.category]}
+                                      :filter       [:> *sum/Float 100]
+                                      :aggregation  [[:sum *sum/Float]]
+                                      :breakout     [*products.title]}
+                       :filter       [:> *sum/Float 100]})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Awesome Bronze Plate" 115.23]
+                    ["Mediocre Rubber Shoes" 101.04]
+                    ["Mediocre Wooden Bench" 117.03]
+                    ["Sleek Steel Table" 134.91]
+                    ["Small Marble Hat" 102.8]]
+                   (mt/formatted-rows [str 2.0]
+                     (qp/process-query query))))))))))
 
 (deftest date-range-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
@@ -1195,3 +1245,58 @@
                     ["2016-05-01T00:00:00Z" 5]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest join-against-query-with-implicit-joins-test
+  (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :nested-queries
+                      :basic-aggregations
+                      :foreign-keys
+                      :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query orders
+                      {:source-query {:source-table $$orders
+                                      :aggregation  [[:count]]
+                                      :breakout     [$product_id->products.id]}
+                       :joins        [{:fields       :all
+                                       :source-table $$reviews
+                                       ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
+                                       ;; anyway.
+                                       :condition    [:= *products.id &Reviews.reviews.product_id]
+                                       :alias        "Reviews"}]
+                       :order-by     [[:asc $product_id->products.id]
+                                      [:asc &Reviews.products.id]]
+                       :limit        1})]
+          (sql.qp-test-util/with-native-query-testing-context query
+            (testing "results"
+              (is (= [[1
+                       93
+                       1
+                       1
+                       "christ"
+                       5
+                       "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
+                       "2018-05-15T20:25:48.517Z"]]
+                     (mt/formatted-rows [int int int int str int str str]
+                       (qp/process-query query)))))))))))
+
+(deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+    (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
+                  "incorrectly using `:field` literals to refer to the Field (#16389)")
+      ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
+      ;; is broken
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
+          (let [query (mt/mbql-query orders
+                        {:source-query {:source-table $$orders
+                                        :breakout     [!month.product_id->products.created_at]
+                                        :aggregation  [[:count]]}
+                         :filter       [:time-interval *created_at/DateTimeWithLocalTZ -30 :year]
+                         :aggregation  [[:sum *count/Integer]]
+                         :breakout     [*created_at/DateTimeWithLocalTZ]
+                         :limit        1})]
+            (mt/with-native-query-testing-context query
+              (is (= [["2016-04-01T00:00:00Z" 175]]
+                     (mt/formatted-rows [str int]
+                       (qp/process-query query)))))))))))

@@ -91,6 +91,7 @@
 (defmethod driver/table-rows-seq ::moviedb [_ _ table]
   (when (= (:name table) "_metabase_metadata")
     [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
-     {:keypath "movies.description", :value "A cinematic adventure."}]))
+     {:keypath "movies.description", :value "A cinematic adventure."}
+     {:keypath "description", :value "Information about movies"}]))
 
 (defmethod driver/supports? [::moviedb :foreign-keys] [_ _] true)

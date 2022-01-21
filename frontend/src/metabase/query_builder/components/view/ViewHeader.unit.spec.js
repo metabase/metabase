@@ -7,11 +7,12 @@ import {
   waitFor,
 } from "__support__/ui";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
+import MetabaseSettings from "metabase/lib/settings";
 import { ViewTitleHeader } from "./ViewHeader";
 
 const BASE_GUI_QUESTION = {
@@ -19,7 +20,7 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -46,7 +47,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "select * from orders",
     },
@@ -84,7 +85,18 @@ function getSavedNativeQuestion(overrides) {
   });
 }
 
-function setup({ question, isRunnable = true, ...props } = {}) {
+function mockSettings({ enableNestedQueries = true } = {}) {
+  MetabaseSettings.get = jest.fn().mockImplementation(key => {
+    if (key === "enable-nested-queries") {
+      return enableNestedQueries;
+    }
+    return false;
+  });
+}
+
+function setup({ question, isRunnable = true, settings, ...props } = {}) {
+  mockSettings(settings);
+
   const callbacks = {
     runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
@@ -106,7 +118,7 @@ function setup({ question, isRunnable = true, ...props } = {}) {
     />,
     {
       withRouter: true,
-      withSampleDataset: true,
+      withSampleDatabase: true,
     },
   );
 
@@ -484,5 +496,10 @@ describe("View Header | Saved native question", () => {
   it("offers to explore query results", () => {
     setupSavedNative();
     expect(screen.queryByText("Explore results")).toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results if nested queries are disabled", () => {
+    setupSavedNative({ settings: { enableNestedQueries: false } });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 });

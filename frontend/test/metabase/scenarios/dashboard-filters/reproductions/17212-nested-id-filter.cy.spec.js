@@ -5,9 +5,9 @@ import {
   popover,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS_ID } = SAMPLE_DATASET;
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const baseQuestion = {
   query: { "source-table": PRODUCTS_ID },
@@ -45,10 +45,7 @@ describe.skip("issue 17212", () => {
 
     cy.findByText("No valid fields").should("not.exist");
 
-    cy.findByText("Column to filter on")
-      .next("a")
-      .click();
-
+    cy.findByText("Select…").click();
     popover()
       .contains("ID")
       .click();

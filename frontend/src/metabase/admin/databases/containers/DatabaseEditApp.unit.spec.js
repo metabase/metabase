@@ -13,6 +13,7 @@ const ENGINES_MOCK = {
   h2: {
     "details-fields": [
       { "display-name": "Connection String", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "H2",
     "superseded-by": null,
@@ -20,11 +21,16 @@ const ENGINES_MOCK = {
   sqlite: {
     "details-fields": [
       { "display-name": "Filename", name: "db", required: true },
+      { name: "advanced-options", type: "section", default: true },
     ],
     "driver-name": "SQLite",
     "superseded-by": null,
   },
 };
+
+const ComponentMock = () => <div />;
+jest.mock("metabase/containers/DatabaseHelpCard", () => ComponentMock);
+jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
 function mockSettings({ cachingEnabled = false }) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);

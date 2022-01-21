@@ -1,11 +1,7 @@
-import {
-  restore,
-  visitQuestionAdhoc,
-  tippyPopover,
-} from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const testQuery = {
   database: 1,
@@ -42,7 +38,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    tippyPopover().within(() => {
+    popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Count:");
       cy.findByText(/Distinct values of Products? → ID:/);
@@ -68,7 +64,7 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    tippyPopover().within(() => {
+    popover().within(() => {
       cy.findByText("Created At:");
       cy.findByText("Orders count:");
       cy.findByText("Products count:");

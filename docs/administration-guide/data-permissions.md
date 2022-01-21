@@ -25,9 +25,9 @@ __Granular access__ allows administrators to explicitly set access to tables or 
 
 __No self-service__ prevents people in a group from creating new ad hoc queries or questions based on this data, or from seeing this data in the Browse Data screen. Groups with this level of access can still see saved questions and charts based on this data in Collections they have access to.
 
-### Block
+### Block access
 
-{% include plans-blockquote.html %}
+{% include plans-blockquote.html feature="Block access" %}
 
 __Block__ ensures people can’t ever see the data from this database, regardless of their permissions at the Collection level. So if they want to see a question in a collection that have access to, but that question uses data from a database that's been blocked for that person's group, then they won't be able to see that question.
 
@@ -64,12 +64,6 @@ If a group has no access to a dashboard, they can’t view any of its subscripti
 
 If you have read-only access to a dashboard, you can also unsubscribe yourself from a subscription that somebody else created via the new page in account settings.
 
-## A note about Pulses
-
-If you're using [Pulses][pulses], we recommend switching to [dashboard subscriptions][dashboard-subscriptions].
-
-Pulses act a bit differently with regard to permissions. When someone creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a person's permissions, a Pulse will always render all of its cards.
-
 ## Further reading
 
 - [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html).
@@ -86,7 +80,6 @@ Metabase lets you create and set permissions on collections of dashboards and qu
 [dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
 [data-sandboxing]: ../enterprise-guide/data-sandboxes.md
 [permissions-overview]: 05-setting-permissions.md
-[pulses]: ../users-guide/10-pulses.md
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../enterprise-guide/sql-snippets.md

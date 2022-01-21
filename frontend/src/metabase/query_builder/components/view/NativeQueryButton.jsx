@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Tooltip from "metabase/components/Tooltip";
 import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";

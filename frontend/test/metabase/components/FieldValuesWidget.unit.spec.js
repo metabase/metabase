@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import "mutationobserver-shim";
 
-import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
 const mock = (object, properties) =>
@@ -47,8 +47,15 @@ describe("FieldValuesWidget", () => {
         expect(fetchFieldValues).toHaveBeenCalledWith(PRODUCTS.CATEGORY.id);
       });
 
-      it("should have 'Search the list' as the placeholder text", () => {
+      it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", () => {
         renderFieldValuesWidget({ ...props });
+        expect(screen.queryByLabelText("Search the list")).toBeNull();
+      });
+
+      it("should have 'Search the list' as the placeholder text for fields with less than 10 values", () => {
+        renderFieldValuesWidget({
+          fields: [mock(PRODUCTS.TITLE, { has_field_values: "list" })],
+        });
         screen.findByLabelText("Search the list");
       });
     });

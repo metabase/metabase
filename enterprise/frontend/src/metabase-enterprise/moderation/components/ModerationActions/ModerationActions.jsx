@@ -12,17 +12,27 @@ ModerationActions.propTypes = {
   className: PropTypes.string,
   onVerify: PropTypes.func,
   moderationReview: PropTypes.object,
+  isDataset: PropTypes.bool,
 };
 
-function ModerationActions({ moderationReview, className, onVerify }) {
+function ModerationActions({
+  moderationReview,
+  className,
+  onVerify,
+  isDataset,
+}) {
   const isVerified = isItemVerified(moderationReview);
   const hasActions = !!onVerify;
+
+  const buttonTitle = isDataset
+    ? t`Verify this model`
+    : t`Verify this question`;
 
   return hasActions ? (
     <Container className={className}>
       {!isVerified && (
         <VerifyButton data-testid="moderation-verify-action" onClick={onVerify}>
-          {t`Verify this question`}
+          {buttonTitle}
         </VerifyButton>
       )}
     </Container>

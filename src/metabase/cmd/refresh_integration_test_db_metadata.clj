@@ -18,15 +18,15 @@
     path))
 
 (defn ^:command refresh-integration-test-db-metadata
-  "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
+  "Re-sync the frontend integration test DB's metadata for the Sample Database"
   []
   (let [db-path (test-fixture-db-path)]
     ;; now set the path at MB_DB_FILE
     (alter-var-root #'env/env assoc :mb-db-type "h2", :mb-db-file db-path)
-    ;; set up the DB, make sure sample dataset is added
+    ;; set up the DB, make sure sample database is added
     (mdb/setup-db!)
-    (sample-data/add-sample-dataset!)
-    (sample-data/update-sample-dataset-if-needed!)
+    (sample-data/add-sample-database!)
+    (sample-data/update-sample-database-if-needed!)
     ;; clear out all Fingerprints so we force analysis to run again. Clear out semantic type and has_field_values as
     ;; well so we can be sure those will be set to the correct values
     (db/debug-print-queries

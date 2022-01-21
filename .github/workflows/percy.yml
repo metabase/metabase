@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2004
     timeout-minutes: 60
     strategy:
       matrix:
@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: 8
-          distribution: 'temurin'
+          distribution: "temurin"
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
@@ -90,7 +90,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: 8
-          distribution: 'temurin'
+          distribution: "temurin"
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
@@ -105,13 +105,24 @@ jobs:
         with:
           path: ~/.cache/yarn
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-      - name: Get node_modules and Cypress cache
+      - name: Get node_modules cache
         uses: actions/cache@v2
         with:
-          path: |
-            node_modules
-            ~/..cache/Cypress
-          key: ${{ runner.os }}-node-modules-cypress-${{ hashFiles('**/yarn.lock') }}
+          path: node_modules
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Get Cypress cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+      - name: Ensure that Cypress is ready
+        run: |
+          yarn cypress install
+          yarn cypress cache path
+          yarn cypress cache list
+          yarn cypress verify
+
       - run: yarn install --frozen-lockfile --prefer-offline
 
       - uses: actions/download-artifact@v2
@@ -122,7 +133,8 @@ jobs:
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
-
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev
       - name: Percy Test
         run: yarn run test-visual-no-build
         env:

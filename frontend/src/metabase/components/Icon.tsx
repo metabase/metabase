@@ -12,8 +12,8 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 const MISSING_ICON_NAME = "unknown";
 
 type IconWrapperProps = {
-  open: boolean;
-  hover: React.CSSProperties;
+  open?: boolean;
+  hover?: React.CSSProperties;
 };
 
 export const IconWrapper = styled.div<IconWrapperProps>`
@@ -57,11 +57,12 @@ export const iconPropTypes = {
   scale: stringOrNumberPropType,
   tooltip: PropTypes.string,
   className: PropTypes.string,
-  innerRef: PropTypes.any,
   onClick: PropTypes.func,
 };
 
-type IconProps = PropTypes.InferProps<typeof iconPropTypes>;
+export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
+  innerRef?: () => void;
+};
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;

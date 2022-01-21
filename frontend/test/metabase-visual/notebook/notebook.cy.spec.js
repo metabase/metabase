@@ -13,8 +13,8 @@ describe("visual tests > notebook > major UI elements", () => {
   it("renders correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     addJoin({
       rightTable: "Products",
@@ -68,8 +68,8 @@ describe("visual tests > notebook > Run buttons", () => {
   it("in Custom Question render correctly", () => {
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Orders").click();
     // Waiting for notebook icon to load
     cy.wait(1000);
     cy.icon("notebook").click();
@@ -138,9 +138,9 @@ function addCustomColumn({ name, formula }) {
 function addSingleValueFilter({ field, filterType, filterValue }) {
   cy.findByText("Add filters to narrow your answer").click();
   selectFromDropdown(field).click();
-  popover()
-    .get(".AdminSelect")
-    .click();
+  popover().within(() => {
+    cy.findByTestId("select-button").click();
+  });
   selectFromDropdown(filterType).click();
   popover().within(() => {
     cy.get("input").type(filterValue);

@@ -65,6 +65,17 @@
                                         :visualization_settings {}}]}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
+(deftest dashcard->multi-card-test
+  (testing "Check that the multi-cards are returned"
+    (mt/with-temp* [Card                [card1]
+                    Card                [card2]
+                    Dashboard           [dashboard]
+                    DashboardCard       [dc-1 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card1)}]
+                    DashboardCard       [dc-2 {:dashboard_id (u/the-id dashboard), :card_id (u/the-id card2)}]
+                    DashboardCardSeries [dcs-1 {:dashboardcard_id (u/the-id dc-1), :card_id (u/the-id card2)}]]
+      (testing "get multi-cards"
+        (is (= 1 (count (dashboard-card/dashcard->multi-cards dc-1))))))))
+
 (deftest update-dashboard-card-series!-test
   (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
                                                      :creator_id (mt/user->id :rasta)}]
@@ -231,13 +242,13 @@
 (deftest normalize-parameter-mappings-test
   (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
     (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
-           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+           ((i.test/type-fn :parameters-list :out)
             (json/generate-string
              [{:target [:dimension [:fk-> 23 30]]}]))))
 
     (testing "...but parameter mappings we should not normalize things like :target"
       (is (= [{:card-id 123, :hash "abc", :target "foo"}]
-             ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+             ((i.test/type-fn :parameters-list :out)
               (json/generate-string
                [{:card-id 123, :hash "abc", :target "foo"}])))))))
 
@@ -245,5 +256,5 @@
   (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
                 "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
     (is (= []
-           ((i.test/type-fn ::dashboard-card/parameter-mappings :out)
+           ((i.test/type-fn :parameters-list :out)
             (json/generate-string []))))))

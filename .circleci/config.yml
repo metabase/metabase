@@ -7,7 +7,13 @@ version: 2.1
 executors:
   # CircleCI base Node + Headless browsers + Clojure CLI - big one
   # Maildev runs by default with all Cypress tests
-  clojure-and-node-and-browsers:
+
+  builder:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+
+  tester:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
@@ -449,7 +455,6 @@ commands:
         type: boolean
         default: false
     steps:
-      - attach-workspace
       - when:
           condition: << parameters.skip-when-no-change >>
           steps:
@@ -537,9 +542,10 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - checkout
+      - attach-workspace
       # .BACKEND-CHECKSUMS is every Clojure source file as well as dependency files like deps.edn and plugin manifests
       - create-checksum-file:
           filename: .BACKEND-CHECKSUMS
@@ -551,7 +557,7 @@ jobs:
       # .FRONTEND-CHECKSUMS is every JavaScript source file as well as dependency files like yarn.lock (sans all frontend test files)
       - create-checksum-file:
           filename: .FRONTEND-CHECKSUMS
-          find-args: ". -type f '(' -name '*.js' -or -name '*.jsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db ')' ! -path '*/frontend/test/*'"
+          find-args: ". -type f '(' -name '*.js' -or -name '*.jsx' -or -name '*.ts' -or -name '*.tsx' -or -name '*.cljc' -or -name '*.cljs' -or -name '*.json' -or -name yarn.lock -or -name sample-dataset.db.mv.db ')' ! -path '*/frontend/test/*'"
       # .E2E-TESTS-CHECKSUMS is every `*.cy.spes.js` file as well as e2e support JavaScript files
       - create-checksum-file:
           filename: .E2E-TESTS-CHECKSUMS
@@ -603,7 +609,7 @@ jobs:
 
   check-migrations:
     executor:
-      clojure-and-node-and-browsers
+      builder
     steps:
       - attach-workspace
       - create-checksum-file:
@@ -625,7 +631,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -665,7 +671,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       before-steps:
         type: steps
         default: []
@@ -702,7 +708,7 @@ jobs:
                 edition: << parameters.edition >>
 
   be-linter-reflection-warnings:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - run-on-change:
@@ -718,7 +724,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: builder
       driver:
         type: string
       timeout:
@@ -761,7 +767,7 @@ jobs:
             - steps: << parameters.after-steps >>
 
   test-build-scripts:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - run-on-change:
@@ -805,7 +811,7 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       # This step is *really* slow, so we can skip it if yarn.lock hasn't changed since last time we ran it
@@ -827,8 +833,9 @@ jobs:
                   - /home/circleci/.cache/Cypress
 
   shared-tests-cljs:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
+      - attach-workspace
       - run-yarn-command:
           command-name: Run Cljs tests for shared/ code
           command: run test-cljs
@@ -837,7 +844,7 @@ jobs:
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     parameters:
       <<: *Params
     steps:
@@ -877,7 +884,7 @@ jobs:
   build-uberjar-frontend:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -902,7 +909,7 @@ jobs:
   build-uberjar:
     parameters:
       <<: *Params
-    executor: clojure-and-node-and-browsers
+    executor: builder
     resource_class: large
     steps:
       - attach-workspace
@@ -954,7 +961,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: clojure-and-node-and-browsers
+        default: tester
       cypress-group:
         type: string
       source-folder:
@@ -1009,7 +1016,7 @@ jobs:
 ########################################################################################################################
 
   snowplow-deps:
-    executor: clojure-and-node-and-browsers
+    executor: builder
     steps:
       - attach-workspace
       - restore-snowplow-deps-cache
@@ -1203,13 +1210,14 @@ workflows:
                 dest: ojdbc8.jar
             - run:
                 name: Ensure truststore file
-                command: ls /home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+                command: ls /home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
           driver: oracle
           extra-env: >-
             MB_ORACLE_SSL_TEST_SSL=true
             MB_ORACLE_SSL_TEST_PORT=2484
             MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE=true
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/cacerts_with_RDS_root_ca.jks
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
 
       - test-driver:
@@ -1264,9 +1272,12 @@ workflows:
                 name: Convert Presto CA from PEM to DER
                 command: openssl x509 -outform der -in /tmp/presto-ssl-ca.pem -out /tmp/presto-ssl-ca.der
             - run:
+                name: Add write permission on cacerts file
+                command: chmod u+w /tmp/cacerts-with-presto-ssl.jks
+            - run:
                 name: Import Presto CA into temp cacerts file
                 command: |
-                  sudo keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
+                  keytool -noprompt -import -alias presto -keystore /tmp/cacerts-with-presto-ssl.jks \
                    -storepass changeit -file /tmp/presto-ssl-ca.der -trustcacerts
           after-steps:
             - run:
@@ -1368,6 +1379,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "models",
                   "moderation",
                   "native",
                   "native-filters",

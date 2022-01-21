@@ -1,14 +1,13 @@
 import {
   restore,
-  mockSessionProperty,
   visitAlias,
   popover,
   filterWidget,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18061",
@@ -54,8 +53,6 @@ const dashboardDetails = { name: "18061D", parameters: [filter] };
 
 describe("issue 18061", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
