@@ -9,7 +9,7 @@ import SelectButton from "./SelectButton";
 import _ from "underscore";
 import cx from "classnames";
 
-import AccordionList from "./AccordionList";
+import AccordionList from "../core/components/AccordionList";
 import { createSelector } from "reselect";
 
 import { color } from "metabase/lib/colors";

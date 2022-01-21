@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 export const component = AccordionList;

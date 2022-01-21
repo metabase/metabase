@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 
 import FieldList from "./FieldList";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip";

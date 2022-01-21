@@ -17,7 +17,7 @@ import ExternalLink from "metabase/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 

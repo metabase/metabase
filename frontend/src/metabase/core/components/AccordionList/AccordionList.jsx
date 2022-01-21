@@ -215,7 +215,7 @@ export default class AccordionList extends Component {
     return openSection;
   }
 
-  sectionIsSelected(section, sectionIndex) {
+  sectionIsSelected(_section, sectionIndex) {
     const { sections } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
