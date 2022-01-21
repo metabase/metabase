@@ -115,7 +115,7 @@ export function isItemPinned(item: Item) {
 
 // API requires items in "root" collection be persisted with a "null" collection ID
 // Also ensure it's parsed as a number
-function canonicalCollectionId(
+export function canonicalCollectionId(
   collectionId: string | null | undefined,
 ): number | null {
   if (collectionId === "root" || collectionId == null) {
