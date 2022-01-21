@@ -488,7 +488,7 @@ describe("scenarios > collection_defaults", () => {
 
           cy.findByTestId("bulk-action-bar").within(() => {
             // Select all
-            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
             cy.findByText("4 items selected");
@@ -565,10 +565,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByTestId("checkbox-root")
-        .should("be.visible")
-        .findByRole("checkbox")
-        .click();
+      cy.findByRole("checkbox").click();
     });
 }
 

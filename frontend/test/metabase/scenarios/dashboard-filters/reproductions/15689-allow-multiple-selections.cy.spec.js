@@ -58,7 +58,11 @@ describe("issue 15689", () => {
     cy.findByText("AK").click();
     cy.findByText("CA").click();
 
-    cy.findByTestId("AK-filter-value").should("be.checked");
-    cy.findByTestId("CA-filter-value").should("be.checked");
+    cy.findByTestId("AK-filter-value").within(() =>
+      cy.findByRole("checkbox").should("be.checked"),
+    );
+    cy.findByTestId("CA-filter-value").within(() =>
+      cy.findByRole("checkbox").should("be.checked"),
+    );
   });
 });
