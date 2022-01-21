@@ -154,6 +154,7 @@ const RadioItem = <TValue extends Key, TOption>({
         name={name}
         value={value}
         checked={checked}
+        disabled={disabled}
         onChange={handleChange}
       />
       <RadioContainer
