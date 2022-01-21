@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 
 const SettingToggle = ({ setting, onChange, disabled }) => {
   const value = setting.value == null ? setting.default : setting.value;

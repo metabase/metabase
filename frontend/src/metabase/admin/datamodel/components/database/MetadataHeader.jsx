@@ -8,7 +8,7 @@ import Databases from "metabase/entities/databases";
 
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import SaveStatus from "metabase/components/SaveStatus";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";
 
 @withRouter

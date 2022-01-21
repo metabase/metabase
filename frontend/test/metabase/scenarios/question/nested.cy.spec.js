@@ -8,9 +8,9 @@ import {
   getDimensionByName,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > nested (metabase#12568)", () => {
   beforeEach(() => {

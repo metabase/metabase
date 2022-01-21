@@ -401,14 +401,14 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti ^:deprecated supports?
+(defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   [[driver-features]].)
 
     (supports? :postgres :set-timezone) ; -> true
 
   deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature])}
+  {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -437,7 +437,7 @@
   whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
-  {:arglists '([driver feature database])}
+  {:arglists '([driver feature database]), :added "0.41.0"}
   (fn [driver feature database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -568,7 +568,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Dataset, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
   drivers to implement it at this time."
   {:arglists '([driver database table])}
   dispatch-on-initialized-driver

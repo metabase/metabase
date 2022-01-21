@@ -1,7 +1,7 @@
 import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > localization", () => {
   beforeEach(() => {
@@ -73,7 +73,7 @@ describe("scenarios > admin > localization", () => {
 
   // HANDLE WITH CARE!
   // This test is extremely tricky and fragile because it needs to test for the "past X weeks" to check if week starts on Sunday or Monday.
-  // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample dataset.
+  // As the time goes by we're risking that past X weeks don't yield any result when applied to the sample database.
   // For that reason I've chosen the past 220 weeks (mid-October 2016). This should give us 3+ years to run this test without updates.
 
   // TODO:

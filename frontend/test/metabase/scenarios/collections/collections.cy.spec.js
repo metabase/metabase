@@ -343,7 +343,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText(NEW_COLLECTION).click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains(NEW_COLLECTION);
+      cy.findAllByTestId("select-button-content").contains(NEW_COLLECTION);
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")
@@ -383,7 +383,7 @@ describe("scenarios > collection_defaults", () => {
           .click();
       });
       // Make sure the correct value is selected
-      cy.get(".AdminSelect-content").contains("Our analytics");
+      cy.findAllByTestId("select-button-content").contains("Our analytics");
       cy.findByText("Update")
         .closest(".Button")
         .should("not.be.disabled")
@@ -501,7 +501,7 @@ describe("scenarios > collection_defaults", () => {
 
           cy.findByTestId("bulk-action-bar").within(() => {
             // Select all
-            cy.findByTestId("checkbox-root").should("be.visible");
+            cy.findByRole("checkbox");
             cy.icon("dash").click({ force: true });
             cy.icon("dash").should("not.exist");
             cy.findByText("4 items selected");
@@ -578,10 +578,7 @@ function selectItemUsingCheckbox(item, icon = "table") {
     .closest("tr")
     .within(() => {
       cy.icon(icon).trigger("mouseover");
-      cy.findByTestId("checkbox-root")
-        .should("be.visible")
-        .findByRole("checkbox")
-        .click();
+      cy.findByRole("checkbox").click();
     });
 }
 

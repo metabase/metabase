@@ -6,7 +6,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { Flex } from "grid-styled";
 
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";

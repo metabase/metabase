@@ -110,12 +110,12 @@
       (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
 
-    ;; deal with our sample dataset as needed
+    ;; deal with our sample database as needed
     (if new-install?
-      ;; add the sample dataset DB for fresh installs
-      (sample-data/add-sample-dataset!)
+      ;; add the sample database DB for fresh installs
+      (sample-data/add-sample-database!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!)))
+      (sample-data/update-sample-database-if-needed!)))
 
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))

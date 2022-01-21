@@ -1,7 +1,7 @@
 import { restore, visitAlias, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
 
@@ -65,7 +65,7 @@ function getFieldType(type) {
   return cy
     .findByText("Field Type")
     .closest("section")
-    .find(".AdminSelect-content")
+    .find("[data-testid='select-button-content']")
     .contains(type);
 }
 

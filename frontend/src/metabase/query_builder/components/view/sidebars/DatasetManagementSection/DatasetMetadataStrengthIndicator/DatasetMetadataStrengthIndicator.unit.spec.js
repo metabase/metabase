@@ -17,16 +17,16 @@ function setup({ resultMetadata } = {}) {
 describe("DatasetMetadataStrengthIndicator", () => {
   const FULLY_COMPLETE_METADATA = {
     id: 1,
-    name: "ID",
+    display_name: "ID",
     description: "Well, that's an ID",
     semantic_type: "type/PK",
   };
   const PARTIALLY_COMPLETE_METADATA = {
     id: 1,
-    name: "ID",
+    display_name: "ID",
     semantic_type: "type/PK",
   };
-  const FULLY_INCOMPLETE_METADATA = { name: "CREATED_AT" };
+  const FULLY_INCOMPLETE_METADATA = { display_name: "CREATED_AT" };
 
   it("doesn't render if result metadata is not defined", () => {
     setup({ resultMetadata: undefined });

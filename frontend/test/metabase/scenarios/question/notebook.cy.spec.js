@@ -12,7 +12,7 @@ import {
   visualize,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -23,7 +23,7 @@ const {
   PEOPLE_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
@@ -52,7 +52,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // count orders by user id, filter to the one user with 46 orders
@@ -167,7 +167,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // Add filter for ID < 100
@@ -200,7 +200,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // type a dimension name
@@ -223,7 +223,7 @@ describe("scenarios > question > notebook", () => {
       // start a custom question with orders
       cy.visit("/question/new");
       cy.contains("Custom question").click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       // join to Reviews on orders.product_id = reviews.product_id
@@ -264,7 +264,7 @@ describe("scenarios > question > notebook", () => {
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
       cy.log("Join to People table using default settings");
@@ -321,7 +321,7 @@ describe("scenarios > question > notebook", () => {
       // join to question b
       cy.icon("join_left_outer").click();
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });
@@ -479,7 +479,7 @@ describe("scenarios > question > notebook", () => {
       cy.icon("join_left_outer").click();
 
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
@@ -708,7 +708,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText(/Orders/i).click();
         cy.findByText("Discount").click();
       });
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("Equal to")
         .click();
       cy.findByText("Greater than").click();
@@ -726,7 +726,7 @@ describe("scenarios > question > notebook", () => {
       cy.viewport(1280, 720);
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
     });
 
@@ -881,7 +881,7 @@ describe("scenarios > question > notebook", () => {
   it("select no columns select the first one", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
     cy.findByTestId("fields-picker").click();
 
@@ -904,7 +904,7 @@ describe("scenarios > question > notebook", () => {
   it.skip("should show an info popover when hovering over a field picker option for a table", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     cy.findByTestId("fields-picker").click();
