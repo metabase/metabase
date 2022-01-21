@@ -58,7 +58,7 @@
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'add-source-metadata/add-source-metadata-for-source-queries
    #'upgrade-field-literals/upgrade-field-literals
-   (resolve 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/apply-row-level-permissions-pre) ; TODO
+   (resolve 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/apply-row-level-permissions-pre)
    #'implicit-clauses/add-implicit-clauses
    #'add-dim/add-remapping-pre
    #'resolve-fields/resolve-fields
@@ -71,7 +71,7 @@
    #'fix-bad-refs/fix-bad-references
    #'viz-settings/update-viz-settings-pre ; TODO
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/apply-row-level-permissions-pre) ; TODO
+   (resolve 'metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/apply-row-level-permissions-pre)
    #'cumulative-ags/rewrite-cumulative-aggregations
    #'pre-alias-ags/pre-alias-aggregations
    #'wrap-value-literals/wrap-value-literals
