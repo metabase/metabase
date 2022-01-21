@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.util :as qputil]))

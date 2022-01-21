@@ -4,9 +4,14 @@
   (:require [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [deferred-tru]]))
 
-(def ^:private max-results-bare-rows
-  "Maximum number of rows to return specifically on :rows type queries via the API."
-  2000)
+;; NOTE: this was changed from a hardcoded var with value of 2000 to a setting in 0.43
+;; the setting, which allows for DB local value, can still be nil, so any places below that used to reference the
+;; former constant value have to expect it could return nil instead
+(setting/defsetting max-results-bare-rows
+  (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
+  :visibility     :authenticated
+  :type           :integer
+  :database-local :allowed)
 
 (def ^:private max-results
   "General maximum number of rows to return from an API query."
@@ -15,7 +20,7 @@
 (def default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   {:max-results           max-results
-   :max-results-bare-rows max-results-bare-rows})
+   :max-results-bare-rows (or (max-results-bare-rows) 2000)})
 
 (defn- ensure-valid-constraints
   "`:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
@@ -42,9 +47,3 @@
   [qp]
   (fn [query rff context]
     (qp (add-default-userland-constraints* query) rff context)))
-
-(setting/defsetting max-results-bare-rows
-  (deferred-tru "Controls the maximum number of rows that can ever be returned from a query.")
-  :visibility     :authenticated
-  :type           :integer
-  :database-local :allowed)
