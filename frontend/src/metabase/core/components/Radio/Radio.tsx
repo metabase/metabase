@@ -1,12 +1,15 @@
-import React, { Key } from "react";
+import React, { ComponentType, Key } from "react";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
+  RadioBubbleList,
   RadioButton,
-  RadioItem,
   RadioInput,
+  RadioItem,
   RadioLabel,
-  RadioList,
+  RadioListProps,
+  RadioNormalList,
   RadioText,
+  RadioUnderlinedList,
 } from "./Radio.styled";
 
 export interface RadioProps<TValue, TOption = RadioOption<TValue>> {
@@ -30,18 +33,22 @@ export interface RadioOption<TValue> {
   value: TValue;
 }
 
-function Radio<TValue, TOption = RadioOption<TValue>>({
+const Radio = <TValue, TOption = RadioOption<TValue>>({
   name,
   value,
   options,
   optionKeyFn = getDefaultOptionKey,
   optionNameFn = getDefaultOptionName,
   optionValueFn = getDefaultOptionValue,
+  variant = "normal",
   colorScheme = "default",
   vertical = false,
-}: RadioProps<TValue, TOption>): JSX.Element {
+  showButtons = false,
+}: RadioProps<TValue, TOption>): JSX.Element => {
+  const RadioList = getListVariant(variant);
+
   return (
-    <RadioList vertical={vertical}>
+    <RadioList vertical={vertical} showButtons={showButtons}>
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
@@ -60,29 +67,49 @@ function Radio<TValue, TOption = RadioOption<TValue>>({
       })}
     </RadioList>
   );
-}
+};
 
-function getDefaultOptionKey<TValue, TOption>(option: TOption): Key {
-  assertDefaultOption(option);
-  return String(option.value);
-}
+const getListVariant = (
+  variant: RadioVariant,
+): ComponentType<RadioListProps> => {
+  switch (variant) {
+    case "normal":
+      return RadioNormalList;
+    case "underlined":
+      return RadioUnderlinedList;
+    case "bubble":
+      return RadioBubbleList;
+  }
+};
 
-function getDefaultOptionName<TValue, TOption>(option: TOption): string {
-  assertDefaultOption<TValue>(option);
-  return option.name;
-}
-
-function getDefaultOptionValue<TValue, TOption>(option: TOption): TValue {
-  assertDefaultOption<TValue>(option);
-  return option.value;
-}
-
-function assertDefaultOption<TValue>(
-  option: unknown,
-): asserts option is RadioOption<TValue> {
-  if (typeof option !== "object") {
+const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {
+  if (isDefaultOption<TValue>(option)) {
+    return String(option.value);
+  } else {
     throw new TypeError();
   }
+};
+
+const getDefaultOptionName = <TValue, TOption>(option: TOption): string => {
+  if (isDefaultOption<TValue>(option)) {
+    return option.name;
+  } else {
+    throw new TypeError();
+  }
+};
+
+const getDefaultOptionValue = <TValue, TOption>(option: TOption): TValue => {
+  if (isDefaultOption<TValue>(option)) {
+    return option.value;
+  } else {
+    throw new TypeError();
+  }
+};
+
+function isDefaultOption<TValue>(
+  option: unknown,
+): option is RadioOption<TValue> {
+  return typeof option === "object";
 }
 
 export default Radio;

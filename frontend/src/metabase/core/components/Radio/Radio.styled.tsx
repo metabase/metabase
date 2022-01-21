@@ -13,6 +13,7 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
 
 export interface RadioListProps {
   vertical: boolean;
+  showButtons: boolean;
 }
 
 export const RadioList = styled.div<RadioListProps>`
@@ -20,12 +21,16 @@ export const RadioList = styled.div<RadioListProps>`
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
-export const RadioLabel = styled.label`
-  display: block;
+export const RadioNormalList = styled(RadioList)`
+  font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
-export const RadioInput = styled.input`
-  appearance: none;
+export const RadioUnderlinedList = styled(RadioList)`
+  display: flex;
+`;
+
+export const RadioBubbleList = styled(RadioList)`
+  font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
 export interface RadioItemProps {
@@ -36,6 +41,14 @@ export const RadioItem = styled.span<RadioItemProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
+`;
+
+export const RadioLabel = styled.label`
+  display: block;
+`;
+
+export const RadioInput = styled.input`
+  appearance: none;
 `;
 
 interface RadioButtonProps {
