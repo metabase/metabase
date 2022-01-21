@@ -143,11 +143,11 @@
     (catch Throwable e
       (if (:card-error (ex-data e))
         (do
-          (body/render :card-error nil nil nil nil nil)
-          (log/error e (trs "Pulse card query error")))
+          (log/error e (trs "Pulse card query error"))
+          (body/render :card-error nil nil nil nil nil))
         (do
-          (body/render :render-error nil nil nil nil nil)
-          (log/error e (trs "Pulse card render error")))))))
+          (log/error e (trs "Pulse card render error"))
+          (body/render :render-error nil nil nil nil nil))))))
 
 (defn- card-href
   [card]

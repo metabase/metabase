@@ -33,8 +33,8 @@
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
     (is (= (get-in (render/render-pulse-card-for-display
-                 nil nil
-                 {:error "some error"}) [1 2 4 2 2])
+                     nil nil
+                     {:error "some error"}) [1 2 4 2 2])
            "There was a problem with this question."))))
 
 (deftest detect-pulse-chart-type-test
