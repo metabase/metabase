@@ -15,10 +15,10 @@ import { addUndo } from "metabase/redux/undo";
 
 import { POST, DELETE } from "metabase/lib/api";
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import forms from "./dashboards/forms";
 
