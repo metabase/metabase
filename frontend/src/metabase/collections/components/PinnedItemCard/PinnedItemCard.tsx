@@ -24,6 +24,8 @@ type Props = {
   onMove: (items: Item[]) => void;
 };
 
+const TOOLTIP_MAX_WIDTH = 450;
+
 function getDefaultDescription(model: string) {
   return {
     card: t`A question`,
@@ -39,20 +41,21 @@ function PinnedItemCard({
   onCopy,
   onMove,
 }: Props) {
+  const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const [showDescriptionTooltip, setShowDescriptionTooltip] = useState(false);
   const icon = item.getIcon().name;
   const { description, name, model } = item;
 
   const defaultedDescription = description || getDefaultDescription(model);
 
-  const maybeEnableDescriptionTooltip = (
+  const maybeEnableTooltip = (
     event: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    setterFn: React.Dispatch<React.SetStateAction<boolean>>,
   ) => {
     const target = event.target as HTMLDivElement;
-    const isDescriptionWiderThanCard =
-      target?.scrollWidth > target?.clientWidth;
-    if (isDescriptionWiderThanCard) {
-      setShowDescriptionTooltip(true);
+    const isTargetElWiderThanCard = target?.scrollWidth > target?.clientWidth;
+    if (isTargetElWiderThanCard) {
+      setterFn(true);
     }
   };
 
@@ -101,15 +104,30 @@ function PinnedItemCard({
               />
             </div>
           </Header>
-          <Title>{name}</Title>
+          <Tooltip
+            tooltip={name}
+            placement="bottom"
+            maxWidth={TOOLTIP_MAX_WIDTH}
+            isEnabled={showTitleTooltip}
+          >
+            <Title
+              onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
+            >
+              {name}
+            </Title>
+          </Tooltip>
           <Tooltip
             tooltip={description}
             placement="bottom"
-            maxWidth={450}
+            maxWidth={TOOLTIP_MAX_WIDTH}
             isEnabled={showDescriptionTooltip}
           >
             {defaultedDescription && (
-              <Description onMouseEnter={maybeEnableDescriptionTooltip}>
+              <Description
+                onMouseEnter={e =>
+                  maybeEnableTooltip(e, setShowDescriptionTooltip)
+                }
+              >
                 {defaultedDescription}
               </Description>
             )}

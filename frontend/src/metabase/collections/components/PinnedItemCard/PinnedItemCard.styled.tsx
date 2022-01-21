@@ -31,6 +31,9 @@ export const Title = styled.div`
   line-height: 1.5rem;
   color: ${color("text-dark")};
   transition: color 0.2s ease;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 `;
 
 export const Description = forwardRefToInnerRef(styled.div`
