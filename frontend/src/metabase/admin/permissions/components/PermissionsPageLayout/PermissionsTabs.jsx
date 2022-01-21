@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 const propTypes = {
   tab: PropTypes.oneOf(["data", "collections"]).isRequired,

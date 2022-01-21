@@ -10,7 +10,7 @@ import SchedulePicker from "metabase/components/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
