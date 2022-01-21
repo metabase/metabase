@@ -4,7 +4,10 @@ import _ from "underscore";
 
 import Questions from "metabase/entities/questions";
 import Question from "metabase-lib/lib/Question";
-import Visualization from "metabase/visualizations/components/Visualization";
+import Visualization, {
+  ERROR_MESSAGE_GENERIC,
+  ERROR_MESSAGE_PERMISSION,
+} from "metabase/visualizations/components/Visualization";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
@@ -65,10 +68,15 @@ function CollectionCardVisualization({
                 {({ loading, error, reload, ...resultProps }) => {
                   const shouldShowLoader =
                     loading && resultProps.results == null;
+
+                  const { errorMessage, errorIcon } = getErrorProps(
+                    error,
+                    resultProps,
+                  );
+
                   return (
                     <LoadingAndErrorWrapper
                       loading={shouldShowLoader}
-                      error={error || resultProps?.result?.error}
                       noWrapper
                     >
                       <Visualization
@@ -76,6 +84,8 @@ function CollectionCardVisualization({
                         isDashboard
                         showTitle
                         metadata={metadata}
+                        error={errorMessage}
+                        errorIcon={errorIcon}
                         {...resultProps}
                       />
                     </LoadingAndErrorWrapper>
@@ -91,3 +101,19 @@ function CollectionCardVisualization({
 }
 
 export default CollectionCardVisualization;
+
+function getErrorProps(error, resultProps) {
+  error = error || resultProps?.result?.error;
+  let errorMessage;
+  let errorIcon;
+  if (error) {
+    if (error.status === 403) {
+      errorMessage = ERROR_MESSAGE_PERMISSION;
+    } else {
+      errorMessage = ERROR_MESSAGE_GENERIC;
+    }
+    errorIcon = "warning";
+  }
+
+  return { errorMessage, errorIcon };
+}
