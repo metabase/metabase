@@ -412,7 +412,7 @@ describe("scenarios > question > new", () => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.log("Reported missing in v0.33.1");
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .as("select")
         .contains(/All Time/i);
       cy.get("@select").contains(/Month/i);

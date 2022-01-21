@@ -126,7 +126,7 @@ describe("personal collections", () => {
             cy.findByLabelText("Description") /* [2] */
               .click()
               .type("ex-bar");
-            cy.get(".AdminSelect").click();
+            cy.findByTestId("select-button").click();
           });
           popover()
             .findByText("My personal collection") /* [3] */

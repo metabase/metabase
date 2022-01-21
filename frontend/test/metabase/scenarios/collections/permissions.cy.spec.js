@@ -53,7 +53,9 @@ describe("collection permissions", () => {
                     cy.icon("add").click();
                   });
                   cy.findByText("Dashboard").click();
-                  cy.get(".AdminSelect").findByText("Second collection");
+                  cy.findByTestId("select-button").findByText(
+                    "Second collection",
+                  );
                 });
 
                 onlyOn(user === "admin", () => {
@@ -64,7 +66,9 @@ describe("collection permissions", () => {
                     popover()
                       .findByText("Dashboard")
                       .click();
-                    cy.get(".AdminSelect").findByText("Our analytics");
+                    cy.findByTestId("select-button").findByText(
+                      "Our analytics",
+                    );
                   });
                 });
               });
@@ -470,7 +474,7 @@ describe("collection permissions", () => {
               popover()
                 .findByText("Duplicate this item")
                 .click();
-              cy.get(".AdminSelect").findByText(
+              cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
               );
             });
@@ -527,7 +531,9 @@ describe("collection permissions", () => {
 
                 cy.get(".Modal").within(() => {
                   cy.findByText("Create a new dashboard").click();
-                  cy.get(".AdminSelect").findByText(personalCollection);
+                  cy.findByTestId("select-button").findByText(
+                    personalCollection,
+                  );
                   cy.findByLabelText("Name").type("Foo");
                   cy.button("Create").click();
                 });
@@ -577,7 +583,7 @@ describe("collection permissions", () => {
                 popover()
                   .findByText("Duplicate")
                   .click();
-                cy.get(".AdminSelect").findByText(
+                cy.findByTestId("select-button").findByText(
                   `${first_name} ${last_name}'s Personal Collection`,
                 );
               });
@@ -753,7 +759,7 @@ describe("collection permissions", () => {
     openNativeEditor().type("select * from people");
     cy.findByText("Save").click();
 
-    cy.get(".AdminSelect").findByText("Our analytics");
+    cy.findByTestId("select-button").findByText("Our analytics");
   });
 });
 

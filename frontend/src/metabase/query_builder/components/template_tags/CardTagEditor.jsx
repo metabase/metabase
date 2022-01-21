@@ -7,7 +7,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Questions from "metabase/entities/questions";

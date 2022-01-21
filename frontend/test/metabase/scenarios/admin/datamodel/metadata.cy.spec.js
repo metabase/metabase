@@ -146,6 +146,6 @@ describe("scenarios > admin > datamodel > metadata", () => {
 function openOptionsForSection(sectionName) {
   cy.findByText(sectionName)
     .closest("section")
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 }
