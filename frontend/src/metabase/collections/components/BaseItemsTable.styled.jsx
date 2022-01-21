@@ -74,7 +74,7 @@ export const TableItemSecondaryField = styled.span`
   color: ${color("text-medium")};
 `;
 
-export const Tbody = styled.tbody`
+export const TBody = styled.tbody`
   background-color: ${color("white")};
 
   td {

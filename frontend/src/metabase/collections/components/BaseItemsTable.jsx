@@ -8,7 +8,7 @@ import {
   Table,
   SortingIcon,
   SortingControlContainer,
-  Tbody,
+  TBody,
 } from "./BaseItemsTable.styled";
 
 const sortingOptsShape = PropTypes.shape({
@@ -162,7 +162,7 @@ function BaseItemsTable({
           </tr>
         </thead>
       )}
-      <Tbody>{items.map(itemRenderer)}</Tbody>
+      <TBody>{items.map(itemRenderer)}</TBody>
     </Table>
   );
 }
