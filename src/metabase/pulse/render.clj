@@ -141,10 +141,13 @@
       (log/debug (trs "Rendering pulse card with chart-type {0} and render-type {1}" chart-type render-type))
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
-      (log/error e (trs "Pulse card render error"))
       (if (:card-error (ex-data e))
-        (body/render :card-error nil nil nil nil nil)
-        (body/render :error nil nil nil nil nil)))))
+        (do
+          (body/render :card-error nil nil nil nil nil)
+          (log/error e (trs "Pulse card query error")))
+        (do
+          (body/render :render-error nil nil nil nil nil)
+          (log/error e (trs "Pulse card render error")))))))
 
 (defn- card-href
   [card]

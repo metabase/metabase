@@ -253,7 +253,7 @@
 (deftest error-test
   (testing "renders error"
     (= "An error occurred while displaying this card."
-       (-> (body/render :error nil nil nil nil nil) :content last)))
+       (-> (body/render :render-error nil nil nil nil nil) :content last)))
   (testing "renders card error"
     (= "There was a problem with this question."
        (-> (body/render :card-error nil nil nil nil nil) :content last))))

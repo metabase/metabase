@@ -858,6 +858,6 @@
   [_ _ _ _ _ _]
   @card-error-rendered-info)
 
-(s/defmethod render :error :- common/RenderedPulseCard
+(s/defmethod render :render-error :- common/RenderedPulseCard
   [_ _ _ _ _ _]
   @error-rendered-info)
