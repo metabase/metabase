@@ -49,9 +49,19 @@
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  ([query]             (process-query* query context.default/default-rff (context.default/default-context)))
-  ([query context]     (process-query* query context.default/default-rff context))
-  ([query rff context] (process-query* query rff                         context)))
+  ([query]
+   (process-query* query nil nil))
+
+  ([query context]
+   (process-query* query nil context))
+
+  ([query rff context]
+   (let [rff (or rff
+                 (:rff context)
+                 context.default/default-rff)
+         context (merge (context.default/default-context)
+                        context)]
+     (process-query* query rff context))))
 
 (defn- execute* [query rff context]
   (log/tracef "Query:\n%s" (u/pprint-to-str query))

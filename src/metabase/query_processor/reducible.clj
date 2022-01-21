@@ -130,8 +130,11 @@
      (sync-qp* query nil context))
 
     ([query rff context]
-     (let [rff     (or rff context.default/default-rff)
-           context (merge (context.default/default-context) context)]
+     (let [rff     (or rff
+                       (:rff context)
+                       context.default/default-rff)
+           context (merge (context.default/default-context)
+                          context)]
        (qp query rff context)))))
 
 
