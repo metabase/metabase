@@ -8,7 +8,7 @@ import { SegmentedControl } from "metabase/components/SegmentedControl";
 import CheckBox from "metabase/components/CheckBox";
 import Label from "metabase/components/type/Label";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 
 export default class EmailAttachmentPicker extends Component {
   DEFAULT_ATTACHMENT_TYPE = "csv";
