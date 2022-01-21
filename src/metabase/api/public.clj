@@ -81,7 +81,7 @@
     :status]))
 
 (defmethod transform-results :failed
-  [{:keys [error], error-type :error_type, :as results}]
+  [{error-type :error_type, :as results}]
   ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
   ;; instead of returning anything about the query just return a generic error message
   (merge

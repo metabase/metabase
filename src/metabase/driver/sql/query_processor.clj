@@ -511,6 +511,7 @@
     (->honeysql driver (hx/identifier :field-alias (:name options)))
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the

@@ -120,7 +120,7 @@
 
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
-  [{public-uuid :public_uuid, :as dashboard}]
+  [dashboard]
   (update dashboard :ordered_cards (fn [dashcards]
                                      (vec (for [dashcard dashcards]
                                             (-> dashcard
@@ -699,7 +699,7 @@
   (letfn [(parse-ids [s]
             (set (cond
                    (string? s)     [(Integer/parseUnsignedInt s)]
-                   (sequential? s) (map #(Integer/parseUnsignedInt %) s))))]
+                   (sequential? s) (map (fn [i] (Integer/parseUnsignedInt i)) s))))]
     (let [filtered-field-ids  (parse-ids filtered)
           filtering-field-ids (parse-ids filtering)]
       (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

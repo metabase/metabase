@@ -295,6 +295,7 @@
     (:name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
@@ -336,6 +337,7 @@
     (:display-name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     [(operator :guard #{:+ :- :/ :*}) & args]

@@ -39,6 +39,7 @@
 (defn- list-beforeo
   "A relation such that `sublist` is all items in `lst` up to (but not including) `item`."
   [lst sublist item]
+  #_:clj-kondo/ignore
   (l/matcha [lst sublist]
     ([[] []])
     ([[item . _] []])

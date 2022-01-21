@@ -783,6 +783,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 

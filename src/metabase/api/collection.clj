@@ -15,6 +15,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as collection.graph]
+            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
@@ -82,7 +83,7 @@
   [exclude-archived namespace]
   {exclude-archived (s/maybe su/BooleanString)
    namespace        (s/maybe su/NonBlankString)}
-  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as x}]
+  (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
                                :card    #{}}
@@ -190,7 +191,7 @@
     (dissoc row :description :display :authority_level :moderated_status)))
 
 (defmethod collection-children-query :snippet
-  [_ collection {:keys [archived? pinned-state]}]
+  [_ collection {:keys [archived?]}]
   {:select [:id :name [(hx/literal "snippet") :model]]
        :from   [[NativeQuerySnippet :nqs]]
        :where  [:and
@@ -442,7 +443,7 @@
     [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
 
 (defn- collection-children*
-  [collection models {:keys [collection-namespace sort-info] :as options}]
+  [collection models {:keys [sort-info] :as options}]
   (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
         models      (sort (map keyword models))
         queries     (for [model models]
@@ -477,7 +478,7 @@
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection}            :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [models collections-only? pinned-state], :as options} :- CollectionChildrenOptions]
+   {:keys [models], :as options} :- CollectionChildrenOptions]
   (let [valid-models (for [model-kw [:collection :dataset :card :dashboard :pulse :snippet]
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
