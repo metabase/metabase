@@ -1,12 +1,12 @@
 import styled from "styled-components";
 
-import EntityItem from "metabase/components/EntityItem";
+import ActionMenu from "metabase/collections/components/ActionMenu";
 import Card from "metabase/components/Card";
 import { color } from "metabase/lib/colors";
 
 const HEIGHT = 250;
 
-export const HoverMenu = styled(EntityItem.Menu)`
+export const HoverMenu = styled(ActionMenu)`
   visibility: hidden;
   color: ${color("text-medium")};
 

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -10,7 +10,6 @@ import Visualization, {
 } from "metabase/visualizations/components/Visualization";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import { ItemLink } from "../PinnedItemCard/PinnedItemCard.styled";
 import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
@@ -30,44 +29,15 @@ function CollectionCardVisualization({
   onCopy,
   onMove,
 }) {
-  const handlePin = useCallback(() => {
-    item.setPinned(false);
-  }, [item]);
-
-  const handleCopy = useCallback(() => {
-    onCopy([item]);
-  }, [item, onCopy]);
-
-  const handleMove = useCallback(() => {
-    onMove([item]);
-  }, [item, onMove]);
-
-  const handleArchive = useCallback(() => {
-    item.setArchived(true);
-  }, [item]);
-
   return (
     <ItemLink to={item.getUrl()}>
       <VizCard flat>
-        <div
-          onClick={e => {
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-        >
-          <HoverMenu
-            item={item}
-            onPin={collection.can_write ? handlePin : null}
-            onMove={
-              collection.can_write && item.setCollection ? handleMove : null
-            }
-            onCopy={item.copy ? handleCopy : null}
-            onArchive={
-              collection.can_write && item.setArchived ? handleArchive : null
-            }
-            analyticsContext={ANALYTICS_CONTEXT}
-          />
-        </div>
+        <HoverMenu
+          item={item}
+          collection={collection}
+          onCopy={onCopy}
+          onMove={onMove}
+        />
         <Questions.Loader id={item.id}>
           {({ question: card }) => {
             const question = new Question(card, metadata);
