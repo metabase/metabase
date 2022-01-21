@@ -4,9 +4,11 @@
   (:require [metabase.models.setting :as setting]
             [metabase.util.i18n :refer [deferred-tru]]))
 
-;; NOTE: this was changed from a hardcoded var with value of 2000 to a setting in 0.43
-;; the setting, which allows for DB local value, can still be nil, so any places below that used to reference the
-;; former constant value have to expect it could return nil instead
+(def ^:private ^:const default-max-results-bare-rows 2000)
+
+;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to `default-max-results-bare-rows`)
+;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
+;; to reference the former constant value have to expect it could return nil instead
 (setting/defsetting max-results-bare-rows
   (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
   :visibility     :authenticated
@@ -20,7 +22,7 @@
 (def default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   {:max-results           max-results
-   :max-results-bare-rows (or (max-results-bare-rows) 2000)})
+   :max-results-bare-rows (or (max-results-bare-rows) default-max-results-bare-rows)})
 
 (defn- ensure-valid-constraints
   "`:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
