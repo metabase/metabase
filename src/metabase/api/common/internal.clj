@@ -3,7 +3,7 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.async.streaming-response]
+            [metabase.async.streaming-response :as streaming-response]
             [metabase.config :as config]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [tru]]
@@ -13,7 +13,7 @@
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            metabase.async.streaming_response.StreamingResponse))
 
-(comment metabase.async.streaming-response/keep-me)
+(comment streaming-response/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
