@@ -30,6 +30,7 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   position: fixed;
   top: 65px;
   width: 0;
+  background-color: ${color("white")};
 
   ${props =>
     props.shouldDisplayMobileSidebar &&

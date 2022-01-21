@@ -5,7 +5,6 @@ import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
 
 export const ContentBox = styled(Box)`
-  background-color: white;
   display: ${props => (props.shouldDisplayMobileSidebar ? "none" : "block")};
   height: 100%;
   margin-left: ${props =>

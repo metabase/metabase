@@ -27,10 +27,13 @@ export const HoverMenu = styled(EntityItem.Menu)`
 
 export const Title = styled.div`
   font-weight: bold;
-  font-size: 1.15rem;
-  line-height: 1.7rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
   color: ${color("text-dark")};
   transition: color 0.2s ease;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 `;
 
 export const Description = forwardRefToInnerRef(styled.div`
