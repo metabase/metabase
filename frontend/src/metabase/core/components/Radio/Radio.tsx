@@ -1,4 +1,11 @@
-import React, { Key, useCallback, useMemo } from "react";
+import React, {
+  forwardRef,
+  HTMLAttributes,
+  Key,
+  Ref,
+  useCallback,
+  useMemo,
+} from "react";
 import _ from "underscore";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
@@ -32,7 +39,8 @@ const VARIANTS = {
   },
 };
 
-export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>> {
+export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>>
+  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   name?: string;
   value?: TValue;
   options: TOption[];
@@ -54,27 +62,40 @@ export interface RadioOption<TValue> {
   value: TValue;
 }
 
-const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
-  name,
-  value,
-  options,
-  optionKeyFn = getDefaultOptionKey,
-  optionNameFn = getDefaultOptionName,
-  optionValueFn = getDefaultOptionValue,
-  variant = "normal",
-  colorScheme = "default",
-  disabled = false,
-  vertical = false,
-  showButtons = vertical && variant !== "bubble",
-  py,
-  onChange,
-  onOptionClick,
-}: RadioProps<TValue, TOption>): JSX.Element => {
+const Radio = forwardRef(function Radio<
+  TValue extends Key,
+  TOption = RadioOption<TValue>
+>(
+  {
+    name,
+    value,
+    options,
+    optionKeyFn = getDefaultOptionKey,
+    optionNameFn = getDefaultOptionName,
+    optionValueFn = getDefaultOptionValue,
+    variant = "normal",
+    colorScheme = "default",
+    disabled = false,
+    vertical = false,
+    showButtons = vertical && variant !== "bubble",
+    py,
+    onChange,
+    onOptionClick,
+    ...props
+  }: RadioProps<TValue, TOption>,
+  ref: Ref<HTMLDivElement>,
+): JSX.Element {
   const { RadioGroup } = VARIANTS[variant];
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
 
   return (
-    <RadioGroup role="radiogroup" variant={variant} vertical={vertical}>
+    <RadioGroup
+      {...props}
+      role="radiogroup"
+      innerRef={ref as any}
+      variant={variant}
+      vertical={vertical}
+    >
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
@@ -101,7 +122,7 @@ const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
       })}
     </RadioGroup>
   );
-};
+});
 
 interface RadioItemProps<TValue extends Key> {
   name: string;
