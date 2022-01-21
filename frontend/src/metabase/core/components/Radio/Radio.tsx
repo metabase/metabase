@@ -74,12 +74,7 @@ const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
 
   return (
-    <RadioGroup
-      role="radiogroup"
-      variant={variant}
-      vertical={vertical}
-      showButtons={showButtons}
-    >
+    <RadioGroup role="radiogroup" variant={variant} vertical={vertical}>
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);

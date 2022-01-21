@@ -6,7 +6,6 @@ import { RadioColorScheme, RadioVariant } from "./types";
 export interface RadioGroupProps {
   variant: RadioVariant;
   vertical: boolean;
-  showButtons: boolean;
 }
 
 export const RadioGroup = styled.div<RadioGroupProps>`
@@ -15,7 +14,7 @@ export const RadioGroup = styled.div<RadioGroupProps>`
 `;
 
 export const RadioGroupNormal = styled(RadioGroup)`
-  font-weight: ${props => (props.showButtons ? "" : "bold")};
+  font-weight: bold;
 `;
 
 export const RadioGroupBubble = styled(RadioGroup)`
