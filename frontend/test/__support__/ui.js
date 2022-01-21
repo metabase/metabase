@@ -44,7 +44,7 @@ export function renderWithProviders(
   } = {},
 ) {
   const initialReduxState = withSampleDatabase
-    ? merge(withSampleDatabase, storeInitialState)
+    ? merge(sampleDatabaseReduxState, storeInitialState)
     : storeInitialState;
 
   const store = getStore(
