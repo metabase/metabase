@@ -19,9 +19,33 @@ const RadioListNormal = css<RadioListProps>`
   font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
-export interface RadioItemProps {
+export interface RadioContainerProps {
   variant: RadioVariant;
   vertical: boolean;
+}
+
+export const RadioContainer = styled.label<RadioContainerProps>`
+  display: block;
+  ${props => props.variant === "normal" && RadioContainerNormal};
+  ${props => props.variant === "underlined" && RadioContainerNormal};
+  ${props => props.variant === "bubble" && RadioContainerBubble};
+`;
+
+const RadioContainerNormal = css<RadioContainerProps>`
+  &:not(:last-child) {
+    margin-right: ${props => (!props.vertical ? "2rem" : "")};
+    margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+  }
+`;
+
+const RadioContainerBubble = css<RadioContainerProps>`
+  &:not(:last-child) {
+    margin-right: ${props => (!props.vertical ? "0.5rem" : "")};
+    margin-bottom: ${props => (props.vertical ? "0.5rem" : "")};
+  }
+`;
+
+export interface RadioItemProps {
   disabled: boolean;
 }
 
@@ -29,10 +53,6 @@ export const RadioItem = styled.label<RadioItemProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
-`;
-
-export const RadioContainer = styled.label`
-  display: block;
 `;
 
 export const RadioInput = styled.input`

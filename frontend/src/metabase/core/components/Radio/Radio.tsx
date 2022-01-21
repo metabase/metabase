@@ -18,9 +18,10 @@ export interface RadioProps<TValue, TOption = RadioOption<TValue>> {
   optionValueFn?: (option: TOption) => TValue;
   variant?: RadioVariant;
   colorScheme?: RadioColorScheme;
-  py?: number;
+  disabled?: boolean;
   vertical?: boolean;
   showButtons?: boolean;
+  py?: number;
   onChange?: (value: TValue) => void;
   onOptionClick?: (value: TValue) => void;
 }
@@ -39,6 +40,7 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
   optionValueFn = getDefaultOptionValue,
   variant = "normal",
   colorScheme = "default",
+  disabled = false,
   vertical = false,
   showButtons = false,
 }: RadioProps<TValue, TOption>): JSX.Element => {
@@ -51,9 +53,9 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
         const optionChecked = value === optionValue;
 
         return (
-          <RadioContainer key={optionKey}>
+          <RadioContainer key={optionKey} variant={variant} vertical={vertical}>
             <RadioInput type="radio" name={name} checked={optionChecked} />
-            <RadioItem>
+            <RadioItem disabled={disabled}>
               <RadioButton checked={optionChecked} colorScheme={colorScheme} />
               <RadioText>{optionName}</RadioText>
             </RadioItem>
