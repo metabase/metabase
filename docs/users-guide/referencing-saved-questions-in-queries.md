@@ -1,14 +1,16 @@
-## Referencing saved questions in queries
+## Referencing models and saved questions in SQL queries
 
-With SQL databases, we can use an existing question as the basis for a new query, or as a common table expression (CTE). For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, which people can refer to in their queries just like they would with any other table.
+With SQL databases, we can use a [model][model] or an an existing question as the basis for a new query, or as a common table expression [CTE][CTE].
+
+For example, let's say we have a lot of data spread across a number of tables, but our users are most interested in a subset of that data. We can perform a complicated query once to return those results, and save that question as a model, which people can refer to in their queries just like they would with any other table.
 
 Here's how it works. First, create and save a question that returns the result set you'd like to make available for people to query. Using the sample database included with Metabase as an example, let's say we want to provide a result set (a "table") that only has orders from 2019, and only includes orders for products in the Gizmo category.
 
-We could create this question using the notebook editor, like so:
+We could create this model using the notebook editor, like so:
 
 ![Example notebook](images/saved-questions/example-notebook.png).
 
-Alternatively, we could create that question using SQL:
+Alternatively, we could create that model from a SQL question:
 
 ```
 SELECT *
@@ -19,7 +21,7 @@ WHERE  p.category = 'Gizmo'
        AND o.created_at BETWEEN '2019-01-01' AND '2019-12-31'
 ```
 
-We'll save that question as "Gizmo orders in 2019".
+We'll save that question as "Gizmo orders in 2019", then we'll convert it to a [model][model].
 
 Now let's refer to "Gizmo orders in 2019" in a new query. To keep it simple, let's say we just want to count all of those Gizmo orders from 2019. We can use the `#` symbol to refer to a saved question in a query.
 
@@ -93,3 +95,7 @@ For other ways to standardize analytics, check out:
 ## Next: automated X-ray explorations
 
 Learn about how to easily and quickly see automatic explorations of your data with Metabase's powerful [X-ray feature](14-x-rays.md).
+
+
+[cte]: https://www.metabase.com/learn/sql-questions/sql-cte
+[model]: models.md

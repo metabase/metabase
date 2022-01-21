@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 
 import React from "react";
 

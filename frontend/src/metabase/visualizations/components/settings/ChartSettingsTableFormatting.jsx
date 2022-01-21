@@ -7,7 +7,7 @@ import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/components/Select";
 import Radio from "metabase/components/Radio";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import ColorPicker from "metabase/components/ColorPicker";
 
 import ColorRangePicker, {

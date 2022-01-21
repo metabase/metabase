@@ -84,7 +84,7 @@
          (hformat/quote-identifier component, :split false)))))
   pretty/PrettyPrintable
   (pretty [_]
-    (cons `hx/identifier (cons identifier-type components))))
+    (cons `identifier (cons identifier-type components))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (alter-meta! #'->Identifier    assoc :private true)
@@ -218,7 +218,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (type-info->db-type (type-info honeysql-form))
+  (= (some-> honeysql-form type-info type-info->db-type  str/lower-case)
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info
@@ -235,9 +235,9 @@
 
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
-  [sql-type expr]
-  (-> (hsql/call :cast expr (hsql/raw (name sql-type)))
-      (with-type-info {::database-type sql-type})))
+  [database-type expr]
+  (-> (hsql/call :cast expr (hsql/raw (name database-type)))
+      (with-type-info {::database-type database-type})))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -256,6 +256,18 @@
   (if (is-of-type? expr sql-type)
       expr
       (cast sql-type expr)))
+
+(defn cast-unless-type-in
+  "Cast `expr` to `desired-type` unless `expr` is of one of the `acceptable-types`. Returns a typed HoneySQL form.
+
+    ;; cast to TIMESTAMP unless form is already a TIMESTAMP, TIMESTAMPTZ, or DATE
+    (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
+  {:added "0.42.0"}
+  [desired-type acceptable-types expr]
+  (if (some (partial is-of-type? expr)
+            acceptable-types)
+    expr
+    (cast desired-type expr)))
 
 (defn format
   "SQL `format` function."

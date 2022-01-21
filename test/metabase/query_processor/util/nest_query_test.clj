@@ -205,51 +205,52 @@
 (deftest nest-expressions-ignore-source-queries-test
   (testing (str "When 'raising' :expression clauses, only raise ones in the current level. Handle duplicate expression "
                 "names correctly.")
-    (is (query= (mt/$ids venues
-                  {:fields       [[:field %id {::add/source-table  ::add/source
-                                               ::add/source-alias  "ID"
-                                               ::add/desired-alias "ID"
-                                               ::add/position      0}]
-                                  [:field "x_2" {:base-type          :type/Float
-                                                 ::add/source-table  ::add/source
-                                                 ::add/source-alias  "x_2"
-                                                 ::add/desired-alias "x_2"
-                                                 ::add/position      1}]]
-                   :source-query {:expressions  {:x [:*
-                                                     [:field %price {::add/source-table ::add/source
-                                                                     ::add/source-alias "PRICE"}]
-                                                     4]}
-                                  :fields       [[:field %id {::add/source-table  ::add/source
-                                                              ::add/source-alias  "ID"
-                                                              ::add/desired-alias "ID"
-                                                              ::add/position      0}]
-                                                 [:field "x" {:base-type          :type/Float
-                                                              ::add/source-table  ::add/source
-                                                              ::add/source-alias  "x"
-                                                              ::add/desired-alias "x"
-                                                              ::add/position      1}]
-                                                 [:expression "x" {::add/desired-alias "x_2"
-                                                                   ::add/position      2}]]
-                                  :source-query {:source-table $$venues
-                                                 :expressions  {:x [:*
-                                                                    [:field %price {::add/source-table $$venues
-                                                                                    ::add/source-alias "PRICE"}]
-                                                                    2]}
-                                                 :fields       [[:field %id {::add/source-table  $$venues
-                                                                             ::add/source-alias  "ID"
-                                                                             ::add/desired-alias "ID"
-                                                                             ::add/position      0}]
-                                                                [:expression "x" {::add/desired-alias "x"
-                                                                                  ::add/position      1}]]}}
-                   :limit        1})
-                (nest-expressions
-                 (mt/mbql-query venues
-                   {:source-query {:source-table $$venues
-                                   :expressions  {:x [:* $price 2]}
-                                   :fields       [$id [:expression "x"]]}
-                    :expressions  {:x [:* $price 4]}
-                    :fields       [$id [:expression "x"]]
-                    :limit        1}))))))
+    (let [query (mt/mbql-query venues
+                  {:source-query {:source-table $$venues
+                                  :expressions  {:x [:* $price 2]}
+                                  :fields       [$id [:expression "x"]]}
+                   :expressions  {:x [:* $price 4]}
+                   :fields       [$id [:expression "x"]]
+                   :limit        1})]
+      (mt/with-native-query-testing-context query
+        (is (query= (mt/$ids venues
+                      {:fields       [[:field %id {::add/source-table  ::add/source
+                                                   ::add/source-alias  "ID"
+                                                   ::add/desired-alias "ID"
+                                                   ::add/position      0}]
+                                      [:field "x_2" {:base-type          :type/Float
+                                                     ::add/source-table  ::add/source
+                                                     ::add/source-alias  "x_2"
+                                                     ::add/desired-alias "x_2"
+                                                     ::add/position      1}]]
+                       :source-query {:expressions  {:x [:*
+                                                         [:field %price {::add/source-table ::add/source
+                                                                         ::add/source-alias "PRICE"}]
+                                                         4]}
+                                      :fields       [[:field %id {::add/source-table  ::add/source
+                                                                  ::add/source-alias  "ID"
+                                                                  ::add/desired-alias "ID"
+                                                                  ::add/position      0}]
+                                                     [:field "x" {:base-type          :type/Float
+                                                                  ::add/source-table  ::add/source
+                                                                  ::add/source-alias  "x"
+                                                                  ::add/desired-alias "x"
+                                                                  ::add/position      1}]
+                                                     [:expression "x" {::add/desired-alias "x_2"
+                                                                       ::add/position      2}]]
+                                      :source-query {:source-table $$venues
+                                                     :expressions  {:x [:*
+                                                                        [:field %price {::add/source-table $$venues
+                                                                                        ::add/source-alias "PRICE"}]
+                                                                        2]}
+                                                     :fields       [[:field %id {::add/source-table  $$venues
+                                                                                 ::add/source-alias  "ID"
+                                                                                 ::add/desired-alias "ID"
+                                                                                 ::add/position      0}]
+                                                                    [:expression "x" {::add/desired-alias "x"
+                                                                                      ::add/position      1}]]}}
+                       :limit        1})
+                    (nest-expressions query)))))))
 
 (deftest nest-expressions-with-joins-test
   (testing "If there are any `:joins`, those need to be nested into the `:source-query` as well."

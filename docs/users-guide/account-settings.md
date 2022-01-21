@@ -14,7 +14,7 @@ You can set your first and last names, change your email address, and set your l
 
 You can change your password here. Note that if your Metabase uses Single Sign-On (SSO), your administrator will have disabled this password section, as your identity provider will manage logins.
 
-If you're having trouble logging in, see our [How do I reset my password](../faq/using-metabase/how-do-i-reset-my-password.md).
+If you're having trouble logging in, see our [People can't log into Metabase](../troubleshooting-guide/cant-log-in.md).
 
 ## Account login history
 

@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 
 export const StepDescription = styled.div`
   margin: 0.875rem 0 1.25rem;

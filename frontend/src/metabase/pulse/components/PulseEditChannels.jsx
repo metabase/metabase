@@ -10,7 +10,7 @@ import RecipientPicker from "./RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import ActionButton from "metabase/components/ActionButton";
 import Select, { Option } from "metabase/components/Select";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 

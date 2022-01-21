@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton from "./SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import _ from "underscore";
 import cx from "classnames";

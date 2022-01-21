@@ -2,15 +2,15 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
 export interface ToggleRootProps {
-  isSmall?: boolean;
-  isSelected?: boolean;
+  checked?: boolean;
+  small?: boolean;
   currentColor?: string;
 }
 
-const getLeft = ({ isSmall, isSelected }: ToggleRootProps): string => {
-  if (!isSelected) {
+const getTranslateX = ({ checked, small }: ToggleRootProps): string => {
+  if (!checked) {
     return "1px";
-  } else if (!isSmall) {
+  } else if (!small) {
     return "25px";
   } else {
     return "12px";
@@ -18,40 +18,48 @@ const getLeft = ({ isSmall, isSelected }: ToggleRootProps): string => {
 };
 
 const getBackgroundColor = ({
-  isSelected,
+  checked,
   currentColor,
 }: ToggleRootProps): string => {
-  if (isSelected) {
+  if (checked) {
     return currentColor ?? color("brand");
   } else {
     return color("bg-medium");
   }
 };
 
-export const ToggleRoot = styled.a<ToggleRootProps>`
+export const ToggleRoot = styled.input<ToggleRootProps>`
+  appearance: none;
   position: relative;
   display: inline-block;
   color: ${props => props.currentColor ?? color("brand")};
-  box-sizing: border-box;
-  width: ${props => (props.isSmall ? "28px" : "48px")};
-  height: ${props => (props.isSmall ? "17px" : "24px")};
+  cursor: pointer;
+  width: ${props => (props.small ? "28px" : "48px")};
+  height: ${props => (props.small ? "17px" : "24px")};
   border-radius: 99px;
   border: 1px solid ${color("border")};
   background-color: ${color("bg-medium")};
   background-color: ${getBackgroundColor};
-  transition: all 0.3s;
-  text-decoration: none;
+  transition: background-color 0.3s;
 
   &:after {
     content: "";
-    width: ${props => (props.isSmall ? "13px" : "20px")};
-    height: ${props => (props.isSmall ? "13px" : "20px")};
+    width: ${props => (props.small ? "13px" : "20px")};
+    height: ${props => (props.small ? "13px" : "20px")};
     border-radius: 99px;
     position: absolute;
     top: 1px;
-    left: ${getLeft};
+    transform: translateX(${getTranslateX});
     background-color: ${color("white")};
-    transition: all 0.3s;
+    transition: transform 0.3s;
     box-shadow: 2px 2px 6px ${color("shadow")};
+  }
+
+  &:focus {
+    outline: 2px solid ${color("brand-light")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 `;

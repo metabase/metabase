@@ -187,7 +187,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       // Check all binning options from the footer
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });

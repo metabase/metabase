@@ -70,7 +70,7 @@ describe("admin > database > add > Presto", () => {
       .find("a")
       .click();
 
-    cy.get(".AdminSelect").contains("Presto (Deprecated Driver)");
+    cy.findAllByTestId("select-button").contains("Presto (Deprecated Driver)");
 
     // It should have persisted the previously set database name
     cy.findByDisplayValue("Foo");
@@ -114,7 +114,7 @@ describe("admin > database > add > Presto", () => {
       .find("a")
       .click();
 
-    cy.get(".AdminSelect")
+    cy.findAllByTestId("select-button")
       .contains("Presto")
       .click();
 
