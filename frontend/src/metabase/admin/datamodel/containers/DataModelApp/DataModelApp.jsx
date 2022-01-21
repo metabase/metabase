@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import Radio from "metabase/components/Radio";
 
-import { NavBar } from "./DataModelApp.styled";
+import { NavBar, ModelEducationButton } from "./DataModelApp.styled";
 
 const propTypes = {
   onChangeTab: PropTypes.func.isRequired,
@@ -50,6 +50,7 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
           onChange={onChangeTab}
           variant="underlined"
         />
+        <ModelEducationButton>{t`Simplify your schema with Models`}</ModelEducationButton>
       </NavBar>
       {children}
     </React.Fragment>
