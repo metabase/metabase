@@ -781,8 +781,11 @@ function clickButton(name) {
 }
 
 function pinItem(item) {
-  openEllipsisMenuFor(item);
-  cy.findByText("Pin this item").click();
+  cy.findAllByText(item)
+    .closest("tr")
+    .within(() => {
+      cy.icon("pin").click();
+    });
 }
 
 function exposeChildrenFor(collectionName) {

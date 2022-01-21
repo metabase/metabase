@@ -1,9 +1,8 @@
-import React, { useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { color } from "metabase/lib/colors";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
@@ -48,6 +47,8 @@ export function BaseTableItem({
   onDrop,
   onToggleSelected,
 }) {
+  const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
+
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
   }, [item, onToggleSelected]);
@@ -77,15 +78,24 @@ export function BaseTableItem({
     const testId = isPinned ? "pinned-collection-entry" : "collection-entry";
 
     const trStyles = {
-      height: 80,
-      borderBottom: hasBottomBorder ? `1px solid ${color("border")}` : "",
+      height: 48,
     };
 
     // Table row can be wrapped with ItemDragSource,
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
     return (
-      <tr key={item.id} data-testid={testId} style={trStyles}>
+      <tr
+        onMouseEnter={() => {
+          setIsHoveringOverRow(true);
+        }}
+        onMouseLeave={() => {
+          setIsHoveringOverRow(false);
+        }}
+        key={item.id}
+        data-testid={testId}
+        style={trStyles}
+      >
         <td data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
@@ -95,6 +105,7 @@ export function BaseTableItem({
             selectable={canSelect}
             selected={isSelected}
             onToggleSelected={handleSelectionToggled}
+            showCheckbox={isHoveringOverRow}
           />
         </td>
         <td data-testid={`${testId}-name`}>
@@ -137,13 +148,13 @@ export function BaseTableItem({
     isPinned,
     isSelected,
     linkProps,
-    hasBottomBorder,
     handleArchive,
     handleCopy,
     handleMove,
     handlePin,
     handleSelectionToggled,
     onToggleSelected,
+    isHoveringOverRow,
   ]);
 
   if (!draggable) {
