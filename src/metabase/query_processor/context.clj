@@ -76,14 +76,14 @@
   {:pre [(fn? reducedf*)]}
   (reducedf* metadata reduced-rows context))
 
-(defn preprocessedf
+(defn ^:deprecated preprocessedf
   "Called when query is fully preprocessed."
   {:arglsts '([query context])}
   [query {preprocessedf* :preprocessedf, :as context}]
   {:pre [(fn? preprocessedf*)], :post [(map? %)]}
   (preprocessedf* query context))
 
-(defn nativef
+(defn ^:deprecated nativef
   "Called when query is convert to native."
   {:arglists '([query context])}
   [query {nativef* :nativef, :as context}]
@@ -111,7 +111,7 @@
   {:pre [(int? timeout*)]}
   timeout*)
 
-(defn rff
+(defn ^:deprecated rff
   "Reducing function.
 
     (rff metadata) -> rf"

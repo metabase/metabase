@@ -4,6 +4,8 @@
             [metabase.mbql.util :as mbql.u]
             [schema.core :as s]))
 
+;;;; Pre-processing
+
 (defn- diff-indecies
   "Given two sequential collections, return indecies that are different between the two."
   [coll-1 coll-2]
@@ -14,14 +16,22 @@
        (filter identity)
        set))
 
-(s/defn ^:private replace-cumulative-ags :- mbql.s/Query
-  "Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum` aggregations, respectively."
-  [query]
-  (mbql.u/replace-in query [:query :aggregation]
-    ;; cumulative count doesn't neccesarily have a field-id arg
-    [:cum-count]       [:count]
-    [:cum-count field] [:count field]
-    [:cum-sum field]   [:sum field]))
+(s/defn rewrite-cumulative-aggregations :- mbql.s/Query
+  "Pre-processing middleware. Replace `cum-count` and `cum-sum` aggregations in `query` with `count` and `sum`
+  aggregations, respectively. These are summed in post-processing by `post-process-cumulative-aggregations`."
+  [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
+  (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
+    query
+    (let [query' (mbql.u/replace-in query [:query :aggregation]
+                   ;; cumulative count doesn't neccesarily have a field-id arg
+                   [:cum-count]       [:count]
+                   [:cum-count field] [:count field]
+                   [:cum-sum field]   [:sum field])]
+      (assoc query' ::replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
+                                                                    (-> query' :query :aggregation))]
+                                               (+ (count breakouts) i)))))))
+
+;;;; Post-processing
 
 (defn- add-values-from-last-row
   "Update values in `row` by adding values from `last-row` for a set of specified indexes.
@@ -51,19 +61,13 @@
          (vreset! last-row row')
          (rf result row'))))))
 
-(defn handle-cumulative-aggregations
-  "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
-  clauses respectively and summation is performed on results in Clojure-land."
+(defn post-process-cumulative-aggregations
+  "Post-processing middleware that sums the `cum-count` and `cum-sum` aggregations
+  from [[rewrite-cumulative-aggregations]]."
   [qp]
-  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} rff context]
-    (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
+  (fn [{::keys [replaced-indecies], :as query} rff context]
+    (if-not replaced-indecies
       (qp query rff context)
-      (let [query'            (replace-cumulative-ags query)
-            ;; figure out which indexes are being changed in the results. Since breakouts always get included in
-            ;; results first we need to offset the indexes to change by the number of breakouts
-            replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
-                                                          (-> query' :query :aggregation))]
-                                     (+ (count breakouts) i)))
-            rff'              (fn [metadata]
-                                (cumulative-ags-xform replaced-indecies (rff metadata)))]
-        (qp query' rff' context)))))
+      (let [rff' (fn [metadata]
+                   (cumulative-ags-xform replaced-indecies (rff metadata)))]
+        (qp query rff' context)))))

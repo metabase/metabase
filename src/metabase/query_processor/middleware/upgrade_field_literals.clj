@@ -91,7 +91,10 @@
                       &match)
           &match))))
 
-(defn- upgrade-field-literals-all-levels [query]
+(defn upgrade-field-literals
+  "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
+  the resulting query doesn't end up being broken."
+  [query]
   (-> (walk/postwalk
        (fn [form]
          ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
@@ -108,10 +111,3 @@
            form))
        (resolve-fields/resolve-fields* query))
       resolve-fields/resolve-fields*))
-
-(defn upgrade-field-literals
-  "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
-  the resulting query doesn't end up being broken."
-  [qp]
-  (fn [query rff context]
-    (qp (upgrade-field-literals-all-levels query) rff context)))

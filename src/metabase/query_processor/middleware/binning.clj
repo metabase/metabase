@@ -215,15 +215,11 @@
         (catch Throwable e
           (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
-(defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query update-binning-strategy-in-inner-query)))
-
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
-  [qp]
-  (fn [query rff context]
-    (qp (update-binning-strategy* query) rff context)))
+  [{query-type :type, inner-query :query, :as query}]
+  (if (= query-type :native)
+    query
+    (update query :query update-binning-strategy-in-inner-query)))

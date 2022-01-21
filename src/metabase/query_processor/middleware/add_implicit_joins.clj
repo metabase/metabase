@@ -178,22 +178,18 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-implicit-joins* [query]
-  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
-    (do
-      (when-not (driver/supports? driver/*driver* :foreign-keys)
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
-                 {:driver driver/*driver*
-                  :type   error-type/unsupported-feature})))
-      (update query :query resolve-implicit-joins))
-    query))
-
 (defn add-implicit-joins
   "Fetch and store any Tables other than the source Table referred to by `:field` clauses with `:source-field` in an
   MBQL query, and add a `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or
   equivalent) that need to be performed for these tables.
 
   This middleware also adds `:join-alias` info to all `:field` forms with `:source-field`s."
-  [qp]
-  (fn [query rff context]
-    (qp (add-implicit-joins* query) rff context)))
+  [query]
+  (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
+    (do
+      (when-not (driver/supports? driver/*driver* :foreign-keys)
+        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+                        {:driver driver/*driver*
+                         :type   error-type/unsupported-feature})))
+      (update query :query resolve-implicit-joins))
+    query))

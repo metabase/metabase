@@ -151,14 +151,10 @@
        form))
    form))
 
-(defn- maybe-add-implicit-clauses [{query-type :type, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query add-implicit-mbql-clauses)))
-
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
-  [qp]
-  (fn [query rff context]
-    (qp (maybe-add-implicit-clauses query) rff context)))
+  [{query-type :type, :as query}]
+  (if (= query-type :native)
+    query
+    (update query :query add-implicit-mbql-clauses)))

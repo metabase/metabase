@@ -333,7 +333,7 @@
         (respond
          {:cols [{:name \"my_col\"}]}
          (qp.reducible/reducible-rows (get-row results) (context/canceled-chan context)))))"
-  {:added "0.35.0", :arglists '([driver query context respond])}
+  {:added "0.35.0", :arglists '([driver native-query context respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

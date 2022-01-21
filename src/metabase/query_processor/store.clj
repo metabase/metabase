@@ -37,12 +37,13 @@
 
 (defn do-with-store
   "Execute `f` with an initialized `*store*` if one is not already bound."
-  [f]
+  [thunk]
   (if (initialized?)
-    (f)
+    (thunk)
     (binding [*store* (atom {})]
-      (f))))
+      (thunk))))
 
+;; TODO -- consider renaming to `ensure-store`
 (defmacro with-store
   "Execute `body` with an initialized QP `*store*`. The `store` middleware takes care of setting up a store as needed
   for each query execution; you should have no need to use this macro yourself outside of that namespace."

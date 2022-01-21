@@ -74,7 +74,5 @@
 
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
-  [qp]
-  (fn [query rff context]
-    (qp (-> query check-for-circular-references! resolve-referenced-card-resources*)
-        rff context)))
+  [query]
+  (-> query check-for-circular-references! resolve-referenced-card-resources*))

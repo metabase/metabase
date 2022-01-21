@@ -161,12 +161,8 @@
     source-query
     (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
-(defn- resolve-joins* [{inner-query :query, :as outer-query}]
-  (cond-> outer-query
-    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))
-
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
-  [qp]
-  (fn [query rff context]
-    (qp (resolve-joins* query) rff context)))
+  [{inner-query :query, :as outer-query}]
+  (cond-> outer-query
+    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))

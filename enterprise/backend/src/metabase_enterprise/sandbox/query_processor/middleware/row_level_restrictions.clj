@@ -322,7 +322,7 @@
    :context (update context :gtap-perms (fn [perms]
                                           (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))})
 
-(defn apply-row-level-permissions
+(defn- apply-row-level-permissions
   "Does the work of swapping the given table the user was querying against with a nested subquery that restricts the
   rows returned. Will return the original query if there are no segmented permissions found."
   [qp]
@@ -336,3 +336,12 @@
            (rff (merge-metadata query metadata)))
          context'))
       (qp query rff context))))
+
+(defn apply-row-level-permissions-pre
+  [query]
+  query)
+
+(defn apply-row-level-permissions-post
+  [qp]
+  (fn [query rff context]
+    (qp query rff context)))

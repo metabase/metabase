@@ -108,7 +108,8 @@
      reduce-reducible-results
      reduce-legacy-results) rff context results))
 
-(s/defn ^:private process-internal-query
+(s/defn process-internal-query
+  "Process `:internal` queries."
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery rff context]
   ;; Make sure current user is a superuser
   (api/check-superuser)
@@ -120,11 +121,3 @@
   (binding [*additional-query-params* (dissoc query :fn :args)]
     (let [resolved (apply audit.i/resolve-internal-query qualified-fn-str args)]
       (reduce-results rff context resolved))))
-
-(defn handle-internal-queries
-  "Middleware that handles `internal` type queries."
-  [qp]
-  (fn [{query-type :type, :as query} xform context]
-    (if (= :internal (keyword query-type))
-      (process-internal-query query xform context)
-      (qp query xform context))))

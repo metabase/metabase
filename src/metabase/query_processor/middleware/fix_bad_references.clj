@@ -83,9 +83,3 @@
        (fix-bad-references* form)
        form))
    query))
-
-(defn fix-bad-references-middleware
-  "Middleware version of [[fix-bad-references]]."
-  [qp]
-  (fn [query rff context]
-    (qp (fix-bad-references query) rff context)))

@@ -30,7 +30,18 @@
       (when-let [card-id (-> query :info :card-id)]
         (mb.viz/db->norm (db/select-one-field :visualization_settings Card :id card-id)))))
 
-(defn update-viz-settings
+(defn update-viz-settings-pre
+  ;; TODO
+  [query]
+  query)
+
+(defn update-viz-settings-post
+  ;; TODO
+  [qp]
+  (fn [query rff context]
+    (qp query rff context)))
+
+(defn- update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated
   into an export.
 

@@ -44,7 +44,6 @@
 (defn validate-temporal-bucketing
   "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
   of Field base-type and unit. For example, you should not be allowed to bucket a `:type/Date` Field by `:minute`."
-  [qp]
-  (fn [query rff context]
-    (validate-temporal-bucketing* query)
-    (qp query rff context)))
+  [query]
+  (validate-temporal-bucketing* query)
+  query)

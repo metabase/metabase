@@ -102,10 +102,8 @@
 
 (defn resolve-joined-fields
   "Add `:join-alias` info to `:field` clauses where needed."
-  [qp]
-  (fn [query rff context]
-    (let [query' (add-join-alias-to-fields-if-needed query)]
-      (when-not (= query query')
-        (let [[before after] (data/diff query query')]
-          (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
-      (qp query' rff context))))
+  [query]
+  (u/prog1 (add-join-alias-to-fields-if-needed query)
+    (when-not (= query <>)
+      (let [[before after] (data/diff query <>)]
+        (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))))

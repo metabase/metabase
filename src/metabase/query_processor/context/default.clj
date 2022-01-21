@@ -101,6 +101,7 @@
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
   {:timeout       query-timeout-ms
+   ;; TODO -- this shouldn't be part of context
    :rff           default-rff
    :raisef        default-raisef
    :runf          default-runf

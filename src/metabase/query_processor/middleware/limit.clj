@@ -4,38 +4,27 @@
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.util :as qputil]))
 
-(defn- add-limit [max-rows {query-type :type, :as query}]
-  (cond-> query
-    (and (= query-type :query)
-         (qputil/query-without-aggregations-or-limits? query))
-    (assoc-in [:query :limit] max-rows)))
+(defn- default-limit [query]
+  (or (mbql.u/query->max-rows-limit query)
+      i/absolute-max-results))
 
-(defn- limit-xform [max-rows rf]
-  {:pre [(fn? rf)]}
-  (let [row-count (volatile! 0)]
-    (fn
-      ([]
-       (rf))
+(defn add-default-limit
+  "Pre-processing middleware. Add an implicit `limit` clause to MBQL queries without any aggregations."
+  ([query]
+   (add-default-limit query (default-limit query)))
 
-      ([result]
-       (rf result))
+  ([{query-type :type, :as query} max-rows]
+   (cond-> query
+     (and (= query-type :query)
+          (qputil/query-without-aggregations-or-limits? query))
+     (assoc-in [:query :limit] max-rows))))
 
-      ([result row]
-       (let [result'       (rf result row)
-             new-row-count (vswap! row-count inc)]
-         (if (>= new-row-count max-rows)
-           (ensure-reduced result')
-           result'))))))
-
-(defn limit
-  "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that
-  can be returned in post-processing."
+(defn limit-result-rows
+  "Post-processing middleware. Limit the maximum number of rows that can be taken from the results."
   [qp]
   (fn [query rff context]
-    (let [max-rows (or (mbql.u/query->max-rows-limit query)
-                       i/absolute-max-results)]
-      (qp
-       (add-limit max-rows query)
-       (fn [metadata]
-         (limit-xform max-rows (rff metadata)))
-       context))))
+    (let [limit (default-limit query)
+          rff'   (fn limit-rff [metadata]
+                   (let [rf (rff metadata)]
+                     ((take limit) rf)))]
+      (qp query rff' context))))

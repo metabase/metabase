@@ -271,16 +271,19 @@
     (resolve-all outer-query)))
 
 (defn resolve-card-id-source-tables
-  "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
-  `card__n` format."
+  "Preprocessing middleware that assocs the `:source-query` for this query if it was specified using the shorthand
+  `:source-table` `card__n` format."
+  [query]
+  (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)
+        dataset?                (when card-id
+                                  (boolean (db/select-one-field :dataset Card :id card-id)))]
+    (assoc query
+           ::qp.perms/card-id card-id
+           ::dataset? dataset?)))
+
+;; TODO
+(defn add-dataset-metadata
+  "Post-processing middleware."
   [qp]
   (fn [query rff context]
-    (let [{:keys [query card-id]} (resolve-card-id-source-tables* query)]
-      (if card-id
-        (let [dataset? (db/select-one-field :dataset Card :id card-id)]
-          (binding [qp.perms/*card-id* (or card-id qp.perms/*card-id*)]
-            (qp query
-                (fn [metadata]
-                  (rff (cond-> metadata dataset? (assoc :dataset dataset?))))
-                context)))
-        (qp query rff context)))))
+    (qp query rff context)))

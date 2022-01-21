@@ -106,7 +106,5 @@
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
-  [qp]
-  (fn [query rff context]
-    (qp ((comp substitute-parameters* hoist-database-for-snippet-tags) query)
-        rff context)))
+  [query]
+  (-> query hoist-database-for-snippet-tags substitute-parameters*))

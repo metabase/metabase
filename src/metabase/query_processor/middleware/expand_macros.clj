@@ -170,15 +170,10 @@
       expand-metrics
       expand-segments))
 
-(defn- expand-macros*
+(defn expand-macros
+  "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
+  their contents."
   [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (expand-metrics-and-segments query)))
-
-(defn expand-macros
-  "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
-  their contents."
-  [qp]
-  (fn [query rff context]
-    (qp (expand-macros* query) rff context)))
