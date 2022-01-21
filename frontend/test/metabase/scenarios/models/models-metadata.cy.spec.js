@@ -1,6 +1,16 @@
-import { restore, sidebar, popover, visualize } from "__support__/e2e/cypress";
+import { restore, sidebar, visualize } from "__support__/e2e/cypress";
 
-import { openDetailsSidebar } from "./helpers/e2e-models-helpers";
+import {
+  openDetailsSidebar,
+  startQuestionFromModel,
+} from "./helpers/e2e-models-helpers";
+
+import {
+  openColumnOptions,
+  renameColumn,
+  setColumnType,
+  mapColumnTo,
+} from "./helpers/e2e-models-metadata-helpers";
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -88,46 +98,3 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Pre-tax ($)");
   });
 });
-
-function openColumnOptions(column) {
-  cy.findByText(column).click();
-}
-
-function renameColumn(oldName, newName) {
-  cy.findByDisplayValue(oldName)
-    .clear()
-    .type(newName);
-}
-
-function setColumnType(oldType, newType) {
-  cy.findByText(oldType).click();
-  cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
-  cy.findByPlaceholderText("Search for a special type").type(newType);
-
-  cy.findByText(newType).click();
-  cy.button("Save changes").click();
-}
-
-function mapColumnTo({ table, column } = {}) {
-  cy.findByText("Database column this maps to")
-    .closest(".Form-field")
-    .find(".AdminSelect")
-    .click();
-
-  popover()
-    .contains(table)
-    .click();
-
-  popover()
-    .contains(column)
-    .click();
-}
-
-function startQuestionFromModel(modelName) {
-  cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
-  cy.findByText("Models").click();
-  cy.findByText(modelName).click();
-}

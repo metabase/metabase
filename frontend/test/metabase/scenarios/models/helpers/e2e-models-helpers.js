@@ -100,3 +100,12 @@ export function selectFromDropdown(option, clickOpts) {
     .findByText(option)
     .click(clickOpts);
 }
+
+export function startQuestionFromModel(modelName) {
+  cy.findByText("New").click();
+  cy.findByText("Question")
+    .should("be.visible")
+    .click();
+  cy.findByText("Models").click();
+  cy.findByText(modelName).click();
+}
