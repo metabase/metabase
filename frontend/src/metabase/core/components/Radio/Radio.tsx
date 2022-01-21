@@ -152,6 +152,7 @@ const RadioItem = <TValue extends Key, TOption>({
         variant={variant}
         colorScheme={colorScheme}
         disabled={disabled}
+        showButtons={showButtons}
       >
         {showButtons && (
           <RadioButton checked={checked} colorScheme={colorScheme} />
