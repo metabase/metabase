@@ -708,7 +708,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText(/Orders/i).click();
         cy.findByText("Discount").click();
       });
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("Equal to")
         .click();
       cy.findByText("Greater than").click();

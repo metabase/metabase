@@ -10,7 +10,7 @@ import { filterWidget, popover } from "__support__/e2e/cypress";
 export function setWidgetType(type) {
   cy.findByText("Filter widget type")
     .parent()
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 
   popover()
