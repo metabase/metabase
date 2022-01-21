@@ -122,7 +122,7 @@ export const RadioButton = styled.span<RadioButtonProps>`
     props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
 `;
 
-export const RadioText = styled.span`
+export const RadioLabelText = styled.span`
   display: block;
 `;
 

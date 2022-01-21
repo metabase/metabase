@@ -11,7 +11,7 @@ import {
   RadioLabelNormal,
   RadioListBubble,
   RadioListNormal,
-  RadioText,
+  RadioLabelText,
 } from "./Radio.styled";
 
 const VARIANTS = {
@@ -157,7 +157,7 @@ const RadioItem = <TValue extends Key, TOption>({
         {showButtons && (
           <RadioButton checked={checked} colorScheme={colorScheme} />
         )}
-        <RadioText>{label}</RadioText>
+        <RadioLabelText>{label}</RadioLabelText>
       </RadioContainer>
     </RadioLabel>
   );
