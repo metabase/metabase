@@ -15,7 +15,7 @@ function typeField(label, value) {
 function toggleFieldWithDisplayName(displayName) {
   cy.contains(displayName)
     .closest(".Form-field")
-    .find("a")
+    .find("input")
     .click();
 }
 

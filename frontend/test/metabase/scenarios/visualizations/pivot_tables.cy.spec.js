@@ -259,7 +259,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("Show totals")
       .parent()
-      .find("a")
+      .find("input")
       .click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal has disappeared!
@@ -289,7 +289,7 @@ describe("scenarios > visualizations > pivot tables", () => {
       .click();
     cy.findByText("Show totals")
       .parent()
-      .find("a")
+      .find("input")
       .click();
 
     cy.findByText("3,520").should("not.exist"); // the subtotal isn't there

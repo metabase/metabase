@@ -639,7 +639,7 @@ function modifyPermission(
 
   popover().within(() => {
     if (shouldPropagate !== null) {
-      cy.findByRole("checkbox")
+      cy.findByRole("switch")
         .as("toggle")
         .then($el => {
           if ($el.attr("aria-checked") !== shouldPropagate.toString()) {
