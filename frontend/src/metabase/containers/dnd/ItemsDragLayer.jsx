@@ -6,7 +6,6 @@ import _ from "underscore";
 import BodyComponent from "metabase/components/BodyComponent";
 import BaseItemsTable from "metabase/collections/components/BaseItemsTable";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
 
 // NOTE: our version of react-hot-loader doesn't play nice with react-dnd's DragLayer,
 // so we exclude files named `*DragLayer.jsx` in webpack.config.js
@@ -77,26 +76,11 @@ class DraggedItems extends React.Component {
 
   renderItem = ({ item, ...itemProps }) => {
     const isPinned = this.checkIsPinned(item);
-    const isCard = item.model === "card";
 
     const key = `${item.model}-${item.id}`;
     const PINNED_WIDTH = 400;
 
     if (isPinned) {
-      if (isCard) {
-        return (
-          <div style={{ width: PINNED_WIDTH }}>
-            <CollectionCardVisualization
-              key={key}
-              item={item}
-              collection={this.props.collection}
-              onCopy={_.noop}
-              onMove={_.noop}
-            />
-          </div>
-        );
-      }
-
       return (
         <div style={{ width: PINNED_WIDTH }}>
           <PinnedItemCard
