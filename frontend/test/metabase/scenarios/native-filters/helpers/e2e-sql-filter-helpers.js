@@ -68,7 +68,7 @@ export function setDefaultValue(value) {
 export function toggleRequired() {
   cy.findByText("Required?")
     .parent()
-    .find("a")
+    .find("input")
     .click();
 }
 

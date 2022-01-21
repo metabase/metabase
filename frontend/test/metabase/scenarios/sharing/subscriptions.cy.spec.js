@@ -118,7 +118,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         .parent()
         .parent()
         .next()
-        .find("a") // Toggle
+        .find("input") // Toggle
         .click();
       cy.findByText("Questions to attach").click();
       clickButton("Done");
