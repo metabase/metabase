@@ -46,6 +46,13 @@ export const RadioLabelBubble = styled(RadioLabel)`
   }
 `;
 
+export const RadioInput = styled.input`
+  appearance: none;
+  display: block;
+  margin: 0;
+  padding: 0;
+`;
+
 export interface RadioContainerProps {
   checked: boolean;
   variant: RadioVariant;
@@ -64,6 +71,14 @@ export const RadioContainer = styled.div<RadioContainerProps>`
       !props.checked && !props.showButtons
         ? getSchemeColor(props.colorScheme)
         : ""};
+  }
+
+  ${RadioInput}:focus + & {
+    outline: 2px solid ${color("brand-light")};
+  }
+
+  ${RadioInput}:focus:not(:focus-visible) + & {
+    outline: none;
   }
 `;
 
@@ -95,13 +110,6 @@ export const RadioContainerBubble = styled(RadioContainer)`
       props.checked ? "" : lighten(getSchemeColor(props.colorScheme), 0.38)};
     transition: background-color 300ms linear;
   }
-`;
-
-export const RadioInput = styled.input`
-  appearance: none;
-  display: block;
-  margin: 0;
-  padding: 0;
 `;
 
 interface RadioButtonProps {
