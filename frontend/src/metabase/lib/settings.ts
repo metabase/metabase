@@ -173,10 +173,6 @@ class Settings {
     return this.get("has-user-setup");
   }
 
-  hasSetupToken() {
-    return this.get("setup-token") != null;
-  }
-
   hideEmbedBranding() {
     return this.get("hide-embed-branding?");
   }
