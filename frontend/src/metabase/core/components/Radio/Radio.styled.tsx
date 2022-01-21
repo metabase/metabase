@@ -52,7 +52,7 @@ export interface RadioContainerProps {
   disabled: boolean;
 }
 
-export const RadioContainer = styled.label<RadioContainerProps>`
+export const RadioContainer = styled.div<RadioContainerProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
@@ -93,6 +93,9 @@ const RadioContainerBubble = css<RadioContainerProps>`
 
 export const RadioInput = styled.input`
   appearance: none;
+  display: block;
+  margin: 0;
+  padding: 0;
 `;
 
 interface RadioButtonProps {

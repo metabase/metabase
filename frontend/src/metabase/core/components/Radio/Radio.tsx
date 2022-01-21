@@ -10,7 +10,7 @@ import {
   RadioText,
 } from "./Radio.styled";
 
-export interface RadioProps<TValue, TOption = RadioOption<TValue>> {
+export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>> {
   name?: string;
   value?: TValue;
   options: TOption[];
@@ -32,7 +32,7 @@ export interface RadioOption<TValue> {
   value: TValue;
 }
 
-const Radio = <TValue, TOption = RadioOption<TValue>>({
+const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
   name,
   value,
   options,
@@ -78,7 +78,7 @@ const Radio = <TValue, TOption = RadioOption<TValue>>({
   );
 };
 
-interface RadioItemProps<TValue> {
+interface RadioItemProps<TValue extends Key> {
   name: string;
   checked: boolean;
   label: string;
@@ -92,7 +92,7 @@ interface RadioItemProps<TValue> {
   onOptionClick?: (value: TValue) => void;
 }
 
-const RadioItem = <TValue, TOption>({
+const RadioItem = <TValue extends Key, TOption>({
   checked,
   name,
   label,
@@ -118,6 +118,7 @@ const RadioItem = <TValue, TOption>({
       <RadioInput
         type="radio"
         name={name}
+        value={value}
         checked={checked}
         onChange={handleChange}
       />
