@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { specialChars } from "@testing-library/user-event";
 import CheckBox from "./CheckBox";
 
 describe("CheckBox", () => {
@@ -22,7 +22,7 @@ describe("CheckBox", () => {
 
     const checkbox = screen.getByRole("checkbox");
     userEvent.tab();
-    userEvent.type(checkbox, "{enter}");
+    userEvent.type(checkbox, specialChars.enter);
 
     expect(onChange).toHaveBeenCalled();
   });
@@ -34,7 +34,7 @@ describe("CheckBox", () => {
 
     const checkbox = screen.getByRole("checkbox");
     userEvent.tab();
-    userEvent.type(checkbox, "{space}");
+    userEvent.type(checkbox, specialChars.space);
 
     expect(onChange).toHaveBeenCalled();
   });

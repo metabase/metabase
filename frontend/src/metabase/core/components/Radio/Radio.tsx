@@ -10,23 +10,23 @@ import {
   RadioLabelBubble,
   RadioLabelNormal,
   RadioLabelText,
-  RadioListBubble,
-  RadioListNormal,
+  RadioGroupBubble,
+  RadioGroupNormal,
 } from "./Radio.styled";
 
 const VARIANTS = {
   normal: {
-    RadioList: RadioListNormal,
+    RadioGroup: RadioGroupNormal,
     RadioLabel: RadioLabelNormal,
     RadioContainer: RadioContainerNormal,
   },
   underlined: {
-    RadioList: RadioListNormal,
+    RadioGroup: RadioGroupNormal,
     RadioLabel: RadioLabelNormal,
     RadioContainer: RadioContainerUnderlined,
   },
   bubble: {
-    RadioList: RadioListBubble,
+    RadioGroup: RadioGroupBubble,
     RadioLabel: RadioLabelBubble,
     RadioContainer: RadioContainerBubble,
   },
@@ -70,11 +70,16 @@ const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
   onChange,
   onOptionClick,
 }: RadioProps<TValue, TOption>): JSX.Element => {
-  const { RadioList } = VARIANTS[variant];
+  const { RadioGroup } = VARIANTS[variant];
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);
 
   return (
-    <RadioList variant={variant} vertical={vertical} showButtons={showButtons}>
+    <RadioGroup
+      role="radiogroup"
+      variant={variant}
+      vertical={vertical}
+      showButtons={showButtons}
+    >
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
@@ -99,7 +104,7 @@ const Radio = <TValue extends Key, TOption = RadioOption<TValue>>({
           />
         );
       })}
-    </RadioList>
+    </RadioGroup>
   );
 };
 

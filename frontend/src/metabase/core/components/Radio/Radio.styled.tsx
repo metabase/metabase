@@ -3,22 +3,22 @@ import { space, SpaceProps } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";
 
-export interface RadioListProps {
+export interface RadioGroupProps {
   variant: RadioVariant;
   vertical: boolean;
   showButtons: boolean;
 }
 
-export const RadioList = styled.div<RadioListProps>`
+export const RadioGroup = styled.div<RadioGroupProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
-export const RadioListNormal = styled(RadioList)`
+export const RadioGroupNormal = styled(RadioGroup)`
   font-weight: ${props => (props.showButtons ? "" : "bold")};
 `;
 
-export const RadioListBubble = styled(RadioList)`
+export const RadioGroupBubble = styled(RadioGroup)`
   display: flex;
 `;
 
