@@ -220,6 +220,8 @@ describe("scenarios > question > notebook", () => {
 
   describe("joins", () => {
     it("should allow joins", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // start a custom question with orders
       cy.visit("/question/new");
       cy.contains("Custom question").click();
@@ -228,6 +230,8 @@ describe("scenarios > question > notebook", () => {
 
       // join to Reviews on orders.product_id = reviews.product_id
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
+
       popover()
         .contains("Reviews")
         .click();
@@ -261,6 +265,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow post-join filters (metabase#12221)", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
@@ -269,6 +275,7 @@ describe("scenarios > question > notebook", () => {
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
+      cy.wait("@schema");
       cy.contains("People").click();
 
       cy.findByTestId("question-table-badges").within(() => {
@@ -301,6 +308,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should join on field literals", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // create two native questions
       cy.createNativeQuestion({
         name: "question a",
@@ -320,6 +329,8 @@ describe("scenarios > question > notebook", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
+
       popover().within(() => {
         cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
@@ -411,6 +422,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should join saved questions that themselves contain joins (metabase#12928)", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // Save Question 1
       cy.createQuestion({
         name: "12928_Q1",
@@ -477,6 +490,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("12928_Q1").click();
 
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
 
       popover().within(() => {
         cy.findByTextEnsureVisible("Sample Database").click();
@@ -955,6 +969,7 @@ function joinTwoSavedQuestions() {
         "source-table": PRODUCTS_ID,
       },
     }).then(() => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
       cy.visit(`/question/new`);
       cy.findByText("Custom question").click();
 
@@ -964,6 +979,7 @@ function joinTwoSavedQuestions() {
       });
 
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
       popover().within(() => {
         cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();
