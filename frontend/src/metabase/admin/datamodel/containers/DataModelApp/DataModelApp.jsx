@@ -6,6 +6,8 @@ import { t } from "ttag";
 
 import Radio from "metabase/components/Radio";
 
+import { NavBar } from "./DataModelApp.styled";
+
 const propTypes = {
   onChangeTab: PropTypes.func.isRequired,
   location: PropTypes.shape({
@@ -36,8 +38,8 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
   }, [pathname]);
 
   return (
-    <div>
-      <div className="px3 border-bottom">
+    <React.Fragment>
+      <NavBar>
         <Radio
           value={currentTab}
           options={[
@@ -48,9 +50,9 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
           onChange={onChangeTab}
           variant="underlined"
         />
-      </div>
+      </NavBar>
       {children}
-    </div>
+    </React.Fragment>
   );
 }
 
