@@ -49,12 +49,20 @@ export interface RadioContainerProps {
   variant: RadioVariant;
   colorScheme: RadioColorScheme;
   disabled: boolean;
+  showButtons: boolean;
 }
 
 export const RadioContainer = styled.div<RadioContainerProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
+
+  &:hover {
+    color: ${props =>
+      !props.checked && !props.showButtons
+        ? getSchemeColor(props.colorScheme)
+        : ""};
+  }
 `;
 
 export const RadioContainerNormal = styled(RadioContainer)`
