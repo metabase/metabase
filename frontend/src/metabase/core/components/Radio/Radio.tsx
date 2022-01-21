@@ -2,10 +2,10 @@ import React, { Key } from "react";
 import { RadioColorScheme, RadioVariant } from "./types";
 import {
   RadioButton,
-  RadioContainer,
+  RadioItem,
   RadioInput,
   RadioLabel,
-  RadioRoot,
+  RadioList,
   RadioText,
 } from "./Radio.styled";
 
@@ -38,9 +38,10 @@ function Radio<TValue, TOption = RadioOption<TValue>>({
   optionNameFn = getDefaultOptionName,
   optionValueFn = getDefaultOptionValue,
   colorScheme = "default",
+  vertical = false,
 }: RadioProps<TValue, TOption>): JSX.Element {
   return (
-    <RadioRoot>
+    <RadioList vertical={vertical}>
       {options.map(option => {
         const optionKey = optionKeyFn(option);
         const optionName = optionNameFn(option);
@@ -50,14 +51,14 @@ function Radio<TValue, TOption = RadioOption<TValue>>({
         return (
           <RadioLabel key={optionKey}>
             <RadioInput type="radio" name={name} checked={optionChecked} />
-            <RadioContainer>
+            <RadioItem>
               <RadioButton checked={optionChecked} colorScheme={colorScheme} />
               <RadioText>{optionName}</RadioText>
-            </RadioContainer>
+            </RadioItem>
           </RadioLabel>
         );
       })}
-    </RadioRoot>
+    </RadioList>
   );
 }
 

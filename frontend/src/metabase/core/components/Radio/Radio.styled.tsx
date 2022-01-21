@@ -11,8 +11,13 @@ const getSchemeColor = (colorScheme: RadioColorScheme): string => {
   }
 };
 
-export const RadioRoot = styled.div`
-  display: block;
+export interface RadioListProps {
+  vertical: boolean;
+}
+
+export const RadioList = styled.div<RadioListProps>`
+  display: flex;
+  flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 
 export const RadioLabel = styled.label`
@@ -23,11 +28,11 @@ export const RadioInput = styled.input`
   appearance: none;
 `;
 
-export interface RadioContainerProps {
+export interface RadioItemProps {
   disabled?: boolean;
 }
 
-export const RadioContainer = styled.span<RadioContainerProps>`
+export const RadioItem = styled.span<RadioItemProps>`
   display: flex;
   align-items: center;
   cursor: ${props => (props.disabled ? "" : "pointer")};
