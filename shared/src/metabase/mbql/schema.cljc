@@ -75,15 +75,6 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-;; TODO -- rename to `TemporalUnit`
-(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
-  `DateTimeUnit` instead."
-  (s/named
-   (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-                   :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
-   "datetime-unit"))
-
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -1491,7 +1482,6 @@
           :embedded-question
           :json-download
           :map-tiles
-          :metabot
           :public-dashboard
           :public-question
           :pulse

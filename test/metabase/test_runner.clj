@@ -27,6 +27,12 @@
 (comment metabase.test.redefs/keep-me
          effects/keep-me)
 
+;; Disable parallel tests with `PARALLEL=false`
+(def ^:private enable-parallel-tests?
+  (if-let [^String s (env/env :parallel)]
+    (Boolean/parseBoolean s)
+    true))
+
 ;;;; Finding tests
 
 (defmulti find-tests
@@ -100,10 +106,18 @@
 
 (defonce ^:private orig-test-var t/test-var)
 
+(def ^:private ^:dynamic *parallel-test-counter*
+  nil)
+
 (defn run-test
   "Run a single test `test-var`. Wraps/replaces [[clojure.test/test-var]]."
   [test-var]
   (binding [parallel/*parallel?* (parallel/parallel? test-var)]
+    (some-> *parallel-test-counter* (swap! update
+                                           (if (and parallel/*parallel?* enable-parallel-tests?)
+                                             :parallel
+                                             :single-threaded)
+                                           (fnil inc 0)))
     (orig-test-var test-var)))
 
 (alter-var-root #'t/test-var (constantly run-test))
@@ -133,15 +147,16 @@
   ([test-vars options]
    ;; don't randomize test order for now please, thanks anyway
    (with-redefs [eftest.runner/deterministic-shuffle (fn [_ test-vars] test-vars)]
-     (eftest.runner/run-tests
-      test-vars
-      (merge
-       {:capture-output? false
-        ;; parallel tests disabled for the time being -- some tests randomly fail if the data warehouse connection pool
-        ;; gets nuked by a different thread. Once we fix that we can re-enable parallel tests.
-        :multithread?    false #_:vars
-        :report          (reporter)}
-       options)))))
+     (binding [*parallel-test-counter* (atom {})]
+       (merge
+        (eftest.runner/run-tests
+         test-vars
+         (merge
+          {:capture-output? false
+           :multithread?    (when enable-parallel-tests? :vars)
+           :report          (reporter)}
+          options))
+        @*parallel-test-counter*)))))
 
 ;;;; `clojure -X` entrypoint
 
@@ -154,5 +169,6 @@
   (let [summary (run (tests options) options)
         fail?   (pos? (+ (:error summary) (:fail summary)))]
     (pprint/pprint summary)
+    (printf "Ran %d tests in parallel, %d single-threaded.\n" (:parallel summary 0) (:single-threaded summary 0))
     (println (if fail? "Tests failed." "All tests passed."))
     (System/exit (if fail? 1 0))))

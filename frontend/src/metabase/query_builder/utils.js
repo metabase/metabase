@@ -7,23 +7,31 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 export function getQueryBuilderModeFromLocation(location) {
   const { pathname } = location;
   if (pathname.endsWith("/notebook")) {
-    return "notebook";
+    return {
+      mode: "notebook",
+    };
   }
-  if (pathname.endsWith("/query")) {
-    return "dataset";
+  if (pathname.endsWith("/query") || pathname.endsWith("/metadata")) {
+    return {
+      mode: "dataset",
+      datasetEditorTab: pathname.endsWith("/query") ? "query" : "metadata",
+    };
   }
-  return "view";
+  return {
+    mode: "view",
+  };
 }
 
 export function getPathNameFromQueryBuilderMode({
   pathname,
   queryBuilderMode,
+  datasetEditorTab = "query",
 }) {
   if (queryBuilderMode === "view") {
     return pathname;
   }
   if (queryBuilderMode === "dataset") {
-    return `${pathname}/query`;
+    return `${pathname}/${datasetEditorTab}`;
   }
   return `${pathname}/${queryBuilderMode}`;
 }

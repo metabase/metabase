@@ -1,7 +1,7 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 const questionData = {
   name: "7210",

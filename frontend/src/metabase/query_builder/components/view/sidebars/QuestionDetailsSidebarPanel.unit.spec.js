@@ -2,10 +2,10 @@ import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import QuestionDetailsSidebarPanel from "./QuestionDetailsSidebarPanel";
 
@@ -20,7 +20,7 @@ const BASE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -57,7 +57,7 @@ function setup({ question } = {}) {
       onOpenModal={onOpenModal}
     />,
     {
-      withSampleDataset: true,
+      withSampleDatabase: true,
     },
   );
 

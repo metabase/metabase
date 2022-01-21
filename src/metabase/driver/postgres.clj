@@ -37,9 +37,12 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defn- ->timestamp [honeysql-form]
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form)
+  (hx/+ (->timestamp hsql-form)
         (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -180,8 +183,8 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :convert_from expr (hx/literal "UTF8"))))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 

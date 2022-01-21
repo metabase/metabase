@@ -3,7 +3,7 @@ import React from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ParameterTargetList from "../components/ParameterTargetList";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import _ from "underscore";
 import cx from "classnames";

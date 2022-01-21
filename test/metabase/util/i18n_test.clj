@@ -4,7 +4,7 @@
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]))
 
-(deftest available-locales-test
+(deftest ^:parallel available-locales-test
   (testing "Should return locale in normalized format"
     (is (contains? (set (i18n/available-locales-with-names))
                    ["pt_BR", "Portuguese (Brazil)"]))))
@@ -54,13 +54,13 @@
                 (is (= "deben tener 140 caracteres o menos"
                        (f)))))))))))
 
-(deftest localized-string?-test
+(deftest ^:parallel localized-string?-test
   (is (= true
          (i18n/localized-string? (i18n/deferred-trs "WOW"))))
   (is (= false
          (i18n/localized-string? "WOW"))))
 
-(deftest validate-number-of-args-test
+(deftest ^:parallel validate-number-of-args-test
   (testing "`trs` and `tru` should validate that the are being called with the correct number of args\n"
     (testing "not enough args"
       (is (thrown?

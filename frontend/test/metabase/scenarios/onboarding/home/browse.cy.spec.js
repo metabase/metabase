@@ -11,7 +11,7 @@ describe("scenarios > browse data", () => {
     cy.icon("table_spaced").click();
     cy.location("pathname").should("eq", "/browse");
     cy.findByText(/^Our data$/i);
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
     cy.findByText("Learn about our data").click();
     cy.location("pathname").should("eq", "/reference/databases");
   });

@@ -10,7 +10,7 @@ const { name: verifiedIconName, color: verifiedIconColor } = getStatusIcon(
   MODERATION_STATUS.verified,
 );
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 export const Container = styled.div`
   display: flex;

@@ -50,21 +50,30 @@
                              :joins      joins
                              :candidates candidate-tables}))))))))
 
+(defn- primary-source-table-id
+  "Get the ID of the 'primary' table towards which this query is pointing at: either the `:source-table` or indirectly
+  thru some number of `:source-query`s."
+  [{:keys [source-table source-query]}]
+  (or source-table
+      (when source-query
+        (recur source-query))))
+
 (s/defn ^:private add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
-  [{:keys [source-table source-query joins], :as form} :- InnerQuery]
+  [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`
-  (let [form (mbql.u/replace (dissoc form :joins :source-query)
-               ;; don't add `:join-alias` to anything that already has one
-               [:field _ (_ :guard :join-alias)]
-               &match
+  (let [source-table (primary-source-table-id form)
+        form         (mbql.u/replace (dissoc form :joins :source-query)
+                       ;; don't add `:join-alias` to anything that already has one
+                       [:field _ (_ :guard :join-alias)]
+                       &match
 
-               ;; otherwise for any other `:field` whose table isn't the source Table, attempt to wrap it.
-               [:field
-                (field-id :guard (every-pred integer?
-                                             #(not= (:table_id (qp.store/field %)) source-table)))
-                _]
-               (add-join-alias (qp.store/field field-id) form &match))
+                       ;; otherwise for any other `:field` whose table isn't the source Table, attempt to wrap it.
+                       [:field
+                        (field-id :guard (every-pred integer?
+                                                     #(not= (:table_id (qp.store/field %)) source-table)))
+                        _]
+                       (add-join-alias (qp.store/field field-id) form &match))
         ;; add :joins and :source-query back which we removed above.
         form (cond-> form
                (seq joins)  (assoc :joins joins)

@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
 import SlackHelpCard from "../SlackHelpCard";
 

@@ -36,6 +36,10 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](dashboard-subscriptions.md)
 
+## Official collections
+
+You can mark certain collections as [official](../users-guide/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
+
 ## Question moderation
 
 People can ask administrators to verify their questions.

@@ -23,12 +23,12 @@ import Database from "metabase/entities/databases";
 import {
   getDeletes,
   getDeletionError,
-  getIsAddingSampleDataset,
-  getAddSampleDatasetError,
+  getIsAddingSampleDatabase,
+  getAddSampleDatabaseError,
 } from "../selectors";
 import {
   deleteDatabase,
-  addSampleDataset,
+  addSampleDatabase,
   closeSyncingModal,
 } from "../database";
 
@@ -39,9 +39,9 @@ const getReloadInterval = (state, props, databases = []) => {
 };
 
 const mapStateToProps = (state, props) => ({
-  hasSampleDataset: Database.selectors.getHasSampleDataset(state),
-  isAddingSampleDataset: getIsAddingSampleDataset(state),
-  addSampleDatasetError: getAddSampleDatasetError(state),
+  hasSampleDatabase: Database.selectors.getHasSampleDatabase(state),
+  isAddingSampleDatabase: getIsAddingSampleDatabase(state),
+  addSampleDatabaseError: getAddSampleDatabaseError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -55,7 +55,7 @@ const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
-  addSampleDataset: addSampleDataset,
+  addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
 };
 
@@ -88,7 +88,7 @@ export default class DatabaseList extends Component {
 
   static propTypes = {
     databases: PropTypes.array,
-    hasSampleDataset: PropTypes.bool,
+    hasSampleDatabase: PropTypes.bool,
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
@@ -100,15 +100,15 @@ export default class DatabaseList extends Component {
   render() {
     const {
       databases,
-      hasSampleDataset,
-      isAddingSampleDataset,
-      addSampleDatasetError,
+      hasSampleDatabase,
+      isAddingSampleDatabase,
+      addSampleDatabaseError,
       engines,
       deletionError,
     } = this.props;
     const { isSyncingModalOpened } = this.state;
 
-    const error = deletionError || addSampleDatasetError;
+    const error = deletionError || addSampleDatabaseError;
 
     return (
       <div className="wrapper">
@@ -199,23 +199,23 @@ export default class DatabaseList extends Component {
               )}
             </tbody>
           </table>
-          {!hasSampleDataset ? (
+          {!hasSampleDatabase ? (
             <div className="pt4">
               <span
                 className={cx("p2 text-italic", {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                {isAddingSampleDataset ? (
+                {isAddingSampleDatabase ? (
                   <span className="text-light no-decoration">
-                    {t`Restoring the sample dataset...`}
+                    {t`Restoring the sample database...`}
                   </span>
                 ) : (
                   <a
                     className="text-light text-brand-hover no-decoration"
-                    onClick={() => this.props.addSampleDataset()}
+                    onClick={() => this.props.addSampleDatabase()}
                   >
-                    {t`Bring the sample dataset back`}
+                    {t`Bring the sample database back`}
                   </a>
                 )}
               </span>

@@ -1,7 +1,7 @@
 import { restore, filterWidget } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const filter = {
   name: "Location",
@@ -58,7 +58,11 @@ describe("issue 15689", () => {
     cy.findByText("AK").click();
     cy.findByText("CA").click();
 
-    cy.findByTestId("AK-filter-value").should("be.checked");
-    cy.findByTestId("CA-filter-value").should("be.checked");
+    cy.findByTestId("AK-filter-value").within(() =>
+      cy.findByRole("checkbox").should("be.checked"),
+    );
+    cy.findByTestId("CA-filter-value").within(() =>
+      cy.findByRole("checkbox").should("be.checked"),
+    );
   });
 });

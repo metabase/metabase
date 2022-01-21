@@ -1,4 +1,4 @@
-import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS, REVIEWS } from "__support__/sample_database_fixture";
 import Join from "metabase-lib/lib/queries/structured/Join";
 
 function getOrdersJoinQuery({

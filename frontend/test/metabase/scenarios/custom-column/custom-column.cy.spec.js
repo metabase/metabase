@@ -7,9 +7,9 @@ import {
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > custom column", () => {
   beforeEach(() => {
@@ -450,7 +450,7 @@ describe("scenarios > question > custom column", () => {
       .contains("MiscDate")
       .click();
     // The popover shows up with the default value selected - previous 30 days.
-    // Since we don't have any orders in the Sample Dataset for that period, we have to change it to the previous 30 years.
+    // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
     cy.findByText("Days").click();
     cy.findByText("Years").click();
     cy.button("Add filter").click();

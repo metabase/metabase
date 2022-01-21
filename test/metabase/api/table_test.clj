@@ -431,7 +431,7 @@
 
 (defn- default-card-field-for-venues [table-id]
   {:table_id                 table-id
-   :semantic_type             nil
+   :semantic_type            nil
    :default_dimension_option nil
    :dimension_options        []})
 

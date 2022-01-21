@@ -3,7 +3,7 @@ import React from "react";
 
 import { ModalFooter } from "metabase/components/ModalContent";
 import AdminContentTable from "metabase/components/AdminContentTable";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";

@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 

@@ -6,10 +6,10 @@ import {
   sidebar,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { admin } = USERS;
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describeWithToken("issue 18669", () => {
   beforeEach(() => {

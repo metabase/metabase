@@ -2,7 +2,7 @@
 import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import { t } from "ttag";
 
 const THEME_OPTIONS = [

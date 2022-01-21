@@ -7,7 +7,7 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
-  DimensionLabel,
+  DimensionSemanticTypeLabel,
   FieldFingerprintInfo,
 } from "./DimensionInfo.styled";
 
@@ -26,7 +26,7 @@ export function DimensionInfo({ className, dimension }) {
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <DimensionLabel dimension={dimension} />
+      <DimensionSemanticTypeLabel dimension={dimension} />
       <FieldFingerprintInfo field={field} />
     </InfoContainer>
   );

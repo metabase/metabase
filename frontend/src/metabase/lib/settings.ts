@@ -69,7 +69,7 @@ export type SettingName =
   | "ga-code"
   | "ga-enabled"
   | "google-auth-client-id"
-  | "has-sample-dataset?"
+  | "has-sample-database?"
   | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"

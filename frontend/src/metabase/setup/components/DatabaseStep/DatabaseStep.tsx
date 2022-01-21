@@ -75,7 +75,7 @@ const DatabaseStep = ({
     >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
+        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
       </StepDescription>
       <DatabaseForm
         database={database}
