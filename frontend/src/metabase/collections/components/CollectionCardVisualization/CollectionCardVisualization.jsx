@@ -17,7 +17,7 @@ import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
 const propTypes = {
   item: PropTypes.object.isRequired,
   collection: PropTypes.object.isRequired,
-  metadata: PropTypes.object.isRequired,
+  metadata: PropTypes.object,
   onCopy: PropTypes.func.isRequired,
   onMove: PropTypes.func.isRequired,
 };

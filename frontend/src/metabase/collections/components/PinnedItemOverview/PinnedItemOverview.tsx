@@ -6,6 +6,7 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 
@@ -15,6 +16,7 @@ type Props = {
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
+  onDrop: any;
 };
 
 function PinnedItemOverview({
@@ -23,6 +25,7 @@ function PinnedItemOverview({
   metadata,
   onCopy,
   onMove,
+  onDrop,
 }: Props) {
   const sortedItems = _.sortBy(items, item => item.name);
   const {
@@ -36,27 +39,43 @@ function PinnedItemOverview({
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <CollectionCardVisualization
+            <ItemDragSource
               key={item.id}
               item={item}
               collection={collection}
-              metadata={metadata}
-              onCopy={onCopy}
-              onMove={onMove}
-            />
+              onDrop={onDrop}
+            >
+              <div>
+                <CollectionCardVisualization
+                  item={item}
+                  collection={collection}
+                  metadata={metadata}
+                  onCopy={onCopy}
+                  onMove={onMove}
+                />
+              </div>
+            </ItemDragSource>
           ))}
         </Grid>
       )}
       {dashboardItems.length > 0 && (
         <Grid>
           {dashboardItems.map(item => (
-            <PinnedItemCard
+            <ItemDragSource
               key={item.id}
               item={item}
               collection={collection}
-              onCopy={onCopy}
-              onMove={onMove}
-            />
+              onDrop={onDrop}
+            >
+              <div>
+                <PinnedItemCard
+                  item={item}
+                  collection={collection}
+                  onCopy={onCopy}
+                  onMove={onMove}
+                />
+              </div>
+            </ItemDragSource>
           ))}
         </Grid>
       )}
@@ -72,13 +91,21 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <PinnedItemCard
+              <ItemDragSource
                 key={item.id}
                 item={item}
                 collection={collection}
-                onCopy={onCopy}
-                onMove={onMove}
-              />
+                onDrop={onDrop}
+              >
+                <div>
+                  <PinnedItemCard
+                    item={item}
+                    collection={collection}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </div>
+              </ItemDragSource>
             ))}
           </Grid>
         </div>
