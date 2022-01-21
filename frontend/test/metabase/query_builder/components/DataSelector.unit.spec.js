@@ -126,6 +126,7 @@ describe("DataSelector", () => {
     // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
+    rerender(<DataSelector {...props} loading />);
     getByText("Loading...");
 
     // select a db
@@ -300,6 +301,7 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
+        databases={[SAMPLE_DATABASE]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -315,6 +317,7 @@ describe("DataSelector", () => {
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
+        databases={[MULTI_SCHEMA_DATABASE]}
         triggerElement={<div />}
         metadata={metadata}
         isOpen={true}
@@ -386,6 +389,19 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Sample Database"));
     await delay(1);
     getByText("Orders");
+  });
+
+  it("shows an empty state without any databases", async () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[]}
+        triggerElement={<div />}
+        isOpen={true}
+      />,
+    );
+
+    getByText("To pick some data, you'll need to add some first");
   });
 });
 
