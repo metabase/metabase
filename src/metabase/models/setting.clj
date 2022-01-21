@@ -929,7 +929,7 @@
   (binding [*database-local-values* nil]
     (into
      {}
-     (comp (filter (fn [[_ setting]]
+     (comp (filter (fn [[_setting-name setting]]
                      (and (not (:sensitive? setting))
                           (allows-site-wide-values? setting)
                           (= (:visibility setting) visibility))))

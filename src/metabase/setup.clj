@@ -1,6 +1,7 @@
 (ns metabase.setup
   (:require [environ.core :as env]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
+            [metabase.models.user :refer [User]]
             [toucan.db :as db])
   (:import java.util.UUID))
 
@@ -25,12 +26,14 @@
   ;;
   ;; TODO -- 95% sure we can just use [[setup-token]] directly now and not worry about manually fetching the env var
   ;; value or setting DB values and the like
-  (let [mb-setup-token (env/env :mb-setup-token)]
-    (or (when mb-setup-token (setting/set-value-of-type! :string :setup-token mb-setup-token))
-        (db/select-one-field :value Setting :key "setup-token")
-        (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID))))))
+  (or (when-let [mb-setup-token (env/env :mb-setup-token)]
+        (setting/set-value-of-type! :string :setup-token mb-setup-token))
+      (db/select-one-field :value Setting :key "setup-token")
+      (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
-(defn clear-token!
-  "Clear the setup token if it exists and reset it to `nil`."
-  []
-  (setting/set-value-of-type! :string :setup-token nil))
+(defsetting has-user-setup
+  "A value that is true iff the metabase instance has one or more users registered."
+  :visibility :public
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (db/exists? User)))

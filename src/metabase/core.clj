@@ -45,10 +45,7 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- -init-create-setup-token
-  "Create and set a new setup token and log it."
-  []
-  (setup/create-token!)                 ; we need this here to create the initial token
+(defn print-setup-url []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
         setup-url (str "http://"
@@ -60,6 +57,12 @@
                                    "\n\n"
                                    setup-url
                                    "\n\n")))))
+
+(defn- -init-create-setup-token
+  "Create and set a new setup token and log it."
+  []
+  (setup/create-token!)   ; we need this here to create the initial token
+  (print-setup-url))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."

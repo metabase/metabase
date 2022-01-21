@@ -135,8 +135,6 @@
                  (setup-set-settings!
                   request
                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 ;; clear the setup token now, it's no longer needed
-                 (setup/clear-token!)
                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
