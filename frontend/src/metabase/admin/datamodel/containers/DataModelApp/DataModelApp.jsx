@@ -4,8 +4,11 @@ import { push } from "react-router-redux";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useToggle } from "metabase/hooks/use-toggle";
+
 import Radio from "metabase/components/Radio";
 
+import { ModelEducationalModal } from "./ModelEducationalModal";
 import { NavBar, ModelEducationButton } from "./DataModelApp.styled";
 
 const propTypes = {
@@ -27,6 +30,11 @@ const TAB = {
 };
 
 function DataModelApp({ children, onChangeTab, location: { pathname } }) {
+  const [
+    isModelEducationalModalShown,
+    { turnOn: showModelEducationalModal, turnOff: hideModelEducationalModal },
+  ] = useToggle(false);
+
   const currentTab = useMemo(() => {
     if (/\/segments?/.test(pathname)) {
       return TAB.SEGMENTS;
@@ -50,8 +58,14 @@ function DataModelApp({ children, onChangeTab, location: { pathname } }) {
           onChange={onChangeTab}
           variant="underlined"
         />
-        <ModelEducationButton>{t`Simplify your schema with Models`}</ModelEducationButton>
+        <ModelEducationButton
+          onClick={showModelEducationalModal}
+        >{t`Simplify your schema with Models`}</ModelEducationButton>
       </NavBar>
+      <ModelEducationalModal
+        isOpen={isModelEducationalModalShown}
+        onClose={hideModelEducationalModal}
+      />
       {children}
     </React.Fragment>
   );
