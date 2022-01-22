@@ -15,15 +15,15 @@
 
 ;; Normal flow is something like:
 ;;
-;;    [middleware] → preprocessedf → nativef → runf → executef → reducef → reducedf -\
-;;        ↓                                                                           ↦ resultf → out-chan
-;;    [Exception]  → raisef ---------------------------------------------------------/               ↑
-;;        ↑                                                                                          |
-;;     timeoutf                                                                                      |
-;;        ↑                                                                                          |
-;;    [time out]              [out-chan closed early]                                                |
-;;                                      ↓                                                   [closes] |
-;;                                 canceled-chan ----------------------------------------------------/
+;;    [middleware] → runf → executef → reducef → reducedf -\
+;;        ↓                                                 ↦ resultf → out-chan
+;;    [Exception]  → raisef -------------------------------/               ↑
+;;        ↑                                                                |
+;;     timeoutf                                                            |
+;;        ↑                                                                |
+;;    [time out]              [out-chan closed early]                      |
+;;                                      ↓                         [closes] |
+;;                                 canceled-chan --------------------------/
 ;;                                      ↑
 ;;                       [message sent to canceled chan]
 ;;
@@ -76,20 +76,6 @@
   {:pre [(fn? reducedf*)]}
   (reducedf* metadata reduced-rows context))
 
-(defn ^:deprecated preprocessedf
-  "Called when query is fully preprocessed."
-  {:arglsts '([query context])}
-  [query {preprocessedf* :preprocessedf, :as context}]
-  {:pre [(fn? preprocessedf*)], :post [(map? %)]}
-  (preprocessedf* query context))
-
-(defn ^:deprecated nativef
-  "Called when query is convert to native."
-  {:arglists '([query context])}
-  [query {nativef* :nativef, :as context}]
-  {:pre [(fn? nativef*)]}
-  (nativef* query context))
-
 (defn timeoutf
   "Call this function when a query times out."
   {:arglists '([context])}
@@ -111,7 +97,7 @@
   {:pre [(int? timeout*)]}
   timeout*)
 
-(defn ^:deprecated rff
+(defn rff
   "Reducing function.
 
     (rff metadata) -> rf"

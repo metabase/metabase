@@ -178,6 +178,7 @@
                   rows    [[(t/instant "2011-04-18T10:12:47.232Z")
                             (t/local-date 2011 4 18)
                             (t/offset-date-time "2011-04-18T10:12:47.232Z")]]
-                  results (mt/test-qp-middleware format-rows/format-rows query rows)]
+                  rff     (format-rows/format-rows query (constantly conj))
+                  results (transduce identity (rff nil) rows)]
               (is (= expected-rows
-                     (:post results))))))))))
+                     results)))))))))

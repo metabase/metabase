@@ -657,7 +657,7 @@
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [{query-type :type, {:keys [:metadata/dataset-metadata]} :info, :as query} rff]
+  [{query-type :type, {:metadata/keys [dataset-metadata]} :info, :as query} rff]
   (fn [metadata]
     (if (= query-type :query)
       (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))

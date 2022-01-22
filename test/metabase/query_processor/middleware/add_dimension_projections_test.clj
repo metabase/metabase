@@ -4,7 +4,8 @@
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [toucan.hydrate :as hydrate]))
+            [toucan.hydrate :as hydrate]
+            [metabase.query-processor.context.default :as context.default]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -165,7 +166,10 @@
    :semantic_type   nil})
 
 (defn- add-remapping [query metadata rows]
-  (:result (mt/test-qp-middleware add-dim-projections/add-remapping query metadata rows)))
+  (let [query (add-dim-projections/add-remapping-pre query)
+        rff   (add-dim-projections/add-remapping-post query context.default/default-rff)
+        rf    (rff metadata)]
+    (transduce identity rf rows)))
 
 (def ^:private example-result-cols-category
   (merge
@@ -297,8 +301,8 @@
                 :let          [query (mt/nest-query query nesting-level)]]
           (testing (format "nesting level = %d" nesting-level)
             (mt/with-column-remappings [orders.product_id products.title]
-              (is (= (update-in
-                      query
-                      (concat [:query] (repeat nesting-level :source-query) [:fields])
-                      concat [(mt/$ids orders $product_id->products.title)])
-                     (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))))))))
+              (is (partial= (update-in
+                             query
+                             (concat [:query] (repeat nesting-level :source-query) [:fields])
+                             concat [(mt/$ids orders $product_id->products.title)])
+                            (add-dim-projections/add-remapping-pre query))))))))))

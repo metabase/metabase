@@ -24,8 +24,14 @@
       (mt/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
           (mt/with-database-timezone-id nil
-            (is (= {:data      expected
-                    :row_count 0
-                    :status    :completed}
-                   (-> (mt/test-qp-middleware add-timezone-info/add-timezone-info {} {} [])
-                       :metadata)))))))))
+            (let [rff     (fn [_metadata]
+                            (fn
+                              ([]            {})
+                              ([result]      result)
+                              ([result _row] result)))
+                  rff     (add-timezone-info/add-timezone-info nil rff)
+                  results (transduce identity (rff {}) [])]
+              (is (= {:data      expected
+                      :row_count 0
+                      :status    :completed}
+                     results)))))))))

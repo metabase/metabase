@@ -28,50 +28,6 @@
         (a/close! canceled-chan)))
     nil))
 
-(defn ^:deprecated pivot
-  "The initial value of `qp` passed to QP middleware."
-  [query rff context]
-  (context/runf query rff context))
-
-(defn ^:deprecated combine-middleware
-  "Combine a collection of QP middleware into a single QP function. The QP function, like the middleware, will have the
-  signature:
-
-    (qp query rff context)"
-  [middleware]
-  (reduce
-   (fn [qp middleware]
-     (if (some? middleware)
-       (middleware qp)
-       qp))
-   pivot
-   middleware))
-
-(defn ^:deprecated quit
-  "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
-  Similar in concept to using `reduced` to stip reduction early.
-
-    (context/raisef (qp.reducible/quit :my-result) context)"
-  [result]
-  (log/trace "Quitting query processing early.")
-  (ex-info "Quit early!" {::quit-result result}))
-
-(defn ^:deprecated quit-result
-  "If `e` is an Exception created by `quit`, get the result; otherwise, return `nil`,"
-  [e]
-  (::quit-result (ex-data e)))
-
-(defn- ^:deprecated quittable-out-chan
-  "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a [[quit-result]] automatically."
-  [out-chan]
-  (let [out-chan* (a/promise-chan (map (fn [result]
-                                         (or (quit-result result)
-                                             result)))
-                                  (fn [e]
-                                    (a/>!! out-chan e)))]
-    (async.u/promise-pipe out-chan out-chan*)
-    out-chan*))
-
 (def ^:dynamic *run-on-separate-thread?*
   "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with [[async-qp]]), this is
   normally `true`, meaning the `out-chan` is returned immediately. When running a query synchronously (i.e., with
@@ -93,7 +49,7 @@
   [qp]
   (fn async-qp*
     ([query]
-     (async-qp* query nil))
+     (async-qp* query nil nil))
 
     ([query context]
      (async-qp* query nil context))
@@ -101,7 +57,9 @@
     ([query rff context]
      {:pre [(map? query) ((some-fn nil? map?) context)]}
      (let [context (merge (context.default/default-context) context)
-           rff     (or rff context.default/default-rff)]
+           rff     (or rff
+                       (:rff context)
+                       context.default/default-rff)]
        (wire-up-context-channels! context)
        (let [thunk (fn [] (try
                             (qp query rff context)
@@ -111,9 +69,9 @@
          (if *run-on-separate-thread?*
            (future (thunk))
            (thunk)))
-       (quittable-out-chan (context/out-chan context))))))
+       (context/out-chan context)))))
 
-(defn- ^:deprecated wait-for-async-result [out-chan]
+(defn- wait-for-async-result [out-chan]
   {:pre [(async.u/promise-chan? out-chan)]}
   ;; TODO - consider whether we should have another timeout here as well
   (let [result (a/<!! out-chan)]
@@ -121,21 +79,18 @@
       (throw result)
       result)))
 
-(defn sync-qp [qp]
-  (fn sync-qp*
-    ([query]
-     (sync-qp* query nil nil))
+(defn sync-qp
+  "Wraps a QP function created by [[async-qp]] into one that synchronously waits for query results and rethrows any
+  Exceptions thrown. Resulting QP has the signatures
 
-    ([query context]
-     (sync-qp* query nil context))
-
-    ([query rff context]
-     (let [rff     (or rff
-                       (:rff context)
-                       context.default/default-rff)
-           context (merge (context.default/default-context)
-                          context)]
-       (qp query rff context)))))
+    (qp query)
+    (qp query context)"
+  [an-async-qp]
+  {:pre [(fn? an-async-qp)]}
+  (fn sync-qp* [& args]
+    (wait-for-async-result
+     (binding [*run-on-separate-thread?* false]
+       (apply an-async-qp args)))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------

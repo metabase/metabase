@@ -109,5 +109,5 @@
                   (not (get-in form [:source-query :native])))
            (upgrade-field-literals-one-level form)
            form))
-       (resolve-fields/resolve-fields* query))
-      resolve-fields/resolve-fields*))
+       (resolve-fields/resolve-fields query))
+      resolve-fields/resolve-fields))

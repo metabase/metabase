@@ -1,10 +1,18 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require [clojure.test :refer :all]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test :as mt]))
+            [metabase.test :as mt]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.context.default :as context.default]))
 
 (defn- add-default-userland-constraints [query]
-  (:pre (mt/test-qp-middleware constraints/add-default-userland-constraints query)))
+  (let [qp (-> (fn [query _rff context]
+                 (context/resultf query context))
+               constraints/add-default-userland-constraints
+               qp.reducible/async-qp
+               qp.reducible/sync-qp)]
+    (qp query context.default/default-rff (context.default/default-context))))
 
 (deftest no-op-without-middleware-options-test
   (testing "don't do anything to queries without [:middleware :add-default-userland-constraints?] set"

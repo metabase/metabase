@@ -105,7 +105,7 @@
                (catch Throwable e
                  (throw (ex-info (tru "Error pre-processing query in middleware {0}: {1}" (pr-str middleware) (ex-message e))
                                  {:middleware (pr-str middleware)
-                                  :type       (:type (ex-data e) qp.error-type/qp)
+                                  :type       (:type (ex-data e) error-type/qp)
                                   :query      query}
                                  e))))))
          query

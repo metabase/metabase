@@ -8,8 +8,7 @@
 
 (defn- upgrade-field-literals [query]
   (mt/with-everything-store
-    (-> (mt/test-qp-middleware upgrade-field-literals/upgrade-field-literals query)
-        :pre)))
+    (upgrade-field-literals/upgrade-field-literals query)))
 
 (deftest dont-replace-aggregations-test
   (testing "Don't replace field-literals forms with aggregation references"

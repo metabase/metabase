@@ -241,7 +241,7 @@
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
     (with-redefs [fingerprint/fingerprint-table! (fn [_ _] (throw (Exception. "expected")))]
-      (is (= (fingerprint/empty-stats-map 0)
+      (is (= (#'fingerprint/empty-stats-map 0)
              (fingerprint/fingerprint-fields! (Table (data/id :venues))))))))
 
 (deftest test-fingerprint-skipped-for-ga
@@ -249,7 +249,7 @@
     (let [fake-db (-> (data/db)
                       (assoc :engine :googleanalytics))]
       (with-redefs [fingerprint/fingerprint-table! (fn [_] (throw (Exception. "this should not be called!")))]
-        (is (= (fingerprint/empty-stats-map 0)
+        (is (= (#'fingerprint/empty-stats-map 0)
                (fingerprint/fingerprint-fields-for-db! fake-db [(Table (data/id :venues))] (fn [_ _]))))))))
 
 (deftest fingerprint-test

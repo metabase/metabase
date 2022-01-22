@@ -131,6 +131,17 @@
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
+(defn add-remapping-pre
+  "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
+  [[add-fk-remaps]] for making remapping changes to the query (before executing the query). Then delegates
+  to [[add-remapping-post]] to munge the results after query execution."
+  [{query-type :type, :as query, {:keys [disable-remaps?]} :middleware}]
+  (if (or (= query-type :native)
+          disable-remaps?)
+    query
+    (let [[remapping-dimensions query'] (add-fk-remaps query)]
+      (assoc query' ::remaps remapping-dimensions))))
+
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
@@ -301,20 +312,9 @@
           metadata           (add-remapped-cols metadata remapping-dimensions internal-cols-info)]
       (remap-results-xform internal-cols-info (rff metadata)))))
 
-(defn add-remapping-pre
-  "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
-  [[add-fk-remaps]] for making remapping changes to the query (before executing the query). Then delegates
-  to [[add-remapping-post]] to munge the results after query execution."
-  [{query-type :type, :as query, {:keys [disable-remaps?], :or {disable-remaps? false}} :middleware}]
-  (if (or (= query-type :native)
-          disable-remaps?)
-    query
-    (let [[remapping-dimensions query'] (add-fk-remaps query)]
-      (assoc query ::remaps remapping-dimensions))))
-
 (defn add-remapping-post
   "Transform query results based on the remappings added by [[add-remapping-pre]]."
-  [{::keys [remapping-dimensions]} rff]
-  (if (seq remapping-dimensions)
-    (remap-results-rff remapping-dimensions rff)
-    rff))
+  [{::keys [remaps], {:keys [disable-remaps?]} :middleware} rff]
+  (if disable-remaps?
+    rff
+    (remap-results-rff remaps rff)))

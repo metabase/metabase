@@ -10,7 +10,14 @@
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util.log :as tu.log]
-            [schema.core :as s]))
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.query-processor.context.default :as context.default]
+            [schema.core :as s]
+            [medley.core :as m]))
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-log-level :fatal
+                        (thunk))))
 
 (deftest exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
@@ -49,103 +56,97 @@
                                   (for [cause causes]
                                     (update cause :stacktrace sequential?)))))))))))
 
-
 (defn- catch-exceptions
-  ([run]
-   (catch-exceptions run {}))
+  ([thunk]
+   (catch-exceptions thunk {}))
 
-  ([run query]
-   (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions query {} [] {:run run}))))
+  ([thunk query]
+   (let [qp (-> (fn [_query rff context]
+                  (thunk)
+                  (context/reducef rff context {} []))
+                catch-exceptions/catch-exceptions
+                qp.reducible/async-qp
+                qp.reducible/sync-qp)]
+     (-> (qp query context.default/default-rff (context.default/default-context))
+         (update :data dissoc :rows)))))
 
 (deftest no-exception-test
   (testing "No Exception -- should return response as-is"
     (is (= {:data {}, :row_count 0, :status :completed}
-           (catch-exceptions
-            (fn []))))))
+           (catch-exceptions (fn []))))))
 
 (deftest sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"
-    (tu.log/suppress-output
-      (is (= {:status     :failed
-              :class      java.lang.Exception
-              :error      "Something went wrong"
-              :stacktrace true
-              :json_query {}
-              :row_count  0
-              :data       {:cols []}}
-             (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
-                 (update :stacktrace boolean)))))))
+    (is (= {:status     :failed
+            :class      java.lang.Exception
+            :error      "Something went wrong"
+            :stacktrace true
+            :json_query {}
+            :row_count  0
+            :data       {:cols []}}
+           (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
+               (update :stacktrace boolean))))))
 
 (deftest async-exception-test
   (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
-    (tu.log/suppress-output
-      (is (= {:status     :failed
-              :class      java.lang.Exception
-              :error      "Something went wrong"
-              :stacktrace true
-              :json_query {}
-              :row_count  0
-              :data       {:cols []}}
-             (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                        {} {} []
-                                        {:runf (fn [_ _ context]
-                                                 (context/raisef (Exception. "Something went wrong") context))})
-                 :metadata
-                 (update :stacktrace boolean)))))))
+    (is (= {:status     :failed
+            :class      java.lang.Exception
+            :error      "Something went wrong"
+            :stacktrace true
+            :json_query {}
+            :row_count  0
+            :data       {:cols []}}
+           (-> (catch-exceptions
+                (fn [] (throw (Exception. "Something went wrong"))))
+               (update :stacktrace boolean))))))
 
 (deftest include-query-execution-info-test
   (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
-    (tu.log/suppress-output
-      (is (= {:status     :failed
-              :class      java.lang.Exception
-              :error      "Something went wrong"
-              :stacktrace true
-              :card_id    300
-              :json_query {}
-              :row_count  0
-              :data       {:cols []}
-              :a          100
-              :b          200}
-             (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
-                                        {} {} []
-                                        {:runf (fn [_ _ context]
-                                                 (context/raisef (ex-info "Something went wrong."
-                                                                   {:query-execution {:a            100
-                                                                                      :b            200
-                                                                                      :card_id      300
-                                                                                      ;; these keys should all get removed
-                                                                                      :result_rows  400
-                                                                                      :hash         500
-                                                                                      :executor_id  500
-                                                                                      :dashboard_id 700
-                                                                                      :pulse_id     800
-                                                                                      :native       900}}
-                                                                   (Exception. "Something went wrong"))
-                                                                 context))})
-                 :metadata
-                 (update :stacktrace boolean)))))))
+    (is (= {:status     :failed
+            :class      java.lang.Exception
+            :error      "Something went wrong"
+            :stacktrace true
+            :card_id    300
+            :json_query {}
+            :row_count  0
+            :data       {:cols []}
+            :a          100
+            :b          200}
+           (-> (catch-exceptions
+                (fn []
+                  (throw (ex-info "Something went wrong."
+                                  {:query-execution {:a            100
+                                                     :b            200
+                                                     :card_id      300
+                                                     ;; these keys should all get removed
+                                                     :result_rows  400
+                                                     :hash         500
+                                                     :executor_id  500
+                                                     :dashboard_id 700
+                                                     :pulse_id     800
+                                                     :native       900}}
+                                  (Exception. "Something went wrong")))))
+               (update :stacktrace boolean))))))
 
 (deftest permissions-test
-  (data/with-temp-copy-of-db
-    (perms/revoke-data-perms! (group/all-users) (data/id))
-    (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
+  (mt/with-temp-copy-of-db
+    (perms/revoke-data-perms! (group/all-users) (mt/id))
+    (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")
-      (is (schema= {:native (s/eq nil), :preprocessed (s/pred map?), s/Any s/Any}
-                   (mt/suppress-output
-                     (test-users/with-test-user :rasta
-                       (qp/process-userland-query
-                        (data/mbql-query venues {:fields [!month.id]})))))))
+      (test-users/with-test-user :rasta
+        (is (schema= {:native (s/eq nil), :preprocessed (s/pred map?), s/Any s/Any}
+                     (qp/process-userland-query
+                      (mt/mbql-query venues {:fields [!month.id]}))))))
 
     (testing "They should see it if they have ad-hoc native query perms"
-      (perms/grant-native-readwrite-permissions! (group/all-users) (data/id))
-      ;; this is not actually a valid query
-      (is (schema= {:native       (s/eq {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') "
-                                                      "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
-                                         :params nil})
-                    :preprocessed (s/pred map?)
-                    s/Any         s/Any}
-                   (mt/suppress-output
-                     (test-users/with-test-user :rasta
-                       (qp/process-userland-query
-                        (data/mbql-query venues {:fields [!month.id]})))))))))
+      (perms/grant-native-readwrite-permissions! (group/all-users) (mt/id))
+      (test-users/with-test-user :rasta
+        ;; this is not actually a valid query
+        (is (schema= {:native       (s/eq {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') "
+                                                        "AS \"ID\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                                           :params nil})
+                      :preprocessed (s/pred map?)
+                      s/Any         s/Any}
+                     (qp/process-userland-query
+                      (mt/mbql-query venues {:fields [!month.id]}))))))))

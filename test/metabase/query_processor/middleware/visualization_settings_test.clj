@@ -10,12 +10,12 @@
   ([query] (update-viz-settings query true))
   ([query remove-global?]
    (mt/with-everything-store
-     (cond-> (-> (mt/test-qp-middleware viz-settings/update-viz-settings query)
-                 :metadata
-                 :data
-                 :viz-settings)
-       remove-global?
-       (dissoc ::mb.viz/global-column-settings)))))
+     (let [query (viz-settings/update-viz-settings-pre query)
+           rff   (viz-settings/update-viz-settings-post query constantly)]
+       (cond-> (-> (transduce identity (rff nil) [1 2 3])
+                   :viz-settings)
+         remove-global?
+         (dissoc ::mb.viz/global-column-settings))))))
 
 (defn- field-id->db-column-ref
   [field-id]
@@ -26,43 +26,43 @@
   (let [column-ref-1 (field-id->db-column-ref field-id-1)
         column-ref-2 (field-id->db-column-ref field-id-2)]
     {:column_settings
-     {column-ref-1 {:column_title "Price",
-                    :number_style "currency",
-                    :currency_style "code",
-                    :currency "EUR",
-                    :currency_in_header false},
-      column-ref-2 {:column_title "Rating",
-                    :show_mini_bar true,
-                    :number_separators ",.",
-                    :number_style "percent",
-                    :decimals 2,
-                    :suffix " happiness"}}}))
+     {column-ref-1 {:column_title       "Price"
+                    :number_style       "currency"
+                    :currency_style     "code"
+                    :currency           "EUR"
+                    :currency_in_header false}
+      column-ref-2 {:column_title      "Rating"
+                    :show_mini_bar     true
+                    :number_separators ",."
+                    :number_style      "percent"
+                    :decimals          2
+                    :suffix            " happiness"}}}))
 
 (defn- processed-viz-settings
   [field-id-1 field-id-2]
   {::mb.viz/column-settings
    {{::mb.viz/field-id field-id-1}
-    {::mb.viz/column-title "Price",
-     ::mb.viz/number-style "currency",
-     ::mb.viz/currency-style "code",
-     ::mb.viz/currency "EUR",
+    {::mb.viz/column-title       "Price"
+     ::mb.viz/number-style       "currency"
+     ::mb.viz/currency-style     "code"
+     ::mb.viz/currency           "EUR"
      ::mb.viz/currency-in-header false}
     {::mb.viz/field-id field-id-2}
-    {::mb.viz/column-title "Rating",
-     ::mb.viz/show-mini-bar true,
-     ::mb.viz/number-separators ",.",
-     ::mb.viz/number-style "percent",
-     ::mb.viz/decimals 2,
-     ::mb.viz/suffix " happiness"}}})
+    {::mb.viz/column-title      "Rating"
+     ::mb.viz/show-mini-bar     true
+     ::mb.viz/number-separators ",."
+     ::mb.viz/number-style      "percent"
+     ::mb.viz/decimals          2
+     ::mb.viz/suffix            " happiness"}}})
 
 (defn- test-query
   ([field-ids card-id viz-settings]
    (test-query field-ids card-id viz-settings :query))
 
   ([field-ids card-id viz-settings query-type]
-   (let [query {:type query-type
-                :query {:fields (into [] (map #(vector :field % nil) field-ids))}
-                :middleware {:process-viz-settings? true}}
+   (let [query  {:type       query-type
+                 :query      {:fields (into [] (map #(vector :field % nil) field-ids))}
+                 :middleware {:process-viz-settings? true}}
          query' (if card-id
                   (assoc-in query [:info :card-id] card-id)
                   query)]
@@ -111,8 +111,8 @@
 
 (def ^:private test-native-query-viz-settings
   {::mb.viz/column-settings
-   {{::mb.viz/column-name "ID"} {},
-    {::mb.viz/column-name "TAX"} {::mb.viz/column-title "Tax" ::mb.viz/number-style "currency"},
+   {{::mb.viz/column-name "ID"}       {}
+    {::mb.viz/column-name "TAX"}      {::mb.viz/column-title "Tax" ::mb.viz/number-style "currency"}
     {::mb.viz/column-name "SUBTOTAL"} {::mb.viz/column-title "Subtotal" ::mb.viz/number-style "currency" ::mb.viz/decimals 2}}})
 
 (deftest native-query-viz-settings-test
@@ -129,6 +129,6 @@
             result   (update-viz-settings query false)
             expected (assoc (processed-viz-settings field-id-1 field-id-2)
                             ::mb.viz/global-column-settings
-                            #:type{:Number {::mb.viz/number_separators ".,"}
-                                   :Currency {::mb.viz/currency "BIF"
+                            #:type{:Number   {::mb.viz/number_separators ".,"}
+                                   :Currency {::mb.viz/currency       "BIF"
                                               ::mb.viz/currency_style "code"}})]))))

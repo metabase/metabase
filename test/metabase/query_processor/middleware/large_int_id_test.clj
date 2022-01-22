@@ -107,12 +107,10 @@
                   [(lazy-seq [1])
                    (lazy-seq [Integer/MAX_VALUE])]]]
       (testing (format "rows = ^%s %s" (.getCanonicalName (class rows)) (pr-str rows))
-        (is (= [["1"]
-                ["2147483647"]]
-               (:post
-                (mt/test-qp-middleware
-                 large-int-id/convert-id-to-string
-                 {:type       :query
-                  :query      {:fields [[:field (mt/id :venues :id) nil]]}
-                  :middleware {:js-int-to-string? true}}
-                 rows))))))))
+        (let [query {:type       :query
+                     :query      {:fields [[:field (mt/id :venues :id) nil]]}
+                     :middleware {:js-int-to-string? true}}
+              rff   (large-int-id/convert-id-to-string query (constantly conj))]
+          (is (= [["1"]
+                  ["2147483647"]]
+                 (transduce identity (rff nil) rows))))))))

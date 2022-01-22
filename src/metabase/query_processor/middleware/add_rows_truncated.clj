@@ -1,10 +1,18 @@
 (ns metabase.query-processor.middleware.add-rows-truncated
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
   (:require [metabase.query-processor.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.middleware.limit :as limit]))
 
-(defn- results-limit [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
-  (or (when (qputil/query-without-aggregations-or-limits? query)
+(defn- results-limit
+  [{{:keys [max-results max-results-bare-rows]} :constraints
+    inner-query                                 :query
+    :as                                         query}]
+  ;; we want to consider the ORIGINAL limit the query was ran with rather than anything added by the
+  ;; [[limit/add-default-limit]] middleware
+  (or (when (qputil/query-without-aggregations-or-limits? (cond-> query
+                                                            (contains? inner-query ::limit/original-limit)
+                                                            (assoc-in [:query :limit] (::limit/original-limit inner-query))))
         max-results-bare-rows)
       max-results
       i/absolute-max-results))

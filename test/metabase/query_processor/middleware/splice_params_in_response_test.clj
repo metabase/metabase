@@ -20,9 +20,10 @@
 (defn- splice-params [metadata]
   (with-splice-params-call?
     (driver/with-driver :h2
-      (-> (mt/test-qp-middleware
-           splice-params-in-response/splice-params-in-response
-           {} metadata [])
+      (let [rff (splice-params-in-response/splice-params-in-response nil constantly)
+            rf  (rff metadata)]
+        (transduce identity rf []))
+      #_(->
           :metadata
           :data))))
 
@@ -41,28 +42,26 @@
 ;; for actual tests, so since these are related to the middleware tests above, they will live here for now)
 
 (defn- sushi-query []
-  {:database (data/id)
-   :type     :query
-   :query    {:source-table (data/id :venues)
-              :fields       [[:field-id (data/id :venues :id)]]
-              :filter       [:= [:field-id (data/id :venues :name)] "Beyond Sushi"]
-              :limit 1}})
+  (mt/mbql-query venues
+    {:fields [$id]
+     :filter [:= $name "Beyond Sushi"]
+     :limit  1}))
 
 (deftest query->native-with-spliced-params
   (testing "`qp/query->native-with-spliced-params`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
-      (is (= '(splice-parameters-into-native-query
-               :h2
-               {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-                :params ["Beyond Sushi"]})
-             (qp/query->native-with-spliced-params (sushi-query)))))))
+      (is (partial= '(splice-parameters-into-native-query
+                      :h2
+                      {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                       :params ["Beyond Sushi"]})
+                    (qp/query->native-with-spliced-params (sushi-query)))))))
 
 (deftest query->native-test
   (testing "`query->native` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
-      (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
-              :params ["Beyond Sushi"]}
-             (qp/query->native (sushi-query)))))))
+      (is (partial= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                     :params ["Beyond Sushi"]}
+                    (qp/query->native (sushi-query)))))))
 
 (deftest e2e-test
   (testing (str "`splice-parameters-into-native-query` should get called on the `:native_form` returned in query "

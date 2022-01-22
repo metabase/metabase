@@ -10,7 +10,7 @@
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
-    (:pre (mt/test-qp-middleware pre-alias-aggregations/pre-alias-aggregations query))))
+    (pre-alias-aggregations/pre-alias-aggregations query)))
 
 (deftest pre-alias-aggregations-test
   (is (= (data/mbql-query checkins

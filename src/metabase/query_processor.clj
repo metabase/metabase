@@ -22,7 +22,10 @@
             [metabase.query-processor.process-common :as process-common]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
-            [schema.core :as s]))
+            [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.error-type :as qp.error-type]))
 
 (u/ignore-exceptions
   (classloader/require 'metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
@@ -36,8 +39,13 @@
   [query]
   (preprocess/query->expected-cols query))
 
-(defn- ^:deprecated query->native [query]
+(defn ^:deprecated query->native [query]
   (compile/compile query))
+
+(defn ^:deprecated query->native-with-spliced-params [query]
+  (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
+  (println "(pr-str (compile/compile-and-splice-params query)):" (pr-str (compile/compile-and-splice-params query))) ; NOCOMMIT
+  (:native (compile/compile-and-splice-params query)))
 
 (defmulti process-query*
   {:arglists '([query rff context])}
@@ -49,19 +57,9 @@
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  ([query]
-   (process-query* query nil nil))
-
-  ([query context]
-   (process-query* query nil context))
-
-  ([query rff context]
-   (let [rff (or rff
-                 (:rff context)
-                 context.default/default-rff)
-         context (merge (context.default/default-context)
-                        context)]
-     (process-query* query rff context))))
+  ([query]             (process-query* query nil nil))
+  ([query context]     (process-query* query nil context))
+  ([query rff context] (process-query* query rff context)))
 
 (defn- execute* [query rff context]
   (log/tracef "Query:\n%s" (u/pprint-to-str query))
@@ -71,15 +69,7 @@
           native       (compile/compile-preprocessed preprocessed)
           rff          (postprocess/post-processing-xform preprocessed rff)]
       (log/tracef "Compiled:\n%s" (u/pprint-to-str native))
-      (driver/execute-reducible-query
-       driver/*driver*
-       native
-       context
-       (fn respond
-         [metadata rows]
-         (let [rf (rff metadata)]
-           (transduce identity rf rows))))
-      #_(context/runf native rff context))))
+      (context/runf native rff context))))
 
 (def ^:private execution-middleware
   [#'cache/maybe-return-cached-results
@@ -87,15 +77,19 @@
    #'perms/check-query-permissions
    #'results-metadata/record-and-return-metadata!])
 
-(defn- base-qp
-  [query rff context]
-  (let [qp (reduce
-            (fn [qp middleware]
-              (if middleware
-                (middleware qp)
-                qp))
-            execute*
-            execution-middleware)]
+(defn- base-qp [query rff context]
+  (let [rff     (or rff
+                    (:rff context)
+                    (context.default/default-rff))
+        context (merge (context.default/default-context)
+                       context)
+        qp      (reduce
+                 (fn [qp middleware]
+                   (if middleware
+                     (middleware qp)
+                     qp))
+                 execute*
+                 execution-middleware)]
     (qp query rff context)))
 
 (def ^{:arglists '([query] [query context] [query rff context])} process-query-async
@@ -104,7 +98,7 @@
 
 (def ^{:arglists '([query] [query context] [query rff context])} process-query-sync
   "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
-  (qp.reducible/sync-qp base-qp))
+  (qp.reducible/sync-qp process-query-async))
 
 (defmethod process-query* :default
   [{:keys [async?], :as query} rff context]
@@ -132,10 +126,18 @@
   (let [qp (reduce
             (fn [qp middleware]
               (if middleware
-                (middleware qp)
+                (try
+                  (middleware qp)
+                  (catch Throwable e
+                    (throw (ex-info (tru "Error applying userland query processor middleware {0}: {1}"
+                                         (pr-str middleware)
+                                         (ex-message e))
+                                    {:middleware (pr-str middleware)
+                                     :type       (:type (ex-data e) qp.error-type/qp)}
+                                    e))))
                 qp))
-            userland-middleware
-            base-qp)]
+            base-qp
+            userland-middleware)]
     (qp query rff context)))
 
 (def ^{:arglists '([query] [query rff context] [query context])} process-userland-query-async
@@ -144,7 +146,7 @@
 
 (def ^{:arglists '([query] [query rff context] [query context])} process-userland-query-sync
   "Like `process-query-sync`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  (qp.reducible/sync-qp userland-base-qp))
+  (qp.reducible/sync-qp process-userland-query-async))
 
 (defn process-userland-query
   "Like `process-query`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."

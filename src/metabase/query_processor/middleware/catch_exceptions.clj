@@ -116,30 +116,35 @@
 
 (defn- query-info
   "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed native]}]
+  [{query-type :type, :as query}]
   (merge
    {:json_query (dissoc query :info :driver)}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
-     {:preprocessed preprocessed
-      :native       (when (perms/current-user-has-adhoc-native-query-perms? query)
-                      native)})))
+     (let [preprocessed (u/ignore-exceptions
+                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query))
+           native       (when (and preprocessed
+                                   (perms/current-user-has-adhoc-native-query-perms? query))
+                          (u/ignore-exceptions
+                            ((requiring-resolve 'metabase.query-processor.compile/compile-preprocessed) preprocessed)))]
+       {:preprocessed preprocessed
+        :native       (:native native)}))))
 
 (defn- query-execution-info [query-execution]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
 (defn- format-exception*
   "Format a `Throwable` into the usual userland error-response format."
-  [query ^Throwable e extra-info]
+  [query ^Throwable e]
   (try
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
-             (format-exception* query (.getCause e) extra-info))
+             (format-exception* query (.getCause e)))
       (merge
        {:data {:rows [], :cols []}, :row_count 0}
        (exception-response e)
-       (query-info query extra-info)))
+       (query-info query)))
     (catch Throwable e
       e)))
 
@@ -147,28 +152,14 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
-    (let [extra-info (atom nil)]
-      (letfn [(preprocessedf* [query context]
-                (swap! extra-info assoc :preprocessed query)
-                (preprocessedf query context))
-              (nativef* [query context]
-                (swap! extra-info assoc :native query)
-                (nativef query context))
-              (raisef* [e context]
-               ;; if the exception is the special quit-result exception, forward this to our parent `raisef` exception
-               ;; handler, which has logic for handling that case
-                (if (qp.reducible/quit-result e)
-                  (raisef e context)
-                  ;; otherwise format the Exception and return it
-                  (let [formatted-exception (format-exception* query e @extra-info)]
-                    (log/error (str (trs "Error processing query: {0}" (:error format-exception))
-                                    "\n" (u/pprint-to-str formatted-exception)))
-                    (context/resultf formatted-exception context))))]
-        (try
-          (qp query rff (assoc context
-                                  :preprocessedf preprocessedf*
-                                  :nativef nativef*
-                                  :raisef raisef*))
-          (catch Throwable e
-            (raisef* e context)))))))
+  (fn [query rff {:keys [raisef], :as context}]
+    (letfn [(raisef* [e context]
+              ;; format the Exception and return it
+              (let [formatted-exception (format-exception* query e)]
+                (log/error (str (trs "Error processing query: {0}" (:error format-exception))
+                                "\n" (u/pprint-to-str formatted-exception)))
+                (context/resultf formatted-exception context)))]
+      (try
+        (qp query rff (assoc context :raisef raisef*))
+        (catch Throwable e
+          (raisef* e context))))))

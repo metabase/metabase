@@ -29,9 +29,15 @@
     :fingerprint_version i/latest-fingerprint-version
     :last_analyzed       nil))
 
-(defn empty-stats-map
+(def ^:private FingerprintStats
+  {:no-data-fingerprints   su/IntGreaterThanOrEqualToZero
+   :failed-fingerprints    su/IntGreaterThanOrEqualToZero
+   :updated-fingerprints   su/IntGreaterThanOrEqualToZero
+   :fingerprints-attempted su/IntGreaterThanOrEqualToZero})
+
+(s/defn ^:private empty-stats-map :- FingerprintStats
   "The default stats before any fingerprints happen"
-  [fields-count]
+  [fields-count :- su/IntGreaterThanOrEqualToZero]
   {:no-data-fingerprints   0
    :failed-fingerprints    0
    :updated-fingerprints   0
@@ -43,8 +49,8 @@
   issues when syncing."
   1234)
 
-(s/defn ^:private fingerprint-table!
-  [table :- i/TableInstance, fields :- [i/FieldInstance]]
+(s/defn ^:private fingerprint-table! :- FingerprintStats
+  [table :- i/TableInstance fields :- [i/FieldInstance]]
   (let [rff (fn [_metadata]
               (redux/post-complete
                 (f/fingerprint-fields fields)
@@ -164,15 +170,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private fields-to-fingerprint :- (s/maybe [i/FieldInstance])
-  "Return a sequences of Fields belonging to TABLE for which we should generate (and save) fingerprints.
+  "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (db/select Field
          (honeysql-for-fields-that-need-fingerprint-updating table))))
 
-;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
-(s/defn fingerprint-fields!
-  "Generate and save fingerprints for all the Fields in TABLE that have not been previously analyzed."
+;; TODO - [[fingerprint-fields!]] and [[fingerprint-table!]] should probably have their names switched
+(s/defn fingerprint-fields! :- FingerprintStats
+  "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
     (let [stats (sync-util/with-error-handling
@@ -183,12 +189,13 @@
         stats))
     (empty-stats-map 0)))
 
-(s/defn fingerprint-fields-for-db!*
-  "Invokes `fingerprint-fields!` on every table in `database`"
+(s/defn fingerprint-fields-for-db!* :- FingerprintStats
+  "Invokes [[fingerprint-fields!]] on every table in `database`"
   ([database :- i/DatabaseInstance
-    tables :- [i/TableInstance]
+    tables   :- [i/TableInstance]
     log-progress-fn]
    (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
+
   ;; TODO: Maybe the driver should have a function to tell you if it supports fingerprinting?
   ([database :- i/DatabaseInstance
     tables :- [i/TableInstance]
@@ -209,7 +216,7 @@
              (empty-stats-map 0)
              tables))))
 
-(s/defn fingerprint-fields-for-db!
+(s/defn fingerprint-fields-for-db! :- FingerprintStats
   "Invokes `fingerprint-fields!` on every table in `database`"
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
@@ -222,7 +229,7 @@
   time in the db."
   1000)
 
-(s/defn refingerprint-fields-for-db!
+(s/defn refingerprint-fields-for-db! :- FingerprintStats
   "Invokes `fingeprint-fields!` on every table in `database` up to some limit."
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]

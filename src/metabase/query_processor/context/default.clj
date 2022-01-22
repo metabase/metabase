@@ -48,7 +48,7 @@
 (defn default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
   function inside the custom impl instead of attempting to duplicate the logic. See
-  `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
+  [[metabase.query-processor.reducible-test/write-rows-to-file-test]] for an example of a custom implementation."
   [rff context metadata reducible-rows]
   {:pre [(fn? rff)]}
   ;; TODO -- how to pass updated metadata to reducedf?
@@ -63,10 +63,10 @@
                                                 context)))]
       (context/reducedf metadata reduced-rows context))))
 
-(defn- default-runf [query rf context]
+(defn- default-runf [query rff context]
   (try
     (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
-                                                      (context/reducef rf context metadata reducible-rows)))
+                                                      (context/reducef rff context metadata reducible-rows)))
     (catch Throwable e
       (context/raisef e context))))
 
@@ -108,8 +108,6 @@
    :executef      driver/execute-reducible-query
    :reducef       default-reducef
    :reducedf      default-reducedf
-   :preprocessedf identity1
-   :nativef       identity1
    :timeoutf      default-timeoutf
    :resultf       default-resultf
    :canceled-chan (a/promise-chan)

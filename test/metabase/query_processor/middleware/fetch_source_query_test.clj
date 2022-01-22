@@ -12,7 +12,7 @@
             [toucan.db :as db]))
 
 (defn- resolve-card-id-source-tables [query]
-  (:pre (mt/test-qp-middleware fetch-source-query/resolve-card-id-source-tables query)))
+  (fetch-source-query/resolve-card-id-source-tables query))
 
 (defn- wrap-inner-query [query]
   {:database     mbql.s/saved-questions-virtual-database-id

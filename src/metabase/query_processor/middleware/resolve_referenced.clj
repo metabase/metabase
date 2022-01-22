@@ -40,7 +40,7 @@
           :let [referenced-query (:dataset_query referenced-card)]]
     (check-query-database-id= referenced-query (:database query))
     (qp.resolve-tables/resolve-source-tables* referenced-query)
-    (qp.resolve-fields/resolve-fields* referenced-query))
+    (qp.resolve-fields/resolve-fields referenced-query))
   query)
 
 (defn- card-subquery-graph

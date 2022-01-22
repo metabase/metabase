@@ -28,7 +28,10 @@
             [metabase.util :as u]
             [pretty.core :as pretty]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.query-processor.context :as context]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.driver :as driver]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -117,28 +120,32 @@
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
-  (merge {:cache-ttl 60, :query :abc} query-kvs))
+  (merge {:cache-ttl 120, :query :abc} query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
-  (:metadata
-   (mt/test-qp-middleware
-    cache/maybe-return-cached-results
-    (test-query query-kvs)
-    {}
-    [[:toucan      71]
-     [:bald-eagle  92]
-     [:hummingbird 11]
-     [:owl         10]
-     [:chicken     69]
-     [:robin       96]
-     [:osprey      72]
-     [:flamingo    70]]
-    {:timeout 2000
-     :run     (fn []
-                (Thread/sleep *query-execution-delay-ms*))})))
+  (let [query    (test-query query-kvs)
+        metadata {}
+        rows     [[:toucan      71]
+                  [:bald-eagle  92]
+                  [:hummingbird 11]
+                  [:owl         10]
+                  [:chicken     69]
+                  [:robin       96]
+                  [:osprey      72]
+                  [:flamingo    70]]
+        qp       (-> (fn [_query rff context]
+                       (Thread/sleep *query-execution-delay-ms*)
+                       (context/reducef rff context metadata rows))
+                     cache/maybe-return-cached-results
+                     qp.reducible/async-qp
+                     qp.reducible/sync-qp)
+        rff      context.default/default-rff
+        context  (assoc (context.default/default-context) :timeout 2000)]
+    (-> (qp query rff context)
+        (assoc :data {}))))
 
 (defn- run-query [& args]
   (let [result (apply run-query* args)]
@@ -274,9 +281,8 @@
                      (some? input-stream))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
-          (mt/suppress-output
-            (is (= :not-cached
-                   (run-query)))))))))
+          (is (= :not-cached
+                 (run-query))))))))
 
 (deftest metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]
-            [metabase.test :as mt]))
+            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]))
 
 (deftest add-values-from-last-row-test
   (are [expected indecies] (= expected
@@ -58,37 +57,40 @@
 
 (deftest replace-cumulative-ags-test
   (testing "does replacing cumulative ags work correctly?"
-    (is (= {:database 1
-            :type     :query
-            :query    {:source-table 1
-                       :breakout     [[:field 1 nil]]
-                       :aggregation  [[:sum [:field 1 nil]]]}}
-           (#'cumulative-aggregations/replace-cumulative-ags
+    (is (= {:database                                   1
+            :type                                       :query
+            :query                                      {:source-table 1
+                                                         :breakout     [[:field 1 nil]]
+                                                         :aggregation  [[:sum [:field 1 nil]]]}
+            ::cumulative-aggregations/replaced-indecies #{1}}
+           (#'cumulative-aggregations/rewrite-cumulative-aggregations
             {:database 1
              :type     :query
              :query    {:source-table 1
                         :breakout     [[:field 1 nil]]
                         :aggregation  [[:cum-sum [:field 1 nil]]]}}))))
   (testing "...even inside expression aggregations?"
-    (is (= {:database 1
-            :type     :query
-            :query    {:source-table 1, :aggregation [[:* [:count] 1]]}}
-           (#'cumulative-aggregations/replace-cumulative-ags
+    (is (= {:database                                   1
+            :type                                       :query
+            :query                                      {:source-table 1, :aggregation [[:* [:count] 1]]}
+            ::cumulative-aggregations/replaced-indecies #{0}}
+           (#'cumulative-aggregations/rewrite-cumulative-aggregations
             {:database 1
              :type     :query
              :query    {:source-table 1, :aggregation [[:* [:cum-count] 1]]}})))))
 
 
 (defn- handle-cumulative-aggregations [query]
-  (-> (mt/test-qp-middleware
-       cumulative-aggregations/handle-cumulative-aggregations
-       query
-       [[1 1]
-        [2 2]
-        [3 3]
-        [4 4]
-        [5 5]])
-      :post))
+  (let [rows  [[1 1]
+               [2 2]
+               [3 3]
+               [4 4]
+               [5 5]]
+        query (cumulative-aggregations/rewrite-cumulative-aggregations query)
+        rff   (cumulative-aggregations/post-process-cumulative-aggregations
+               query
+               (constantly conj))]
+    (transduce identity (rff nil) rows)))
 
 (deftest e2e-test
   (testing "make sure we take breakout fields into account"

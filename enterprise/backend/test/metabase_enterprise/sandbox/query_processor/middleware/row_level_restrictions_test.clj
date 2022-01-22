@@ -155,8 +155,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (mt/with-everything-store
-        (mt/test-qp-middleware row-level-restrictions/apply-row-level-permissions (normalize/normalize query)))
-      :pre
+        (row-level-restrictions/apply-row-level-permissions-pre (normalize/normalize query)))
       remove-metadata))
 
 (deftest middleware-test

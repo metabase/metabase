@@ -17,7 +17,7 @@
    (cond-> query
      (and (= query-type :query)
           (qputil/query-without-aggregations-or-limits? query))
-     (assoc-in [:query :limit] max-rows))))
+     (update :query assoc :limit max-rows, ::original-limit (get-in query [:query :limit])))))
 
 (defn limit-result-rows
   "Post-processing middleware. Limit the maximum number of rows that can be taken from the results."

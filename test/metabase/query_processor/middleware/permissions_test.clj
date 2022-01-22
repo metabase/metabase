@@ -14,7 +14,7 @@
   (:import clojure.lang.ExceptionInfo))
 
 (defn- check-perms [query]
-  (:pre (mt/test-qp-middleware qp.perms/check-query-permissions query)))
+  (qp.perms/check-query-permissions query))
 
 (defn- do-with-rasta
   "Call `f` with Rasta as the current user."

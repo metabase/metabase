@@ -36,7 +36,6 @@
   "Middleware that resolves the Database referenced by the query under that `:database` key and stores it in the QP
   Store."
   [query thunk]
-  (println "*already-resolved?*:" *already-resolved?*) ; NOCOMMIT
   (if *already-resolved?*
     (thunk)
     (do-with-resolved-database-and-driver*
