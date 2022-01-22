@@ -63,7 +63,6 @@
   [details query]
   {:pre [(map? details) (map? query)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-                       (prn query)
     (try
       (POST (details->url details-with-tunnel "/druid/v2"),
         :body           query
