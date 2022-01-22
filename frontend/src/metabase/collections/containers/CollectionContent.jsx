@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useCallback } from "react";
-import { Box } from "grid-styled";
+import { Flex, Box } from "grid-styled";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -187,9 +187,9 @@ function CollectionContent({
 
                   if (isEmpty) {
                     return (
-                      <Box mt="120px">
+                      <Flex justifyContent="center" mt="3rem">
                         <CollectionEmptyState />
-                      </Box>
+                      </Flex>
                     );
                   }
 
