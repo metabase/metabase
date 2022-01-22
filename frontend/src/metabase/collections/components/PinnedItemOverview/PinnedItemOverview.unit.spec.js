@@ -45,8 +45,10 @@ function setup({ items, collection } = {}) {
 }
 
 describe("PinnedItemOverview", () => {
-  it("should render nothing if there are no items", () => {
+  it("should render an empty banner when there are no items", () => {
     const { container } = setup({ items: [] });
-    expect(container.firstChild).toBeNull();
+    expect(container.textContent).toContain(
+      "Save your questions, dashboads, and datasets in collections — and pin them to feature them at the top.",
+    );
   });
 });

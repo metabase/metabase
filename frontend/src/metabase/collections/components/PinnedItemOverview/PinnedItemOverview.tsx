@@ -5,6 +5,7 @@ import { t } from "ttag";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
+import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
@@ -34,7 +35,11 @@ function PinnedItemOverview({
     dataset: dataModelItems = [],
   } = _.groupBy(sortedItems, "model");
 
-  return items.length ? (
+  return items.length === 0 ? (
+    <Container>
+      <EmptyPinnedItemsBanner />
+    </Container>
+  ) : (
     <Container data-testid="pinned-items">
       {cardItems.length > 0 && (
         <Grid>
@@ -111,7 +116,7 @@ function PinnedItemOverview({
         </div>
       )}
     </Container>
-  ) : null;
+  );
 }
 
 export default PinnedItemOverview;

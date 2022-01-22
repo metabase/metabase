@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useCallback } from "react";
-import { Box } from "grid-styled";
+import { Flex, Box } from "grid-styled";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -150,15 +150,17 @@ function CollectionContent({
                 )}
                 handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
-              <PinnedItemOverview
-                items={pinnedItems}
-                collection={collection}
-                metadata={metadata}
-                onMove={handleMove}
-                onCopy={handleCopy}
-                onToggleSelected={toggleItem}
-                onDrop={clear}
-              />
+              {!loadingPinnedItems && (
+                <PinnedItemOverview
+                  items={pinnedItems}
+                  collection={collection}
+                  metadata={metadata}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                  onToggleSelected={toggleItem}
+                  onDrop={clear}
+                />
+              )}
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}
@@ -185,11 +187,15 @@ function CollectionContent({
                   const isEmpty =
                     !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-                  if (isEmpty) {
+                  if (isEmpty && !loadingUnpinnedItems) {
                     return (
-                      <Box mt="120px">
+                      <Flex
+                        alignItems="start"
+                        justifyContent="center"
+                        mt="3rem"
+                      >
                         <CollectionEmptyState />
-                      </Box>
+                      </Flex>
                     );
                   }
 
