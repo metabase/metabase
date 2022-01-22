@@ -21,6 +21,10 @@
   /* so that spacing matches .List-item */
 }
 
+.List-section--cursor {
+  background-color: color-mod(var(--color-text-light) alpha(-80%));
+}
+
 /* these crazy rules are needed to get currentColor to propagate to the right elements in the right states */
 .List-section--togglable .List-section-header:hover,
 .List-section--togglable .List-section-header:hover .Icon,
@@ -46,9 +50,9 @@
   margin-bottom: 2px;
 }
 
-.List-item:focus {
-  outline: none;
-  background-color: color-mod(var(--color-text-light) alpha(-80%));
+.List-item--cursor {
+  background-color: var(--color-bg-light);
+  outline: 2px solid var(--color-brand-light);
 }
 
 .List-item:not(.List-item--disabled):hover,
