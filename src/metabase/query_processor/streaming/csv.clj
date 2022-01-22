@@ -23,6 +23,7 @@
   (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} _]
+        (.write writer "\ufeff")
         (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))
 
