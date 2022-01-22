@@ -43,7 +43,7 @@ export const Description = forwardRefToInnerRef(styled.div`
 `);
 
 export const Body = styled.div`
-  padding: 1.7rem;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;

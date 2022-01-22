@@ -20,4 +20,5 @@ export const Grid = styled.div`
 
 export const SectionHeader = styled.div`
   padding-bottom: 1.15rem;
+  margin-top: 1.5rem;
 `;

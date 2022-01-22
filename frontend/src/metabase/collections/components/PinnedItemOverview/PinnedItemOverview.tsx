@@ -82,8 +82,8 @@ function PinnedItemOverview({
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
-            <h4>{t`Useful data`}</h4>
-            <div>
+            <h3>{t`Useful data`}</h3>
+            <div className="text-medium pt1">
               {isRootCollection(collection)
                 ? t`Start new explorations here`
                 : t`Start new explorations about ${collection.name} here`}
