@@ -1,5 +1,7 @@
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
+const devMode = WEBPACK_BUNDLE !== "production";
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? null : ".babel_cache",
