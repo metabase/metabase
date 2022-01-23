@@ -150,15 +150,17 @@ function CollectionContent({
                 )}
                 handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
-              <PinnedItemOverview
-                items={pinnedItems}
-                collection={collection}
-                metadata={metadata}
-                onMove={handleMove}
-                onCopy={handleCopy}
-                onToggleSelected={toggleItem}
-                onDrop={clear}
-              />
+              {!loadingPinnedItems && (
+                <PinnedItemOverview
+                  items={pinnedItems}
+                  collection={collection}
+                  metadata={metadata}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                  onToggleSelected={toggleItem}
+                  onDrop={clear}
+                />
+              )}
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}
@@ -185,7 +187,7 @@ function CollectionContent({
                   const isEmpty =
                     !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-                  if (isEmpty) {
+                  if (isEmpty && !loadingUnpinnedItems) {
                     return (
                       <Flex justifyContent="center" mt="3rem">
                         <CollectionEmptyState />
