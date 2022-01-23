@@ -66,7 +66,9 @@ const config = (module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [
+          { loader: "thread-loader",  options: { workers: require('os').cpus().length/2, poolRespawn: devMode? false : true } }, 
+          { loader: "babel-loader", options: BABEL_CONFIG }],
       },
       {
         test: /\.(tsx?|jsx?)$/,
