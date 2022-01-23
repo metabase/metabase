@@ -33,7 +33,8 @@ module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [{ loader: "thread-loader",  options: { poolRespawn: devMode? false : true } },
+              { loader: "babel-loader", options: BABEL_CONFIG }],
       },
     ],
   },
