@@ -12,6 +12,13 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+        environment:
+          YARN_CACHE_FOLDER: /mnt/ramdisk/.yarn
+          NODE_PATH: /mnt/ramdisk/node_modules
+          CYPRESS_CACHE_FOLDER: /mnt/ramdisk/.cache/Cypress
+          MAVEN_OPTS: "-Dmaven.repo.local=/mnt/ramdisk/.m2"
+          GITLIBS: /mnt/ramdisk/.gitlibs
+
 
   tester:
     working_directory: /home/circleci/metabase/metabase/
@@ -662,8 +669,8 @@ jobs:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
                 paths:
-                  - /home/circleci/.m2
-                  - /home/circleci/.gitlibs
+                  - /mnt/ramdisk/.m2
+                  - /mnt/ramdisk/.gitlibs
                   - /home/circleci/metabase/metabase/java/target/classes
                   - /home/circleci/metabase/metabase/modules/drivers/sparksql/target/classes
 
@@ -827,10 +834,10 @@ jobs:
                 name: Cache frontend dependencies
                 <<: *CacheKeyFrontendDeps
                 paths:
-                  - /home/circleci/.yarn
-                  - /home/circleci/.yarn-cache
-                  - /home/circleci/metabase/metabase/node_modules
-                  - /home/circleci/.cache/Cypress
+                  - /mnt/ramdisk/.yarn
+                  - /mnt/ramdisk/.yarn-cache
+                  - /mnt/ramdisk/metabase/metabase/node_modules
+                  - /mnt/ramdisk/.cache/Cypress
 
   shared-tests-cljs:
     executor: builder
@@ -873,7 +880,7 @@ jobs:
                 name: Cache local Maven installation of metabase-core
                 <<: *CacheKeyMetabaseCore
                 paths:
-                  - /home/circleci/.m2/repository/metabase-core
+                  - /mnt/ramdisk/.m2/repository/metabase-core
             - save_cache:
                 name: Cache the built drivers
                 <<: *CacheKeyDrivers
