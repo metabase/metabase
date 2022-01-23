@@ -9,19 +9,12 @@ executors:
   # Maildev runs by default with all Cypress tests
 
   builder:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
-        environment:
-          YARN_CACHE_FOLDER: /mnt/ramdisk/.yarn
-          NODE_PATH: /mnt/ramdisk/node_modules
-          CYPRESS_CACHE_FOLDER: /mnt/ramdisk/.cache/Cypress
-          MAVEN_OPTS: "-Dmaven.repo.local=/mnt/ramdisk/.m2"
-          GITLIBS: /mnt/ramdisk/.gitlibs
-
 
   tester:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
@@ -30,7 +23,7 @@ executors:
       - image: metabase/qa-databases:mysql-sample-8
 
   java-8:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
 
@@ -38,19 +31,19 @@ executors:
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
   # what this means.
   java-11:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   java-16:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-16-clj-1.10.3.929-07-27-2021-node-browsers
 
   postgres-9-6:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -66,7 +59,7 @@ executors:
           POSTGRES_DB: circle_test
 
   postgres-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -83,7 +76,7 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
   mysql-5-7:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -96,7 +89,7 @@ executors:
       - image: circleci/mysql:5.7.23
 
   mysql-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -109,7 +102,7 @@ executors:
       - image: circleci/mysql:latest
 
   mariadb-10-2:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -122,7 +115,7 @@ executors:
       - image: circleci/mariadb:10.2.23
 
   mariadb-latest:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -139,19 +132,19 @@ executors:
           # MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
   mongo-4-0:
-     working_directory: /home/circleci/metabase/metabase/
+     working_directory: /mnt/ramdisk/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
        - image: circleci/mongo:4.0
 
   mongo-latest:
-     working_directory: /home/circleci/metabase/metabase/
+     working_directory: /mnt/ramdisk/metabase/metabase/
      docker:
        - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
        - image: circleci/mongo:latest
 
   presto-186:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/presto-mb-ci:0.186
@@ -162,7 +155,7 @@ executors:
     resource_class: large
 
   presto-jdbc-env:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/presto-mb-ci:latest # version 0.254
@@ -181,19 +174,19 @@ executors:
     resource_class: large
 
   sparksql:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/spark:2.1.1
 
   vertica:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: sumitchawla/vertica
 
   sqlserver:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
         environment:
@@ -207,7 +200,7 @@ executors:
           MSSQL_MEMORY_LIMIT_MB: 1024
 
   druid:
-    working_directory: /home/circleci/metabase/metabase/
+    working_directory: /mnt/ramdisk/metabase/metabase/
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/druid:0.20.2
@@ -292,7 +285,7 @@ commands:
   attach-workspace:
     steps:
       - attach_workspace:
-          at: /home/circleci/
+          at: /mnt/ramdisk/
 
   # For the restore-deps-cache commands below, only restore the cache if there's an exact match. This means whatever
   # is in the cache will be exactly what's used and the cache won't keep growing uncontrollably going forward.
@@ -397,10 +390,10 @@ commands:
           name: Persist dummy file .SUCCESS to cache with key << parameters.checksum >>
           <<: *CacheKeyRunOnChange
           paths:
-            - /home/circleci/metabase/metabase/.SUCCESS
+            - /mnt/ramdisk/metabase/metabase/.SUCCESS
       - run:
           name: Delete dummy file .SUCCESS so subsequent steps don't see it
-          command: rm /home/circleci/metabase/metabase/.SUCCESS
+          command: rm /mnt/ramdisk/metabase/metabase/.SUCCESS
 
   # Creates a file that contains checksums for all the files found using the find command with supplied arguments.
   # You can use a checksum of the checksum file for cache keys including run-on-change cache keys.
@@ -444,7 +437,7 @@ commands:
           no_output_timeout: 15m
       - steps: << parameters.after-steps >>
       - store_test_results:
-          path: /home/circleci/metabase/metabase/target/junit
+          path: /mnt/ramdisk/metabase/metabase/target/junit
 
   run-yarn-command:
     parameters:
@@ -515,7 +508,7 @@ commands:
     steps:
       - run:
           name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
+          command: mkdir /mnt/ramdisk/metabase/metabase/plugins
       - run:
           name: Download JDBC driver JAR << parameters.dest >>
           command: |
@@ -583,12 +576,12 @@ jobs:
               echo 'This is a release branch; preserving .git directory to determine version'
             else
               echo 'This is not a release branch; removing .git directory (not needed for tests)'
-              rm -rf /home/circleci/metabase/metabase/.git
+              rm -rf /mnt/ramdisk/metabase/metabase/.git
             fi
 
       - run:
           name: Remove ./OSX directory (not needed for tests)
-          command: rm -rf /home/circleci/metabase/metabase/OSX
+          command: rm -rf /mnt/ramdisk/metabase/metabase/OSX
       # .CACHE-PREFIX is described above in the Cache Keys section of this file
       - run:
           name: 'Create cache key prefix .CACHE-PREFIX to bust caches if commit message includes [ci nocache]'
@@ -610,7 +603,7 @@ jobs:
           command-name: Create static visualization js bundle
           command: build-static-viz
       - persist_to_workspace:
-          root: /home/circleci/
+          root: /mnt/ramdisk/
           paths:
             - metabase/metabase
 
@@ -659,20 +652,20 @@ jobs:
                 command: clojure -P -X:dev:ci:ee:ee-dev:drivers:drivers-dev
             - run:
                 name: Fetch dependencies (./bin/build/build-mb)
-                command: cd /home/circleci/metabase/metabase/bin/build-mb && clojure -P -M:test
+                command: cd /mnt/ramdisk/metabase/metabase/bin/build-mb && clojure -P -M:test
             # Not sure why this is needed since you would think build-mb would fetch this stuff as well. It doesn't
             # seem to fetch everything tho. :shrug:
             - run:
                 name: Fetch dependencies (./bin/build/build-drivers)
-                command: cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -P -M:test
+                command: cd /mnt/ramdisk/metabase/metabase/bin/build-drivers && clojure -P -M:test
             - save_cache:
                 name: Cache backend dependencies
                 <<: *CacheKeyBackendDeps
                 paths:
                   - /mnt/ramdisk/.m2
                   - /mnt/ramdisk/.gitlibs
-                  - /home/circleci/metabase/metabase/java/target/classes
-                  - /home/circleci/metabase/metabase/modules/drivers/sparksql/target/classes
+                  - /mnt/ramdisk/metabase/metabase/java/target/classes
+                  - /mnt/ramdisk/metabase/metabase/modules/drivers/sparksql/target/classes
 
   clojure:
     parameters:
@@ -770,7 +763,7 @@ jobs:
                   << parameters.test-args >>
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
-                path: /home/circleci/metabase/metabase/target/junit
+                path: /mnt/ramdisk/metabase/metabase/target/junit
             - steps: << parameters.after-steps >>
 
   test-build-scripts:
@@ -784,32 +777,32 @@ jobs:
             - run:
                 name: Run metabuild-common build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/common && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run build-drivers build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/build-drivers && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run i18n script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/i18n && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run build-mb build script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/build-mb && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run release script tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/release && clojure -M:test
                 no_output_timeout: 15m
             - run:
                 name: Run Liquibase migrations linter tests
                 command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
+                  cd /mnt/ramdisk/metabase/metabase/bin/lint-migrations-file && clojure -M:test
                 no_output_timeout: 15m
 
 
@@ -885,7 +878,7 @@ jobs:
                 name: Cache the built drivers
                 <<: *CacheKeyDrivers
                 paths:
-                  - /home/circleci/metabase/metabase/resources/modules
+                  - /mnt/ramdisk/metabase/metabase/resources/modules
 
   # Build the frontend client. parameters.edition determines whether we build the OSS or EE version.
   build-uberjar-frontend:
@@ -910,7 +903,7 @@ jobs:
                 name: Cache the built frontend
                 <<: *CacheKeyFrontend
                 paths:
-                  - /home/circleci/metabase/metabase/resources/frontend_client
+                  - /mnt/ramdisk/metabase/metabase/resources/frontend_client
 
   # Build the uberjar. parmeters.edition determines whether we build the OSS or EE version.
   build-uberjar:
@@ -954,15 +947,15 @@ jobs:
                   fi
                 no_output_timeout: 15m
             - store_artifacts:
-                path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
+                path: /mnt/ramdisk/metabase/metabase/target/uberjar/metabase.jar
             - store_artifacts:
-                path: /home/circleci/metabase/metabase/resources/version.properties
+                path: /mnt/ramdisk/metabase/metabase/resources/version.properties
             - save_cache:
                 name: Cache the built uberjar & version.properties
                 <<: *CacheKeyUberjar
                 paths:
-                  - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
-                  - /home/circleci/metabase/metabase/resources/version.properties
+                  - /mnt/ramdisk/metabase/metabase/target/uberjar/metabase.jar
+                  - /mnt/ramdisk/metabase/metabase/resources/version.properties
 
   fe-tests-cypress:
     parameters:
@@ -1014,7 +1007,7 @@ jobs:
                   run test-cypress-no-build <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
                   - store_artifacts:
-                      path: /home/circleci/metabase/metabase/cypress
+                      path: /mnt/ramdisk/metabase/metabase/cypress
                   - store_test_results:
                       path: cypress/results
 
@@ -1043,7 +1036,7 @@ jobs:
           name: Cache Snowplow Micro JAR
           <<: *CacheKeySnowplowDeps
           paths:
-            - /home/circleci/metabase/metabase/snowplow-micro.jar
+            - /mnt/ramdisk/metabase/metabase/snowplow-micro.jar
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
@@ -1185,7 +1178,7 @@ workflows:
             MB_MYSQL_SSL_TEST_HOST=$MYSQL_RDS_SSL_INSTANCE_HOST
             MB_MYSQL_SSL_TEST_SSL=true
             MB_MYSQL_SSL_TEST_ADDITIONAL_OPTIONS='verifyServerCertificate=true'
-            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /home/circleci/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
+            MB_MYSQL_SSL_TEST_SSL_CERT="$(cat /mnt/ramdisk/metabase/metabase/resources/certificates/rds-combined-ca-bundle.pem)"
             MB_MYSQL_SSL_TEST_USER=metabase
             MB_MYSQL_SSL_TEST_PASSWORD=$MYSQL_RDS_SSL_INSTANCE_PASSWORD
 
@@ -1217,13 +1210,13 @@ workflows:
                 dest: ojdbc8.jar
             - run:
                 name: Ensure truststore file
-                command: ls /home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
+                command: ls /mnt/ramdisk/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
           driver: oracle
           extra-env: >-
             MB_ORACLE_SSL_TEST_SSL=true
             MB_ORACLE_SSL_TEST_PORT=2484
             MB_ORACLE_SSL_TEST_SSL_USE_TRUSTSTORE=true
-            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/home/circleci/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
+            MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PATH=/mnt/ramdisk/metabase/metabase/resources/certificates/rds_root_ca_truststore.jks
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_OPTIONS=local
             MB_ORACLE_SSL_TEST_SSL_TRUSTSTORE_PASSWORD_VALUE=metabase
 
@@ -1245,7 +1238,7 @@ workflows:
           extra-env: >-
             MB_POSTGRES_SSL_TEST_SSL=true
             MB_POSTGRES_SSL_TEST_SSL_MODE=verify-full
-            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/home/circleci/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
+            MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH=/mnt/ramdisk/metabase/metabase/test-resources/certificates/us-east-2-bundle.pem
 
       - test-driver:
           name: be-tests-presto-ee
