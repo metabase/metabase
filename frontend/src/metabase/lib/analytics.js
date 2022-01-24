@@ -116,7 +116,7 @@ const createSnowplowPlugin = store => {
 
 const trackSnowplowPageView = url => {
   Snowplow.setReferrerUrl("#");
-  Snowplow.setCustomUrl(url);
+  Snowplow.setCustomUrl(`https://sp.metabase.com${url}`);
   Snowplow.trackPageView();
 };
 
