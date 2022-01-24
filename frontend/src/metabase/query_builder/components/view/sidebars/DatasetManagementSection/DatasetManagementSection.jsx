@@ -72,29 +72,11 @@ function DatasetManagementSection({
         >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection
           question={dataset}
+          VerifyButton={Button}
           reviewBannerClassName="mt1"
-          renderActions={VerifyButton}
         />
       </SectionContent>
     </div>
-  );
-}
-
-VerifyButton.propTypes = {
-  isVerified: PropTypes.bool.isRequired,
-  verifiedIconName: PropTypes.string.isRequired,
-  onVerify: PropTypes.func,
-  testID: PropTypes.string,
-};
-
-function VerifyButton({ isVerified, onVerify, verifiedIconName, testID }) {
-  if (isVerified) {
-    return null;
-  }
-  return (
-    <Button icon={verifiedIconName} onClick={onVerify} data-testid={testID}>
-      {t`Verify this model`}
-    </Button>
   );
 }
 

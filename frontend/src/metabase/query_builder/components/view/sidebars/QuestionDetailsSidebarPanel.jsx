@@ -11,6 +11,7 @@ import {
   Container,
   BorderedSectionContainer,
   SidebarPaddedContent,
+  ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
 import DatasetManagementSection from "./DatasetManagementSection";
 
@@ -48,7 +49,11 @@ function QuestionDetailsSidebarPanel({ question, onOpenModal }) {
             <DatasetManagementSection dataset={question} />
           )}
           {!isDataset && (
-            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
+            <ModerationSectionContainer>
+              <PLUGIN_MODERATION.QuestionModerationSection
+                question={question}
+              />
+            </ModerationSectionContainer>
           )}
         </BorderedSectionContainer>
       </SidebarPaddedContent>
