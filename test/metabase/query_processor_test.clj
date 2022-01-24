@@ -5,6 +5,7 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -491,3 +492,13 @@
             (testing "query->preprocessed should return same results even when query was cached."
               (is (= expected-results
                      (qp/query->preprocessed query))))))))))
+
+(defn remove-source-metadata
+  "Remove `:source-metadata` from all levels of `form`."
+  [form]
+  (walk/postwalk
+   (fn [form]
+     (if ((every-pred map? :source-metadata) form)
+       (dissoc form :source-metadata)
+       form))
+   form))

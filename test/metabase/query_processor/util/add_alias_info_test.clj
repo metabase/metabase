@@ -1,6 +1,5 @@
 (ns metabase.query-processor.util.add-alias-info-test
   (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
             [metabase.driver :as driver]
             [metabase.driver.h2 :as h2]
             [metabase.models.field :refer [Field]]
@@ -22,19 +21,10 @@
          (#'add/normalize-clause [:field 1 {}])
          (#'add/normalize-clause [:field 1 {::amazing true}]))))
 
-;; TODO -- this is duplicated with [[metabase.query-processor.util.nest-query-test/remove-source-metadata]]
-(defn- remove-source-metadata [x]
-  (walk/postwalk
-   (fn [x]
-     (if ((every-pred map? :source-metadata) x)
-       (dissoc x :source-metadata)
-       x))
-   x))
-
 (defn- add-alias-info [query]
   (mt/with-everything-store
     (driver/with-driver (or driver/*driver* :h2)
-      (-> query qp/query->preprocessed add/add-alias-info remove-source-metadata (dissoc :middleware)))))
+      (-> query qp/query->preprocessed add/add-alias-info mt/remove-source-metadata (dissoc :middleware)))))
 
 (deftest join-in-source-query-test
   (is (query= (mt/mbql-query venues
@@ -470,25 +460,26 @@
                     :order-by    [[:asc [:aggregation 0]]]}))))))
 
 (deftest uniquify-aggregation-names-text
-  (is (query= (mt/mbql-query checkins
-                {:expressions {:count [:+ 1 1]}
-                 :breakout    [[:expression "count" {::add/desired-alias "count"
-                                                     ::add/position      0}]]
-                 :aggregation [[:aggregation-options [:count] {:name               "count_2"
-                                                               ::add/desired-alias "count_2"
-                                                               ::add/position      1}]]
-                 :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
-                                                           ::add/position      0}]]]
-                 :limit       1})
-              (add-alias-info
-               (mt/mbql-query checkins
-                 {:expressions {"count" [:+ 1 1]}
-                  :breakout    [[:expression "count"]]
-                  :aggregation [[:count]]
-                  :limit       1})))))
+  (testing "Aggregations should get unique names if other Fields conflict with their original names"
+    (is (query= (mt/mbql-query checkins
+                  {:expressions {:count [:+ 1 1]}
+                   :breakout    [[:expression "count" {::add/desired-alias "count"
+                                                       ::add/position      0}]]
+                   :aggregation [[:aggregation-options [:count] {:name               "count_2"
+                                                                 ::add/desired-alias "count_2"
+                                                                 ::add/position      1}]]
+                   :order-by    [[:asc [:expression "count" {::add/desired-alias "count"
+                                                             ::add/position      0}]]]
+                   :limit       1})
+                (add-alias-info
+                 (mt/mbql-query checkins
+                   {:expressions {"count" [:+ 1 1]}
+                    :breakout    [[:expression "count"]]
+                    :aggregation [[:count]]
+                    :limit       1}))))))
 
 (deftest fuzzy-field-info-test
-  (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
+  (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units (#18512)"
     (mt/dataset sample-dataset
       (mt/with-everything-store
         (is (= {:field-name              "CREATED_AT"

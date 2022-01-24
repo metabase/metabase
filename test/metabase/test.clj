@@ -144,6 +144,7 @@
   normal-drivers-except
   normal-drivers-with-feature
   normal-drivers-without-feature
+  remove-source-metadata
   rows
   rows+column-names
   with-bigquery-fks]

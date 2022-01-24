@@ -1,21 +1,11 @@
 (ns metabase.query-processor.util.nest-query-test
   (:require [clojure.test :refer :all]
-            [clojure.walk :as walk]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
             [metabase.test :as mt]))
-
-;; TODO -- this is duplicated with [[metabase.query-processor.util.add-alias-info-test/remove-source-metadata]]
-(defn- remove-source-metadata [x]
-  (walk/postwalk
-   (fn [x]
-     (if ((every-pred map? :source-metadata) x)
-       (dissoc x :source-metadata)
-       x))
-   x))
 
 (defn- nest-expressions [query]
   (mt/with-everything-store
@@ -24,7 +14,7 @@
           qp/query->preprocessed
           :query
           nest-query/nest-expressions
-          remove-source-metadata))))
+          mt/remove-source-metadata))))
 
 (deftest nest-expressions-test
   (is (query= (mt/$ids venues
