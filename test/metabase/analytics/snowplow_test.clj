@@ -25,7 +25,7 @@
 (defn- fake-track-event-impl!
   "A function that can be used in place of track-event-impl! which pulls and decodes the payload, context and subject ID
   from an event and adds it to the in-memory [[*snowplow-collector*]] queue."
-  [_ event]
+  [collector _ event]
   (let [payload (-> event .getPayload .getMap normalize-map)
         ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test cases
         properties (-> (or (:ue_pr payload)
@@ -34,15 +34,17 @@
         subject (when-let [subject (.getSubject event)]
                   (-> subject .getSubject normalize-map))
         context (->> event .getContext first .getMap normalize-map)]
-    (swap! *snowplow-collector* conj {:properties properties, :subject subject, :context context})))
+    (swap! collector conj {:properties properties, :subject subject, :context context})))
 
 (defn do-with-fake-snowplow-collector
   "Impl for `with-fake-snowplow-collector` macro; prefer using that rather than calling this directly."
   [f]
   (mt/with-temporary-setting-values [snowplow-available    true
                                      anon-tracking-enabled true]
-    (with-redefs [snowplow/track-event-impl! fake-track-event-impl!]
-      (f))))
+    (binding [*snowplow-collector* (atom [])]
+      (let [collector *snowplow-collector*] ;; get a reference to the atom
+        (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
+          (f))))))
 
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics

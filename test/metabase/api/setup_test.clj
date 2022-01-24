@@ -112,13 +112,10 @@
                                        "invited_user_id" (u/the-id invited-user)
                                        "source"          "setup"}}]
                               (filter #(= (get-in % [:data "event"]) "invite_sent")
-                                      (snowplow-test/pop-event-data-and-user-id!)))))
-              (let [invite-email (-> (mt/regex-email-bodies
-                                      (re-pattern (str invitor-first-name " could use your help setting up Metabase.*")))
-                                     (get email)
-                                     first)]
-                (is (= {(str invitor-first-name " could use your help setting up Metabase.*") true}
-                       (:body invite-email)))))))))
+                                      (snowplow-test/pop-event-data-and-user-id!))))
+                (is (mt/received-email-body?
+                     email
+                     (re-pattern (str invitor-first-name " could use your help setting up Metabase.*"))))))))))
 
     (testing "No second user is created if email is not set up"
       (mt/with-temporary-setting-values [email-smtp-host nil]
