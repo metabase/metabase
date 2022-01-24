@@ -22,7 +22,7 @@ export function setColumnType(oldType, newType) {
 export function mapColumnTo({ table, column } = {}) {
   cy.findByText("Database column this maps to")
     .closest(".Form-field")
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 
   popover()
