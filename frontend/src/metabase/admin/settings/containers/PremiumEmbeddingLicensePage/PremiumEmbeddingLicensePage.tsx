@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import moment from "moment";
 import AdminLayout from "metabase/components/AdminLayout";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   LicenseInputTitle,

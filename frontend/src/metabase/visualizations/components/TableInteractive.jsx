@@ -6,7 +6,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";

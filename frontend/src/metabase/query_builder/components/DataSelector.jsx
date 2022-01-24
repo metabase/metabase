@@ -14,7 +14,7 @@ import {
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";

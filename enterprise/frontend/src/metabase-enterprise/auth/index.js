@@ -1,5 +1,5 @@
 import React from "react";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { t, jt } from "ttag";
 import { updateIn } from "icepick";
 

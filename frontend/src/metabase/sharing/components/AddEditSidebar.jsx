@@ -9,7 +9,7 @@ import { connect } from "react-redux";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
