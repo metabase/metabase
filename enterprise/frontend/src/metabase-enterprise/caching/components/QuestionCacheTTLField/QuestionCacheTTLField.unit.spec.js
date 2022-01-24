@@ -68,8 +68,6 @@ function fillValue(input, value) {
   input.blur();
 }
 
-const DEFAULT_MODE_TEXT_TEST_ID = /radio-[0-9]+-default-name/;
-
 describe("QuestionCacheTTLField", () => {
   it("displays a placeholder if question is not cached", () => {
     setup();
