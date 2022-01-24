@@ -2,10 +2,10 @@ import React from "react";
 import { t } from "ttag";
 import NewsletterForm from "../../containers/NewsletterForm";
 import {
+  StepBody,
+  StepFooter,
   StepRoot,
   StepTitle,
-  StepFooter,
-  StepBody,
 } from "./CompletedStep.styled";
 
 export interface CompletedStepProps {
@@ -26,10 +26,9 @@ const CompletedStep = ({
         <NewsletterForm />
       </StepBody>
       <StepFooter>
-        <a
-          className="Button Button--primary"
-          href="/"
-        >{t`Take me to Metabase`}</a>
+        <a className="Button Button--primary" href="/">
+          {t`Take me to Metabase`}
+        </a>
       </StepFooter>
     </StepRoot>
   );
