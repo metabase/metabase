@@ -214,7 +214,16 @@
            (sql-jdbc.conn/connection-details->spec :mysql
              (assoc sample-connection-details
                     :ssl false
-                    :additional-options "useSSL=true&trustServerCertificate=true"))))))
+                    :additional-options "useSSL=true&trustServerCertificate=true")))))
+  (testing "A program_name specified in additional-options is not overwritten by us"
+    (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
+      (is (= (-> sample-jdbc-spec
+                 (assoc :subname (str "//localhost:3306/my_db?" conn-attrs), :useSSL false)
+                 ;; because program_name was in additional-options, we shouldn't use emit :connectionAttributes
+                 (dissoc :connectionAttributes))
+             (sql-jdbc.conn/connection-details->spec
+              :mysql
+              (assoc sample-connection-details :additional-options conn-attrs)))))))
 
 (deftest read-timediffs-test
   (mt/test-driver :mysql

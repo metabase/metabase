@@ -318,11 +318,17 @@
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
-(defn- add-program-name-option [jdbc-spec]
+(defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
   ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
-  (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
-    (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))
+  (let [set-prog-nm-fn (fn []
+                         (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+                           (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))]
+    (if-let [conn-attrs (get additional-options-map "connectionAttributes")]
+      (if (str/includes? conn-attrs "program_name")
+        jdbc-spec ; additional-options already includes the program_name; don't set it here
+        (set-prog-nm-fn))
+      (set-prog-nm-fn)))) ; additional-options did not contain connectionAttributes at all; set it
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert], :as details}]
@@ -330,10 +336,10 @@
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
   ;; TODO - should this be fixed by a data migration instead?
-  (let [ssl?      (or ssl? (some-> additional-options (str/includes? "useSSL=true")))
-        ssl-cert? (and ssl? (some? ssl-cert))]
-    (when (and ssl?
-               (not (some->  additional-options (str/includes? "trustServerCertificate"))))
+  (let [addl-opts-map (sql-jdbc.common/additional-options->map additional-options :url "=" false)
+        ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
+        ssl-cert?     (and ssl? (some? ssl-cert))]
+    (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
       (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
     (merge
      default-connection-args
@@ -343,7 +349,7 @@
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
        (-> (dbspec/mysql details)
-           add-program-name-option
+           (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
