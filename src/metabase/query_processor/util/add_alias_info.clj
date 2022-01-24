@@ -173,6 +173,8 @@
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
       join-is-this-level?                      join-alias
+      ;; TODO -- if there's a `join-alias` but the join isn't at this level, we should probably check that the join is
+      ;; at least at SOME level and log a warning if it is not.
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
       :else
@@ -257,7 +259,7 @@
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [{:keys [source-table], :as inner-query}
+  [inner-query
    [_ _id-or-name {:keys [join-alias]}, :as field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
