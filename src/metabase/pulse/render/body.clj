@@ -299,16 +299,12 @@
   - backfill currency to the default of USD if not present"
   [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
-        y-col-settings (settings-from-column y-col column-settings)
-        res            (cond-> {:colors (public-settings/application-colors)}
+        y-col-settings (settings-from-column y-col column-settings)]
+    (cond-> {:colors (public-settings/application-colors)}
       x-col-settings
       (assoc :x (update-col-for-js x-col-settings x-col))
       y-col-settings
-      (assoc :y (update-col-for-js y-col-settings y-col)))
-        ]
-    (println _viz-settings)
-    (println res)
-    res))
+      (assoc :y (update-col-for-js y-col-settings y-col)))))
 
 (defn- ->ts-viz
   "Include viz settings for the typed settings, initially in XY charts.
@@ -763,11 +759,18 @@
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
+        settings       (->js-viz x-col y-col viz-settings)
+        settings       (update-in settings [:colors] assoc
+                                 :waterfallTotal (:waterfall.total_color viz-settings)
+                                 :waterfallPositive (:waterfall.increase_color viz-settings)
+                                 :waterfallNegative (:waterfall.decrease_color viz-settings))
+        dealio         (println settings)
+        dealio         (println viz-settings)
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
                                    labels
-                                   (->js-viz x-col y-col viz-settings)))]
+                                   settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
