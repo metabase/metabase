@@ -764,8 +764,7 @@
                                  :waterfallTotal (:waterfall.total_color viz-settings)
                                  :waterfallPositive (:waterfall.increase_color viz-settings)
                                  :waterfallNegative (:waterfall.decrease_color viz-settings))
-        dealio         (println settings)
-        dealio         (println viz-settings)
+        settings       (assoc settings :showTotal (:waterfall.show_total viz-settings))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
