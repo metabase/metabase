@@ -9,8 +9,7 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/components/Tooltip";
-
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
+import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import {
   EntityIconCheckBox,
@@ -52,14 +51,6 @@ export function BaseTableItem({
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
   }, [item, onToggleSelected]);
-
-  const handlePin = useCallback(() => {
-    item.setPinned(!isPinned);
-  }, [item, isPinned]);
-
-  const handleMove = useCallback(() => onMove([item]), [item, onMove]);
-  const handleCopy = useCallback(() => onCopy([item]), [item, onCopy]);
-  const handleArchive = useCallback(() => item.setArchived(true), [item]);
 
   const renderRow = useCallback(() => {
     const canSelect = typeof onToggleSelected === "function";
@@ -127,34 +118,26 @@ export function BaseTableItem({
           )}
         </td>
         <td>
-          <EntityItem.Menu
+          <ActionMenu
             item={item}
-            onPin={collection.can_write ? handlePin : null}
-            onMove={
-              collection.can_write && item.setCollection ? handleMove : null
-            }
-            onCopy={item.copy ? handleCopy : null}
-            onArchive={
-              collection.can_write && item.setArchived ? handleArchive : null
-            }
-            ANALYTICS_CONTEXT={ANALYTICS_CONTEXT}
+            collection={collection}
+            onCopy={onCopy}
+            onMove={onMove}
           />
         </td>
       </tr>
     );
   }, [
-    collection,
+    onToggleSelected,
     item,
     isPinned,
     isSelected,
-    linkProps,
-    handleArchive,
-    handleCopy,
-    handleMove,
-    handlePin,
     handleSelectionToggled,
-    onToggleSelected,
     isHoveringOverRow,
+    linkProps,
+    collection,
+    onCopy,
+    onMove,
   ]);
 
   if (!draggable) {

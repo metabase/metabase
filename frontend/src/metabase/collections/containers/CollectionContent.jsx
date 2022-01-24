@@ -8,6 +8,7 @@ import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
@@ -31,6 +32,7 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 function mapStateToProps(state) {
   return {
     isAdmin: getUserIsAdmin(state),
+    metadata: getMetadata(state),
   };
 }
 
@@ -41,6 +43,7 @@ function CollectionContent({
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
+  metadata,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
@@ -150,6 +153,7 @@ function CollectionContent({
               <PinnedItemOverview
                 items={pinnedItems}
                 collection={collection}
+                metadata={metadata}
                 onMove={handleMove}
                 onCopy={handleCopy}
                 onToggleSelected={toggleItem}
