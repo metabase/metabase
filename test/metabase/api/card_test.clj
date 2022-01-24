@@ -374,26 +374,6 @@
                                                           {:dataset_query   query
                                                            :result_metadata metadata}))))))))))))
 
-(deftest saving-card-saves-query-metadata
-  (testing "Make sure when saving a Card the query metadata is saved (if correct)"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type    :type/Integer
-                        :display_name "Count Chocula"
-                        :name         "count_chocula"}]
-            card-name (mt/random-name)]
-        (mt/with-temp Collection [collection]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-          (mt/with-model-cleanup [Card]
-            ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card" (assoc (card-with-name-and-query card-name)
-                                                                 :collection_id      (u/the-id collection)
-                                                                 :result_metadata    metadata))
-            ;; now check the metadata that was saved in the DB
-            (is (= [{:base_type    :type/Integer
-                     :display_name "Count Chocula"
-                     :name         "count_chocula"}]
-                   (db/select-one-field :result_metadata Card :name card-name)))))))))
-
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [Card]
@@ -441,34 +421,6 @@
                                                       (update-in [:type :type/Number :min] double)
                                                       (update-in [:type :type/Number :max] double)))))
 
-(deftest ints-returned-as-floating-point
-  (testing (str "When integer values are passed to the FE, they will be returned as floating point values. Our hashing "
-                "should ensure that integer and floating point values hash the same so we don't needlessly rerun the "
-                "query"))
-  (mt/with-non-admin-groups-no-root-collection-perms
-    (let [metadata  [{:base_type    :type/Integer
-                      :display_name "Count Chocula"
-                      :name         "count_chocula"
-                      :fingerprint  {:global {:distinct-count 285},
-                                     :type   {:type/Number {:min 5, :max 2384, :avg 1000.2}}}}]
-          card-name (mt/random-name)]
-      (mt/with-temp Collection [collection]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (mt/throw-if-called qp.async/result-metadata-for-query-async
-          (mt/with-model-cleanup [Card]
-            ;; create a card with the metadata
-            (mt/user-http-request :rasta :post 202 "card"
-                                  (assoc (card-with-name-and-query card-name)
-                                         :collection_id      (u/the-id collection)
-                                         :result_metadata    (map fingerprint-integers->doubles metadata)))
-            (testing "check the metadata that was saved in the DB"
-              (is (= [{:base_type     :type/Integer
-                       :display_name  "Count Chocula"
-                       :name          "count_chocula"
-                       :fingerprint   {:global {:distinct-count 285},
-                                       :type   {:type/Number {:min 5.0, :max 2384.0, :avg 1000.2}}}}]
-                     (db/select-one-field :result_metadata Card :name card-name))))))))))
-
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
     (mt/with-non-admin-groups-no-root-collection-perms
@@ -488,14 +440,29 @@
                        :field_ref     [:aggregation 0]}]
                      (db/select-one-field :result_metadata Card :name card-name))))))))))
 
+(deftest updating-card-updates-metadata
+  (let [query          (mt/mbql-query :venues {:fields [$id $name]})
+        modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+        norm           (comp str/upper-case :name)]
+    (mt/with-model-cleanup [Card]
+      (let [{metadata :result_metadata
+             card-id  :id :as card} (mt/user-http-request
+                                     :rasta :post 202
+                                     "card"
+                                     (card-with-name-and-query "card-name"
+                                                               query))]
+        (is (= ["ID" "NAME"] (map norm metadata)))
+        ;; simulate a user changing the query without rerunning the query
+        (mt/user-http-request
+         :rasta :put 202 (str "card/" card-id)
+         (assoc card :dataset_query modified-query))
+        (is (= ["ID" "NAME" "PRICE"]
+               (map norm (db/select-one-field :result_metadata Card :id card-id))))))))
+
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [metadata  [{:base_type     :type/Integer
-                        :display_name  "Count Chocula"
-                        :name          "count_chocula"
-                        :semantic_type :type/Quantity}]
-            card-name (mt/random-name)]
+      (let [card-name (mt/random-name)]
         (mt/with-temp Collection [collection]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/with-model-cleanup [Card]
@@ -506,7 +473,6 @@
                             (fn [driver stmt sql]
                               (reset! sql-result sql)
                               (orig driver stmt sql))]
-                ;; create a card with the metadata
                 (mt/user-http-request
                  :rasta :post 202 "card"
                  (assoc (card-with-name-and-query card-name)
