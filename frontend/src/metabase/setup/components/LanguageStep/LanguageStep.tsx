@@ -99,6 +99,7 @@ const LocaleItem = ({
         name={fieldId}
         value={locale.code}
         checked={checked}
+        autoFocus={checked}
         onChange={handleChange}
       />
       <LocaleButton checked={checked}>{locale.name}</LocaleButton>
