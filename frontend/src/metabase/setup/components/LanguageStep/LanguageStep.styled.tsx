@@ -30,7 +30,7 @@ export interface LocaleContainerProps {
   checked: boolean;
 }
 
-export const LocaleText = styled.span<LocaleContainerProps>`
+export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
   color: ${props => color(props.checked ? "white" : "text-dark")};

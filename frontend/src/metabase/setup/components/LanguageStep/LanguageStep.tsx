@@ -10,7 +10,7 @@ import {
   LocaleGroup,
   LocaleInput,
   LocaleLabel,
-  LocaleText,
+  LocaleButton,
   StepDescription,
 } from "./LanguageStep.styled";
 
@@ -101,7 +101,7 @@ const LocaleItem = ({
         checked={checked}
         onChange={handleChange}
       />
-      <LocaleText checked={checked}>{locale.name}</LocaleText>
+      <LocaleButton checked={checked}>{locale.name}</LocaleButton>
     </LocaleLabel>
   );
 };
