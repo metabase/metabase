@@ -107,7 +107,7 @@ jobs:
     - name: Change dir?
       run: cd bin/docker/
     - name: Build container image
-      run: docker buildx build . -f bin/docker/Dockerfile -t paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
+      run: docker buildx build . -t paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
     - name: Launch container
       run: docker run -dp 3000:3000 metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
       timeout-minutes: 5
