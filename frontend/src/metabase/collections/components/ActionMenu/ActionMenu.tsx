@@ -34,7 +34,7 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
   return (
     // this component is used within a `<Link>` component,
     // so we must prevent events from triggering the activation of the link
-    <EventSandbox>
+    <EventSandbox preventDefault>
       <EntityItemMenu
         className={className}
         item={item}
