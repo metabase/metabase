@@ -3,6 +3,7 @@ import React from "react";
 function CollectionEmptyState() {
   return (
     <svg
+      style={{ maxWidth: 1120 }}
       data-testid="collection-empty-state"
       viewBox="0 0 944 672"
       fill="none"
