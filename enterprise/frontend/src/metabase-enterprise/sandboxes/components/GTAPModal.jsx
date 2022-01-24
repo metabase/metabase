@@ -10,11 +10,11 @@ import MappingEditor from "./MappingEditor";
 
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import QuestionParameterTargetWidget from "../containers/QuestionParameterTargetWidget";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Select, { Option } from "metabase/components/Select";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";

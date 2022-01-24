@@ -146,22 +146,20 @@
                             {:name  "Only these..." :value "inclusion"}
                             {:name  "All except..." :value "exclusion"}]
              :type         "select"}
-            {:name        "my-schema-filters-info-top-inclusion"
-             :placeholder "Comma separated names of schemas that should appear in Metabase"
-             :type        :info
-             :visible-if  {:my-schema-filters-type "inclusion"}}
-            {:name        "my-schema-filters-info-top-exclusion"
-             :placeholder "Comma separated names of schemas that should NOT appear in Metabase"
-             :type        :info
-             :visible-if  {:my-schema-filters-type "exclusion"}}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
+             :description "Comma separated names of schemas that <strong>should</strong> appear in Metabase"
+             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
              :type        "text"
-             :visible-if  {:my-schema-filters-type ["inclusion" "exclusion"]}}
-            {:name        "my-schema-filters-info-bottom"
-             :placeholder "You can use patterns like auth* to match multiple schemas"
-             :type        :info
-             :visible-if  {:my-schema-filters-type ["inclusion" "exclusion"]}}
+             :visible-if  {:my-schema-filters-type "inclusion"}
+             :required    true}
+            {:name        "my-schema-filters-patterns"
+             :placeholder "E.x. public,auth*"
+             :description "Comma separated names of schemas that <strong>should NOT</strong> appear in Metabase"
+             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
+             :type        "text"
+             :visible-if  {:my-schema-filters-type "exclusion"}
+             :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
              nil

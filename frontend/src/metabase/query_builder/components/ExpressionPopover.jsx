@@ -2,7 +2,7 @@
 import React from "react";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";

@@ -7,15 +7,15 @@ import Question from "metabase-lib/lib/Question";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   PRODUCTS,
   metadata,
   StaticEntitiesProvider,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 const QUERY = Question.create({
-  databaseId: SAMPLE_DATASET.id,
+  databaseId: SAMPLE_DATABASE.id,
   tableId: ORDERS.id,
   metadata,
 })

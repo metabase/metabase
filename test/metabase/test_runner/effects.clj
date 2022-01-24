@@ -68,3 +68,69 @@
   [message [_ expected actual]]
   `(t/do-report
     (query=-report ~message ~expected ~actual)))
+
+;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
+
+(defn- remove-keys-not-in-expected
+  "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `actual` diff that's not
+  in the original `expected` form."
+  [expected actual]
+  (cond
+    (and (map? expected) (map? actual))
+    (into {}
+          (comp (filter (fn [[k v]]
+                          (contains? expected k)))
+                (map (fn [[k v]]
+                       [k (remove-keys-not-in-expected (get expected k) v)])))
+          actual)
+
+    (and (sequential? expected) (sequential? actual))
+    (into
+     [(remove-keys-not-in-expected (first expected) (first actual))]
+     (when (next expected)
+       (remove-keys-not-in-expected (next expected) (next actual))))
+
+    :else
+    actual))
+
+(defn partial=-report
+  [message expected actual]
+  (let [actual'                           (remove-keys-not-in-expected expected actual)
+        [only-in-actual only-in-expected] (data/diff actual' expected)
+        pass?                             (if (coll? only-in-expected)
+                                            (empty? only-in-expected)
+                                            (nil? only-in-expected))]
+    {:type     (if pass? :pass :fail)
+     :message  message
+     :expected expected
+     :actual   actual
+     :diffs    [[actual [only-in-expected only-in-actual]]]}))
+
+(defmethod t/assert-expr 'partial=
+  [message [_ expected actual]]
+  `(t/do-report
+    (partial=-report ~message ~expected ~actual)))
+
+(defn sql=-report
+  [message expected query]
+  (let [sql-map ((requiring-resolve 'metabase.driver.sql.query-processor-test-util/query->sql-map)
+                 query)
+        pass?   (= sql-map expected)]
+    {:type     (if pass? :pass :fail)
+     :message  message
+     :expected expected
+     :actual   sql-map
+     :diffs    (when-not pass?
+                 (let [[only-in-actual only-in-expected] (data/diff sql-map expected)]
+                   [[sql-map [only-in-expected only-in-actual]]]))}))
+
+(defmethod t/assert-expr 'sql=
+  [message [_ expected query]]
+  `(let [query# ~query]
+     ;; [[t/testing]] context has to be done around the call to [[t/do-report]]
+     ((requiring-resolve 'metabase.driver.sql.query-processor-test-util/do-with-native-query-testing-context)
+      query#
+      ;; [[t/do-report]] has to be in the expansion, otherwise it picks up the wrong filename and line metadata.
+      (fn []
+        (t/do-report
+         (sql=-report ~message ~expected query#))))))

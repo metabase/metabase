@@ -63,7 +63,7 @@ function enableCaching() {
   cy.findByText("Disabled")
     .parent()
     .within(() => {
-      cy.findByRole("checkbox").click();
+      cy.findByRole("switch").click();
     });
 
   cy.findByText("Enabled");

@@ -5,7 +5,7 @@
   (:require [clojure.test :refer :all]
             [metabase.util.cron :as cron-util]))
 
-(deftest schedule-map->cron-string-test
+(deftest ^:parallel schedule-map->cron-string-test
   (testing "basic schedule"
     (is (= "0 0 * * * ? *"
            (cron-util/schedule-map->cron-string

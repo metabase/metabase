@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";

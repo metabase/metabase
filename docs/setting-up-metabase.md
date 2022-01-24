@@ -15,7 +15,7 @@ For now, let's just create an account for ourselves to explore Metabase. Type in
 ![Account Setup](images/AccountSetup.png)
 
 ## Gathering your database info
-At this point you’ll need to gather some information about the database you want to use with Metabase. We won’t be able to connect to your database without it, but you’d like to deal with all of this later, that’s okay: just click **I’ll add my data later**. Metabase comes with a [Sample Dataset](/glossary.html#sample_dataset) that you can play around with to get a feel for how Metabase works.
+At this point you’ll need to gather some information about the database you want to use with Metabase. We won’t be able to connect to your database without it, but you’d like to deal with all of this later, that’s okay: just click **I’ll add my data later**. Metabase comes with a [Sample Database](/glossary.html#sample_database) that you can play around with to get a feel for how Metabase works.
 
 If you’re ready to connect, here’s what you’ll need:
 

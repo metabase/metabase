@@ -3,8 +3,8 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import _Checkbox from "metabase/core/components/CheckBox";
 import _EmptyState from "metabase/components/EmptyState";
-import _Checkbox from "../CheckBox";
 
 import {
   OptionContainer,

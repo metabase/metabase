@@ -8,7 +8,7 @@ import _ from "underscore";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import Popover from "metabase/components/Popover";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 
 import { normalizeValue } from "./normalizeValue";
 

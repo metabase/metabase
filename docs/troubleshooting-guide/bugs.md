@@ -6,7 +6,7 @@ If the bug has not yet been reported, go ahead and [open a bug report][metabase-
 
 1. Metabase server logs
 2. Javascript console logs
-3. Whether it can be reproduced on the sample dataset
+3. Whether it can be reproduced on the sample database
 4. Your Metabase version
 5. Where Metabase is running (Docker image, AWS Elastic Beanstalk, Heroku, Linux/Ubuntu, etc.)
 6. Which database you are using

@@ -7,7 +7,7 @@ describe(`search > recently viewed`, () => {
   });
 
   it("shows list of recently viewed items", () => {
-    cy.visit("/browse/1-sample-dataset");
+    cy.visit("/browse/1-sample-database");
     cy.findByText("People").click();
 
     // "Orders" question

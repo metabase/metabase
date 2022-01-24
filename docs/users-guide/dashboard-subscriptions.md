@@ -65,6 +65,7 @@ Metabase Enterprise Edition allows you to [customize filter values for each subs
 
 ---
 
-## Next: Getting reports with Pulses
+## Next: data model reference
 
-Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](10-pulses.md).
+Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](12-data-model-reference.md) to help you make sense of your data.
+

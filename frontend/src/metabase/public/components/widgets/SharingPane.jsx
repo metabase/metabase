@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import CopyWidget from "metabase/components/CopyWidget";
 import Confirm from "metabase/components/Confirm";
 

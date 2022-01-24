@@ -265,3 +265,25 @@
                       (is (contains? (schemas) fake-schema-name))))
                   (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                     (is (not (contains? (schemas) fake-schema-name)))))))))))))
+
+(mt/defdataset numeric-unix-timestamps
+  [["timestamps"
+    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [[1642704550656]]]])
+
+(deftest numeric-unix-timestamp-test
+  (mt/test-driver :redshift
+    (testing "NUMERIC columns should work with UNIX timestamp conversion (#7487)"
+      (mt/dataset numeric-unix-timestamps
+        (testing "without coercion strategy"
+          (let [query (mt/mbql-query timestamps)]
+            (mt/with-native-query-testing-context query
+              (is (= [1 1642704550656M]
+                     (mt/first-row (qp/process-query query)))))))
+        (testing "WITH coercion strategy"
+          (mt/with-temp-vals-in-db Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                                                                         :effective_type    :type/Instant}
+            (let [query (mt/mbql-query timestamps)]
+              (mt/with-native-query-testing-context query
+                (is (= [1 "2022-01-20T18:49:10.656Z"]
+                       (mt/first-row (qp/process-query query))))))))))))

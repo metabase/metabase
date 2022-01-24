@@ -10,7 +10,7 @@ import { color as c, lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 

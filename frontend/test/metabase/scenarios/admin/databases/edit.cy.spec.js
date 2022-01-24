@@ -16,9 +16,12 @@ describe("scenarios > admin > databases > edit", () => {
   });
 
   describe("Connection settings", () => {
-    it("shows the connection settings for sample dataset correctly", () => {
+    it("shows the connection settings for sample database correctly", () => {
       cy.visit("/admin/databases/1");
-      cy.findByLabelText("Display name").should("have.value", "Sample Dataset");
+      cy.findByLabelText("Display name").should(
+        "have.value",
+        "Sample Database",
+      );
       cy.findByLabelText("Connection String").should($input =>
         expect($input[0].value).to.match(/sample-dataset\.db/),
       );
@@ -40,7 +43,7 @@ describe("scenarios > admin > databases > edit", () => {
       cy.findByText("Success");
     });
 
-    it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATASET`", () => {
+    it("`auto_run_queries` toggle should be ON by default for `SAMPLE_DATABASE`", () => {
       cy.visit("/admin/databases/1");
 
       cy.findByText("Show advanced options").click();
@@ -92,7 +95,7 @@ describe("scenarios > admin > databases > edit", () => {
           expect(response.body.cache_ttl).to.equal(32);
 
           cy.visit("/admin/databases");
-          cy.findByTextEnsureVisible("Sample Dataset").click();
+          cy.findByTextEnsureVisible("Sample Database").click();
 
           cy.findByTextEnsureVisible("Custom").click();
           popover()
@@ -234,13 +237,13 @@ describe("scenarios > admin > databases > edit", () => {
       cy.wait("@discard_values");
     });
 
-    it("lets you remove the Sample Dataset", () => {
+    it("lets you remove the Sample Database", () => {
       cy.route("DELETE", "/api/database/1").as("delete");
 
       cy.visit("/admin/databases/1");
       cy.findByText("Remove this database").click();
       modal().within(() => {
-        cy.get("input").type("Sample Dataset");
+        cy.get("input").type("Sample Database");
         cy.get(".Button.Button--danger").click();
       });
 

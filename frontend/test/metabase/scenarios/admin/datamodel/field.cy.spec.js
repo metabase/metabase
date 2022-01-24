@@ -5,9 +5,9 @@ import {
   popover,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
 describe.skip("scenarios > admin > datamodel > field", () => {

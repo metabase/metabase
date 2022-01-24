@@ -2,7 +2,7 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
@@ -35,7 +35,12 @@ const EmptyState = ({
   ...rest
 }) => (
   <Box>
-    <Flex justify="center" flexDirection="column" align="center">
+    <Flex
+      className="text-centered"
+      justify="center"
+      flexDirection="column"
+      align="center"
+    >
       {illustrationElement && <Box mb={[2, 3]}>{illustrationElement}</Box>}
       <Box>
         <LegacyIcon {...rest} />

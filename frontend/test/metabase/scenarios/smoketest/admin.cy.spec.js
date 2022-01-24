@@ -94,7 +94,7 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("SQL query");
 
       cy.findByText("Question").click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("People").click();
 
       cy.findByText("Save");
@@ -155,7 +155,7 @@ describe("metabase-smoketest > admin", () => {
 
     it.skip("should add a simple JOINed question as admin", () => {
       openNotebookEditor();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
       cy.findByText("Data");
@@ -189,7 +189,7 @@ describe("metabase-smoketest > admin", () => {
 
     it("should add a question with a default line visualization as admin", () => {
       openNotebookEditor();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
       visualize();
@@ -328,7 +328,7 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("SQL query");
 
         cy.findByText("Visual question").click();
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Reviews").click();
 
         cy.get(".Button")

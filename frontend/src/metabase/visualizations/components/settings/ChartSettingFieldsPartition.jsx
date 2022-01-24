@@ -13,7 +13,7 @@ import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
 import Text from "metabase/components/type/Text";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 
 import {
   COLUMN_SHOW_TOTALS,

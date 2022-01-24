@@ -1,8 +1,8 @@
 import { restore, popover, modal } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const COUNT_ALL = "200";
 const COUNT_DOOHICKEY = "42";

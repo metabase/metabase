@@ -13,7 +13,7 @@ import {
   SectionHeader,
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";

@@ -163,15 +163,19 @@ export default class Navbar extends Component {
               </Link>
             }
             items={[
-              {
-                title: t`Question`,
-                icon: `insight`,
-                link: Urls.newQuestion({
-                  mode: "notebook",
-                  creationType: "complex_question",
-                }),
-                event: `NavBar;New Question Click;`,
-              },
+              ...(hasDataAccess
+                ? [
+                    {
+                      title: t`Question`,
+                      icon: `insight`,
+                      link: Urls.newQuestion({
+                        mode: "notebook",
+                        creationType: "complex_question",
+                      }),
+                      event: `NavBar;New Question Click;`,
+                    },
+                  ]
+                : []),
               ...(hasNativeWrite
                 ? [
                     {

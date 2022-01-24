@@ -1,19 +1,19 @@
 import {
   metadata,
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   REVIEWS,
   ORDERS,
   PRODUCTS,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import { getParameterMappingOptions } from "./mapping-options";
 
 function structured(query) {
-  return SAMPLE_DATASET.question(query).card();
+  return SAMPLE_DATABASE.question(query).card();
 }
 
 function native(native) {
-  return SAMPLE_DATASET.nativeQuestion(native).card();
+  return SAMPLE_DATABASE.nativeQuestion(native).card();
 }
 
 describe("parameters/utils/mapping-options", () => {

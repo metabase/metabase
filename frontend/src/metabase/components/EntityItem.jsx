@@ -6,7 +6,7 @@ import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 

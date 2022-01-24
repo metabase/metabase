@@ -7,7 +7,7 @@ import _ from "underscore";
 import { color, normal } from "metabase/lib/colors";
 
 import ColorPicker from "metabase/components/ColorPicker";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import NumericInput from "metabase/components/NumericInput";
 

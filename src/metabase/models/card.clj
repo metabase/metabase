@@ -91,7 +91,10 @@
   ([instance]
    (serialize-instance nil nil instance))
   ([_ _ instance]
-   (dissoc instance :created_at :updated_at :result_metadata)))
+   (cond-> (dissoc instance :created_at :updated_at)
+     ;; datasets should preserve edits to metadata
+     (not (:dataset instance))
+     (dissoc :result_metadata))))
 
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------

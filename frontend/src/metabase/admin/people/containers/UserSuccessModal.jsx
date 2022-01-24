@@ -10,7 +10,7 @@ import User from "metabase/entities/users";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Link from "metabase/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";

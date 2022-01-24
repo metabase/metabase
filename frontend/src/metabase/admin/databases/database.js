@@ -22,11 +22,12 @@ export const RESET = "metabase/admin/databases/RESET";
 export const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
 export const INITIALIZE_DATABASE =
   "metabase/admin/databases/INITIALIZE_DATABASE";
-export const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
-export const ADD_SAMPLE_DATASET_FAILED =
-  "metabase/admin/databases/ADD_SAMPLE_DATASET_FAILED";
-export const ADDING_SAMPLE_DATASET =
-  "metabase/admin/databases/ADDING_SAMPLE_DATASET";
+export const ADD_SAMPLE_DATABASE =
+  "metabase/admin/databases/ADD_SAMPLE_DATABASE";
+export const ADD_SAMPLE_DATABASE_FAILED =
+  "metabase/admin/databases/ADD_SAMPLE_DATABASE_FAILED";
+export const ADDING_SAMPLE_DATABASE =
+  "metabase/admin/databases/ADDING_SAMPLE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
@@ -126,23 +127,23 @@ export const initializeDatabase = function(databaseId) {
   };
 };
 
-export const addSampleDataset = createThunkAction(
-  ADD_SAMPLE_DATASET,
+export const addSampleDatabase = createThunkAction(
+  ADD_SAMPLE_DATABASE,
   function() {
     return async function(dispatch, getState) {
       try {
-        dispatch.action(ADDING_SAMPLE_DATASET);
-        const sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        dispatch.action(ADDING_SAMPLE_DATABASE);
+        const sampleDatabase = await MetabaseApi.db_add_sample_database();
         await dispatch(
           Databases.actions.fetchList(undefined, {
             reload: true,
           }),
         );
         MetabaseAnalytics.trackStructEvent("Databases", "Add Sample Data");
-        return sampleDataset;
+        return sampleDatabase;
       } catch (error) {
-        console.error("error adding sample dataset", error);
-        dispatch.action(ADD_SAMPLE_DATASET_FAILED, { error });
+        console.error("error adding sample database", error);
+        dispatch.action(ADD_SAMPLE_DATABASE_FAILED, { error });
         return error;
       }
     };
@@ -343,11 +344,13 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
-const sampleDataset = handleActions(
+const sampleDatabase = handleActions(
   {
-    [ADDING_SAMPLE_DATASET]: () => ({ loading: true }),
-    [ADD_SAMPLE_DATASET]: state => ({ ...state, loading: false }),
-    [ADD_SAMPLE_DATASET_FAILED]: (state, { payload: { error } }) => ({ error }),
+    [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
+    [ADD_SAMPLE_DATABASE]: state => ({ ...state, loading: false }),
+    [ADD_SAMPLE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
+      error,
+    }),
   },
   { error: undefined, loading: false },
 );
@@ -358,5 +361,5 @@ export default combineReducers({
   deletionError,
   databaseCreationStep,
   deletes,
-  sampleDataset,
+  sampleDatabase,
 });

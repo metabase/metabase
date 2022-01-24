@@ -75,15 +75,6 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-;; TODO -- rename to `TemporalUnit`
-(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
-  `DateTimeUnit` instead."
-  (s/named
-   (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-                   :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
-   "datetime-unit"))
-
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -818,7 +809,8 @@
   {;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    (s/optional-key :name)         helpers/NonBlankString
    ;; user-facing display name for this aggregation instead of the default one
-   (s/optional-key :display-name) helpers/NonBlankString})
+   (s/optional-key :display-name) helpers/NonBlankString
+   s/Keyword                      s/Any})
 
 (defclause aggregation-options
   aggregation UnnamedAggregation
@@ -1053,11 +1045,15 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre helpers/IntGreaterThanZero source-table-card-id-regex))
 
+(def join-strategies
+  "Valid values of the `:strategy` key in a join map."
+  #{:left-join :right-join :inner-join :full-join})
+
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
   driver supports `:full-join` before generating a Join clause using that strategy."
-  (s/enum :left-join :right-join :inner-join :full-join))
+  (apply s/enum join-strategies))
 
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
@@ -1486,7 +1482,6 @@
           :embedded-question
           :json-download
           :map-tiles
-          :metabot
           :public-dashboard
           :public-question
           :pulse

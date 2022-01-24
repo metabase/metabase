@@ -20,7 +20,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.query-processor-test :as sql.qp.test]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -1107,7 +1107,7 @@
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
-             (sql.qp.test/pretty-sql
+             (sql.qp-test-util/pretty-sql
               (:query
                (qp/query->native
                 (mt/mbql-query checkins

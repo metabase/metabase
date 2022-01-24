@@ -2,7 +2,7 @@
 import React from "react";
 
 import GroupSelect from "metabase/admin/people/components/GroupSelect";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 
 import Group from "metabase/entities/groups";
 

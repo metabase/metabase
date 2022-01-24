@@ -369,3 +369,20 @@
         (is (= [1M]
                (mt/first-row
                 (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
+
+(deftest custom-expression-between-test
+  (mt/test-driver :oracle
+    (testing "Custom :between expression should work (#15538)"
+      (let [query (mt/mbql-query nil
+                    {:source-query {:native (str "select 42 as \"val\","
+                                                 " cast(to_timestamp('09-APR-2021') AS date) as \"date\","
+                                                 " to_timestamp('09-APR-2021') AS \"timestamp\" "
+                                                 "from dual")}
+                     :aggregation  [[:aggregation-options
+                                     [:sum-where
+                                      [:field "val" {:base-type :type/Decimal}]
+                                      [:between [:field "date" {:base-type :type/Date}] "2021-01-01" "2021-12-31"]]
+                                     {:name "CE", :display-name "CE"}]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [42M]
+                 (mt/first-row (qp/process-query query)))))))))

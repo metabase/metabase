@@ -10,7 +10,7 @@ import {
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
-import { metadata } from "__support__/sample_dataset_fixture";
+import { metadata } from "__support__/sample_database_fixture";
 
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 

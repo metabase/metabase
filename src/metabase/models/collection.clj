@@ -898,10 +898,16 @@
   "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
   `collection-id` is `nil`, this check is done for the Root Collection."
   [collection-or-id-or-nil]
-  (api/check-403 (perms/set-has-full-permissions? @*current-user-permissions-set*
-                   (perms/collection-readwrite-path (if collection-or-id-or-nil
-                                                      collection-or-id-or-nil
-                                                      root-collection)))))
+  (let [actual-perms   @*current-user-permissions-set*
+        required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
+                                                          collection-or-id-or-nil
+                                                          root-collection))]
+    (when-not (perms/set-has-full-permissions? actual-perms required-perms)
+      (throw (ex-info (tru "You do not have curate permissions for this Collection.")
+                      {:status-code    403
+                       :collection     collection-or-id-or-nil
+                       :required-perms required-perms
+                       :actual-perms   actual-perms})))))
 
 
 (defn check-allowed-to-change-collection

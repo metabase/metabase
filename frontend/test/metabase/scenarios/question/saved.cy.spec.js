@@ -142,7 +142,7 @@ describe("scenarios > question > saved", () => {
     cy.findByTestId("sidebar-right")
       .findByText(/Rating/i)
       .click();
-    cy.get(".AdminSelect").findByText("Equal to");
+    cy.findByTestId("select-button").findByText("Equal to");
     cy.findByPlaceholderText("Enter a number").type("4");
     cy.button("Add filter")
       .should("not.be.disabled")

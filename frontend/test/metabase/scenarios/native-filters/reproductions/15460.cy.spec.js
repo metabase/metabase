@@ -7,9 +7,9 @@ import {
 
 import * as SQLFilter from "../helpers/e2e-sql-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PRODUCTS } = SAMPLE_DATASET;
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const filter = {
   id: "d98c3875-e0f1-9270-d36a-5b729eef938e",

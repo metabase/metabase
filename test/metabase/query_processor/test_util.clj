@@ -39,14 +39,19 @@
         (qp.store/fetch-and-store-fields! [field-id])
         (qp.store/field field-id))))
 
+(def ^:dynamic ^:private *already-have-everything-store?* false)
+
 (defn do-with-everything-store
-  "Impl for `with-everything-store`."
-  [f]
-  (with-redefs [qp.store/table everything-store-table
-                qp.store/field everything-store-field]
-    (qp.store/with-store
-      (qp.store/fetch-and-store-database! (data/id))
-      (f))))
+  "Impl for [[with-everything-store]]."
+  [thunk]
+  (if *already-have-everything-store?*
+    (thunk)
+    (binding [*already-have-everything-store?* true]
+      (with-redefs [qp.store/table everything-store-table
+                    qp.store/field everything-store-field]
+        (qp.store/with-store
+          (qp.store/fetch-and-store-database! (data/id))
+          (thunk))))))
 
 (defmacro with-everything-store
   "When testing a specific piece of middleware, you often need to load things into the QP Store, but doing so can be
@@ -89,7 +94,8 @@
         (update :fields (fn [fields]
                           (set
                            (for [[_ {table-id :table_id, field-name :name}] fields]
-                             [(get-in store [:tables table-id :name]) field-name])))))))
+                             [(get-in store [:tables table-id :name]) field-name]))))
+        (dissoc :misc))))
 
 (defn card-with-source-metadata-for-query
   "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.

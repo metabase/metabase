@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import TextInput from "metabase/components/TextInput";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";

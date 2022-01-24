@@ -2,11 +2,11 @@ import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
 import {
   metadata,
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   PRODUCTS,
   createMetadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -18,7 +18,7 @@ const card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -33,7 +33,7 @@ const orders_raw_card = {
   can_write: true,
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -47,7 +47,7 @@ const orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
       aggregation: [["count"]],
@@ -62,7 +62,7 @@ const native_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "SELECT count(*) FROM orders",
     },
@@ -76,7 +76,7 @@ const invalid_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "nosuchqueryprocessor",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       query: "SELECT count(*) FROM orders",
     },
@@ -91,7 +91,7 @@ const orders_count_by_id_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
       aggregation: [["count"]],
@@ -127,7 +127,7 @@ describe("Question", () => {
     describe("Question.create(...)", () => {
       const question = Question.create({
         metadata,
-        databaseId: SAMPLE_DATASET.id,
+        databaseId: SAMPLE_DATABASE.id,
         tableId: ORDERS.id,
       });
 
@@ -331,7 +331,7 @@ describe("Question", () => {
   describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
     const rawDataQuestion = new Question(orders_raw_card, metadata);
     const timeBreakoutQuestion = Question.create({
-      databaseId: SAMPLE_DATASET.id,
+      databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
       metadata,
     })
@@ -378,7 +378,7 @@ describe("Question", () => {
 
         expect(brokenOutCard._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
@@ -403,7 +403,7 @@ describe("Question", () => {
         // This breaks because we're apparently modifying OrdersCountDataCard
         expect(brokenOutCard._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
@@ -430,7 +430,7 @@ describe("Question", () => {
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(pivoted._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
@@ -452,7 +452,7 @@ describe("Question", () => {
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(pivoted._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [["count"]],
@@ -479,7 +479,7 @@ describe("Question", () => {
 
         expect(filteringQuestion._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.ID.id, null], 1],
@@ -495,7 +495,7 @@ describe("Question", () => {
 
         expect(filteringQuestion._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: [
@@ -520,7 +520,7 @@ describe("Question", () => {
 
         expect(filteringQuestion._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.CREATED_AT.id, null], "12/12/2012"],
@@ -546,7 +546,7 @@ describe("Question", () => {
 
         expect(drilledQuestion._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.ID.id, null], 1],
@@ -618,7 +618,7 @@ describe("Question", () => {
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(drilledQuestion._card.dataset_query).toEqual({
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             filter: ["=", ["field", ORDERS.ID.id, null], 1],
@@ -646,7 +646,7 @@ describe("Question", () => {
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion._card.dataset_query).toEqual({
             type: "query",
-            database: SAMPLE_DATASET.id,
+            database: SAMPLE_DATABASE.id,
             query: {
               "source-table": ORDERS.id,
               filter: ["=", ["field", ORDERS.ID.id, null], 1],
@@ -662,7 +662,7 @@ describe("Question", () => {
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion._card.dataset_query).toEqual({
             type: "query",
-            database: SAMPLE_DATASET.id,
+            database: SAMPLE_DATABASE.id,
             query: {
               "source-table": ORDERS.id,
               filter: [
@@ -682,7 +682,7 @@ describe("Question", () => {
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion._card.dataset_query).toEqual({
             type: "query",
-            database: SAMPLE_DATASET.id,
+            database: SAMPLE_DATABASE.id,
             query: {
               "source-table": PRODUCTS.id,
               filter: ["=", ["field", PRODUCTS.ID.id, null], 1],

@@ -478,7 +478,8 @@
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
-  [:description :display_name :semantic_type])
+  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
+  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
 
 (defn- combine-metadata
   "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute

@@ -12,7 +12,7 @@ import {
   visualize,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -23,7 +23,7 @@ const {
   PEOPLE_ID,
   REVIEWS,
   REVIEWS_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
@@ -52,7 +52,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // count orders by user id, filter to the one user with 46 orders
@@ -167,7 +167,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // Add filter for ID < 100
@@ -200,7 +200,7 @@ describe("scenarios > question > notebook", () => {
     // start a custom question with orders
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     // type a dimension name
@@ -220,14 +220,18 @@ describe("scenarios > question > notebook", () => {
 
   describe("joins", () => {
     it("should allow joins", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // start a custom question with orders
       cy.visit("/question/new");
       cy.contains("Custom question").click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       // join to Reviews on orders.product_id = reviews.product_id
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
+
       popover()
         .contains("Reviews")
         .click();
@@ -261,14 +265,17 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should allow post-join filters (metabase#12221)", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       cy.log("Start a custom question with Orders");
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
 
       cy.log("Join to People table using default settings");
       cy.icon("join_left_outer ").click();
+      cy.wait("@schema");
       cy.contains("People").click();
 
       cy.findByTestId("question-table-badges").within(() => {
@@ -301,6 +308,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should join on field literals", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // create two native questions
       cy.createNativeQuestion({
         name: "question a",
@@ -320,8 +329,10 @@ describe("scenarios > question > notebook", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
+
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });
@@ -411,6 +422,8 @@ describe("scenarios > question > notebook", () => {
     });
 
     it("should join saved questions that themselves contain joins (metabase#12928)", () => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
       // Save Question 1
       cy.createQuestion({
         name: "12928_Q1",
@@ -477,9 +490,10 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("12928_Q1").click();
 
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
 
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Dataset").click();
+        cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Saved Questions").click();
       });
       cy.findByText("12928_Q2").click();
@@ -502,7 +516,7 @@ describe("scenarios > question > notebook", () => {
       cy.findAllByText(/Products? → Category/).should("have.length", 2);
     });
 
-    it.skip("should join saved question with sorted metric (metabase#13744)", () => {
+    it("should join saved question with sorted metric (metabase#13744)", () => {
       cy.server();
       // create first question based on repro steps in #13744
       cy.createQuestion({
@@ -708,7 +722,7 @@ describe("scenarios > question > notebook", () => {
         cy.findByText(/Orders/i).click();
         cy.findByText("Discount").click();
       });
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .contains("Equal to")
         .click();
       cy.findByText("Greater than").click();
@@ -726,7 +740,7 @@ describe("scenarios > question > notebook", () => {
       cy.viewport(1280, 720);
       cy.visit("/question/new");
       cy.findByText("Custom question").click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Orders").click();
     });
 
@@ -881,7 +895,7 @@ describe("scenarios > question > notebook", () => {
   it("select no columns select the first one", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
     cy.findByTestId("fields-picker").click();
 
@@ -904,7 +918,7 @@ describe("scenarios > question > notebook", () => {
   it.skip("should show an info popover when hovering over a field picker option for a table", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Orders").click();
 
     cy.findByTestId("fields-picker").click();
@@ -955,6 +969,7 @@ function joinTwoSavedQuestions() {
         "source-table": PRODUCTS_ID,
       },
     }).then(() => {
+      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
       cy.visit(`/question/new`);
       cy.findByText("Custom question").click();
 
@@ -964,6 +979,7 @@ function joinTwoSavedQuestions() {
       });
 
       cy.icon("join_left_outer").click();
+      cy.wait("@schema");
       popover().within(() => {
         cy.icon("chevronleft").click();
         cy.findByText("Saved Questions").click();

@@ -8,7 +8,7 @@ import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 // TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
@@ -76,10 +76,7 @@ export default class ExpressionWidget extends Component {
               <ExternalLink
                 className="link"
                 target="_blank"
-                href={MetabaseSettings.docsUrl(
-                  "users-guide/custom-questions",
-                  "creating-custom-columns",
-                )}
+                href={MetabaseSettings.docsUrl("users-guide/expressions")}
               >{t`Learn more`}</ExternalLink>
             </p>
           </div>
