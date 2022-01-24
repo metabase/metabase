@@ -2,7 +2,6 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.api.card :as card-api]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
@@ -15,8 +14,9 @@
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
+            [metabase.pulse.util :as pu]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
@@ -27,66 +27,31 @@
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 
-
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
-
-;; TODO - this is probably something that could live somewhere else and just be reused
-;; TODO - this should be done async
-(defn execute-card
-  "Execute the query for a single Card. `options` are passed along to the Query Processor."
-  [{pulse-creator-id :creator_id} card-or-id & {:as options}]
-  ;; The Card must either be executed in the context of a User or by the MetaBot which itself is not a User
-  {:pre [(or (integer? pulse-creator-id)
-             (= (:context options) :metabot))]}
-  (let [card-id (u/the-id card-or-id)]
-    (try
-      (when-let [{query :dataset_query, :as card} (Card :id card-id, :archived false)]
-        (let [query         (assoc query :async? false)
-              process-query (fn []
-                              (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:process-viz-settings? true
-                                                           :js-int-to-string?     false})
-                                 (merge {:executed-by pulse-creator-id
-                                         :context     :pulse
-                                         :card-id     card-id}
-                                        options))))
-              result        (if pulse-creator-id
-                              (session/with-current-user pulse-creator-id
-                                (process-query))
-                              (process-query))]
-          {:card   card
-           :result result}))
-      (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
 (defn- execute-dashboard-subscription-card
   [owner-id dashboard dashcard card-or-id parameters]
   (try
-    (let [card-id         (u/the-id card-or-id)
-          card            (Card :id card-id)
-          param-id->param (u/key-by :id parameters)
-          params          (for [mapping (:parameter_mappings dashcard)
-                                :when   (= (:card_id mapping) card-id)
-                                :let    [param (get param-id->param (:parameter_id mapping))]
-                                :when   param]
-                            (assoc param :target (:target mapping)))
-          result (session/with-current-user owner-id
-                   (card-api/run-query-for-card-async
-                    card-id :api
-                    :dashboard-id  (:id dashboard)
-                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
-                    :export-format :api
-                    :parameters    params
-                    :middleware    {:process-viz-settings? true
-                                    :js-int-to-string?     false}
-                    :run (fn [query info]
-                           (qp/process-query-and-save-with-max-results-constraints! (assoc query :async? false) info))))]
-      {:card card
+    (let [card-id (u/the-id card-or-id)
+          card    (Card :id card-id)
+          result  (session/with-current-user owner-id
+                    (qp.dashboard/run-query-for-dashcard-async
+                     :dashboard-id  (u/the-id dashboard)
+                     :card-id       card-id
+                     :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
+                     :export-format :api
+                     :parameters    parameters
+                     :middleware    {:process-viz-settings? true
+                                     :js-int-to-string?     false}
+                     :run           (fn [query info]
+                                      (qp/process-query-and-save-with-max-results-constraints!
+                                       (assoc query :async? false)
+                                       info))))]
+      {:card     card
        :dashcard dashcard
-       :result result})
+       :result   result})
     (catch Throwable e
-        (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
+      (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
 (defn- dashcard-comparator
   "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
@@ -149,7 +114,7 @@
              (if (and card result)
                {:title           (or (-> dashcard :visualization_settings :card.title)
                                      card-name)
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card nil result)
+                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
                 :title_link      (urls/card-url card-id)
                 :attachment-name "image.png"
                 :channel-id      channel-id
@@ -243,7 +208,7 @@
   (every? is-card-empty? results))
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
-  (let [goal-comparison      (if alert_above_goal <= >=)
+  (let [goal-comparison      (if alert_above_goal >= <)
         goal-val             (ui/find-goal-value first-result)
         comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
@@ -252,9 +217,10 @@
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
                       {:pulse  pulse
                        :result first-result})))
-    (some (fn [row]
-            (goal-comparison goal-val (comparison-col-rowfn row)))
-          (get-in first-result [:result :data :rows]))))
+    (boolean
+     (some (fn [row]
+             (goal-comparison (comparison-col-rowfn row) goal-val))
+           (get-in first-result [:result :data :rows])))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -374,7 +340,7 @@
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [result (execute-card pulse (u/the-id card), :pulse-id pulse-id)]
+                                  :let  [result (pu/execute-card pulse (u/the-id card), :pulse-id pulse-id)]
                                   ;; some cards may return empty results, e.g. if the card has been archived
                                   :when result]
                               result))))

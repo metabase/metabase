@@ -1,5 +1,7 @@
 ## Authenticating with SAML
 
+{% include plans-blockquote.html feature="SAML authentication" %}
+
 The open source edition of Metabase includes the option to set up single sign-on (SSO) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the Enterprise edition of Metabase additionally lets you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes

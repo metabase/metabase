@@ -11,7 +11,8 @@
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan.db :as db])
-  (:import java.sql.ResultSet))
+  (:import clojure.lang.ExceptionInfo
+           java.sql.ResultSet))
 
 (deftest simple-select-probe-query-test
   (testing "simple-select-probe-query shouldn't actually return any rows"
@@ -102,3 +103,25 @@
                   "See issues #4389, #6028, and #6467 (Oracle) and #7609 (Redshift)")
       (is (= 0
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
+
+(deftest schema-filter-test
+  (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]
+          [["nil filters" true "foo" nil nil]
+           ["blank filters" true "foo" "" ""]
+           ["simple inclusion filter (include)" true "foo" "foo" ""]
+           ["simple inclusion filter (exclude)" false "bar" "foo" ""]
+           ["wildcard inclusion filter" true "foo" "f*" ""]
+           ["simple exclusion filter (include)" true "bar" "" "foo"]
+           ["simple exclusion filter (exclude)" false "foo" "" "foo"]
+           ["wildcard exclusion filter" true "foo" "" "b*"]
+           ["inclusion filter with commas and wildcards (include)" true "foo" "bar,f*,baz" ""]
+           ["inclusion filter with commas and wildcards (exclude)" false "ban" "bar,f*,baz" ""]
+           ["exclusion filter with commas and wildcards (include)" true "foo" "" "ba*,fob"]
+           ["exclusion filter with commas and wildcards (exclude)" false "foo" "" "bar,baz,fo*"]]]
+    (testing (str "include-schema? works as expected for " test-kind)
+      (is (= expect-match? (describe-database/include-schema? schema-name inclusion-filters exclusion-filters))))
+    (testing "include-schema? throws an exception if both patterns are specified"
+      (is (thrown-with-msg?
+            ExceptionInfo
+            #"Inclusion and exclusion patterns cannot both be specified"
+            (describe-database/include-schema? "whatever" "foo" "bar"))))))

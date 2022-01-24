@@ -40,6 +40,7 @@ export const DescriptionTooltipIcon = styled(Icon).attrs({
 })`
   color: ${color("bg-dark")};
   margin-left: ${space(1)};
+  margin-right: ${space(1)};
   margin-top: ${space(0)};
 
   &:hover {

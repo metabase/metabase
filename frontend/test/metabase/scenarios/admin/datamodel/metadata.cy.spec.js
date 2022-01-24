@@ -4,9 +4,9 @@ import {
   openReviewsTable,
   popover,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > metadata", () => {
   beforeEach(() => {
@@ -15,7 +15,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should correctly show remapped column value", () => {
-    // go directly to Data Model page for Sample Dataset
+    // go directly to Data Model page for Sample Database
     cy.visit("/admin/datamodel/database/1");
     // edit "Product ID" column in "Orders" table
     cy.findByText("Orders").click();
@@ -49,7 +49,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       5: "Perfecto",
     };
 
-    // go directly to Data Model page for Sample Dataset
+    // go directly to Data Model page for Sample Database
     cy.visit("/admin/datamodel/database/1");
     // edit "Rating" values in "Reviews" table
     cy.findByText("Reviews").click();
@@ -146,6 +146,6 @@ describe("scenarios > admin > datamodel > metadata", () => {
 function openOptionsForSection(sectionName) {
   cy.findByText(sectionName)
     .closest("section")
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 }

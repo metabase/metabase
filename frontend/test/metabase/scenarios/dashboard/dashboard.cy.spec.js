@@ -7,10 +7,11 @@ import {
   filterWidget,
   sidebar,
 } from "__support__/e2e/cypress";
+import { modal } from "__support__/e2e/helpers/e2e-ui-elements-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 function saveDashboard() {
   cy.findByText("Save").click();
@@ -27,11 +28,14 @@ describe("scenarios > dashboard", () => {
     // Create dashboard
     cy.visit("/");
     cy.icon("add").click();
-    cy.findByText("New dashboard").click();
-    cy.findByLabelText("Name").type("Test Dash");
-    cy.findByLabelText("Description").type("Desc");
-    cy.findByText("Create").click();
+    cy.findByText("Dashboard").click();
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Test Dash");
+      cy.findByLabelText("Description").type("Desc");
+      cy.findByText("Create").click();
+    });
     cy.findByText("This dashboard is looking empty.");
+    cy.findByText("You're editing this dashboard.");
 
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");
@@ -326,7 +330,7 @@ describe("scenarios > dashboard", () => {
     expectedRouteCalls({ route_alias: "fetchFieldValues", calls: 0 });
   });
 
-  it.skip("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
+  it("should be possible to visit a dashboard with click-behavior linked to the dashboard without permissions (metabase#15368)", () => {
     cy.request("GET", "/api/user/current").then(
       ({ body: { personal_collection_id } }) => {
         // Save new dashboard in admin's personal collection

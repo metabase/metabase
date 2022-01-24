@@ -1,16 +1,21 @@
 import styled from "styled-components";
 
 import { color, lighten } from "metabase/lib/colors";
-
+import { space } from "metabase/styled-components/theme";
 import Link from "metabase/components/Link";
 import Text from "metabase/components/type/Text";
-import { space } from "metabase/styled-components/theme";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 function getColorForIconWrapper(props) {
-  if (props.item.collection_position) {
+  if (!props.active) {
+    return color("text-medium");
+  } else if (props.item.collection_position) {
     return color("saturated-yellow");
+  } else if (props.type === "collection") {
+    return lighten("brand", 0.35);
+  } else {
+    return color("brand");
   }
-  return props.type === "collection" ? lighten("brand", 0.35) : color("brand");
 }
 
 export const IconWrapper = styled.div`
@@ -24,6 +29,23 @@ export const IconWrapper = styled.div`
   flex-shrink: 0;
 `;
 
+export const TitleWrapper = styled.div`
+  display: flex;
+  grid-gap: 0.25rem;
+  align-items: center;
+`;
+
+export const ContextText = styled("p")`
+  line-height: 1.4em;
+  color: ${color("text-medium")};
+  margin-top: 0;
+`;
+
+export const Title = styled("h3")`
+  margin-bottom: 4px;
+  color: ${props => color(props.active ? "text-dark" : "text-medium")};
+`;
+
 export const ResultLink = styled(Link)`
   display: block;
   background-color: transparent;
@@ -32,12 +54,13 @@ export const ResultLink = styled(Link)`
   padding-bottom: ${space(1)};
   padding-left: 14px;
   padding-right: ${props => (props.compact ? "20px" : space(3))};
+  cursor: ${props => (props.active ? "pointer" : "default")};
 
   &:hover {
-    background-color: ${lighten("brand", 0.63)};
+    background-color: ${props => (props.acitve ? lighten("brand", 0.63) : "")};
 
     h3 {
-      color: ${color("brand")};
+      color: ${props => (props.active ? color("brand") : "")};
     }
   }
 
@@ -45,9 +68,10 @@ export const ResultLink = styled(Link)`
     text-underline-position: under;
     text-decoration: underline ${color("text-light")};
     text-decoration-style: dashed;
+
     &:hover {
-      color: ${color("brand")};
-      text-decoration-color: ${color("brand")};
+      color: ${props => (props.active ? color("brand") : "")};
+      text-decoration-color: ${props => (props.active ? color("brand") : "")};
     }
   }
 
@@ -70,22 +94,6 @@ export const ResultLink = styled(Link)`
   }
 `;
 
-export const TitleWrapper = styled.div`
-  display: flex;
-  grid-gap: 0.25rem;
-  align-items: center;
-`;
-
-export const ContextText = styled("p")`
-  line-height: 1.4em;
-  color: ${color("text-medium")};
-  margin-top: 0;
-`;
-
-export const Title = styled("h3")`
-  margin-bottom: 4px;
-`;
-
 export const Description = styled(Text)`
   padding-left: ${space(1)};
   margin-top: ${space(1)} !important;
@@ -96,4 +104,13 @@ export const ContextContainer = styled.div`
   margin-left: 42px;
   margin-top: 12px;
   max-width: 620px;
+`;
+
+export const ResultSpinner = styled(LoadingSpinner)`
+  display: flex;
+  flex-grow: 1;
+  align-self: center;
+  justify-content: flex-end;
+  margin-left: ${space(1)};
+  color: ${color("brand")};
 `;

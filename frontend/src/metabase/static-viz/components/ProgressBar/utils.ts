@@ -1,4 +1,5 @@
 import Color from "color";
+import { t } from "ttag";
 import { measureText } from "metabase/static-viz/lib/text";
 import { ProgressBarData } from "./types";
 
@@ -31,9 +32,9 @@ export const getColors = (
 
 export const getBarText = ({ value, goal }: ProgressBarData) => {
   if (value === goal) {
-    return "Goal met";
+    return t`Goal met`;
   } else if (value > goal) {
-    return "Goal exceeded";
+    return t`Goal exceeded`;
   }
 
   return null;
@@ -45,8 +46,9 @@ export const calculatePointerLabelShift = (
   xMin: number,
   xMax: number,
   pointerWidth: number,
+  fontSize: number,
 ) => {
-  const valueTextWidth = measureText(valueText, 7);
+  const valueTextWidth = measureText(valueText, fontSize);
 
   const distanceToLeftBorder = pointerX - xMin;
   const isCrossingLeftBorder = valueTextWidth / 2 > distanceToLeftBorder;

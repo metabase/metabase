@@ -1,25 +1,22 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
   setFilter,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-const { ORDERS } = SAMPLE_DATASET;
+const { ORDERS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > filters > SQL > ID", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    mockSessionProperty("field-filter-operators-enabled?", true);
   });
 
   describe("should work for the primary key", () => {
@@ -117,10 +114,7 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
   editDashboard();
   setFilter("ID");
 
-  cy.findByText("Column to filter on")
-    .next("a")
-    .click();
-
+  cy.findByText("Select…").click();
   popover()
     .contains("Filter")
     .click();

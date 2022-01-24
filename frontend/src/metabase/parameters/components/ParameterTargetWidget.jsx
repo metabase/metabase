@@ -3,26 +3,13 @@ import React from "react";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ParameterTargetList from "../components/ParameterTargetList";
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import _ from "underscore";
 import cx from "classnames";
 
-import type {
-  ParameterMappingUIOption,
-  ParameterTarget,
-} from "metabase-types/types/Parameter";
-
-type Props = {
-  target: ?ParameterTarget,
-  onChange: (target: ?ParameterTarget) => void,
-  mappingOptions: ParameterMappingUIOption[],
-  placeholder?: string,
-  children?: React.Element | (any => React.Element),
-};
-
 export default class ParameterTargetWidget extends React.Component {
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.popover = React.createRef();

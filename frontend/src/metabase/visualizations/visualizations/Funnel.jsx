@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -24,7 +25,6 @@ import LegendHeader from "../components/LegendHeader";
 import _ from "underscore";
 import cx from "classnames";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 
 const propTypes = {
@@ -32,8 +32,6 @@ const propTypes = {
 };
 
 export default class Funnel extends Component {
-  props: VisualizationProps;
-
   static uiName = t`Funnel`;
   static identifier = "funnel";
   static iconName = "funnel";

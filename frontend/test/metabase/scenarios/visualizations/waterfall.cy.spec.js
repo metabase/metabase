@@ -5,9 +5,9 @@ import {
   openNativeEditor,
   visualize,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > waterfall", () => {
   beforeEach(() => {
@@ -108,7 +108,7 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.findByText("Created At").click();
     cy.findByText("Filter").click();
     cy.findByText("Custom Expression").click();
-    cy.get("[contenteditable=true]")
+    cy.get(".ace_text-input")
       .type("between([Created At], '2016-01-01', '2016-08-01')")
       .blur();
     cy.button("Done").click();

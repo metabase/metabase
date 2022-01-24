@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
@@ -14,24 +15,10 @@ import d3 from "d3";
 
 import L from "leaflet";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-const WORLD_BOUNDS = [[-90, -180], [90, 180]];
-
-type Props = VisualizationProps;
-
-type State = {
-  lat: ?number,
-  lng: ?number,
-  min: ?number,
-  max: ?number,
-  binHeight: ?number,
-  binWidth: ?number,
-  zoom: ?number,
-  points: L.Point[],
-  bounds: L.Bounds,
-  filtering: boolean,
-};
+const WORLD_BOUNDS = [
+  [-90, -180],
+  [90, 180],
+];
 
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
@@ -41,9 +28,6 @@ const MAP_COMPONENTS_BY_TYPE = {
 };
 
 export default class PinMap extends Component {
-  props: Props;
-  state: State;
-
   static uiName = t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";
@@ -62,10 +46,10 @@ export default class PinMap extends Component {
     }
   }
 
-  state: State;
-  _map: ?(LeafletMarkerPinMap | LeafletTilePinMap) = null;
+  state;
+  _map = null;
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       lat: null,
@@ -76,7 +60,7 @@ export default class PinMap extends Component {
     };
   }
 
-  UNSAFE_componentWillReceiveProps(newProps: Props) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     const SETTINGS_KEYS = [
       "map.latitude_column",
       "map.longitude_column",
@@ -108,15 +92,15 @@ export default class PinMap extends Component {
     this.setState({ lat: null, lng: null, zoom: null });
   };
 
-  onMapCenterChange = (lat: number, lng: number) => {
+  onMapCenterChange = (lat, lng) => {
     this.setState({ lat, lng });
   };
 
-  onMapZoomChange = (zoom: number) => {
+  onMapZoomChange = zoom => {
     this.setState({ zoom });
   };
 
-  _getPoints(props: Props) {
+  _getPoints(props) {
     const {
       settings,
       series: [

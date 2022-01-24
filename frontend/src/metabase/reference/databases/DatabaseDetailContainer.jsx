@@ -23,10 +23,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseDetailContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

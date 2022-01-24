@@ -1,10 +1,10 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
-  padding: 1rem 1rem 1rem 0.5rem;
+  padding: 1rem;
   background-color: ${props => props.backgroundColor};
   display: flex;
   justify-content: space-between;
@@ -25,7 +25,7 @@ export const Time = styled.time`
 `;
 
 export const IconButton = styled(Button)`
-  padding: 0 0 0 0.5rem !important;
+  padding: 0 !important;
   border: none;
   background-color: transparent;
 

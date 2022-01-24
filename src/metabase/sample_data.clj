@@ -7,36 +7,36 @@
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
-(def ^:private ^String sample-dataset-name     "Sample Dataset")
-(def ^:private ^String sample-dataset-filename "sample-dataset.db.mv.db")
+(def ^:private ^String sample-database-name     "Sample Database")
+(def ^:private ^String sample-database-filename "sample-dataset.db.mv.db")
 
 (defn- db-details []
-  (let [resource (io/resource sample-dataset-filename)]
+  (let [resource (io/resource sample-database-filename)]
     (when-not resource
-      (throw (Exception. (trs "Sample dataset DB file ''{0}'' cannot be found."
-                              sample-dataset-filename))))
+      (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
+                              sample-database-filename))))
     {:db (-> (.getPath resource)
              (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from the Clojure CLI, which has no `file:` prefix)
              (str/replace #"\.mv\.db$" "")  ; strip the .mv.db suffix from the path
              (str/replace #"%20" " ") ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
              (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
 
-(defn add-sample-dataset!
-  "Add the sample dataset as a Metabase DB if it doesn't already exist."
+(defn add-sample-database!
+  "Add the sample database as a Metabase DB if it doesn't already exist."
   []
   (when-not (db/exists? Database :is_sample true)
     (try
-      (log/info (trs "Loading sample dataset..."))
+      (log/info (trs "Loading sample database"))
       (sync/sync-database! (db/insert! Database
-                             :name      sample-dataset-name
+                             :name      sample-database-name
                              :details   (db-details)
                              :engine    :h2
                              :is_sample true))
       (catch Throwable e
-        (log/error e (trs "Failed to load sample dataset"))))))
+        (log/error e (trs "Failed to load sample database"))))))
 
-(defn update-sample-dataset-if-needed!
-  "Update the path to the sample dataset DB if it exists in case the JAR has moved."
+(defn update-sample-database-if-needed!
+  "Update the path to the sample database DB if it exists in case the JAR has moved."
   []
   (when-let [db (Database :is_sample true)]
     (db/update! Database (:id db)

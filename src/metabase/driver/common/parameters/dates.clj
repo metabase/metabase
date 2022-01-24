@@ -15,15 +15,14 @@
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- s/Keyword]
-  (or (= param-type :date)
-      (= "date" (namespace param-type))))
+  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
 
 (defn date-range-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
   such as `past30days`, or absolute, such as `2020-01`.)"
   [param-type]
-  ;; TODO —
-  (#{:date/range :date/month-year :date/quarter-year :date/relative :date/all-options} param-type))
+  (and (date-type? param-type)
+       (not (#{:date/single :date} param-type))))
 
 ;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
 ;; Currently the field value is casted to a day (ignoring the time of day), so the ranges should have the same
@@ -125,7 +124,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex :- java.util.regex.Pattern, group-labels]
+  [regex :- java.util.regex.Pattern group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -239,7 +238,7 @@
 (s/defn ^:private execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
-  dox for `date-string->range` for more details."
+  dox for [[date-string->range]] for more details."
   [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
           (when-let [parser-result (parser date-string)]

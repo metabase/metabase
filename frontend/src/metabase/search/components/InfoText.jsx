@@ -32,7 +32,7 @@ export function InfoText({ result }) {
     case "card":
       return jt`Saved question in ${formatCollection(result.getCollection())}`;
     case "dataset":
-      return jt`Dataset in ${formatCollection(result.getCollection())}`;
+      return jt`Model in ${formatCollection(result.getCollection())}`;
     case "collection":
       return getCollectionInfoText(result.collection);
     case "database":
@@ -40,9 +40,9 @@ export function InfoText({ result }) {
     case "table":
       return <TablePath result={result} />;
     case "segment":
-      return jt`Segment of ${<TableLink result={result} />}`;
+      return jt`Segment of ${(<TableLink result={result} />)}`;
     case "metric":
-      return jt`Metric for ${<TableLink result={result} />}`;
+      return jt`Metric for ${(<TableLink result={result} />)}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result.getCollection(),
@@ -66,7 +66,7 @@ function getCollectionInfoText(collection) {
 
 function TablePath({ result }) {
   return jt`Table in ${(
-    <span>
+    <span key="table-path">
       <Database.Link id={result.database_id} />{" "}
       {result.table_schema && (
         <Schema.ListLoader

@@ -10,10 +10,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.table :refer [Table]]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db])
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql ResultSet Types]
            [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
@@ -135,16 +133,6 @@
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
-
-;; ignore the schema when producing the identifier
-(defn qualified-name-components
-  "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
-  [{field-name :name, table-id :table_id}]
-  [(db/select-one-field :name Table, :id table-id) field-name])
-
-(defmethod sql.qp/field->identifier :hive-like
-  [_ field]
-  (apply hsql/qualify (qualified-name-components field)))
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.

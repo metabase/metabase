@@ -14,19 +14,20 @@
   specified), then invokes
 
     (f pulse)"
-  [{:keys [dashboard pulse pulse-card channel card]
+  [{:keys [dashboard pulse pulse-card channel card dashcard]
     :or   {channel :email}}
    f]
   (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
-                                 (->> pulse
-                                      (merge {:name         "Aviary KPIs"
-                                              :dashboard_id (u/the-id dashboard)}))]
+                                 (merge {:name         "Aviary KPIs"
+                                         :dashboard_id (u/the-id dashboard)}
+                                        pulse)]
                   PulseCard     [_ (merge {:pulse_id pulse-id
                                            :card_id  (u/the-id card)
                                            :position 0}
                                           pulse-card)]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id (u/the-id dashboard)
-                                                    :card_id (u/the-id card)}]
+                  DashboardCard [_ (merge {:dashboard_id (u/the-id dashboard)
+                                           :card_id (u/the-id card)}
+                                          dashcard)]
                   PulseChannel  [{pc-id :id} (case channel
                                                :email
                                                {:pulse_id pulse-id}
@@ -64,7 +65,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card dashboard pulse pulse-card fixture], assertions :assert}]
+  [{:keys [card dashboard dashcard pulse pulse-card fixture display], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack) assertions)]}
   (doseq [channel-type [:email :slack]
           :let         [f (get assertions channel-type)]
@@ -74,11 +75,13 @@
       (mt/with-temp* [Dashboard     [{dashboard-id :id} (->> dashboard
                                                              (merge {:name "Aviary KPIs"
                                                                      :description "How are the birds doing today?"}))]
-                      Card          [{card-id :id} (merge {:name card-name} card)]]
+                      Card          [{card-id :id} (merge {:name card-name
+                                                           :display (or display :line)} card)]]
         (with-dashboard-sub-for-card [{pulse-id :id}
                                       {:card       card-id
                                        :creator_id (mt/user->id :rasta)
                                        :dashboard  dashboard-id
+                                       :dashcard   dashcard
                                        :pulse      pulse
                                        :pulse-card pulse-card
                                        :channel    channel-type}]
@@ -165,14 +168,15 @@
       (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false} :display :table}
     "9 results, so no attachment aside from dashboard icon"
     {:card (checkins-query-card {:aggregation nil, :limit 9})
 
      :fixture
      (fn [_ thunk]
        (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
-         (thunk)))
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -238,14 +242,18 @@
                    (output @#'render.body/attached-results-text))))))}}))
 
 (deftest virtual-card-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a virtual (markdown) card"
     {:card (checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
-       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "# header"}}]
-         (thunk)))
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id
+                                       :row 1
+                                       :col 1
+                                       :visualization_settings {:text "# header"}}]
+         (mt/with-temporary-setting-values [site-name "Metabase Test"]
+           (thunk))))
 
      :assert
      {:email
@@ -286,6 +294,11 @@
     "Dashboard subscription that includes a dashboard filters"
     {:card (checkins-query-card {})
 
+     :fixture
+     (fn [_ thunk]
+       (mt/with-temporary-setting-values [site-name "Metabase Test"]
+          (thunk)))
+
      :assert
      {:email
        (fn [_ _]
@@ -322,13 +335,16 @@
                  (thunk->boolean pulse-results)))))}}))
 
 (deftest mrkdwn-length-limit-test
-  (tests {:pulse {:skip_if_empty false}}
+  (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
     "Dashboard subscription that includes a Markdown card that exceeds Slack's length limit when converted to mrkdwn"
     {:card (checkins-query-card {})
 
      :fixture
      (fn [{dashboard-id :dashboard-id} thunk]
-       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id, :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
+       (mt/with-temp DashboardCard [_ {:dashboard_id dashboard-id
+                                       :row 1
+                                       :col 1
+                                       :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
          (binding [pulse/*slack-mrkdwn-length-limit* 10]
            (thunk))))
 

@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -11,9 +10,9 @@ import {
 import { DASHBOARD_SQL_LOCATION_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
@@ -21,8 +20,6 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         const questionDetails = getQuestionDetails(sqlFilter);
 
@@ -41,10 +38,7 @@ Object.entries(DASHBOARD_SQL_LOCATION_FILTERS).forEach(
         editDashboard();
         setFilter("Location", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();

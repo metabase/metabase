@@ -10,15 +10,6 @@ import { startTimer } from "metabase/lib/performance";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
-type DeregisterFunction = () => void;
-
-type Props = VisualizationProps & {
-  renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
-  style?: any,
-};
-
 // We track this as part of the render loop.
 // It's throttled to prevent pounding GA on every prop update.
 const trackEventThrottled = _.throttle(
@@ -28,8 +19,6 @@ const trackEventThrottled = _.throttle(
 
 @ExplicitSize({ wrapped: true })
 export default class CardRenderer extends Component {
-  props: Props;
-
   static propTypes = {
     className: PropTypes.string,
     series: PropTypes.array.isRequired,
@@ -39,9 +28,7 @@ export default class CardRenderer extends Component {
     isDashboard: PropTypes.bool,
   };
 
-  _deregister: ?DeregisterFunction;
-
-  shouldComponentUpdate(nextProps: Props) {
+  shouldComponentUpdate(nextProps) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
     const sameSize =
       this.props.width === nextProps.width &&

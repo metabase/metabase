@@ -9,7 +9,7 @@ import { connect } from "react-redux";
 
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Text from "metabase/components/type/Text";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -17,7 +17,7 @@ import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
-import Toggle from "metabase/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import Select, { Option } from "metabase/components/Select";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
@@ -131,6 +131,7 @@ function _AddEditEmailSidebar({
         <div className="pt2 pb1">
           <SendTestPulse
             channel={channel}
+            channelSpecs={formInput.channels}
             pulse={pulse}
             testPulse={testPulse}
             normalText={t`Send email now`}
@@ -245,7 +246,7 @@ function getConfirmItems(pulse) {
               c.recipients.length,
             )}
           </strong>
-        )} ${<strong key="type">{c.schedule_type}</strong>}`}
+        )} ${(<strong key="type">{c.schedule_type}</strong>)}`}
         .
       </span>
     ) : c.channel_type === "slack" ? (
@@ -329,6 +330,7 @@ function _AddEditSlackSidebar({
         <div className="pt2 pb1">
           <SendTestPulse
             channel={channel}
+            channelSpecs={formInput.channels}
             pulse={pulse}
             testPulse={testPulse}
             normalText={t`Send to Slack now`}

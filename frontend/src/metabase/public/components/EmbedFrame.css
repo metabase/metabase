@@ -15,18 +15,18 @@
 
 .Theme--night .EmbedFrame-header,
 .Theme--night .EmbedFrame-footer {
-  color: color(var(--color-text-white) alpha(-14%));
+  color: color-mod(var(--color-text-white) alpha(-14%));
   background-color: var(--color-bg-black);
   border-color: var(--color-bg-dark);
 }
 
 .Theme--night.EmbedFrame .fullscreen-night-text {
-  color: color(var(--color-text-white) alpha(-14%));
+  color: color-mod(var(--color-text-white) alpha(-14%));
   transition: color 1s linear;
 }
 
 .Theme--night.EmbedFrame svg text {
-  fill: color(var(--color-text-white) alpha(-14%)) !important;
+  fill: color-mod(var(--color-text-white) alpha(-14%)) !important;
 }
 
 .Theme--night.EmbedFrame .DashCard .Card {

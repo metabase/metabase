@@ -159,14 +159,6 @@
     (testing "Valid new-style ID"
       (is (= :ok
              (validate-id "v42.00-000"))))
-    (testing "Disallow another legacy ID"
-      ;; should disallow either string *or* number
-      (doseq [id [383 "383"]]
-        (testing (pr-str id)
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"legacy-id"
-               (validate-id id))))))
     (testing "ID that's missing a zero should fail"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

@@ -2,6 +2,7 @@
   "SQL JDBC impl for `describe-database`."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -9,7 +10,8 @@
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql Connection DatabaseMetaData ResultSet]))
+  (:import [java.sql Connection DatabaseMetaData ResultSet]
+           java.util.regex.Pattern))
 
 (defmethod i/excluded-schemas :sql-jdbc [_] nil)
 
@@ -60,10 +62,17 @@
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
   (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+    (log/tracef "Checking for SELECT privileges for %s with query %s"
+                (str (when table-schema
+                       (str (pr-str table-schema) \.))
+                     (pr-str table-name))
+                (pr-str sql-args))
     (try
       (execute-select-probe-query driver conn sql-args)
-      true
+      (do (log/trace "SELECT privileges confirmed")
+          true)
       (catch Throwable _
+        (log/trace "No SELECT privileges")
         false))))
 
 (defn- db-tables
@@ -123,3 +132,38 @@
              ;; but better safe than sorry
              (sql-jdbc.execute/set-best-transaction-level! driver conn)
              (into #{} (i/active-tables driver conn)))})
+
+(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
+  (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
+                  (str/replace #"(^|[^\\\\])," "$1|"))))
+
+(defn- schema-patterns->filter-fn*
+  [inclusion-patterns exclusion-patterns]
+  (let [inclusion-blank? (str/blank? inclusion-patterns)
+        exclusion-blank? (str/blank? exclusion-patterns)]
+    (cond
+      (and inclusion-blank? exclusion-blank?)
+      (constantly true)
+
+      (and (not inclusion-blank?) (not exclusion-blank?))
+      (throw (ex-info "Inclusion and exclusion patterns cannot both be specified"
+                      {::inclusion-patterns inclusion-patterns
+                       ::exclusion-patterns exclusion-patterns}))
+
+      true
+      (let [inclusion? exclusion-blank?
+            pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
+        (fn [s]
+          (let [m        (.matcher pattern s)
+                matches? (.matches m)]
+            (if inclusion? matches? (not matches?))))))))
+
+(def ^:private schema-patterns->filter-fn (memoize schema-patterns->filter-fn*))
+
+(defn include-schema?
+  ;; TODO: add more docstring details here, and move to different ns (not strictly JDBC)
+  "Returns true of the given `schema-name` should be included/synced, considering the given `inclusion-patterns` and
+  `exclusion-patterns`."
+  [schema-name inclusion-patterns exclusion-patterns]
+  (let [filter-fn (schema-patterns->filter-fn inclusion-patterns exclusion-patterns)]
+    (filter-fn schema-name)))

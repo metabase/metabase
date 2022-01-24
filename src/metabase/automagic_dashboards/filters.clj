@@ -5,6 +5,7 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -12,20 +13,15 @@
   "Is given form an MBQL field reference?"
   (complement (s/checker mbql.s/field)))
 
-(defn field-reference->id
+(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
   "Extract field ID from a given field reference form."
   [clause]
   (mbql.u/match-one clause [:field id _] id))
 
-(defn collect-field-references
-  "Collect all `:field` references from a given
-   form."
+(s/defn collect-field-references :- [mbql.s/field]
+  "Collect all `:field` references from a given form."
   [form]
-  (->> form
-       (tree-seq (every-pred (some-fn sequential? map?)
-                             (complement field-reference?))
-                 identity)
-       (filter field-reference?)))
+  (mbql.u/match form :field &match))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"

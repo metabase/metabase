@@ -1,8 +1,4 @@
-import {
-  restore,
-  mockSessionProperty,
-  openNativeEditor,
-} from "__support__/e2e/cypress";
+import { restore, openNativeEditor } from "__support__/e2e/cypress";
 
 import { STRING_FILTER_SUBTYPES } from "./helpers/e2e-field-filter-data-objects";
 
@@ -15,8 +11,6 @@ describe("scenarios > filters > sql filters > field filter > String", () => {
     cy.intercept("POST", "api/dataset").as("dataset");
 
     cy.signInAsAdmin();
-    // Make sure feature flag is on regardles of the environment where this is running.
-    mockSessionProperty("field-filter-operators-enabled?", true);
 
     openNativeEditor();
     SQLFilter.enterParameterizedQuery(

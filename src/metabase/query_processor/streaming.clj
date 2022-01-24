@@ -3,6 +3,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.streaming.csv :as streaming.csv]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.json :as streaming.json]
@@ -33,13 +34,24 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
+(defn- validate-table-columms
+  "Validate that all of the field refs in `table-columns` correspond to actual columns in `cols`, if `cols` contains
+  field refs. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
+  Otherwise returns `table-columns`."
+  [table-columns cols]
+  (let [col-field-refs (set (remove nil? (map :field_ref cols)))]
+    ;; If there are no field refs in `cols` (e.g. for native queries), we should use `table-columns` as-is
+    (when (or (empty? col-field-refs)
+              (every? (fn [table-col] (col-field-refs (::mb.viz/table-column-field-ref table-col))) table-columns))
+      table-columns)))
+
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
 
   The resulting list of indices determines the order of column names and data in exports."
   [cols table-columns]
-  (let [table-columns'     (or table-columns
+  (let [table-columns'     (or (validate-table-columms table-columns cols)
                                ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                ;; that retains the original column ordering in `cols`
                                (for [col cols]
@@ -126,8 +138,9 @@
       (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
   ([export-format os]
    (let [results-writer (i/streaming-results-writer export-format os)]
-     {:rff      (streaming-rff results-writer)
-      :reducedf (streaming-reducedf results-writer os)}))
+     (merge (context.default/default-context)
+            {:rff      (streaming-rff results-writer)
+             :reducedf (streaming-reducedf results-writer os)})))
 
   ([export-format os canceled-chan]
    (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
@@ -170,7 +183,7 @@
   cancelations properly."
   {:style/indent 1}
   [[context-binding export-format filename-prefix] & body]
-  `(streaming-response* ~export-format ~filename-prefix (fn [~context-binding] ~@body)))
+  `(streaming-response* ~export-format ~filename-prefix (bound-fn [~context-binding] ~@body)))
 
 (defn export-formats
   "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results

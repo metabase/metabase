@@ -553,13 +553,17 @@
   (reduce-kv db->norm-column-settings-entry {} entries))
 
 (defn db->norm-column-settings
-  "Converts a :column_settings DB form to its normalized form."
+  "Converts a :column_settings DB form to its normalized form. Drops any columns that fail to be parsed."
   [settings]
-  (m/map-kv (fn [k v]
-              (let [k1 (parse-db-column-ref k)
-                    v1 (db->norm-column-settings-entries v)]
-                [k1 v1]))
-            settings))
+  (reduce-kv (fn [m k v]
+               (try
+                 (let [k1 (parse-db-column-ref k)
+                       v1 (db->norm-column-settings-entries v)]
+                   (assoc m k1 v1))
+                 (catch #?(:clj Throwable :cljs js/Error) e
+                   m)))
+             {}
+             settings))
 
 (defn db->norm
   "Converts a DB form of visualization settings (i.e. map with key `:visualization_settings`) into the equivalent

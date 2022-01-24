@@ -41,6 +41,7 @@ if (hasPremiumFeature("advanced_config")) {
     descriptionPosition: "bottom",
     validate: validateCacheTTL,
     normalize: normalizeCacheTTL,
+    visibleIf: { "advanced-options": true },
   };
 
   PLUGIN_FORM_WIDGETS.dashboardCacheTTL = CacheTTLField;

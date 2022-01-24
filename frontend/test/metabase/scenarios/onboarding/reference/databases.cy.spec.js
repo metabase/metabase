@@ -8,12 +8,12 @@ describe("scenarios > reference > databases", () => {
 
   it("should see the listing", () => {
     cy.visit("/reference/databases");
-    cy.contains("Sample Dataset");
+    cy.contains("Sample Database");
   });
 
   xit("should let the user navigate to details", () => {
     cy.visit("/reference/databases");
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Why this database is interesting");
   });
 
@@ -56,7 +56,7 @@ describe("scenarios > reference > databases", () => {
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach(name => {
-        cy.addH2SampleDataset({ name });
+        cy.addH2SampleDatabase({ name });
       });
     });
 
@@ -77,6 +77,27 @@ describe("scenarios > reference > databases", () => {
       checkQuestionSourceDatabasesOrder("Native query");
     });
   });
+
+  it("should show a popover with metadata related to the table", () => {
+    cy.visit("/browse/1");
+    cy.findByText("Products").trigger("mouseenter");
+
+    popover().within(() => {
+      // check for the table's description
+      cy.contains(
+        "Includes a catalog of all the products ever sold by the famed Sample Company.",
+      );
+
+      // check for table column metadata
+      cy.findByText("8 columns");
+
+      // check that fk links are shown
+      cy.findByText("Orders");
+      cy.findByText("Reviews").click();
+      // check that the links are clickable
+      cy.location("pathname").should("eq", "/question");
+    });
+  });
 });
 
 function checkReferenceDatabasesOrder() {
@@ -86,7 +107,7 @@ function checkReferenceDatabasesOrder() {
     .should("have.text", "a");
   cy.get("@databaseCard")
     .last()
-    .should("have.text", "Sample Dataset");
+    .should("have.text", "Sample Database");
 }
 
 function checkQuestionSourceDatabasesOrder(question_type) {
@@ -106,6 +127,6 @@ function checkQuestionSourceDatabasesOrder(question_type) {
       .should("have.text", "a");
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
-      .should("have.text", "Sample Dataset");
+      .should("have.text", "Sample Database");
   });
 }

@@ -1,8 +1,8 @@
 import { restore } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("issue 18630", () => {
   beforeEach(() => {
@@ -56,8 +56,9 @@ describe("issue 18630", () => {
       { visitQuestion: true },
     );
 
-    // The query itself is not expected to run,
-    // it just shouldn't stuck on the loading phase
-    cy.findByText("There was a problem with your question");
+    // The query runs and we assert the page is not blank,
+    // rather than an infinite loop and stack overflow.
+    // 'test question' is the name of the question.
+    cy.findByText("test question");
   });
 });

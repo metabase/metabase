@@ -7,9 +7,9 @@ import {
   changeBinningForDimension,
   getBinningButtonForDimension,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("binning related reproductions", () => {
   beforeEach(() => {
@@ -180,14 +180,14 @@ describe("binning related reproductions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByText("Sample Dataset").click();
-    cy.findByText("Orders").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
+    cy.findByTextEnsureVisible("Orders").click();
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Saved Questions").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18646").click();
     });
 

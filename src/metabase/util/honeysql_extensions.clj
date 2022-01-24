@@ -8,7 +8,7 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [potemkin.types :as p.types]
-            [pretty.core :as pretty :refer [PrettyPrintable]]
+            [pretty.core :as pretty]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
@@ -82,9 +82,9 @@
        \.
        (for [component components]
          (hformat/quote-identifier component, :split false)))))
-  PrettyPrintable
+  pretty/PrettyPrintable
   (pretty [_]
-    (cons 'hx/identifier (cons identifier-type components))))
+    (cons `identifier (cons identifier-type components))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (alter-meta! #'->Identifier    assoc :private true)
@@ -116,9 +116,9 @@
     (as-> literal <>
       (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
       (str \' <> \')))
-  PrettyPrintable
+  pretty/PrettyPrintable
   (pretty [_]
-    (list 'literal literal)))
+    (list `literal literal)))
 
 ;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
 (alter-meta! #'->Literal    assoc :private true)
@@ -157,7 +157,7 @@
 
 ;; a wrapped for any HoneySQL form that records additional type information in an `info` map.
 (p.types/defrecord+ TypedHoneySQLForm [form info]
-  PrettyPrintable
+  pretty/PrettyPrintable
   (pretty [_]
     `(with-type-info ~form ~info))
 
@@ -218,7 +218,7 @@
 
     (is-of-type? expr \"datetime\") ; -> true"
   [honeysql-form database-type]
-  (= (type-info->db-type (type-info honeysql-form))
+  (= (some-> honeysql-form type-info type-info->db-type  str/lower-case)
      (some-> database-type name str/lower-case)))
 
 (s/defn with-database-type-info
@@ -235,9 +235,9 @@
 
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
-  [sql-type expr]
-  (-> (hsql/call :cast expr (hsql/raw (name sql-type)))
-      (with-type-info {::database-type sql-type})))
+  [database-type expr]
+  (-> (hsql/call :cast expr (hsql/raw (name database-type)))
+      (with-type-info {::database-type database-type})))
 
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
@@ -256,6 +256,18 @@
   (if (is-of-type? expr sql-type)
       expr
       (cast sql-type expr)))
+
+(defn cast-unless-type-in
+  "Cast `expr` to `desired-type` unless `expr` is of one of the `acceptable-types`. Returns a typed HoneySQL form.
+
+    ;; cast to TIMESTAMP unless form is already a TIMESTAMP, TIMESTAMPTZ, or DATE
+    (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
+  {:added "0.42.0"}
+  [desired-type acceptable-types expr]
+  (if (some (partial is-of-type? expr)
+            acceptable-types)
+    expr
+    (cast desired-type expr)))
 
 (defn format
   "SQL `format` function."
@@ -287,19 +299,17 @@
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial hsql/call :concat))
 
 ;; Etc (Dev Stuff)
-(alter-meta! #'honeysql.core/format assoc :style/indent :defn)
-(alter-meta! #'honeysql.core/call   assoc :style/indent :defn)
 
-(extend-protocol PrettyPrintable
+(extend-protocol pretty/PrettyPrintable
   honeysql.types.SqlCall
   (pretty [{fn-name :name, args :args, :as this}]
-    (with-meta (apply list 'hsql/call fn-name args)
+    (with-meta (apply list `hsql/call fn-name args)
       (meta this))))
 
 (defmethod print-method honeysql.types.SqlCall
   [call writer]
   (print-method (pretty/pretty call) writer))
 
-(defmethod clojure.pprint/simple-dispatch honeysql.types.SqlCall
+(defmethod pprint/simple-dispatch honeysql.types.SqlCall
   [call]
-  (clojure.pprint/write-out (pretty/pretty call)))
+  (pprint/write-out (pretty/pretty call)))

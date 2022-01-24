@@ -5,12 +5,12 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -48,7 +48,6 @@ import MetabaseCookies from "metabase/lib/cookies";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 // types
-import type { AlertType } from "metabase-lib/lib/Alert";
 import { alertIsValid } from "metabase/lib/alert";
 
 const getScheduleFromChannel = channel =>
@@ -76,11 +75,6 @@ const textStyle = {
   { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
 )
 export class CreateAlertModalContent extends Component {
-  props: {
-    onCancel: () => void,
-    onAlertCreated: () => void,
-  };
-
   constructor(props) {
     super();
 
@@ -208,10 +202,6 @@ export class CreateAlertModalContent extends Component {
 }
 
 export class AlertEducationalScreen extends Component {
-  props: {
-    onProceed: () => void,
-  };
-
   render() {
     const { onProceed } = this.props;
 
@@ -300,15 +290,6 @@ export class AlertEducationalScreen extends Component {
   { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
 )
 export class UpdateAlertModalContent extends Component {
-  props: {
-    alert: any,
-    onCancel: boolean,
-    onAlertUpdated: any => void,
-    updateAlert: any => void,
-    deleteAlert: any => void,
-    isAdmin: boolean,
-  };
-
   constructor(props) {
     super();
     this.state = {
@@ -396,8 +377,6 @@ export class UpdateAlertModalContent extends Component {
 }
 
 export class DeleteAlertSection extends Component {
-  deleteModal: any;
-
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
     return this.props.alert.channels.map(c =>
@@ -468,18 +447,8 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(
-  state => ({ isAdmin: getUserIsAdmin(state) }),
-  null,
-)
+@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
 export class AlertEditForm extends Component {
-  props: {
-    alertType: AlertType,
-    alert: any,
-    onAlertChange: any => void,
-    isAdmin: boolean,
-  };
-
   onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
@@ -535,9 +504,7 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
             ? t`Alert me when the line…`
             : t`Alert me when the progress bar…`
         }
-        trueText={
-          isTimeseries ? t`Goes above the goal line` : t`Reaches the goal`
-        }
+        trueText={isTimeseries ? t`Reaches the goal line` : t`Reaches the goal`}
         falseText={
           isTimeseries ? t`Goes below the goal line` : t`Goes below the goal`
         }
@@ -623,15 +590,6 @@ export class AlertEditSchedule extends Component {
   },
 )
 export class AlertEditChannels extends Component {
-  props: {
-    onChannelsChange: any => void,
-    user: any,
-    users: any[],
-    // this stupidly named property contains different channel options, nothing else
-    formInput: any,
-    fetchPulseFormInput: () => Promise<void>,
-  };
-
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }

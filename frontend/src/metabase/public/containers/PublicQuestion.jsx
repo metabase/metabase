@@ -9,10 +9,6 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import EmbedFrame from "../components/EmbedFrame";
 import title from "metabase/hoc/Title";
 
-import type { Card } from "metabase-types/types/Card";
-import type { Dataset } from "metabase-types/types/Dataset";
-import type { ParameterValues } from "metabase-types/types/Parameter";
-
 import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
@@ -39,22 +35,6 @@ import PublicMode from "metabase/modes/components/modes/PublicMode";
 
 import { updateIn } from "icepick";
 
-type Props = {
-  params: { uuid?: string, token?: string },
-  location: { query: { [key: string]: string } },
-  width: number,
-  height: number,
-  setErrorPage: (error: { status: number }) => void,
-  addParamValues: any => void,
-  addFields: any => void,
-};
-
-type State = {
-  card: ?Card,
-  result: ?Dataset,
-  parameterValues: ParameterValues,
-};
-
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
@@ -65,17 +45,11 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => card && card.name)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       card: null,
@@ -151,7 +125,7 @@ export default class PublicQuestion extends Component {
     );
   };
 
-  run = async (): void => {
+  run = async () => {
     const {
       setErrorPage,
       params: { uuid, token },
@@ -170,14 +144,20 @@ export default class PublicQuestion extends Component {
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
-        newResult = await maybeUsePivotEndpoint(EmbedApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          EmbedApi.cardQuery,
+          card,
+        )({
           token,
           ...getParameterValuesBySlug(parameters, parameterValues),
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
         const datasetQuery = applyParameters(card, parameters, parameterValues);
-        newResult = await maybeUsePivotEndpoint(PublicApi.cardQuery, card)({
+        newResult = await maybeUsePivotEndpoint(
+          PublicApi.cardQuery,
+          card,
+        )({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
         });

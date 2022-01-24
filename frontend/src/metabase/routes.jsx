@@ -13,14 +13,14 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import App from "metabase/App.jsx";
 
-import HomepageApp from "metabase/home/containers/HomepageApp";
+import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/AuthApp";
+import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import ResetPasswordApp from "metabase/auth/containers/ResetPasswordApp";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -42,7 +42,6 @@ import UserCollectionList from "metabase/containers/UserCollectionList";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -84,7 +83,7 @@ import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetail
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
-import Overworld from "metabase/containers/Overworld";
+import HomepageApp from "metabase/home/homepage/containers/HomepageApp";
 
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
@@ -178,7 +177,7 @@ export const getRoutes = store => (
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
-        <Route path="reset_password/:token" component={PasswordResetApp} />
+        <Route path="reset_password/:token" component={ResetPasswordApp} />
       </Route>
 
       {/* MAIN */}
@@ -186,7 +185,7 @@ export const getRoutes = store => (
         {/* The global all hands rotues, things in here are for all the folks */}
         <Route
           path="/"
-          component={Overworld}
+          component={HomepageApp}
           onEnter={(nextState, replace) => {
             const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
             if (page && page !== "/") {
@@ -194,9 +193,6 @@ export const getRoutes = store => (
             }
           }}
         />
-
-        <Route path="/explore" component={PostSetupApp} />
-        <Route path="/explore/:databaseId" component={PostSetupApp} />
 
         <Route path="search" title={t`Search`} component={SearchApp} />
         <Route path="archive" title={t`Archive`} component={ArchiveApp} />
@@ -213,7 +209,7 @@ export const getRoutes = store => (
           <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
         </Route>
 
-        <Route path="activity" component={HomepageApp} />
+        <Route path="activity" component={ActivityApp} />
 
         <Route
           path="dashboard/:slug"
@@ -240,7 +236,14 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
-        <Route path="/ready" component={PostSetupApp} />
+        <Route path="/model">
+          <IndexRoute component={QueryBuilder} />
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":slug" component={QueryBuilder} />
+          <Route path=":slug/notebook" component={QueryBuilder} />
+          <Route path=":slug/query" component={QueryBuilder} />
+          <Route path=":slug/metadata" component={QueryBuilder} />
+        </Route>
 
         <Route path="browse" component={BrowseApp}>
           <IndexRoute component={DatabaseBrowser} />

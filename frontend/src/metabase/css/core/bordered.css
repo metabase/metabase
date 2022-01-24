@@ -55,12 +55,12 @@
 }
 
 .border-light {
-  border-color: color(var(--color-border) alpha(-80%)) !important;
+  border-color: color-mod(var(--color-border) alpha(-80%)) !important;
 }
 
 .border-dark,
 .border-dark-hover:hover {
-  border-color: color(var(--color-accent2) alpha(-80%)) !important;
+  border-color: color-mod(var(--color-accent2) alpha(-80%)) !important;
 }
 
 .border-purple {

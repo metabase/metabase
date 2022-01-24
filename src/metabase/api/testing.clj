@@ -24,6 +24,7 @@
     (api/check-404 (.exists (java.io.File. path)))
     (with-open [conn (jdbc/get-connection (db/connection))]
       (let [conn-spec {:connection conn}]
+        (jdbc/execute! conn-spec ["SET LOCK_TIMEOUT 120000"])
         (jdbc/execute! conn-spec ["DROP ALL OBJECTS"])
         (jdbc/execute! conn-spec ["RUNSCRIPT FROM ?" path]))))
   (cache/restore-cache!)

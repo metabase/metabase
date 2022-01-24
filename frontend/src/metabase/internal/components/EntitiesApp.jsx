@@ -8,7 +8,7 @@ import { capitalize } from "metabase/lib/formatting";
 
 import { entities as entityDefs } from "metabase/redux/entities";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
 import Link from "metabase/components/Link";
 
@@ -17,10 +17,7 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 import EntityForm from "metabase/entities/containers/EntityForm";
 
 const withPush = ComposedComponent =>
-  connect(
-    null,
-    { push },
-  )(ComposedComponent);
+  connect(null, { push })(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {

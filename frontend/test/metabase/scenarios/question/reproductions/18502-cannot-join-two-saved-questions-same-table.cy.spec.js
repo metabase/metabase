@@ -1,12 +1,12 @@
 import { restore, popover, visualize } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const question1 = getQuestionDetails("18502#1", PEOPLE.CREATED_AT);
 const question2 = getQuestionDetails("18502#2", PEOPLE.BIRTH_DATE);
 
-describe.skip("issue 18502", () => {
+describe("issue 18502", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
@@ -25,8 +25,8 @@ describe.skip("issue 18502", () => {
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Saved Questions").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18502#2").click();
     });
 

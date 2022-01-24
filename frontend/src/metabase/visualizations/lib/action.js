@@ -1,18 +1,9 @@
+/* eslint-disable react/prop-types */
 import { open } from "metabase/lib/dom";
 
 import _ from "underscore";
 
-import type { ClickAction } from "metabase-types/types/Visualization";
-
-type PerformActionProps = {
-  dispatch: Function,
-  onChangeCardAndRun: Function,
-};
-
-export function performAction(
-  action: ClickAction,
-  { dispatch, onChangeCardAndRun }: PerformActionProps,
-) {
+export function performAction(action, { dispatch, onChangeCardAndRun }) {
   let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();
@@ -38,10 +29,7 @@ export function performAction(
   return didPerform;
 }
 
-export function performDefaultAction(
-  actions: ClickAction[],
-  props: PerformActionProps,
-) {
+export function performDefaultAction(actions, props) {
   if (!actions) {
     return false;
   }

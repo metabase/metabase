@@ -1,12 +1,13 @@
 (ns metabase.public-settings-test
-  (:require [clojure.test :refer :all]
-            [metabase.models.setting :as setting :refer [Setting]]
-            [metabase.models.user :refer [User]]
+  (:require [clj-http.fake :as http-fake]
+            [clojure.core.memoize :as memoize]
+            [clojure.test :refer :all]
+            [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as i18n :refer [tru]]
-            [toucan.db :as db]))
+            [metabase.util.i18n :as i18n :refer [tru]]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -51,9 +52,9 @@
 (deftest site-url-settings-nil-getter-when-invalid
   (testing "if `site-url` in the database is invalid, the getter for `site-url` should return `nil` (#9849)"
     (mt/discard-setting-changes [site-url]
-      (setting/set-string! :site-url "https://&")
+      (setting/set-value-of-type! :string :site-url "https://&")
       (is (= "https://&"
-             (setting/get-string :site-url)))
+             (setting/get-value-of-type :string :site-url)))
       (is (= nil
              (mt/suppress-output (public-settings/site-url)))))))
 
@@ -62,7 +63,7 @@
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
       (mt/with-temporary-setting-values [site-url nil]
         (is (= "localhost:3000/"
-               (setting/get-string :site-url)))
+               (setting/get-value-of-type :string :site-url)))
         (is (= "http://localhost:3000"
                (public-settings/site-url)))))))
 
@@ -73,7 +74,7 @@
       (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
         (mt/with-temporary-setting-values [site-url nil]
           (is (= "asd_12w31%$;"
-                 (setting/get-string :site-url)))
+                 (setting/get-value-of-type :string :site-url)))
           (is (= nil
                  (public-settings/site-url))))))))
 
@@ -100,7 +101,8 @@
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (:display-name (first (get-in (setting/properties :public) [:engines :postgres :details-fields])))))))))
+             (str (get-in (setting/user-readable-values-map :public)
+                          [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
   (mt/with-mock-i18n-bundles {"zz" {"Host" "HOST"}}
@@ -181,23 +183,32 @@
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
 
-(deftest instance-creation-test
-  (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
-    (try
-      (testing "Instance creation timestamp is set only once when setting is first fetched"
-        (db/delete! Setting {:key "instance-creation"})
-        (with-redefs [public-settings/first-user-creation (constantly nil)]
-          (let [first-value (public-settings/instance-creation)]
-            (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
-            (is (= first-value
-                   (public-settings/instance-creation))))))
+(deftest cloud-gateway-ips-test
+  (with-redefs [premium-features/is-hosted? (constantly true)]
+    (testing "Setting calls Store URL to fetch IP addresses"
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+        (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))
 
-      (testing "If a user already exists, we should use the first user's creation timestamp"
-        (db/delete! Setting {:key "instance-creation"})
-        (mt/with-test-user :crowberto
-          (let [first-user-creation (:min (db/select-one [User [:%min.date_joined :min]]))
-                instance-creation   (public-settings/instance-creation)]
-            (is (= (java-time/local-date-time first-user-creation)
-                   (java-time/local-date-time instance-creation))))))
-      (finally
-        (db/update-where! Setting {:key "instance-creation"} :value original-value)))))
+      (testing "Getter is memoized to avoid frequent HTTP calls"
+        (http-fake/with-fake-routes-in-isolation
+          {{:address (public-settings/cloud-gateway-ips-url)}
+           (constantly {:status 200 :body "{\"ip_addresses\": [\"0.0.0.0\"]}"})}
+          (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))))
+
+    (testing "Setting returns nil if URL is unreachable"
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 500})}
+        (is (= nil (public-settings/cloud-gateway-ips))))))
+
+  (testing "Setting returns nil in self-hosted environments"
+    (with-redefs [premium-features/is-hosted? (constantly false)]
+      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
+      (http-fake/with-fake-routes-in-isolation
+        {{:address (public-settings/cloud-gateway-ips-url)}
+         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+        (is (= nil (public-settings/cloud-gateway-ips)))))))

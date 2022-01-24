@@ -18,6 +18,7 @@ const propTypes = {
   debounced: PropTypes.bool,
   loadingAndErrorWrapper: PropTypes.bool,
   keepListWhileLoading: PropTypes.bool,
+  listName: PropTypes.string,
   selectorName: PropTypes.string,
   children: PropTypes.func,
 
@@ -218,6 +219,7 @@ class EntityListLoader extends React.Component {
       entityDef,
       wrapped,
       list: currentList,
+      listName = entityDef.nameMany,
       loading,
       reload, // eslint-disable-line no-unused-vars
       keepListWhileLoading,
@@ -237,7 +239,7 @@ class EntityListLoader extends React.Component {
       list,
       loading,
       // alias the entities name:
-      [entityDef.nameMany]: list,
+      [listName]: list,
       reload: this.reload,
     });
   };

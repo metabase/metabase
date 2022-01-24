@@ -9,9 +9,9 @@ import {
 
 import { setAdHocFilter } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "17514",
@@ -54,7 +54,10 @@ describe("issue 17514", () => {
         ({ body: card }) => {
           const { card_id, dashboard_id } = card;
 
-          cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+          cy.intercept(
+            "POST",
+            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          ).as("cardQuery");
 
           const mapFilterToCard = {
             parameter_mappings: [

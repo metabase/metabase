@@ -1,7 +1,10 @@
 import styled from "styled-components";
+
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Label from "metabase/components/type/Label";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
 export const PermissionsSelectRoot = styled.div`
@@ -47,13 +50,13 @@ export const ToggleLabel = styled.label`
   margin-right: 1rem;
 `;
 
-export const WarningIcon = styled(Icon).attrs({
+export const WarningIcon = forwardRefToInnerRef(styled(Icon).attrs({
   size: 18,
   name: "warning",
 })`
   margin-right: 0.25rem;
   color: ${color("text-light")};
-`;
+`);
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)`
   color: ${props =>

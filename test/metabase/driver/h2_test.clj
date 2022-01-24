@@ -63,7 +63,7 @@
     (mt/with-temp Database [db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"^Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
            (qp/process-query {:database (:id db)
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
@@ -127,6 +127,7 @@
                             :template-tags {"date" {:name         "date"
                                                     :display-name "date"
                                                     :type         :dimension
+                                                    :widget-type  :date/all-options
                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
                :parameters [{:type :date/all-options
                              :target [:dimension [:template-tag "date"]]

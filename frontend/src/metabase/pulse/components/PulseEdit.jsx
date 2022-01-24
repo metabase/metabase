@@ -12,7 +12,7 @@ import PulseEditSkip from "./PulseEditSkip";
 import WhatsAPulse from "./WhatsAPulse";
 
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import Icon from "metabase/components/Icon";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -114,7 +114,7 @@ export default class PulseEdit extends Component {
                 c.recipients.length,
               )}
             </strong>
-          )} ${<strong>{c.schedule_type}</strong>}`}
+          )} ${(<strong>{c.schedule_type}</strong>)}`}
           .
         </span>
       ) : c.channel_type === "slack" ? (

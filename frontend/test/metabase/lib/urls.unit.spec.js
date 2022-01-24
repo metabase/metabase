@@ -66,6 +66,20 @@ describe("urls", () => {
         );
       });
     });
+
+    describe("model", () => {
+      it("returns /model URLS", () => {
+        expect(question({ id: 1, dataset: true, name: "Foo" })).toEqual(
+          "/model/1-foo",
+        );
+        expect(
+          question({ id: 1, card_id: 42, dataset: true, name: "Foo" }),
+        ).toEqual("/model/42-foo");
+        expect(
+          question({ id: 1, card_id: 42, model: "dataset", name: "Foo" }),
+        ).toEqual("/model/42-foo");
+      });
+    });
   });
 
   describe("query", () => {

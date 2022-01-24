@@ -25,7 +25,7 @@ export function FieldsPickerIcon({ isTriggeredComponentOpen }) {
       tooltip={<span>{t`Pick columns`}</span>}
       isEnabled={!isTriggeredComponentOpen}
     >
-      <FieldPickerContentContainer>
+      <FieldPickerContentContainer data-testid="fields-picker">
         <StyledIcon name="table" size={14} />
       </FieldPickerContentContainer>
     </Tooltip>

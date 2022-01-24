@@ -27,7 +27,7 @@
   (s/cond-pre (type Table) (type Card)))
 
 (def Bindings
-  "Top-level lexial context mapping source names to their corresponding entity and constituent dimensions. See also `DimensionBindings`."
+  "Top-level lexical context mapping source names to their corresponding entity and constituent dimensions. See also `DimensionBindings`."
   {SourceName {(s/optional-key :entity)     SourceEntity
                (s/required-key :dimensions) DimensionBindings}})
 

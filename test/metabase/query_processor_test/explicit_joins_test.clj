@@ -2,6 +2,7 @@
   (:require [clojure.set :as set]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test.timezones-test :as timezones-test]
@@ -9,25 +10,23 @@
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]))
 
-(defn- native-form [query]
-  (:query (qp/query->native query)))
-
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
-    (is (= (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
-                " \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
-                " \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\","
-                " \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\","
-                " \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
-                " \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                "FROM \"PUBLIC\".\"VENUES\" "
-                "LEFT JOIN \"PUBLIC\".\"CATEGORIES\" \"source\""
-                " ON \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 1 "
-                "LIMIT 1048575")
-           (native-form
-            (mt/mbql-query venues
-              {:joins [{:source-table $$categories
-                        :condition    [:= $category_id 1]}]}))))))
+    (let [query (mt/mbql-query venues
+                  {:joins [{:source-table $$categories
+                            :condition    [:= $category_id 1]}]})]
+      (mt/with-native-query-testing-context query
+        (is (= '{:select    [VENUES.ID          AS ID
+                             VENUES.NAME        AS NAME
+                             VENUES.CATEGORY_ID AS CATEGORY_ID
+                             VENUES.LATITUDE    AS LATITUDE
+                             VENUES.LONGITUDE   AS LONGITUDE
+                             VENUES.PRICE       AS PRICE]
+                 :from      [VENUES]
+                 :left-join [CATEGORIES source
+                             ON VENUES.CATEGORY_ID = 1]
+                 :limit     [1048575]}
+               (sql.qp-test-util/query->sql-map query)))))))
 
 (defn- query-with-strategy [strategy]
   (mt/dataset bird-flocks
@@ -345,30 +344,32 @@
 (deftest aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we aggregate on the results of a JOIN?"
-      ;; for whatever reason H2 gives slightly different answers :unamused:
-      (is (= {:rows    (let [driver-avg #(if (= metabase.driver/*driver* :h2) %1 %2)]
-                         [["2014-01-01T00:00:00Z" 77]
-                          ["2014-02-01T00:00:00Z" 81]
-                          ["2014-04-01T00:00:00Z" (driver-avg 50 49)]
-                          ["2014-07-01T00:00:00Z" (driver-avg 69 68)]
-                          ["2014-08-01T00:00:00Z" 64]
-                          ["2014-10-01T00:00:00Z" (driver-avg 66 65)]
-                          ["2014-11-01T00:00:00Z" (driver-avg 75 74)]
-                          ["2014-12-01T00:00:00Z" 70]])
-              :columns [(mt/format-name "last_login") "avg"]}
-             (mt/format-rows-by [identity int]
-               (mt/rows+column-names
-                 (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
-                                                    (mt/mbql-query checkins
-                                                      {:aggregation [[:count]]
-                                                       :breakout    [$user_id]}))]
-                   (mt/run-mbql-query users
-                     {:joins       [{:fields       :all
-                                     :alias        "checkins_by_user"
-                                     :source-table (str "card__" card-id)
-                                     :condition    [:= $id &checkins_by_user.*checkins.user_id]}]
-                      :aggregation [[:avg &checkins_by_user.*count/Float]]
-                      :breakout    [!month.last_login]})))))))))
+      (mt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                         (mt/mbql-query checkins
+                                           {:aggregation [[:count]]
+                                            :breakout    [$user_id]}))]
+        (let [query (mt/mbql-query users
+                      {:joins       [{:fields       :all
+                                      :alias        "checkins_by_user"
+                                      :source-table (str "card__" card-id)
+                                      :condition    [:= $id &checkins_by_user.*checkins.user_id]}]
+                       :aggregation [[:avg &checkins_by_user.*count/Float]]
+                       :breakout    [!month.last_login]})]
+          (mt/with-native-query-testing-context query
+            ;; for whatever reason H2 gives slightly different answers :unamused:
+            (is (= {:rows    (let [driver-avg #(if (= driver/*driver* :h2) %1 %2)]
+                               [["2014-01-01T00:00:00Z" 77]
+                                ["2014-02-01T00:00:00Z" 81]
+                                ["2014-04-01T00:00:00Z" (driver-avg 50 49)]
+                                ["2014-07-01T00:00:00Z" (driver-avg 69 68)]
+                                ["2014-08-01T00:00:00Z" 64]
+                                ["2014-10-01T00:00:00Z" (driver-avg 66 65)]
+                                ["2014-11-01T00:00:00Z" (driver-avg 75 74)]
+                                ["2014-12-01T00:00:00Z" 70]])
+                    :columns [(mt/format-name "last_login") "avg"]}
+                   (mt/format-rows-by [identity int]
+                     (mt/rows+column-names
+                      (qp/process-query query)))))))))))
 
 (deftest get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -508,12 +509,12 @@
                                 $longitude
                                 $price
                                 [:expression "RelativePrice"]]
-                  :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]},
+                  :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]}
                   :joins       [{:condition    [:= $category_id &CategoriesStats.venues.category_id]
                                  :source-query {:source-table $$venues
                                                 :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
                                                                [:aggregation-options [:avg $price] {:name "AvgPrice"}]
-                                                               [:aggregation-options [:min $price] {:name "MinPrice"}]],
+                                                               [:aggregation-options [:min $price] {:name "MinPrice"}]]
                                                 :breakout     [$category_id]}
                                  :alias        "CategoriesStats"
                                  :fields       :all}]
@@ -538,7 +539,7 @@
                                         :breakout     [&P1.products.category
                                                        [:field %people.source {:join-alias "People"}]]}
                          :joins        [{:fields       :all
-                                         :condition    [:= $products.category &Q2.products.category]
+                                         :condition    [:= &P1.products.category &Q2.products.category]
                                          :alias        "Q2"
                                          :source-query {:source-table $$reviews
                                                         :joins        [{:fields       :all
@@ -552,12 +553,13 @@
                          :order-by     [[:asc &P1.products.category]
                                         [:asc [:field %people.source {:join-alias "People"}]]]
                          :limit        2})]
-            (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
-                    ["Doohickey" "Facebook" 816 "Doohickey" 3]]
-                   (mt/formatted-rows [str str int str int]
-                     (qp/process-query query))))))
+            (mt/with-native-query-testing-context query
+              (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
+                      ["Doohickey" "Facebook" 816 "Doohickey" 3]]
+                     (mt/formatted-rows [str str int str int]
+                       (qp/process-query query)))))))
 
-        (testing "and custom expressions (#13649)"
+        (testing "and custom expressions (#13649) (#18086)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders
                                         :aggregation  [[:count]]
@@ -576,7 +578,113 @@
                                               [:field "count" {:base-type :type/BigInteger, :join-alias "Q2"}]
                                               [:field "count" {:base-type :type/BigInteger}]]}
                          :limit        2})]
-            ;; This result is actually wrong due to metabase#18086, the correct result is [4 89 0.46 41].
-            (is (= [[4 89 0.46 89]]
-                   (mt/formatted-rows [int int 2.0 int]
+            (mt/with-native-query-testing-context query
+              ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
+              (is (= [[4 89 0.46 4 41]]
+                     (mt/formatted-rows [int int 2.0 int int]
+                       (qp/process-query query)))))))))))
+
+(deftest join-against-saved-question-with-sort-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Should be able to join against a Saved Question that is sorted (#13744)"
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query products
+                      {:joins    [{:source-query {:source-table $$products
+                                                  :aggregation  [[:count]]
+                                                  :breakout     [$category]
+                                                  :order-by     [[:asc [:aggregation 0]]]}
+                                   :alias        "Q1"
+                                   :condition    [:= $category [:field %category {:join-alias "Q1"}]]
+                                   :fields       :all}]
+                       :order-by [[:asc $id]]
+                       :limit    1})]
+          (mt/with-native-query-testing-context query
+            (is (= [[1
+                     "1018947080336"
+                     "Rustic Paper Wallet"
+                     "Gizmo"
+                     "Swaniawski, Casper and Hilll"
+                     29.46
+                     4.6
+                     "2017-07-19T19:44:56.582Z"
+                     "Gizmo"
+                     51]]
+                   (mt/formatted-rows [int str str str str 2.0 1.0 str str int]
+                     (qp/process-query query))))))))))
+
+(deftest join-with-space-in-alias-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
+          (let [query (mt/mbql-query products
+                        {:joins    [{:source-query {:source-table $$orders}
+                                     :alias        "Q 1"
+                                     :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
+                                     :fields       :all}]
+                         :fields   [$id
+                                    [:field %orders.id {:join-alias "Q 1"}]]
+                         :order-by [[:asc $id]
+                                    [:asc [:field %orders.id {:join-alias "Q 1"}]]]
+                         :limit    2})]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 448] [1 493]]
+                     (mt/formatted-rows [int int]
+                       (qp/process-query query)))))))))))
+
+(deftest joining-nested-queries-with-same-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
+                  "source queries (#18512)")
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query reviews
+                      {:source-query {:source-table $$reviews
+                                      :joins        [{:source-table $$products
+                                                      :alias        "Products"
+                                                      :condition    [:= $product_id &Products.products.id]
+                                                      :fields       :all}]
+                                      :breakout     [!month.&Products.products.created_at]
+                                      :aggregation  [[:distinct &Products.products.id]]
+                                      :filter       [:= &Products.products.category "Doohickey"]}
+                       :joins        [{:source-query {:source-table $$reviews
+                                                      :joins        [{:source-table $$products
+                                                                      :alias        "Products"
+                                                                      :condition    [:= $product_id &Products.products.id]
+                                                                      :fields       :all}]
+                                                      :breakout     [!month.&Products.products.created_at]
+                                                      :aggregation  [[:distinct &Products.products.id]]
+                                                      :filter       [:= &Products.products.category "Gizmo"]}
+                                       :alias        "Q2"
+                                       :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
+                                       :fields       :all}]
+                       :order-by     [[:asc !month.&Products.products.created_at]]
+                       :limit        3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
+                    ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
+                    ["2016-08-01T00:00:00Z" 2 nil nil]]
+                   (mt/formatted-rows [str int str int]
+                     (qp/process-query query))))))))))
+
+(deftest join-against-same-table-as-source-query-source-table-test
+  (testing "Joining against the same table as the source table of the source query should work (#18502)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query people
+                      {:source-query {:source-table $$people
+                                      :breakout     [!month.created_at]
+                                      :aggregation  [[:count]]}
+                       :joins        [{:source-query {:source-table $$people
+                                                      :breakout     [!month.birth_date]
+                                                      :aggregation  [[:count]]}
+                                       :alias        "Q2"
+                                       :condition    [:= !month.created_at !month.&Q2.birth_date]
+                                       :fields       :all}]
+                       :order-by     [[:asc !month.created_at]]
+                       :limit        3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
+                    ["2016-05-01T00:00:00Z" 77 nil nil]
+                    ["2016-06-01T00:00:00Z" 82 nil nil]]
+                   (mt/formatted-rows [str int str int]
                      (qp/process-query query))))))))))

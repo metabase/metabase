@@ -48,7 +48,7 @@ describe("metabase/lib/expressions/diagnostics", () => {
   });
 
   it("should show the correct number of function arguments in a custom expression", () => {
-    expect(diagnose("contains([Category])").message).toEqual(
+    expect(diagnose("contains([Category])", "boolean").message).toEqual(
       "Function contains expects 2 arguments",
     );
   });

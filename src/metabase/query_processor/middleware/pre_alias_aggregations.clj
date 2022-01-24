@@ -4,7 +4,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [ag-clause]
-  (driver/format-custom-field-name driver/*driver* (annotate/aggregation-name ag-clause)))
+  (driver/escape-alias driver/*driver* (annotate/aggregation-name ag-clause)))
 
 (defn- pre-alias-and-uniquify [aggregations]
   (mapv

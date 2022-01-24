@@ -1,13 +1,10 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import SidebarLayout from "../components/SidebarLayoutFixedWidth";
 import AuditSidebar from "../components/AuditSidebar";
 
-type Props = {
-  children: React.Element,
-};
-
-const AuditApp = ({ children }: Props) => (
+const AuditApp = ({ children }) => (
   <SidebarLayout sidebar={<AuditSidebar />}>
     <div>{children}</div>
   </SidebarLayout>

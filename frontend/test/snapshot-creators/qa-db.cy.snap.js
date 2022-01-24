@@ -17,13 +17,15 @@ describe("qa databases snapshots", () => {
 
     restoreAndAuthenticate();
 
-    addMongoDatabase();
-    snapshot("mongo-4");
+    cy.wait(1000);
+    addMySQLDatabase();
+    snapshot("mysql-8");
 
     restoreAndAuthenticate();
 
-    addMySQLDatabase();
-    snapshot("mysql-8");
+    cy.wait(1000);
+    addMongoDatabase();
+    snapshot("mongo-4");
 
     restore("blank");
   });

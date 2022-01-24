@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import Link from "metabase/components/Link";
 
 import { Box, Flex } from "grid-styled";
@@ -20,7 +20,6 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 
 const PAGE_PADDING = [1, 2, 4];
-
 const PAGE_SIZE = 50;
 
 const SEARCH_FILTERS = [
@@ -32,7 +31,7 @@ const SEARCH_FILTERS = [
   {
     name: t`Collections`,
     filter: "collection",
-    icon: "all",
+    icon: "folder",
   },
   {
     name: t`Databases`,
@@ -40,9 +39,9 @@ const SEARCH_FILTERS = [
     icon: "database",
   },
   {
-    name: t`Datasets`,
+    name: t`Models`,
     filter: "dataset",
-    icon: "dataset",
+    icon: "model",
   },
   {
     name: t`Raw Tables`,

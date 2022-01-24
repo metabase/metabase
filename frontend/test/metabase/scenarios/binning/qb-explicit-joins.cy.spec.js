@@ -3,7 +3,7 @@ import {
   visualize,
   changeBinningForDimension,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS_ID,
@@ -12,7 +12,7 @@ const {
   PEOPLE,
   PRODUCTS_ID,
   PRODUCTS,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -150,7 +150,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Year")
         .click();
       cy.findByText("Quarter").click();
@@ -215,7 +215,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       cy.findByText("Quarter").click();

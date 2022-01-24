@@ -79,17 +79,9 @@ function recursiveCheck(id, i = 0) {
 
   cy.wait(100);
 
-  cy.request("GET", `/api/database/${id}/metadata`).then(
-    ({ body: { tables } }) => {
-      if (tables.length !== 4) {
-        recursiveCheck(id, ++i);
-      }
-
-      tables.forEach(({ fields }) => {
-        if (fields.length === 0) {
-          recursiveCheck(id, ++i);
-        }
-      });
-    },
-  );
+  cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
+    if (database.initial_sync_status !== "complete") {
+      recursiveCheck(id, ++i);
+    }
+  });
 }

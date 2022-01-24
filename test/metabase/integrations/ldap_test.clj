@@ -9,15 +9,6 @@
             [toucan.db :as db])
   (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
-(defn- get-ldap-details []
-  {:host       "localhost"
-   :port       (ldap.test/get-ldap-port)
-   :bind-dn    "cn=Directory Manager"
-   :password   "password"
-   :security   :none
-   :user-base  "dc=metabase,dc=com"
-   :group-base "dc=metabase,dc=com"})
-
 ;; See test_resources/ldap.ldif for fixtures
 
 ;; The connection test should pass with valid settings
@@ -26,24 +17,24 @@
     (testing "anonymous binds"
       (testing "successfully connect to IPv4 host"
         (is (= {:status :SUCCESS}
-               (ldap/test-ldap-connection (get-ldap-details))))))
+               (ldap/test-ldap-connection (ldap.test/get-ldap-details))))))
 
     (testing "invalid user search base"
       (is (= :ERROR
-             (:status (ldap/test-ldap-connection (assoc (get-ldap-details)
+             (:status (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details)
                                                         :user-base "dc=example,dc=com"))))))
 
     (testing "invalid group search base"
       (is (= :ERROR
-             (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :group-base "dc=example,dc=com"))))))
+             (:status (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details) :group-base "dc=example,dc=com"))))))
 
     (testing "invalid bind DN"
       (is (= :ERROR
-             (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :bind-dn "cn=Not Directory Manager"))))))
+             (:status (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details) :bind-dn "cn=Not Directory Manager"))))))
 
     (testing "invalid bind password"
       (is (= :ERROR
-             (:status (ldap/test-ldap-connection (assoc (get-ldap-details) :password "wrong"))))))
+             (:status (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details) :password "wrong"))))))
 
     (testing "basic get-connection works, will throw otherwise"
       (is (= nil
@@ -107,7 +98,7 @@
                 :last-name  "Miller"
                 :email      "jane.miller@metabase.com"
                 :groups     []}
-               (ldap/find-user "jane.miller@metabase.com")))
+               (ldap/find-user "jane.miller@metabase.com")))))
 
     ;; Test group lookups for directory servers that use the memberOf attribute overlay, such as Active Directory
     (ldap.test/with-active-directory-ldap-server
@@ -126,7 +117,7 @@
                 :email      "sally.brown@metabase.com"
                 :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com",
                              "cn=Engineering,ou=Groups,dc=metabase,dc=com"]}
-               (ldap/find-user "sbrown20")))))))))
+               (ldap/find-user "sbrown20")))))))
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
@@ -181,7 +172,7 @@
 (deftest ipv6-test
   (testing "successfully connect to IPv6 host"
     (let [actual (ldap.test/with-ldap-server
-                   (ldap/test-ldap-connection (assoc (get-ldap-details)
+                   (ldap/test-ldap-connection (assoc (ldap.test/get-ldap-details)
                                                      :host "[::1]")))]
       (if (= (:status actual) :ERROR)
         (is (re-matches #"An error occurred while attempting to connect to server \[::1].*" (:message actual)))

@@ -137,7 +137,7 @@
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
   (let [validator (UrlValidator. (varargs String ["http" "https"])
-                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 (RegexValidator. "^[\\p{Alnum}\\_]+([\\.|\\-][\\p{Alnum}\\_]+)*(:\\d*)?")
                                  UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
@@ -164,7 +164,6 @@
   [f x]
   (or (nil? x)
       (f x)))
-
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
@@ -252,7 +251,7 @@
     false
     (config/config-bool :mb-colorize-logs)))
 
-(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
+(def ^{:arglists '(^String [color-symb x])} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
@@ -285,7 +284,6 @@
   function from `colorize.core`.
 
      (pprint-to-str 'green some-obj)"
-  {:style/indent 1}
   (^String [x]
    (when x
      (with-open [w (java.io.StringWriter.)]
@@ -522,7 +520,7 @@
   ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
   ^Integer [object-or-id]
   (or (id object-or-id)
-      (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
+      (throw (Exception. (tru "Not something with an ID: {0}" (pr-str object-or-id))))))
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
@@ -808,14 +806,18 @@
   0)
 
 (defn profile-print-time
-  "Impl for `profile` macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
-  `profile`d form."
+  "Impl for [[profile]] macro -- don't use this directly. Prints the `___ took ___` message at the conclusion of a
+  [[profile]]d form."
   [message start-time]
-  ;; indent the message according to `*profile-level*` and add a little down-left arrow so it (hopefully) points to
+  ;; indent the message according to [[*profile-level*]] and add a little down-left arrow so it (hopefully) points to
   ;; the parent form
-  (println (format-color :green "%s%s took %s"
+  (println (format-color (case (int (mod *profile-level* 4))
+                           0 :green
+                           1 :cyan
+                           2 :magenta
+                           3 :yellow) "%s%s took %s"
              (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ↙ ")
+               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
                "")
              message
              (format-nanoseconds (- (System/nanoTime) start-time)))))
@@ -950,3 +952,10 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn field-ref->key
+  "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
+  be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
+  non-unique at times, numeric ids are not guaranteed."
+  [field-ref]
+  (into [] (take 2) field-ref))

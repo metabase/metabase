@@ -83,6 +83,7 @@ export function serializeCardForUrl(card) {
     display: card.display,
     displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
+    dashboardId: card.dashboardId,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,
   };

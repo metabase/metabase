@@ -2,7 +2,11 @@ import { getLegendTitles } from "metabase/visualizations/components/ChoroplethMa
 
 describe("getLegendTitles", () => {
   it("should not format short values compactly", () => {
-    const groups = [[1.12, 1.12, 1.25], [1.32, 1.48], [9, 12, 13]];
+    const groups = [
+      [1.12, 1.12, 1.25],
+      [1.32, 1.48],
+      [9, 12, 13],
+    ];
     const columnSettings = {
       column: { base_type: "type/Float" },
       number_style: "currency",

@@ -82,6 +82,8 @@
       :Segment (extract-ids :segment inner-query)})))
 
 
+
+
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defn serialize-instance
@@ -89,7 +91,10 @@
   ([instance]
    (serialize-instance nil nil instance))
   ([_ _ instance]
-   (dissoc instance :created_at :updated_at :result_metadata)))
+   (cond-> (dissoc instance :created_at :updated_at)
+     ;; datasets should preserve edits to metadata
+     (not (:dataset instance))
+     (dissoc :result_metadata))))
 
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -174,6 +179,7 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
+;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [{query :dataset_query, :as card}]
   (u/prog1 card
     ;; make sure this Card doesn't have circular source query references

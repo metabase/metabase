@@ -1,6 +1,7 @@
 (ns metabase.api.activity
   (:require [clojure.set :as set]
             [compojure.core :refer [GET]]
+            [medley.core :as m]
             [metabase.api.common :refer [*current-user-id* defendpoint define-routes]]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
@@ -36,28 +37,47 @@
      (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
      ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
   [referenced-objects]
-  (into {} (for [[model ids] referenced-objects
-                 :when       (seq ids)]
-             {model (case model
-                      "card"      (db/select-ids 'Card,      :id [:in ids])
-                      "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                      "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
-                      nil)}))) ; don't care about other models
+  (merge
+   (when-let [card-ids (get referenced-objects "card")]
+     (let [id->dataset?                       (db/select-id->field :dataset Card
+                                                                   :id [:in card-ids])
+           {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
+                                                        ;; only existing ids go back
+                                                        (keys id->dataset?))]
+       (cond-> {}
+         (seq dataset-ids) (assoc "dataset" (set dataset-ids))
+         (seq card-ids')   (assoc "card" (set card-ids')))))
+   (into {} (for [[model ids] (dissoc referenced-objects "card")
+                  :when       (seq ids)]
+              {model (case model
+                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
+                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
+                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
+                       nil)})))) ; don't care about other models
 
 (defn- add-model-exists-info
   "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
   [activities]
-  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)]
-    (for [{:keys [model model_id], :as activity} activities]
-      (let [activity (assoc activity :model_exists (contains? (get existing-objects model) model_id))]
-        (if-not (dashcard-activity? activity)
-          activity
-          (update-in activity [:details :dashcards] (fn [dashcards]
-                                                      (for [dashcard dashcards]
-                                                        (assoc dashcard :exists (contains? (get existing-objects "card")
-                                                                                           (:card_id dashcard)))))))))))
+  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
+        existing-dataset? (fn [card-id]
+                            (contains? (get existing-objects "dataset") card-id))]
+    (for [{:keys [model_id], :as activity} activities]
+      (let [model (if (and (= (:model activity) "card")
+                           (existing-dataset? (:model_id activity)))
+                    "dataset"
+                    (:model activity))]
+        (cond-> (assoc activity
+                       :model_exists (contains? (get existing-objects model) model_id)
+                       :model model)
+          (dashcard-activity? activity)
+          (update-in [:details :dashcards]
+                     (fn [dashcards]
+                       (for [dashcard dashcards]
+                         (assoc dashcard :exists
+                                (or (existing-dataset? (:card_id dashcard))
+                                    (contains? (get existing-objects "card")
+                                               (:card_id dashcard))))))))))))
 
 (defendpoint GET "/"
   "Get recent activity."
@@ -66,14 +86,25 @@
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 
-(defn- view-log-entry->matching-object [{:keys [model model_id]}]
-  (when (contains? #{"card" "dashboard" "table"} model)
-    (db/select-one
-        (case model
-          "card"      [Card      :id :name :collection_id :description :display :dataset_query]
-          "dashboard" [Dashboard :id :name :collection_id :description]
-          "table"     [Table     :id :name :db_id :display_name])
-        :id model_id)))
+(defn- models-for-views
+  "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
+  [views]
+  (letfn [(select-items! [model ids]
+            (when (seq ids)
+              (db/select
+               (case model
+                 "card"      [Card      :id :name :collection_id :description :display
+                                        :dataset_query :dataset]
+                 "dashboard" [Dashboard :id :name :collection_id :description]
+                 "table"     [Table     :id :name :db_id :display_name :initial_sync_status])
+               {:where [:in :id ids]})))
+          (by-id [models] (m/index-by :id models))]
+    (into {} (map (fn [[model models]]
+                    [model (->> models
+                                (map :model_id)
+                                (select-items! model)
+                                (by-id))]))
+          (group-by :model views))))
 
 (defendpoint GET "/recent_views"
   "Get the list of 10 things the current user has been viewing most recently."
@@ -81,15 +112,19 @@
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
   ;; and we order the results by most recently viewed then hydrate the basic details of the model
-  (for [view-log (db/select [ViewLog :user_id :model :model_id [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                   :user_id *current-user-id*
-                   {:group-by [:user_id :model :model_id]
-                    :order-by [[:max_ts :desc]]
-                    :limit    5})
-        :let     [model-object (view-log-entry->matching-object view-log)]
-        :when    (and model-object
-                      (mi/can-read? model-object))]
-    (assoc view-log :model_object (dissoc model-object :dataset_query))))
-
+  (let [views (db/select [ViewLog :user_id :model :model_id
+                          [:%count.* :cnt] [:%max.timestamp :max_ts]]
+                         {:group-by [:user_id :model :model_id]
+                          :where    [:and
+                                     [:= :user_id *current-user-id*]
+                                     [:in :model #{"card" "dashboard" "table"}]]
+                          :order-by [[:max_ts :desc]]
+                          :limit    5})
+        model->id->items (models-for-views views)]
+    (for [{:keys [model model_id] :as view-log} views
+          :let [model-object (get-in model->id->items [model model_id])]
+          :when (and model-object (mi/can-read? model-object))]
+      (cond-> (assoc view-log :model_object (dissoc model-object :dataset_query))
+        (:dataset model-object) (assoc :model "dataset")))))
 
 (define-routes)

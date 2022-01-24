@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
@@ -134,10 +134,7 @@ function PermissionsPageLayout({
 PermissionsPageLayout.propTypes = propTypes;
 
 export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
   fitViewport,
   withRouter,
 )(PermissionsPageLayout);

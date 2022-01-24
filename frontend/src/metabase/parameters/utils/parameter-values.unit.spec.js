@@ -194,7 +194,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(NaN);
+      ).toBe("");
     });
 
     it("should not parse numeric values that are dates as floats", () => {

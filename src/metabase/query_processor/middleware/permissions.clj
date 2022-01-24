@@ -41,12 +41,12 @@
   for [[metabase.models.collection]] for more details.
 
   Note that this feature is Metabase© Enterprise Edition™ only. Actual implementation is
-  in [[metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions]] if EE code is
+  in [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions]] if EE code is
   present. This feature is only enabled if we have a valid Enterprise Edition™ token."
   (let [dlay (delay
                (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.enhancements.models.permissions.block-permissions)
-                 (resolve 'metabase-enterprise.enhancements.models.permissions.block-permissions/check-block-permissions)))]
+                 (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions)
+                 (resolve 'metabase-enterprise.advanced-permissions.models.permissions.block-permissions/check-block-permissions)))]
     (fn [query]
       (when-let [f @dlay]
         (f query)))))
@@ -124,7 +124,8 @@
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
-  Exception. (This is used by `qp/query->native` to check perms before converting an MBQL query to native.)"
+  Exception. (This is used by the `POST /api/dataset/native` endpoint to check perms before converting an MBQL query
+  to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
     (throw (perms-exception (perms/adhoc-native-query-path database-id)))))

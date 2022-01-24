@@ -1,36 +1,18 @@
 import _ from "underscore";
 
-import type {
-  Value,
-  Column,
-  ColumnName,
-  DatasetData,
-} from "metabase-types/types/Dataset";
-import type { Field as FieldReference } from "metabase-types/types/Query";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension, {
   AggregationDimension,
   FieldDimension,
 } from "metabase-lib/lib/Dimension";
-import type Question from "metabase-lib/lib/Question";
 
-type ColumnSetting = {
-  name: ColumnName,
-  fieldRef?: FieldReference,
-  enabled: boolean,
-};
-
-export const datasetContainsNoResults = (data: DatasetData): boolean =>
+export const datasetContainsNoResults = data =>
   data.rows == null || data.rows.length === 0;
 
 /**
  * @returns min and max for a value in a column
  */
-export const rangeForValue = (
-  value: Value,
-  column: ?Column,
-): ?[number, number] => {
+export const rangeForValue = (value, column) => {
   if (typeof value === "number" && column?.binning_info?.bin_width) {
     return [value, value + column.binning_info.bin_width];
   }
@@ -42,7 +24,7 @@ export const rangeForValue = (
  * @param  {Column} column Dataset result column
  * @return {?FieldReference} MBQL field reference
  */
-export function fieldRefForColumn(column: Column): ?FieldReference {
+export function fieldRefForColumn(column) {
   // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
   return (
     column.field_ref &&
@@ -52,16 +34,12 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
   );
 }
 
-export function fieldRefWithOption(
-  fieldRef: any,
-  key: string,
-  value: any,
-): FieldReference {
+export function fieldRefWithOption(fieldRef, key, value) {
   const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
   return dimension && dimension.withOption(key, value).mbql();
 }
 
-export const keyForColumn = (column: Column): string => {
+export const keyForColumn = column => {
   let fieldRef = column.field_ref;
   if (!fieldRef) {
     console.error("column is missing field_ref", column);
@@ -97,10 +75,7 @@ export const keyForColumn = (column: Column): string => {
  * @param  {ColumnSetting} columnSetting  A "column setting" from the `table.columns` settings
  * @return {?Column}                      A result column
  */
-export function findColumnForColumnSetting(
-  columns: Column[],
-  columnSetting: ColumnSetting,
-): ?Column {
+export function findColumnForColumnSetting(columns, columnSetting) {
   const index = findColumnIndexForColumnSetting(columns, columnSetting);
   if (index >= 0) {
     return columns[index];
@@ -109,15 +84,12 @@ export function findColumnForColumnSetting(
   }
 }
 
-export function normalizeFieldRef(fieldRef: ?FieldReference): ?FieldReference {
+export function normalizeFieldRef(fieldRef) {
   const dimension = Dimension.parseMBQL(fieldRef);
   return dimension && dimension.mbql();
 }
 
-export function findColumnIndexForColumnSetting(
-  columns: Column[],
-  columnSetting: ColumnSetting,
-): number {
+export function findColumnIndexForColumnSetting(columns, columnSetting) {
   // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
   const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
@@ -146,7 +118,7 @@ export function findColumnSettingIndexForColumn(columnSettings, column) {
   return index;
 }
 
-export function syncTableColumnsToQuery(question: Question): Question {
+export function syncTableColumnsToQuery(question) {
   let query = question.query();
   const columnSettings = question.settings()["table.columns"];
   if (columnSettings && query instanceof StructuredQuery) {

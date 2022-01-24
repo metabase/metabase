@@ -5,7 +5,13 @@ import {
   hasMapping,
   isDashboardParameterWithoutMapping,
   getMappingsByParameter,
+  getParametersMappedToDashcard,
+  hasMatchingParameters,
+  getFilteringParameterValuesMap,
+  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
+import { metadata } from "__support__/sample_database_fixture";
+
 import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -373,6 +379,284 @@ describe("meta/Dashboard", () => {
         expect.objectContaining({
           name: "boolean",
         }),
+      );
+    });
+  });
+
+  describe("getParametersMappedToDashcard", () => {
+    const dashboard = {
+      parameters: [
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+        {
+          id: "baz",
+        },
+      ],
+    };
+
+    const dashboardWithNoParameters = {};
+
+    const dashcard = {
+      parameter_mappings: [
+        {
+          parameter_id: "foo",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          parameter_id: "bar",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ],
+    };
+
+    const dashcardWithNoMappings = {};
+
+    it("should return the subset of the dashboard's parameters that are found in a given dashcard's parameter_mappings", () => {
+      expect(
+        getParametersMappedToDashcard(dashboardWithNoParameters, dashcard),
+      ).toEqual([]);
+      expect(
+        getParametersMappedToDashcard(dashboard, dashcardWithNoMappings),
+      ).toEqual([]);
+
+      expect(getParametersMappedToDashcard(dashboard, dashcard)).toEqual([
+        {
+          id: "foo",
+          type: "text",
+          target: ["variable", ["template-tag", "abc"]],
+        },
+        {
+          id: "bar",
+          type: "string/=",
+          target: ["dimension", ["field", 123, null]],
+        },
+      ]);
+    });
+  });
+
+  describe("hasMatchingParameters", () => {
+    it("should return false when the given card is not found on the dashboard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 456,
+          parameters: [],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return false when a given parameter is not found in the dashcard mappings", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+            ],
+          },
+          {
+            card_id: 456,
+            parameter_mappings: [
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(false);
+    });
+
+    it("should return true when all given parameters are found mapped to the dashcard", () => {
+      const dashboard = {
+        ordered_cards: [
+          {
+            card_id: 123,
+            parameter_mappings: [
+              {
+                parameter_id: "foo",
+              },
+              {
+                parameter_id: "bar",
+              },
+            ],
+          },
+        ],
+      };
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          cardId: 123,
+          parameters: [
+            {
+              id: "foo",
+            },
+            {
+              id: "bar",
+            },
+          ],
+          metadata,
+        }),
+      ).toBe(true);
+    });
+  });
+
+  describe("getFilteringParameterValuesMap", () => {
+    const undefinedFilteringParameters = {};
+    const emptyFilteringParameters = {
+      filteringParameters: [],
+    };
+
+    const parameter = {
+      filteringParameters: ["a", "b", "c", "d"],
+    };
+    const parameters = [
+      {
+        id: "a",
+        value: "aaa",
+      },
+      {
+        id: "b",
+        value: "bbb",
+      },
+      {
+        id: "c",
+      },
+      {
+        id: "d",
+        value: null,
+      },
+      {
+        id: "e",
+        value: "eee",
+      },
+    ];
+
+    it("should create a map of any defined parameterValues found in a specific parameter's filteringParameters property", () => {
+      expect(
+        getFilteringParameterValuesMap(
+          undefinedFilteringParameters,
+          parameters,
+        ),
+      ).toEqual({});
+      expect(
+        getFilteringParameterValuesMap(emptyFilteringParameters, parameters),
+      ).toEqual({});
+      expect(getFilteringParameterValuesMap(parameter, parameters)).toEqual({
+        a: "aaa",
+        b: "bbb",
+      });
+    });
+
+    it("should handle a missing `filteringParameters` prop gracefully", () => {
+      expect(
+        getFilteringParameterValuesMap(
+          undefinedFilteringParameters,
+          parameters,
+        ),
+      ).toEqual({});
+      expect(
+        getFilteringParameterValuesMap(emptyFilteringParameters, parameters),
+      ).toEqual({});
+    });
+  });
+
+  describe("getParameterValuesSearchKey", () => {
+    it("should return a string using the given props related to parameter value searching", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          query: "foo",
+          filteringParameterValues: {
+            a: "aaa",
+            b: "bbb",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: foo, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should default `query` to null", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          filteringParameterValues: {
+            a: "aaa",
+            b: "bbb",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should sort the entries in the `filteringParameterValues` object", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          filteringParameterValues: {
+            b: "bbb",
+            a: "aaa",
+          },
+        }),
+      ).toEqual(
+        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
+      );
+    });
+
+    it("should handle there being no filteringParameterValues", () => {
+      expect(
+        getParameterValuesSearchKey({
+          dashboardId: "123",
+          parameterId: "456",
+          query: "abc",
+        }),
+      ).toEqual(
+        "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
       );
     });
   });

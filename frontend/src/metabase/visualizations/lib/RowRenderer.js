@@ -19,12 +19,10 @@ import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
 const ROW_GAP = 5;
 const ROW_MAX_HEIGHT = 30;
 
-type DeregisterFunction = () => void;
-
 export default function rowRenderer(
   element,
   { settings, series, onHoverChange, onVisualizationClick, height },
-): DeregisterFunction {
+) {
   const { cols } = series[0].data;
 
   const chart = dc.rowChart(element);

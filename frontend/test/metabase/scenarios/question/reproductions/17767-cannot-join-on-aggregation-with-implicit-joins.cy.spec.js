@@ -1,7 +1,7 @@
 import { restore, popover, visualize } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "17767",
@@ -12,7 +12,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 17767", () => {
+describe("issue 17767", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

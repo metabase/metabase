@@ -10,3 +10,6 @@ creating a new trust store file documented
 ## `rds-combined-ca-bundle.pem`
 This is simply a copy of the "combined" CA bundle from
 [AWS](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html).
+
+## `rds_root_ca_truststore.jks`
+This is a keystore that contains *only* the RDS root CA.  If you try to use it as the JVM-level truststore, you will probably get a lot of SSL related errors, but it should work in isolation for particular connections (ex: Oracle SSL connectivity).

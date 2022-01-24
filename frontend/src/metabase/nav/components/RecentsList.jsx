@@ -7,8 +7,10 @@ import Recents from "metabase/entities/recents";
 import Card from "metabase/components/Card";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import {
   ResultLink,
+  ResultSpinner,
   Title,
 } from "metabase/search/components/SearchResult.styled";
 import { ItemIcon } from "metabase/search/components/SearchResult";
@@ -23,10 +25,6 @@ import {
 } from "./RecentsList.styled";
 
 const LOADER_THRESHOLD = 100;
-
-const getItemKey = ({ model, model_id }) => `${model}:${model_id}`;
-const getItemName = model_object =>
-  model_object.display_name || model_object.name;
 
 const propTypes = {
   list: PropTypes.arrayOf(
@@ -59,26 +57,43 @@ function RecentsList({ list, loading }) {
         <React.Fragment>
           {hasRecents && (
             <ul>
-              {list.map(item => (
-                <li key={getItemKey(item)}>
-                  <ResultLink to={Urls.modelToUrl(item)} compact={true}>
-                    <RecentListItemContent
-                      align="start"
-                      data-testid="recently-viewed-item"
-                    >
-                      <ItemIcon item={item} type={item.model} />
-                      <div>
-                        <Title data-testid="recently-viewed-item-title">
-                          {getItemName(item.model_object)}
-                        </Title>
-                        <Text data-testid="recently-viewed-item-type">
-                          {getTranslatedEntityName(item.model)}
-                        </Text>
-                      </div>
-                    </RecentListItemContent>
-                  </ResultLink>
-                </li>
-              ))}
+              {list.map(item => {
+                const key = getItemKey(item);
+                const title = getItemName(item);
+                const type = getTranslatedEntityName(item.model);
+                const active = isItemActive(item);
+                const loading = isItemLoading(item);
+                const url = active ? Urls.modelToUrl(item) : "";
+
+                return (
+                  <li key={key}>
+                    <ResultLink to={url} compact={true} active={active}>
+                      <RecentListItemContent
+                        align="start"
+                        data-testid="recently-viewed-item"
+                      >
+                        <ItemIcon
+                          item={item}
+                          type={item.model}
+                          active={active}
+                        />
+                        <div>
+                          <Title
+                            active={active}
+                            data-testid="recently-viewed-item-title"
+                          >
+                            {title}
+                          </Title>
+                          <Text data-testid="recently-viewed-item-type">
+                            {type}
+                          </Text>
+                        </div>
+                        {loading && <ResultSpinner size={24} borderWidth={3} />}
+                      </RecentListItemContent>
+                    </ResultLink>
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -94,6 +109,33 @@ function RecentsList({ list, loading }) {
 }
 
 RecentsList.propTypes = propTypes;
+
+const getItemKey = ({ model, model_id }) => {
+  return `${model}:${model_id}`;
+};
+
+const getItemName = ({ model_object }) => {
+  return model_object.display_name || model_object.name;
+};
+
+const isItemActive = ({ model, model_object }) => {
+  switch (model) {
+    case "table":
+      return isSyncCompleted(model_object);
+    default:
+      return true;
+  }
+};
+
+const isItemLoading = ({ model, model_object }) => {
+  switch (model) {
+    case "database":
+    case "table":
+      return !isSyncCompleted(model_object);
+    default:
+      return false;
+  }
+};
 
 export default _.compose(
   Recents.loadList({

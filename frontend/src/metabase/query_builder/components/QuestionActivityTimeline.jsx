@@ -46,10 +46,7 @@ export default _.compose(
     }),
     wrapped: true,
   }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
+  connect(mapStateToProps, mapDispatchToProps),
 )(QuestionActivityTimeline);
 
 RevisionEventFooter.propTypes = {

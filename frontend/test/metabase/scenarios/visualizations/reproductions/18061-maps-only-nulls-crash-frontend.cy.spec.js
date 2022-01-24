@@ -1,14 +1,13 @@
 import {
   restore,
-  mockSessionProperty,
   visitAlias,
   popover,
   filterWidget,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   name: "18061",
@@ -54,8 +53,6 @@ const dashboardDetails = { name: "18061D", parameters: [filter] };
 
 describe("issue 18061", () => {
   beforeEach(() => {
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     restore();
     cy.signInAsAdmin();
 
@@ -74,6 +71,10 @@ describe("issue 18061", () => {
         cy.wrap(`/dashboard/${dashboard_id}`).as(`dashboardUrl`);
 
         cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
+        cy.intercept(
+          "POST",
+          `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+        ).as("dashCardQuery");
         cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
 
         const mapFilterToCard = {
@@ -125,11 +126,11 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-2)", () => {
       visitAlias("@dashboardUrl");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
 
       addFilter("Twitter");
 
-      cy.wait("@cardQuery");
+      cy.wait("@dashCardQuery");
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");

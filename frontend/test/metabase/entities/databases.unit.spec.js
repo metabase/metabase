@@ -29,7 +29,6 @@ describe("database entity", () => {
       "123": {
         id: 123,
         tables: [234],
-        initial_sync: true,
         is_saved_questions: false,
       },
     });
@@ -47,7 +46,6 @@ describe("database entity", () => {
         id: 234,
         schema: "123:public",
         schema_name: "public",
-        initial_sync: true,
       },
     });
   });

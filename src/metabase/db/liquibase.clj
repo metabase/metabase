@@ -6,7 +6,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import java.io.StringWriter
-           [liquibase Contexts Liquibase]
+           [liquibase Contexts LabelExpression Liquibase]
            [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.LockException
@@ -90,7 +90,7 @@
   (I'm not 100% sure whether `Liquibase.update()` still acquires locks if the database is already up-to-date, but
   `migrations-lines` certainly does; duplicating the skipping logic doesn't hurt anything.)"
   ^Boolean [^Liquibase liquibase]
-  (boolean (seq (.listUnrunChangeSets liquibase nil))))
+  (boolean (seq (.listUnrunChangeSets liquibase nil (LabelExpression.)))))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"

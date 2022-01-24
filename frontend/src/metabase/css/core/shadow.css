@@ -8,6 +8,6 @@
 }
 
 .shadow-hover:hover {
-  box-shadow: 0 2px 2px color(var(--color-shadow) alpha(20%));
+  box-shadow: 0 2px 2px color-mod(var(--color-shadow) alpha(20%));
   transition: box-shadow 300ms linear;
 }

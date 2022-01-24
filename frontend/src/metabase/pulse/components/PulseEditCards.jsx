@@ -1,4 +1,4 @@
-/* eslint "react/prop-types": "warn" */
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -55,7 +55,7 @@ export default class PulseEditCards extends Component {
     });
   }
 
-  trackPulseEvent = (eventName: string, eventValue: string) => {
+  trackPulseEvent = (eventName, eventValue) => {
     MetabaseAnalytics.trackStructEvent(
       this.props.pulseId ? "PulseEdit" : "PulseCreate",
       eventName,

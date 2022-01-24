@@ -6,7 +6,7 @@ import _ from "underscore";
 import cx from "classnames";
 import { Flex } from "grid-styled";
 
-import SelectButton from "metabase/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 import Select from "metabase/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
@@ -340,12 +340,14 @@ export class ValueRemappings extends React.Component {
   componentDidUpdate(prevProps) {
     const { remappings } = this.props;
     if (
-      !// check if the Maps are different
-      (
-        prevProps.remappings &&
-        remappings &&
-        prevProps.remappings.size === remappings.size &&
-        [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+      !(
+        // check if the Maps are different
+        (
+          prevProps.remappings &&
+          remappings &&
+          prevProps.remappings.size === remappings.size &&
+          [...remappings].every(([k, v]) => prevProps.remappings.get(k) === v)
+        )
       )
     ) {
       this._updateEditingRemappings(remappings);

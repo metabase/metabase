@@ -1,11 +1,14 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
+            [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -70,7 +73,9 @@
 
 (defn- database->driver* [database-or-id]
   (or
-   (:engine database-or-id)
+   (when-let [engine (:engine database-or-id)]
+     ;; ensure we get the engine as a keyword (sometimes it's a String)
+     (keyword engine))
    (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
 
 (def ^{:arglists '([database-or-id])} database->driver
@@ -99,50 +104,157 @@
              :when  (driver/available? driver)]
          driver)))
 
+(defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
+  (if (premium-features/is-hosted?)
+    [(-> (assoc conn-prop
+           :name (str prop-name "-value")
+           :type "textFile"
+           :treat-before-posting "base64")
+         (dissoc :secret-kind))]
+    [(cond-> {:name (str prop-name "-options")
+              :display-name disp-nm
+              :type "select"
+              :options [{:name (trs "Local file path")
+                         :value "local"}
+                        {:name (trs "Uploaded file path")
+                         :value "uploaded"}]
+              :default "local"}
+             visible-if (assoc :visible-if visible-if))
+     (-> {:name (str prop-name "-value")
+          :type "textFile"
+          :treat-before-posting "base64"
+          :visible-if {(keyword (str prop-name "-options")) "uploaded"}}
+       (dissoc :secret-kind))
+     {:name (str prop-name "-path")
+      :type "string"
+      :display-name (trs "File path")
+      :placeholder (:placeholder conn-prop)
+      :visible-if {(keyword (str prop-name "-options")) "local"}}]))
+
+(defn- ->str
+  "Turns `x` into a String. If `x` a keyword, then `name` is used. Otherwise, `str` is called on it."
+  [k]
+  (if (keyword? k)
+    (name k)
+    (str k)))
+
 (defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
-  (case (:secret-kind conn-prop)
-    "password" [(-> conn-prop
-                    (assoc :type "password")
-                    (assoc :name (str prop-name "-value"))
-                    (dissoc :secret-kind))]
-    "keystore" (if (premium-features/is-hosted?)
-                 [(-> (assoc conn-prop
-                        :name (str prop-name "-value")
-                        :type "textFile"
-                        :treat-before-posting "base64")
-                      (dissoc :secret-kind))]
-                 [(cond-> {:name (str prop-name "-options")
-                           :type "select"
-                           :options [{:name "Local file path"
-                                      :value "local"}
-                                     {:name "Uploaded file path"
-                                      :value "uploaded"}]
-                           :default "local"}
-                    visible-if (assoc :visible-if visible-if))
-                  (-> (assoc conn-prop
-                        :name (str prop-name "-value")
-                        :type "textFile"
-                        :treat-before-posting "base64"
-                        :visible-if {(keyword (str prop-name "-options")) "uploaded"})
-                      (dissoc :secret-kind))
-                  {:name (str prop-name "-path")
-                   :type "string"
-                   :placeholder (:placeholder conn-prop)
-                   :visible-if {(keyword (str prop-name "-options")) "local"}}])
+  (case (->str (:secret-kind conn-prop))
+    "password"    [(-> conn-prop
+                       (assoc :type "password")
+                       (assoc :name (str prop-name "-value"))
+                       (dissoc :secret-kind))]
+    "keystore"    (file-upload-props conn-prop)
+    ;; this may not necessarily be a keystore (could be a standalone PKCS-8 or PKCS-12 file)
+    "binary-blob" (file-upload-props conn-prop)
+    ;; PEM is a plaintext format
+    ;; TODO: do we need to also allow a textarea type paste for this?  would require another special case
+    "pem-cert"    (file-upload-props conn-prop)
     [conn-prop]))
 
-(defn connection-props-server->client
-  "Transforms connection-properties from their server side definition into a client side definition.
+(defn- resolve-info-conn-prop
+  "Invokes the getter function on a info type connection property and adds it to the connection property map as its
+  placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
+  value or throws an exception."
+  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+  (let [content (or placeholder
+                    (try (getter)
+                         (catch Throwable e
+                           (log/error e (trs "Error invoking getter for connection property {0}"
+                                             (:name conn-prop))))))]
+    (when (string? content)
+      (-> conn-prop
+          (assoc :placeholder content)
+          (dissoc :getter)))))
 
-  Currently, this just transforms :type :secret properties from the server side definition into other types for client
+(defn- expand-schema-filters-prop [prop]
+  (let [prop-name (:name prop)
+        disp-name (or (:display-name prop) "")
+        type-prop-nm (str prop-name "-type")]
+    [{:name type-prop-nm
+      :display-name disp-name
+      :type "select"
+      :options [{:name (trs "All")
+                 :value "all"}
+                {:name (trs "Only these...")
+                 :value "inclusion"}
+                {:name (trs "All except...")
+                 :value "exclusion"}]
+      :default "all"}
+     {:name (str prop-name "-patterns")
+      :type "text"
+      :placeholder "E.x. public,auth*"
+      :description (trs "Comma separated names of {0} that <strong>should</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "inclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}
+     {:name (str prop-name "-patterns")
+      :type "text"
+      :placeholder "E.x. public,auth*"
+      :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
+      :visible-if  {(keyword type-prop-nm) "exclusion"}
+      :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
+      :required true}
+      ]))
+
+
+(defn connection-props-server->client
+  "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
+
+  This transforms :type :secret properties from the server side definition into other types for client
   display/editing. For example, a :secret-kind :keystore turns into a bunch of different properties, to encapsulate
-  all the different options that might be available on the client side for populating the value."
+  all the different options that might be available on the client side for populating the value.
+
+  This also resolves the :getter function on :type :info properties, if one was provided."
   {:added "0.42.0"}
-  [conn-props]
-  (reduce (fn [acc conn-prop]
-            (if (= "secret" (:type conn-prop))
-              (concat acc (expand-secret-conn-prop conn-prop))
-              (concat acc [conn-prop]))) [] conn-props))
+  [driver conn-props]
+  (let [res (reduce (fn [acc conn-prop]
+                      ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
+                      (let [expanded-props (case (keyword (:type conn-prop))
+                                             :secret
+                                             (expand-secret-conn-prop conn-prop)
+
+                                             :info
+                                             (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+                                               [conn-prop']
+                                               [])
+
+                                             :schema-filters
+                                             (expand-schema-filters-prop conn-prop)
+
+                                             [conn-prop])]
+                        (-> (update acc ::final-props concat expanded-props)
+                            (update ::props-by-name merge (into {} (map (fn [p]
+                                                                          [(:name p) p])) expanded-props)))))
+                    {::final-props [] ::props-by-name {}}
+                    conn-props)
+        {:keys [::final-props ::props-by-name]} res]
+    ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
+    ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
+    ;; should be hidden if y is)
+    (mapv (fn [prop]
+            (let [v-ifs* (loop [props* [prop]
+                                acc    {}]
+                           (if (seq props*)
+                             (let [all-visible-ifs  (apply merge (map :visible-if props*))
+                                   transitive-props (map (comp (partial get props-by-name) ->str)
+                                                         (keys all-visible-ifs))
+                                   next-acc         (merge all-visible-ifs acc)
+                                   cyclic-props     (set/intersection (into #{} (keys all-visible-ifs))
+                                                                      (into #{} (keys acc)))]
+                               (if (empty? cyclic-props)
+                                 (recur transitive-props next-acc)
+                                 (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                     (trs driver cyclic-props)
+                                     (ex-info {:type               error-type/driver
+                                               :driver             driver
+                                               :cyclic-visible-ifs cyclic-props})
+                                     throw)))
+                             acc))]
+              (cond-> prop
+                (seq v-ifs*)
+                (assoc :visible-if v-ifs*))))
+         final-props)))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -152,26 +264,48 @@
   [driver db-details]
   (when db-details
     (assert (some? driver))
-    (let [secret-names->props (reduce (fn [acc prop]
-                                        (if (= "secret" (:type prop))
-                                          (assoc acc (:name prop) prop)
-                                          acc))
-                                      {}
-                                      (driver/connection-properties driver))]
+    (let [secret-names->props    (reduce (fn [acc prop]
+                                           (if (= "secret" (:type prop))
+                                             (assoc acc (:name prop) prop)
+                                             acc))
+                                         {}
+                                         (driver/connection-properties driver))
+
+          secrets-server->client (reduce (fn [acc prop]
+                                           (assoc acc (keyword (:name prop)) prop))
+                                   {}
+                                   (connection-props-server->client driver (vals secret-names->props)))]
       (reduce-kv (fn [acc prop-name prop]
-                   (let [subprop (fn [suffix]
-                                   (keyword (str prop-name suffix)))
-                         path-kw (subprop "-path")
-                         val-kw  (subprop "-value")
-                         path    (path-kw acc)
-                         treat   (:treat-before-posting prop)
-                         value   (let [^String v (val-kw acc)]
-                                   (case treat
-                                     "base64" (.decode (Base64/getDecoder) v)
-                                     v))]
+                   (let [subprop    (fn [suffix]
+                                      (keyword (str prop-name suffix)))
+                         path-kw    (subprop "-path")
+                         val-kw     (subprop "-value")
+                         source-kw  (subprop "-source")
+                         options-kw (subprop "-options")
+                         path       (path-kw acc)
+                         get-treat  (fn []
+                                      (let [options (options-kw acc)]
+                                        (when (= "uploaded" options)
+                                          ;; the :treat-before-posting, if defined, would be applied to the client
+                                          ;; version of the -value property (the :type "textFile" one)
+                                          (let [textfile-prop (val-kw secrets-server->client)]
+                                            (:treat-before-posting textfile-prop)))))
+                         value      (let [^String v (val-kw acc)]
+                                      (case (get-treat)
+                                        "base64" (.decode (Base64/getDecoder) v)
+                                        v))]
                      (cond-> (assoc acc val-kw value)
-                       path  (dissoc val-kw) ; local path specified; remove the -value entry, if it exists
-                       value (dissoc path-kw) ; value specified; remove the -path entry, if it exists
+                       ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
+                       ;; with the existing db-details blob to produce the final details
+                       ;; therefore, if we want a changed setting to take effect (i.e. switching from a file path to an
+                       ;; upload), then we need to ensure the nil value is merged, rather than the stale value from the
+                       ;; app DB being picked
+                       path  (-> ; from outer cond->
+                               (assoc val-kw nil) ; local path specified; remove the -value entry, if it exists
+                               (assoc source-kw :file-path)) ; and set the :source to :file-path
+                       value (-> ; from outer cond->
+                               (assoc path-kw nil) ; value specified; remove the -path entry, if it exists
+                               (assoc source-kw nil)) ; and remove the :source mapping
                        true  (dissoc (subprop "-options")))))
                  db-details
                  secret-names->props))))
@@ -183,8 +317,8 @@
   []
   (into {} (for [driver (available-drivers)
                  :let   [props (try
-                                 (-> (driver/connection-properties driver)
-                                     connection-props-server->client)
+                                 (->> (driver/connection-properties driver)
+                                      (connection-props-server->client driver))
                                  (catch Throwable e
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]
@@ -246,6 +380,6 @@
   [driver]
   (if-some [conn-prop-fn (get-method driver/connection-properties driver)]
     (let [all-fields      (conn-prop-fn driver)
-          password-fields (filter #(= (get % :type) :password) all-fields)]
+          password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))

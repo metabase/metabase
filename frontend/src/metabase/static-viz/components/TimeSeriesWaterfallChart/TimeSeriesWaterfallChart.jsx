@@ -18,6 +18,7 @@ import {
   formatTimescaleWaterfallTick,
   getWaterfallEntryColor,
 } from "metabase/static-viz/lib/waterfall";
+import { sortTimeSeries } from "../../lib/sort";
 
 const propTypes = {
   data: PropTypes.array.isRequired,
@@ -29,6 +30,7 @@ const propTypes = {
     x: PropTypes.object,
     y: PropTypes.object,
     colors: PropTypes.object,
+    showTotal: PropTypes.bool,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -57,7 +59,7 @@ const layout = {
     waterfallPositive: "#88BF4D",
     waterfallNegative: "#EF8C8C",
   },
-  numTicks: 5,
+  numTicks: 4,
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,
@@ -65,8 +67,9 @@ const layout = {
 };
 
 const TimeSeriesWaterfallChart = ({ data, accessors, settings, labels }) => {
+  data = sortTimeSeries(data);
   const colors = settings?.colors;
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
   const xMax = layout.width - layout.margin.right - layout.margin.left;
@@ -76,7 +79,11 @@ const TimeSeriesWaterfallChart = ({ data, accessors, settings, labels }) => {
   const bottomLabel = labels?.bottom;
   const palette = { ...layout.colors, ...colors };
 
-  const entries = calculateWaterfallEntries(data, accessors);
+  const entries = calculateWaterfallEntries(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
 
   const xScale = scaleBand({
     domain: entries.map(entry => entry.x),

@@ -9,7 +9,7 @@
   "Get all `Settings` and their values. You must be a superuser to do this."
   []
   (api/check-superuser)
-  (setting/all))
+  (setting/admin-writable-settings))
 
 (api/defendpoint PUT "/"
   "Update multiple `Settings` values.  You must be a superuser to do this."

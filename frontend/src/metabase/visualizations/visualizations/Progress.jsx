@@ -18,10 +18,8 @@ import cx from "classnames";
 const BORDER_RADIUS = 5;
 const MAX_BAR_HEIGHT = 65;
 
-import type { VisualizationProps } from "metabase-types/types/Visualization";
-
 export default class Progress extends Component {
-  constructor(props: VisualizationProps) {
+  constructor(props) {
     super(props);
 
     this.containerRef = React.createRef();
@@ -140,8 +138,7 @@ export default class Progress extends Component {
       onVisualizationClick,
       visualizationIsClickable,
     } = this.props;
-    const value: number =
-      rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
+    const value = rows[0] && typeof rows[0][0] === "number" ? rows[0][0] : 0;
     const column = cols[0];
     const goal = settings["progress.goal"] || 0;
 

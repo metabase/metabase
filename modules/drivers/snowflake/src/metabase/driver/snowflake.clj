@@ -18,6 +18,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -42,6 +43,22 @@
   [_]
   :sunday)
 
+(defn- start-of-week-setting->snowflake-offset
+  "Returns the Snowflake offset for the current :start-of-week setting, if defined. Snowflake considers :monday to be
+  1, through :sunday as 7, so we need to increment our raw offset value."
+  []
+  (when-let [offset (driver.common/start-of-week->int)]
+    (inc offset)))
+
+(defn- maybe-set-week-start [{:keys [:additional-options] :as details}]
+  (if-not (str/blank? additional-options)
+    (let [week-start-from-opts (-> (sql-jdbc.common/additional-options->map additional-options :url)
+                                   (get "week_start"))]
+      (if-not week-start-from-opts
+        (assoc details :week_start (or (start-of-week-setting->snowflake-offset) 7))
+        details))
+    (assoc details :week_start (or (start-of-week-setting->snowflake-offset) 7))))
+
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account], :as opts}]
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
@@ -56,14 +73,13 @@
                 ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
                 :client_session_keep_alive                  true
                 ;; other SESSION parameters
-                ;; use the same week start we use for all the other drivers
-                :week_start                                 7
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
                 :timezone                                   "UTC"}
                (-> opts
                    ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
                    ;; `db`. If we run across `dbname`, correct our behavior
+                   maybe-set-week-start
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
@@ -175,56 +191,38 @@
 
 ;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
 ;; query
-(defn- should-qualify-identifier?
-  "Should we qualify an Identifier with the dataset name?
+;;
+;; Table & Field identifiers (usually) need to be qualified with the current database name; this needs to be part of the
+;; table e.g.
+;;
+;;    "table"."field" -> "database"."table"."field"
 
-  Table & Field identifiers (usually) need to be qualified with the current database name; this needs to be part of the
-  table e.g.
-
-    \"table\".\"field\" -> \"database\".\"table\".\"field\""
-  [{:keys [identifier-type components]}]
-  (cond
-    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
-    sql.qp/*table-alias*
-    false
-
-    ;;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
-    (empty? (query-db-name))
-    false
-
-    ;; already qualified
-    (= (first components) (query-db-name))
-    false
-
-    ;; otherwise always qualify Table identifiers
-    (= identifier-type :table)
-    true
-
-    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
-    ;; DDL statements)
-    (and (= identifier-type :field)
-         (>= (count components) 2))
-    true))
-
+;; This takes care of Table identifiers. We handle Field identifiers in the [[sql.qp/->honeysql]] method for `[:sql
+;; :field]` below.
 (defmethod sql.qp/->honeysql [:snowflake Identifier]
   [_ {:keys [identifier-type], :as identifier}]
-  (cond-> identifier
-    (should-qualify-identifier? identifier)
-    (update :components (partial cons (query-db-name)))))
+  (let [qualify? (and (seq (query-db-name))
+                      (= identifier-type :table))]
+    (cond-> identifier
+      qualify?
+      (update :components (partial cons (query-db-name))))))
+
+(defmethod sql.qp/->honeysql [:snowflake :field]
+  [driver [_ _ {::add/keys [source-table]} :as field-clause]]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql :field])
+        qualify?      (and
+                       ;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
+                       (seq (query-db-name))
+                       ;; Only Qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff
+                       ;; inside `CREATE TABLE` DDL statements)
+                       (integer? source-table))
+        identifier (parent-method driver field-clause)]
+    (cond-> identifier
+      qualify? (update :components (partial cons (query-db-name))))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value unit]]
   (hx/->time (sql.qp/->honeysql driver value)))
-
-(defmethod sql.qp/field->identifier :snowflake
-  [driver {table-id :table_id, :as field}]
-  ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
-  ;; currently only used for SQL params so it's not a huge deal at this point
-  ;;
-  ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (qp.store/fetch-and-store-tables! [(u/the-id table-id)])
-  (sql.qp/->honeysql driver field))
-
 
 (defmethod driver/table-rows-seq :snowflake
   [driver database table]
@@ -243,6 +241,7 @@
       (qp.store/fetch-and-store-database! (u/the-id database))
       (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)
             sql  (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)]
+        (log/tracef "[Snowflake] %s" sql)
         (with-open [conn (jdbc/get-connection spec)]
           {:tables (into
                     #{}

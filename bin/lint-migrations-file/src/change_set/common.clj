@@ -7,8 +7,7 @@
 (s/def ::legacy-id
   ;; some legacy IDs are integers and some are strings. so handle either case.
   (s/or
-   :int    (s/and int?
-                  #(<= 1 % 382))
+   :int    int?
    :string (s/and string?
                   #(re-matches #"^\d+$" %)
                   #(<= 1 (Integer/parseUnsignedInt %) 382))))

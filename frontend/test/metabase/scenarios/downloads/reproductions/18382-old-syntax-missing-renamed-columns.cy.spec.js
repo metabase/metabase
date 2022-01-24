@@ -3,9 +3,9 @@ import {
   visitQuestionAdhoc,
   downloadAndAssert,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { REVIEWS, REVIEWS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 /**
  * This question might seem a bit overwhelming at the first sight.
@@ -35,7 +35,10 @@ const questionDetails = {
       "order-by": [
         ["asc", ["joined-field", "Products", ["field-id", PRODUCTS.TITLE]]],
       ],
-      fields: [["field-id", REVIEWS.ID], ["field-id", REVIEWS.REVIEWER]],
+      fields: [
+        ["field-id", REVIEWS.ID],
+        ["field-id", REVIEWS.REVIEWER],
+      ],
       limit: 5,
     },
   },

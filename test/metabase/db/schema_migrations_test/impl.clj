@@ -102,8 +102,10 @@
   (let [start-id (migration-id->str start-id)
         end-id   (migration-id->str end-id)
         id       (migration-id->str id)]
-    (and (= (sort [start-id id end-id])
-            [start-id id end-id])
+    ;; end-id can be nil (meaning, unbounded), and sort will put nils first by default
+    ;; simply remove nils from both vectors when comparing to concisely deal with that
+    (and (= (sort (filter some? [start-id id end-id]))
+            (filter some? [start-id id end-id]))
          (or inclusive-end?
              (not= id end-id)))))
 
@@ -113,6 +115,7 @@
     (is (migration-id-in-range? 1 2 3 {:inclusive-end? false}))
     (is (migration-id-in-range? 1 1 3))
     (is (migration-id-in-range? 1 3 3))
+    (is (migration-id-in-range? 100 100 nil))
     (is (not (migration-id-in-range? 1 3 3 {:inclusive-end? false})))
     (is (not (migration-id-in-range? 2 1 3)))
     (is (not (migration-id-in-range? 2 4 3)))
@@ -124,7 +127,9 @@
     (is (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002"))
     (is (not (migration-id-in-range? "v42.00-001" "v42.00-002" "v42.00-002" {:inclusive-end? false})))
     (is (not (migration-id-in-range? "v42.00-001" "v42.00-004" "v42.00-003")))
-    (is (not (migration-id-in-range? "v42.00-002" "v42.00-001" "v42.00-003"))))
+    (is (not (migration-id-in-range? "v42.00-002" "v42.00-001" "v42.00-003")))
+    ;; this case is invoked when the test-migrations macro is only given one item in the range list
+    (is (migration-id-in-range? "v42.00-064" "v42.00-064" nil)))
   (testing "mixed"
     (is (migration-id-in-range? 1 3 "v42.00-001"))
     (is (migration-id-in-range? 1 "v42.00-001" "v42.00-002"))

@@ -7,14 +7,6 @@ describe("scenarios > pulse", () => {
 
     setupSMTP();
   });
-  it("should be able get to the new pulse page from the nav bar", () => {
-    cy.visit("/");
-
-    cy.icon("add").click();
-    cy.contains("New pulse").click();
-
-    cy.url().should("match", /\/pulse\/create$/);
-  });
 
   it("should create a new pulse", () => {
     cy.visit("/pulse/create");

@@ -8510,6 +8510,11 @@ databaseChangeLog:
       id: 313
       author: jeff303
       comment: Added 0.42.0 - Secret domain object.
+      validCheckSum:
+        - 8:d60aa66f5909d37393ee711dea6996c7 # original checksum under #17649
+        - 8:98f3ccbb3e8efc46f5766fcd51f39d0e # changed creator_id to nullable in #19398
+        - 8:ccfed82cd5d09891c7a380b428e5fbc5 # no idea where these two values come from :(
+        - 8:b4864fb1516837c753bf3a607a8ed655
       changes:
         - createTable:
             tableName: secret
@@ -8536,7 +8541,7 @@ databaseChangeLog:
                     deferrable: false
                     foreignKeyName: fk_secret_ref_user_id
                     initiallyDeferred: false
-                    nullable: false
+                    nullable: true
                     references: core_user(id)
                   name: creator_id
                   remarks: User ID who created this secret instance
@@ -8659,6 +8664,20 @@ databaseChangeLog:
                   name: moderated_item_type
               - column:
                   name: moderated_item_id
+
+  - changeSet:
+      id: 383
+      author: camsaul
+      comment: Added 0.41.3 -- Add index to QueryExecution card_id + started_at to fix performance issue #19053
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_card_id_started_at
+            columns:
+              - column:
+                  name: card_id
+              - column:
+                  name: started_at
 
   - changeSet:
       id: v42.00-000
@@ -9748,6 +9767,136 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
+  - changeSet:
+      id: v42.00-064
+      author: jeff303
+      comment: "Added 0.42.0 - fix type of query_cache.results on upgrade (in case changeSet 97 was run before #16095)"
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: results
+            newDataType: longblob
+
+  - changeSet:
+      id: v42.00-065
+      author: dpsutton
+      comment: >-
+        Added 0.42.0 - Another modal dismissed state on user. Retaining the same suffix and boolean style to ease an
+        eventual migration.
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_datasetnewb
+                  type: boolean
+                  remarks: "Boolean flag to indicate if the dataset info modal has been dismissed."
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-066
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Indicates whether a database has succesfully synced
+        at least one time.
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: initial_sync_status
+                  type: varchar(32)
+                  remarks: "String indicating whether a database has completed its initial sync and is ready to use"
+                  defaultValue: "complete"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-067
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Indicates whether a table has succesfully synced
+        at least one time.
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: initial_sync_status
+                  type: varchar(32)
+                  remarks: "String indicating whether a table has completed its initial sync and is ready to use"
+                  defaultValue: "complete"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v42.00-068
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - new columns for initial DB sync progress UX. Records the ID of the admin who added a database.
+        May be null for the sample dataset, or for databases added prior to 0.42.0.
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: "ID of the admin who added the database"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v42.00-069
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - adds FK constraint for creator_id column, containing the ID of the admin who added a database.
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_database_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v42.00-070
+      author: camsaul
+      comment: >-
+        Added 0.42.0 - add Database.settings column to implement Database-local Settings
+      # This migration was originally misnumbered, so now that it has a correct number it may get triggered a second
+      # time. That's fine
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: settings
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: settings
+                  type: ${text.type}
+                  remarks: "Serialized JSON containing Database-local Settings for this Database"
+
+  - changeSet:
+      id: v42.00-071
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - migrates the Sample Dataset to the name "Sample Database"
+      changes:
+        - sql:
+            sql: UPDATE metabase_database SET name='Sample Database' WHERE is_sample=true
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

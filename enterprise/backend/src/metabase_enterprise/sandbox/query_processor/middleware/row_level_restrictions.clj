@@ -138,7 +138,7 @@
                          ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
-      (throw (ex-info (tru "Error preprocessing source query when applying GTAP")
+      (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
                       {:source-query source-query}
                       e)))))
 

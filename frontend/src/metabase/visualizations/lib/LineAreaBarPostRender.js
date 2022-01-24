@@ -192,7 +192,10 @@ function onRenderVoronoiHover(chart) {
     ? parent.node().getBBox()
     : { width: 0, height: 0 };
 
-  const voronoi = d3.geom.voronoi().clipExtent([[0, 0], [width, height]]);
+  const voronoi = d3.geom.voronoi().clipExtent([
+    [0, 0],
+    [width, height],
+  ]);
 
   // circular clip paths to limit distance from actual point
   parent

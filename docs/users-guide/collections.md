@@ -4,7 +4,7 @@
 
 ![Our analytics](images/collections/our-analytics-page.png)
 
-Collections are the main way to organize questions, as well as dashboards and pulses. You can think of them like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
+Collections are the main way to organize questions, dashboards, and [models][models]. You can think of them like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
 
 ## Collection types
 
@@ -14,7 +14,7 @@ They're just basic collections. You can put stuff in them.
 
 ### Official collections
 
-{% include plans-blockquote.html %}
+{% include plans-blockquote.html feature="Official collections" %}
 
 These are special collections, in that they have a badge to let people know that the items in this collection are the ones people should be looking at (or whatever "official" means to you). Questions and dashboards in official collections are also more likely to show up at the top of search results.
 
@@ -63,4 +63,4 @@ If you have second thoughts and want to bring an archived item back, you can see
 Next, we'll learn about [creating dashboards and adding questions to them][dashboards].
 
 [dashboards]: 07-dashboards.md
-
+[models]: models.md

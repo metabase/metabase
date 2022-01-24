@@ -30,7 +30,7 @@ export function getParameterValueFromQueryParams(
   queryParams = queryParams || {};
 
   const fields = getFields(parameter, metadata);
-  const maybeParameterValue = queryParams[parameter.slug];
+  const maybeParameterValue = queryParams[parameter.slug || parameter.id];
 
   if (hasParameterValue(maybeParameterValue)) {
     const parsedValue = parseParameterValueForFields(
@@ -52,7 +52,7 @@ function parseParameterValueForFields(value, fields) {
   if (fields.length > 0) {
     // unix dates fields are numeric but query params shouldn't be parsed as numbers
     if (fields.every(f => f.isNumeric() && !f.isDate())) {
-      return parseFloat(value);
+      return value === "" ? value : parseFloat(value);
     }
 
     if (fields.every(f => f.isBoolean())) {

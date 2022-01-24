@@ -12,10 +12,7 @@ import ModalContent from "metabase/components/ModalContent";
 @Task.load({
   id: (state, props) => props.params.taskId,
 })
-@connect(
-  null,
-  { goBack },
-)
+@connect(null, { goBack })
 class TaskModal extends React.Component {
   render() {
     const { object } = this.props;

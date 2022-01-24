@@ -90,20 +90,17 @@
 (defn- srv-conn-str
   "Creates Mongo client connection string to connect using
    DNS + SRV discovery mechanism."
-  [user pass host authdb]
-  (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
+  [user pass host dbname authdb]
+  (format "mongodb+srv://%s:%s@%s/%s?authSource=%s" user pass host dbname authdb))
 
 (defn- normalize-details [details]
   (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv ssl-cert conn-uri]
-         :or   {port 27017, pass "", ssl false, use-srv false, ssl-cert ""}} details
+         :or   {port 27017, pass "", ssl false, use-srv false, ssl-cert "", authdb "admin"}} details
         ;; ignore empty :user and :pass strings
         user             (when (seq user)
                            user)
         pass             (when (seq pass)
-                           pass)
-        authdb           (if (seq authdb)
-                           authdb
-                           dbname)]
+                           pass)]
     {:host               host
      :port               port
      :user               user
@@ -135,8 +132,8 @@
     (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options, :ssl-cert ssl-cert)
           authdb (if (seq authdb)
                    authdb
-                   dbname)
-          conn-str (srv-conn-str user pass host authdb)]
+                   "admin")
+          conn-str (srv-conn-str user pass host dbname authdb)]
       {:type :srv
        :uri  (MongoClientURI. conn-str conn-opts)})))
 

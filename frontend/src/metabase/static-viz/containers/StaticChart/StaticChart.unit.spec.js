@@ -8,7 +8,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/line"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           accessors: {
             x: row => row[0],
             y: row => row[1],
@@ -39,7 +42,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/area"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           accessors: {
             x: row => row[0],
             y: row => row[1],
@@ -70,7 +76,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/bar"
         options={{
-          data: [["Gadget", 20], ["Widget", 31]],
+          data: [
+            ["Gadget", 20],
+            ["Widget", 31],
+          ],
           accessors: {
             x: row => row[0],
             y: row => row[1],
@@ -101,7 +110,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="categorical/donut"
         options={{
-          data: [["donut", 2000], ["cronut", 3100]],
+          data: [
+            ["donut", 2000],
+            ["cronut", 3100],
+          ],
           colors: {
             donut: "#509EE3",
             cronut: "#DDECFA",
@@ -130,7 +142,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/line"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           accessors: {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],
@@ -157,7 +172,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/area"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           accessors: {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],
@@ -184,7 +202,10 @@ describe("StaticChart", () => {
       <StaticChart
         type="timeseries/bar"
         options={{
-          data: [["2010-11-07", 20], ["2020-11-08", 30]],
+          data: [
+            ["2010-11-07", 20],
+            ["2020-11-08", 30],
+          ],
           accessors: {
             x: row => new Date(row[0]).valueOf(),
             y: row => row[1],

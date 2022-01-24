@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import AutosizeTextarea from "react-textarea-autosize";
@@ -5,23 +6,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-type Props = {
-  values: Array<string>,
-  onValuesChange: (values: any[]) => void,
-  validations: boolean[],
-  placeholder?: string,
-  multi?: boolean,
-  onCommit: () => void,
-};
-
-type State = {
-  fieldString: string,
-};
-
 export default class TextPicker extends Component {
-  props: Props;
-  state: State;
-
   static propTypes = {
     values: PropTypes.array.isRequired,
     onValuesChange: PropTypes.func.isRequired,
@@ -29,21 +14,23 @@ export default class TextPicker extends Component {
     validations: PropTypes.array,
     multi: PropTypes.bool,
     onCommit: PropTypes.func,
+    isSingleLine: PropTypes.bool,
   };
 
   static defaultProps = {
     validations: [],
     placeholder: t`Enter desired text`,
+    autoFocus: true,
   };
 
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       fieldString: props.values.join(", "),
     };
   }
 
-  setValue(fieldString: ?string) {
+  setValue(fieldString) {
     if (fieldString != null) {
       // Only strip newlines from field string to not interfere with copy-pasting
       const newLineRegex = /\r?\n|\r/g;
@@ -63,7 +50,13 @@ export default class TextPicker extends Component {
   }
 
   render() {
-    const { validations, multi, onCommit } = this.props;
+    const {
+      validations,
+      multi,
+      onCommit,
+      isSingleLine,
+      autoFocus,
+    } = this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
     const commitOnEnter = e => {
@@ -75,19 +68,35 @@ export default class TextPicker extends Component {
     return (
       <div>
         <div className="FilterInput px1 pt1 relative">
-          <AutosizeTextarea
-            className={cx("input block full border-purple", {
-              "border-error": hasInvalidValues,
-            })}
-            type="text"
-            value={this.state.fieldString}
-            onChange={e => this.setValue(e.target.value)}
-            onKeyPress={commitOnEnter}
-            placeholder={this.props.placeholder}
-            autoFocus={true}
-            style={{ resize: "none" }}
-            maxRows={8}
-          />
+          {!isSingleLine && (
+            <AutosizeTextarea
+              className={cx("input block full border-purple", {
+                "border-error": hasInvalidValues,
+              })}
+              type="text"
+              value={this.state.fieldString}
+              onChange={e => this.setValue(e.target.value)}
+              onKeyPress={commitOnEnter}
+              placeholder={this.props.placeholder}
+              autoFocus={autoFocus}
+              style={{ resize: "none" }}
+              maxRows={8}
+            />
+          )}
+
+          {isSingleLine && (
+            <input
+              className={cx("input block full border-purple", {
+                "border-error": hasInvalidValues,
+              })}
+              type="text"
+              value={this.state.fieldString}
+              onChange={e => this.setValue(e.target.value)}
+              onKeyPress={commitOnEnter}
+              placeholder={this.props.placeholder}
+              autoFocus={autoFocus}
+            />
+          )}
         </div>
 
         {multi ? (

@@ -10,6 +10,7 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
+            [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.query-processor.interface :as qpi]
@@ -139,7 +140,8 @@
   ;;TODO: future, expand this to `driver` level, where the drivers themselves can add to the
   ;; list of exception classes (like, driver-specific exceptions)
   [java.net.ConnectException java.net.NoRouteToHostException java.net.UnknownHostException
-   com.mchange.v2.resourcepool.CannotAcquireResourceException])
+   com.mchange.v2.resourcepool.CannotAcquireResourceException
+   javax.net.ssl.SSLHandshakeException])
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
@@ -250,6 +252,32 @@
          ~emoji-progress-fn-binding (fn [] (emoji-progress-bar (swap! finished-count# inc) total-count# log-every-n#))]
      ~@body))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            INITIAL SYNC STATUS                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; If this is the first sync of a database, we need to update the `initial_sync_status` field on individual tables
+;; when they have finished syncing, as well as the corresponding field on the database itself when the entire sync
+;; is complete (excluding analysis). This powers a UX that displays the progress of the initial sync to the admin who
+;; added the database, and enables individual tables when they become usable for queries.
+
+(defn set-initial-table-sync-complete!
+  "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
+  [table]
+  (when (not= (:initial_sync_status table) "complete")
+    (db/update! Table (u/the-id table) :initial_sync_status "complete")))
+
+(defn set-initial-database-sync-complete!
+  "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
+  [database]
+  (when (not= (:initial_sync_status database) "complete")
+    (db/update! Database (u/the-id database) :initial_sync_status "complete")))
+
+(defn set-initial-database-sync-aborted!
+  "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
+  [database]
+  (when (not= (:initial_sync_status database) "complete")
+    (db/update! Database (u/the-id database) :initial_sync_status "aborted")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
@@ -348,7 +376,7 @@
                       (comp str log-summary-fn))}))
 
 (s/defn run-step-with-metadata :- StepNameWithMetadata
-  "Runs `step` on `database returning metadata from the run"
+  "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
@@ -440,6 +468,16 @@
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))
 
+(defn abandon-sync?
+  "Given the results of a sync step, returns true if a non-recoverable exception occurred"
+  [step-results]
+  (when (contains? step-results :throwable)
+    (let [caught-exception (:throwable step-results)
+          exception-classes (u/full-exception-chain caught-exception)]
+      (some true? (for [ex      exception-classes
+                        test-ex exception-classes-not-to-retry]
+                    (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName)))))))
+
 (s/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
   [operation :- s/Str
@@ -450,17 +488,9 @@
                              result                   []]
                         (let [[step-name r] (run-step-with-metadata database step-defn)
                               new-result    (conj result [step-name r])]
-                          (if (contains? r :throwable)
-                            (let [caught-exception  (:throwable r)
-                                  exception-classes (u/full-exception-chain caught-exception)
-                                  abandon?          (some true? (for [ex      exception-classes
-                                                                      test-ex exception-classes-not-to-retry]
-                                                                 (= (.. ^Object ex getClass getName) (.. ^Class test-ex getName))))]
-                              (cond abandon? new-result
-                                    (not (seq rest-defns)) new-result
-                                    :else (recur rest-defns new-result)))
-                            (cond (not (seq rest-defns)) new-result
-                                  :else (recur rest-defns new-result)))))
+                          (cond (abandon-sync? r) new-result
+                                (not (seq rest-defns)) new-result
+                                :else (recur rest-defns new-result))))
         end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time

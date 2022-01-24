@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { withRouter } from "react-router";
 
@@ -20,30 +21,9 @@ const DEFAULT_OPTIONS = {
   titled: true,
 };
 
-import type { DashboardWithCards } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
-
-type Props = {
-  className?: string,
-  children?: any,
-  actionButtons?: any[],
-  name?: string,
-  description?: string,
-  dashboard?: DashboardWithCards,
-  location: { query: { [key: string]: string }, hash: string },
-  parameters?: Parameter[],
-  parameterValues?: { [key: string]: string },
-  setParameterValue: (id: string, value: string) => void,
-};
-
-type State = {
-  innerScroll: boolean,
-};
-
 @withRouter
 export default class EmbedFrame extends Component {
-  props: Props;
-  state: State = {
+  state = {
     innerScroll: true,
   };
 

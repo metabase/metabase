@@ -1,13 +1,9 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
 
 function getFiltersForColumn(column) {
   if (
@@ -23,14 +19,14 @@ function getFiltersForColumn(column) {
       { name: "≠", operator: "!=" },
     ];
   } else {
-    return [{ name: "=", operator: "=" }, { name: "≠", operator: "!=" }];
+    return [
+      { name: "=", operator: "=" },
+      { name: "≠", operator: "!=" },
+    ];
   }
 }
 
-export default function QuickFilterDrill({
-  question,
-  clicked,
-}: ClickActionProps): ClickAction[] {
+export default function QuickFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
     !(query instanceof StructuredQuery) ||

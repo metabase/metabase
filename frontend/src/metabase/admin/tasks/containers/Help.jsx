@@ -7,7 +7,7 @@ import { Box } from "grid-styled";
 import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";

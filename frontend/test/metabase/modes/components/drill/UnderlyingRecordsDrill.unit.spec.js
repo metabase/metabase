@@ -1,4 +1,4 @@
-import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
+import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 
 import { assocIn } from "icepick";
 import moment from "moment";

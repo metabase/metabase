@@ -142,9 +142,6 @@ function DatabasesPermissionsPage({
 
 DatabasesPermissionsPage.propTypes = propTypes;
 
-export default _.compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
-)(DatabasesPermissionsPage);
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  DatabasesPermissionsPage,
+);

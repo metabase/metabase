@@ -26,6 +26,7 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
+const useFilesystemCache = process.env.FS_CACHE === "true";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -133,7 +134,15 @@ const config = (module.exports = {
           : SRC_PATH + "/lib/noop",
     },
   },
-
+  cache: useFilesystemCache
+    ? {
+        type: "filesystem",
+        buildDependencies: {
+          // invalidates the cache on configuration change
+          config: [__filename],
+        },
+      }
+    : undefined,
   optimization: {
     splitChunks: {
       cacheGroups: {
@@ -189,7 +198,9 @@ const config = (module.exports = {
         "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
     }),
     new NodePolyfillPlugin(), // for crypto, among others
-    new webpack.EnvironmentPlugin(["WEBPACK_BUNDLE"]),
+    new webpack.EnvironmentPlugin({
+      WEBPACK_BUNDLE: "development",
+    }),
   ],
 });
 

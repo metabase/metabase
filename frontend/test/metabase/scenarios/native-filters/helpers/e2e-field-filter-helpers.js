@@ -10,7 +10,7 @@ import { filterWidget, popover } from "__support__/e2e/cypress";
 export function setWidgetType(type) {
   cy.findByText("Filter widget type")
     .parent()
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
 
   popover()
@@ -30,6 +30,34 @@ export function addWidgetStringFilter(value) {
     .find("input")
     .type(value);
   cy.button("Add filter").click();
+}
+
+/**
+ * Selectes value from the field values list filter widget
+ *
+ * @param {string} value
+ */
+
+export function selectFilterValueFromList(value) {
+  popover().within(() => {
+    cy.findByText(value).click();
+    cy.button("Add filter").click();
+  });
+}
+
+/**
+ * Applies filter value by filter type
+ *
+ * @param {string} filter
+ * @param {string} value
+ */
+
+export function applyFilterByType(filter, value) {
+  if (["Dropdown", "Is not"].includes(filter)) {
+    selectFilterValueFromList(value);
+  } else {
+    addWidgetStringFilter(value);
+  }
 }
 
 /**

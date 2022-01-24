@@ -1,16 +1,17 @@
 import {
   browse,
-  restore,
-  popover,
-  visualize,
+  enterCustomColumnDetails,
   openOrdersTable,
   openReviewsTable,
-  getBinningButtonForDimension,
+  popover,
+  restore,
+  visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 // test various entry points into the query builder
 
@@ -93,7 +94,7 @@ describe("scenarios > question > new", () => {
     it("should load orders table and summarize", () => {
       cy.visit("/");
       browse().click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
     });
@@ -101,8 +102,7 @@ describe("scenarios > question > new", () => {
 
   describe("data picker search", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -124,7 +124,7 @@ describe("scenarios > question > new", () => {
           .findByTestId("search-result-item-name")
           .click();
         cy.url().should("include", "question#");
-        cy.findByText("Sample Dataset");
+        cy.findByText("Sample Database");
         cy.findByText("Orders");
       });
     });
@@ -153,7 +153,7 @@ describe("scenarios > question > new", () => {
         visualize();
 
         cy.url().should("include", "question#");
-        cy.findByText("Sample Dataset");
+        cy.findByText("Sample Database");
         cy.findByText("Orders");
       });
     });
@@ -169,8 +169,7 @@ describe("scenarios > question > new", () => {
 
   describe("saved question picker", () => {
     beforeEach(() => {
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
+      cy.visit("/question/new");
     });
 
     describe("on a (simple) question page", () => {
@@ -259,10 +258,9 @@ describe("scenarios > question > new", () => {
 
   describe("ask a (simple) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
+      cy.visit("/question/new");
       cy.contains("Simple question").click();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
     });
@@ -347,7 +345,7 @@ describe("scenarios > question > new", () => {
       // this url check is just to give some time for the render to finish
       cy.url().should("include", "/question#");
 
-      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Dataset)
+      cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
         .should("contain", 2) // quantity for order ID#1
         .click();
@@ -370,12 +368,14 @@ describe("scenarios > question > new", () => {
 
       // it is essential for this repro to find question following these exact steps
       // (for example, visiting `/collection/root` would yield different result)
-      cy.visit("/");
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
+      openNotebookEditor();
       cy.findByText("Saved Questions").click();
       cy.findByText("11439").click();
-      cy.findByText("Summarize").click();
+      visualize();
+      cy.findAllByTestId("toggle-summarize-sidebar-button")
+        .contains("Summarize")
+        .click();
+
       cy.findByText("Group by")
         .parent()
         .within(() => {
@@ -383,13 +383,16 @@ describe("scenarios > question > new", () => {
           cy.log(
             "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
           );
-          getBinningButtonForDimension({
-            name: "Created At",
-          })
-            .should("have.text", "by month")
-            .click();
+
+          cy.findAllByText("Created At")
+            .eq(0)
+            .closest("li")
+            .contains("by month")
+            // realHover() or mousemove don't work for whatever reason
+            // have to use this ugly hack for now
+            .click({ force: true });
         });
-      // this step is maybe redundant since it fails to even find "by month"
+      // // this step is maybe redundant since it fails to even find "by month"
       cy.findByText("Hour of Day");
     });
 
@@ -409,24 +412,48 @@ describe("scenarios > question > new", () => {
       cy.createQuestion(questionDetails, { visitQuestion: true });
 
       cy.log("Reported missing in v0.33.1");
-      cy.get(".AdminSelect")
+      cy.findAllByTestId("select-button")
         .as("select")
         .contains(/All Time/i);
       cy.get("@select").contains(/Month/i);
+    });
+
+    // flaky test (#19454)
+    it.skip("should show an info popover when hovering over summarize dimension options", () => {
+      openReviewsTable();
+
+      cy.findByText("Summarize").click();
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Title")
+        .trigger("mouseenter");
+
+      popover().contains("Title");
+      popover().contains("199 distinct values");
     });
   });
 
   describe("ask a (custom) question", () => {
     it("should load orders table", () => {
-      cy.visit("/");
-      cy.contains("Ask a question").click();
-      cy.contains("Custom question").click();
-      cy.contains("Sample Dataset").click();
+      openNotebookEditor();
+      cy.contains("Sample Database").click();
       cy.contains("Orders").click();
 
       visualize();
 
       cy.contains("37.65");
+    });
+
+    it("should show a table info popover when hovering over the table name in the header", () => {
+      openNotebookEditor();
+      cy.contains("Sample Database").click();
+      cy.contains("Orders").click();
+
+      visualize();
+
+      cy.findByTestId("question-table-badges").trigger("mouseenter");
+
+      cy.findByText("9 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {
@@ -436,7 +463,7 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
       popover().within(() => {
-        cy.get("[contentEditable=true]").type("2 * Max([Total])");
+        enterCustomColumnDetails({ formula: "2 * Max([Total])" });
         cy.findByPlaceholderText("Name (required)").type("twice max total");
         cy.findByText("Done").click();
       });
@@ -456,13 +483,13 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
       popover().within(() => {
-        cy.get("[contentEditable=true]")
+        cy.get(".ace_text-input")
           .type(FORMULA)
           .blur();
 
         cy.log("Fails after blur in v0.36.6");
         // Implicit assertion
-        cy.get("[contentEditable=true]").contains(FORMULA);
+        cy.contains(FORMULA);
       });
     });
 
@@ -473,9 +500,7 @@ describe("scenarios > question > new", () => {
         .contains("Custom Expression")
         .click();
 
-      cy.get("[contentEditable=true]")
-        .click()
-        .type("Distinct([R");
+      enterCustomColumnDetails({ formula: "Distinct([R" });
 
       cy.log(
         "**The point of failure for ANY non-numeric value reported in v0.36.4**",

@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -11,9 +10,9 @@ import {
 import { DASHBOARD_SQL_DATE_FILTERS } from "./helpers/e2e-dashboard-filter-sql-data-objects";
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE } = SAMPLE_DATASET;
+const { PEOPLE } = SAMPLE_DATABASE;
 
 Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
   ([filter, { value, representativeResult, sqlFilter }]) => {
@@ -21,8 +20,6 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       beforeEach(() => {
         restore();
         cy.signInAsAdmin();
-
-        mockSessionProperty("field-filter-operators-enabled?", true);
 
         const questionDetails = getQuestionDetails(sqlFilter);
 
@@ -41,10 +38,7 @@ Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
         editDashboard();
         setFilter("Time", filter);
 
-        cy.findByText("Column to filter on")
-          .next("a")
-          .click();
-
+        cy.findByText("Select…").click();
         popover()
           .contains("Filter")
           .click();
@@ -117,10 +111,12 @@ function dateFilterSelector({ filterType, filterValue } = {}) {
 
     case "Single Date":
       DateFilter.setSingleDate(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Date Range":
       DateFilter.setDateRange(filterValue);
+      cy.findByText("Update filter").click();
       break;
 
     case "Relative Date":

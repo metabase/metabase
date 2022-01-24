@@ -8,28 +8,56 @@ const crumbShape = PropTypes.shape({
   href: PropTypes.string,
 });
 
+const partPropType = PropTypes.oneOfType([crumbShape, PropTypes.node]);
+
 HeadBreadcrumbs.propTypes = {
   variant: PropTypes.oneOf(["head", "subhead"]),
-  parts: PropTypes.arrayOf(crumbShape).isRequired,
+  parts: PropTypes.arrayOf(partPropType).isRequired,
+  inactiveColor: PropTypes.string,
+  divider: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
 };
 
-export function HeadBreadcrumbs({ variant = "head", parts, ...props }) {
+function getBadgeInactiveColor({ variant, isLast }) {
+  return isLast && variant === "head" ? "text-dark" : "text-light";
+}
+
+export function HeadBreadcrumbs({
+  variant = "head",
+  parts,
+  divider,
+  inactiveColor,
+  ...props
+}) {
   return (
     <Container {...props} variant={variant}>
       {parts.map((part, index) => {
-        const { name, icon, href } = part;
         const isLast = index === parts.length - 1;
-        const inactiveColor =
-          isLast && variant === "head" ? "text-dark" : "text-light";
+        const badgeInactiveColor =
+          inactiveColor || getBadgeInactiveColor({ variant, isLast });
         return (
           <React.Fragment key={index}>
-            <HeaderBadge to={href} icon={icon} inactiveColor={inactiveColor}>
-              {name}
-            </HeaderBadge>
-            {!isLast && <Divider />}
+            {React.isValidElement(part) ? (
+              part
+            ) : (
+              <HeaderBadge
+                to={part.href}
+                icon={part.icon}
+                inactiveColor={badgeInactiveColor}
+              >
+                {part.name}
+              </HeaderBadge>
+            )}
+            {!isLast &&
+              (React.isValidElement(divider) ? (
+                divider
+              ) : (
+                <Divider char={divider} />
+              ))}
           </React.Fragment>
         );
       })}
     </Container>
   );
 }
+
+HeadBreadcrumbs.Badge = HeaderBadge;

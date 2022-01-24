@@ -55,16 +55,18 @@
   [:id
    :engine
    :name
-   :details])
+   :details
+   :settings])
 
 (def ^:private DatabaseInstanceWithRequiredStoreKeys
   (s/both
    (class Database)
-   {:id      su/IntGreaterThanZero
-    :engine  s/Keyword
-    :name    su/NonBlankString
-    :details su/Map
-    s/Any    s/Any}))
+   {:id       su/IntGreaterThanZero
+    :engine   s/Keyword
+    :name     su/NonBlankString
+    :details  su/Map
+    :settings (s/maybe su/Map)
+    s/Any     s/Any}))
 
 (def ^:private table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."

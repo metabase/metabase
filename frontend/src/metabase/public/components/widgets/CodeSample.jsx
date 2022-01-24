@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import Select, { Option } from "metabase/components/Select";
@@ -7,24 +8,8 @@ import AceEditor from "metabase/components/TextEditor";
 
 import _ from "underscore";
 
-import type { CodeSampleOption } from "metabase/public/lib/code";
-
-type Props = {
-  className?: string,
-  title?: string,
-  options?: Array<CodeSampleOption>,
-  onChangeOption?: (option: ?CodeSampleOption) => void,
-};
-
-type State = {
-  name: ?string,
-};
-
 export default class CodeSample extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       name:
@@ -34,11 +19,11 @@ export default class CodeSample extends Component {
     };
   }
 
-  setOption(name: string) {
+  setOption(name) {
     this.setState({ name });
   }
 
-  handleChange(name: string) {
+  handleChange(name) {
     const { options, onChangeOption } = this.props;
     this.setState({ name });
     if (onChangeOption) {

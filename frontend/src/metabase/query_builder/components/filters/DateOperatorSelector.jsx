@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
 import _ from "underscore";
@@ -5,20 +6,7 @@ import cx from "classnames";
 
 import Select, { Option } from "metabase/components/Select";
 
-import type { Operator } from "./pickers/DatePicker";
-
-type Props = {
-  operator: ?string,
-  operators: Operator[],
-  onOperatorChange: (o: Operator) => void,
-  hideTimeSelectors?: boolean,
-
-  className?: string,
-};
-
 export default class DateOperatorSelector extends Component {
-  props: Props;
-
   render() {
     const { className, operator, operators, onOperatorChange } = this.props;
 

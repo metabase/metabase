@@ -9,15 +9,14 @@
     (is (= nil
            (#'png/register-fonts-if-needed!))))
 
-  (testing "If font regsitration fails, we should an Exception with a useful error message"
+  (testing "If font registration fails, we should an Exception with a useful error message"
     (with-redefs [png/register-font! (fn [& _]
                                        (throw (ex-info "Oops!" {})))]
-      (let [messages (mt/with-log-level :error
-                       (mt/with-log-messages
-                         (is (thrown-with-msg?
-                              clojure.lang.ExceptionInfo
-                              #"Error registering fonts: Metabase will not be able to send Pulses"
-                              (#'png/register-fonts!)))))]
+      (let [messages (mt/with-log-messages-for-level :error
+                       (is (thrown-with-msg?
+                            clojure.lang.ExceptionInfo
+                            #"Error registering fonts: Metabase will not be able to send Pulses"
+                            (#'png/register-fonts!))))]
         (testing "Should log the Exception"
           (is (schema= [(s/one (s/eq :error) "log type")
                         (s/one Throwable "exception")

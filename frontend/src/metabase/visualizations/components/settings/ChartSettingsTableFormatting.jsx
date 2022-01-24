@@ -3,11 +3,11 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/components/Select";
-import Radio from "metabase/components/Radio";
-import Toggle from "metabase/components/Toggle";
+import Radio from "metabase/core/components/Radio";
+import Toggle from "metabase/core/components/Toggle";
 import ColorPicker from "metabase/components/ColorPicker";
 
 import ColorRangePicker, {
@@ -57,7 +57,10 @@ import { color, desaturated } from "metabase/lib/colors";
 // TODO
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
-  ...COLORS.map(color => [["white", color], [color, "white"]]),
+  ...COLORS.map(color => [
+    ["white", color],
+    [color, "white"],
+  ]),
   [
     [color("error"), "white", color("success")],
     [color("success"), "white", color("error")],

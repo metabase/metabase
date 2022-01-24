@@ -78,8 +78,8 @@ describe("permissions link", () => {
   });
 });
 
-describe("link to edit collection", () => {
-  const ariaLabel = "pencil icon";
+describe("link to add new collection items", () => {
+  const ariaLabel = "add icon";
 
   describe("should not be displayed", () => {
     it("when no detail is passed in the collection to determine if user can change collection", () => {
@@ -104,8 +104,8 @@ describe("link to edit collection", () => {
   });
 });
 
-describe("link to create a new collection", () => {
-  const ariaLabel = "new_folder icon";
+describe("link to add new collection items", () => {
+  const ariaLabel = "add icon";
 
   describe("should not be displayed", () => {
     it("if user is not allowed to change collection", () => {

@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
 import { ClipPath } from "@visx/clip-path";
@@ -30,6 +31,7 @@ const layout = {
     width: 20,
     height: 10,
   },
+  fontSize: 13,
 };
 
 interface ProgressBarProps {
@@ -58,7 +60,7 @@ const ProgressBar = ({
     range: [0, barWidth],
   });
 
-  const currentX = xScale(Math.min(data.goal, data.value));
+  const currentX = xScale(Math.max(0, Math.min(data.goal, data.value)));
 
   const pointerY = layout.margin.top - layout.pointer.height * 1.5;
   const pointerX = xMin + Math.max(xScale(data.value), 0);
@@ -73,6 +75,7 @@ const ProgressBar = ({
     xMin,
     xMax,
     layout.pointer.width,
+    layout.fontSize,
   );
 
   return (
@@ -104,11 +107,12 @@ const ProgressBar = ({
               y={(layout.barHeight - layout.iconSize) / 2}
             />
             <Text
+              fontSize={layout.fontSize}
               textAnchor="start"
               color="white"
               x={layout.iconSize + 16}
               y={layout.barHeight / 2}
-              dominantBaseline="central"
+              verticalAnchor="middle"
               fill="white"
             >
               {barText}
@@ -117,7 +121,12 @@ const ProgressBar = ({
         )}
       </Group>
       <Group left={pointerX} top={pointerY}>
-        <Text textAnchor={"middle"} dy="-0.4em" dx={valueTextShift}>
+        <Text
+          fontSize={layout.fontSize}
+          textAnchor={"middle"}
+          dy="-0.4em"
+          dx={valueTextShift}
+        >
           {valueText}
         </Text>
         <Pointer
@@ -128,14 +137,15 @@ const ProgressBar = ({
       </Group>
       <Group top={labelsY}>
         <Text
+          fontSize={layout.fontSize}
           textAnchor="start"
           alignmentBaseline="baseline"
           x={layout.margin.left}
         >
           {formatNumber(0, format)}
         </Text>
-        <Text textAnchor="end" x={xMax}>
-          {`Goal ${formatNumber(data.goal, format)}`}
+        <Text fontSize={layout.fontSize} textAnchor="end" x={xMax}>
+          {t`Goal ${formatNumber(data.goal, format)}`}
         </Text>
       </Group>
     </svg>

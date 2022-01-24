@@ -15,10 +15,7 @@ export const getParentPath = (route, location) => {
 };
 
 const ModalWithRoute = (ComposedModal, modalProps = {}) =>
-  connect(
-    null,
-    { onChangeLocation: push },
-  )(
+  connect(null, { onChangeLocation: push })(
     class extends Component {
       static displayName = `ModalWithRoute[${ComposedModal.displayName ||
         ComposedModal.name}]`;

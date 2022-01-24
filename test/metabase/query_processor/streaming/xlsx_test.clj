@@ -61,7 +61,14 @@
         (is (= "#,##0E+0"  (format-string {::mb.viz/decimals -1, ::mb.viz/number-style "scientific"})))
         (is (= "[$$]#,##0" (format-string {::mb.viz/decimals -1,
                                            ::mb.viz/currency-in-header false,
-                                           ::mb.viz/number-style "currency"}))))
+                                           ::mb.viz/number-style "currency"})))
+
+        ;; Thousands separator can be omitted
+        (is (= ["###0" "###0.##"]   (format-string {::mb.viz/number-separators "."})))
+        ;; Custom separators are not supported
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ", "})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".,"})))
+        (is (= ["#,##0" "#,##0.##"] (format-string {::mb.viz/number-separators ".’"}))))
 
       (testing "Scale"
         ;; Scale should not affect format string since it is applied to the actual data prior to export

@@ -5,7 +5,7 @@ import CustomForm from "./CustomForm";
 
 import { t } from "ttag";
 
-const StandardForm = ({ onClose, submitTitle, ...props }) => (
+const StandardForm = ({ onClose, submitTitle, submitFullWidth, ...props }) => (
   <CustomForm {...props}>
     {({ values, formFields, Form, FormField, FormFooter }) => (
       <Form>
@@ -18,6 +18,7 @@ const StandardForm = ({ onClose, submitTitle, ...props }) => (
           submitTitle={
             submitTitle || (values.id != null ? t`Update` : t`Create`)
           }
+          fullWidth={submitFullWidth}
         />
       </Form>
     )}

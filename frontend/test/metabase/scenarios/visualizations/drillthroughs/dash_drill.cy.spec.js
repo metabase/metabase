@@ -1,8 +1,8 @@
 // Imported from drillthroughs.e2e.spec.js
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
@@ -95,7 +95,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
               // Cypress was complaining it cannot click on a detached element.
               cy.server();
-              cy.route("POST", `/api/card/${CARD_ID}/query`).as("cardQuery");
+              cy.route(
+                "POST",
+                `/api/dashboard/${DASHBOARD_ID}/card/${CARD_ID}/query`,
+              ).as("cardQuery");
 
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
@@ -176,7 +179,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
                         card_id: QUESTION_ID,
                         target: [
                           "dimension",
-                          ["field", PRODUCTS.CATEGORY, null],
+                          [
+                            "field",
+                            PRODUCTS.CATEGORY,
+                            { "source-field": ORDERS.PRODUCT_ID },
+                          ],
                         ],
                       },
                     ],
@@ -185,7 +192,10 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               });
             });
             cy.server();
-            cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+            cy.route(
+              "POST",
+              `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+            ).as("cardQuery");
             cy.route("POST", `/api/dataset`).as("dataset");
 
             cy.visit(`/dashboard/${DASHBOARD_ID}`);

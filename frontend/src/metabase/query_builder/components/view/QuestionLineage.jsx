@@ -25,4 +25,4 @@ export default function QuestionLineage({
 }
 
 QuestionLineage.shouldRender = ({ question, originalQuestion }) =>
-  !question.isSaved() && !!originalQuestion;
+  !question.isSaved() && !!originalQuestion && !originalQuestion.isDataset();

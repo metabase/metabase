@@ -130,18 +130,19 @@
 
 (defn send-new-user-email!
   "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
-  [invited invitor join-url]
+  [invited invitor join-url sent-from-setup?]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
                                           (merge (common-context)
-                                                 {:emailType    "new_user_invite"
-                                                  :invitedName  (:first_name invited)
-                                                  :invitorName  (:first_name invitor)
-                                                  :invitorEmail (:email invitor)
-                                                  :company      company
-                                                  :joinUrl      join-url
-                                                  :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
-                                                  :logoHeader   true}))]
+                                                 {:emailType     "new_user_invite"
+                                                  :invitedName   (:first_name invited)
+                                                  :invitorName   (:first_name invitor)
+                                                  :invitorEmail  (:email invitor)
+                                                  :company       company
+                                                  :joinUrl       join-url
+                                                  :today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
+                                                  :logoHeader    true
+                                                  :sentFromSetup sent-from-setup?}))]
     (email/send-message!
      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
      :recipients   [(:email invited)]
@@ -181,16 +182,14 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? hostname password-reset-url is-active?]
+  [email google-auth? password-reset-url is-active?]
   {:pre [(m/boolean? google-auth?)
          (u/email? email)
-         (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :hostname         hostname
                               :sso              google-auth?
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
@@ -346,7 +345,7 @@
       (some (complement render.body/show-in-table?) cols)
       (yes "some columns are not included in rendered results")
 
-      (not= :table (render/detect-pulse-chart-type card result-data))
+      (not= :table (render/detect-pulse-chart-type card nil result-data))
       (no "we've determined it should not be rendered as a table")
 
       (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
@@ -652,3 +651,15 @@
   [alert user {:keys [first_name last_name] :as archiver}]
   (let [edited-text (format "the question was edited by %s %s" first_name last_name)]
     (send-email! user not-working-subject stopped-template (assoc (common-alert-context alert) :deletionCause edited-text))))
+
+(defn send-slack-token-error-emails!
+  "Email all admins when a Slack API call fails due to a revoked token or other auth error"
+  []
+  (email/send-message!
+   :subject (trs "Your Slack connection stopped working")
+   :recipients (all-admin-recipients)
+   :message-type :html
+   :message (stencil/render-file "metabase/email/slack_token_error.mustache"
+                                 (merge (common-context)
+                                        {:logoHeader  true
+                                         :settingsUrl (str (public-settings/site-url) "/admin/settings/slack")}))))

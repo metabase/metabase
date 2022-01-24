@@ -49,7 +49,8 @@ export default class Dashboard extends Component {
     parameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
 
-    addCardOnLoad: PropTypes.func,
+    editingOnLoad: PropTypes.bool,
+    addCardOnLoad: PropTypes.number,
     addCardToDashboard: PropTypes.func.isRequired,
     addParameter: PropTypes.func,
     archiveDashboard: PropTypes.func.isRequired,
@@ -131,6 +132,7 @@ export default class Dashboard extends Component {
 
   async loadDashboard(dashboardId) {
     const {
+      editingOnLoad,
       addCardOnLoad,
       addCardToDashboard,
       fetchDashboard,
@@ -146,10 +148,10 @@ export default class Dashboard extends Component {
 
     try {
       await fetchDashboard(dashboardId, location.query);
-      if (addCardOnLoad != null) {
-        // if we destructure this.props.dashboard, for some reason
-        // if will render dashboards as empty
+      if (editingOnLoad) {
         this.setEditing(this.props.dashboard);
+      }
+      if (addCardOnLoad != null) {
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
     } catch (error) {

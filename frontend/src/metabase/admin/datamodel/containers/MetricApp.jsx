@@ -56,10 +56,7 @@ class CreateMetricForm extends Component {
   }
 }
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricApp extends Component {
   render() {
     return this.props.params.id ? (

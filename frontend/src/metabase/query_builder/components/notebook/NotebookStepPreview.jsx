@@ -7,7 +7,7 @@ import _ from "underscore";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import { Box, Flex } from "grid-styled";
 import { Motion, spring } from "react-motion";
 

@@ -11,7 +11,7 @@ describe("issue 4482", () => {
   it("should be possible to summarize min of a temporal column (metabase#6239)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();
@@ -29,7 +29,7 @@ describe("issue 4482", () => {
   it("should be possible to summarize max of a temporal column (metabase#6239)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();
@@ -47,7 +47,7 @@ describe("issue 4482", () => {
   it("should be not possible to average a temporal column (metabase#6239)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();

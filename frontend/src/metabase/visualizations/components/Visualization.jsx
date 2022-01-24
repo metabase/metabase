@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -37,112 +38,13 @@ export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
-import Query from "metabase-lib/lib/queries/Query";
 import Mode from "metabase-lib/lib/Mode";
-import type {
-  Card as CardObject,
-  VisualizationSettings,
-} from "metabase-types/types/Card";
-import type {
-  HoverObject,
-  ClickObject,
-  Series,
-  RawSeries,
-  OnChangeCardAndRun,
-} from "metabase-types/types/Visualization";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { memoize } from "metabase-lib/lib/utils";
-
-type Props = {
-  rawSeries: RawSeries,
-
-  className: string,
-  style: { [key: string]: any },
-
-  showTitle: boolean,
-  isDashboard: boolean,
-  isEditing: boolean,
-  isSettings: boolean,
-  isQueryBuilder: boolean,
-
-  headerIcon?: {
-    name: string,
-    color?: string,
-    size?: Number,
-    tooltip?: string,
-  },
-
-  actionButtons: React.Element<any>,
-
-  // errors
-  error: string,
-  errorIcon: string,
-
-  // slow card warnings
-  isSlow: boolean,
-  expectedDuration: number,
-
-  // injected by ExplicitSize
-  width: number,
-  height: number,
-
-  // settings overrides from settings panel
-  settings: VisualizationSettings,
-
-  // for click actions
-  metadata: Metadata,
-  dispatch: Function,
-  onChangeCardAndRun: OnChangeCardAndRun,
-  onChangeLocation: (url: string) => void,
-
-  // for checking renderability
-  query: Query,
-
-  mode?: Mode,
-
-  // used for showing content in place of visualization, e.x. dashcard filter mapping
-  replacementContent: React.Element<any>,
-
-  // misc
-  onUpdateWarnings: (string[]) => void,
-  onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
-  onUpdateVisualizationSettings: (settings: { [key: string]: any }) => void,
-
-  // number of grid cells wide and tall
-  gridSize?: { width: number, height: number },
-  // if gridSize isn't specified, compute using this gridSize (4x width, 3x height)
-  gridUnit?: number,
-
-  classNameWidgets?: string,
-
-  getExtraDataForClick?: Function,
-};
-
-type State = {
-  series: ?Series,
-  visualization: ?(React.Component<void, VisualizationSettings, void> & {
-    checkRenderable: (any, any, any) => void,
-    noHeader: boolean,
-  }),
-  computedSettings: VisualizationSettings,
-
-  hovered: ?HoverObject,
-  clicked: ?ClickObject,
-
-  error: ?Error,
-  warnings: string[],
-  yAxisSplit: ?(number[][]),
-};
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 @ExplicitSize({ selector: ".CardVisualization" })
 export default class Visualization extends React.PureComponent {
-  state: State;
-  props: Props;
-
-  _resetHoverTimer: ?number;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -278,10 +180,23 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(card, metadata);
+    if (!metadata || !card) {
+      return;
+    }
+    const { isQueryBuilder, queryBuilderMode } = this.props;
+    const question = new Question(card, metadata);
+
+    // Datasets in QB should behave as raw tables opened in simple mode
+    // composeDataset replaces the dataset_query with a clean query using the dataset as a source table
+    // Ideally, this logic should happen somewhere else
+    return question.isDataset() &&
+      isQueryBuilder &&
+      queryBuilderMode !== "dataset"
+      ? question.composeDataset()
+      : question;
   }
 
-  getClickActions(clicked: ?ClickObject) {
+  getClickActions(clicked) {
     if (!clicked) {
       return [];
     }
@@ -302,7 +217,7 @@ export default class Visualization extends React.PureComponent {
       : [];
   }
 
-  visualizationIsClickable = (clicked: ClickObject) => {
+  visualizationIsClickable = clicked => {
     const { onChangeCardAndRun } = this.props;
     if (!onChangeCardAndRun) {
       return false;
@@ -315,7 +230,9 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
-  handleVisualizationClick = (clicked: ClickObject) => {
+  handleVisualizationClick = clicked => {
+    const { handleVisualizationClick } = this.props;
+
     if (clicked) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
@@ -324,6 +241,11 @@ export default class Visualization extends React.PureComponent {
           clicked.dimensions ? "dimensions=" + clicked.dimensions.length : ""
         }`,
       );
+    }
+
+    if (typeof handleVisualizationClick === "function") {
+      handleVisualizationClick(clicked);
+      return;
     }
 
     if (
@@ -342,18 +264,11 @@ export default class Visualization extends React.PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({
-    nextCard,
-    seriesIndex,
-  }: {
-    nextCard: CardObject,
-    seriesIndex: number,
-  }) => {
+  handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-    const previousCard: ?CardObject =
-      series && series[index] && series[index].card;
+    const previousCard = series && series[index] && series[index].card;
 
     this.props.onChangeCardAndRun({ nextCard, previousCard });
   };
@@ -599,6 +514,7 @@ export default class Visualization extends React.PureComponent {
             card={series[0].card} // convenience for single-series visualizations
             data={series[0].data} // convenience for single-series visualizations
             hovered={hovered}
+            clicked={clicked}
             headerIcon={hasHeader ? null : headerIcon}
             onHoverChange={this.handleHoverChange}
             onVisualizationClick={this.handleVisualizationClick}

@@ -13,7 +13,7 @@ import {
   getYTickLabelProps,
   getYTickWidth,
   getXTickWidth,
-  getXTickHeight,
+  getRotatedXTickHeight,
 } from "metabase/static-viz/lib/axes";
 import { formatNumber } from "metabase/static-viz/lib/numbers";
 import {
@@ -32,6 +32,7 @@ const propTypes = {
     x: PropTypes.object,
     y: PropTypes.object,
     colors: PropTypes.object,
+    showTotal: PropTypes.bool,
   }),
   labels: PropTypes.shape({
     left: PropTypes.string,
@@ -60,7 +61,6 @@ const layout = {
     waterfallPositive: "#88BF4D",
     waterfallNegative: "#EF8C8C",
   },
-  numTicks: 5,
   barPadding: 0.2,
   labelFontWeight: 700,
   labelPadding: 12,
@@ -69,12 +69,21 @@ const layout = {
 };
 
 const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
-  const entries = calculateWaterfallEntries(data, accessors);
+  const entries = calculateWaterfallEntries(
+    data,
+    accessors,
+    settings?.showTotal,
+  );
   const colors = settings?.colors;
   const isVertical = entries.length > 10;
-  const xTickWidth = getXTickWidth(data, accessors, layout.maxTickWidth);
-  const xTickHeight = getXTickHeight(xTickWidth);
-  const yTickWidth = getYTickWidth(data, accessors, settings);
+  const xTickWidth = getXTickWidth(
+    data,
+    accessors,
+    layout.maxTickWidth,
+    layout.font.size,
+  );
+  const xTickHeight = getRotatedXTickHeight(xTickWidth);
+  const yTickWidth = getYTickWidth(data, accessors, settings, layout.font.size);
   const xLabelOffset = xTickHeight + layout.labelPadding + layout.font.size;
   const yLabelOffset = yTickWidth + layout.labelPadding;
   const xMin = yLabelOffset + layout.font.size * 1.5;
@@ -111,7 +120,11 @@ const CategoricalWaterfallChart = ({ data, accessors, settings, labels }) => {
 
   const getXTickProps = ({ x, y, formattedValue, ...props }) => {
     const textWidth = isVertical ? xTickWidth : xScale.bandwidth();
-    const truncatedText = truncateText(formattedValue, textWidth);
+    const truncatedText = truncateText(
+      formattedValue,
+      textWidth,
+      layout.font.size,
+    );
     const transform = isVertical
       ? `rotate(45, ${x} ${y}) translate(-${textBaseline} 0)`
       : undefined;

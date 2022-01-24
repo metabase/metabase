@@ -1,17 +1,11 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
-type Props = {
-  className?: string,
-  value: any,
-  onChange: (value: any) => void,
-  options: Array<{ name: string, value: any }>,
-};
-
-const EmbedSelect = ({ className, value, onChange, options }: Props) => (
+const EmbedSelect = ({ className, value, onChange, options }) => (
   <div className={cx(className, "flex")}>
     {options.map(option => (
       <div

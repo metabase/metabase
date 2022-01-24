@@ -30,7 +30,7 @@ import {
   getUiControls,
   getParameters,
   getDatabaseFields,
-  getSampleDatasetId,
+  getSampleDatabaseId,
   getNativeDatabases,
   getIsRunnable,
   getIsResultDirty,
@@ -126,7 +126,7 @@ const mapStateToProps = (state, props) => {
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
-    sampleDatasetId: getSampleDatasetId(state),
+    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -154,18 +154,11 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => (card && card.name) || t`Question`)
 @titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
-  timeout: any;
-
-  forceUpdateDebounced: () => void;
-
   constructor(props, context) {
     super(props, context);
 

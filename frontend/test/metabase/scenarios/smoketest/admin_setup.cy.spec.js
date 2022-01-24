@@ -5,6 +5,7 @@ import {
   modal,
   openPeopleTable,
   visualize,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 
@@ -32,21 +33,21 @@ describe("smoketest > admin_setup", () => {
       cy.icon("gear")
         .first()
         .click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
 
       cy.findByText("Metabase Admin");
       cy.findByText("dashboard").should("not.exist");
 
       cy.findByText("Databases").click();
 
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Updates").should("not.exist");
 
       cy.findByText("Add database").click();
 
-      cy.findByText(
-        "Automatically run queries when doing simple filtering and summarizing",
-      );
+      cy.findByText("Show advanced options").click();
+
+      cy.findByText("Rerun queries for simple explorations");
 
       // Add new database
 
@@ -299,7 +300,7 @@ describe("smoketest > admin_setup", () => {
       cy.icon("gear")
         .first()
         .click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
 
       cy.findByText("Getting set up");
       cy.findByText(admin.first_name).should("not.exist");
@@ -312,7 +313,9 @@ describe("smoketest > admin_setup", () => {
         .clear()
         .type("Test Table");
 
-      cy.get("[value='This is a confirmed order for a product from a user.']")
+      cy.get(
+        "[value='Confirmed Sample Company orders for a product, from a user.']",
+      )
         .clear()
         .type("Testing table description");
     });
@@ -377,10 +380,6 @@ describe("smoketest > admin_setup", () => {
 
     it("should reflect changes to column name, visibility, and formatting in the notebook editor for admin", () => {
       // Navigate
-
-      cy.icon("gear")
-        .eq(1)
-        .click();
       cy.findByText("Exit admin").click();
 
       // Checking table name
@@ -392,9 +391,8 @@ describe("smoketest > admin_setup", () => {
       // Navigating to Test Table table
 
       browse().click();
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
-      cy.icon("info");
       cy.icon("database").should("not.exist");
 
       cy.findByText("Test Table").click();
@@ -555,8 +553,8 @@ describe("smoketest > admin_setup", () => {
       // Check column names and visiblity
 
       browse().click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("Test Table").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Test Table").click();
 
       cy.findByText("Visualization");
       cy.findByText("Discount").should("not.exist");
@@ -591,15 +589,15 @@ describe("smoketest > admin_setup", () => {
 
       // Access to SQl queries as user
 
-      cy.findByText("Ask a question").click();
-      cy.findByText("Native query");
+      cy.findByText("New").click();
+      cy.findByText("SQL query");
 
       // Cannot see Review table as no collection user
       cy.signOut();
       cy.signIn("nocollection");
       cy.visit("/");
 
-      cy.wait(2000).findByText("Try these x-rays based on your data.");
+      cy.wait(2000).findByText("Try these x-rays based on your data");
       cy.contains("A look at your Test Table table");
       cy.contains("A look at your Review table").should("not.exist");
 
@@ -617,7 +615,7 @@ describe("smoketest > admin_setup", () => {
       cy.visit("/");
 
       cy.icon("gear").click();
-      cy.findByText("Admin").click();
+      cy.findByText("Admin settings").click();
       cy.findByText("Permissions").click();
 
       // Data access permissions (database/schema)
@@ -628,7 +626,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("All Users").click();
 
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
       cy.findByText("Products");
 
@@ -647,7 +645,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.findByText("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
       // Turn on data access for Marketing users to Products
       cy.icon("eye")
@@ -666,7 +664,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save changes").click();
 
       cy.contains(
-        "All Users will be given access to 1 table in Sample Dataset.",
+        "All Users will be given access to 1 table in Sample Database.",
       );
       cy.findByText("Are you sure you want to do this?");
 
@@ -685,7 +683,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save changes").click();
 
       cy.contains(
-        "data will no longer be able to read or write native queries for Sample Dataset.",
+        "data will no longer be able to read or write native queries for Sample Database.",
       );
       cy.findByText("Yes").click();
     });
@@ -798,9 +796,7 @@ describe("smoketest > admin_setup", () => {
 
       // Normal user cannot make an SQL query
 
-      cy.findByText("Ask a question").click();
-
-      cy.findByText("Simple question");
+      openNotebookEditor({ fromCurrentPage: true });
 
       cy.signOut();
       cy.signIn("nocollection");
@@ -891,10 +887,9 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("pencil");
 
-      cy.findByText("Ask a question").click();
-      cy.findByText("Simple question").click();
-      cy.findByText("Sample Dataset").click();
-      cy.findByText("People").click();
+      openNotebookEditor({ fromCurrentPage: true });
+      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();
       cy.findByLabelText("Name")
         .clear()

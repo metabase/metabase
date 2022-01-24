@@ -28,7 +28,7 @@
   entries for `query-hash` and update the cache timestamp to the current system time.")
 
   (purge-old-entries! [this max-age-seconds]
-    "Purge all cache entires older than `max-age-seconds`. Will be called periodically when this backend is in use.
+    "Purge all cache entries older than `max-age-seconds`. Will be called periodically when this backend is in use.
   `max-age-seconds` may be floating-point."))
 
 (defmacro with-cached-results

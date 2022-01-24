@@ -1,53 +1,29 @@
 import _ from "underscore";
 
-import type {
-  ExpressionName,
-  ExpressionClause,
-  Expression,
-} from "metabase-types/types/Query";
-
-export function getExpressions(
-  expressions: ?ExpressionClause = {},
-): ExpressionClause {
+export function getExpressions(expressions = {}) {
   return expressions;
 }
 
-export function getExpressionsList(
-  expressions: ?ExpressionClause = {},
-): Array<{ name: ExpressionName, expression: Expression }> {
+export function getExpressionsList(expressions = {}) {
   return Object.entries(expressions).map(([name, expression]) => ({
     name,
     expression,
   }));
 }
 
-export function addExpression(
-  expressions: ?ExpressionClause = {},
-  name: ExpressionName,
-  expression: Expression,
-): ?ExpressionClause {
+export function addExpression(expressions = {}, name, expression) {
   return { ...expressions, [name]: expression };
 }
-export function updateExpression(
-  expressions: ?ExpressionClause = {},
-  name: ExpressionName,
-  expression: Expression,
-  oldName?: ExpressionName,
-): ?ExpressionClause {
+export function updateExpression(expressions = {}, name, expression, oldName) {
   if (oldName != null) {
     expressions = removeExpression(expressions, oldName);
   }
   return addExpression(expressions, name, expression);
 }
-export function removeExpression(
-  expressions: ?ExpressionClause = {},
-  name: ExpressionName,
-): ?ExpressionClause {
+export function removeExpression(expressions = {}, name) {
   return _.omit(expressions, name);
 }
-export function clearExpressions(
-  expressions: ?ExpressionClause,
-): ?ExpressionClause {
+export function clearExpressions(expressions) {
   return {};
 }
 

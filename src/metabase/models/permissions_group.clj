@@ -103,11 +103,12 @@
   (check-not-magic-group group)
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
-  (setting/set-json! :ldap-group-mappings
-    (when-let [mappings (setting/get-json :ldap-group-mappings)]
-      (zipmap (keys mappings)
-              (for [val (vals mappings)]
-                (remove (partial = id) val))))))
+  (setting/set-value-of-type!
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
 
 (defn- pre-update [{group-name :name, :as group}]
   (u/prog1 group

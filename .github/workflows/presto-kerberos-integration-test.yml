@@ -37,7 +37,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/presto-kerberos-docker
-          ref: add-test_data-catalog
+          # use a custom branch if/until upstream (mik-laj/presto-kerberos-docker) can be fixed with PRs 23 and 24
+          ref: hacked-dec-2021
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster

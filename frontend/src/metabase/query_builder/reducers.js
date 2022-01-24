@@ -1,6 +1,6 @@
 import Utils from "metabase/lib/utils";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc } from "icepick";
+import { assoc, dissoc, merge } from "icepick";
 
 import {
   RESET_QB,
@@ -36,6 +36,9 @@ import {
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
+  CANCEL_DATASET_CHANGES,
+  SET_RESULTS_METADATA,
+  SET_METADATA_DIFF,
   onEditSummary,
   onCloseSummary,
   onAddFilter,
@@ -65,8 +68,9 @@ const DEFAULT_UI_CONTROLS = {
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
-  queryBuilderMode: false, // "view" or "notebook"
+  queryBuilderMode: false, // "view" | "notebook" | "dataset"
   snippetCollectionId: null,
+  datasetEditorTab: "query", // "query" / "metadata"
 };
 
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
@@ -258,16 +262,23 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
+    [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
+
     [SET_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
-        ...state,
-        display: card.display,
-        visualization_settings: card.visualization_settings,
-      }),
+      next: (state, { payload: { card, queryResults } }) => {
+        const [{ data }] = queryResults;
+        return {
+          ...state,
+          display: card.display,
+          result_metadata:
+            data?.results_metadata?.columns ?? card.result_metadata,
+          visualization_settings: card.visualization_settings,
+        };
+      },
     },
 
     [CREATE_PUBLIC_LINK]: {
@@ -335,6 +346,7 @@ export const lastRunCard = handleActions(
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.card },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
 );
@@ -349,9 +361,45 @@ export const queryResults = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
+    [SET_RESULTS_METADATA]: {
+      next: (state, { payload: results_metadata }) => {
+        const [result] = state;
+        const { columns } = results_metadata;
+        return [
+          {
+            ...result,
+            data: {
+              ...result.data,
+              cols: columns,
+              results_metadata,
+            },
+          },
+        ];
+      },
+    },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
+    [CANCEL_DATASET_CHANGES]: { next: () => null },
   },
   null,
+);
+
+export const metadataDiff = handleActions(
+  {
+    [RESET_QB]: { next: () => ({}) },
+    [SET_METADATA_DIFF]: {
+      next: (state, { payload }) => {
+        const { field_ref, changes } = payload;
+        return {
+          ...state,
+          [field_ref]: state[field_ref]
+            ? merge(state[field_ref], changes)
+            : changes,
+        };
+      },
+    },
+    [CANCEL_DATASET_CHANGES]: { next: () => ({}) },
+  },
+  {},
 );
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.

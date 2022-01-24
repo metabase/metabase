@@ -10,7 +10,7 @@ import {
   formatTimeWithUnit,
   slugify,
 } from "metabase/lib/formatting";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
 
 describe("formatting", () => {

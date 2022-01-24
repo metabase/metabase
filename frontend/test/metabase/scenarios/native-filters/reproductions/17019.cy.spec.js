@@ -7,7 +7,7 @@ const question = {
     "template-tags": {
       foo: {
         id: "08edf340-3d89-cfb1-b7f0-073b9eca6a32",
-        name: "filter",
+        name: "foo",
         "display-name": "Filter",
         type: "text",
       },

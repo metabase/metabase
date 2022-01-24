@@ -2,28 +2,28 @@
   "High-level functions for setting up the Metabase application database. Additional functions can be found in
   sub-namespaces:
 
-  * `metabase.db.connection` - functions for getting the application database type (e.g. `:h2`) and a
-    `clojure.java.jdbc` spec for it
+  * [[metabase.db.connection]] - functions for getting the application database type (e.g. `:h2`) and a
+    [[clojure.java.jdbc]] spec for it
 
-  * `metabase.db.connection-pool-setup` - functions for creating a connection pool for the application database and
+  * [[metabase.db.connection-pool-setup]] - functions for creating a connection pool for the application database and
     setting it as the default Toucan connection
 
-  * `metabase.db.data-migrations` - Clojure-land data migration definitions and functions for running them
+  * [[metabase.db.data-migrations]] - Clojure-land data migration definitions and functions for running them
 
-  * `metabase.db.env` - functions for getting application database connection information from environment variables
+  * [[metabase.db.env]] - functions for getting application database connection information from environment variables
 
-  * `metabase.db.jdbc-protocols` - implementations of `clojure.java.jdbc` protocols for the Metabase application
+  * [[metabase.db.jdbc-protocols]] - implementations of [[clojure.java.jdbc]] protocols for the Metabase application
     database
 
-  * `metabase.db.liquibase` - high-level Clojure wrapper around relevant parts of the Liquibase API
+  * [[metabase.db.liquibase]] - high-level Clojure wrapper around relevant parts of the Liquibase API
 
-  * `metabase.db.setup` - code related to setting up the application DB -- verifying the connection and running
+  * [[metabase.db.setup]] - code related to setting up the application DB -- verifying the connection and running
     migrations
 
-  * `metabase.db.spec` - util functions for creating JDBC specs for supported application DB types from connection
+  * [[metabase.db.spec]] - util functions for creating JDBC specs for supported application DB types from connection
     details maps
 
-  * `metabase.db.util` - general util functions for Toucan/HoneySQL queries against the application DB"
+  * [[metabase.db.util]] - general util functions for Toucan/HoneySQL queries against the application DB"
   (:require [metabase.config :as config]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]

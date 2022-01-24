@@ -26,10 +26,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricDetailContainer extends Component {
   static propTypes = {
     router: PropTypes.shape({

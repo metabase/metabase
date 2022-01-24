@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -14,9 +15,6 @@ import {
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
-
-import type { Dashboard } from "metabase-types/types/Dashboard";
-import type { Parameter } from "metabase-types/types/Parameter";
 
 import _ from "underscore";
 
@@ -37,43 +35,12 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-type Props = {
-  location?: { query: { [key: string]: string } },
-  dashboardId: string,
-
-  dashboard?: Dashboard,
-  parameters: Parameter[],
-  parameterValues: { [key: string]: string },
-
-  initialize: () => void,
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  fetchDashboard: (
-    dashId: string,
-    query?: { [key: string]: string },
-  ) => Promise<void>,
-  fetchDashboardCardData: (options: {
-    reload: boolean,
-    clear: boolean,
-  }) => Promise<void>,
-  cancelFetchDashboardCardData: () => Promise<void>,
-  setParameterValue: (id: string, value: string) => void,
-  setErrorPage: (error: { status: number }) => void,
-
-  navigateToNewCardFromDashboard: (args: any) => void,
-
-  // don't link card titles to the query builder
-  noLink: boolean,
-};
-
-export default (ComposedComponent: React.Class) =>
+export default ComposedComponent =>
   connect(
     mapStateToProps,
     mapDispatchToProps,
   )(
     class DashboardContainer extends Component {
-      props: Props;
-
       async load(props) {
         const {
           initialize,
@@ -102,7 +69,7 @@ export default (ComposedComponent: React.Class) =>
         this.props.cancelFetchDashboardCardData();
       }
 
-      UNSAFE_componentWillReceiveProps(nextProps: Props) {
+      UNSAFE_componentWillReceiveProps(nextProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
         } else if (

@@ -62,6 +62,10 @@ const Fields = createEntity({
         }
       );
     },
+    getFieldValues: (state, { entityId }) => {
+      const field = state.entities.fields[entityId];
+      return field ? getFieldValues(field) : [];
+    },
   },
 
   // ACTION CREATORS

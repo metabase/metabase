@@ -1,7 +1,9 @@
 import styled from "styled-components";
+
 import { color, alpha, lighten } from "metabase/lib/colors";
 import Link from "metabase/components/Link";
 import Icon from "metabase/components/Icon";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const HORIZONTAL_PADDING_VARIANTS = {
   sm: "0.5rem",
@@ -47,8 +49,11 @@ export const EntityNameLink = styled(Link)`
 
 export const PermissionTableHeaderRow = styled.tr``;
 
-export const HintIcon = styled(Icon).attrs({ name: "info", size: 12 })`
+export const HintIcon = forwardRefToInnerRef(styled(Icon).attrs({
+  name: "info",
+  size: 12,
+})`
   color: ${lighten("text-dark", 0.3)};
   margin-left: 0.375rem;
   cursor: pointer;
-`;
+`);

@@ -12,7 +12,7 @@ driver:
     - name: conn-uri
       type: string
       display-name: Paste your connection string
-      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[defaultauthdb][?options]]'
+      placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
     - merge:
         - port
@@ -24,24 +24,28 @@ driver:
         - password
         - name: pass
     - name: authdb
-      display-name: Authentication Database
-      placeholder: Optional database to use when authenticating
-    - merge:
-        - additional-options
-        - display-name: Additional Mongo connection string options
-          placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
-    - name: use-srv
-      type: boolean
-      default: false
-    - merge:
-        - ssl
+      display-name: Authentication database (optional)
+      helper-text: Database to use when authenticating.
+      placeholder: admin
+    - cloud-ip-address-info
+    - ssl
     - name: ssl-cert
       type: string
       display-name: Server SSL certificate chain
       visible-if:
         ssl: true
-
-  connection-properties-include-tunnel-config: true
+    - ssh-tunnel
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - display-name: Additional connection string options (optional)
+          placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+    - name: use-srv
+      type: boolean
+      default: false
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.mongo

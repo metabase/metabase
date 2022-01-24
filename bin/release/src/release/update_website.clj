@@ -18,8 +18,8 @@
     (u/step (format "Checkout website git repo %s to %s" website-git-repo dir)
       (u/sh "git" "clone" (format "git@github.com:%s.git" website-git-repo) dir)
       (u/sh {:dir dir} "git" "checkout" website-branch))
-    (u/step "Install yarn dependencies"
-      (u/sh {:dir dir} "yarn" "install"))
+    (u/step "Install npm dependencies"
+      (u/sh {:dir dir} "npm" "ci"))
     (u/step "Run docs script"
       (u/sh {:dir dir} "./script/docs" tag "--latest"))
     (u/step "Commit updated docs"

@@ -125,7 +125,7 @@
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
   [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
-  [[metabase-enterprise.enhancements.models.permissions.block-permissions]] determines whether the current
+  [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
@@ -397,6 +397,7 @@
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/")))
 
+;; TODO -- consider renaming this to `table-sandboxed-query-path`  since that terminology is used more frequently
 (s/defn table-segmented-query-path :- Path
   "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
   the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,
@@ -714,7 +715,7 @@
   (grant-permissions! group-or-id (adhoc-native-query-path database-or-id)))
 
 (defn revoke-db-schema-permissions!
-  "Remove all permissions entires for a DB and *any* child objects.
+  "Remove all permissions entries for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-or-id]
   ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
@@ -829,7 +830,7 @@
 
 (s/defn ^:private update-native-permissions!
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero new-native-perms :- NativePermissionsGraph]
-  ;; revoke-native-permissions! will delete all entires that would give permissions for native access. Thus if you had
+  ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
   (let [has-full-access? (db/exists? Permissions :group_id group-id, :object (data-perms-path db-id))]

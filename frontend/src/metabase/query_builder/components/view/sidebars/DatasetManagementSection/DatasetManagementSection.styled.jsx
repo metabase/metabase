@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import DefaultButton from "metabase/components/Button";
+import DefaultButton from "metabase/core/components/Button";
 import { color } from "metabase/lib/colors";
 
 export const SectionTitle = styled.span`
@@ -8,17 +8,30 @@ export const SectionTitle = styled.span`
   color: ${color("text-medium")};
 `;
 
-export const Button = styled(DefaultButton)`
+export const SectionContent = styled.div`
   margin-top: 1rem;
+  position: relative;
+  right: 8px;
+`;
+
+export const Row = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+export const Button = styled(DefaultButton)`
   padding: 8px;
   color: ${color("brand")};
   font-weight: 700;
   border: none;
-
-  position: relative;
-  right: 8px;
 `;
 
 Button.defaultProps = {
   iconSize: 16,
 };
+
+export const MetadataIndicatorContainer = styled.div`
+  display: flex;
+  flex: 0.4;
+`;

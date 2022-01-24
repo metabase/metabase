@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter-values";
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ParametersList from "metabase/parameters/components/ParametersList";
 import Select, { Option } from "metabase/components/Select";
 
@@ -19,34 +19,6 @@ const getIconForParameter = parameter =>
     : parameter.type.indexOf("date/") === 0
     ? "calendar"
     : "unknown";
-
-import type { EmbedType, DisplayOptions } from "./EmbedModalContent";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-
-type Props = {
-  className?: string,
-
-  embedType: EmbedType,
-
-  resourceType: string,
-  resource: EmbeddableResource,
-  resourceParameters: Parameter[],
-
-  embeddingParams: EmbeddingParams,
-  onChangeEmbeddingParameters: EmbeddingParams => void,
-
-  displayOptions: DisplayOptions,
-  previewParameters: Parameter[],
-  parameterValues: { [id: ParameterId]: any },
-
-  onChangeDisplayOptions: DisplayOptions => void,
-  onChangeParameterValue: (id: ParameterId, value: any) => void,
-  onUnpublish: () => Promise<void>,
-};
 
 const AdvancedSettingsPane = ({
   className,
@@ -64,7 +36,7 @@ const AdvancedSettingsPane = ({
   previewParameters,
   parameterValues,
   onChangeParameterValue,
-}: Props) => {
+}) => {
   const valuePopulatedParameters = useMemo(
     () => getValuePopulatedParameters(previewParameters, parameterValues),
     [previewParameters, parameterValues],

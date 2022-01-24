@@ -18,7 +18,7 @@ const questionDetails = {
   display: "line",
 };
 
-describe.skip("issue 12439", () => {
+describe("issue 12439", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

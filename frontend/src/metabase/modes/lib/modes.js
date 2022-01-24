@@ -7,10 +7,6 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-import type { QueryMode } from "metabase-types/types/Visualization";
-
-import type Question from "metabase-lib/lib/Question";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
@@ -31,7 +27,7 @@ const isPKFilter = (filters, query) => {
   return hasEqualityFilterForEveryPK;
 };
 
-export function getMode(question: ?Question): ?QueryMode {
+export function getMode(question) {
   if (!question) {
     return null;
   }

@@ -287,7 +287,8 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
         // return existing data if
         if (
           // we don't want to reload
-          !reload &&
+          // the check is a workaround for EntityListLoader passing reload function to children
+          reload !== true &&
           // and we have a an non-error request state or have a list of properties that all exist on the object
           (loading || loaded || hasRequestedProperties)
         ) {

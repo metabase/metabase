@@ -54,7 +54,7 @@ function getNonRootParentId(collection) {
     return nonRootParent ? nonRootParent.id : undefined;
   }
   // location is a string like "/1/4" where numbers are parent collection IDs
-  const [nonRootParentId] = collection.location.split("/");
+  const nonRootParentId = collection.location?.split("/")?.[0];
   return canonicalCollectionId(nonRootParentId);
 }
 

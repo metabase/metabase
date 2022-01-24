@@ -379,7 +379,13 @@ const numberCard = {
     public_uuid: null,
   },
   data: {
-    rows: [[1, 59], [2, 77], [3, 64], [4, 550], [5, 328]],
+    rows: [
+      [1, 59],
+      [2, 77],
+      [3, 64],
+      [4, 550],
+      [5, 328],
+    ],
     columns: ["RATING", "count"],
     native_form: {
       query:

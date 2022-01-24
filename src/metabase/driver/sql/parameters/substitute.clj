@@ -80,7 +80,7 @@
   (let [[sql args missing] (try
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
-                               (throw (ex-info (tru "Unable to substitute parameters")
+                               (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
                                         {:type         (or (:type (ex-data e)) error-type/qp)
                                          :params       param->value
                                          :parsed-query parsed-query}

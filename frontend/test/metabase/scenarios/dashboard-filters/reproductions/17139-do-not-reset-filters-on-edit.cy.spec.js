@@ -1,7 +1,6 @@
 import {
   restore,
   popover,
-  mockSessionProperty,
   filterWidget,
   editDashboard,
   cancelEditingDashboard,
@@ -15,8 +14,6 @@ describe.skip("issue 17139", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    mockSessionProperty("field-filter-operators-enabled?", true);
-
     cy.visit("/dashboard/1");
 
     editDashboard();

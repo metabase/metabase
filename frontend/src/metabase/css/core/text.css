@@ -218,3 +218,7 @@
 .text-measure {
   max-width: 620px;
 }
+
+.break-anywhere {
+  line-break: anywhere;
+}

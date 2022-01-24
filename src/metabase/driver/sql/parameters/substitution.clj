@@ -13,10 +13,14 @@
             [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.common.parameters.operators :as ops]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
+            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -220,38 +224,51 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
+(s/defn ^:private field->clause :- mbql.s/field
+  [driver {table-id :table_id, base-type :base_type, field-id :id, :as field} param-type]
+  ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
+  ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
+  ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
+  ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
+  ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
+  ;; I haven't figured out what that is yet
+  (qp.store/fetch-and-store-fields! #{field-id})
+  (qp.store/fetch-and-store-tables! #{table-id})
+  [:field
+   (u/the-id field)
+   {:base-type                (:base_type field)
+    :temporal-unit            (when (date-params/date-type? param-type)
+                                :day)
+    ::add/source-table        (:table_id field) ; TODO -- are we sure we want to qualify this?
+    ;; in case anyone needs to know we're compiling a Field filter.
+    ::compiling-field-filter? true}])
+
 (s/defn ^:private field->identifier :- su/NonBlankString
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver {semantic-type :semantic_type, :as field} param-type]
-  (:replacement-snippet
-   (honeysql->replacement-snippet-info
-    driver
-    (let [identifier (sql.qp/cast-field-if-needed driver field (sql.qp/->honeysql driver (sql.qp/field->identifier driver field)))]
-      (if (date-params/date-type? param-type)
-        (sql.qp/date driver :day identifier)
-        identifier)))))
+  [driver field param-type]
+  (->> (field->clause driver field param-type)
+       (sql.qp/->honeysql driver)
+       (honeysql->replacement-snippet-info driver)
+       :replacement-snippet))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value :as params} :value field :field :as _field-filter}]
-  (let [prepend-field
-        (fn [x]
-          (update x :replacement-snippet
-                  (partial str (field->identifier driver field param-type) " ")))]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
+  (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
+  (letfn [(prepend-field [x]
+            (update x :replacement-snippet
+                    (partial str (field->identifier driver field param-type) " ")))]
     (cond
       (ops/operator? param-type)
       (let [[snippet & args]
-            (->> (assoc params :target
-                        [:template-tag [:field (field->identifier driver field param-type)
-                                        {:base-type (:base_type field)}]])
-                 i/throw-if-field-filter-operators-not-enabled
-                 ops/to-clause
-                 mbql.u/desugar-filter-clause
-                 wrap-value-literals/wrap-value-literals-in-mbql
-                 (sql.qp/->honeysql driver)
-                 hsql/format-predicate)]
+            (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
+              (ops/to-clause form)
+              (mbql.u/desugar-filter-clause form)
+              (wrap-value-literals/wrap-value-literals-in-mbql form)
+              (sql.qp/->honeysql driver form)
+              (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (date-params/date-range-type? param-type) (prepend-field
@@ -275,7 +292,7 @@
     ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
     ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
     ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (vector? value)
+    (sequential? value)
     (combine-replacement-snippet-maps (for [v value]
                                         (->replacement-snippet-info driver (assoc field-filter :value v))))
     ;; otherwise convert single value to SQL.

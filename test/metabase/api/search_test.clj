@@ -34,7 +34,8 @@
    :table_schema               nil
    :table_name                 nil
    :table_description          nil
-   :updated_at                 true})
+   :updated_at                 true
+   :initial_sync_status        nil})
 
 (defn- table-search-results
   "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
@@ -470,12 +471,13 @@
 (defn- default-table-search-row [table-name]
   (merge
    default-search-row
-   {:name         table-name
-    :table_name   table-name
-    :table_id     true
-    :archived     nil
-    :model        "table"
-    :database_id  true}))
+   {:name                table-name
+    :table_name          table-name
+    :table_id            true
+    :archived            nil
+    :model               "table"
+    :database_id         true
+    :initial_sync_status "incomplete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
   `(doseq [user# ~users

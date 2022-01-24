@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import { DimensionPicker } from "metabase/query_builder/components/DimensionPicker";
 import Icon from "metabase/components/Icon";
 
@@ -69,63 +70,65 @@ export const DimensionListItem = ({
   const handleChange = () => onChangeDimension(dimension);
 
   return (
-    <DimensionListItemRoot
-      data-testid="dimension-list-item"
-      isSelected={isSelected}
-      aria-selected={isSelected}
-    >
-      <DimensionListItemContent>
-        <DimensionListItemTitleContainer onClick={handleChange}>
-          <DimensionListItemIcon name={iconName} size={18} />
-          <DimensionListItemTitle data-testid="dimension-list-item-name">
-            {name}
-          </DimensionListItemTitle>
-        </DimensionListItemTitleContainer>
+    <DimensionInfoPopover dimension={dimension}>
+      <DimensionListItemRoot
+        data-testid="dimension-list-item"
+        isSelected={isSelected}
+        aria-selected={isSelected}
+      >
+        <DimensionListItemContent>
+          <DimensionListItemTitleContainer onClick={handleChange}>
+            <DimensionListItemIcon name={iconName} size={18} />
+            <DimensionListItemTitle data-testid="dimension-list-item-name">
+              {name}
+            </DimensionListItemTitle>
+          </DimensionListItemTitleContainer>
 
-        {tag && <DimensionListItemTag>{tag}</DimensionListItemTag>}
+          {tag && <DimensionListItemTag>{tag}</DimensionListItemTag>}
 
-        {hasSubDimensions && selectedSubDimensionName && (
-          <PopoverWithTrigger
-            triggerClasses="align-self-stretch"
-            triggerElement={
-              <SubDimensionButton data-testid="dimension-list-item-binning">
-                {selectedSubDimensionName}
-              </SubDimensionButton>
-            }
-            sizeToFit
-          >
-            {({ onClose }) => (
-              <DimensionPicker
-                className="scroll-y text-green"
-                dimension={selectedSubDimension}
-                dimensions={subDimensions}
-                onChangeDimension={dimension => {
-                  onSubDimensionChange(dimension);
-                  onClose();
-                }}
-              />
-            )}
-          </PopoverWithTrigger>
+          {hasSubDimensions && selectedSubDimensionName && (
+            <PopoverWithTrigger
+              triggerClasses="align-self-stretch"
+              triggerElement={
+                <SubDimensionButton data-testid="dimension-list-item-binning">
+                  {selectedSubDimensionName}
+                </SubDimensionButton>
+              }
+              sizeToFit
+            >
+              {({ onClose }) => (
+                <DimensionPicker
+                  className="scroll-y text-green"
+                  dimension={selectedSubDimension}
+                  dimensions={subDimensions}
+                  onChangeDimension={dimension => {
+                    onSubDimensionChange(dimension);
+                    onClose();
+                  }}
+                />
+              )}
+            </PopoverWithTrigger>
+          )}
+
+          {isSelected && (
+            <DimensionListItemRemoveButton aria-label="Remove dimension">
+              <Icon name="close" onClick={handleRemove} />
+            </DimensionListItemRemoveButton>
+          )}
+        </DimensionListItemContent>
+
+        {!isSelected && (
+          <Tooltip tooltip={t`Add grouping`}>
+            <DimensionListItemAddButton
+              onClick={handleAdd}
+              aria-label="Add dimension"
+            >
+              <Icon name="add" size={12} />
+            </DimensionListItemAddButton>
+          </Tooltip>
         )}
-
-        {isSelected && (
-          <DimensionListItemRemoveButton aria-label="Remove dimension">
-            <Icon name="close" onClick={handleRemove} />
-          </DimensionListItemRemoveButton>
-        )}
-      </DimensionListItemContent>
-
-      {!isSelected && (
-        <Tooltip tooltip={t`Add grouping`}>
-          <DimensionListItemAddButton
-            onClick={handleAdd}
-            aria-label="Add dimension"
-          >
-            <Icon name="add" size={12} />
-          </DimensionListItemAddButton>
-        </Tooltip>
-      )}
-    </DimensionListItemRoot>
+      </DimensionListItemRoot>
+    </DimensionInfoPopover>
   );
 };
 

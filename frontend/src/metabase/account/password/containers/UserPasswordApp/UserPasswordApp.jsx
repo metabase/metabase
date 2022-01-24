@@ -12,7 +12,4 @@ const mapDispatchToProps = {
   updatePassword,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(UserPasswordForm);
+export default connect(mapStateToProps, mapDispatchToProps)(UserPasswordForm);

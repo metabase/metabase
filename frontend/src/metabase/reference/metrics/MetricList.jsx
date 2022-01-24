@@ -42,10 +42,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetricList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

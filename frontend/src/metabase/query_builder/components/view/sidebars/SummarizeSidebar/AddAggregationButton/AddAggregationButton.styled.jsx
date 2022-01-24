@@ -1,7 +1,9 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 
-export const AddAggregationButtonRoot = styled.button`
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+
+export const AddAggregationButtonRoot = forwardRefToInnerRef(styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -18,4 +20,4 @@ export const AddAggregationButtonRoot = styled.button`
   &:hover {
     background-color: ${color("bg-medium")};
   }
-`;
+`);

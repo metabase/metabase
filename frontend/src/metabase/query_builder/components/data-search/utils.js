@@ -1,4 +1,4 @@
-const SAVED_QUESTION_ID_PREFIX = "card__";
+import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 
 export function convertSearchResultToTableLikeItem(searchResultItem) {
   // NOTE: in the entire application when we want to use saved questions as tables
@@ -9,15 +9,9 @@ export function convertSearchResultToTableLikeItem(searchResultItem) {
   ) {
     return {
       ...searchResultItem,
-      id: `${SAVED_QUESTION_ID_PREFIX}${searchResultItem.id}`,
+      id: getQuestionVirtualTableId(searchResultItem),
     };
   }
 
   return searchResultItem;
-}
-
-export function isSavedQuestion(tableId) {
-  return (
-    typeof tableId === "string" && tableId.startsWith(SAVED_QUESTION_ID_PREFIX)
-  );
 }

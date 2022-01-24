@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -8,15 +9,7 @@ import {
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase-types/types/Visualization";
-
-export default ({
-  question,
-  clicked = {},
-}: ClickActionProps): ClickAction[] => {
+export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
   const query = question.query();
   if (!column || value !== undefined || !(query instanceof StructuredQuery)) {

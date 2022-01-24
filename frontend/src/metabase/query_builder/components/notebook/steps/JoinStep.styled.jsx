@@ -1,17 +1,19 @@
 import styled from "styled-components";
+
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const Row = styled.div`
   display: flex;
   align-items: center;
 `;
 
-export const JoinStepRoot = styled.div`
+export const JoinStepRoot = forwardRefToInnerRef(styled.div`
   display: flex;
   align-items: center;
-`;
+`);
 
 export const JoinClausesContainer = styled.div`
   display: flex;

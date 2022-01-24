@@ -2,13 +2,13 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
-export const TimelineContainer = styled.div`
+export const TimelineContainer = styled.ul`
   position: relative;
   margin-left: ${props => props.leftShift}px;
   margin-bottom: ${props => props.bottomShift}px;
 `;
 
-export const TimelineItem = styled.div`
+export const TimelineItem = styled.li`
   display: flex;
   align-items: start;
   justify-content: start;

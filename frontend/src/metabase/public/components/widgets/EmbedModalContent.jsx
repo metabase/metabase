@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { titleize } from "inflection";
@@ -25,52 +26,6 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
-import type { Parameter, ParameterId } from "metabase-types/types/Parameter";
-import type {
-  EmbeddableResource,
-  EmbeddingParams,
-} from "metabase/public/lib/types";
-
-export type Pane = "preview" | "code";
-export type EmbedType = null | "simple" | "application";
-
-export type DisplayOptions = {
-  theme: ?string,
-  bordered: boolean,
-  titled: boolean,
-};
-
-type Props = {
-  className?: string,
-  resource: EmbeddableResource,
-  resourceType: string,
-  resourceParameters: Parameter[],
-
-  isAdmin: boolean,
-  siteUrl: string,
-  secretKey: string,
-
-  // Flow doesn't understand these are provided by @connect?
-  // isPublicSharingEnabled: bool,
-  // isApplicationEmbeddingEnabled: bool,
-
-  getPublicUrl: (resource: EmbeddableResource, extension: ?string) => string,
-
-  onUpdateEnableEmbedding: (enable_embedding: boolean) => Promise<void>,
-  onUpdateEmbeddingParams: (embedding_params: EmbeddingParams) => Promise<void>,
-  onCreatePublicLink: () => Promise<void>,
-  onDisablePublicLink: () => Promise<void>,
-  onClose: () => void,
-};
-
-type State = {
-  pane: Pane,
-  embedType: EmbedType,
-  embeddingParams: EmbeddingParams,
-  displayOptions: DisplayOptions,
-  parameterValues: { [id: ParameterId]: string },
-};
-
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
   siteUrl: getSiteUrl(state, props),
@@ -81,10 +36,7 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps)
 export default class EmbedModalContent extends Component {
-  props: Props;
-  state: State;
-
-  constructor(props: Props) {
+  constructor(props) {
     super(props);
     this.state = {
       pane: "preview",
@@ -289,13 +241,7 @@ export default class EmbedModalContent extends Component {
   }
 }
 
-export const EmbedTitle = ({
-  type,
-  onClick,
-}: {
-  type: ?string,
-  onClick: () => any,
-}) => (
+export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>
     <span className="text-brand-hover">{t`Sharing`}</span>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}

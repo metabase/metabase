@@ -51,4 +51,4 @@ Give Metabase some time to sync with your Google Analytics dataset, then exit th
 [google-cloud-oauth]: https://support.google.com/cloud/answer/6158849
 [google-enable-disable-apis]: https://support.google.com/googleapi/answer/6158841
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
-[sync-docs]: ../../administration-guide/01-managing-databases.html#database-sync-and-analysis
+[sync-docs]: ../../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans

@@ -11,7 +11,7 @@ You can set permissions on:
 - [Databases connected to Metabase][data-permissions]
 - [Tables and schemas in those databases][table-permissions]
 - [Rows and columns of a table][data-sandboxing] (only on some plans)
-- [Collections of questions and dashboards][collections]
+- [Collections of questions, dashboards, and models][collections]
 
 For plans that include [SQL Snippet Folders][sql-snippet-folders], you can also set permissions on those folders.
 
@@ -76,5 +76,5 @@ Metabase lets you [set permissions on databases and their tables][data-permissio
 [sandbox-columns]: /learn/permissions/data-sandboxing-column-permissions.html
 [sandbox-rows]: /learn/permissions/data-sandboxing-row-permissions.html
 [slack-integration]: 09-setting-up-slack.md
-[sql-snippet-folders]: ../enterprise-guide/sql-snippets.md
+[sql-snippet-folders]: ../enterprise-guide/sql-snippets.html
 [table-permissions]: data-permissions.md#table-permissions

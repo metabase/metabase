@@ -55,6 +55,7 @@ export type SettingName =
   | "admin-email"
   | "analytics-uuid"
   | "anon-tracking-enabled"
+  | "user-locale"
   | "available-locales"
   | "available-timezones"
   | "custom-formatting"
@@ -66,8 +67,9 @@ export type SettingName =
   | "enable-xrays"
   | "engines"
   | "ga-code"
+  | "ga-enabled"
   | "google-auth-client-id"
-  | "has-sample-dataset?"
+  | "has-sample-database?"
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
@@ -81,17 +83,24 @@ export type SettingName =
   | "version-info-last-checked"
   | "version-info"
   | "version"
-  | "subscription-allowed-domains";
+  | "subscription-allowed-domains"
+  | "cloud-gateway-ips"
+  | "snowplow-enabled"
+  | "snowplow-url"
+  | "deprecation-notice-version"
+  | "show-database-syncing-modal"
+  | "premium-embedding-token"
+  | "metabase-store-managed";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
 type SettingListener = (value: any) => void;
 
 class Settings {
-  _settings: SettingsMap;
+  _settings: Partial<SettingsMap>;
   _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
 
-  constructor(settings: SettingsMap) {
+  constructor(settings: Partial<SettingsMap> = {}) {
     this._settings = settings;
   }
 
@@ -143,8 +152,16 @@ class Settings {
     return this.get("email-configured?");
   }
 
-  isHosted() {
+  isHosted(): boolean {
     return this.get("is-hosted?");
+  }
+
+  isStoreManaged(): boolean {
+    return this.get("metabase-store-managed");
+  }
+
+  cloudGatewayIps(): string[] {
+    return this.get("cloud-gateway-ips") || [];
   }
 
   googleAuthEnabled() {
@@ -169,6 +186,30 @@ class Settings {
 
   trackingEnabled() {
     return this.get("anon-tracking-enabled") || false;
+  }
+
+  googleAnalyticsEnabled() {
+    return this.get("ga-enabled") || false;
+  }
+
+  snowplowEnabled() {
+    return this.get("snowplow-enabled") || false;
+  }
+
+  snowplowUrl() {
+    return this.get("snowplow-url");
+  }
+
+  deprecationNoticeVersion() {
+    return this.get("deprecation-notice-version");
+  }
+
+  deprecationNoticeEnabled() {
+    return this.currentVersion() !== this.deprecationNoticeVersion();
+  }
+
+  token() {
+    return this.get("premium-embedding-token");
   }
 
   formattingOptions() {
@@ -224,6 +265,10 @@ class Settings {
 
   storeUrl(path = "") {
     return `https://store.metabase.com/${path}`;
+  }
+
+  upgradeUrl() {
+    return "https://www.metabase.com/upgrade/";
   }
 
   newVersionAvailable() {

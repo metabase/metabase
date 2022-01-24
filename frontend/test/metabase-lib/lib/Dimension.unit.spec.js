@@ -12,8 +12,50 @@ import {
   metadata,
   ORDERS,
   PRODUCTS,
-  SAMPLE_DATASET,
-} from "__support__/sample_dataset_fixture";
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
+
+const nestedQuestionCard = {
+  table_id: null,
+  result_metadata: [
+    {
+      name: "boolean",
+      display_name: "boolean",
+      base_type: "type/Boolean",
+      effective_type: "type/Boolean",
+      semantic_type: null,
+      field_ref: [
+        "field",
+        "boolean",
+        {
+          "base-type": "type/Boolean",
+        },
+      ],
+    },
+    {
+      base_type: "type/Text",
+      display_name: "Foo",
+      effective_type: "type/Text",
+      field_ref: ["expression", "Foo"],
+      id: ["field", "Foo", { "base-type": "type/Text" }],
+      name: "Foo",
+      semantic_type: null,
+      table_id: "card__61",
+    },
+  ],
+  database_id: 1,
+  query_type: "query",
+  name: "nested question",
+  dataset_query: {
+    database: 1,
+    query: {
+      "source-table": "card__61",
+    },
+    type: "query",
+  },
+  id: 62,
+  display: "table",
+};
 
 const PRODUCT_CATEGORY_FIELD_ID = 21;
 
@@ -263,7 +305,7 @@ describe("Dimension", () => {
           });
           const query = new StructuredQuery(question, {
             type: "query",
-            database: SAMPLE_DATASET.id,
+            database: SAMPLE_DATABASE.id,
             query: {
               "source-table": ORDERS.id,
             },
@@ -591,6 +633,31 @@ describe("Dimension", () => {
           field_ref: ["expression", "Hello World"],
         });
       });
+
+      describe("field", () => {
+        it("should return a field inferred from the expression", () => {
+          const field = dimension.field();
+
+          expect(field).toBeInstanceOf(Field);
+          expect(field.name).toEqual("Hello World");
+        });
+
+        describe("when an expression dimension has a query that relies on a nested card", () => {
+          const question = new Question(nestedQuestionCard, metadata);
+          const dimension = Dimension.parseMBQL(
+            ["expression", "Foo"],
+            metadata,
+            question.query(),
+          );
+
+          it("should return a field inferred from the expression", () => {
+            const field = dimension.field();
+
+            expect(field).toBeInstanceOf(Field);
+            expect(field.name).toEqual("Foo");
+          });
+        });
+      });
     });
   });
 
@@ -671,7 +738,7 @@ describe("Dimension", () => {
       function aggregation(agg) {
         const query = new StructuredQuery(ORDERS.question(), {
           type: "query",
-          database: SAMPLE_DATASET.id,
+          database: SAMPLE_DATABASE.id,
           query: {
             "source-table": ORDERS.id,
             aggregation: [agg],
@@ -724,39 +791,7 @@ describe("Dimension", () => {
   });
 
   describe("Nested Question Field Dimension", () => {
-    const card = {
-      table_id: null,
-      result_metadata: [
-        {
-          name: "boolean",
-          display_name: "boolean",
-          base_type: "type/Boolean",
-          effective_type: "type/Boolean",
-          semantic_type: null,
-          field_ref: [
-            "field",
-            "boolean",
-            {
-              "base-type": "type/Boolean",
-            },
-          ],
-        },
-      ],
-      database_id: 1,
-      query_type: "query",
-      name: "nested question",
-      dataset_query: {
-        database: 1,
-        query: {
-          "source-table": "card__61",
-        },
-        type: "query",
-      },
-      id: 62,
-      display: "table",
-    };
-
-    const question = new Question(card, metadata);
+    const question = new Question(nestedQuestionCard, metadata);
 
     const dimension = Dimension.parseMBQL(
       ["field", "boolean", { "base-type": "type/Boolean" }],
@@ -816,7 +851,7 @@ describe("Dimension", () => {
     describe("dimension tag (ie a field filter)", () => {
       const templateTagClause = ["template-tag", "foo"];
       const query = new NativeQuery(PRODUCTS.question(), {
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
           query: "select * from PRODUCTS where {{foo}}",
@@ -967,7 +1002,7 @@ describe("Dimension", () => {
     describe("variable tag", () => {
       const templateTagClause = ["template-tag", "cat"];
       const query = new NativeQuery(PRODUCTS.question(), {
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         type: "native",
         native: {
           query: "select * from PRODUCTS where CATEGORY = {{cat}}",

@@ -97,8 +97,8 @@ const CHANGE_DESCRIPTIONS = {
   dataset: {
     [CHANGE_TYPE.UPDATE]: (wasDataset, isDataset) =>
       isDataset
-        ? t`turned this into a dataset`
-        : t`reverted this from a dataset to a saved question`,
+        ? t`turned this into a model`
+        : t`changed this from a model to a saved question`,
   },
   dataset_query: {
     [CHANGE_TYPE.ADD]: t`edited the question`,
@@ -226,7 +226,7 @@ export function getRevisionEventsForTimeline(revisions = [], canWrite) {
       if (
         !revision.is_creation &&
         !revision.is_reversion &&
-        getChangedFields(revision).length > 1
+        Array.isArray(changes)
       ) {
         event.title = t`${username} edited this`;
         event.description = <RevisionBatchedDescription changes={changes} />;
