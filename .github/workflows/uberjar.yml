@@ -104,8 +104,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: ls
-      run: ls bin/docker/
+    - name: Change dir?
+      run: cd bin/docker/
     - name: Build container image
       run: docker buildx build . -f bin/docker/Dockerfile -t paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
     - name: Launch container
