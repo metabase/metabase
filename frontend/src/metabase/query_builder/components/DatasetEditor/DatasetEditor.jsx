@@ -231,7 +231,7 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults && !result.error) {
       focusFirstField();
     }
   }, [result, focusedFieldRef, focusFirstField]);
