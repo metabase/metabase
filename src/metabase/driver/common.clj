@@ -122,7 +122,7 @@
     :default      false}
    {:name         "tunnel-host"
     :display-name (deferred-tru "SSH tunnel host")
-    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :helper-text  (deferred-tru "The hostname that you use to connect to SSH tunnels.")
     :placeholder  "hostname"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
