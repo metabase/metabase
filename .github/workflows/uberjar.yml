@@ -113,7 +113,7 @@ jobs:
         tags: paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         no-cache: true
     - name: Launch container
-      run: docker run -dp 3000:3000 metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      run: docker run -dp 3000:3000 paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }}
       timeout-minutes: 5
     - run: docker ps
     - name: Wait for Metabase to start
