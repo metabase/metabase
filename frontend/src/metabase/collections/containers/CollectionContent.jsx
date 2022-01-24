@@ -157,6 +157,7 @@ function CollectionContent({
                 onMove={handleMove}
                 onCopy={handleCopy}
                 onToggleSelected={toggleItem}
+                onDrop={clear}
               />
               <Search.ListLoader
                 query={unpinnedQuery}
@@ -242,6 +243,7 @@ function CollectionContent({
             <ItemsDragLayer
               selectedItems={selected}
               pinnedItems={pinnedItems}
+              collection={collection}
             />
           </Box>
         );
