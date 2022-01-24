@@ -40,6 +40,7 @@ ModerationReviewBanner.propTypes = {
   user: PropTypes.object,
   currentUser: PropTypes.object.isRequired,
   onRemove: PropTypes.func,
+  className: PropTypes.func,
 };
 
 export function ModerationReviewBanner({
@@ -47,6 +48,7 @@ export function ModerationReviewBanner({
   user: moderator,
   currentUser,
   onRemove,
+  className,
 }) {
   const [isHovering, setIsHovering] = React.useState(false);
   const [isActive, setIsActive] = React.useState(false);
@@ -69,6 +71,7 @@ export function ModerationReviewBanner({
       backgroundColor={alpha(iconColor, 0.2)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      className={className}
     >
       <Tooltip tooltip={onRemove && tooltipText}>
         {onRemove ? (
