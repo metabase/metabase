@@ -5,10 +5,10 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import { POST, DELETE } from "metabase/lib/api";
 
