@@ -6,7 +6,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import { ModelEducationalModal } from "./ModelEducationalModal";
 import { NavBar, ModelEducationButton } from "./DataModelApp.styled";
