@@ -94,8 +94,10 @@ jobs:
       with:
           name: metabase-ee-uberjar
           path: bin/docker/
-    - name: Move the uberjar next to the Dockerfile
-      run: mv bin/docker/target/uberjar/metabase.jar bin/docker/
+    - name: Move the uberjar to the current dir
+      run: mv bin/docker/target/uberjar/metabase.jar .
+    - name: Move run_metabase.sh to the current dir
+      run: mv bin/docker/run_metabase.sh .
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v1
@@ -104,10 +106,8 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Change dir?
-      run: cd bin/docker/
     - name: Build container image
-      run: docker buildx build . -t paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
+      run: docker buildx build . -f bin/docker/Dockerfile -t paoliniluis/metabase-dev:${{ steps.extract_branch.outputs.branch }} --push --compress --no-cache
     - name: Launch container
       run: docker run -dp 3000:3000 metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
       timeout-minutes: 5
