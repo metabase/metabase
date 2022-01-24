@@ -299,12 +299,16 @@
   - backfill currency to the default of USD if not present"
   [x-col y-col {::mb.viz/keys [column-settings] :as _viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
-        y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)}
+        y-col-settings (settings-from-column y-col column-settings)
+        res            (cond-> {:colors (public-settings/application-colors)}
       x-col-settings
       (assoc :x (update-col-for-js x-col-settings x-col))
       y-col-settings
-      (assoc :y (update-col-for-js y-col-settings y-col)))))
+      (assoc :y (update-col-for-js y-col-settings y-col)))
+        ]
+    (println _viz-settings)
+    (println res)
+    res))
 
 (defn- ->ts-viz
   "Include viz settings for the typed settings, initially in XY charts.
@@ -458,7 +462,8 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (repeat "left"))
+  (conj (repeat "right")
+        "left"))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
