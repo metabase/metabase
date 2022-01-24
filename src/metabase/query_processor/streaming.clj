@@ -35,14 +35,17 @@
        (mbql.u/uniquify-names (map :name cols))))
 
 (defn- validate-table-columms
-  "Validate that all of the field refs in `table-columns` correspond to actual columns in `cols`, if `cols` contains
-  field refs. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
+  "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
+  field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
   Otherwise returns `table-columns`."
   [table-columns cols]
-  (let [col-field-refs (set (remove nil? (map :field_ref cols)))]
+  (let [col-field-refs (set (remove nil? (map :field_ref cols)))
+        col-names      (set (remove nil? (map :name cols)))]
     ;; If there are no field refs in `cols` (e.g. for native queries), we should use `table-columns` as-is
     (when (or (empty? col-field-refs)
-              (every? (fn [table-col] (col-field-refs (::mb.viz/table-column-field-ref table-col))) table-columns))
+              (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
+                                          (col-names (::mb.viz/table-column-name table-col))))
+                      table-columns))
       table-columns)))
 
 (defn- export-column-order
