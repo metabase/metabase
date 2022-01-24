@@ -18,8 +18,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
-import { getSettings } from "metabase/admin/settings/selectors";
-import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/content/ExplorePlansIllustration";
+import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
@@ -179,7 +178,7 @@ const LicenseAndBillingSettings = ({
 
 export default connect(
   (state: any) => ({
-    settingValues: getSettings(state),
+    settingValues: state.admin.settings.settings,
     settings: state.settings.values,
   }),
   {
