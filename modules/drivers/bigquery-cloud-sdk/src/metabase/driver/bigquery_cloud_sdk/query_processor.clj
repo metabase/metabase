@@ -138,7 +138,7 @@
 
 ;; TODO -- all this [[temporal-type]] stuff below can be replaced with the more generalized
 ;; [[hx/with-database-type-info]] stuff we've added. [[hx/with-database-type-info]] was inspired by this BigQuery code
-;; but uses a new record type rather than attaching metadata to everything
+;; but uses a new record type rather than attaching metadata to everything (See #19759)
 
 (def ^:private temporal-type-hierarchy
   (-> (make-hierarchy)
