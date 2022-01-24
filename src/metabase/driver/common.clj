@@ -117,7 +117,7 @@
   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
@@ -154,7 +154,7 @@
    {:name         "tunnel-private-key"
     :display-name (deferred-tru "SSH private key to connect to the tunnel")
     :type         :string
-    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :placeholder  (deferred-tru "Paste the contents of an SSH private key here")
     :required     true
     :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"

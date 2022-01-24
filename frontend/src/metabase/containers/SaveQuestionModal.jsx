@@ -6,7 +6,7 @@ import { CSSTransitionGroup } from "react-transition-group";
 
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { generateQueryDescription } from "metabase/lib/query/description";
