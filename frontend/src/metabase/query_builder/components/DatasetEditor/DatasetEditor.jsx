@@ -430,7 +430,7 @@ function DatasetEditor(props) {
               />
             </DebouncedFrame>
             <TabHintToastContainer
-              isVisible={isEditingMetadata && isTabHintVisible}
+              isVisible={isEditingMetadata && isTabHintVisible && !result.error}
             >
               <TabHintToast onClose={hideTabHint} />
             </TabHintToastContainer>
