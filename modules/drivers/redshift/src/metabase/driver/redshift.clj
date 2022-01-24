@@ -278,10 +278,7 @@
           reducible))))))
 
 (defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [driver conn metadata schema-inclusion-patterns schema-exclusion-patterns]
+  [_ conn metadata schema-inclusion-patterns schema-exclusion-patterns]
   (reducible-schemas-with-usage-permissions
    conn
-   (eduction
-    (remove (set (sql-jdbc.sync/excluded-schemas driver)))
-    (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
-    (sync.describe-database/all-schemas metadata))))
+   (sql-jdbc.sync/syncable-schemas :sql-jdbc conn metadata schema-inclusion-patterns schema-exclusion-patterns)))

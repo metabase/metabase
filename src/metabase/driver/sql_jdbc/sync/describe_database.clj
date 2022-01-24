@@ -99,9 +99,7 @@
      (comp (mapcat (fn [schema]
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
-                     (and
-                       (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (i/have-select-privilege? driver conn table-schema table-name)))))
+                     (i/have-select-privilege? driver conn table-schema table-name))))
      (i/syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod i/active-tables :sql-jdbc

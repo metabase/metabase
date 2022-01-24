@@ -3,7 +3,18 @@
   (:require [clojure.string :as str])
   (:import java.util.regex.Pattern))
 
-(defn- schema-pattern->re-pattern ^Pattern [schema-pattern]
+(defn- schema-pattern->re-pattern
+  "Converts a schema pattern, as entered in the UI, into regex pattern suitable to be passed into [[re-pattern]].  The
+  conversion that happens is from commas into pipes (disjunction), and wildcard characters (`*`) into greedy wildcard
+  matchers (`.*`).  These only occur if those characters are not preceded by a backslash, which serves as an escape
+  character for purposes of this conversion.
+
+  Examples:
+    a,b => a|b
+    test* => test.*
+    foo*,*bar => foo.*|.*bar
+    crazy\\*schema => crazy\\*schema"
+  ^Pattern [schema-pattern]
   (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
                   (str/replace #"(^|[^\\\\])," "$1|"))))
 
