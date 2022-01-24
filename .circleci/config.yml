@@ -1334,6 +1334,7 @@ workflows:
                   "dashboard-filters",
                   "dashboard-filters-sql",
                   "downloads",
+                  "joins",
                   "models",
                   "moderation",
                   "native",
