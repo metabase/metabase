@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import { color } from "metabase/lib/colors";
 
 const slideInOutAnimation = keyframes`
