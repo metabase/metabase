@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 
 function stop<E extends React.SyntheticEvent>(event: E) {
   event.stopPropagation();
+  event.preventDefault();
 }
 
 const mouseEventBlockers = {

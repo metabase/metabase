@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { Item, Collection, isItemPinned } from "metabase/collections/utils";
+import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
 
@@ -31,14 +32,11 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
   }, [item]);
 
   return (
-    <div
-      className={className}
-      onClick={e => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
-    >
+    // this component is used within a `<Link>` component,
+    // so we must prevent events from triggering the activation of the link
+    <EventSandbox>
       <EntityItemMenu
+        className={className}
         item={item}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
@@ -47,9 +45,8 @@ function ActionMenu({ className, item, collection, onCopy, onMove }: Props) {
           collection.can_write && item.setArchived ? handleArchive : null
         }
         analyticsContext={ANALYTICS_CONTEXT}
-        className={undefined}
       />
-    </div>
+    </EventSandbox>
   );
 }
 
