@@ -1,13 +1,16 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";
 import { getLocales } from "../../utils";
 import {
-  StepLocaleList,
-  StepLocaleListItem,
+  LocaleGroup,
+  LocaleInput,
+  LocaleLabel,
+  LocaleText,
   StepDescription,
 } from "./LanguageStep.styled";
 
@@ -32,6 +35,7 @@ const LanguageStep = ({
   onStepSelect,
   onStepSubmit,
 }: LanguageStepProps): JSX.Element => {
+  const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
   if (!isStepActive) {
@@ -51,18 +55,22 @@ const LanguageStep = ({
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>
-      <StepLocaleList>
+      <LocaleGroup>
         {locales.map(item => (
-          <StepLocaleListItem
-            key={item.code}
-            isSelected={item.code === locale?.code}
-            data-testid={`language-option-${item.code}`}
-            onClick={() => onLocaleChange(item)}
-          >
-            {item.name}
-          </StepLocaleListItem>
+          <LocaleLabel key={item.code}>
+            <LocaleInput
+              type="radio"
+              name={fieldId}
+              value={item.code}
+              checked={item.code === locale?.code}
+              onChange={() => onLocaleChange(item)}
+            />
+            <LocaleText checked={item.code === locale?.code}>
+              {item.name}
+            </LocaleText>
+          </LocaleLabel>
         ))}
-      </StepLocaleList>
+      </LocaleGroup>
       <Button
         primary={locale != null}
         disabled={locale == null}
