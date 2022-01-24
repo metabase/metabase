@@ -1261,7 +1261,7 @@
                        :joins        [{:fields       :all
                                        :source-table $$reviews
                                        ;; It's wack that the FE is using a FIELD LITERAL here but it should still work
-                                       ;; anyway.
+                                       ;; anyway. See #19757
                                        :condition    [:= *products.id &Reviews.reviews.product_id]
                                        :alias        "Reviews"}]
                        :order-by     [[:asc $product_id->products.id]
@@ -1284,8 +1284,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
-      ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
-      ;; is broken
+      ;; See #19757 for more details on why this query is broken
       (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query orders

@@ -45,7 +45,7 @@
                   \newline
                   "We will attempt to fix this, but it may lead to incorrect queries."
                   \newline
-                  "See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more information."
+                  "See https://github.com/metabase/metabase/issues/19757 for more information."
                   \newline
                   (str "Clause:       " (pr-str field-clause))
                   \newline
@@ -102,7 +102,7 @@
                   ;; we probably shouldn't upgrade things at all if we have a source MBQL query whose source is a native
                   ;; query at ANY level, since `[:field <name>]` might mean `source.<name>` or it might mean
                   ;; `some_join.<name>`. But we'll probably break more things than we fix if turn off this middleware in
-                  ;; that case. See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more info
+                  ;; that case. See #19757 for more info
                   (not (get-in form [:source-query :native])))
            (upgrade-field-literals-one-level form)
            form))

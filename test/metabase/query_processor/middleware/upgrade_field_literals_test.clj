@@ -100,9 +100,7 @@
                        :breakout     [[:field %products.created_at {:source-field  %product_id
                                                                     :temporal-unit :month}]]
                        :limit        1})
-                    ;; This query is actually broken -- see
-                    ;; https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 -- but since we're nice
-                    ;; we'll try to fix it anyway.
+                    ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
                     (-> (mt/mbql-query orders
                           {:source-query {:source-table $$orders
                                           :aggregation  [[:count]]
