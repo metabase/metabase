@@ -37,9 +37,12 @@ function SemanticTypePicker({
   }, []);
 
   const onSelectValue = useCallback(
-    value => {
-      field.onChange(value);
-      onChange(value);
+    e => {
+      if (e.target.value === field.value) {
+        return;
+      }
+      field.onChange(e);
+      onChange(e);
       selectButtonRef.current?.focus();
     },
     [field, onChange],

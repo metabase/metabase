@@ -5,7 +5,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";

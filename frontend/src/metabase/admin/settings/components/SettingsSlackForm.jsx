@@ -9,7 +9,7 @@ import { updateSlackSettings } from "../settings";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import _ from "underscore";
 import { t, jt } from "ttag";
