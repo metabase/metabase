@@ -10,6 +10,7 @@ export const EmptyBanner = styled(Banner)`
   display: flex;
   align-items: center;
   color: ${color("text-dark")};
+  font-weight: bold;
   gap: 0.5rem;
   padding: 1rem;
 `;

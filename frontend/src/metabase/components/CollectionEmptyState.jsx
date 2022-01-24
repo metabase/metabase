@@ -4,8 +4,6 @@ function CollectionEmptyState() {
   return (
     <svg
       data-testid="collection-empty-state"
-      width="944"
-      height="672"
       viewBox="0 0 944 672"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

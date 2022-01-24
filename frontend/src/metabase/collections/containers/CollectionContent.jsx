@@ -189,7 +189,11 @@ function CollectionContent({
 
                   if (isEmpty && !loadingUnpinnedItems) {
                     return (
-                      <Flex justifyContent="center" mt="3rem">
+                      <Flex
+                        alignItems="start"
+                        justifyContent="center"
+                        mt="3rem"
+                      >
                         <CollectionEmptyState />
                       </Flex>
                     );
