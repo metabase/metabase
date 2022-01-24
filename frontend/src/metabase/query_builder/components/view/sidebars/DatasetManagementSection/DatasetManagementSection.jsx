@@ -10,6 +10,8 @@ import {
   turnDatasetIntoQuestion,
 } from "metabase/query_builder/actions";
 
+import { PLUGIN_MODERATION } from "metabase/plugins";
+
 import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {
   Button,
@@ -68,6 +70,11 @@ function DatasetManagementSection({
           icon="model_framed"
           onClick={turnDatasetIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
+        <PLUGIN_MODERATION.QuestionModerationSection
+          question={dataset}
+          VerifyButton={Button}
+          reviewBannerClassName="mt1"
+        />
       </SectionContent>
     </div>
   );
