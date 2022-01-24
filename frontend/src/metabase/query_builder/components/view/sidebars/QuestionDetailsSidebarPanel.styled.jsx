@@ -27,3 +27,11 @@ export const BorderedSectionContainer = styled.div`
     border-top: 1px solid ${color("border")};
   }
 `;
+
+export const ModerationSectionContainer = styled.div`
+  .Button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+`;
