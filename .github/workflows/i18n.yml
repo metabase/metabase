@@ -18,7 +18,7 @@ jobs:
 
   verify-i18n-files:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
