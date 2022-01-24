@@ -699,14 +699,7 @@
                          {:post [(some? %)]}
                          (-> query qp/process-query :data :results_metadata :columns))
             query-card (fn [query]
-                         {:dataset_query query, :result_metadata (metadata query)})
-            field-ref  (fn [query col-name]
-                         {:post [(some? %)]}
-                         (some
-                          (fn [col]
-                            (when (= (:name col) col-name)
-                              (:field_ref col)))
-                          (metadata query)))]
+                         {:dataset_query query, :result_metadata (metadata query)})]
         (mt/with-temp* [Card [{card-1-id :id} (query-card q1)]
                         Card [{card-2-id :id} (query-card q2)]
                         Card [{card-3-id :id} (query-card q3)]]
