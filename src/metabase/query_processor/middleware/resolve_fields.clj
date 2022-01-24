@@ -13,7 +13,7 @@
     (recur parent-ids)))
 
 (defn resolve-fields*
-  "Resolve all field referenced in the `query`, and store them in the QP Store."
+  "Resolve all field referenced in the `query`, and store them in the QP Store. Returns `query`."
   [query]
   (let [ids (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))]
     (try

@@ -96,7 +96,7 @@
       (seq (:joins m))
       (update :joins (partial mapv add-join-alias-to-fields-if-needed))
 
-      ;; now call `add-join-alias-to-fields-if-needed*` which actually does the wrapping.
+      ;; now call [[add-join-alias-to-fields-if-needed*]] which actually does the wrapping.
       true
       add-join-alias-to-fields-if-needed*)))
 
@@ -107,5 +107,7 @@
     (let [query' (add-join-alias-to-fields-if-needed query)]
       (when-not (= query query')
         (let [[before after] (data/diff query query')]
-          (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
+          (log/tracef "Inferred :field :join-alias info: %s -> %s"
+                      (u/pprint-to-str 'yellow before)
+                      (u/pprint-to-str 'cyan after))))
       (qp query' rff context))))
