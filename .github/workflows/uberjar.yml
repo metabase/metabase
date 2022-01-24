@@ -94,7 +94,7 @@ jobs:
       with:
           name: metabase-ee-uberjar
           path: bin/docker/
-    - name: Move the uberjar to the current dir
+    - name: Move the uberjar to the context dir
       run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
     - name: Set up Docker Buildx
       id: buildx
