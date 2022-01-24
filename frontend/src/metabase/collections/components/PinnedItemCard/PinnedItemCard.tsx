@@ -1,8 +1,7 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
-import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import { Item, Collection } from "metabase/collections/utils";
 
 import {
@@ -59,50 +58,18 @@ function PinnedItemCard({
     }
   };
 
-  const handlePin = useCallback(() => {
-    item.setPinned(false);
-  }, [item]);
-
-  const handleCopy = useCallback(() => {
-    onCopy([item]);
-  }, [item, onCopy]);
-
-  const handleMove = useCallback(() => {
-    onMove([item]);
-  }, [item, onMove]);
-
-  const handleArchive = useCallback(() => {
-    item.setArchived(true);
-  }, [item]);
-
   return (
     <ItemLink className={className} to={item.getUrl()}>
       <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon} />
-            <div
-              onClick={e => {
-                e.stopPropagation();
-                e.preventDefault();
-              }}
-            >
-              <HoverMenu
-                item={item}
-                onPin={collection.can_write ? handlePin : null}
-                onMove={
-                  collection.can_write && item.setCollection ? handleMove : null
-                }
-                onCopy={item.copy ? handleCopy : null}
-                onArchive={
-                  collection.can_write && item.setArchived
-                    ? handleArchive
-                    : null
-                }
-                analyticsContext={ANALYTICS_CONTEXT}
-                className={undefined}
-              />
-            </div>
+            <HoverMenu
+              item={item}
+              collection={collection}
+              onCopy={onCopy}
+              onMove={onMove}
+            />
           </Header>
           <Tooltip
             tooltip={name}

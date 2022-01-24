@@ -5,7 +5,7 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Card from "metabase/components/Card";
-import EntityItem from "metabase/components/EntityItem";
+import ActionMenu from "metabase/collections/components/ActionMenu";
 
 export const ItemCard = styled(Card)``;
 
@@ -20,9 +20,8 @@ export const ItemIcon = styled(Icon)`
   width: 1.7rem;
 `;
 
-export const HoverMenu = styled(EntityItem.Menu)`
+export const HoverMenu = styled(ActionMenu)`
   visibility: hidden;
-  color: ${color("text-medium")};
 `;
 
 export const Title = styled.div`

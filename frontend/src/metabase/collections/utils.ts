@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { canonicalCollectionId } from "metabase/entities/collections";
 
 export type Item = {
   name: string;
@@ -108,4 +107,20 @@ export function isPersonalCollectionChild(
 
 export function isRootCollection(collection: Collection): boolean {
   return collection.id === "root";
+}
+
+export function isItemPinned(item: Item) {
+  return item.collection_position != null;
+}
+
+// API requires items in "root" collection be persisted with a "null" collection ID
+// Also ensure it's parsed as a number
+export function canonicalCollectionId(
+  collectionId: string | null | undefined,
+): number | null {
+  if (collectionId === "root" || collectionId == null) {
+    return null;
+  }
+
+  return parseInt(collectionId, 10);
 }

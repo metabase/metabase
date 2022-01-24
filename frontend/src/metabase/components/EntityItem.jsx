@@ -10,6 +10,7 @@ import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
+import { isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
@@ -78,7 +79,7 @@ function EntityItemMenu({
   className,
   analyticsContext,
 }) {
-  const isPinned = item.collection_position != null;
+  const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
 
   const actions = useMemo(
