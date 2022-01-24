@@ -115,10 +115,10 @@ const createSnowplowPlugin = store => {
 };
 
 const trackSnowplowPageView = url => {
-  const baseUrl = Settings.snowplowUrl();
+  const maskedUrl = new URL(url, Settings.snowplowUrl());
 
   Snowplow.setReferrerUrl("#");
-  Snowplow.setCustomUrl(`${baseUrl}${url}`);
+  Snowplow.setCustomUrl(maskedUrl.href);
   Snowplow.trackPageView();
 };
 
