@@ -1,13 +1,19 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { connect } from "react-redux";
 
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
+import {
+  checkDatabaseSupportsModels,
+  checkCanBeModel,
+} from "metabase/lib/data-modeling/utils";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
+
 import { Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";
@@ -22,15 +28,33 @@ const ICON_SIZE = 18;
 QuestionActionButtons.propTypes = {
   question: PropTypes.object.isRequired,
   canWrite: PropTypes.bool.isRequired,
+  areNestedQueriesEnabled: PropTypes.bool.isRequired,
   onOpenModal: PropTypes.func.isRequired,
 };
 
-function QuestionActionButtons({ question, canWrite, onOpenModal }) {
+function mapStateToProps(state) {
+  return {
+    areNestedQueriesEnabled: getNestedQueriesEnabled(state),
+  };
+}
+
+function QuestionActionButtons({
+  question,
+  canWrite,
+  areNestedQueriesEnabled,
+  onOpenModal,
+}) {
   const isDataset = question.isDataset();
 
   const duplicateTooltip = isDataset
     ? t`Duplicate this model`
     : t`Duplicate this question`;
+
+  const canTurnIntoModel =
+    canWrite &&
+    !isDataset &&
+    areNestedQueriesEnabled &&
+    checkDatabaseSupportsModels(question.query().database());
 
   return (
     <Container data-testid="question-action-buttons">
@@ -65,7 +89,7 @@ function QuestionActionButtons({ question, canWrite, onOpenModal }) {
           />
         </Tooltip>
       )}
-      {canWrite && !isDataset && (
+      {canTurnIntoModel && (
         <Tooltip tooltip={t`Turn this into a model`}>
           <Button
             onlyIcon
@@ -107,4 +131,4 @@ function QuestionActionButtons({ question, canWrite, onOpenModal }) {
   );
 }
 
-export default QuestionActionButtons;
+export default connect(mapStateToProps)(QuestionActionButtons);

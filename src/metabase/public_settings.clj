@@ -181,7 +181,7 @@
   :visibility :public)
 
 (defsetting enable-nested-queries
-  (deferred-tru "Allow using a saved question as the source for other queries?")
+  (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type    :boolean
   :default true
   :visibility :authenticated)

@@ -251,7 +251,7 @@ export default class Question {
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
   @memoize
-  query(): Query {
+  query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
