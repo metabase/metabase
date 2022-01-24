@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const CardRoot = styled(ExternalLink)`
   display: block;

@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   EngineCardIcon,
   EngineCardImage,
