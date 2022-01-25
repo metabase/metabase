@@ -26,7 +26,7 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
-(defmethod i/syncable-schemas :sql-jdbc
+(defmethod i/filtered-syncable-schemas :sql-jdbc
   [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (i/excluded-schemas driver)))
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
@@ -108,7 +108,7 @@
                      (db-tables driver metadata schema db-name-or-nil)))
            (filter (fn [{table-schema :schema, table-name :name}]
                      (i/have-select-privilege? driver conn table-schema table-name))))
-     (i/syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters))))
+     (i/filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod i/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]

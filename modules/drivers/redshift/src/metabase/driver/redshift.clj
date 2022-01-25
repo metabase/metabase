@@ -270,8 +270,11 @@
                         false))))
           reducible))))))
 
-(defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [_ conn metadata schema-inclusion-patterns schema-exclusion-patterns]
-  (reducible-schemas-with-usage-permissions
-   conn
-   (sql-jdbc.sync/syncable-schemas :sql-jdbc conn metadata schema-inclusion-patterns schema-exclusion-patterns)))
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
+  [driver conn metadata schema-inclusion-patterns schema-exclusion-patterns]
+  (let [parent-method (get-method sql-jdbc.sync/filtered-syncable-schemas :sql-jdbc)]
+    (reducible-schemas-with-usage-permissions conn (parent-method driver
+                                                                  conn
+                                                                  metadata
+                                                                  schema-inclusion-patterns
+                                                                  schema-exclusion-patterns))))
