@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import Radio from "metabase/core/components/Radio";
+import { RadioGroup } from "metabase/core/components/Radio";
 import { SelectButtonRoot } from "metabase/core/components/SelectButton";
 import { color } from "metabase/lib/colors";
 
@@ -24,7 +24,7 @@ export const AnimatableContent = styled.div`
 const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
-  ${Radio.BaseItem} {
+  ${RadioGroup} {
     color: ${color("text-dark")};
   }
 
