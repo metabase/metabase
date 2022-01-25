@@ -530,9 +530,9 @@ describe("scenarios > question > joined questions", () => {
         cy.findByText(/Orders/i).click();
         cy.findByText("Discount").click();
       });
-      cy.findAllByTestId("select-button")
-        .contains("Equal to")
-        .click();
+      // Note: had to accommodate this test for the `release-x.42.x` branch
+      // The select field on `master` has `data-testid=select-button`
+      cy.findByText("Equal to").click();
       cy.findByText("Greater than").click();
       cy.findByPlaceholderText("Enter a number").type(0);
       cy.button("Add filter")
