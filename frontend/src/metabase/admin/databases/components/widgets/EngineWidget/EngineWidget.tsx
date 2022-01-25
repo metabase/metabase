@@ -1,11 +1,13 @@
 import React, { useCallback, useMemo, useState } from "react";
-import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import {
+  EngineButtonIcon,
+  EngineButtonRoot,
+  EngineButtonTitle,
   EngineCardIcon,
   EngineCardImage,
   EngineCardRoot,
@@ -14,28 +16,35 @@ import {
   EngineEmptyStateRoot,
   EngineEmptyText,
   EngineExpandButton,
-  EngineInfoIcon,
-  EngineInfoRoot,
-  EngineInfoTitle,
   EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
+import { EngineField, EngineOption } from "./types";
 
-const EngineWidget = ({ field, options, isHosted }) => {
+export interface EngineWidget {
+  field: EngineField;
+  options: EngineOption[];
+  isHosted: boolean;
+}
+
+const EngineWidget = ({
+  field,
+  options,
+  isHosted,
+}: EngineWidget): JSX.Element => {
   if (field.value) {
-    return <EngineInfo field={field} options={options} />;
+    return <EngineButton field={field} options={options} />;
   } else {
     return <EngineSearch field={field} options={options} isHosted={isHosted} />;
   }
 };
 
-EngineWidget.propTypes = {
-  field: PropTypes.object.isRequired,
-  options: PropTypes.array.isRequired,
-  isHosted: PropTypes.bool,
-};
+interface EngineButtonProps {
+  field: EngineField;
+  options: EngineOption[];
+}
 
-const EngineInfo = ({ field, options }) => {
+const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   const option = options.find(option => option.value === field.value);
 
   const handleClick = useCallback(() => {
@@ -43,24 +52,31 @@ const EngineInfo = ({ field, options }) => {
   }, [field]);
 
   return (
-    <EngineInfoRoot>
-      <EngineInfoTitle>{option ? option.name : field.value}</EngineInfoTitle>
-      <EngineInfoIcon
+    <EngineButtonRoot>
+      <EngineButtonTitle>
+        {option ? option.name : field.value}
+      </EngineButtonTitle>
+      <EngineButtonIcon
         name="close"
         size={18}
         aria-label={t`Remove database`}
         onClick={handleClick}
       />
-    </EngineInfoRoot>
+    </EngineButtonRoot>
   );
 };
 
-EngineInfo.propTypes = {
-  field: PropTypes.object.isRequired,
-  options: PropTypes.array.isRequired,
-};
+interface EngineSearchProps {
+  field: EngineField;
+  options: EngineOption[];
+  isHosted: boolean;
+}
 
-const EngineSearch = ({ field, options, isHosted }) => {
+const EngineSearch = ({
+  field,
+  options,
+  isHosted,
+}: EngineSearchProps): JSX.Element => {
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText.length > 0;
 
@@ -89,13 +105,12 @@ const EngineSearch = ({ field, options, isHosted }) => {
   );
 };
 
-EngineSearch.propTypes = {
-  field: PropTypes.object.isRequired,
-  options: PropTypes.array.isRequired,
-  isHosted: PropTypes.bool,
-};
+interface EngineListProps {
+  field: EngineField;
+  options: EngineOption[];
+}
 
-const EngineList = ({ field, options }) => {
+const EngineList = ({ field, options }: EngineListProps): JSX.Element => {
   return (
     <EngineListRoot>
       {options.map(option => (
@@ -105,12 +120,12 @@ const EngineList = ({ field, options }) => {
   );
 };
 
-EngineList.propTypes = {
-  field: PropTypes.object,
-  options: PropTypes.array,
-};
+export interface EngineCardProps {
+  field: EngineField;
+  option: EngineOption;
+}
 
-const EngineCard = ({ field, option }) => {
+const EngineCard = ({ field, option }: EngineCardProps): JSX.Element => {
   const logo = getEngineLogo(option.value);
 
   const handleClick = useCallback(() => {
@@ -129,12 +144,11 @@ const EngineCard = ({ field, option }) => {
   );
 };
 
-EngineCard.propTypes = {
-  field: PropTypes.object,
-  option: PropTypes.object,
-};
+interface EngineEmptyStateProps {
+  isHosted: boolean;
+}
 
-const EngineEmptyState = ({ isHosted }) => {
+const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
   return (
     <EngineEmptyStateRoot>
       <EngineEmptyIcon name="search" size={32} />
@@ -151,11 +165,15 @@ const EngineEmptyState = ({ isHosted }) => {
   );
 };
 
-EngineEmptyState.propTypes = {
-  isHosted: PropTypes.bool,
-};
+interface EngineToggleProps {
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
+}
 
-const EngineToggle = ({ isExpanded, onExpandedChange }) => {
+const EngineToggle = ({
+  isExpanded,
+  onExpandedChange,
+}: EngineToggleProps): JSX.Element => {
   const handleClick = useCallback(() => {
     onExpandedChange(!isExpanded);
   }, [isExpanded, onExpandedChange]);
@@ -171,12 +189,7 @@ const EngineToggle = ({ isExpanded, onExpandedChange }) => {
   );
 };
 
-EngineToggle.propTypes = {
-  isExpanded: PropTypes.bool,
-  onExpandedChange: PropTypes.func,
-};
-
-const getSortedOptions = options => {
+const getSortedOptions = (options: EngineOption[]): EngineOption[] => {
   return options.sort((a, b) => {
     if (a.index >= 0 && b.index >= 0) {
       return a.index - b.index;
@@ -190,7 +203,11 @@ const getSortedOptions = options => {
   });
 };
 
-const getVisibleOptions = (options, isSearching, searchText) => {
+const getVisibleOptions = (
+  options: EngineOption[],
+  isSearching: boolean,
+  searchText: string,
+): EngineOption[] => {
   if (isSearching) {
     return options.filter(e => includesIgnoreCase(e.name, searchText));
   } else {
@@ -198,7 +215,10 @@ const getVisibleOptions = (options, isSearching, searchText) => {
   }
 };
 
-const includesIgnoreCase = (sourceText, searchText) => {
+const includesIgnoreCase = (
+  sourceText: string,
+  searchText: string,
+): boolean => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
 };
 

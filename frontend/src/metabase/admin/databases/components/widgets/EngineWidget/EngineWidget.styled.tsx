@@ -1,9 +1,9 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import Button from "metabase/core/components/Button";
 
 export const EngineSearchRoot = styled.div`
   display: block;
@@ -77,7 +77,7 @@ export const EngineExpandButton = styled(Button)`
   width: 100%;
 `;
 
-export const EngineInfoRoot = styled.div`
+export const EngineButtonRoot = styled.div`
   display: flex;
   align-items: center;
   color: ${color("white")};
@@ -87,12 +87,12 @@ export const EngineInfoRoot = styled.div`
   background-color: ${color("brand")};
 `;
 
-export const EngineInfoTitle = styled.div`
+export const EngineButtonTitle = styled.div`
   flex: 1 0 auto;
   font-size: 1rem;
   font-weight: bold;
 `;
 
-export const EngineInfoIcon = styled(Icon)`
+export const EngineButtonIcon = styled(Icon)`
   cursor: pointer;
 `;
