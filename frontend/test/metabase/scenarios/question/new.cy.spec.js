@@ -49,37 +49,6 @@ describe("scenarios > question > new", () => {
     cy.findByText("Sample3").isVisibleInPopover();
   });
 
-  it("binning on values from joined table should work (metabase#15648)", () => {
-    // Simple question
-    openOrdersTable();
-    cy.findByText("Summarize").click();
-    cy.findByText("Group by")
-      .parent()
-      .findByText("Rating")
-      .click();
-    cy.get(".Visualization .bar").should("have.length", 6);
-
-    // Custom question ("Notebook")
-    openOrdersTable({ mode: "notebook" });
-    cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    popover().within(() => {
-      // Close expanded "Orders" section in order to bring everything else into view
-      cy.get(".List-section-title")
-        .contains(/Orders?/)
-        .click();
-      cy.get(".List-section-title")
-        .contains(/Products?/)
-        .click();
-      cy.findByText("Rating").click();
-    });
-
-    visualize();
-
-    cy.get(".Visualization .bar").should("have.length", 6);
-  });
-
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     openOrdersTable();
     cy.icon("download").realHover();
@@ -357,65 +326,6 @@ describe("scenarios > question > new", () => {
         "**It should display the table with all orders with the selected quantity.**",
       );
       cy.get(".TableInteractive");
-    });
-
-    it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
-      // save "Orders" as question
-      cy.createQuestion({
-        name: "11439",
-        query: { "source-table": ORDERS_ID },
-      });
-
-      // it is essential for this repro to find question following these exact steps
-      // (for example, visiting `/collection/root` would yield different result)
-      openNotebookEditor();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("11439").click();
-      visualize();
-      cy.findAllByTestId("toggle-summarize-sidebar-button")
-        .contains("Summarize")
-        .click();
-
-      cy.findByText("Group by")
-        .parent()
-        .within(() => {
-          cy.log("Reported failing since v0.33.5.1");
-          cy.log(
-            "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
-          );
-
-          cy.findAllByText("Created At")
-            .eq(0)
-            .closest("li")
-            .contains("by month")
-            // realHover() or mousemove don't work for whatever reason
-            // have to use this ugly hack for now
-            .click({ force: true });
-        });
-      // // this step is maybe redundant since it fails to even find "by month"
-      cy.findByText("Hour of Day");
-    });
-
-    it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
-      const questionDetails = {
-        name: "11183",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-        },
-        display: "line",
-      };
-
-      cy.createQuestion(questionDetails, { visitQuestion: true });
-
-      cy.log("Reported missing in v0.33.1");
-      cy.findAllByTestId("select-button")
-        .as("select")
-        .contains(/All Time/i);
-      cy.get("@select").contains(/Month/i);
     });
 
     // flaky test (#19454)
