@@ -47,6 +47,10 @@ If you were manipulating Field or Table aliases, we consolidated a lot of overla
   used consistently across the SQL QP code. If you need to transform generated Field aliases for any reason (such as
   escaping disallowed characters), implement this method.
 
+- `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` has been added, and will eventually replace
+  `metabase.driver.sql-jdbc.sync.interface/syncable-schemas`.  It serves a similar purpose, except that it's also
+  passed the inclusion and exclusion patterns (ex: `auth*,data*`) to further filter schemas that will be synced.
+
 ### Deprecated methods and vars
 
 The following methods and vars are slated for removal in Metabase 0.45.0 unless otherwise noted.
@@ -84,6 +88,10 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
   give drivers a chance to escape automatically generated aliases for joined Fields. This is no longer necessary,
   because `metabase.driver/escape-alias` is called on automatically generates aliases. Implement
   `metabase.driver/escape-alias` if you need to do something special.
+- `metabase.driver.sql-jdbc.sync.interface/syncable-schemas` has been deprecated in favor of
+  `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` (see above). The existing default implementation
+  of `syncable-schemas` currently calls `filtered-syncable-schemas` (with `nil` filters, i.e. the filtering operation
+  is actually a no-op), but it will eventually be removed.
 
 #### Removed Methods and Vars
 
