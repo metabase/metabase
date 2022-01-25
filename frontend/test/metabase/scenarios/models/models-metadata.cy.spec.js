@@ -57,16 +57,16 @@ describe("scenarios > models metadata", () => {
   });
 
   it("should edit native model metadata", () => {
-    cy.createNativeQuestion({
-      name: "Native Model",
-      native: {
-        query: "SELECT * FROM ORDERS",
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
       },
-    }).then(({ body: { id: nativeModelId } }) => {
-      cy.request("PUT", `/api/card/${nativeModelId}`, { dataset: true });
-
-      cy.visit(`/model/${nativeModelId}`);
-    });
+      { visitQuestion: true },
+    );
 
     openDetailsSidebar();
 
