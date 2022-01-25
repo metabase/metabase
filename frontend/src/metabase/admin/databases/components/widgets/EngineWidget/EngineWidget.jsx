@@ -21,8 +21,6 @@ import {
   EngineSearchRoot,
 } from "./EngineWidget.styled";
 
-const DEFAULT_OPTIONS_COUNT = 6;
-
 const EngineWidget = ({ field, options, isHosted }) => {
   if (field.value) {
     return <EngineInfo field={field} options={options} />;
@@ -64,17 +62,15 @@ EngineInfo.propTypes = {
 
 const EngineSearch = ({ field, options, isHosted }) => {
   const [searchText, setSearchText] = useState("");
-  const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
-  const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
     return getSortedOptions(options);
   }, [options]);
 
   const visibleOptions = useMemo(
-    () => getVisibleOptions(sortedOptions, isExpanded, isSearching, searchText),
-    [sortedOptions, isExpanded, isSearching, searchText],
+    () => getVisibleOptions(sortedOptions, isSearching, searchText),
+    [sortedOptions, isSearching, searchText],
   );
 
   return (
@@ -88,12 +84,6 @@ const EngineSearch = ({ field, options, isHosted }) => {
         <EngineList field={field} options={visibleOptions} />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
-      )}
-      {!isSearching && hasMoreOptions && (
-        <EngineToggle
-          isExpanded={isExpanded}
-          onExpandedChange={setIsExpanded}
-        />
       )}
     </EngineSearchRoot>
   );
@@ -200,13 +190,11 @@ const getSortedOptions = options => {
   });
 };
 
-const getVisibleOptions = (options, isExpanded, isSearching, searchText) => {
+const getVisibleOptions = (options, isSearching, searchText) => {
   if (isSearching) {
     return options.filter(e => includesIgnoreCase(e.name, searchText));
-  } else if (isExpanded) {
-    return options;
   } else {
-    return options.slice(0, DEFAULT_OPTIONS_COUNT);
+    return options;
   }
 };
 
