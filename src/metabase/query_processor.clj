@@ -62,7 +62,8 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.query-processor.middleware.permissions :as qp.perms]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -74,58 +75,63 @@
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))
 
-;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
+;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM
 (def default-middleware
   "The default set of middleware applied to queries ran via `process-query`."
-  [#'mbql-to-native/mbql->native
-   #'check-features/check-features
-   #'limit/limit
-   #'cache/maybe-return-cached-results
-   #'optimize-temporal-filters/optimize-temporal-filters
-   #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'auto-parse-filter-values/auto-parse-filter-values
-   #'wrap-value-literals/wrap-value-literals
-   #'annotate/add-column-info
-   #'perms/check-query-permissions
-   #'pre-alias-ags/pre-alias-aggregations
-   #'cumulative-ags/handle-cumulative-aggregations
+  [#'mbql-to-native/mbql->native                                      ; EXECUTE
+   #'check-features/check-features                                    ; PRE
+   #'limit/limit-result-rows-middleware                               ; POST
+   #'limit/add-default-limit-middleware                               ; PRE
+   #'cache/maybe-return-cached-results                                ; EXECUTE
+   #'optimize-temporal-filters/optimize-temporal-filters              ; PRE
+   #'validate-temporal-bucketing/validate-temporal-bucketing          ; PRE
+   #'auto-parse-filter-values/auto-parse-filter-values                ; PRE
+   #'wrap-value-literals/wrap-value-literals                          ; PRE
+   #'annotate/add-column-info                                         ; POST
+   #'perms/check-query-permissions                                    ; EXECUTE
+   #'pre-alias-ags/pre-alias-aggregations                             ; PRE
+   #'cumulative-ags/sum-cumulative-aggregation-columns-middleware     ; POST
+   #'cumulative-ags/rewrite-cumulative-aggregations-middleware        ; PRE
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
-   #'viz-settings/update-viz-settings
-   #'fix-bad-refs/fix-bad-references-middleware
-   #'resolve-joined-fields/resolve-joined-fields
-   #'resolve-joins/resolve-joins
-   #'add-implicit-joins/add-implicit-joins
-   #'large-int-id/convert-id-to-string
-   #'format-rows/format-rows
-   #'add-default-temporal-unit/add-default-temporal-unit
-   #'desugar/desugar
-   #'binning/update-binning-strategy
-   #'resolve-fields/resolve-fields
-   #'add-dim/add-remapping
-   #'implicit-clauses/add-implicit-clauses
-   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
-   #'upgrade-field-literals/upgrade-field-literals
-   #'add-source-metadata/add-source-metadata-for-source-queries
-   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
-   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'bucket-datetime/auto-bucket-datetimes
-   #'resolve-source-table/resolve-source-tables
-   #'parameters/substitute-parameters
-   #'resolve-referenced/resolve-referenced-card-resources
-   #'expand-macros/expand-macros
-   #'add-timezone-info/add-timezone-info
-   #'splice-params-in-response/splice-params-in-response
-   #'resolve-database-and-driver/resolve-database-and-driver
-   #'fetch-source-query/resolve-card-id-source-tables
-   #'store/initialize-store
-   #'validate/validate-query
-   #'normalize/normalize
-   #'add-rows-truncated/add-rows-truncated
-   (resolve 'ee.audit/handle-internal-queries)
-   #'results-metadata/record-and-return-metadata!])
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
-;; `substitute-parameters`
+   (resolve 'ee.sandbox.rows/merge-sandboxing-metadata-middleware)    ; POST
+   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)             ; PRE
+   #'viz-settings/update-viz-settings                                 ; POST
+   #'fix-bad-refs/fix-bad-references-middleware                       ; PRE
+   #'resolve-joined-fields/resolve-joined-fields                      ; PRE
+   #'resolve-joins/resolve-joins                                      ; PRE
+   #'add-implicit-joins/add-implicit-joins                            ; PRE
+   #'large-int-id/convert-id-to-string                                ; POST
+   #'format-rows/format-rows                                          ; POST
+   #'add-default-temporal-unit/add-default-temporal-unit              ; PRE
+   #'desugar/desugar                                                  ; PRE
+   #'binning/update-binning-strategy                                  ; PRE
+   #'resolve-fields/resolve-fields                                    ; PRE
+   #'add-dim/remap-results-middleware                                 ; POST
+   #'add-dim/add-remapped-columns-middleware                          ; PRE
+   #'implicit-clauses/add-implicit-clauses                            ; PRE
+   (resolve 'ee.sandbox.rows/merge-sandboxing-metadata-middleware)    ; POST
+   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)             ; PRE
+   #'upgrade-field-literals/upgrade-field-literals                    ; PRE
+   #'add-source-metadata/add-source-metadata-for-source-queries       ; PRE
+   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check) ; EXECUTE
+   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing    ; PRE
+   #'bucket-datetime/auto-bucket-datetimes                            ; PRE
+   #'resolve-source-table/resolve-source-tables                       ; PRE
+   #'parameters/substitute-parameters                                 ; PRE
+   #'resolve-referenced/resolve-referenced-card-resources             ; PRE
+   #'expand-macros/expand-macros                                      ; PRE
+   #'add-timezone-info/add-timezone-info                              ; POST
+   #'splice-params-in-response/splice-params-in-response              ; POST
+   #'resolve-database-and-driver/resolve-database-and-driver          ; AROUND
+   #'fetch-source-query/resolve-card-id-source-tables                 ; PRE
+   #'store/initialize-store                                           ; AROUND
+   #'validate/validate-query                                          ; PRE
+   #'normalize/normalize                                              ; PRE
+   #'add-rows-truncated/add-rows-truncated                            ; POST
+   #'qp.perms/remove-permissions-key-middleware                       ; PRE
+   (resolve 'ee.audit/handle-internal-queries)                        ; AROUND
+   #'results-metadata/record-and-return-metadata!])                   ; EXECUTE
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
 ;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
 ;; middleware is changed. Outside of dev only build the QP once for performance/locality

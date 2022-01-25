@@ -16,6 +16,8 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
+            [metabase.query-processor.middleware.forty-three :as m.43]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -301,38 +303,54 @@
         (_ :guard (every-pred map? :source-table))
         (assoc &match ::gtap? true)))))
 
+(defn- expected-cols [query]
+  (binding [*current-user-permissions-set* (atom #{"/"})]
+    ((requiring-resolve 'metabase.query-processor/query->expected-cols) query)))
+
+(defn- gtapped-query
+  "Apply GTAPs to `query` and return the updated version of `query`."
+  [original-query table-id->gtap]
+  (let [sandboxed-query (apply-gtaps original-query table-id->gtap)]
+    (if (= sandboxed-query original-query)
+      original-query
+      (-> sandboxed-query
+          (assoc ::original-metadata (expected-cols original-query))
+          (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))))
+
+(defn- apply-sandboxing
+  [query]
+  (or (when-let [table-id->gtap (when *current-user-id*
+                                  (query->table-id->gtap query))]
+        (gtapped-query query table-id->gtap))
+      query))
+
+(def apply-sandboxing-middleware
+  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
+  restrict the rows returned, based on presence of segmented permission GTAPs."
+  (m.43/wrap-43-pre-processing-middleware apply-sandboxing))
+
+
+;;;; Post-processing
+
 (defn- merge-metadata
   "Merge column metadata from the non-GTAPped version of the query into the GTAPped results `metadata`. This way the
   final results metadata coming back matches what we'd get if the query was not running with a GTAP."
-  [original-query metadata]
+  [original-metadata metadata]
   (letfn [(merge-cols [cols]
-            (let [expected-cols          (binding [*current-user-permissions-set* (atom #{"/"})]
-                                           ((requiring-resolve 'metabase.query-processor/query->expected-cols) original-query))
-                  col-name->expected-col (u/key-by :name expected-cols)]
+            (let [col-name->expected-col (u/key-by :name original-metadata)]
               (for [col cols]
                 (merge
                  col
                  (get col-name->expected-col (:name col))))))]
     (update metadata :cols merge-cols)))
 
-(defn- gtapped-query
-  "Apply GTAPs to `query` and return the updated version of `query`."
-  [query table-id->gtap context]
-  {:query   (apply-gtaps query table-id->gtap)
-   :context (update context :gtap-perms (fn [perms]
-                                          (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))})
+(defn- merge-sandboxing-metadata
+  [{::keys [original-metadata]} rff]
+  (if original-metadata
+    (fn merge-sandboxing-metadata-rff* [metadata]
+      (rff (merge-metadata original-metadata metadata)))
+    rff))
 
-(defn apply-row-level-permissions
-  "Does the work of swapping the given table the user was querying against with a nested subquery that restricts the
-  rows returned. Will return the original query if there are no segmented permissions found."
-  [qp]
-  (fn [query rff context]
-    (if-let [table-id->gtap (when *current-user-id*
-                              (query->table-id->gtap query))]
-      (let [{query' :query, context' :context} (gtapped-query query table-id->gtap context)]
-        (qp
-         query'
-         (fn [metadata]
-           (rff (merge-metadata query metadata)))
-         context'))
-      (qp query rff context))))
+(def merge-sandboxing-metadata-middleware
+  "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
+  (m.43/wrap-43-post-processing-middleware merge-sandboxing-metadata))
