@@ -19,9 +19,10 @@
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-         {:type     :query
-          :database db-id
-          :query    mbql-query}))
+         {:type       :query
+          :database   db-id
+          :query      mbql-query
+          :middleware {:disable-remaps? true}}))
       :data
       :rows))
 
