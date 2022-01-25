@@ -20,12 +20,15 @@ function PathBreadcrumbs({ collection }) {
   const toggle = () => setIsExpanded(!isExpanded);
 
   const ancestors = collection.effective_ancestors || [];
+  const parts =
+    ancestors[0]?.id === "root" ? ancestors.splice(0, 1) : ancestors;
+
   let content;
-  if (ancestors.length > 1 && !isExpanded) {
+  if (parts.length > 1 && !isExpanded) {
     content = (
       <>
         <CollectionBadge
-          collectionId={ancestors[0].id}
+          collectionId={parts[0].id}
           inactiveColor={"text-medium"}
         />
         <Separator onClick={toggle} />
@@ -44,7 +47,7 @@ function PathBreadcrumbs({ collection }) {
       </>
     );
   } else {
-    content = ancestors.map(collection => (
+    content = parts.map(collection => (
       <>
         <CollectionBadge
           collectionId={collection.id}
