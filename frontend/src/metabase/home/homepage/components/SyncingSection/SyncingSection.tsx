@@ -4,7 +4,7 @@ import React, {
   useLayoutEffect,
   useState,
 } from "react";
-import moment, { Moment, parseZone } from "moment";
+import moment, { Moment } from "moment-timezone";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
@@ -84,7 +84,7 @@ const getSyncingDatabase = (
 
 const isSyncingForLongTime = (database: Database, now: Moment): boolean => {
   if (isSyncInProgress(database)) {
-    const createdAt = parseZone(database.created_at);
+    const createdAt = moment.tz(database.created_at, database.timezone);
     return now.diff(createdAt, "ms") > SYNC_TIMEOUT;
   } else {
     return false;
