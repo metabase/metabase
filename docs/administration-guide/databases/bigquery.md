@@ -90,7 +90,7 @@ We execute the underlying query when you explore data using Summarize or Filter.
 
 _Default: Off_
 
-This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
+Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
 
 ### Periodically refingerprint tables
 
@@ -102,7 +102,7 @@ This enables Metabase to scan for additional field values during syncs allowing 
 
 {% include plans-blockquote.html feature="Database-specific caching" %}
 
-How long to keep question results. By default, Metabase will use the value you supply on the cache settings page, but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
+How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../administration-guide/14-caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
 
 Options are:
 
