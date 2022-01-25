@@ -6,7 +6,7 @@ import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/components/Button";
 
 function getPinnedForeground(disabled) {
   return disabled ? darken(color("border"), 0.38) : color("accent4");
