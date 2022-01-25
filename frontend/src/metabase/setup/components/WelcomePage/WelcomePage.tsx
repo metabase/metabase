@@ -34,6 +34,7 @@ const WelcomePage = ({
         </PageBody>
         <PageButton
           primary
+          autoFocus
           onClick={onStepSubmit}
         >{t`Let's get started`}</PageButton>
       </PageMain>
