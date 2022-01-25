@@ -100,4 +100,53 @@ describe("scenarios > models metadata", () => {
     visualize();
     cy.findByText("Pre-tax ($)");
   });
+
+  it("should allow reverting to a specific metadata revision", () => {
+    cy.intercept("POST", "/api/revision/revert").as("revert");
+
+    cy.createNativeQuestion({
+      name: "Native Model",
+      dataset: true,
+      native: {
+        query: "SELECT * FROM ORDERS",
+      },
+    }).then(({ body: { id: nativeModelId } }) => {
+      cy.visit(`/model/${nativeModelId}/metadata`);
+    });
+
+    openColumnOptions("SUBTOTAL");
+    mapColumnTo({ table: "Orders", column: "Subtotal" });
+    setColumnType("No special type", "Cost");
+    cy.button("Save changes").click();
+
+    // Revision 1
+    cy.findByText("Subtotal ($)");
+    cy.findByText("Tax ($)").should("not.exist");
+    openDetailsSidebar();
+    cy.findByText("Customize metadata").click();
+
+    // Revision 2
+    openColumnOptions("TAX");
+    mapColumnTo({ table: "Orders", column: "Tax" });
+    setColumnType("No special type", "Cost");
+    cy.button("Save changes").click();
+
+    cy.findByText("Subtotal ($)");
+    cy.findByText("Tax ($)");
+
+    cy.reload();
+    openDetailsSidebar();
+
+    sidebar().within(() => {
+      cy.findByText("History").click();
+      cy.findAllByText("Revert")
+        .first()
+        .click();
+    });
+
+    cy.wait("@revert");
+    cy.findByText("Subtotal ($)");
+    cy.findByText("Tax ($)").should("not.exist");
+    cy.findByText("TAX");
+  });
 });
