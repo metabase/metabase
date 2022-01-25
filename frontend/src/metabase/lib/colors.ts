@@ -35,6 +35,7 @@ const colors: Record<string, string> = {
   "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
+  outline: "#CBE7FF",
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",

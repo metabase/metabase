@@ -23,7 +23,7 @@ export default function QuestionNotebookButton({
         borderless={!isShowingNotebook}
         primary={isShowingNotebook}
         medium
-        className={cx(className, {
+        className={cx(className, "text-dark", {
           "text-brand-hover": !isShowingNotebook,
         })}
         icon="notebook"
