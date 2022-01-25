@@ -10,6 +10,7 @@ const propTypes = {
   collection: PropTypes.object,
   analyticsContext: PropTypes.string.isRequired,
   className: PropTypes.string,
+  inactiveColor: PropTypes.string,
 };
 
 const IRREGULAR_ICON_WIDTH = 14;
@@ -21,7 +22,12 @@ const IRREGULAR_ICON_PROPS = {
   targetOffsetX: IRREGULAR_ICON_WIDTH,
 };
 
-function CollectionBadge({ collection, analyticsContext, className }) {
+function CollectionBadge({
+  collection,
+  analyticsContext,
+  className,
+  inactiveColor = "text-light",
+}) {
   if (!collection) {
     return null;
   }
@@ -35,7 +41,7 @@ function CollectionBadge({ collection, analyticsContext, className }) {
       to={collection.getUrl()}
       icon={icon}
       activeColor={icon.color}
-      inactiveColor="text-light"
+      inactiveColor={inactiveColor}
       className={className}
       data-metabase-event={`${analyticsContext};Collection Badge Click`}
     >

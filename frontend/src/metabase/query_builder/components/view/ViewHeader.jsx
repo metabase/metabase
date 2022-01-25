@@ -7,8 +7,6 @@ import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ButtonBar from "metabase/components/ButtonBar";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Link from "metabase/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
@@ -20,6 +18,7 @@ import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQu
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
+import PathBreadcrumbs from "./HeaderBreadcrumbs/PathBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
@@ -157,23 +156,17 @@ export function ViewTitleHeader(props) {
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  lastEditInfo: PropTypes.object,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
-  onOpenQuestionHistory: PropTypes.func.isRequired,
 };
 
 function SavedQuestionLeftSide(props) {
   const {
     question,
-    isObjectDetail,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
-    lastEditInfo,
-    onOpenQuestionHistory,
   } = props;
 
   const onHeaderClick = useCallback(() => {
@@ -190,6 +183,9 @@ function SavedQuestionLeftSide(props) {
 
   return (
     <div>
+      <ViewHeaderLeftSubHeading>
+        <PathBreadcrumbs collectionId={question.collectionId()} />
+      </ViewHeaderLeftSubHeading>
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
@@ -198,28 +194,7 @@ function SavedQuestionLeftSide(props) {
             onClick={onHeaderClick}
           />
         </SavedQuestionHeaderButtonContainer>
-        {lastEditInfo && (
-          <LastEditInfoLabel
-            className="ml1 text-light"
-            item={question.card()}
-            onClick={onOpenQuestionHistory}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
-      <ViewHeaderLeftSubHeading>
-        <CollectionBadge
-          collectionId={question.collectionId()}
-          className="mb1"
-        />
-        {QuestionDataSource.shouldRender(props) && (
-          <QuestionDataSource
-            className="ml3 mb1 pr2"
-            question={question}
-            isObjectDetail={isObjectDetail}
-            subHead
-          />
-        )}
-      </ViewHeaderLeftSubHeading>
     </div>
   );
 }

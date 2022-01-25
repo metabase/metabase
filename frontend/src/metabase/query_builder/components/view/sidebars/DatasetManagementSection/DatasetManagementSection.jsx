@@ -18,8 +18,8 @@ import {
   MetadataIndicatorContainer,
   Row,
   SectionContent,
-  SectionTitle,
 } from "./DatasetManagementSection.styled";
+import { SectionTitle } from "../QuestionDetailsSidebarPanel.styled";
 
 const mapDispatchToProps = {
   setQueryBuilderMode,

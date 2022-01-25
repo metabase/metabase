@@ -169,7 +169,11 @@ export default class View extends React.Component {
     ) : isShowingChartTypeSidebar ? (
       <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
     ) : isShowingQuestionDetailsSidebar ? (
-      <QuestionDetailsSidebar question={question} onOpenModal={onOpenModal} />
+      <QuestionDetailsSidebar
+        {...this.props}
+        question={question}
+        onOpenModal={onOpenModal}
+      />
     ) : null;
 
     const rightSideBar =

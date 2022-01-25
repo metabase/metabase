@@ -35,3 +35,25 @@ export const ModerationSectionContainer = styled.div`
     justify-content: space-between;
   }
 `;
+
+export const LastEditInfoButton = styled.button`
+  display: inline-block;
+  box-sizing: border-box;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  color: ${color("text-medium")};
+  cursor: pointer;
+  font-family: "Lato", sans-serif;
+  font-weight: 500;
+  text-align: left;
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const SectionTitle = styled.span`
+  font-size: 12px;
+  font-weight: 900;
+  color: ${color("text-medium")};
+`;
