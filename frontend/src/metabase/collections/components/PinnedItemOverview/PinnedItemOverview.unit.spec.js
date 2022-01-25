@@ -48,7 +48,7 @@ describe("PinnedItemOverview", () => {
   it("should render an empty banner when there are no items", () => {
     const { container } = setup({ items: [] });
     expect(container.textContent).toContain(
-      "Save your questions, dashboads, and datasets in collections — and pin them to feature them at the top.",
+      "Save your questions, dashboards, and models in collections — and pin them to feature them at the top.",
     );
   });
 });
