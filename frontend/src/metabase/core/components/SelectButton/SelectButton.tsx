@@ -50,4 +50,6 @@ const SelectButton = forwardRef(function SelectButton(
   );
 });
 
-export default SelectButton;
+export default Object.assign(SelectButton, {
+  Root: SelectButtonRoot,
+});
