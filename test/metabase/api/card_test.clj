@@ -472,20 +472,21 @@
         (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
                                                                  (swap! called inc)
                                                                  (orig q))]
-          (let [card (mt/user-http-request :rasta :post 202 "card"
-                                           (card-with-name-and-query "card-name"
-                                                                     query))]
-            (is (= @called 1))
-            (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
-            (mt/user-http-request
-             :rasta :put 202 (str "card/" (:id card))
-             (assoc card
-                    :description "a change that doesn't change the query"
-                    :name "compelling title"
-                    :cache_ttl 20000
-                    :display "table"
-                    :collection_position 1))
-            (is (= @called 1))))))))
+          (mt/with-model-cleanup [Card]
+            (let [card (mt/user-http-request :rasta :post 202 "card"
+                                             (card-with-name-and-query "card-name"
+                                                                       query))]
+              (is (= @called 1))
+              (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+              (mt/user-http-request
+               :rasta :put 202 (str "card/" (:id card))
+               (assoc card
+                      :description "a change that doesn't change the query"
+                      :name "compelling title"
+                      :cache_ttl 20000
+                      :display "table"
+                      :collection_position 1))
+              (is (= @called 1)))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
