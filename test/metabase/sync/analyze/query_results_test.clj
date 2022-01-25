@@ -9,7 +9,6 @@
             [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
-            [metabase.test.data :as data]
             [metabase.test.mock.util :as mock.u]
             [metabase.test.sync :as sync-test]
             [metabase.test.util :as tu]
