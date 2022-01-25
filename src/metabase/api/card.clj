@@ -185,7 +185,9 @@
   (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
     (cond
       ;; query didn't change, preserve existing metadata
-      (and (= original-query query) valid-metadata?)
+      (and (= (mbql.normalize/normalize original-query)
+              (mbql.normalize/normalize query))
+           valid-metadata?)
       (a/to-chan! [metadata])
 
       ;; valid metadata was passed in, its a dataset, so get metadata and then blend in to preserve possible edits in

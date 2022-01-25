@@ -443,21 +443,49 @@
 (deftest updating-card-updates-metadata
   (let [query          (mt/mbql-query :venues {:fields [$id $name]})
         modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
-        norm           (comp str/upper-case :name)]
-    (mt/with-model-cleanup [Card]
-      (let [{metadata :result_metadata
-             card-id  :id :as card} (mt/user-http-request
-                                     :rasta :post 202
-                                     "card"
-                                     (card-with-name-and-query "card-name"
-                                                               query))]
-        (is (= ["ID" "NAME"] (map norm metadata)))
-        ;; simulate a user changing the query without rerunning the query
-        (mt/user-http-request
-         :rasta :put 202 (str "card/" card-id)
-         (assoc card :dataset_query modified-query))
-        (is (= ["ID" "NAME" "PRICE"]
-               (map norm (db/select-one-field :result_metadata Card :id card-id))))))))
+        norm           (comp str/upper-case :name)
+        to-native      (fn [q]
+                         {:database (:database q)
+                          :type     :native
+                          :native   (mt/query->native q)})]
+    (testing "Updating query updates metadata"
+      (doseq [[query-type query modified-query] [["mbql"   query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                           :rasta :post 202
+                                           "card"
+                                           (card-with-name-and-query "card-name"
+                                                                     query))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              ;; simulate a user changing the query without rerunning the query
+              (mt/user-http-request
+               :rasta :put 202 (str "card/" card-id)
+               (assoc card :dataset_query modified-query))
+              (is (= ["ID" "NAME" "PRICE"]
+                     (map norm (db/select-one-field :result_metadata Card :id card-id)))))))))
+    (testing "Updating other parts but not query does not update the metadata"
+      (let [orig   qp.async/result-metadata-for-query-async
+            called (atom 0)]
+        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
+                                                                 (swap! called inc)
+                                                                 (orig q))]
+          (let [card (mt/user-http-request :rasta :post 202 "card"
+                                           (card-with-name-and-query "card-name"
+                                                                     query))]
+            (is (= @called 1))
+            (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+            (mt/user-http-request
+             :rasta :put 202 (str "card/" (:id card))
+             (assoc card
+                    :description "a change that doesn't change the query"
+                    :name "compelling title"
+                    :cache_ttl 20000
+                    :display "table"
+                    :collection_position 1))
+            (is (= @called 1))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
