@@ -308,7 +308,7 @@
                 (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
                                          ::qp.perms/perms {:gtaps #{(perms/table-query-path (mt/id :venues))}})))]
         (testing "Make sure the middleware is actually preventing something by disabling it"
-          (with-redefs [qp.perms/remove-permissions-key-middleware identity]
+          (with-redefs [qp.perms/remove-permissions-key identity]
             (is (partial= {:status :completed}
                           (process-query)))))
         (is (thrown-with-msg?

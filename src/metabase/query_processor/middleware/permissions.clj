@@ -115,7 +115,7 @@
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
-  (m.43/wrap-43-pre-processing-middleware remove-permissions-key))
+  (m.43/wrap-43-pre-processing-middleware #'remove-permissions-key))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
