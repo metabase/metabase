@@ -532,31 +532,6 @@ describe("scenarios > question > new", () => {
       cy.findByText("Hour of day").click();
     });
 
-    it("trend visualization should work regardless of column order (metabase#13710)", () => {
-      cy.server();
-      cy.createQuestion({
-        name: "13710",
-        query: {
-          "source-table": ORDERS_ID,
-          breakout: [
-            ["field", ORDERS.QUANTITY, null],
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-        },
-        display: "smartscalar",
-      }).then(({ body: { id: questionId } }) => {
-        cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
-        cy.visit(`/question/${questionId}`);
-        cy.findByText("13710");
-
-        cy.wait("@cardQuery");
-        cy.log("Reported failing on v0.35 - v0.37.0.2");
-        cy.log("Bug: showing blank visualization");
-        cy.get(".ScalarValue").contains("100");
-      });
-    });
-
     it("'read-only' user should be able to resize column width (metabase#9772)", () => {
       cy.signIn("readonly");
       cy.visit("/question/1");
