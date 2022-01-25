@@ -19,6 +19,7 @@ describe("visual tests > models > editor", () => {
       }).then(({ body: { id: MODEL_ID } }) => {
         cy.visit(`/model/${MODEL_ID}/query`);
         cy.wait("@cardQuery");
+        cy.findByText(/Doing science/).should("not.exist");
         cy.percySnapshot(
           "visual tests > models > editor > GUI query > renders query editor correctly",
         );
@@ -33,6 +34,7 @@ describe("visual tests > models > editor", () => {
       }).then(({ body: { id: MODEL_ID } }) => {
         cy.visit(`/model/${MODEL_ID}/metadata`);
         cy.wait("@cardQuery");
+        cy.findByText(/Doing science/).should("not.exist");
         cy.percySnapshot(
           "visual tests > models > editor > GUI query > renders metadata editor correctly",
         );
@@ -51,6 +53,7 @@ describe("visual tests > models > editor", () => {
       }).then(({ body: { id: MODEL_ID } }) => {
         cy.visit(`/model/${MODEL_ID}/query`);
         cy.wait("@cardQuery");
+        cy.findByText(/Doing science/).should("not.exist");
         cy.percySnapshot(
           "visual tests > models > editor > native query > renders query editor correctly",
         );
@@ -67,6 +70,7 @@ describe("visual tests > models > editor", () => {
       }).then(({ body: { id: MODEL_ID } }) => {
         cy.visit(`/model/${MODEL_ID}/metadata`);
         cy.wait("@cardQuery");
+        cy.findByText(/Doing science/).should("not.exist");
         cy.percySnapshot(
           "visual tests > models > editor > native query > renders metadata editor correctly",
         );
