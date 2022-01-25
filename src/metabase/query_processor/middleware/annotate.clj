@@ -12,6 +12,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
@@ -506,7 +507,7 @@
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field u/preserved-keys))))
+                                            (select-keys source-metadata-for-field qputil/preserved-keys))))
         col))))
 
 (declare mbql-cols)
@@ -516,7 +517,7 @@
   (let [columns       (if native-source-query
                         (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
                         (mbql-cols source-query results))]
-    (u/combine-metadata columns source-metadata)))
+    (qputil/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -649,13 +650,13 @@
        (if (= query-type :query)
          (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
                 (seq dataset-metadata)
-                (update :cols u/combine-metadata dataset-metadata)))
+                (update :cols qputil/combine-metadata dataset-metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                           ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                           (seq dataset-metadata)
-                          (update :cols u/combine-metadata dataset-metadata)
+                          (update :cols qputil/combine-metadata dataset-metadata)
                           ;; but we want those column refs removed since they have type info which we don't know yet
                           :always
                           (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]

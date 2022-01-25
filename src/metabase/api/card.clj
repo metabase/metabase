@@ -28,6 +28,7 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
+            [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
@@ -194,7 +195,7 @@
       ;; existing metadata
       (and valid-metadata? dataset?)
       (a/go (let [fresh (a/<! (qp.async/result-metadata-for-query-async query))]
-              (u/combine-metadata fresh metadata)))
+              (qputil/combine-metadata fresh metadata)))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
