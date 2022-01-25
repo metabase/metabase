@@ -276,6 +276,16 @@ describe("getRevisionDescription | questions", () => {
       "changed this from a model to a saved question",
     );
   });
+
+  it("handles metadata changes for models", () => {
+    const revision = getSimpleRevision({
+      field: "result_metadata",
+      before: [{ foo: "" }],
+      after: [{ foo: "bar" }],
+    });
+
+    expect(getRevisionDescription(revision)).toBe("changed the metadata");
+  });
 });
 
 describe("getRevisionDescription | dashboards", () => {
