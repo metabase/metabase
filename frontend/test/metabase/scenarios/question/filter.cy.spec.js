@@ -541,8 +541,7 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     visitQuestionAdhoc({
       dataset_query: {
