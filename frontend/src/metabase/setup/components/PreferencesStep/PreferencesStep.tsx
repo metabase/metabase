@@ -71,6 +71,7 @@ const PreferencesStep = ({
       <StepToggleContainer>
         <StepToggle
           value={isTrackingAllowed}
+          autoFocus
           onChange={onTrackingChange}
           aria-labelledby="anonymous-usage-events-label"
         />

@@ -90,6 +90,7 @@ export const MainContainer = styled.div`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
+  flex-basis: 0;
   position: relative;
 `;
 

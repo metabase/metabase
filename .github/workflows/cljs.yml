@@ -1,18 +1,19 @@
-name: YAML
+name: CLJS
 
 on:
-  pull_request:
   push:
     branches:
       - '**'
     paths:
-    - '**.yml'
-    - '**.yaml'
-    - 'package.json'
+    - 'shared/src/'
+    - '**/package.json'
+    - '**/yarn.lock'
+    - '.github/workflows/**'
+  pull_request:
 
 jobs:
 
-  yaml-linter:
+  shared-tests-cljs:
     runs-on: ubuntu-20.04
     timeout-minutes: 10
     steps:
@@ -21,6 +22,13 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: 14.x
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-cljs-${{ hashFiles('**/deps.edn') }}
     - name: Get yarn cache
       uses: actions/cache@v2
       with:
@@ -32,4 +40,5 @@ jobs:
         path: node_modules
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
-    - run: yarn run lint-yaml
+    - name: Run Cljs tests for shared/ code
+      run: yarn run test-cljs
