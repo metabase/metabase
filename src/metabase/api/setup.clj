@@ -38,24 +38,30 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
+(def ^:dynamic *disallow-api-setup-after-first-user-is-created* true)
+
 (defn- setup-create-user! [{:keys [email first-name last-name password]}]
-  (when-not config/is-test?
-    ;; many tests use /api/setup to setup multiple users
-    (assert (not (setup/has-user-setup)) "setup-create-user! can only be called when no users have been setup."))
+  (when (and *disallow-api-setup-after-first-user-is-created* (setup/has-user-setup))
+    ;; many tests use /api/setup to setup multiple users, so *first-user-only* is redefined by them
+    (throw (ex-info
+            (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
+            {:status-code 403
+             :disallow-api-setup-after-first-user-is-created *disallow-api-setup-after-first-user-is-created*
+             :has-user-setup (setup/has-user-setup)})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                               :email        email
-                               :first_name   first-name
-                               :last_name    last-name
-                               :password     (str (UUID/randomUUID))
-                               :is_superuser true)
+                     :email        email
+                     :first_name   first-name
+                     :last_name    last-name
+                     :password     (str (UUID/randomUUID))
+                     :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (let [session (or (db/insert! Session
-                                  :id      session-id
-                                  :user_id user-id)
+                        :id      session-id
+                        :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
                       (t.models/post-insert (Session (str session-id))))]
       ;; return user ID, session ID, and the Session object itself

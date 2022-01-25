@@ -36,4 +36,10 @@
   :visibility :public
   :type       :boolean
   :setter     :none
-  :getter     (fn [] (db/exists? User)))
+  ;; Once a User is created it's impossible for this to ever become falsey -- deleting the last User is disallowed.
+  ;; After this returns true once the result is cached and it will continue to return true forever without any
+  ;; additional DB hits.
+  :getter     (fn []
+                (let [user-exists? (atom false)]
+                  (or @user-exists?
+                      (reset! user-exists? (db/exists? User))))))

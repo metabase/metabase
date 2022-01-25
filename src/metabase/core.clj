@@ -44,7 +44,7 @@
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn print-setup-url
+(defn- print-setup-url
   "Used to print the setup url during instance initialization."
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
@@ -59,7 +59,7 @@
                                    setup-url
                                    "\n\n")))))
 
-(defn- -init-create-setup-token
+(defn- create-setup-token-and-log-setup-url!
   "Create and set a new setup token and log it."
   []
   (setup/create-token!)   ; we need this here to create the initial token
@@ -110,7 +110,7 @@
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
-      (-init-create-setup-token)
+      (create-setup-token-and-log-setup-url!)
       ;; publish install event
       (events/publish-event! :install {}))
     (init-status/set-progress! 0.9)
