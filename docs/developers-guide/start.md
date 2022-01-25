@@ -9,6 +9,7 @@ This guide contains detailed information on how to work on Metabase codebase.
 ## Setup and build
 
 - [How to set up a development environment](devenv.md)
+- [How to run a development branch of Metabase](running-dev-branch.md)
 - [How to compile your own copy of Metabase](build.md)
 
 ## Working with the code

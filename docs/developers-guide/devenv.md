@@ -11,7 +11,7 @@ The Metabase application has two basic components:
 
 Both components are built and assembled together into a single jar file which runs the entire application.
 
-## 3rd party dependencies
+## Third-party dependencies
 
 Metabase depends on lots of third-party libraries to run, so you'll need to keep those up to date. The Clojure CLI will automatically fetch the dependencies when needed. With JavaScript dependencies, however, you'll need to kick off the installation process manually.
 
