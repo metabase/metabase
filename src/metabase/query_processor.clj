@@ -125,9 +125,9 @@
    #'fetch-source-query/resolve-card-id-source-tables                 ; PRE
    #'store/initialize-store                                           ; AROUND
    #'validate/validate-query                                          ; PRE
+   #'perms/remove-permissions-key-middleware                          ; PRE
    #'normalize/normalize                                              ; PRE
    #'add-rows-truncated/add-rows-truncated                            ; POST
-   #'perms/remove-permissions-key-middleware                       ; PRE
    (resolve 'ee.audit/handle-internal-queries)                        ; AROUND
    #'results-metadata/record-and-return-metadata!])                   ; EXECUTE
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
