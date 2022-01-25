@@ -445,11 +445,7 @@ describe("scenarios > question > new", () => {
     });
 
     it("should show a table info popover when hovering over the table name in the header", () => {
-      openNotebookEditor();
-      cy.contains("Sample Database").click();
-      cy.contains("Orders").click();
-
-      visualize();
+      cy.visit("/question/1");
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
