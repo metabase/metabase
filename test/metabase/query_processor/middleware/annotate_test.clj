@@ -662,7 +662,6 @@
                               :field_ref    &Products.ean})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))
 
-;; metabase#14787
 (deftest col-info-for-fields-from-card-test
   (mt/dataset sample-dataset
     (let [card-1-query (mt/mbql-query orders
@@ -672,7 +671,7 @@
                                    :alias        "Products"}]})]
       (mt/with-temp* [Card [{card-1-id :id} {:dataset_query card-1-query}]
                       Card [{card-2-id :id} {:dataset_query (mt/mbql-query people)}]]
-        (testing "when a nested query is from a saved question, there should be no `:join-alias` on the left side"
+        (testing "when a nested query is from a saved question, there SHOULD be a `:join-alias` on the left side (#14787, #15578)"
           (mt/$ids nil
             (let [base-query (qp/query->preprocessed
                               (mt/mbql-query nil
@@ -683,12 +682,12 @@
                                                  :alias        "Q"}]
                                  :limit        1}))
                   fields     #{%orders.discount %products.title %people.source}]
-              (is (= [{:display_name "Discount" :field_ref [:field %orders.discount nil]}
-                      {:display_name "Products → Title" :field_ref [:field %products.title nil]}
-                      {:display_name "Q → Source" :field_ref [:field %people.source {:join-alias "Q"}]}]
+              (is (= [["Discount"         [:field %orders.discount nil]]
+                      ["Products → Title" [:field %products.title {:join-alias "Products"}]]
+                      ["Q → Source"       [:field %people.source {:join-alias "Q"}]]]
                      (->> (:cols (add-column-info base-query {}))
                           (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref])))))))))))
+                          (map (juxt :display_name :field_ref)))))))))))
 
   (testing "Has the correct display names for joined fields from cards"
     (letfn [(native [query] {:type :native

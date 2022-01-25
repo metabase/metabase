@@ -34,6 +34,11 @@
      (_ :guard (constantly ((set &parents) :source-metadata)))
      &match
 
+     ;; don't complain about stuff if our source query is a native query; it's probably fine to use whatever `:field`
+     ;; clause we want (or at any rate we shouldn't be attempting to fix them)
+     (_ :guard (constantly (get-in inner-query [:source-query :native])))
+     &match
+
      ;; if we have entered a join map and don't have `join-source` info yet, determine that and recurse.
      (m :guard (every-pred map?
                            :condition

@@ -90,12 +90,12 @@
                     (mt/format-rows-by [int int int]))))))))
 
 (deftest feature-check-test
-  (mt/test-drivers (mt/normal-drivers-without-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-without-feature :left-join)
     (testing "Check that trying to use a Foreign Key fails for Mongo and other DBs"
       (is
        (thrown-with-msg?
         clojure.lang.ExceptionInfo
-        (re-pattern (format "%s driver does not support foreign keys" driver/*driver*))
+        (re-pattern (format "%s driver does not support joins" driver/*driver*))
         (mt/dataset tupac-sightings
           (mt/run-mbql-query sightings
             {:order-by [[:asc $city_id->cities.name]

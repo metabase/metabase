@@ -831,31 +831,35 @@
   (testing "Should be able to use a query that contains joins as a source query (#14724)"
     (mt/dataset sample-dataset
       (letfn [(do-test [f]
-                (let [results (mt/run-mbql-query orders
+                (let [query   (mt/mbql-query orders
                                 {:source-query {:source-table $$orders
                                                 :joins        [{:fields       :all
                                                                 :source-table $$products
                                                                 :condition    [:= $product_id &Products.products.id]
                                                                 :alias        "Products"}]}
-                                 :limit        10})]
-                  (is (schema= {:status    (s/eq :completed)
-                                :row_count (s/eq 10)
-                                s/Keyword  s/Any}
-                               results))
+                                 :limit        10})
+                      results (qp/process-query query)]
+                  (mt/with-native-query-testing-context query
+                    (is (schema= {:status    (s/eq :completed)
+                                  :row_count (s/eq 10)
+                                  s/Keyword  s/Any}
+                                 results)))
                   (f results)))]
-        (do-test
-         (fn [results]
-           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
-                   14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
-                   4.0 "2017-12-31T14:41:56.87Z"]
-                  (first (mt/rows results))))))
-        (mt/with-column-remappings [orders.product_id products.title]
+        (testing "source query → query with join"
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                      4.0 "2017-12-31T14:41:56.87Z"]
-                    (first (mt/rows results)))))))))))
+                    (first (mt/rows results)))))))
+        (testing "source query → query with join (with remappings)"
+          (mt/with-column-remappings [orders.product_id products.title]
+            (do-test
+             (fn [results]
+               (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                       14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
+                       4.0 "2017-12-31T14:41:56.87Z" "Awesome Concrete Shoes"] ; <- Extra remapped col
+                      (first (mt/rows results))))))))))))
 
 (deftest inception-metadata-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
@@ -898,7 +902,7 @@
     (mt/dataset sample-dataset
       (doseq [level (range 0 4)]
         (testing (format "with %d level(s) of nesting" level)
-          (letfn [(run-query []
+          (letfn [(run-query [f]
                     (let [query (-> (mt/mbql-query orders
                                       {:source-table $$orders
                                        :joins        [{:fields       :all
@@ -908,46 +912,49 @@
                                        :order-by     [[:asc $id]]
                                        :limit        2})
                                     (mt/nest-query level))]
-                      (qp/process-query query)))]
+                      (mt/with-native-query-testing-context query
+                        (f (qp/process-query query)))))]
             (testing "with no FK remappings"
-              (let [result (run-query)]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 2)
-                              s/Keyword  s/Any}
-                             result))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
-                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
-                        "2017-12-31T14:41:56.87Z"]
-                       (mt/first-row result)))))
+              (run-query
+               (fn [result]
+                 (is (schema= {:status    (s/eq :completed)
+                               :row_count (s/eq 2)
+                               s/Keyword  s/Any}
+                              result))
+                 (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
+                         "2017-12-31T14:41:56.87Z"]
+                        (mt/first-row result))))))
             (mt/with-column-remappings [orders.product_id products.title]
-              (let [result (run-query)]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 2)
-                              s/Keyword  s/Any}
-                             result))
-                (is (=  ["ORDERS.ID"
-                         "ORDERS.USER_ID"
-                         "ORDERS.PRODUCT_ID"
-                         "ORDERS.SUBTOTAL"
-                         "ORDERS.TAX"
-                         "ORDERS.TOTAL"
-                         "ORDERS.DISCOUNT"
-                         "ORDERS.CREATED_AT"
-                         "ORDERS.QUANTITY"
-                         "PRODUCTS.TITLE"
-                         "PRODUCTS.ID"
-                         "PRODUCTS.EAN"
-                         "PRODUCTS.TITLE"
-                         "PRODUCTS.CATEGORY"
-                         "PRODUCTS.VENDOR"
-                         "PRODUCTS.PRICE"
-                         "PRODUCTS.RATING"
-                         "PRODUCTS.CREATED_AT"]
-                        (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
-                        14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
-                        25.1 4.0 "2017-12-31T14:41:56.87Z"]
-                       (mt/first-row result)))))))))))
+              (run-query
+               (fn [result]
+                 (is (schema= {:status    (s/eq :completed)
+                               :row_count (s/eq 2)
+                               s/Keyword  s/Any}
+                              result))
+                 (is (=  ["ORDERS.ID"
+                          "ORDERS.USER_ID"
+                          "ORDERS.PRODUCT_ID"
+                          "ORDERS.SUBTOTAL"
+                          "ORDERS.TAX"
+                          "ORDERS.TOTAL"
+                          "ORDERS.DISCOUNT"
+                          "ORDERS.CREATED_AT"
+                          "ORDERS.QUANTITY"
+                          "PRODUCTS.ID"
+                          "PRODUCTS.EAN"
+                          "PRODUCTS.TITLE"
+                          "PRODUCTS.CATEGORY"
+                          "PRODUCTS.VENDOR"
+                          "PRODUCTS.PRICE"
+                          "PRODUCTS.RATING"
+                          "PRODUCTS.CREATED_AT"
+                          "PRODUCTS.TITLE"]
+                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
+                 (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0 "2017-12-31T14:41:56.87Z"
+                         "Awesome Concrete Shoes"] ; <- extra remapped col]
+                        (mt/first-row result))))))))))))
 
 (deftest handle-unwrapped-joined-fields-correctly-test
   (mt/dataset sample-dataset

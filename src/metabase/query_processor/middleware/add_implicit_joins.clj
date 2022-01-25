@@ -3,7 +3,6 @@
   in the options and adds `:join-alias` info to those `:field` clauses."
   (:refer-clojure :exclude [alias])
   (:require [clojure.set :as set]
-            [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
@@ -96,12 +95,15 @@
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
               (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
                                    (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                        (fk-field-id->join-alias (:source-field opts)))
+                                                        (pr-str (or (fk-field-id->join-alias (:source-field opts))
+                                                                    (:source-field opts))))
                                                    {:resolving  &match
                                                     :candidates fk-field-id->join-alias})))]
                 [:field id-or-name (assoc opts :join-alias join-alias)]))
       (sequential? (:fields form)) (update :fields distinct))))
 
+;; TODO -- we should make this smarter and consider a join to be the same if it has the same `:source-query` or
+;; `:source-table` and the same `:condition` rather than the same `:alias`
 (defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
   [{:keys [joins source-query]} {join-alias :alias, :as join}]
@@ -155,22 +157,32 @@
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those
   `:fields`. Add additional `:fields` to source query if needed to perform the join."
   [form]
-  (let [implicitly-joined-fields  (implicitly-joined-fields form)
-        new-joins      (implicitly-joined-fields->joins implicitly-joined-fields)
-        required-joins (remove (partial already-has-join? form) new-joins)
-        reused-joins   (set/difference (set new-joins) (set required-joins))]
+  (let [implicitly-joined-fields (implicitly-joined-fields form)
+        new-joins                (implicitly-joined-fields->joins implicitly-joined-fields)
+        required-joins           (remove (partial already-has-join? form) new-joins)
+        reused-joins             (set/difference (set new-joins) (set required-joins))]
     (cond-> form
       (seq required-joins) (update :joins (fn [existing-joins]
-                                            (m/distinct-by
-                                             :alias
-                                             (concat existing-joins required-joins))))
+                                            ;; append the new joins if we don't already have them.
+                                            ;; [[metabase.query-processor.middleware.sort-joins]] will sort them down
+                                            ;; the road and make sure the orders make sense in case there are
+                                            ;; dependencies between them.
+                                            (let [existing-aliases (into #{} (map :alias) existing-joins)]
+                                              (into [] cat [existing-joins
+                                                            (remove (comp existing-aliases :alias)
+                                                                    required-joins)]))))
       true                 add-join-alias-to-fields-with-source-field
       true                 (add-fields-to-source reused-joins))))
 
 (defn- resolve-implicit-joins [{:keys [source-query joins], :as inner-query}]
   (let [recursively-resolved (cond-> inner-query
                                source-query (update :source-query resolve-implicit-joins)
-                               (seq joins)  (update :joins (partial map resolve-implicit-joins)))]
+                               (seq joins)  (update :joins (fn [joins]
+                                                             (into []
+                                                                   (map (fn [{:keys [source-query], :as join}]
+                                                                          (cond-> join
+                                                                            source-query (update :source-query resolve-implicit-joins))))
+                                                                   joins))))]
     (resolve-implicit-joins-this-level recursively-resolved)))
 
 
@@ -178,11 +190,13 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- add-implicit-joins* [query]
+(defn add-implicit-joins*
+  "Add implicit joins to an MBQL `query`."
+  [query]
   (if (mbql.u/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/supports? driver/*driver* :foreign-keys)
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+      (when-not (driver/supports? driver/*driver* :left-join)
+        (throw (ex-info (tru "{0} driver does not support joins." driver/*driver*)
                  {:driver driver/*driver*
                   :type   error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))

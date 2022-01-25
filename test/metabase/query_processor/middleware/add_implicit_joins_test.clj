@@ -415,3 +415,66 @@
                                  :source-table $$users
                                  :condition    [:= *user_id &u.users.id]}]
                  :limit        10})))))))
+
+(deftest add-implicit-join-for-field-inside-join-condition-test
+  (testing (str "Make sure we resolve implicit joins correctly for a `:field` with a `:source-field` inside a join "
+                "`:condition`. Implicit joins need to be *prepended* to `:joins` before existing explicit joins.")
+    (mt/dataset sample-dataset
+      (is (query= (mt/mbql-query orders
+                    {:joins  [{:source-table $$reviews
+                               :alias        "Reviews"
+                               :condition    [:=
+                                              &PRODUCTS__via__PRODUCT_ID.product_id->products.id
+                                              &Reviews.reviews.product_id]
+                               :fields       :all}
+                              {:source-table $$products
+                               :alias        "PRODUCTS__via__PRODUCT_ID"
+                               :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                               :fields       :none
+                               :strategy     :left-join
+                               :fk-field-id  %product_id}]
+                     :fields [$id
+                              &PRODUCTS__via__PRODUCT_ID.product_id->products.price
+                              &Reviews.products.id]
+                     :limit  1})
+                  (add-implicit-joins
+                   (mt/mbql-query orders
+                     {:joins  [{:alias        "Reviews"
+                                :source-table $$reviews
+                                :condition    [:= $product_id->products.id &Reviews.reviews.product_id]
+                                :fields       :all}]
+                      :fields [$id $product_id->products.price &Reviews.products.id]
+                      :limit  1}))))
+
+      (testing "\nReuse existing joins if we can."
+        (is (query= (mt/mbql-query orders
+                      {:joins  [{:source-table $$reviews
+                                 :alias        "Reviews"
+                                 :condition    [:=
+                                                &PRODUCTS__via__PRODUCT_ID.product_id->products.id
+                                                &Reviews.reviews.product_id]
+                                 :fields       :all}
+                                {:source-table $$products
+                                 :alias        "PRODUCTS__via__PRODUCT_ID"
+                                 :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                 :fields       :none
+                                 :strategy     :left-join
+                                 :fk-field-id  %product_id}]
+                       :fields [$id
+                                &PRODUCTS__via__PRODUCT_ID.product_id->products.price
+                                &Reviews.products.id]
+                       :limit  1})
+                    (add-implicit-joins
+                     (mt/mbql-query orders
+                       {:joins  [{:alias        "Reviews"
+                                  :source-table $$reviews
+                                  :condition    [:= $product_id->products.id &Reviews.reviews.product_id]
+                                  :fields       :all}
+                                 {:source-table $$products
+                                  :alias        "PRODUCTS__via__PRODUCT_ID"
+                                  :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                  :fields       :none
+                                  :strategy     :left-join
+                                  :fk-field-id  %product_id}]
+                        :fields [$id $product_id->products.price &Reviews.products.id]
+                        :limit  1}))))))))

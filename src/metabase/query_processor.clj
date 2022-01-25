@@ -51,6 +51,7 @@
             [metabase.query-processor.middleware.resolve-referenced :as resolve-referenced]
             [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.middleware.sort-joins :as sort-joins]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
             [metabase.query-processor.middleware.store :as store]
             [metabase.query-processor.middleware.upgrade-field-literals :as upgrade-field-literals]
@@ -89,10 +90,12 @@
    #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
+   #'sort-joins/sort-joins
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'viz-settings/update-viz-settings
    #'fix-bad-refs/fix-bad-references-middleware
+   #'add-dim/add-remapping
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
@@ -102,7 +105,6 @@
    #'desugar/desugar
    #'binning/update-binning-strategy
    #'resolve-fields/resolve-fields
-   #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
    (resolve 'ee.sandbox.rows/apply-row-level-permissions)
    #'upgrade-field-literals/upgrade-field-literals

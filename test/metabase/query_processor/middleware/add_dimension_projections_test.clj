@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
-            [medley.core :as m]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -9,15 +8,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
-
-(def ^:private example-query
-  (delay
-    {:database (mt/id)
-     :type     :query
-     :query    {:source-table (mt/id :venues)
-                :fields       [[:field (mt/id :venues :price) nil]
-                               [:field (mt/id :venues :longitude) nil]
-                               [:field (mt/id :venues :category_id) nil]]}}))
 
 (def ^:private remapped-field
   (delay
@@ -37,63 +27,95 @@
 
 (deftest create-remap-col-tuples
   (testing "make sure we create the remap column tuples correctly"
-    (do-with-fake-remappings-for-category-id
-     (fn []
-       (is (= [[[:field (mt/id :venues :category_id) nil]
-                [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
-                @remapped-field]]
-              (#'add-dim-projections/create-remap-col-tuples [[:field (mt/id :venues :price) nil]
-                                                              [:field (mt/id :venues :longitude) nil]
-                                                              [:field (mt/id :venues :category_id) nil]])))))))
+    (mt/with-everything-store
+      (do-with-fake-remappings-for-category-id
+       (fn []
+         (is (= [[[:field (mt/id :venues :category_id) nil]
+                  [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
+                  @remapped-field]]
+                (#'add-dim-projections/create-remap-col-tuples [[:field (mt/id :venues :price) nil]
+                                                                [:field (mt/id :venues :longitude) nil]
+                                                                [:field (mt/id :venues :category_id) nil]]))))))))
+
+(defn- add-fk-remaps [query]
+  (mt/with-everything-store
+    (mt/with-driver :h2
+      (let [[remaps query] (#'add-dim-projections/add-fk-remaps query)]
+        [remaps (mt/remove-source-metadata query)]))))
 
 (deftest add-fk-remaps-test
-  (do-with-fake-remappings-for-category-id
-   (fn []
-     (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
-       (is (= [[@remapped-field]
-               (update-in @example-query [:query :fields]
-                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
-              (#'add-dim-projections/add-fk-remaps @example-query))))
-
-     (testing "make sure we don't duplicate remappings"
-       (is (= [[@remapped-field]
-               (update-in @example-query [:query :fields]
-                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
-              (#'add-dim-projections/add-fk-remaps
-               (update-in @example-query [:query :fields]
-                          conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])))))
-
-     (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
-       (is (= [[@remapped-field]
-               (-> @example-query
-                   (assoc-in [:query :order-by]
-                             [[:asc [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]]])
-                   (update-in [:query :fields]
-                              conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]))]
-              (-> @example-query
-                  (assoc-in [:query :order-by] [[:asc [:field (mt/id :venues :category_id) nil]]])
-                  (#'add-dim-projections/add-fk-remaps)))))
-
-     (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
-       (is (= [[@remapped-field]
-               (-> @example-query
-                   (assoc-in [:query :aggregation] [[:count]])
-                   (assoc-in [:query :breakout]
-                             [[:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}]
-                              [:field (mt/id :venues :category_id) nil]])
-                   (m/dissoc-in [:query :fields]))]
-              (-> @example-query
-                  (m/dissoc-in [:query :fields])
-                  (assoc-in [:query :aggregation] [[:count]])
-                  (assoc-in [:query :breakout] [[:field (mt/id :venues :category_id) nil]])
-                  (#'add-dim-projections/add-fk-remaps)))))
-
-     (testing "make sure FK remaps work with nested queries"
-       (let [example-query (assoc @example-query :query {:source-query (:query @example-query)})]
+  (letfn [(expected-join []
+            (mt/$ids venues
+              {:strategy     :left-join
+               :alias        "CATEGORIES__via__CATEGORY_ID"
+               :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+               :source-table $$categories
+               :fk-field-id  %category_id}))]
+    (do-with-fake-remappings-for-category-id
+     (fn []
+       (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
          (is (= [[@remapped-field]
-                 (update-in example-query [:query :source-query :fields]
-                            conj [:field (mt/id :categories :name) {:source-field (mt/id :venues :category_id)}])]
-                (#'add-dim-projections/add-fk-remaps example-query))))))))
+                 (mt/mbql-query venues
+                   {:joins  [(expected-join)]
+                    :fields [$price $longitude $category_id &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]
+                    :limit  1})]
+                (add-fk-remaps
+                 (mt/mbql-query venues
+                   {:fields [$price $longitude $category_id]
+                    :limit  1})))))
+
+       (testing "make sure we don't duplicate remappings"
+         (is (= [[@remapped-field]
+                 (mt/mbql-query venues
+                   {:joins  [(expected-join)]
+                    :fields [$price $longitude $category_id &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]
+                    :limit  1})]
+                (add-fk-remaps
+                 (mt/mbql-query venues
+                   {:fields [$price $longitude $category_id &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]
+                    :limit  1})))))
+
+       (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
+         (is (= [[@remapped-field]
+                 (mt/mbql-query venues
+                   {:joins    [(expected-join)]
+                    :fields   [$price $longitude $category_id &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]
+                    :order-by [[:asc &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]]
+                    :limit    1})]
+                (add-fk-remaps
+                 (mt/mbql-query venues
+                   {:fields   [$price $longitude $category_id]
+                    :order-by [[:asc $category_id]]
+                    :limit    1})))))
+
+       (testing "adding FK remaps should replace any existing breakouts for a field with order bys for the FK remapping Field"
+         (is (= [[@remapped-field]
+                 (mt/mbql-query venues
+                   {:joins       [(expected-join)]
+                    :breakout    [&CATEGORIES__via__CATEGORY_ID.category_id->categories.name $category_id]
+                    :aggregation [[:count]]
+                    :limit       1})]
+                (add-fk-remaps
+                 (mt/mbql-query venues
+                   {:breakout    [$category_id]
+                    :aggregation [[:count]]
+                    :limit       1})))))
+
+       (testing "make sure FK remaps work with nested queries"
+         (is (= [[@remapped-field]
+                 (mt/mbql-query venues
+                   {:source-query {:source-table $$venues
+                                   :joins        [(expected-join)]
+                                   :fields       [$price
+                                                  $longitude
+                                                  $category_id
+                                                  &CATEGORIES__via__CATEGORY_ID.category_id->categories.name]}
+                    :limit        1})]
+                (add-fk-remaps
+                 (mt/mbql-query venues
+                   {:source-query {:source-table $$venues
+                                   :fields       [$price $longitude $category_id]}
+                    :limit        1})))))))))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
@@ -282,23 +304,98 @@
                       example-result-cols-category]}
               []))))))
 
+#_(defn- add-fk-remaps [query]
+  (mt/with-everything-store
+    (mt/with-driver :h2
+      (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))
+
 (deftest dimension-remappings-test
   (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
     (mt/dataset sample-dataset
-      (let [query (mt/mbql-query orders
-                    {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
-                     :joins    [{:fields       :all
-                                 :source-table $$products
-                                 :condition    [:= $product_id &Products.products.id]
-                                 :alias        "Products"}]
-                     :order-by [[:asc $id]]
-                     :limit    2})]
-        (doseq [nesting-level [0 1]
-                :let          [query (mt/nest-query query nesting-level)]]
-          (testing (format "nesting level = %d" nesting-level)
-            (mt/with-column-remappings [orders.product_id products.title]
-              (is (= (update-in
-                      query
-                      (concat [:query] (repeat nesting-level :source-query) [:fields])
-                      concat [(mt/$ids orders $product_id->products.title)])
-                     (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))))))))
+      (let [expected-join (mt/$ids orders
+                            {:source-table $$products
+                             :alias        "PRODUCTS__via__PRODUCT_ID"
+                             :strategy     :left-join
+                             :condition    [:=
+                                            $orders.product_id
+                                            &PRODUCTS__via__PRODUCT_ID.products.id]
+                             :fk-field-id  %orders.product_id})]
+        (mt/with-column-remappings [orders.product_id products.title]
+          (testing "Nesting level = 0"
+            (is (query= (mt/mbql-query orders
+                          {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity
+                                      &PRODUCTS__via__PRODUCT_ID.product_id->products.title]
+                           :joins    [{:source-table $$products
+                                       :condition    [:= $product_id &Products.products.id]
+                                       :alias        "Products"
+                                       :strategy     :left-join}
+                                      expected-join]
+                           :order-by [[:asc $id]]
+                           :limit    2})
+                        (second
+                         (add-fk-remaps
+                          (mt/mbql-query orders
+                            {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
+                             :joins    [{:source-table $$products
+                                         :condition    [:= $product_id &Products.products.id]
+                                         :alias        "Products"
+                                         :strategy     :left-join}]
+                             :order-by [[:asc $id]]
+                             :limit    2}))))))
+
+          (testing "Nesting level = 1"
+            (is (query= (mt/mbql-query orders
+                          {:source-query {:source-table $$orders
+                                          :fields       [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity
+                                                         &PRODUCTS__via__PRODUCT_ID.product_id->products.title]
+                                          :joins        [{:source-table $$products
+                                                          :condition    [:= $product_id &Products.products.id]
+                                                          :alias        "Products"
+                                                          :strategy     :left-join}
+                                                         expected-join]
+                                          :order-by     [[:asc $id]]}
+                           :limit        2})
+                        (second
+                         (add-fk-remaps
+                          (mt/mbql-query orders
+                            {:source-query {:source-table $$orders
+                                            :fields       [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
+                                            :joins        [{:source-table $$products
+                                                            :condition    [:= $product_id &Products.products.id]
+                                                            :alias        "Products"
+                                                            :strategy     :left-join}]
+                                            :order-by     [[:asc $id]]}
+                             :limit        2})))))))))))
+
+(deftest add-remappings-inside-joins-test
+  (testing "Remappings should work inside joins (#15578)"
+    (mt/dataset sample-dataset
+      (mt/with-column-remappings [orders.product_id products.title]
+        (is (query= (mt/mbql-query products
+                      {:joins  [{:source-query {:source-table $$orders}
+                                 :alias        "Q1"
+                                 :fields       [&Q1.orders.id
+                                                &Q1.orders.product_id
+                                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->title]
+                                 :condition    [:= $id &Q1.orders.product_id]
+                                 :strategy     :left-join}
+                                {:source-table $$products
+                                 :alias        "PRODUCTS__via__PRODUCT_ID"
+                                 :condition    [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                 :strategy     :left-join
+                                 :fk-field-id  %orders.product_id}]
+                       :fields [&Q1.orders.id
+                                &Q1.orders.product_id
+                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->products.title]
+                       :limit  2})
+                    (second
+                     (add-fk-remaps
+                      (mt/mbql-query products
+                        {:joins  [{:strategy     :left-join
+                                   :source-query {:source-table $$orders}
+                                   :alias        "Q1"
+                                   :condition    [:= $id &Q1.orders.product_id]
+                                   :fields       [&Q1.orders.id
+                                                  &Q1.orders.product_id]}]
+                         :fields [&Q1.orders.id &Q1.orders.product_id]
+                         :limit  2})))))))))

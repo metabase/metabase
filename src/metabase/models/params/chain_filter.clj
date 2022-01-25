@@ -349,18 +349,18 @@
   [field-id                          :- su/IntGreaterThanZero
    constraints                       :- (s/maybe ConstraintsMap)
    {:keys [original-field-id limit]} :- (s/maybe Options)]
-  {:database (field/field-id->database-id field-id)
-   :type     :query
-   :query    (let [source-table-id       (field/field-id->table-id field-id)
-                   joins                 (find-all-joins source-table-id (cond-> (set (keys constraints))
-                                                                           original-field-id (conj original-field-id)))
-                   joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
-                   original-field-clause (when original-field-id
-                                           (let [original-table-id (field/field-id->table-id original-field-id)]
-                                             [:field
-                                              original-field-id
-                                              (when-not (= source-table-id original-table-id)
-                                                {:join-alias (joined-table-alias original-table-id)})]))]
+  {:database   (field/field-id->database-id field-id)
+   :type       :query
+   :query      (let [source-table-id       (field/field-id->table-id field-id)
+                     joins                 (find-all-joins source-table-id (cond-> (set (keys constraints))
+                                                                             original-field-id (conj original-field-id)))
+                     joined-table-ids      (set (map #(get-in % [:rhs :table]) joins))
+                     original-field-clause (when original-field-id
+                                             (let [original-table-id (field/field-id->table-id original-field-id)]
+                                               [:field
+                                                original-field-id
+                                                (when-not (= source-table-id original-table-id)
+                                                  {:join-alias (joined-table-alias original-table-id)})]))]
                (when original-field-id
                  (log/tracef "Finding values of %s, remapped from %s."
                              (name-for-logging Field field-id)
@@ -386,12 +386,13 @@
                              ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
                              ;; Table instead of a LEFT JOIN with this additional filter clause? Would that still
                              ;; work?
-                             :filter    [:not-null original-field-clause]
+                             :filter   [:not-null original-field-clause]
                              ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
                              ;; but sort by [remapped-value]
                              :order-by [[:asc [:field field-id nil]]]}))
                    (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))})
+                   (add-filters source-table-id joined-table-ids constraints)))
+   :middleware {:disable-remaps? true}})
 
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------

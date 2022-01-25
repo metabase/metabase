@@ -23,12 +23,21 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [medley.core :as m]
+  (:require [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
+            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
+            [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -47,10 +56,12 @@
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (s/defn ^:private fields->field-id->remapping-dimension :- (s/maybe {su/IntGreaterThanZero ExternalRemappingDimension})
-  "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
-  are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
+  "Given a sequence of clauses from the `:fields` clause, return a map of `:field` clauses with integer IDs (other clauses
+  are ineligible) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
+    ;; TODO -- this should utilize the QP store, or at least the caching mechanism! (Even better, we can join against
+    ;; `Dimension` when we fetch Fields)
     (u/key-by :field_id (db/select [Dimension :field_id :name :human_readable_field_id]
                           :field_id [:in field-ids]
                           :type     "external"))))
@@ -64,12 +75,14 @@
   get hidden when displayed anyway?)"
   [fields :- [mbql.s/Field]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
-    ;; Reconstruct how we uniquify names in `metabase.query-processor.middleware.annotate`
-    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
+    ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
+    (let [field       (fn [field-id]
+                        (qp.store/fetch-and-store-fields! #{field-id})
+                        (qp.store/field field-id))
+          unique-name (comp (mbql.u/unique-name-generator) :name field)]
       (vec
        (mbql.u/match fields
-         ;; don't match Fields that have been joined from another Table
-         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) (_ :guard (complement (some-fn :join-alias :source-field)))]
+         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) _]
          (let [dimension (field-id->remapping-dimension id)]
            [&match
             [:field (:human_readable_field_id dimension) {:source-field id}]
@@ -99,37 +112,81 @@
        distinct
        vec))
 
+(defn- add-remapped-fields-to-fields [fields]
+  (let [id->remap  (fields->field-id->remapping-dimension fields)
+        new-fields (into []
+                         (comp (map (fn [field]
+                                      (mbql.u/match-one field
+                                        [:field (id :guard (every-pred integer? id->remap)) _]
+                                        (let [remap             (get id->remap id)
+                                              ;; TODO -- using the remapped Field as `:source-field` is only correct if
+                                              ;; the remapped field is an FK, which isn't necessarily true.
+                                              human-readable-id (:human_readable_field_id remap)]
+                                          [:field human-readable-id {:source-field id}]))))
+                               (filter some?))
+                         fields)]
+    (into []
+          (comp cat (distinct))
+          [fields new-fields])))
+
+(defn- add-fk-remaps-one-level
+  [{:keys [fields breakout order-by], :as query} remaps]
+  ;; make sure the query has actually been preprocessed fully
+  (assert (not (keyword? fields)) (str ":fields should not be a keyword. In " (u/pprint-to-str query)))
+  ;; fetch remapping column pairs if any exist...
+  (if-let [remap-col-tuples (not-empty (create-remap-col-tuples (concat fields breakout)))]
+    ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
+    (let [;; make a map of field-id-clause -> fk-clause from the tuples
+          field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
+                                         [field-clause fk-clause]))
+          new-breakout        (update-remapped-breakout field->remapped-col breakout)
+          new-order-by        (update-remapped-order-by field->remapped-col order-by)]
+      (log/tracef "Adding remappings:\n%s" (u/pprint-to-str remap-col-tuples))
+      (swap! remaps concat (map last remap-col-tuples))
+      (cond-> query
+        (seq fields)   (update :fields add-remapped-fields-to-fields)
+        (seq order-by) (assoc :order-by new-order-by)
+        (seq breakout) (assoc :breakout new-breakout)))
+    query))
+
+(s/defn ^:private add-fk-remaps* :- mbql.s/Query
+  [query remaps]
+  (walk/postwalk
+   (fn [form]
+     (if (and (map? form)
+              ((some-fn :source-table :source-query) form))
+       (add-fk-remaps-one-level form remaps)
+       form))
+   query))
+
 (s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
                                     (s/one mbql.s/Query "query")]
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by`
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
-  [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
-  (let [[source-query-remappings query]
-        (if (and source-query (not (:native source-query))) ; Only do lifting if source is MBQL query
-          (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
-            [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
-          [nil query])]
-    ;; fetch remapping column pairs if any exist...
-    (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
-      ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [new-fields          (->> remap-col-tuples
-                                     (map second)
-                                     (concat fields)
-                                     distinct
-                                     vec)
-            ;; make a map of field-id-clause -> fk-clause from the tuples
-            field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
-                                           [field-clause fk-clause]))
-            new-breakout        (update-remapped-breakout field->remapped-col breakout)
-            new-order-by        (update-remapped-order-by field->remapped-col order-by)]
-        ;; return the Dimensions we are using and the query
-        [(concat source-query-remappings (map last remap-col-tuples))
-         (cond-> query
-           (seq fields)   (assoc-in [:query :fields] new-fields)
-           (seq order-by) (assoc-in [:query :order-by] new-order-by)
-           (seq breakout) (assoc-in [:query :breakout] new-breakout))])
-      ;; otherwise return query as-is
-      [source-query-remappings query])))
+  [{inner-query :query, :as query} :- mbql.s/Query]
+  (let [remaps (atom [])
+        query' (add-fk-remaps* query remaps)]
+    [@remaps (if (= query query')
+               query
+               (try
+                 ;; we need to recursively do a bunch of transformations on the query after adding all the new fields to
+                 ;; it. Not 100% sure we need to call [[resolve-fields/resolve-fields*]] three times but it doesn't hurt
+                 ;; and it's better safe than sorry I guess.
+                 (-> query'
+                     resolve-fields/resolve-fields*
+                     resolve-source-table/resolve-source-tables*
+                     add-implicit-joins/add-implicit-joins*
+                     resolve-fields/resolve-fields*
+                     add-source-metadata/add-source-metadata-for-source-queries*
+                     resolve-joins/resolve-joins*
+                     resolve-fields/resolve-fields*)
+                 (catch Throwable e
+                   (throw (ex-info (tru "Error recursively preprocessing query after adding remapped columns: {0}"
+                                        (ex-message e))
+                                   {:type   qp.error-type/qp
+                                    :before query
+                                    :after  query'}
+                                   e)))))]))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------

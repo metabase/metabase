@@ -256,3 +256,36 @@
                                      &Q2.birth_date
                                      &Q2.*count/BigInteger]
                       :limit        3})))))))
+
+(deftest do-not-change-join-alias-test
+  (testing "Do not change the join alias for a `:field` if the query has a matching join inside the source query"
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                    {:source-query
+                     {:source-query
+                      {:source-table $$orders
+                       :joins        [{:source-table $$products
+                                       :alias        "Products"
+                                       :condition    [:= $product_id &Products.products.id]
+                                       :fields       [&Products.products.title]
+                                       :strategy     :left-join}]
+                       :fields       [$id
+                                      $product_id
+                                      &Products.products.title]
+                       :order-by     [[:asc $id]]
+                       :limit        3}
+                      :joins          [{:source-table $$products
+                                        :alias        "PRODUCTS__via__PRODUCT_ID"
+                                        :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                        :strategy     :left-join
+                                        :fk-field-id  %product_id}]
+                      :fields         [$id
+                                       $product_id
+                                       &Products.products.title
+                                       $product_id->&PRODUCTS__via__PRODUCT_ID.products.title]}
+                     :fields [$id
+                              $product_id
+                              &Products.products.title
+                              $product_id->&PRODUCTS__via__PRODUCT_ID.products.title]})]
+        (is (query= query
+                    (wrap-joined-fields query)))))))
