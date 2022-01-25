@@ -143,4 +143,42 @@ describe("scenarios > models query editor", () => {
     cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
     cy.url().should("not.include", "/query");
   });
+
+  it("handles failing queries", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Erroring Model",
+        dataset: true,
+        native: {
+          query: "S",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openDetailsSidebar();
+    cy.findByText("Edit query definition").click();
+
+    cy.findByText(/Syntax error in SQL/);
+    cy.findByText("Metadata").click();
+    cy.findByText(/Syntax error in SQL/);
+    cy.findByText("Query").click();
+
+    cy.get(".ace_content").type("{backspace}SELECT * FROM ORDERS");
+    runNativeQuery();
+    cy.get(".TableInteractive").within(() => {
+      cy.findByText("TAX");
+      cy.findByText("TOTAL");
+    });
+    cy.findByText(/Syntax error in SQL/).should("not.exist");
+
+    cy.button("Save changes").click();
+    cy.wait("@updateCard");
+
+    cy.get(".TableInteractive").within(() => {
+      cy.findByText("TAX");
+      cy.findByText("TOTAL");
+    });
+    cy.findByText(/Syntax error in SQL/).should("not.exist");
+  });
 });

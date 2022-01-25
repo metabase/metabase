@@ -78,6 +78,7 @@ function getSidebar(
   props,
   {
     datasetEditorTab,
+    isQueryError,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -95,6 +96,9 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    if (isQueryError) {
+      return null;
+    }
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       // The field metadata sidebar will appear with an animation once a query completes
@@ -231,7 +235,7 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults && !result.error) {
       focusFirstField();
     }
   }, [result, focusedFieldRef, focusFirstField]);
@@ -361,6 +365,7 @@ function DatasetEditor(props) {
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
+    isQueryError: result?.error,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -425,7 +430,7 @@ function DatasetEditor(props) {
               />
             </DebouncedFrame>
             <TabHintToastContainer
-              isVisible={isEditingMetadata && isTabHintVisible}
+              isVisible={isEditingMetadata && isTabHintVisible && !result.error}
             >
               <TabHintToast onClose={hideTabHint} />
             </TabHintToastContainer>
