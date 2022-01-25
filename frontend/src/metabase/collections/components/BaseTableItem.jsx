@@ -91,7 +91,7 @@ export function BaseTableItem({
           <EntityIconCheckBox
             item={item}
             variant="list"
-            iconName={item.getIcon().name}
+            icon={item.getIcon()}
             pinned={isPinned}
             selectable={canSelect}
             selected={isSelected}

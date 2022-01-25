@@ -23,7 +23,7 @@ import {
 function EntityIconCheckBox({
   item,
   variant,
-  iconName,
+  icon,
   pinned,
   selectable,
   selected,
@@ -51,12 +51,20 @@ function EntityIconCheckBox({
         <Swapper
           startSwapped={selected || showCheckbox}
           defaultElement={
-            <Icon name={iconName} color={"inherit"} size={iconSize} />
+            <Icon
+              name={icon.name}
+              color={icon.color ?? "inherit"}
+              size={iconSize}
+            />
           }
           swappedElement={<CheckBox checked={selected} size={iconSize} />}
         />
       ) : (
-        <Icon name={iconName} color={"inherit"} size={iconSize} />
+        <Icon
+          name={icon.name}
+          color={icon.color ?? "inherit"}
+          size={iconSize}
+        />
       )}
     </EntityIconWrapper>
   );
@@ -171,6 +179,7 @@ const EntityItem = ({
   disabled,
 }) => {
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
+  const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
   return (
     <EntityItemWrapper
@@ -183,7 +192,7 @@ const EntityItem = ({
       <EntityIconCheckBox
         item={item}
         variant={variant}
-        iconName={iconName}
+        icon={icon}
         pinned={pinned}
         selectable={selectable}
         selected={selected}
