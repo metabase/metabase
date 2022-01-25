@@ -48,6 +48,7 @@ describe("scenarios > models metadata", () => {
 
     renameColumn("Subtotal", "Pre-tax");
     setColumnType("No special type", "Cost");
+    cy.button("Save changes").click();
 
     startQuestionFromModel("GUI Model");
 
@@ -91,6 +92,8 @@ describe("scenarios > models metadata", () => {
     renameColumn("Subtotal", "Pre-tax");
 
     setColumnType("No special type", "Cost");
+
+    cy.button("Save changes").click();
 
     startQuestionFromModel("Native Model");
 
