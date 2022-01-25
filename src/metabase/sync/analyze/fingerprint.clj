@@ -59,6 +59,7 @@
 
                               :else
                               (do
+                                ;; TODO: call the multimethod here?
                                 (save-fingerprint! field fingerprint)
                                 (update count-info :updated-fingerprints inc))))
                           (empty-stats-map (count fingerprints))
