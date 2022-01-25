@@ -361,37 +361,37 @@
                                                 original-field-id
                                                 (when-not (= source-table-id original-table-id)
                                                   {:join-alias (joined-table-alias original-table-id)})]))]
-               (when original-field-id
-                 (log/tracef "Finding values of %s, remapped from %s."
-                             (name-for-logging Field field-id)
-                             (name-for-logging Field original-field-id))
-                 (log/tracef "MBQL clause for %s is %s"
-                             (name-for-logging Field original-field-id) (pr-str original-field-clause)))
-               (when (seq joins)
-                 (log/tracef "Generating joins and filters for source %s with joins info\n%s"
-                             (name-for-logging Table source-table-id) (pr-str joins)))
-               (-> (merge {:source-table source-table-id
-                           ;; original-field-id is used to power Field->Field breakouts. We include both remapped and
-                           ;; original
-                           :breakout     (if original-field-clause
-                                           [original-field-clause [:field field-id nil]]
-                                           [[:field field-id nil]])
-                           ;; return the lesser of limit (if set) or max results
-                           :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
-                          (when original-field-clause
-                            { ;; don't return rows that don't have values for the original Field. e.g. if
-                             ;; venues.category_id is remapped to categories.name and we do a search with query 's',
-                             ;; we only want to return [category_id name] tuples where [category_id] is not nil
-                             ;;
-                             ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
-                             ;; Table instead of a LEFT JOIN with this additional filter clause? Would that still
-                             ;; work?
-                             :filter   [:not-null original-field-clause]
-                             ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
-                             ;; but sort by [remapped-value]
-                             :order-by [[:asc [:field field-id nil]]]}))
-                   (add-joins source-table-id joins)
-                   (add-filters source-table-id joined-table-ids constraints)))
+                 (when original-field-id
+                   (log/tracef "Finding values of %s, remapped from %s."
+                               (name-for-logging Field field-id)
+                               (name-for-logging Field original-field-id))
+                   (log/tracef "MBQL clause for %s is %s"
+                               (name-for-logging Field original-field-id) (pr-str original-field-clause)))
+                 (when (seq joins)
+                   (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                               (name-for-logging Table source-table-id) (pr-str joins)))
+                 (-> (merge {:source-table source-table-id
+                             ;; original-field-id is used to power Field->Field breakouts. We include both remapped and
+                             ;; original
+                             :breakout     (if original-field-clause
+                                             [original-field-clause [:field field-id nil]]
+                                             [[:field field-id nil]])
+                             ;; return the lesser of limit (if set) or max results
+                             :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
+                            (when original-field-clause
+                              { ;; don't return rows that don't have values for the original Field. e.g. if
+                               ;; venues.category_id is remapped to categories.name and we do a search with query 's',
+                               ;; we only want to return [category_id name] tuples where [category_id] is not nil
+                               ;;
+                               ;; TODO -- would this be more efficient if we just did an INNER JOIN against the original
+                               ;; Table instead of a LEFT JOIN with this additional filter clause? Would that still
+                               ;; work?
+                               :filter   [:not-null original-field-clause]
+                               ;; for Field->Field remapping we want to return pairs of [original-value remapped-value],
+                               ;; but sort by [remapped-value]
+                               :order-by [[:asc [:field field-id nil]]]}))
+                     (add-joins source-table-id joins)
+                     (add-filters source-table-id joined-table-ids constraints)))
    :middleware {:disable-remaps? true}})
 
 
