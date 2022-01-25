@@ -4,10 +4,8 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import { PulseApi } from "metabase/services";
 import { addUndo } from "metabase/redux/undo";
-import {
-  canonicalCollectionId,
-  getCollectionType,
-} from "metabase/entities/collections";
+import { getCollectionType } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 
