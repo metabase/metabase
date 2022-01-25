@@ -84,8 +84,7 @@
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
   (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
-    ;; TODO: review needed:
-    (check-query-permissions* query context)))
+    (check-query-permissions* query)))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
