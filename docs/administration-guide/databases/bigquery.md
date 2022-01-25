@@ -61,10 +61,17 @@ Here you can specify which datasets you want to sync and scan. Options are:
 For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example,:
 
 ```
-public,auth*
+foo,bar,baz
 ```
 
-You can use patterns like `auth*` to match multiple datasets, in this case any dataset that starts with "auth".
+You can use the `*` wildcard to match multiple datasets.
+
+Let's say you have three datasets: foo, bar, and baz.
+
+- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
+- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+
+Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
 ## Advanced settings
 
