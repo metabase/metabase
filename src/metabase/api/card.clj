@@ -185,6 +185,9 @@
   [original-query query metadata dataset?]
   (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
     (cond
+      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage)
+      (nil? query)
+      (doto (a/chan) a/close!)
       ;; query didn't change, preserve existing metadata
       (and (= (mbql.normalize/normalize original-query)
               (mbql.normalize/normalize query))
@@ -519,7 +522,10 @@
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
-          (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
+          (let [metadata    (a/<! result-metadata-chan)
+                card-updates (cond-> card-updates
+                               (seq metadata)
+                               (assoc :result_metadata metadata))]
             (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
