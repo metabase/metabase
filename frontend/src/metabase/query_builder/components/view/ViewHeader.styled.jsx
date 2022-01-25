@@ -87,7 +87,5 @@ export const FilterHeaderButton = styled(Button)`
 const getDefaultColor = () => color("brand");
 
 export const FilterHeaderContainer = styled.div`
-  padding-left: ${space(3)};
-  padding-bottom: ${space(2)};
-  padding-right: ${space(2)};
+  padding: ${space(2)} ${space(3)} ${space(1)} ${space(3)};
 `;

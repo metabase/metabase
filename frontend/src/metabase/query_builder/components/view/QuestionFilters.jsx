@@ -103,7 +103,7 @@ export function FilterHeaderToggle({
           active={expanded}
           data-testid="filters-visibility-control"
         >
-          {filters.length}
+          <span>{filters.length}</span>
         </FilterHeaderButton>
       </Tooltip>
     </div>
