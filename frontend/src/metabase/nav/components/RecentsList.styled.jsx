@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const EmptyStateContainer = styled.div`
   margin: 3rem 0;

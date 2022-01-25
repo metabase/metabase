@@ -8,7 +8,7 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "theme-ui";
 import { Motion, spring } from "react-motion";
 
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";

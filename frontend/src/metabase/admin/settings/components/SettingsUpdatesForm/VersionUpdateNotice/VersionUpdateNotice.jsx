@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "theme-ui";
 
 import HostingInfoLink from "metabase/admin/settings/components/widgets/HostingInfoLink";
 import Icon from "metabase/components/Icon";

@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 

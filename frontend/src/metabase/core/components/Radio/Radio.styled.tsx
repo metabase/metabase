@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { space, SpaceProps } from "styled-system";
 import { color, lighten } from "metabase/lib/colors";
 import { RadioColorScheme, RadioVariant } from "./types";

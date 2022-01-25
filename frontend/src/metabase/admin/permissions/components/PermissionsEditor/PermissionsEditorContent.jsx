@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 
 import { PermissionsTable } from "../PermissionsTable";
 import Subhead from "metabase/components/type/Subhead";

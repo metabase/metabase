@@ -3,8 +3,8 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
+import { Flex } from "theme-ui";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";

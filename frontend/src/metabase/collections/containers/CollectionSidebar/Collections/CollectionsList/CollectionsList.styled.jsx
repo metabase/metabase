@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   ROOT_COLLECTION,

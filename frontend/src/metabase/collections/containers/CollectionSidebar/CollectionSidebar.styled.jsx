@@ -1,5 +1,6 @@
-import styled, { css } from "styled-components";
-import { Box } from "grid-styled";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+import { Box } from "theme-ui";
 
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
@@ -49,10 +50,7 @@ export const Sidebar = styled(Box.withComponent("aside"))`
   }
 `;
 
-export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  name: "close",
-  size: 20,
-})`
+export const ToggleMobileSidebarIcon = styled(Icon)`
   color: ${color("brand")};
   // margin sizes hard-coded
   // for icon to land on
@@ -65,3 +63,8 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
     display: none;
   }
 `;
+
+ToggleMobileSidebarIcon.defaultProps = {
+  name: "close",
+  size: 20,
+};

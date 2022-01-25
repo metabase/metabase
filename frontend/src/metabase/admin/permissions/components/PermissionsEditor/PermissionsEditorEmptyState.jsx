@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Flex } from "grid-styled";
+import { Flex } from "theme-ui";
 
 import EmptyState from "metabase/components/EmptyState";
 

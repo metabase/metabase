@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 import { t } from "ttag";
 
 import { isSyncCompleted } from "metabase/lib/syncing";

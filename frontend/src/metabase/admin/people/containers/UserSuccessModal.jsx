@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 import { t, jt } from "ttag";
 
 import { connect } from "react-redux";

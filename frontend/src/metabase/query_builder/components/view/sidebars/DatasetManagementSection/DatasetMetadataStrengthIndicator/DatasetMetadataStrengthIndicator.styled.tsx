@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const PercentageLabel = styled.span`

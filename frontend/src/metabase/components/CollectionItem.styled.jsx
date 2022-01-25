@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import { space } from "metabase/styled-components/theme";

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color, alpha, lighten } from "metabase/lib/colors";
 import Link from "metabase/components/Link";
@@ -49,11 +49,13 @@ export const EntityNameLink = styled(Link)`
 
 export const PermissionTableHeaderRow = styled.tr``;
 
-export const HintIcon = forwardRefToInnerRef(styled(Icon).attrs({
-  name: "info",
-  size: 12,
-})`
+export const HintIcon = forwardRefToInnerRef(styled(Icon)`
   color: ${lighten("text-dark", 0.3)};
   margin-left: 0.375rem;
   cursor: pointer;
 `);
+
+HintIcon.defaultProps = {
+  name: "info",
+  size: 12,
+};

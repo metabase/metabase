@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "theme-ui";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";

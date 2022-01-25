@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { t } from "ttag";
 import _ from "underscore";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "theme-ui";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

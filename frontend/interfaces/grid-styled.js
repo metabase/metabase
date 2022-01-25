@@ -1,3 +1,3 @@
-declare module "grid-styled" {
+declare module "theme-ui" {
   declare var exports: any;
 }

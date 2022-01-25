@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 
 import Button from "metabase/core/components/Button";
 

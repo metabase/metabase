@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
+import { Flex, Box } from "theme-ui";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";

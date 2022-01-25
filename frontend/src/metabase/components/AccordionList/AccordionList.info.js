@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import AccordionList from "metabase/components/AccordionList";
 import TippyPopover from "metabase/components/Popover/TippyPopover";

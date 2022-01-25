@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import styled from "styled-components";
-import { Box } from "grid-styled";
+import styled from "@emotion/styled";
+import { Box } from "theme-ui";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 

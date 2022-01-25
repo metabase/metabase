@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex } from "theme-ui";
 
 import User from "metabase/entities/users";
 import { clearTemporaryPassword } from "../people";

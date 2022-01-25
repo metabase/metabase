@@ -14,7 +14,7 @@ import NextStep from "../components/NextStep";
 import * as activityActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "theme-ui";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),

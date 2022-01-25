@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium } from "metabase/styled-components/theme/media-queries";
@@ -10,7 +10,7 @@ import Link from "metabase/components/Link";
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;
 
-export const Table = styled.table.attrs({ className: "ContentTable" })`
+export const Table = styled.table`
   table-layout: fixed;
 
   ${breakpointMaxMedium} {
@@ -24,6 +24,8 @@ export const Table = styled.table.attrs({ className: "ContentTable" })`
     }
   }
 `;
+
+Table.defaultProps = { className: "ContentTable" };
 
 export const ColumnHeader = styled.th`
   font-weight: bold;
@@ -45,11 +47,13 @@ export const ItemLink = styled(Link)`
   }
 `;
 
-export const SortingIcon = styled(Icon).attrs({
-  size: 8,
-})`
+export const SortingIcon = styled(Icon)`
   margin-left: 4px;
 `;
+
+SortingIcon.defaultProps = {
+  size: 8,
+};
 
 export const SortingControlContainer = styled.div`
   display: flex;

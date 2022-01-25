@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
+import { Flex } from "theme-ui";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
@@ -23,10 +23,7 @@ export const MenuContainer = styled(Flex)`
   margin-top: ${space(1)};
 `;
 
-export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  name: "burger",
-  size: 20,
-})`
+export const ToggleMobileSidebarIcon = styled(Icon)`
   cursor: pointer;
   margin: ${space(0)} ${space(2)} 0 ${space(1)};
 
@@ -35,9 +32,12 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   }
 `;
 
-export const DescriptionTooltipIcon = styled(Icon).attrs({
-  name: "info",
-})`
+ToggleMobileSidebarIcon.defaultProps = {
+  name: "burger",
+  size: 20,
+};
+
+export const DescriptionTooltipIcon = styled(Icon)`
   color: ${color("bg-dark")};
   margin-left: ${space(1)};
   margin-right: ${space(1)};
@@ -47,3 +47,7 @@ export const DescriptionTooltipIcon = styled(Icon).attrs({
     color: ${color("brand")};
   }
 `;
+
+DescriptionTooltipIcon.defaultProps = {
+  name: "info",
+};

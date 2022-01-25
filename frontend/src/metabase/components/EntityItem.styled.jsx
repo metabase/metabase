@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import { Flex } from "grid-styled";
+import styled from "@emotion/styled";
+import { Flex } from "theme-ui";
 
 import { alpha, color, darken, lighten } from "metabase/lib/colors";
 

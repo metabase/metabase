@@ -7,7 +7,7 @@ import { getValues } from "redux-form";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "theme-ui";
 
 import title from "metabase/hoc/Title";
 

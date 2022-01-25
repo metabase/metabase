@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import Schemas from "metabase/entities/schemas";

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Label from "metabase/components/type/Label";
@@ -50,13 +50,15 @@ export const ToggleLabel = styled.label`
   margin-right: 1rem;
 `;
 
-export const WarningIcon = forwardRefToInnerRef(styled(Icon).attrs({
-  size: 18,
-  name: "warning",
-})`
+export const WarningIcon = forwardRefToInnerRef(styled(Icon)`
   margin-right: 0.25rem;
   color: ${color("text-light")};
 `);
+
+WarningIcon.defaultProps = {
+  size: 18,
+  name: "warning",
+};
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)`
   color: ${props =>

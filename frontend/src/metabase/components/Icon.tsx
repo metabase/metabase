@@ -1,7 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import React, { Component, forwardRef } from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";

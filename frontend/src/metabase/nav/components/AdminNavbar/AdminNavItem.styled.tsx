@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Link, { LinkProps } from "metabase/components/Link";
 import { alpha, color } from "metabase/lib/colors";
 

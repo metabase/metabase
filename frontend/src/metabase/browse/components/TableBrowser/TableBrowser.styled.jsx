@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import Link from "metabase/components/Link";

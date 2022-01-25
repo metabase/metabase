@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
 import _LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -24,15 +24,17 @@ export const NoWrap = styled.div`
   padding-top: 0.3em 0;
 `;
 
-export const LoadingSpinner = styled(_LoadingSpinner).attrs({
-  size: 18,
-})`
+export const LoadingSpinner = styled(_LoadingSpinner)`
   display: flex;
   flex-grow: 1;
   align-self: center;
   justify-content: center;
   color: ${color("brand")};
 `;
+
+LoadingSpinner.defaultProps = {
+  size: 18,
+};
 
 export const RelativeContainer = styled.div`
   position: relative;

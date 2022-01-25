@@ -1,7 +1,7 @@
 import React, { useState, useMemo, memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
+import { Box, Flex } from "theme-ui";
 
 import EmptyState from "metabase/components/EmptyState";
 import Radio from "metabase/core/components/Radio";

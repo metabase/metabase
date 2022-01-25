@@ -1,25 +1,28 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import { Flex } from "grid-styled";
-import styled, { css } from "styled-components";
+import { Flex } from "theme-ui";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 
 import { alpha } from "metabase/lib/colors";
 
-export const NotebookCell = styled(Flex).attrs({
-  align: "center",
-  flexWrap: "wrap",
-})`
+export const NotebookCell = styled(Flex)`
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
   padding: ${props => props.padding || "14px"};
 `;
 
+NotebookCell.defaultProps = {
+  align: "center",
+  flexWrap: "wrap",
+};
+
 NotebookCell.displayName = "NotebookCell";
 
-const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
+const NotebookCellItemContainer = styled(Flex)`
   font-weight: bold;
   color: ${props => (props.inactive ? props.color : "white")};
   border-radius: 6px;
@@ -39,6 +42,8 @@ const NotebookCellItemContainer = styled(Flex).attrs({ align: "center" })`
     opacity: 0.6;
   }
 `;
+
+NotebookCellItemContainer.defaultProps = { align: "center" };
 
 const CONTAINER_PADDING = "10px";
 
@@ -117,11 +122,13 @@ export function NotebookCellItem({
 NotebookCellItem.displayName = "NotebookCellItem";
 NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
-export const NotebookCellAdd = styled(NotebookCellItem).attrs({
+export const NotebookCellAdd = styled(NotebookCellItem)``;
+
+NotebookCellAdd.defaultProps = {
   inactive: ({ initialAddText }) => initialAddText,
   // eslint-disable-next-line react/display-name
   children: ({ initialAddText }) =>
     initialAddText || <Icon name="add" className="text-white" />,
-})``;
+};
 
 NotebookCellAdd.displayName = "NotebookCellAdd";

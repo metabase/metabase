@@ -1,5 +1,5 @@
-import styled from "styled-components";
-import { Box } from "grid-styled";
+import styled from "@emotion/styled";
+import { Box } from "theme-ui";
 
 import { space } from "metabase/styled-components/theme";
 

@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 import { t } from "ttag";
 
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";

@@ -6,7 +6,7 @@ import cx from "classnames";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex } from "theme-ui";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";

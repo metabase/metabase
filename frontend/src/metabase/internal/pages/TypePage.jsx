@@ -1,5 +1,5 @@
 import React from "react";
-import { Box } from "grid-styled";
+import { Box } from "theme-ui";
 
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";

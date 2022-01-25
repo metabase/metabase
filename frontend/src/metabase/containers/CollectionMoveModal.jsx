@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
-import { Flex } from "grid-styled";
+import { Flex } from "theme-ui";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
 

@@ -1,6 +1,6 @@
 import React from "react";
 import moment from "moment";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import Timeline from "metabase/components/Timeline";
 import { color } from "metabase/lib/colors";

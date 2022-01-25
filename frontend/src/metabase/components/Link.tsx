@@ -1,7 +1,7 @@
 import cx from "classnames";
 import React, { CSSProperties, HTMLProps, ReactNode } from "react";
 import { Link as ReactRouterLink } from "react-router";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, display, hover, space } from "styled-system";
 import Tooltip from "metabase/components/Tooltip";
 import { stripLayoutProps } from "metabase/lib/utils";

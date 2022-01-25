@@ -1,5 +1,5 @@
-import { Box } from "grid-styled";
-import styled from "styled-components";
+import { Box } from "theme-ui";
+import styled from "@emotion/styled";
 
 import { SIDEBAR_WIDTH } from "metabase/collections/constants";
 import { breakpointMinSmall } from "metabase/styled-components/theme/media-queries";
