@@ -1,6 +1,6 @@
 import styled, { css, keyframes } from "styled-components";
-import { RadioGroup } from "metabase/core/components/Radio";
-import { SelectButtonRoot } from "metabase/core/components/SelectButton";
+import Radio from "metabase/core/components/Radio";
+import SelectButton from "metabase/core/components/SelectButton";
 import { color } from "metabase/lib/colors";
 
 const slideInOutAnimation = keyframes`
@@ -24,17 +24,17 @@ export const AnimatableContent = styled.div`
 const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
-  ${RadioGroup} {
+  ${Radio.RadioGroup} {
     color: ${color("text-dark")};
   }
 
-  ${SelectButtonRoot} {
+  ${SelectButton.Root} {
     color: ${color("text-dark")};
     transition: border 0.3s;
     outline: none;
   }
 
-  ${SelectButtonRoot}:focus {
+  ${SelectButton.Root}:focus {
     border-color: ${color("brand")};
   }
 `;
