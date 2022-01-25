@@ -18,12 +18,11 @@
                                                  {:number-of-cans 2}}}]
       (mt/with-db database
         (mt/with-everything-store
-          (let [qp (resolve-db-and-driver/resolve-database-and-driver
-                    (fn [query _rff _context]
+          (let [query {:database (mt/id), :type :query, :query {}}]
+            (is (= {:number-of-cans 2}
+                   (resolve-db-and-driver/do-with-resolved-database-and-driver
+                    query
+                    (fn []
                       (is (= {:resolve-db-test-database-only-setting {:number-of-cans 2}}
                              setting/*database-local-values*))
-                      (resolve-db-test-database-only-setting)))]
-            (is (= {:number-of-cans 2}
-                   (qp {:database (mt/id), :type :query, :query {}}
-                       nil
-                       nil)))))))))
+                      (resolve-db-test-database-only-setting)))))))))))

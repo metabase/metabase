@@ -1,10 +1,9 @@
 (ns metabase.query-processor.middleware.constraints-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test :as mt]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.query-processor.context.default :as context.default]))
+            [metabase.query-processor.context.default :as context.default]
+            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.reducible :as qp.reducible]))
 
 (defn- add-default-userland-constraints [query]
   (let [qp (-> (fn [query _rff context]

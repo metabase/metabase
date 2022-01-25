@@ -1,8 +1,8 @@
 (ns metabase.query-processor.middleware.add-rows-truncated
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
   (:require [metabase.query-processor.interface :as i]
-            [metabase.query-processor.util :as qputil]
-            [metabase.query-processor.middleware.limit :as limit]))
+            [metabase.query-processor.middleware.limit :as limit]
+            [metabase.query-processor.util :as qputil]))
 
 (defn- results-limit
   [{{:keys [max-results max-results-bare-rows]} :constraints

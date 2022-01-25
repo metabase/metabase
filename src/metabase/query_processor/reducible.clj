@@ -61,10 +61,11 @@
                        (:rff context)
                        context.default/default-rff)]
        (wire-up-context-channels! context)
-       (let [thunk (fn [] (try
-                            (qp query rff context)
-                            (catch Throwable e
-                              (context/raisef e context))))]
+       (let [thunk (^:once fn* []
+                    (try
+                      (qp query rff context)
+                      (catch Throwable e
+                        (context/raisef e context))))]
          (log/tracef "Running on separate thread? %s" *run-on-separate-thread?*)
          (if *run-on-separate-thread?*
            (future (thunk))

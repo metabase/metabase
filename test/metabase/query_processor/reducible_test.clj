@@ -9,14 +9,8 @@
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.test :as mt]
-            [metabase.util :as u]))
-
-(deftest quit-test
-  (testing "async-qp should properly handle `quit` exceptions"
-    (let [out-chan ((qp.reducible/async-qp (fn [query rff context]
-                                             (throw (qp.reducible/quit ::bye)))) {})]
-      (is (= ::bye
-             (metabase.test/wait-for-result out-chan))))))
+            [metabase.util :as u]
+            [metabase.query-processor.context :as context]))
 
 (defn- print-rows-rff [metadata]
   (fn
@@ -154,7 +148,7 @@
   (testing "Rows don't actually have to be reducible. And you can build your own QP with your own middleware."
     (is (= {:data {:cols [{:name "n"}]
                    :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
-           ((qp.reducible/sync-qp (qp.reducible/async-qp qp.reducible/pivot))
+           ((qp.reducible/sync-qp (qp.reducible/async-qp context/runf))
             {}
             {:executef (fn [_ _ _ respond]
                          (respond {:cols [{:name "n"}]}

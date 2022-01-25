@@ -109,6 +109,6 @@
                            :aggregation  [[:sum *count/Integer]]
                            :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
                            :limit        1})
-                        add-source-metadata/add-source-metadata-for-source-queries*
+                        add-source-metadata/add-source-metadata-for-source-queries
                         upgrade-field-literals
                         (m/dissoc-in [:query :source-metadata]))))))))

@@ -3,8 +3,10 @@
             [clojure.test :refer :all]
             [metabase.events :as events]
             [metabase.query-processor.context :as context]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.util :as qputil]
             [metabase.test :as mt]))
 
@@ -21,7 +23,7 @@
                                                    (java.util.Arrays/equals a-hash (qputil/query-hash query))))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
-  `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
+  `(do-with-query-execution ~query (fn ~'with-query-execution-fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
   ([query]
@@ -29,10 +31,15 @@
 
   ([query context]
    (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-     (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
-       (if-not (map? result)
-         result
-         (update (:metadata result) :running_time int?))))))
+     (let [qp     (-> (fn qp* [_query rff context]
+                        (context/reducef rff context {} []))
+                      process-userland-query/process-userland-query
+                      qp.reducible/async-qp
+                      qp.reducible/sync-qp)
+           result (qp query context.default/default-rff (merge (context.default/default-context) context))]
+       (-> result
+           (assoc :data {})
+           (update :running_time int?))))))
 
 (deftest success-test
   (let [query {:query? true}]
@@ -70,9 +77,9 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Oops!"
-           (process-userland-query query {:runf (fn [_ _ context]
-                                                  (context/raisef (ex-info "Oops!" {:type error-type/qp})
-                                                                  context))})))
+           (process-userland-query query {:reducef (fn exploding-fn [_ context _ _]
+                                                     (context/raisef (ex-info "Oops!" {:type error-type/qp})
+                                                                     context))})))
       (is (= {:hash         true
               :database_id  nil
               :error        "Oops!"
@@ -94,7 +101,7 @@
     (testing "no viewlog event with nil card id"
       (let [call-count (atom 0)]
         (with-redefs [events/publish-event! (fn [& args] (swap! call-count inc))]
-          (mt/test-qp-middleware process-userland-query/process-userland-query {:query? true} {} [] nil)
+          (process-userland-query {:query? true})
           (is (= 0 @call-count)))))))
 
 (defn- async-middleware [qp]
@@ -107,16 +114,22 @@
     nil))
 
 (deftest cancel-test
-  (let [saved-query-execution? (atom false)]
+  (let [saved-query-execution? (atom false)
+        qp                     (let [qp* (-> (fn qp* [_query rff context]
+                                               (context/reducef rff context {} []))
+                                             process-userland-query/process-userland-query
+                                             async-middleware
+                                             qp.reducible/async-qp)]
+                                 (fn [query context]
+                                   (qp* query context.default/default-rff (merge (context.default/default-context) context))))]
     (with-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
-          (let [out-chan (mt/test-qp-middleware [process-userland-query/process-userland-query async-middleware]
-                                                {} {} []
-                                                {:canceled-chan canceled-chan
-                                                 :async?        true
-                                                 :runf          (fn [_ _ _]
-                                                                  (Thread/sleep 1000))})]
+          (let [out-chan (qp
+                          {}
+                          {:canceled-chan canceled-chan
+                           :async?        true
+                           :reducef       (fn sleep-a-while [& _] (Thread/sleep 1000))})]
             (Thread/sleep 100)
             (a/close! out-chan)))
         (testing "canceled-chan should get get a :cancel message"

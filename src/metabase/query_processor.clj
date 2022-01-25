@@ -32,19 +32,23 @@
                        'metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check))
 
 (defn ^:deprecated query->preprocessed
+  "DEPRECATED: prefer [[preprocess/preprocess]] instead."
   [query]
   (preprocess/preprocess query))
 
 (defn ^:deprecated query->expected-cols
+  "DEPRECATED: prefer [[preprocess/query->expected-cols]] instead."
   [query]
   (preprocess/query->expected-cols query))
 
-(defn ^:deprecated query->native [query]
+(defn ^:deprecated query->native
+  "DEPRECATED: Prefer [[compile/compile]] instead."
+  [query]
   (compile/compile query))
 
-(defn ^:deprecated query->native-with-spliced-params [query]
-  (println "(pr-str query):" (pr-str query)) ; NOCOMMIT
-  (println "(pr-str (compile/compile-and-splice-params query)):" (pr-str (compile/compile-and-splice-params query))) ; NOCOMMIT
+(defn ^:deprecated query->native-with-spliced-params
+  "DEPRECATED: Prefer [[compile/compile-and-splice-params]] instead."
+  [query]
   (:native (compile/compile-and-splice-params query)))
 
 (defmulti process-query*
