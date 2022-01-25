@@ -134,52 +134,56 @@ describe("scenarios > question > filter", () => {
   it("should filter using Custom Expression from aggregated results (metabase#12839)", () => {
     const CE_NAME = "Simple Math";
 
-    cy.createQuestion({
-      name: "12839",
-      query: {
-        filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
-        "source-query": {
-          aggregation: [
-            [
-              "aggregation-options",
-              ["+", 1, 1],
-              { name: CE_NAME, "display-name": CE_NAME },
+    cy.createQuestion(
+      {
+        name: "12839",
+        query: {
+          filter: [">", ["field", CE_NAME, { "base-type": "type/Float" }], 0],
+          "source-query": {
+            aggregation: [
+              [
+                "aggregation-options",
+                ["+", 1, 1],
+                { name: CE_NAME, "display-name": CE_NAME },
+              ],
             ],
-          ],
-          breakout: [["field", PRODUCTS.CATEGORY, null]],
-          "source-table": PRODUCTS_ID,
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
+            "source-table": PRODUCTS_ID,
+          },
         },
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${questionId}/query`).as("cardQuery");
+      { visitQuestion: true },
+    );
 
-      cy.visit(`/question/${questionId}`);
-      cy.wait("@cardQuery");
-
-      cy.log("Reported failing on v0.35.4");
-      cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
-      cy.findAllByText("Gizmo");
-    });
+    cy.log("Reported failing on v0.35.4");
+    cy.log(`Error message: **Column 'source.${CE_NAME}' not found;**`);
+    cy.findAllByText("Gizmo");
   });
 
   it.skip("should not drop aggregated filters (metabase#11957)", () => {
     const AGGREGATED_FILTER = "Count is less than or equal to 20";
 
-    cy.createQuestion({
-      name: "11957",
-      query: {
-        "source-query": {
-          "source-table": ORDERS_ID,
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }]],
+    cy.createQuestion(
+      {
+        name: "11957",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            filter: [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ],
+          },
+          filter: [
+            "<=",
+            ["field", "count", { "base-type": "type/Integer" }],
+            20,
+          ],
         },
-        filter: ["<=", ["field", "count", { "base-type": "type/Integer" }], 20],
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.visit(`/question/${QUESTION_ID}`);
-    });
+      { visitQuestion: true },
+    );
 
     // Test shows two filter collapsed - click on number 2 to expand and show filter names
     cy.icon("filter")
@@ -268,39 +272,42 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should handle post-aggregation filter on questions with joined table (metabase#14811)", () => {
-    cy.createQuestion({
-      name: "14811",
-      query: {
-        "source-query": {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "sum",
-              ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
+    cy.createQuestion(
+      {
+        name: "14811",
+        query: {
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              [
+                "sum",
+                [
+                  "field",
+                  PRODUCTS.PRICE,
+                  { "source-field": ORDERS.PRODUCT_ID },
+                ],
+              ],
             ],
-          ],
-          breakout: [
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+            breakout: [
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+          filter: [
+            "=",
+            ["field", "CATEGORY", { "base-type": "type/Text" }],
+            "Widget",
           ],
         },
-        filter: [
-          "=",
-          ["field", "CATEGORY", { "base-type": "type/Text" }],
-          "Widget",
-        ],
       },
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.server();
-      cy.route("POST", `/api/card/${QUESTION_ID}/query`).as("cardQuery");
+      { visitQuestion: true },
+    );
 
-      cy.visit(`/question/${QUESTION_ID}`);
-
-      cy.wait("@cardQuery").then(xhr => {
-        expect(xhr.response.body.error).not.to.exist;
-      });
-      cy.get(".cellData").contains("Widget");
-      cy.findByText("Showing 1 row");
-    });
+    cy.get(".cellData").contains("Widget");
+    cy.findByText("Showing 1 row");
   });
 
   it("should reject Enter when the filter expression is invalid", () => {
