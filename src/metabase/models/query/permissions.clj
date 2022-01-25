@@ -51,9 +51,12 @@
       [::native]
 
       (m :guard (every-pred map? :source-table))
-      (cons
-       (:source-table m)
-       (query->source-table-ids (dissoc m :source-table)))))))
+      (let [{:keys [source-table]} m]
+        (assert (integer? source-table) (str "Query must be fully preprocessed before calling query->source-table-ids. Got: "
+                                             (pr-str m)))
+        (cons
+         source-table
+         (query->source-table-ids (dissoc m :source-table))))))))
 
 (def ^:private PermsOptions
   "Map of options to be passed to the permissions checking functions."
@@ -126,7 +129,7 @@
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
-      (let [e (ex-info "Error calculating permissions for query"
+      (let [e (ex-info (tru "Error calculating permissions for query: {0}" (ex-message e))
                        {:query (or (u/ignore-exceptions (normalize/normalize query))
                                    query)}
                        e)]

@@ -140,7 +140,7 @@
      (mbql-query-impl/wrap-inner-query <>))))
 
 (defmacro query
-  "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
+  "Like [[mbql-query]], but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like [[mbql-query]],
   automatically adds `:database` and `:type` to the top-level 'outer' query, and `:source-table` to the 'inner' MBQL
   query if not present."
   {:style/indent 1}
@@ -156,7 +156,7 @@
       (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
 (defmacro native-query
-  "Like `mbql-query`, but for native queries."
+  "Wraps an `inner-native-query` with outer query boilerplate appropriate for a native query."
   {:style/indent 0}
   [inner-native-query]
   `{:database (id)

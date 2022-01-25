@@ -44,7 +44,7 @@
 (defn ^:deprecated query->native
   "DEPRECATED: Prefer [[compile/compile]] instead."
   [query]
-  (compile/compile query))
+  (:native (compile/compile query)))
 
 (defn ^:deprecated query->native-with-spliced-params
   "DEPRECATED: Prefer [[compile/compile-and-splice-params]] instead."
@@ -65,16 +65,6 @@
   ([query context]     (process-query* query nil context))
   ([query rff context] (process-query* query rff context)))
 
-(defn- execute* [query rff context]
-  (log/tracef "Query:\n%s" (u/pprint-to-str query))
-  (process-common/ensure-store-and-driver query
-    (let [preprocessed (preprocess/preprocess query)
-          _            (log/tracef "Preprocessed:\n%s" (u/pprint-to-str preprocessed))
-          native       (compile/compile-preprocessed preprocessed)
-          rff          (postprocess/post-processing-xform preprocessed rff)]
-      (log/tracef "Compiled:\n%s" (u/pprint-to-str native))
-      (context/runf native rff context))))
-
 (def ^:private execution-middleware
   [#'cache/maybe-return-cached-results
    (resolve 'metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check/maybe-apply-column-level-perms-check)
@@ -82,19 +72,27 @@
    #'results-metadata/record-and-return-metadata!])
 
 (defn- base-qp [query rff context]
-  (let [rff     (or rff
-                    (:rff context)
-                    (context.default/default-rff))
-        context (merge (context.default/default-context)
-                       context)
-        qp      (reduce
-                 (fn [qp middleware]
-                   (if middleware
-                     (middleware qp)
-                     qp))
-                 execute*
-                 execution-middleware)]
-    (qp query rff context)))
+  (log/tracef "Query:\n%s" (u/pprint-to-str query))
+  (process-common/ensure-store-and-driver query
+    (let [rff          (or rff
+                           (:rff context)
+                           (context.default/default-rff))
+          context      (merge (context.default/default-context)
+                              context)
+          qp           (reduce
+                        (fn [qp middleware]
+                          (if middleware
+                            (middleware qp)
+                            qp))
+                        (fn [preprocessed rff context]
+                          (let [native (compile/compile-preprocessed preprocessed)]
+                            (log/tracef "Compiled:\n%s" (u/pprint-to-str native))
+                            (context/runf native rff context)))
+                        execution-middleware)
+          preprocessed (preprocess/preprocess query)
+          rff          (postprocess/post-processing-xform preprocessed rff)]
+      (log/tracef "Preprocessed:\n%s" (u/pprint-to-str preprocessed))
+      (qp preprocessed rff context))))
 
 (def ^{:arglists '([query] [query context] [query rff context])} process-query-async
   "Process a query asynchronously, returning a `core.async` channel that is called with the final result (or Throwable)."

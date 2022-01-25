@@ -7,6 +7,7 @@
             [metabase.driver.sql.parameters.substitution :as param-substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util :as u]
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]))
@@ -37,7 +38,9 @@
 
 (defmethod driver/mbql->native :sql
   [driver query]
-  (sql.qp/mbql->native driver query))
+  (assert (:database query) (format "Invalid query: %s" (pr-str query)))
+  (u/prog1 (sql.qp/mbql->native driver query)
+    (assert (string? (:query <>)) (format "Expected SQL string, got %s" (pr-str (:query <>))))))
 
 (s/defmethod driver/substitute-native-parameters :sql
   [_ {:keys [query] :as inner-query} :- {:query su/NonBlankString, s/Keyword s/Any}]

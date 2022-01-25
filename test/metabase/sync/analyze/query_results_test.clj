@@ -97,7 +97,7 @@
              (tu/throw-if-called fprint/fingerprinter
                (-> card
                    query-for-card
-                   (assoc-in [:query :fields] [[:field-id (mt/id :venues :longitude)]])
+                   (assoc-in [:query :fields] [[:field (mt/id :venues :longitude) nil]])
                    query->result-metadata
                    name->fingerprints))))))
 
@@ -109,16 +109,16 @@
 (defn- timeseries-dataset
   []
   (->> {:aggregation [[:count]]
-        :breakout    [[:datetime-field [:field-id (data/id :checkins :date)] :month]]}
+        :breakout    [[:field (data/id :checkins :date) {:temporal-unit :month}]]}
        (mt/run-mbql-query checkins)
        :data))
 
 (deftest error-resilience-test
   (testing "Data should come back even if there is an error during fingerprinting"
-    (is (= 36 (mt/suppress-output
-                (with-redefs [fprint/earliest sync-test/crash-fn]
-                  (-> (timeseries-dataset) :rows count))))))
+    (is (= 36
+           (with-redefs [fprint/earliest sync-test/crash-fn]
+             (-> (timeseries-dataset) :rows count)))))
   (testing "Data should come back even if there is an error when calculating insights"
-    (is (= 36 (mt/suppress-output
-                (with-redefs [insights/change sync-test/crash-fn]
-                  (-> (timeseries-dataset) :rows count)))))))
+    (is (= 36
+           (with-redefs [insights/change sync-test/crash-fn]
+             (-> (timeseries-dataset) :rows count))))))

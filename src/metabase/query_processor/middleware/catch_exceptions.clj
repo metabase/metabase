@@ -156,7 +156,8 @@
     (letfn [(raisef* [e context]
               ;; format the Exception and return it
               (let [formatted-exception (format-exception* query e)]
-                (log/error (str (trs "Error processing query: {0}" (:error format-exception))
+                (log/error (str (trs "Error processing query: {0}" (or (:error format-exception)
+                                                                       (ex-message e)))
                                 "\n" (u/pprint-to-str formatted-exception)))
                 (context/resultf formatted-exception context)))]
       (try

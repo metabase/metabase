@@ -16,7 +16,7 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:dynamic ^:deprecated *card-id*
+(def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
@@ -62,7 +62,7 @@
     (when-not (mi/can-read? card)
       (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
                               (mi/perms-objects-set card :read)
-                              {:card-id *card-id*})))))
+                              {:card-id card-id})))))
 
 (declare check-query-permissions*)
 
@@ -87,12 +87,12 @@
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/Map context]
+  [{{:keys [card-id]} ::permissions, :as outer-query} :- su/Map context]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
-    (if *card-id*
+    (if card-id
       (do
-        (check-card-read-perms *card-id*)
+        (check-card-read-perms card-id)
         (when-not (has-data-perms? (required-perms outer-query context))
           (check-block-permissions outer-query)))
       (check-ad-hoc-query-perms outer-query context))))
@@ -108,10 +108,10 @@
     (qp query rff context)))
 
 (defn remove-perms-key
-  "Remove the `::perms/permissions` key from `query` before proceeding. This key is calculated by middleware and used
-  for permissions purposes, and we don't want users to be able to add it themselves."
+  "Remove the `::permissions` key from `query` before proceeding. This key is calculated by middleware and used for
+  permissions purposes, and we don't want users to be able to add it themselves."
   [query]
-  (dissoc query ::perms/permissions))
+  (dissoc query ::permissions))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -120,8 +120,8 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
-  before converting the MBQL query to native.)"
+  [[metabase.query-processor/query->native]] and the `catch-exceptions` middleware to check the user should be allowed
+  to see the native query before converting the MBQL query to native.)"
   [{database-id :database, :as query}]
   (or
    (not *current-user-id*)
