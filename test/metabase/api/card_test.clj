@@ -486,7 +486,18 @@
                       :cache_ttl 20000
                       :display "table"
                       :collection_position 1))
-              (is (= @called 1)))))))))
+              (is (= @called 1)))))))
+    (testing "Patching the card _without_ the query does not clear the metadata"
+      ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
+      (mt/with-model-cleanup [Card]
+        (let [card (mt/user-http-request :rasta :post 202 "card"
+                                         (card-with-name-and-query "card-name"
+                                                                   query))]
+          (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+          (let [updated (mt/user-http-request :rasta :put 202 (str "card/" (:id card))
+                                              {:description "I'm innocently updating the description"
+                                               :dataset true})]
+            (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
