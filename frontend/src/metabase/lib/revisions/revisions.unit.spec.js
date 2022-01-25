@@ -284,7 +284,7 @@ describe("getRevisionDescription | questions", () => {
       after: [{ foo: "bar" }],
     });
 
-    expect(getRevisionDescription(revision)).toBe("changed the metadata");
+    expect(getRevisionDescription(revision)).toBe("edited the metadata");
   });
 });
 
