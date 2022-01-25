@@ -22,15 +22,7 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 
 const HOSTING_FEATURE_KEY = "hosting";
 const STORE_MANAGED_FEATURE_KEY = "metabase-store-managed";
-
-const CLOUD_UTILITY_FEATURES = [HOSTING_FEATURE_KEY, STORE_MANAGED_FEATURE_KEY];
-
-const areAllFeaturesEnabled = (featuresMap: Record<string, boolean>) => {
-  return Object.keys(featuresMap).every(
-    featureKey =>
-      !CLOUD_UTILITY_FEATURES.includes(featureKey) && featuresMap[featureKey],
-  );
-};
+const NO_UPSELL_FEATURE_HEY = "no-upsell";
 
 const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   if (!hasToken) {
@@ -94,10 +86,6 @@ const LicenseAndBillingSettings = ({
     );
   }
 
-  const hasMoreFeaturesAvailable = !areAllFeaturesEnabled(
-    settings["token-features"],
-  );
-
   const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
   const description = getDescription(tokenStatus, !!token);
 
@@ -107,6 +95,8 @@ const LicenseAndBillingSettings = ({
   const shouldShowLicenseInput = !tokenStatus?.features.includes(
     HOSTING_FEATURE_KEY,
   );
+
+  const shouldUpsell = !tokenStatus?.features.includes(NO_UPSELL_FEATURE_HEY);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
@@ -157,7 +147,7 @@ const LicenseAndBillingSettings = ({
         </>
       )}
 
-      {!shouldShowLicenseInput && hasMoreFeaturesAvailable && (
+      {!shouldShowLicenseInput && shouldUpsell && (
         <>
           <SectionHeader>{t`Looking for more?`}</SectionHeader>
           <SectionDescription>
