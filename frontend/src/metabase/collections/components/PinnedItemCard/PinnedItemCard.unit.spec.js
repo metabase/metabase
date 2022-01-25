@@ -76,7 +76,7 @@ describe("PinnedItemCard", () => {
     expect(screen.getByText("A dashboard")).toBeInTheDocument();
   });
 
-  it("should show an action menu when user clicks on the menu icon in the card", async () => {
+  it("should show an action menu when user clicks on the menu icon in the card", () => {
     const { container } = setup();
     userEvent.click(container.querySelector(MENU_ICON_SELECTOR));
     expect(screen.getByText("Unpin this item")).toBeInTheDocument();
