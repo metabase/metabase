@@ -41,11 +41,9 @@
   [table-columns cols]
   (let [col-field-refs (set (remove nil? (map :field_ref cols)))
         col-names      (set (remove nil? (map :name cols)))]
-    ;; If there are no field refs in `cols` (e.g. for native queries), we should use `table-columns` as-is
-    (when (or (empty? col-field-refs)
-              (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
-                                          (col-names (::mb.viz/table-column-name table-col))))
-                      table-columns))
+    (when (every? (fn [table-col] (or (col-field-refs (::mb.viz/table-column-field-ref table-col))
+                                      (col-names (::mb.viz/table-column-name table-col))))
+                  table-columns)
       table-columns)))
 
 (defn- export-column-order
