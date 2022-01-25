@@ -29,7 +29,7 @@ const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
 const shouldUseEslint =
   process.env.WEBPACK_BUNDLE !== "production" &&
-  process.env.DISABLE_ESLINT !== "true";
+  process.env.USE_ESLINT !== "false";
 
 // Babel:
 const BABEL_CONFIG = {
