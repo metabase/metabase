@@ -27,8 +27,9 @@ export const Table = styled.table.attrs({ className: "ContentTable" })`
 `;
 
 export const ColumnHeader = styled.th`
+  font-size: 0.8rem;
   font-weight: bold;
-  color: ${color("text-light")};
+  color: ${color("text-medium")};
 `;
 
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
