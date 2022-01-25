@@ -952,31 +952,3 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
-
-(defn field-ref->key
-  "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
-  be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
-  non-unique at times, numeric ids are not guaranteed."
-  [field-ref]
-  (into [] (take 2) field-ref))
-
-(def preserved-keys
-  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
-  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
-
-(defn combine-metadata
-  "Blend saved metadata from previous runs into fresh metadata from an actual run of the query.
-
-  Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
-  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
-  ensure survives."
-  [fresh pre-existing]
-  (let [by-key (key-by (comp field-ref->key :field_ref) pre-existing)]
-    (for [{:keys [field_ref] :as col} fresh]
-      (if-let [existing (get by-key (field-ref->key field_ref))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
