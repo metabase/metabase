@@ -34,7 +34,7 @@ describe("scenarios > setup", () => {
       // ========
 
       cy.findByText("What's your preferred language?");
-      cy.findByTestId("language-option-en");
+      cy.findByLabelText("English");
       cy.findByText("Next").click();
 
       // ====
@@ -170,7 +170,7 @@ describe("scenarios > setup", () => {
     cy.findByTextEnsureVisible("Let's get started").click();
 
     cy.findByText("What's your preferred language?");
-    cy.findByTestId("language-option-en");
+    cy.findByLabelText("English");
     cy.findByText("Next").click();
 
     cy.findByLabelText("First name").should("have.value", "Testy");

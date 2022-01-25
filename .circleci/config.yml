@@ -841,15 +841,6 @@ jobs:
                   - /home/circleci/metabase/metabase/node_modules
                   - /home/circleci/.cache/Cypress
 
-  shared-tests-cljs:
-    executor: builder
-    steps:
-      - attach-workspace
-      - run-yarn-command:
-          command-name: Run Cljs tests for shared/ code
-          command: run test-cljs
-          skip-when-no-change: true
-
   # Unlike the other build-uberjar steps, this step should be run once overall and the results can be shared between
   # OSS and EE uberjars.
   build-uberjar-drivers:
@@ -1315,10 +1306,6 @@ workflows:
       - fe-deps:
           requires:
             - checkout
-
-      - shared-tests-cljs:
-          requires:
-            - fe-deps
 
       - fe-tests-cypress:
           matrix:

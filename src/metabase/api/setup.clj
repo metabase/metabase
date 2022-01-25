@@ -63,7 +63,9 @@
     (if-not (email/email-configured?)
       (log/error (trs "Could not invite user because email is not configured."))
       (u/prog1 (user/create-and-invite-user! user invitor true)
-        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])))))
+        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])
+        (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
+                                                                             :source          "setup"})))))
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
