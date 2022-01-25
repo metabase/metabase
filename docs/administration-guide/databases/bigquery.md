@@ -58,7 +58,7 @@ Here you can specify which datasets you want to sync and scan. Options are:
 - Only these...
 - All except...
 
-For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example,:
+For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example:
 
 ```
 public,auth*
