@@ -452,8 +452,13 @@
 (defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
   false)
 
-;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
-;; the same as the default
+;; SQL server only supports setting holdability at the connection level, not the statement level, as per
+;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
+;; and
+;; https://github.com/microsoft/mssql-jdbc/blob/v9.2.1/src/main/java/com/microsoft/sqlserver/jdbc/SQLServerConnection.java#L5349-L5357
+;; an exception is thrown if they do not match, so it's safer to simply NOT try to override it at the statement level,
+;; because it's not supported anyway
+;; this impl is otherwise the same as the default
 (defmethod sql-jdbc.execute/prepared-statement :sqlserver
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql
@@ -462,6 +467,22 @@
     (try
       (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
       (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
+
+;; similar rationale to prepared-statement above
+(defmethod sql-jdbc.execute/statement :sqlserver
+  [_ ^Connection conn]
+  (let [stmt (.createStatement conn
+               ResultSet/TYPE_FORWARD_ONLY
+               ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
       stmt
       (catch Throwable e
         (.close stmt)
@@ -525,45 +546,6 @@
 (defmethod sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (sql/->prepared-substitution driver (if bool 1 0)))
-
-;; SQL server only supports setting holdability at the connection level, not the statement level, as per
-;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
-;; and
-;; https://github.com/microsoft/mssql-jdbc/blob/v9.2.1/src/main/java/com/microsoft/sqlserver/jdbc/SQLServerConnection.java#L5349-L5357
-;; an exception is thrown if they do not match, so it's safer to simply NOT try to override it at the statement level,
-;; because it's not supported anyway
-(defmethod sql-jdbc.execute/prepared-statement :sqlserver
-  [driver ^Connection conn ^String sql params]
-  (let [stmt (.prepareStatement conn
-                                sql
-                                ResultSet/TYPE_FORWARD_ONLY
-                                ResultSet/CONCUR_READ_ONLY)]
-    (try
-      (try
-        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-        (catch Throwable e
-          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
-      (sql-jdbc.execute/set-parameters! driver stmt params)
-      stmt
-      (catch Throwable e
-        (.close stmt)
-        (throw e)))))
-
-;; similar rationale to prepared-statement above
-(defmethod sql-jdbc.execute/statement :sqlserver
-  [_ ^Connection conn]
-  (let [stmt (.createStatement conn
-                               ResultSet/TYPE_FORWARD_ONLY
-                               ResultSet/CONCUR_READ_ONLY)]
-    (try
-      (try
-        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-        (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
-      stmt
-      (catch Throwable e
-        (.close stmt)
-        (throw e)))))
 
 (defmethod driver/normalize-db-details :sqlserver
   [_ database]
