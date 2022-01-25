@@ -20,7 +20,6 @@ export const PermissionsTabs = ({ tab, onChangeTab }) => (
       ]}
       onOptionClick={onChangeTab}
       variant="underlined"
-      py={2}
     />
   </div>
 );
