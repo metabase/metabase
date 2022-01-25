@@ -302,7 +302,7 @@
 
 (deftest e2e-ignore-user-supplied-perms-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `::qp.perms/perms` in the query"
-    (binding [api/*current-user-id* (mt/user->id :rasta)
+    (binding [api/*current-user-id*              (mt/user->id :rasta)
               api/*current-user-permissions-set* (atom #{})]
       (letfn [(process-query []
                 (qp/process-query (assoc (mt/mbql-query venues {:limit 1})

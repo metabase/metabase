@@ -18,15 +18,6 @@
     (fn [query rff context]
       (qp (f query) rff context))))
 
-(defmacro define-pre-processing-middleware
-  {:style/indent :defn}
-  [middleware-name docstring [query-binding] & body]
-  {:pre [(symbol? middleware-name)
-         (string? docstring)]}
-  `(def ~middleware-name
-     ~docstring
-     (pre-process-middleware (fn [~query-binding] ~@body))))
-
 (defn wrap-43-post-processing-middleware
   "Temporary helper to wrap a 43+ style post-processing middleware function so it can be used as a <=42 style around
   middleware function. Once the rest of the 43+ middleware changes are merged in, this function can be deleted and the

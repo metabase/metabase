@@ -28,11 +28,11 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ExternalRemappingDimension

@@ -62,8 +62,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [metabase.query-processor.middleware.permissions :as qp.perms]))
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -128,7 +127,7 @@
    #'validate/validate-query                                          ; PRE
    #'normalize/normalize                                              ; PRE
    #'add-rows-truncated/add-rows-truncated                            ; POST
-   #'qp.perms/remove-permissions-key-middleware                       ; PRE
+   #'perms/remove-permissions-key-middleware                       ; PRE
    (resolve 'ee.audit/handle-internal-queries)                        ; AROUND
    #'results-metadata/record-and-return-metadata!])                   ; EXECUTE
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
