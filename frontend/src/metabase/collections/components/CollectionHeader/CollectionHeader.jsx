@@ -17,27 +17,27 @@ import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
 import {
   Container,
-  DescriptionTooltipIcon,
+  DescriptionHeading,
   MenuContainer,
   ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
 function Title({ collection, handleToggleMobileSidebar }) {
   return (
-    <Flex align="center">
-      <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
-      <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
-        collection={collection}
-        mr={1}
-        size={24}
-      />
-      <PageHeading className="text-wrap">{collection.name}</PageHeading>
+    <div>
+      <Flex align="center">
+        <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
+        <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
+          collection={collection}
+          mr={1}
+          size={24}
+        />
+        <PageHeading className="text-wrap">{collection.name}</PageHeading>
+      </Flex>
       {collection.description && (
-        <Tooltip tooltip={collection.description}>
-          <DescriptionTooltipIcon />
-        </Tooltip>
+        <DescriptionHeading>{collection.description}</DescriptionHeading>
       )}
-    </Flex>
+    </div>
   );
 }
 

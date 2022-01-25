@@ -5,7 +5,7 @@ import { entityTypeForObject } from "metabase/lib/schema";
 
 import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
 
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
 

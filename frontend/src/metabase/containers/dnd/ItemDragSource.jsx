@@ -15,7 +15,9 @@ import { dragTypeForItem } from ".";
         return false;
       }
 
-      return isSelected || selected.length === 0;
+      const numSelected = selected?.length ?? 0;
+
+      return isSelected || numSelected === 0;
     },
     beginDrag(props, monitor, component) {
       return { item: props.item };
