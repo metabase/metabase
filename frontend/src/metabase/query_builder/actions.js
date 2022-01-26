@@ -994,6 +994,7 @@ export const updateQuestion = (
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
         newQuestion = newQuestion.setDataset(false);
+        dispatch(onCloseQuestionDetails());
       }
     }
 
