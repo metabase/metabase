@@ -259,11 +259,6 @@ describe("smoketest > admin_setup", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
 
-      // Check names
-      cy.wait(3000).contains("A look at your People table");
-      cy.contains("A look at your Orders table");
-      cy.contains("A look at your Test Table table").should("not.exist");
-
       cy.findByText("Browse all items").click();
 
       cy.get("h1").contains("Our analytics");
@@ -382,12 +377,6 @@ describe("smoketest > admin_setup", () => {
       // Navigate
       cy.findByText("Exit admin").click();
 
-      // Checking table name
-
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Reviews table");
-      cy.contains("A look at your Orders table").should("not.exist");
-
       // Navigating to Test Table table
 
       browse().click();
@@ -494,12 +483,6 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("1 Hidden Table");
 
-      // Check table hidden on home page
-      cy.visit("/");
-
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
-
       // Check table hidden while browsing data
 
       cy.visit("/browse/1");
@@ -523,12 +506,6 @@ describe("smoketest > admin_setup", () => {
       cy.signOut();
       cy.signInAsNormalUser();
       cy.visit("/");
-
-      // Check table names and visibility
-
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
-      cy.findByText("Reviews").should("not.exist");
 
       // Check question names and descriptions
 
@@ -583,10 +560,6 @@ describe("smoketest > admin_setup", () => {
       // Access to all tables as user
       cy.visit("/");
 
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Test Table table");
-      cy.findByText("A look at your Review table").should("not.exist");
-
       // Access to SQl queries as user
 
       cy.findByText("New").click();
@@ -596,10 +569,6 @@ describe("smoketest > admin_setup", () => {
       cy.signOut();
       cy.signIn("nocollection");
       cy.visit("/");
-
-      cy.wait(2000).findByText("Try these x-rays based on your data");
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your Review table").should("not.exist");
 
       // Cannot view our analytics as no collection user
 
@@ -789,11 +758,6 @@ describe("smoketest > admin_setup", () => {
     it("should be unable to access tables or questions that have been restricted as user", () => {
       cy.visit("/");
 
-      // Normal user can still see everything
-
-      cy.wait(2000).contains("A look at your Test Table table");
-      cy.contains("A look at your Products table");
-
       // Normal user cannot make an SQL query
 
       openNotebookEditor({ fromCurrentPage: true });
@@ -801,12 +765,6 @@ describe("smoketest > admin_setup", () => {
       cy.signOut();
       cy.signIn("nocollection");
       cy.visit("/");
-
-      // No collection user sees Test Table and People table
-
-      cy.contains("A look at your Test Table table");
-      cy.contains("A look at your People table");
-      cy.contains("A look at your Reviews table").should("not.exist");
     });
 
     it.skip("should be unable to change questions in Our analytics as no collection user", () => {
