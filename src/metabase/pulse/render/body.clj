@@ -789,16 +789,17 @@
 
 (s/defmethod render :funnel :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
-  ;; x-axis-rowfn is always first, y-axis-rowfn is always second
-  (let [rows          (common/row-preprocess first second rows)
-        [x-col y-col] cols
-        settings      (->js-viz x-col y-col viz-settings)
-        settings      (assoc settings
-                             :step    {:name   (:display_name x-col)
-                                       :format (:x settings)}
-                             :measure {:format (:y settings)})
-        svg           (js-svg/funnel rows settings)
-        image-bundle  (image-bundle/make-image-bundle render-type svg)]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+                            (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        [x-col y-col]  cols
+        settings       (-> (->js-viz x-col y-col viz-settings)
+                           (assoc :step    {:name   (:display_name x-col)
+                                            :format (:x settings)}
+                                  :measure {:format (:y settings)}))
+        svg            (js-svg/funnel rows settings)
+        image-bundle   (image-bundle/make-image-bundle render-type svg)]
   {:attachments
    (image-bundle/image-bundle->attachment image-bundle)
 
