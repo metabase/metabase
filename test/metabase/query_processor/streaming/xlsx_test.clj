@@ -1,14 +1,15 @@
 (ns metabase.query-processor.streaming.xlsx-test
   (:require [cheshire.generate :as generate]
+            [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.xlsx :as xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt])
+            [metabase.test :as mt]
+            [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -487,10 +488,10 @@
 
 (deftest poi-tempfiles-test
   (testing "POI temporary files are cleaned up if output stream is closed before export completes"
-    (let [poifiles-directory (clojure.java.io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
+    (let [poifiles-directory (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
       ;; Clear any existing contents of poifiles directory
       (doseq [file (file-seq poifiles-directory)]
-        (try (clojure.java.io/delete-file file)))
+        (u/ignore-exceptions (io/delete-file file)))
       (let [bos                (ByteArrayOutputStream.)
             os                 (BufferedOutputStream. bos)
             results-writer     (i/streaming-results-writer :xlsx os)]
