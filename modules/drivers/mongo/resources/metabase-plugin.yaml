@@ -25,7 +25,6 @@ driver:
         - name: pass
     - name: authdb
       display-name: Authentication database (optional)
-      helper-text: Database to use when authenticating.
       placeholder: admin
     - cloud-ip-address-info
     - ssl

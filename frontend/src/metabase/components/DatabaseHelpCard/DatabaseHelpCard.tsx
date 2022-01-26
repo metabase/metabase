@@ -35,7 +35,7 @@ const DatabaseHelpCard = ({
         <CardIcon name="external" />
       </CardHeader>
       <CardMessage>
-        {t`Check out documentation for step-by-step directions on how to connect to your database.`}
+        {t`See our docs for step-by-step directions on how to connect your database.`}
       </CardMessage>
       {isHosted && (
         <CardMessage>
