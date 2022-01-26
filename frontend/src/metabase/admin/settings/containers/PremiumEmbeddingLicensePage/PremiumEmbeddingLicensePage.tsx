@@ -106,6 +106,7 @@ export const PremiumEmbeddingLicensePage = ({
           </LicenseInputTitle>
         )}
         <LicenseInput
+          disabled={tokenSetting.is_env_setting}
           error={error}
           loading={isUpdating}
           token={token}
