@@ -34,6 +34,7 @@
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
             [metabase.query-processor.middleware.format-rows :as format-rows]
+            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.large-int-id :as large-int-id]
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
@@ -62,8 +63,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [metabase.query-processor.middleware.forty-three :as m.43]))
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -78,9 +78,7 @@
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
 
-    (f query) -> query
-
-  in 43+."
+    (f query) -> query"
   (mapv
    m.43/wrap-43-pre-processing-middleware
    [#'check-features/check-features
