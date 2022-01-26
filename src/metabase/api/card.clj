@@ -181,23 +181,30 @@
   fresh metadata to preserve metadata edits from the dataset.
 
   Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
-  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run."
+  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
+
+  This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
+  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
   [{:keys [original-query query metadata original-metadata dataset?]}]
   (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
     (cond
-      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage)
+      (or
+       ;; query didn't change, preserve existing metadata
+       (and (= (mbql.normalize/normalize original-query)
+               (mbql.normalize/normalize query))
+            valid-metadata?)
+       ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
+       (and (nil? query)
+            valid-metadata?))
+      (a/to-chan! [metadata])
+
+      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; means the metadata won't be updated at all.
       (nil? query)
       (doto (a/chan) a/close!)
 
-      ;; query didn't change, preserve existing metadata
-      (and (= (mbql.normalize/normalize original-query)
-              (mbql.normalize/normalize query))
-           valid-metadata?)
-      (a/to-chan! [metadata])
-
-      ;; valid metadata was passed in, its a dataset, so get metadata and then blend in to preserve possible edits in
-      ;; existing metadata. But metadata over API will have field_refs of ["field" "SUBTOTAL" nil] and we need that
-      ;; normalized
+      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
+      ;; re-run and blend the saved into the new metadata
       (and dataset? (or valid-metadata? (seq original-metadata)))
       (a/go (let [metadata' (if valid-metadata?
                               (map mbql.normalize/normalize-source-metadata metadata)
@@ -532,10 +539,7 @@
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
-          (let [metadata     (a/<! result-metadata-chan)
-                card-updates (cond-> card-updates
-                               (seq metadata)
-                               (assoc :result_metadata metadata))]
+          (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
             (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
