@@ -8,7 +8,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-;; TODO - I think most of the functions in this namespace that we don't remove could be moved to `metabase.mbql.util`
+;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
 
 (defn ^:deprecated mbql-query? ;; not really needed anymore since we don't need to normalize tokens
   "Is the given query an MBQL query?
@@ -21,7 +21,7 @@
   [{{aggregations :aggregation, :keys [limit page]} :query}]
   (and (not limit)
        (not page)
-       (nil? aggregations)))
+       (empty? aggregations)))
 
 (defn default-query->remark
   "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
@@ -38,7 +38,7 @@
 
 (defmulti query->remark
   "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
-  being executed. See documentation for `mbql->native` and #2386.
+  being executed. See documentation for [[metabase.driver/mbql->native]] and #2386.
   for more information.
 
   So this turns your average 10, 20, 30 character query into a 110, 120, 130 etc character query.
@@ -47,8 +47,7 @@
 
   'Hey, this is a 20 character query! What's it talking about, error at position 120?'
   This gets fixed, but in a spooky-action-at-a-distance way, in
-  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`
-  "
+  `frontend/src/metabase/query_builder/components/VisualizationError.jsx`"
   {:arglists '(^String [driver query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

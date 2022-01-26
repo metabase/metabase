@@ -6,7 +6,7 @@
 
 (defn- add-rows-truncated [query rows]
   (:result
-   (mt/test-qp-middleware add-rows-truncated/add-rows-truncated query rows)))
+   (mt/test-qp-middleware add-rows-truncated/add-rows-truncated-middleware query rows)))
 
 (deftest add-rows-truncated-test
   (testing "the default behavior is to treat the query as no aggregation and use :max-results-bare-rows"

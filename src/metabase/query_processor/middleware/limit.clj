@@ -7,11 +7,11 @@
 
 ;;;; Pre-processing
 
-(defn- add-limit [max-rows {query-type :type, :as query}]
+(defn- add-limit [max-rows {query-type :type, {original-limit :limit}, :query, :as query}]
   (cond-> query
     (and (= query-type :query)
          (qputil/query-without-aggregations-or-limits? query))
-    (assoc-in [:query :limit] max-rows)))
+    (update :query assoc :limit max-rows, ::original-limit original-limit)))
 
 (defn- query-max-rows [query]
   (or (mbql.u/query->max-rows-limit query)
