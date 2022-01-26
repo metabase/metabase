@@ -94,25 +94,25 @@ function EntityItemMenu({
     () =>
       [
         showPinnedAction && {
-          title: isPinned ? t`Unpin this item` : t`Pin this item`,
+          title: isPinned ? t`Unpin` : t`Pin this`,
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
         onMove && {
-          title: t`Move this item`,
+          title: t`Move`,
           icon: "move",
           action: onMove,
           event: `${analyticsContext};Entity Item;Move Item;${item.model}`,
         },
         onCopy && {
-          title: t`Duplicate this item`,
+          title: t`Duplicate`,
           icon: "clone",
           action: onCopy,
           event: `${analyticsContext};Entity Item;Copy Item;${item.model}`,
         },
         onArchive && {
-          title: t`Archive this item`,
+          title: t`Archive`,
           icon: "archive",
           action: onArchive,
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,

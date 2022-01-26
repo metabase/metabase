@@ -111,7 +111,7 @@ describe("collection permissions", () => {
                 function move(item) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
-                  cy.findByText("Move this item").click();
+                  cy.findByText("Move").click();
                   cy.get(".Modal").within(() => {
                     cy.findByText(`Move "${item}"?`);
                     // Let's move it into a nested collection
@@ -147,7 +147,7 @@ describe("collection permissions", () => {
                 function duplicate(item) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
-                  cy.findByText("Duplicate this item").click();
+                  cy.findByText("Duplicate").click();
                   cy.get(".Modal")
                     .as("modal")
                     .within(() => {
@@ -172,7 +172,7 @@ describe("collection permissions", () => {
                   it("should show archived items (metabase#15080, metabase#16617)", () => {
                     cy.visit("collection/root");
                     openEllipsisMenuFor("Orders");
-                    cy.findByText("Archive this item").click();
+                    cy.findByText("Archive").click();
                     cy.findByTestId("toast-undo").within(() => {
                       cy.findByText("Archived question");
                       cy.icon("close").click();
@@ -299,7 +299,7 @@ describe("collection permissions", () => {
                 function archiveUnarchive(item) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
-                  cy.findByText("Archive this item").click();
+                  cy.findByText("Archive").click();
                   cy.findByText(item).should("not.exist");
                   cy.findByText(/Archived (question|dashboard)/);
                   cy.findByText("Undo").click();
@@ -472,7 +472,7 @@ describe("collection permissions", () => {
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
               popover()
-                .findByText("Duplicate this item")
+                .findByText("Duplicate")
                 .click();
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
