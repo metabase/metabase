@@ -38,19 +38,19 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
-(def ^:dynamic ^:private *disallow-api-setup-after-first-user-is-created*
-  "We must not allow users to setup multiple super users once the first user is created. But tests still need to be able
-  to do that. This var is redef'd to false by certain tests to allow that."
-  true)
+(def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
+  "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
+  to. This var is redef'd to false by certain tests to allow that."
+  false)
 
 (defn- setup-create-user! [{:keys [email first-name last-name password]}]
-  (when (and *disallow-api-setup-after-first-user-is-created* (setup/has-user-setup))
-    ;; many tests use /api/setup to setup multiple users, so *first-user-only* is redefined by them
+  (when (and (setup/has-user-setup)
+             (not *allow-api-setup-after-first-user-is-created*))
+    ;; many tests use /api/setup to setup multiple users, so *allow-api-setup-after-first-user-is-created* is
+    ;; redefined by them
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
-            {:status-code 403
-             :disallow-api-setup-after-first-user-is-created *disallow-api-setup-after-first-user-is-created*
-             :has-user-setup (setup/has-user-setup)})))
+            {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
                      :email        email

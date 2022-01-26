@@ -60,7 +60,7 @@
     (do-with-setup*
      request-body
      (fn []
-       (with-redefs [setup-api/*disallow-api-setup-after-first-user-is-created* false]
+       (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
          (testing "API response should return a Session UUID"
            (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
                         (http/client :post 200 "setup" request-body))))
@@ -198,7 +198,7 @@
     (testing "error conditions"
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (with-redefs [setup-api/*disallow-api-setup-after-first-user-is-created* false]
+               (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
                  (http/client :post 400 "setup" (assoc (default-setup-input)
                                                        :database {:engine  "my-fake-driver"
                                                                   :name    (mt/random-name)
@@ -274,6 +274,13 @@
         (with-setup {:database {:engine "h2", :name db-name}}
           (is (db/exists? Database :name db-name)))))))
 
+(deftest has-user-setup-setting-test
+  (testing "has-user-setup is true iff there are 1 or more users"
+    (let [user-count (db/count User)]
+      (if (zero? user-count)
+        (is (not (setup/has-user-setup)))
+        (is (setup/has-user-setup))))))
+
 (deftest create-superuser-only-once-test
   (testing "POST /api/setup"
     (testing "Check that we cannot create a new superuser via setup-token when a user exists"
@@ -285,27 +292,20 @@
                            :last_name  (mt/random-name)
                            :email      (mt/random-email)
                            :password   "p@ssword1"}}]
-
-        (is (setup/has-user-setup))
-
         (with-redefs [setup/has-user-setup (let [value (atom false)]
                                              (fn
                                                ([] @value)
-                                               ([x] (reset! value x))))]
+                                               ([t-or-f] (reset! value t-or-f))))]
+          (mt/discard-setting-changes
+              [site-name site-locale anon-tracking-enabled admin-email]
+            (http/client :post 200 "setup" body))
 
-          (is (not (setup/has-user-setup)))
+          ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
+          (setup/has-user-setup true)
 
-          (mt/discard-setting-changes [site-name
-                                       site-locale ;; anon-tracking-enabled
-                                       admin-email]
-            (fn []
-              (http/client :post 200 "setup" body)))
-
-          (mt/discard-setting-changes [site-name
-                                       site-locale ;; anon-tracking-enabled
-                                       admin-email]
-            (fn []
-              (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email))))))))))
+          (mt/discard-setting-changes
+              [site-name site-locale anon-tracking-enabled admin-email]
+            (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -326,7 +326,7 @@
         (do-with-setup*
          body
          (fn []
-           (with-redefs [setup-api/*disallow-api-setup-after-first-user-is-created* false
+           (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true
                          setup-api/setup-set-settings! (let [orig @#'setup-api/setup-set-settings!]
                                                          (fn [& args]
                                                            (apply orig args)

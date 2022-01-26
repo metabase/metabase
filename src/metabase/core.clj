@@ -45,7 +45,7 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
-  "Used to print the setup url during instance initialization."
+  "Print the setup url during instance initialization."
   []
   (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
         port      (config/config-int :mb-jetty-port)
