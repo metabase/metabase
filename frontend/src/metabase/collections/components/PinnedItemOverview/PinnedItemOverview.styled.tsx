@@ -1,6 +1,7 @@
 import styled from "styled-components";
 
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
+import { color } from "metabase/lib/colors";
 
 export const Container = styled.div`
   display: flex;

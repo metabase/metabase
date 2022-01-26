@@ -8,6 +8,8 @@ import CollectionCardVisualization from "metabase/collections/components/Collect
 import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
+import { color } from "metabase/lib/colors";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 
@@ -26,12 +28,14 @@ function PinnedItemOverview({
   onCopy,
   onMove,
 }: Props) {
-  const sortedItems = _.sortBy(items, item => item.name);
-  const {
-    card: cardItems = [],
-    dashboard: dashboardItems = [],
-    dataset: dataModelItems = [],
-  } = _.groupBy(sortedItems, "model");
+  const questionAndDashboardItems = _.sortBy(
+    items.filter(item => item.model !== "dataset"),
+    item => item.collection_position,
+  );
+  const dataModelItems = _.sortBy(
+    items.filter(item => item.model === "dataset"),
+    item => item.collection_position,
+  );
 
   return items.length === 0 ? (
     <Container>
@@ -39,39 +43,49 @@ function PinnedItemOverview({
     </Container>
   ) : (
     <Container data-testid="pinned-items">
-      {cardItems.length > 0 && (
+      {questionAndDashboardItems.length > 0 && (
         <Grid>
-          {cardItems.map(item => (
-            <ItemDragSource key={item.id} item={item} collection={collection}>
-              <div>
-                <CollectionCardVisualization
-                  item={item}
-                  collection={collection}
-                  metadata={metadata}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                />
-              </div>
-            </ItemDragSource>
+          {questionAndDashboardItems.map(item => (
+            <PinDropTarget key={item.id} pinIndex={item.collection_position}>
+              {({ hovered }: { hovered: boolean }) => {
+                return (
+                  <ItemDragSource
+                    key={item.id}
+                    item={item}
+                    collection={collection}
+                  >
+                    <div
+                      style={{
+                        outline: hovered
+                          ? `1px solid ${color("brand")}`
+                          : undefined,
+                      }}
+                    >
+                      {item.model === "card" ? (
+                        <CollectionCardVisualization
+                          item={item}
+                          collection={collection}
+                          metadata={metadata}
+                          onCopy={onCopy}
+                          onMove={onMove}
+                        />
+                      ) : (
+                        <PinnedItemCard
+                          item={item}
+                          collection={collection}
+                          onCopy={onCopy}
+                          onMove={onMove}
+                        />
+                      )}
+                    </div>
+                  </ItemDragSource>
+                );
+              }}
+            </PinDropTarget>
           ))}
         </Grid>
       )}
-      {dashboardItems.length > 0 && (
-        <Grid>
-          {dashboardItems.map(item => (
-            <ItemDragSource key={item.id} item={item} collection={collection}>
-              <div>
-                <PinnedItemCard
-                  item={item}
-                  collection={collection}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                />
-              </div>
-            </ItemDragSource>
-          ))}
-        </Grid>
-      )}
+
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
@@ -84,16 +98,36 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <ItemDragSource key={item.id} item={item} collection={collection}>
-                <div>
-                  <PinnedItemCard
-                    item={item}
-                    collection={collection}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                  />
-                </div>
-              </ItemDragSource>
+              <PinDropTarget key={item.id} pinIndex={item.collection_position}>
+                {({
+                  hovered,
+                  highlighted,
+                }: {
+                  hovered: boolean;
+                  highlighted: boolean;
+                }) => {
+                  return (
+                    <ItemDragSource item={item} collection={collection}>
+                      <div
+                        style={{
+                          outline: hovered
+                            ? `5px solid ${color("brand-light")}`
+                            : highlighted
+                            ? `5px solid ${color("bg-medium")}`
+                            : undefined,
+                        }}
+                      >
+                        <PinnedItemCard
+                          item={item}
+                          collection={collection}
+                          onCopy={onCopy}
+                          onMove={onMove}
+                        />
+                      </div>
+                    </ItemDragSource>
+                  );
+                }}
+              </PinDropTarget>
             ))}
           </Grid>
         </div>
