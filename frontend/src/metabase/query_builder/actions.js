@@ -113,6 +113,9 @@ export const setQueryBuilderMode = (
   if (queryBuilderMode === "notebook") {
     dispatch(cancelQuery());
   }
+  if (queryBuilderMode === "dataset") {
+    dispatch(runQuestionQuery());
+  }
 };
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
