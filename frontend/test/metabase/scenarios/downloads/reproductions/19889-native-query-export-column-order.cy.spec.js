@@ -60,7 +60,7 @@ describe("issue 19889", () => {
       });
     });
 
-    it.skip(`should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)`, () => {
+    it(`should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)`, () => {
       cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
 
       cy.contains(/open editor/i).click();
@@ -72,7 +72,7 @@ describe("issue 19889", () => {
 
       cy.visit(`/question/${questionId}`);
       cy.wait("@cardQuery");
-      downloadAndAssert({ fileType, raw: true }, sheet => {
+      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column x");
         expect(sheet["B1"].v).to.equal("column y");
         expect(sheet["C1"].v).to.equal("column c");
