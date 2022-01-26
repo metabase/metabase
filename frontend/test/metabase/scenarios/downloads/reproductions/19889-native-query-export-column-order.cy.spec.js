@@ -6,6 +6,13 @@ import {
 
 let questionId;
 
+const questionDetails = {
+  name: "19889",
+  native: {
+    query: 'select 1 "column a", 2 "column b", 3 "column c"',
+  },
+};
+
 const testCases = ["csv", "xlsx"];
 
 describe("issue 19889", () => {
@@ -15,13 +22,8 @@ describe("issue 19889", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createNativeQuestion({
-      name: "19889",
-      native: {
-        query: 'select 1 "column a", 2 "column b", 3 "column c"',
-      },
-    }).then(({ body }) => {
-      questionId = body.id;
+    cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
+      questionId = id;
 
       cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
       cy.visit(`/question/${questionId}`);
