@@ -5,8 +5,7 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
   `process-userland-query` (see documentation below)."
-  (:require [clojure.tools.logging :as log]
-            [metabase.config :as config]
+  (:require [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]

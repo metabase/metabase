@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
-            [metabase.test :as mt]))
+            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]))
 
 (defn- mbql-query {:style/indent 0} [& clauses]
   {:database 1
