@@ -486,4 +486,5 @@
         (try
           (spreadsheet/save-workbook-into-stream! os workbook)
           (finally
-            (.dispose workbook)))))))
+            (.dispose workbook)
+            (.close os)))))))

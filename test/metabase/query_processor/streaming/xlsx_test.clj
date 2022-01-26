@@ -484,3 +484,18 @@
                                            [[(apply str (repeat 256 "0"))]]
                                            parse-column-width))]
       (is (= 65280 col-width)))))
+
+(deftest poi-tempfiles-test
+  (testing "POI temporary files are cleaned up if output stream is closed before export completes"
+    (let [poifiles-directory (clojure.java.io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
+      ;; Clear any existing contents of poifiles directory
+      (doseq [file (file-seq poifiles-directory)]
+        (try (clojure.java.io/delete-file file)))
+      (let [bos                (ByteArrayOutputStream.)
+            os                 (BufferedOutputStream. bos)
+            results-writer     (i/streaming-results-writer :xlsx os)]
+        (.close os)
+        (i/begin! results-writer {:data {:ordered-cols []}} {})
+        (i/finish! results-writer {:row_count 0})
+        ;; Only the directory itself should be present in the file-seq results
+        (is (= 1 (count (file-seq poifiles-directory))))))))
