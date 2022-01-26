@@ -182,12 +182,13 @@
 
   Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
   copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run."
-  [original-query query metadata dataset?]
+  [{:keys [original-query query metadata original-metadata dataset?]}]
   (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
     (cond
       ;; frontend always sends query. But sometimes programatic don't (cypress, API usage)
       (nil? query)
       (doto (a/chan) a/close!)
+
       ;; query didn't change, preserve existing metadata
       (and (= (mbql.normalize/normalize original-query)
               (mbql.normalize/normalize query))
@@ -197,11 +198,12 @@
       ;; valid metadata was passed in, its a dataset, so get metadata and then blend in to preserve possible edits in
       ;; existing metadata. But metadata over API will have field_refs of ["field" "SUBTOTAL" nil] and we need that
       ;; normalized
-      (and valid-metadata? dataset?)
-      (a/go (let [fresh (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qputil/combine-metadata
-               fresh
-               (map mbql.normalize/normalize-source-metadata metadata))))
+      (and dataset? (or valid-metadata? (seq original-metadata)))
+      (a/go (let [metadata' (if valid-metadata?
+                              (map mbql.normalize/normalize-source-metadata metadata)
+                              original-metadata)
+                  fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+              (qputil/combine-metadata fresh metadata')))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
@@ -259,7 +261,9 @@
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
                                     :dataset (boolean (:dataset card-data)))
-        result-metadata-chan (result-metadata-async nil dataset_query result_metadata dataset)
+        result-metadata-chan (result-metadata-async {:query dataset_query
+                                                     :metadata result_metadata
+                                                     :dataset? dataset})
         out-chan             (a/promise-chan)]
     (a/go
       (try
@@ -513,10 +517,13 @@
     (check-allowed-to-modify-query                 card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan (result-metadata-async (:dataset_query card-before-update)
-                                                      dataset_query
-                                                      result_metadata
-                                                      dataset)
+    (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
+                                                       :query             dataset_query
+                                                       :metadata          result_metadata
+                                                       :original-metadata (:result_metadata card-before-update)
+                                                       :dataset?          (if (some? dataset)
+                                                                            dataset
+                                                                            (:dataset card-before-update))})
           out-chan             (a/promise-chan)
           card-updates         (merge card-updates
                                       (when dataset
@@ -525,7 +532,7 @@
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
-          (let [metadata    (a/<! result-metadata-chan)
+          (let [metadata     (a/<! result-metadata-chan)
                 card-updates (cond-> card-updates
                                (seq metadata)
                                (assoc :result_metadata metadata))]
