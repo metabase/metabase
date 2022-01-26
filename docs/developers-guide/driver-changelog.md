@@ -1,5 +1,15 @@
 # Driver Interface Changelog
 
+## Metabase 0.43.0
+
+- The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see . You only need to be
+  concerned with this if you are accessing or manipulating this map directly. Drivers deriving from `:sql`
+  implementing `->honeysql` for `[<driver> :expression]` may need to be updated. A utility function,
+  `metabase.mbql.util/expression-with-name`, has been available since at least Metabase 0.35.0 and handles both types
+  of keys. It is highly recommended that you use this function rather than accessing `:expressions` directly, as doing
+  so can make your driver compatible with both 0.42.0 and with 0.43.0 and newer.
+
+## Metabase 0.42.0
 
 Changes in Metabase 0.42.0 affect drivers that derive from `:sql` (including `:sql-jdbc`).
 Non-SQL drivers likely will require no changes.

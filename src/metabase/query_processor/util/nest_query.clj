@@ -49,12 +49,8 @@
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
-  [{:keys [expressions source-query], :as query} [_ expression-name opts :as clause]]
-  (let [expression-definition        (or (get expressions (keyword expression-name))
-                                         (throw (ex-info (tru "No expression named {0}" (pr-str expression-name))
-                                                         {:type            qp.error-type/invalid-query
-                                                          :expression-name expression-name
-                                                          :query           query})))
+  [{:keys [source-query], :as query} [_ expression-name opts :as clause]]
+  (let [expression-definition        (mbql.u/expression-with-name query expression-name)
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
         {::add/keys [desired-alias]} (mbql.u/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]

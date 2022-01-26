@@ -45,19 +45,6 @@
     {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
      {:filter [:= [:+ [:segment 10] 1] 10]}}
 
-    "are expression names exempt from lisp-casing/lower-casing?"
-    {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
-     {:query {:expressions {:sales_tax [:- [:field-id 10] [:field-id 20]]}}}}
-
-    "expression references should be exempt too"
-    {{:order-by [[:desc [:expression "SALES_TAX"]]]}
-     {:order-by [[:desc [:expression "SALES_TAX"]]]}}
-
-    "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
-    {{:order-by [[:desc ["expression" :SALES/TAX]]]}
-     {:order-by [[:desc [:expression "SALES/TAX"]]]}}
-
-
     "field literals should be exempt too"
     {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
      {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
@@ -135,12 +122,13 @@
     {{:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}
      {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}}
 
-    "expression ags should handle datetime arithemtics"
-    {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
-     {:query {:expressions {:prev_month [:+ [:field-id 13] [:interval -1 :month]]}}},
+    "expression references should be exempt too"
+    {{:order-by [[:desc [:expression "SALES_TAX"]]]}
+     {:order-by [[:desc [:expression "SALES_TAX"]]]}}
 
-     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
-     {:query {:expressions {:prev_month [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
+    "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
+    {{:order-by [[:desc ["expression" :SALES/TAX]]]}
+     {:order-by [[:desc [:expression "SALES/TAX"]]]}}
 
     "case"
     {{:query {:aggregation ["sum" ["case"
@@ -517,6 +505,32 @@
       :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
      {:type   :native
       :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}}))
+
+;; this is also covered
+(t/deftest normalize-expressions-test
+  (normalize-tests
+   "Expression names should get normalized to strings."
+   {{:query {"expressions" {:abc ["+" 1 2]}
+             :fields       [["expression" :abc]]}}
+    {:query {:expressions {"abc" [:+ 1 2]}
+             :fields      [[:expression "abc"]]}}}
+
+   "are expression names exempt from lisp-casing/lower-casing?"
+   {{"query" {"expressions" {:sales_tax ["-" ["field-id" 10] ["field-id" 20]]}}}
+    {:query {:expressions {"sales_tax" [:- [:field-id 10] [:field-id 20]]}}}}
+
+   "expressions should handle datetime arithemtics"
+   {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
+    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}},
+
+    {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
+    {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
+
+   "expressions handle namespaced keywords correctly"
+   {{:query {"expressions" {:abc/def ["+" 1 2]}
+             :fields       [["expression" :abc/def]]}}
+    {:query {:expressions {"abc/def" [:+ 1 2]}
+             :fields      [[:expression "abc/def"]]}}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

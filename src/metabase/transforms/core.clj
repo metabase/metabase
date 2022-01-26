@@ -62,8 +62,7 @@
     (-> query
         (assoc :expressions (->> expressions
                                  keys
-                                 (select-keys (get-in bindings [name :dimensions]))
-                                 (m/map-keys keyword)))
+                                 (select-keys (get-in bindings [name :dimensions]))))
         (update :fields concat (for [expression (keys expressions)]
                                  [:expression expression])))
     query))
