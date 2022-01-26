@@ -794,10 +794,10 @@
         rows           (map (juxt x-axis-rowfn y-axis-rowfn)
                             (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         [x-col y-col]  cols
-        settings       (-> (->js-viz x-col y-col viz-settings)
-                           (assoc :step    {:name   (:display_name x-col)
-                                            :format (:x settings)}
-                                  :measure {:format (:y settings)}))
+        settings       (as-> (->js-viz x-col y-col viz-settings) settings
+                         (assoc settings :step    {:name   (:display_name x-col)
+                                                   :format (:x settings)}
+                                :measure {:format (:y settings)}))
         svg            (js-svg/funnel rows settings)
         image-bundle   (image-bundle/make-image-bundle render-type svg)]
   {:attachments
