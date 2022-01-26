@@ -42,6 +42,7 @@ export function suggest({
     return { suggestions };
   }
 
+  const database = query.database();
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -54,6 +55,7 @@ export function suggest({
     suggestions.push(
       ...Array.from(EXPRESSION_FUNCTIONS)
         .map(name => MBQL_CLAUSES[name])
+        .filter(clause => database.hasFeature(clause.requiresFeature))
         .map(func => ({
           type: "functions",
           name: func.displayName,
@@ -67,6 +69,7 @@ export function suggest({
       suggestions.push(
         ...Array.from(AGGREGATION_FUNCTIONS)
           .map(name => MBQL_CLAUSES[name])
+          .filter(clause => database.hasFeature(clause.requiresFeature))
           .map(func => ({
             type: "aggregations",
             name: func.displayName,
