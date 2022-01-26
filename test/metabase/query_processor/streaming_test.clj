@@ -476,7 +476,12 @@
            (@#'qp.streaming/export-column-order
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
-             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}]))))
+             {::mb.viz/table-column-field-ref [:field 2 nil], ::mb.viz/table-column-enabled true}])))
+    (is (= [0]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1" :field_ref [:field 0 nil]}]
+            [{::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}]))))
 
   (testing "if table-columns is nil, original order of cols is used"
     (is (= [0 1]
