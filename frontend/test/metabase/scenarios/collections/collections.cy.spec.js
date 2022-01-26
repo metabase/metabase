@@ -450,7 +450,7 @@ describe("scenarios > collection_defaults", () => {
         .should("not.exist");
     });
 
-    it.skip("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+    it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       cy.request("GET", "/api/collection").then(({ body }) => {
         // Get "Second collection's" id dynamically instead of hard-coding it
         const SECOND_COLLECTION = body.filter(collection => {
@@ -464,12 +464,15 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      cy.visit("/");
+      cy.findByText("New").click();
+      cy.findByText("Question")
+        .should("be.visible")
+        .click();
+
       cy.findByText("Saved Questions").click();
-      cy.findByText("Everything Else");
-      cy.findByText("Second Collection").should("not.exist");
-      cy.findByText("First Collection");
+      cy.findByText("First collection");
+      cy.findByText("Second collection").should("not.exist");
     });
 
     describe("bulk actions", () => {
