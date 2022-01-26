@@ -20,10 +20,6 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("New user");
 
       cy.visit("/");
-      cy.findByText("Products table").click();
-      cy.findByText("Here's a quick look at your Products table");
-
-      cy.visit("/");
       cy.findByText("Browse all items").click();
       cy.findByText("Your personal collection");
       cy.findByText("Other users' personal collections");
@@ -56,14 +52,6 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Our data").should("not.exist");
     });
 
-    it("should allow hiding the x-ray section", () => {
-      cy.visit("/");
-
-      clickOnCloseIconInSection("Try these x-rays based on your data");
-      cy.findByText("Remove").click();
-      cy.findByText("Try these x-rays based on your data").should("not.exist");
-    });
-
     it("should show a modal when there is a newly created database", () => {
       mockSyncingDatabase();
       cy.visit("/");
@@ -87,10 +75,6 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       cy.findByRole("link", { name: "Our analytics" }).click();
       cy.findByText("Your personal collection");
-
-      cy.visit("/");
-      cy.findByText("Products table").click();
-      cy.findByText("Here's a quick look at your Products table");
 
       cy.visit("/");
       cy.findByText("Browse all items").click();
