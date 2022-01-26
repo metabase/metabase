@@ -1,7 +1,5 @@
 import { restore, downloadAndAssert } from "__support__/e2e/cypress";
 
-let questionId;
-
 const questionDetails = {
   name: "19889",
   native: {
@@ -19,10 +17,10 @@ describe("issue 19889", () => {
     cy.signInAsAdmin();
 
     cy.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      questionId = id;
+      cy.wrap(id).as("questionId");
 
-      cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-      cy.visit(`/question/${questionId}`);
+      cy.intercept("POST", `/api/card/${id}/query`).as("cardQuery");
+      cy.visit(`/question/${id}`);
 
       cy.wait("@cardQuery");
 
@@ -48,10 +46,12 @@ describe("issue 19889", () => {
     it(`should order columns correctly in saved native query exports`, () => {
       saveAndOverwrite();
 
-      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
-        expect(sheet["A1"].v).to.equal("column b");
-        expect(sheet["B1"].v).to.equal("column a");
-        expect(sheet["C1"].v).to.equal("column c");
+      cy.get("@questionId").then(questionId => {
+        downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+          expect(sheet["A1"].v).to.equal("column b");
+          expect(sheet["B1"].v).to.equal("column a");
+          expect(sheet["C1"].v).to.equal("column c");
+        });
       });
     });
 
@@ -63,12 +63,15 @@ describe("issue 19889", () => {
 
       saveAndOverwrite();
 
-      cy.visit(`/question/${questionId}`);
-      cy.wait("@cardQuery");
-      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
-        expect(sheet["A1"].v).to.equal("column x");
-        expect(sheet["B1"].v).to.equal("column y");
-        expect(sheet["C1"].v).to.equal("column c");
+      cy.get("@questionId").then(questionId => {
+        cy.visit(`/question/${questionId}`);
+        cy.wait("@cardQuery");
+
+        downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+          expect(sheet["A1"].v).to.equal("column x");
+          expect(sheet["B1"].v).to.equal("column y");
+          expect(sheet["C1"].v).to.equal("column c");
+        });
       });
     });
   });
