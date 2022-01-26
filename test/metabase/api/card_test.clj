@@ -1860,4 +1860,43 @@
                      (->> (query! nested-id)
                           :data :results_metadata :columns
                           (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))))))))
+                          (map #(update % :semantic_type keyword)))))))))))
+  (testing "Cards preserve edits to metadata when query changes"
+    (let [query          (mt/mbql-query :venues {:fields [$id $name]})
+          modified-query (mt/mbql-query :venues {:fields [$id $name $price]})
+          norm           (comp str/upper-case :name)
+          to-native      (fn [q]
+                           {:database (:database q)
+                            :type     :native
+                            :native   (mt/query->native q)})]
+      (doseq [[query-type query modified-query] [["mbql"   query modified-query]
+                                                 ["native" (to-native query) (to-native modified-query)]]]
+        (testing (str "For: " query-type)
+          (mt/with-model-cleanup [Card]
+            (let [{metadata :result_metadata
+                   card-id  :id :as card} (mt/user-http-request
+                                           :rasta :post 202
+                                           "card"
+                                           (assoc (card-with-name-and-query "card-name"
+                                                                            query)
+                                                  :dataset true))]
+              (is (= ["ID" "NAME"] (map norm metadata)))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           (assoc card :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                             metadata)))
+                          :result_metadata (map :display_name))))
+              ;; simulate a user changing the query without rerunning the query
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           (assoc card
+                                  :dataset_query modified-query
+                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                        metadata)))
+                          :result_metadata
+                          (map (comp str/upper-case :display_name)))))
+              (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
+                     (map (comp str/upper-case :display_name)
+                          (db/select-one-field :result_metadata Card :id card-id)))))))))))

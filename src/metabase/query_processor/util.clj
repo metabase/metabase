@@ -108,8 +108,8 @@
   "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
   be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
   non-unique at times, numeric ids are not guaranteed."
-  [field-ref]
-  (into [] (take 2) field-ref))
+  [[tyype identifier]]
+  [tyype identifier])
 
 (def preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
