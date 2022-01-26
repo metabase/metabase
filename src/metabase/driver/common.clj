@@ -186,7 +186,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
