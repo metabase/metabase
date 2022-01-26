@@ -158,7 +158,6 @@ function CollectionContent({
                   onMove={handleMove}
                   onCopy={handleCopy}
                   onToggleSelected={toggleItem}
-                  onDrop={clear}
                 />
               )}
               <Search.ListLoader

@@ -17,7 +17,6 @@ type Props = {
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-  onDrop: () => void;
 };
 
 function PinnedItemOverview({
@@ -26,7 +25,6 @@ function PinnedItemOverview({
   metadata,
   onCopy,
   onMove,
-  onDrop,
 }: Props) {
   const sortedItems = _.sortBy(items, item => item.name);
   const {
@@ -44,12 +42,7 @@ function PinnedItemOverview({
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <ItemDragSource
-              key={item.id}
-              item={item}
-              collection={collection}
-              onDrop={onDrop}
-            >
+            <ItemDragSource key={item.id} item={item} collection={collection}>
               <div>
                 <CollectionCardVisualization
                   item={item}
@@ -66,12 +59,7 @@ function PinnedItemOverview({
       {dashboardItems.length > 0 && (
         <Grid>
           {dashboardItems.map(item => (
-            <ItemDragSource
-              key={item.id}
-              item={item}
-              collection={collection}
-              onDrop={onDrop}
-            >
+            <ItemDragSource key={item.id} item={item} collection={collection}>
               <div>
                 <PinnedItemCard
                   item={item}
@@ -96,12 +84,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <ItemDragSource
-                key={item.id}
-                item={item}
-                collection={collection}
-                onDrop={onDrop}
-              >
+              <ItemDragSource key={item.id} item={item} collection={collection}>
                 <div>
                   <PinnedItemCard
                     item={item}
