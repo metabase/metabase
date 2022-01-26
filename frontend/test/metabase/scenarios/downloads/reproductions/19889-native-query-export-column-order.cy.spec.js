@@ -38,7 +38,9 @@ describe("issue 19889", () => {
 
   testCases.forEach(fileType => {
     it(`should order columns correctly in saved native query exports`, () => {
-      downloadAndAssert({ fileType, raw: true }, sheet => {
+      saveAndOverwrite();
+
+      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
         expect(sheet["C1"].v).to.equal("column c");
@@ -58,8 +60,8 @@ describe("issue 19889", () => {
       cy.get(".ace_editor").type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
       );
-      cy.findByText("Save").click();
-      cy.button("Save").click();
+
+      saveAndOverwrite();
 
       cy.visit(`/question/${questionId}`);
       cy.wait("@cardQuery");
@@ -71,3 +73,8 @@ describe("issue 19889", () => {
     });
   });
 });
+
+function saveAndOverwrite() {
+  cy.findByText("Save").click();
+  cy.button("Save").click();
+}
