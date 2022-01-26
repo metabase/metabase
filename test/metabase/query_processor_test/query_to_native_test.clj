@@ -5,8 +5,7 @@
             [metabase.models.permissions :as perms]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+            [metabase.util :as u]))
 
 (deftest query->native-test
   (testing "Can we convert an MBQL query to a native query?"
