@@ -14,13 +14,10 @@ it("should display collection name", () => {
 });
 
 describe("description tooltip", () => {
-  const ariaLabel = "info icon";
-
   describe("should not be displayed", () => {
     it("if description is not received", () => {
-      render(<Header collection={collection} />);
-
-      expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
+      const { container } = render(<Header collection={collection} />);
+      expect(container.textContent).toEqual("Name");
     });
   });
 
@@ -30,7 +27,7 @@ describe("description tooltip", () => {
 
       render(<Header collection={{ ...collection, description }} />);
 
-      screen.getByLabelText(ariaLabel);
+      screen.getByText(description);
     });
   });
 });

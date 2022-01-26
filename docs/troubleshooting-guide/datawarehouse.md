@@ -1,4 +1,4 @@
-# Connecting to data warehouses with Metabase
+# Connecting to databases
 
 <div class='doc-toc' markdown=1>
 - [The data warehouse server is down](#server-down)

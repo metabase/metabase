@@ -356,7 +356,7 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   license: {
-    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
+    name: t`License`,
     order: 11,
     component: SettingsLicense,
     settings: [],
