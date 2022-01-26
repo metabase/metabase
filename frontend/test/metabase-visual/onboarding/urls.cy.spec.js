@@ -7,8 +7,6 @@ describe("visual tests > onboarding > URLs", () => {
   });
 
   it("home", () => {
-    cy.intercept("GET", `/api/automagic-dashboards`).as("automagic-dashboards");
-
     cy.visit("/", {
       // to give predictable messages based on randomization
       onBeforeLoad(win) {
@@ -16,9 +14,6 @@ describe("visual tests > onboarding > URLs", () => {
       },
     });
 
-    cy.wait("@automagic-dashboards");
-
-    cy.findByText("Reviews table");
     cy.findByText("First collection");
     cy.findByText("Sample Database");
 
