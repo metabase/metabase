@@ -1106,7 +1106,7 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByText(`boolean is ${condition}`);
-        cy.findByText(integerAssociatedWithCondition);
+        cy.findByTextEnsureVisible(integerAssociatedWithCondition);
       }
     });
   });
