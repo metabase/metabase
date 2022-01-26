@@ -62,7 +62,13 @@ $ yarn build-watch
 
 Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
 
-By default, these build processes rely on a memory cache. The build process uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
+We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
+
+```sh
+$ USE_ESLINT=true yarn build-hot
+```
+
+By default, these build processes rely on a memory cache. The build process with ESBuild loader enabled uses a large amount of memory and may take a considerable amount of time to start (1 - 2 minutes or more). FE developers (or anyone else who frequently restarts FE builds) are encouraged to use webpack's filesystem cache option for much better start-up performance:
 
 ```sh
 $ FS_CACHE=true yarn build-hot
@@ -255,7 +261,7 @@ Steps:
 2. Launch VS Code and open your cloned Metabase repository
 
 3. From the _View_ menu, choose _Command Palette..._ and then find _Remote-Container: Reopen in Container_. (VS Code may also prompt you to do this with an "Open in container" popup).
-**Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
+   **Note**: VS Code will create the container for the first time and it may take some time. Subsequent loads should be much faster.
 
 4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 
