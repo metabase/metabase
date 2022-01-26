@@ -1910,4 +1910,10 @@
                           (map (comp str/upper-case :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
                      (map (comp str/upper-case :display_name)
-                          (db/select-one-field :result_metadata Card :id card-id)))))))))))
+                          (db/select-one-field :result_metadata Card :id card-id))))
+              (testing "Even if you only send the new query and not existing metadata"
+                (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
+                     (->> (mt/user-http-request
+                           :rasta :put 202 (str "card/" card-id)
+                           {:dataset_query query})
+                          :result_metadata (map :display_name))))))))))))
