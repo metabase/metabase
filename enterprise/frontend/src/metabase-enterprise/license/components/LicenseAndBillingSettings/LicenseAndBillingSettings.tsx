@@ -147,7 +147,7 @@ const LicenseAndBillingSettings = ({
         </>
       )}
 
-      {!shouldShowLicenseInput && shouldUpsell && (
+      {tokenStatus?.isValid && shouldUpsell && (
         <>
           <SectionHeader>{t`Looking for more?`}</SectionHeader>
           <SectionDescription>
