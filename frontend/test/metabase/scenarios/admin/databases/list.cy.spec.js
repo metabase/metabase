@@ -15,7 +15,7 @@ describe("scenarios > admin > databases > list", () => {
 
   it("should not let you see saved questions in the database list", () => {
     cy.visit("/admin/databases");
-    cy.get("td").should("have.length", 3);
+    cy.get("tr").should("have.length", 2);
   });
 
   it("should let you view a database's detail view", () => {
@@ -35,32 +35,6 @@ describe("scenarios > admin > databases > list", () => {
     cy.visit("/admin/databases");
     cy.contains("Sample Database").click();
     cy.url().should("match", /\/admin\/databases\/1$/);
-  });
-
-  it("should let you delete a database", () => {
-    cy.route("DELETE", "/api/database/1").as("delete");
-
-    cy.visit("/admin/databases");
-    cy.get("table").should("contain", "Sample Database");
-
-    cy.contains("Sample Database")
-      .closest("tr")
-      .contains("Delete")
-      .click();
-    cy.get(".ModalBody input").type("DELETE");
-    cy.get(".ModalBody")
-      .contains("button", "Delete")
-      .should("be.disabled");
-    cy.get(".ModalBody input")
-      .clear()
-      .type("Sample Database");
-
-    cy.get(".ModalBody")
-      .contains("button", "Delete")
-      .click();
-    cy.wait("@delete");
-
-    cy.get("table").should("not.contain", "Sample Database");
   });
 
   it("should let you bring back the sample database", () => {
