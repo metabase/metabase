@@ -343,7 +343,7 @@ export const getIsDirty = createSelector(
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocDatasetQuestion(question, originalQuestion)) {
+    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
