@@ -147,12 +147,11 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
-    (let [extra-info (atom nil)]
-      (letfn [(preprocessedf* [query context]
-                (swap! extra-info assoc :preprocessed query)
-                (preprocessedf query context))
-              (nativef* [query context]
+  (fn [query rff {:keys [nativef raisef], :as context}]
+    (let [extra-info (atom
+                      {:preprocessed (u/ignore-exceptions
+                                       ((resolve 'metabase.query-processor/preprocess) query))})]
+      (letfn [(nativef* [query context]
                 (swap! extra-info assoc :native query)
                 (nativef query context))
               (raisef* [e context]
@@ -167,7 +166,6 @@
                     (context/resultf formatted-exception context))))]
         (try
           (qp query rff (assoc context
-                                  :preprocessedf preprocessedf*
                                   :nativef nativef*
                                   :raisef raisef*))
           (catch Throwable e
