@@ -586,6 +586,26 @@
                           s/Keyword       s/Any}
                          (create-card! :rasta 403)))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                   COPYING A CARD (POST /api/card/:id/copies)                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest copy-card
+  (testing "POST /api/card/:id/copies"
+    (testing "Test that we can copy a Card"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (mt/with-model-cleanup [Card]
+            (let [card    (assoc (card-with-name-and-query (mt/random-name)
+                                                           (mbql-count-query (mt/id) (mt/id :venues)))
+                                 :collection_id (u/the-id collection))
+                  card    (mt/user-http-request :rasta :post 202 "card" card)
+                  newcard (mt/user-http-request :rasta :post 202 (format "card/%d/copies" (u/the-id card)))]
+              (is (= (:name newcard) (str "Copy of " (:name card))))
+              (is (= (:display newcard) (:display card)))
+              (is (not= (:id newcard) (:id card))))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
