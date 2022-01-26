@@ -17,7 +17,7 @@
     crazy\\*schema => crazy\\*schema"
   ^Pattern [^String schema-pattern]
   (re-pattern (->> (str/split schema-pattern #",")
-                   (mapv (comp #(str/replace % #"(^|[^\\\\])\*" "$1.*") str/trim))
+                   (map (comp #(str/replace % #"(^|[^\\\\])\*" "$1.*") str/trim))
                    (str/join "|"))))
 
 (defn- schema-patterns->filter-fn*
