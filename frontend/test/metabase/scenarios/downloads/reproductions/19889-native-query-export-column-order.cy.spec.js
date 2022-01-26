@@ -37,18 +37,18 @@ describe("issue 19889", () => {
   });
 
   testCases.forEach(fileType => {
-    it(`should order columns correctly in saved native query exports`, () => {
-      saveAndOverwrite();
-
-      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+    it(`should order columns correctly in unsaved native query exports`, () => {
+      downloadAndAssert({ fileType, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
         expect(sheet["C1"].v).to.equal("column c");
       });
     });
 
-    it(`should order columns correctly in unsaved native query exports`, () => {
-      downloadAndAssert({ fileType, raw: true }, sheet => {
+    it(`should order columns correctly in saved native query exports`, () => {
+      saveAndOverwrite();
+
+      downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
         expect(sheet["C1"].v).to.equal("column c");
