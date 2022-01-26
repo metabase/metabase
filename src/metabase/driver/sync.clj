@@ -7,16 +7,18 @@
   "Converts a schema pattern, as entered in the UI, into regex pattern suitable to be passed into [[re-pattern]].  The
   conversion that happens is from commas into pipes (disjunction), and wildcard characters (`*`) into greedy wildcard
   matchers (`.*`).  These only occur if those characters are not preceded by a backslash, which serves as an escape
-  character for purposes of this conversion.
+  character for purposes of this conversion.  Any whitespace before and after commas is trimmed.
 
   Examples:
     a,b => a|b
     test* => test.*
     foo*,*bar => foo.*|.*bar
+    foo  ,  ba*r  , baz => foo|ba.*r|baz
     crazy\\*schema => crazy\\*schema"
-  ^Pattern [schema-pattern]
-  (re-pattern (-> (str/replace schema-pattern #"(^|[^\\\\])\*" "$1.*")
-                  (str/replace #"(^|[^\\\\])," "$1|"))))
+  ^Pattern [^String schema-pattern]
+  (re-pattern (->> (str/split schema-pattern #",")
+                   (mapv (comp #(str/replace % #"(^|[^\\\\])\*" "$1.*") str/trim))
+                   (str/join "|"))))
 
 (defn- schema-patterns->filter-fn*
   [inclusion-patterns exclusion-patterns]
