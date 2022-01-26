@@ -281,18 +281,15 @@
   ;; Return a channel that can be used to fetch the results asynchronously
   (create-card-async! body))
 
-(api/defendpoint ^:returns-chan POST "/:id/copies"
-  "Copy a `Card`."
-  [id :as some shit...]
+(api/defendpoint ^:returns-chan GET "/:id/copies"
+  "Copy a `Card`, with the new name 'Copy of _name_'"
+  [id]
   {id (s/maybe su/IntGreaterThanZero)}
   (let [orig-card (api/read-check Card id)
-        body      {:keys []
-    ;; Do various permissions checks
-  (let [body get the fucking thing]
-    ;; check that we have permissions for the collection we're trying to save this card to, if applicable
-    (collection/check-write-perms-for-collection collection_id)
+        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-card  (assoc orig-card :name new-name)]
     ;; Return a channel that can be used to fetch the results asynchronously
-    (create-card-async! body)))
+    (create-card-async! new-card)))
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
