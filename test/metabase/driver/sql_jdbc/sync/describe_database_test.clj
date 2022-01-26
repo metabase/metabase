@@ -5,14 +5,18 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
             [metabase.driver.sql-jdbc.sync.interface :as i]
-            [metabase.models.table :refer [Table]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models :refer [Database Table]]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
+            [metabase.test.fixtures :as fixtures]
+            [metabase.util :as u]
             [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo
-           java.sql.ResultSet))
+  (:import java.sql.ResultSet))
+
+(use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest simple-select-probe-query-test
   (testing "simple-select-probe-query shouldn't actually return any rows"
@@ -38,7 +42,7 @@
       ;; We have to mock this to make it work with all DBs
       (with-redefs [describe-database/all-schemas (constantly #{"PUBLIC"})]
         (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-               (->> (into [] (describe-database/fast-active-tables (or driver/*driver* :h2) conn))
+               (->> (into [] (describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
                     (map :name)
                     sort)))))))
 
@@ -46,7 +50,7 @@
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
     (with-open [conn (jdbc/get-connection spec)]
       (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-             (->> (into [] (describe-database/post-filtered-active-tables :h2 conn))
+             (->> (into [] (describe-database/post-filtered-active-tables :h2 conn nil nil))
                   (map :name)
                   sort))))))
 
@@ -104,24 +108,45 @@
       (is (= 0
              (describe-database-with-open-resultset-count driver/*driver* (mt/db)))))))
 
-(deftest schema-filter-test
-  (doseq [[test-kind expect-match? schema-name inclusion-filters exclusion-filters]
-          [["nil filters" true "foo" nil nil]
-           ["blank filters" true "foo" "" ""]
-           ["simple inclusion filter (include)" true "foo" "foo" ""]
-           ["simple inclusion filter (exclude)" false "bar" "foo" ""]
-           ["wildcard inclusion filter" true "foo" "f*" ""]
-           ["simple exclusion filter (include)" true "bar" "" "foo"]
-           ["simple exclusion filter (exclude)" false "foo" "" "foo"]
-           ["wildcard exclusion filter" true "foo" "" "b*"]
-           ["inclusion filter with commas and wildcards (include)" true "foo" "bar,f*,baz" ""]
-           ["inclusion filter with commas and wildcards (exclude)" false "ban" "bar,f*,baz" ""]
-           ["exclusion filter with commas and wildcards (include)" true "foo" "" "ba*,fob"]
-           ["exclusion filter with commas and wildcards (exclude)" false "foo" "" "bar,baz,fo*"]]]
-    (testing (str "include-schema? works as expected for " test-kind)
-      (is (= expect-match? (describe-database/include-schema? schema-name inclusion-filters exclusion-filters))))
-    (testing "include-schema? throws an exception if both patterns are specified"
-      (is (thrown-with-msg?
-            ExceptionInfo
-            #"Inclusion and exclusion patterns cannot both be specified"
-            (describe-database/include-schema? "whatever" "foo" "bar"))))))
+(defn- sync-and-assert-filtered-tables [database assert-table-fn]
+  (mt/with-temp Database [db-filtered database]
+    (let [sync-results (sync/sync-database! db-filtered {:scan :schema})
+          tables       (db/select Table :db_id (u/the-id db-filtered))]
+      (doseq [table tables]
+        (assert-table-fn table)))))
+
+(defn- find-schema-filters-prop [driver]
+  (first (filter (fn [conn-prop]
+                   (= :schema-filters (keyword (:type conn-prop))))
+                 (driver/connection-properties driver))))
+
+(defn- schema-filtering-drivers []
+  (set (for [driver (mt/normal-drivers)
+             :when  (driver.u/find-schema-filters-prop driver)]
+         driver)))
+
+(deftest database-schema-filtering-test
+  (mt/test-drivers (schema-filtering-drivers)
+    (let [driver             (driver.u/database->driver (mt/db))
+          schema-filter-prop (find-schema-filters-prop driver)
+          filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
+          patterns-type-prop (keyword (str (:name schema-filter-prop) "-patterns"))]
+      (testing "Filtering connections for schemas works as expected"
+        (testing " with an inclusion filter"
+          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset inclusion filters" driver)
+                                            :engine  driver
+                                            :details (-> (mt/db)
+                                                         :details
+                                                         (assoc filter-type-prop "inclusion"
+                                                                patterns-type-prop "s*,v*"))}
+            (fn [{schema-name :schema}]
+              (is (contains? #{\s \v} (first schema-name))))))
+        (testing " with an exclusion filter"
+          (sync-and-assert-filtered-tables {:name    (format "Test %s DB with dataset exclusion filters" driver)
+                                            :engine  driver
+                                            :details (-> (mt/db)
+                                                         :details
+                                                         (assoc filter-type-prop "exclusion"
+                                                                patterns-type-prop "v*"))}
+            (fn [{schema-name :schema}]
+              (is (not= \v (first schema-name))))))))))
