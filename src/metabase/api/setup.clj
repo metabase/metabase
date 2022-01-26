@@ -38,7 +38,7 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
-(def ^:dynamic *disallow-api-setup-after-first-user-is-created*
+(def ^:dynamic ^:private *disallow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users once the first user is created. But tests still need to be able
   to do that. This var is redef'd to false by certain tests to allow that."
   true)

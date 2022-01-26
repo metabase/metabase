@@ -286,24 +286,26 @@
                            :email      (mt/random-email)
                            :password   "p@ssword1"}}]
 
+        (is (setup/has-user-setup))
 
-        (db/simple-delete! User)
+        (with-redefs [setup/has-user-setup (let [value (atom false)]
+                                             (fn
+                                               ([] @value)
+                                               ([x] (reset! value x))))]
 
-        (is (not (db/exists? User)))
+          (is (not (setup/has-user-setup)))
 
-        (is (not (setup/has-user-setup)))
+          (mt/discard-setting-changes [site-name
+                                       site-locale ;; anon-tracking-enabled
+                                       admin-email]
+            (fn []
+              (http/client :post 200 "setup" body)))
 
-        (mt/discard-setting-changes [site-name
-                                     site-locale ;; anon-tracking-enabled
-                                     admin-email]
-                                    (fn []
-                                      (http/client :post 200 "setup" body)))
-
-        (mt/discard-setting-changes [site-name
-                                     site-locale ;; anon-tracking-enabled
-                                     admin-email]
-                                    (fn []
-                                      (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
+          (mt/discard-setting-changes [site-name
+                                       site-locale ;; anon-tracking-enabled
+                                       admin-email]
+            (fn []
+              (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
