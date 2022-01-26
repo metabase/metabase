@@ -195,10 +195,11 @@
       (a/to-chan! [metadata])
 
       ;; valid metadata was passed in, its a dataset, so get metadata and then blend in to preserve possible edits in
-      ;; existing metadata
+      ;; existing metadata. But metadata over API will have field_refs of ["field" "SUBTOTAL" nil] and we need that
+      ;; normalized
       (and valid-metadata? dataset?)
       (a/go (let [fresh (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qputil/combine-metadata fresh metadata)))
+              (qputil/combine-metadata fresh (mbql.normalize/normalize metadata))))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
