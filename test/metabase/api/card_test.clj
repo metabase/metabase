@@ -497,7 +497,18 @@
           (let [updated (mt/user-http-request :rasta :put 202 (str "card/" (:id card))
                                               {:description "I'm innocently updating the description"
                                                :dataset true})]
-            (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
+            (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))
+    (testing "You can update just the metadata"
+      (mt/with-model-cleanup [Card]
+        (let [card (mt/user-http-request :rasta :post 202 "card"
+                                         (card-with-name-and-query "card-name"
+                                                                   query))]
+          (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+          (let [new-metadata (map #(assoc % :display_name "UPDATED") (:result_metadata card))
+                updated (mt/user-http-request :rasta :put 202 (str "card/" (:id card))
+                                              {:result_metadata new-metadata})]
+            (is (= ["UPDATED" "UPDATED"]
+                   (map :display_name (:result_metadata updated))))))))))
 
 (deftest fetch-results-metadata-test
   (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"

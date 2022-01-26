@@ -199,8 +199,9 @@
       ;; normalized
       (and valid-metadata? dataset?)
       (a/go (let [fresh (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qputil/combine-metadata fresh (map #(update-in % [:field_ref 0] keyword)
-                                                  metadata))))
+              (qputil/combine-metadata
+               fresh
+               (map mbql.normalize/normalize-source-metadata metadata))))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
