@@ -40,4 +40,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Create multi-arch image
-        run: docker buildx build . --build-arg MB_EDITION=ee --platform linux/arm64/v8,linux/amd64 -t metabase/metabase-enteprise-head:latest --push --compress --no-cache
+        run: docker buildx build . --build-arg MB_EDITION=ee --platform linux/arm64/v8,linux/amd64 -t metabase/metabase-enterprise-head:latest --push --compress --no-cache
