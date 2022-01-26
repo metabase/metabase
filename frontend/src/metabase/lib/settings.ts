@@ -156,10 +156,6 @@ class Settings {
     return this.get("is-hosted?");
   }
 
-  isStoreManaged(): boolean {
-    return this.get("metabase-store-managed");
-  }
-
   cloudGatewayIps(): string[] {
     return this.get("cloud-gateway-ips") || [];
   }
