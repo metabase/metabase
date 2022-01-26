@@ -8,7 +8,7 @@ export const FormMessageStyled = styled.span`
     hasSucceeded ? color("success") : color("error")};
   float: left;
   opacity: 0;
-  padding-bottom: ${space(3)};
+  padding-bottom: ${space(2)};
   transition: none;
   width: 100%;
 
