@@ -759,12 +759,12 @@
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
-        settings       (->js-viz x-col y-col viz-settings)
-        settings       (update-in settings [:colors] assoc
-                                 :waterfallTotal (:waterfall.total_color viz-settings)
-                                 :waterfallPositive (:waterfall.increase_color viz-settings)
-                                 :waterfallNegative (:waterfall.decrease_color viz-settings))
-        settings       (assoc settings :showTotal (:waterfall.show_total viz-settings))
+        settings       (-> (->js-viz x-col y-col viz-settings)
+                           (update-in [:colors] assoc
+                                      :waterfallTotal (:waterfall.total_color viz-settings)
+                                      :waterfallPositive (:waterfall.increase_color viz-settings)
+                                      :waterfallNegative (:waterfall.decrease_color viz-settings))
+                           (assoc :showTotal (:waterfall.show_total viz-settings)))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
