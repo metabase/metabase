@@ -14,16 +14,16 @@ import {
 
 export interface DatabaseHelpCardProps {
   className?: string;
-  engine?: string;
   isHosted?: boolean;
 }
 
 const DatabaseHelpCard = ({
   className,
-  engine,
   isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = getDocsUrl(engine);
+  const docsUrl = Settings.docsUrl(
+    "administration-guide/01-managing-databases",
+  );
   const CardRoot = isHosted ? CardRootStatic : CardRootLink;
   const CardHeader = isHosted ? CardHeaderLink : CardHeaderStatic;
 
@@ -48,25 +48,6 @@ const DatabaseHelpCard = ({
       )}
     </CardRoot>
   );
-};
-
-const getDocsUrl = (engine?: string): string => {
-  switch (engine) {
-    case "bigquery":
-      return Settings.docsUrl("administration-guide/databases/bigquery");
-    case "mongo":
-      return Settings.docsUrl("administration-guide/databases/mongodb");
-    case "mysql":
-      return Settings.docsUrl("administration-guide/databases/mysql");
-    case "oracle":
-      return Settings.docsUrl("administration-guide/databases/oracle");
-    case "snowflake":
-      return Settings.docsUrl("administration-guide/databases/snowflake");
-    case "vertica":
-      return Settings.docsUrl("administration-guide/databases/vertica");
-    default:
-      return Settings.docsUrl("administration-guide/01-managing-databases");
-  }
 };
 
 export default DatabaseHelpCard;
