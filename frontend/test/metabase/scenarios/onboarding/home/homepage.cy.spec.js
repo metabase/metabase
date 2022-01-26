@@ -52,6 +52,23 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Our data").should("not.exist");
     });
 
+    it("should show the x-ray section for a non-default database", () => {
+      cy.addH2SampleDatabase({ name: "H2" });
+      cy.visit("/");
+
+      cy.findByText("Products table").click();
+      cy.findByText("Here's a quick look at your Products table");
+    });
+
+    it("should allow hiding the x-ray section", () => {
+      cy.addH2SampleDatabase({ name: "H2" });
+      cy.visit("/");
+
+      clickOnCloseIconInSection("Try these x-rays based on your data");
+      cy.findByText("Remove").click();
+      cy.findByText("Try these x-rays based on your data").should("not.exist");
+    });
+
     it("should show a modal when there is a newly created database", () => {
       mockSyncingDatabase();
       cy.visit("/");
