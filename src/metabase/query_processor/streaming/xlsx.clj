@@ -483,6 +483,7 @@
         (when (or (nil? row_count) (< row_count *auto-sizing-threshold*))
           ;; Auto-size columns if we never hit the row threshold, or a final row count was not provided
           (autosize-columns! sheet))
-        (spreadsheet/save-workbook-into-stream! os workbook)
-        (.dispose workbook)
-        (.close os)))))
+        (try
+          (spreadsheet/save-workbook-into-stream! os workbook)
+          (finally
+            (.dispose workbook)))))))
