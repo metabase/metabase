@@ -105,13 +105,6 @@
 (defn- add-source-metadata-at-all-levels [inner-query]
   (walk/postwalk maybe-add-source-metadata inner-query))
 
-(defn add-source-metadata-for-source-queries*
-  "Add `:source-metadata` for source queries inside `query`."
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (update query :query add-source-metadata-at-all-levels)))
-
 (defn add-source-metadata-for-source-queries
   "Middleware that attempts to recursively add `:source-metadata`, if not already present, to any maps with a
   `:source-query`.
@@ -120,6 +113,7 @@
   query; this is added automatically for source queries added via the `card__id` source table form, but for *explicit*
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
-  [qp]
-  (fn [query rff context]
-    (qp (add-source-metadata-for-source-queries* query) rff context)))
+  [{query-type :type, :as query}]
+  (if-not (= query-type :query)
+    query
+    (update query :query add-source-metadata-at-all-levels)))

@@ -17,12 +17,10 @@
   (or (mbql.u/query->max-rows-limit query)
       i/absolute-max-results))
 
-(defn- add-default-limit [query]
-  (add-limit (query-max-rows query) query))
-
-(def add-default-limit-middleware
+(defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
-  (m.43/wrap-43-pre-processing-middleware add-default-limit))
+  [query]
+  (add-limit (query-max-rows query) query))
 
 
 ;;;; Post-processing

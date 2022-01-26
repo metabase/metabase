@@ -62,7 +62,8 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [metabase.query-processor.middleware.forty-three :as m.43]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -80,37 +81,39 @@
     (f query) -> query
 
   in 43+."
-  [#'check-features/check-features
-   #'limit/add-default-limit-middleware
-   #'optimize-temporal-filters/optimize-temporal-filters
-   #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'auto-parse-filter-values/auto-parse-filter-values
-   #'wrap-value-literals/wrap-value-literals
-   #'pre-alias-ags/pre-alias-aggregations
-   #'cumulative-ags/rewrite-cumulative-aggregations-middleware
-   ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
-   #'fix-bad-refs/fix-bad-references-middleware
-   #'resolve-joined-fields/resolve-joined-fields
-   #'resolve-joins/resolve-joins
-   #'add-implicit-joins/add-implicit-joins
-   #'add-default-temporal-unit/add-default-temporal-unit
-   #'desugar/desugar
-   #'binning/update-binning-strategy
-   #'resolve-fields/resolve-fields
-   #'add-dim/add-remapped-columns-middleware
-   #'implicit-clauses/add-implicit-clauses
-   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
-   #'upgrade-field-literals/upgrade-field-literals
-   #'add-source-metadata/add-source-metadata-for-source-queries
-   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'bucket-datetime/auto-bucket-datetimes
-   #'resolve-source-table/resolve-source-tables
-   #'parameters/substitute-parameters
-   #'resolve-referenced/resolve-referenced-card-resources
-   #'expand-macros/expand-macros
-   #'validate/validate-query
-   #'perms/remove-permissions-key-middleware])
+  (mapv
+   m.43/wrap-43-pre-processing-middleware
+   [#'check-features/check-features
+    #'limit/add-default-limit
+    #'optimize-temporal-filters/optimize-temporal-filters
+    #'validate-temporal-bucketing/validate-temporal-bucketing
+    #'auto-parse-filter-values/auto-parse-filter-values
+    #'wrap-value-literals/wrap-value-literals
+    #'pre-alias-ags/pre-alias-aggregations
+    #'cumulative-ags/rewrite-cumulative-aggregations
+    ;; yes, this is called a second time, because we need to handle any joins that got added
+    (resolve 'ee.sandbox.rows/apply-sandboxing)
+    #'fix-bad-refs/fix-bad-references
+    #'resolve-joined-fields/resolve-joined-fields
+    #'resolve-joins/resolve-joins
+    #'add-implicit-joins/add-implicit-joins
+    #'add-default-temporal-unit/add-default-temporal-unit
+    #'desugar/desugar
+    #'binning/update-binning-strategy
+    #'resolve-fields/resolve-fields
+    #'add-dim/add-remapped-columns
+    #'implicit-clauses/add-implicit-clauses
+    (resolve 'ee.sandbox.rows/apply-sandboxing)
+    #'upgrade-field-literals/upgrade-field-literals
+    #'add-source-metadata/add-source-metadata-for-source-queries
+    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
+    #'bucket-datetime/auto-bucket-datetimes
+    #'resolve-source-table/resolve-source-tables
+    #'parameters/substitute-parameters
+    #'resolve-referenced/resolve-referenced-card-resources
+    #'expand-macros/expand-macros
+    #'validate/validate-query
+    #'perms/remove-permissions-key]))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
 
 (def ^:private compile-middleware

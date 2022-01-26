@@ -16,8 +16,7 @@
   (let [query {:database 1
                :type     :query
                :query    {:filter filter-clause}}]
-    (-> (mt/test-qp-middleware optimize-temporal-filters/optimize-temporal-filters query)
-        :pre
+    (-> (optimize-temporal-filters/optimize-temporal-filters query)
         (get-in [:query :filter]))))
 
 (deftest optimize-day-bucketed-filter-test
@@ -148,8 +147,8 @@
                :query    {:filter [:=
                                    [:field 1 {:temporal-unit :day}]
                                    [:absolute-datetime t :day]]}}]
-    (-> (mt/test-qp-middleware optimize-temporal-filters/optimize-temporal-filters query)
-        (get-in [:pre :query :filter]))))
+    (-> (optimize-temporal-filters/optimize-temporal-filters query)
+        (get-in [:query :filter]))))
 
 (deftest timezones-test
   (driver/with-driver ::timezone-driver
@@ -347,10 +346,8 @@
                  :filter       [:and
                                 [:>= [:field %date {:temporal-unit :default}] [:relative-datetime -1 :month]]
                                 [:< [:field %date {:temporal-unit :default}] [:relative-datetime 0 :month]]]}})
-             (:pre
-              (mt/test-qp-middleware
-               optimize-temporal-filters/optimize-temporal-filters
-               (mt/mbql-query checkins
-                 {:source-query
-                  {:source-table $$checkins
-                   :filter       [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]}}))))))))
+             (optimize-temporal-filters/optimize-temporal-filters
+              (mt/mbql-query checkins
+                {:source-query
+                 {:source-table $$checkins
+                  :filter       [:= [:field %date {:temporal-unit :month}] [:relative-datetime -1 :month]]}})))))))

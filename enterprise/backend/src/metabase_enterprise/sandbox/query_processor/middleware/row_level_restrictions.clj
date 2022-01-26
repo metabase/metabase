@@ -317,17 +317,14 @@
           (assoc ::original-metadata (expected-cols original-query))
           (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))))
 
-(defn- apply-sandboxing
+(defn apply-sandboxing
+  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
+  restrict the rows returned, based on presence of segmented permission GTAPs."
   [query]
   (or (when-let [table-id->gtap (when *current-user-id*
                                   (query->table-id->gtap query))]
         (gtapped-query query table-id->gtap))
       query))
-
-(def apply-sandboxing-middleware
-  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
-  restrict the rows returned, based on presence of segmented permission GTAPs."
-  (m.43/wrap-43-pre-processing-middleware apply-sandboxing))
 
 
 ;;;; Post-processing

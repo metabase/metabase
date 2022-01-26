@@ -10,7 +10,7 @@
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
     (mt/with-everything-store
-      (:pre (mt/test-qp-middleware add-source-metadata/add-source-metadata-for-source-queries query)))))
+      (add-source-metadata/add-source-metadata-for-source-queries query))))
 
 (defn- results-metadata [query-results]
   (for [col (-> query-results :data :cols)]

@@ -160,21 +160,6 @@
               (log/error (trs "Error optimizing temporal filter clause") (pr-str &match)))))
         &match)))
 
-(defn- optimize-temporal-filters-all-levels [{query-type :type, :as query}]
-  (if (not= query-type :query)
-    query
-    ;; walk query, looking for inner-query forms that have a `:filter` key
-    (walk/postwalk
-     (fn [form]
-       (if-not (and (map? form) (seq (:filter form)))
-         form
-         ;; optimize the filters in this inner-query form.
-         (let [optimized (optimize-temporal-filters* form)]
-           ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
-           (cond-> optimized
-             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
-     query)))
-
 (defn optimize-temporal-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
@@ -199,6 +184,17 @@
 
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
-  [qp]
-  (fn [query rff context]
-    (qp (optimize-temporal-filters-all-levels query) rff context)))
+  [{query-type :type, :as query}]
+  (if (not= query-type :query)
+    query
+    ;; walk query, looking for inner-query forms that have a `:filter` key
+    (walk/postwalk
+     (fn [form]
+       (if-not (and (map? form) (seq (:filter form)))
+         form
+         ;; optimize the filters in this inner-query form.
+         (let [optimized (optimize-temporal-filters* form)]
+           ;; if we did some optimizations, we should flatten/deduplicate the filter clauses afterwards.
+           (cond-> optimized
+             (not= optimized form) (update :filter mbql.u/combine-filter-clauses)))))
+     query)))

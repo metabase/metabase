@@ -8,7 +8,7 @@
 
 (defn- wrap-joined-fields [query]
   (mt/with-everything-store
-    (:pre (mt/test-qp-middleware resolve-joined-fields/resolve-joined-fields query))))
+    (resolve-joined-fields/resolve-joined-fields query)))
 
 (deftest wrap-fields-in-joined-field-test
   (is (= (mt/mbql-query checkins
