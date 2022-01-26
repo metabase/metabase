@@ -28,14 +28,12 @@ function PinnedItemOverview({
   onCopy,
   onMove,
 }: Props) {
-  const questionAndDashboardItems = _.sortBy(
-    items.filter(item => item.model !== "dataset"),
-    item => item.collection_position,
-  );
-  const dataModelItems = _.sortBy(
-    items.filter(item => item.model === "dataset"),
-    item => item.collection_position,
-  );
+  const sortedItems = _.sortBy(items, item => item.collection_position);
+  const {
+    card: cardItems = [],
+    dashboard: dashboardItems = [],
+    dataset: dataModelItems = [],
+  } = _.groupBy(sortedItems, "model");
 
   return items.length === 0 ? (
     <Container>
@@ -43,24 +41,18 @@ function PinnedItemOverview({
     </Container>
   ) : (
     <Container data-testid="pinned-items">
-      {questionAndDashboardItems.length > 0 && (
+      {cardItems.length > 0 && (
         <Grid>
-          {questionAndDashboardItems.map(item => (
+          {cardItems.map(item => (
             <PinDropTarget key={item.id} pinIndex={item.collection_position}>
-              {({ hovered }: { hovered: boolean }) => {
+              {(options: { hovered: boolean; highlighted: boolean }) => {
                 return (
                   <ItemDragSource
                     key={item.id}
                     item={item}
                     collection={collection}
                   >
-                    <div
-                      style={{
-                        outline: hovered
-                          ? `1px solid ${color("brand")}`
-                          : undefined,
-                      }}
-                    >
+                    <div style={getOutlineStyle(options)}>
                       {item.model === "card" ? (
                         <CollectionCardVisualization
                           item={item}
@@ -86,6 +78,29 @@ function PinnedItemOverview({
         </Grid>
       )}
 
+      {dashboardItems.length > 0 && (
+        <Grid>
+          {dashboardItems.map(item => (
+            <PinDropTarget key={item.id} pinIndex={item.collection_position}>
+              {(options: { hovered: boolean; highlighted: boolean }) => {
+                return (
+                  <ItemDragSource item={item} collection={collection}>
+                    <div style={getOutlineStyle(options)}>
+                      <PinnedItemCard
+                        item={item}
+                        collection={collection}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                      />
+                    </div>
+                  </ItemDragSource>
+                );
+              }}
+            </PinDropTarget>
+          ))}
+        </Grid>
+      )}
+
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
@@ -99,24 +114,10 @@ function PinnedItemOverview({
           <Grid>
             {dataModelItems.map(item => (
               <PinDropTarget key={item.id} pinIndex={item.collection_position}>
-                {({
-                  hovered,
-                  highlighted,
-                }: {
-                  hovered: boolean;
-                  highlighted: boolean;
-                }) => {
+                {(options: { hovered: boolean; highlighted: boolean }) => {
                   return (
                     <ItemDragSource item={item} collection={collection}>
-                      <div
-                        style={{
-                          outline: hovered
-                            ? `5px solid ${color("brand-light")}`
-                            : highlighted
-                            ? `5px solid ${color("bg-medium")}`
-                            : undefined,
-                        }}
-                      >
+                      <div style={getOutlineStyle(options)}>
                         <PinnedItemCard
                           item={item}
                           collection={collection}
@@ -137,3 +138,23 @@ function PinnedItemOverview({
 }
 
 export default PinnedItemOverview;
+
+function getOutlineStyle({
+  hovered,
+  highlighted,
+}: {
+  hovered: boolean;
+  highlighted: boolean;
+}): React.CSSProperties | undefined {
+  if (hovered) {
+    return {
+      outline: `5px solid ${color("brand-light")}`,
+    };
+  } else if (highlighted) {
+    return {
+      outline: `5px solid ${color("bg-medium")}`,
+    };
+  } else {
+    return undefined;
+  }
+}
