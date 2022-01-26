@@ -1226,15 +1226,6 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-    // This ensures we still run the underlying query instead of a nested one if there are not extra clauses
-    // Otherwise, when turning a dataset into a saved question, some things can go wrong
-    // (like "join-aliases" will appear in field refs and some QB parts will behave as if we're running a completely different question)
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (isAdHocDatasetQuestion(question, originalQuestion)) {
-      question = originalQuestion;
-    }
-
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.card().id == null
