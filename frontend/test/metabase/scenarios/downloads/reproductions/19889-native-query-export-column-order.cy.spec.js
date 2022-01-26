@@ -63,8 +63,6 @@ describe("issue 19889", () => {
     });
 
     it(`should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)`, () => {
-      cy.intercept("POST", `/api/card/${questionId}/query`).as("cardQuery");
-
       cy.contains(/open editor/i).click();
       cy.get(".ace_editor").type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
