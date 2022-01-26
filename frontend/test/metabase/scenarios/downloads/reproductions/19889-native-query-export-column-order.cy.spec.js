@@ -1,8 +1,4 @@
-import {
-  restore,
-  downloadAndAssert,
-  runNativeQuery,
-} from "__support__/e2e/cypress";
+import { restore, downloadAndAssert } from "__support__/e2e/cypress";
 
 let questionId;
 
@@ -50,11 +46,6 @@ describe("issue 19889", () => {
     });
 
     it(`should order columns correctly in unsaved native query exports`, () => {
-      // Add a space at the end of the query to make it "dirty"
-      cy.contains(/open editor/i).click();
-      cy.get(".ace_editor").type("{movetoend} ");
-
-      runNativeQuery();
       downloadAndAssert({ fileType, raw: true }, sheet => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
