@@ -96,7 +96,7 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should be able to unpin a pinned item", () => {
-      cy.findByText("Unpin this item").click();
+      cy.findByText("Unpin").click();
 
       // verify that the item is no longer in the pinned section
       cy.wait("@pinnedItemsGET");
@@ -104,21 +104,21 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should be able to move a pinned item", () => {
-      cy.findByText("Move this item").click();
+      cy.findByText("Move").click();
 
       // verify that the move modal is showing
       cy.findByText(`Move "${DASHBOARD_ITEM_NAME}"?`);
     });
 
     it("should be able to move a pinned item", () => {
-      cy.findByText("Duplicate this item").click();
+      cy.findByText("Duplicate").click();
 
       // verify that the duplicate modal is showing
       cy.findByText(`Duplicate "${DASHBOARD_ITEM_NAME}"`);
     });
 
     it("should be able to archive a pinned item", () => {
-      cy.findByText("Archive this item").click();
+      cy.findByText("Archive").click();
 
       // verify that the item is no longer on the page
       cy.wait("@pinnedItemsGET");
