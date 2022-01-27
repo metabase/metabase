@@ -219,41 +219,49 @@ PulseDetails.propTypes = {
 };
 
 function friendlySchedule(channel) {
+  const {
+    channel_type,
+    details,
+    schedule_day,
+    schedule_frame,
+    schedule_hour,
+    schedule_type,
+  } = channel;
+
   let scheduleString = "";
-  if (channel.channel_type === "email") {
+
+  if (channel_type === "email") {
     scheduleString += t`Emailed `;
-  } else if (channel.channel_type === "slack") {
-    scheduleString += t`Sent to ` + channel.details.channel + " ";
+  } else if (channel_type === "slack") {
+    scheduleString += t`Sent to ` + details.channel + " ";
   } else {
     scheduleString += t`Sent `;
   }
 
-  switch (channel.schedule_type) {
+  switch (schedule_type) {
     case "hourly":
       scheduleString += t`hourly`;
       break;
     case "daily": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
+      const ampm = formatHourAMPM(schedule_hour);
       scheduleString += t`daily at ${ampm}`;
       break;
     }
     case "weekly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
+      const ampm = formatHourAMPM(schedule_hour);
+      const day = formatDay(schedule_day);
       scheduleString += t`${day} at ${ampm}`;
       break;
     }
     case "monthly": {
-      const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = channel.schedule_day
-        ? formatDay(channel.schedule_day) + " "
-        : "calendar day";
-      const frame = formatFrame(channel.schedule_frame);
+      const ampm = formatHourAMPM(schedule_hour);
+      const day = schedule_day ? formatDay(schedule_day) : "calendar day";
+      const frame = formatFrame(schedule_frame);
       scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
       break;
     }
     default:
-      scheduleString += channel.schedule_type;
+      scheduleString += schedule_type;
   }
 
   return scheduleString;
