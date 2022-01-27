@@ -168,14 +168,12 @@ function getVisualization(binningType) {
 }
 
 function assertOnXYAxisLabels() {
-  // wait until the chart appears
-  cy.get(".y-axis-label").should("be.visible");
-  cy.get(".x-axis-label").should("be.visible");
-
   cy.get(".y-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Count");
   cy.get(".x-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Created At");
 }
