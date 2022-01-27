@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -182,6 +182,19 @@ function SavedQuestionLeftSide(props) {
     lastEditInfo,
     onOpenQuestionHistory,
   } = props;
+
+  const onHeaderClick = useCallback(() => {
+    if (isShowingQuestionDetailsSidebar) {
+      onCloseQuestionDetails();
+    } else {
+      onOpenQuestionDetails({ closeOtherSidebars: true });
+    }
+  }, [
+    isShowingQuestionDetailsSidebar,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+  ]);
+
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
@@ -189,11 +202,7 @@ function SavedQuestionLeftSide(props) {
           <SavedQuestionHeaderButton
             question={question}
             isActive={isShowingQuestionDetailsSidebar}
-            onClick={
-              isShowingQuestionDetailsSidebar
-                ? onCloseQuestionDetails
-                : onOpenQuestionDetails
-            }
+            onClick={onHeaderClick}
           />
         </SavedQuestionHeaderButtonContainer>
         {lastEditInfo && (
@@ -331,6 +340,19 @@ function DatasetLeftSide(props) {
     onExpandFilters,
     onCollapseFilters,
   } = props;
+
+  const onHeaderClick = useCallback(() => {
+    if (isShowingQuestionDetailsSidebar) {
+      onCloseQuestionDetails();
+    } else {
+      onOpenQuestionDetails({ closeOtherSidebars: true });
+    }
+  }, [
+    isShowingQuestionDetailsSidebar,
+    onOpenQuestionDetails,
+    onCloseQuestionDetails,
+  ]);
+
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
@@ -343,11 +365,7 @@ function DatasetLeftSide(props) {
                 <SavedQuestionHeaderButton
                   question={question}
                   isActive={isShowingQuestionDetailsSidebar}
-                  onClick={
-                    isShowingQuestionDetailsSidebar
-                      ? onCloseQuestionDetails
-                      : onOpenQuestionDetails
-                  }
+                  onClick={onHeaderClick}
                 />
               </DatasetHeaderButtonContainer>,
             ]}
