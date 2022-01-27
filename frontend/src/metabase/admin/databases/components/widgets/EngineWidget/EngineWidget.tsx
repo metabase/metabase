@@ -18,8 +18,11 @@ import {
   EngineEmptyText,
   EngineListRoot,
   EngineSearchRoot,
+  EngineToggleRoot,
 } from "./EngineWidget.styled";
 import { EngineField, EngineOption } from "./types";
+
+const DEFAULT_OPTIONS_COUNT = 6;
 
 export interface EngineWidget {
   field: EngineField;
@@ -79,15 +82,18 @@ const EngineSearch = ({
   const rootId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
+  const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
+  const isFullList = isExpanded || isSearching || activeIndex != null;
+  const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
     return getSortedOptions(options);
   }, [options]);
 
   const visibleOptions = useMemo(
-    () => getVisibleOptions(sortedOptions, isSearching, searchText),
-    [sortedOptions, isSearching, searchText],
+    () => getVisibleOptions(sortedOptions, isFullList, isSearching, searchText),
+    [sortedOptions, isFullList, isSearching, searchText],
   );
 
   const optionCount = visibleOptions.length;
@@ -137,6 +143,12 @@ const EngineSearch = ({
         />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
+      )}
+      {!isFullList && hasMoreOptions && (
+        <EngineToggle
+          isExpanded={isExpanded}
+          onExpandedChange={setIsExpanded}
+        />
       )}
     </EngineSearchRoot>
   );
@@ -227,6 +239,30 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
   );
 };
 
+interface EngineToggleProps {
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
+}
+
+const EngineToggle = ({
+  isExpanded,
+  onExpandedChange,
+}: EngineToggleProps): JSX.Element => {
+  const handleClick = useCallback(() => {
+    onExpandedChange(!isExpanded);
+  }, [isExpanded, onExpandedChange]);
+
+  return (
+    <EngineToggleRoot
+      primary
+      iconRight={isExpanded ? "chevronup" : "chevrondown"}
+      onClick={handleClick}
+    >
+      {isExpanded ? t`Show less options` : t`Show more options`}
+    </EngineToggleRoot>
+  );
+};
+
 const getSortedOptions = (options: EngineOption[]): EngineOption[] => {
   return options.sort((a, b) => {
     if (a.index >= 0 && b.index >= 0) {
@@ -243,13 +279,16 @@ const getSortedOptions = (options: EngineOption[]): EngineOption[] => {
 
 const getVisibleOptions = (
   options: EngineOption[],
+  isFullList: boolean,
   isSearching: boolean,
   searchText: string,
 ): EngineOption[] => {
   if (isSearching) {
     return options.filter(e => includesIgnoreCase(e.name, searchText));
-  } else {
+  } else if (isFullList) {
     return options;
+  } else {
+    return options.slice(0, DEFAULT_OPTIONS_COUNT);
   }
 };
 

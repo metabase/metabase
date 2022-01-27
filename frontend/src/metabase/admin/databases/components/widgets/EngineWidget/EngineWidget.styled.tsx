@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 export const EngineSearchRoot = styled.div`
@@ -117,4 +118,8 @@ export const EngineButtonTitle = styled.span`
 
 export const EngineButtonIcon = styled(Icon)`
   cursor: pointer;
+`;
+
+export const EngineToggleRoot = styled(Button)`
+  width: 100%;
 `;
