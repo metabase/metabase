@@ -18,6 +18,7 @@
   Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
   using this namespace directly."
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.db.data-source :as mdb.data-source]
@@ -61,6 +62,16 @@
 
 (def ^:private raw-connection-string-type
   (raw-connection-string->type raw-connection-string))
+
+;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
+;; know about that to make their lives a little easier. See #8908 for more details.
+(when (and (= raw-connection-string-type :postgres)
+           (str/includes? raw-connection-string "ssl=true")
+           (not (str/includes? raw-connection-string "sslmode=require")))
+  (log/warn (str/join " " [(trs "Warning: Postgres connection string with `ssl=true` detected.")
+                           (trs "You may need to add `?sslmode=require` to your application DB connection string.")
+                           (trs "If Metabase fails to launch, please add it and try again.")
+                           (trs "See https://github.com/metabase/metabase/issues/8908 for more details.")])))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
