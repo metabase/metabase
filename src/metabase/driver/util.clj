@@ -138,7 +138,7 @@
     (name k)
     (str k)))
 
-(defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
+(defn- expand-secret-conn-prop [{prop-name :name, :as conn-prop}]
   (case (->str (:secret-kind conn-prop))
     "password"    [(-> conn-prop
                        (assoc :type "password")
@@ -156,7 +156,7 @@
   "Invokes the getter function on a info type connection property and adds it to the connection property map as its
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
-  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+  [{ getter :getter, placeholder :placeholder, :as conn-prop}]
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
@@ -282,7 +282,7 @@
                                            (assoc acc (keyword (:name prop)) prop))
                                    {}
                                    (connection-props-server->client driver (vals secret-names->props)))]
-      (reduce-kv (fn [acc prop-name prop]
+      (reduce-kv (fn [acc prop-name _prop]
                    (let [subprop    (fn [suffix]
                                       (keyword (str prop-name suffix)))
                          path-kw    (subprop "-path")
