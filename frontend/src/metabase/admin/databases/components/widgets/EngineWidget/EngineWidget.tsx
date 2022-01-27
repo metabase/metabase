@@ -145,10 +145,7 @@ const EngineSearch = ({
         <EngineEmptyState isHosted={isHosted} />
       )}
       {!isExpanded && hasMoreOptions && (
-        <EngineToggle
-          isOpened={isOpened}
-          onOpenedChange={setIsOpened}
-        />
+        <EngineToggle isOpened={isOpened} onOpenedChange={setIsOpened} />
       )}
     </EngineSearchRoot>
   );
