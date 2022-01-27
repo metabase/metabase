@@ -8,7 +8,6 @@ import CollectionCardVisualization from "metabase/collections/components/Collect
 import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
-import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { color } from "metabase/lib/colors";
 
 import {
@@ -174,8 +173,7 @@ function PinnedItemOverview({
                   pinIndex={item.collection_position}
                   enableDropTargetBackground={false}
                 >
-                  {(options: { hovered: boolean; highlighted: boolean }) => {
-                    console.log(options);
+                  {(options: PinDropTargetRenderOptions) => {
                     return <div style={getPinDropStyle(options)} />;
                   }}
                 </FullHeightPinDropTarget>
@@ -195,14 +193,10 @@ function getPinDropStyle({
   highlighted,
   isFrontTarget,
   isBackTarget,
-}: {
-  hovered: boolean;
-  highlighted: boolean;
-  isFrontTarget?: boolean;
-  isBackTarget?: boolean;
-}): React.CSSProperties | undefined {
+}: PinDropTargetRenderOptions): React.CSSProperties | undefined {
   if (hovered) {
     return {
+      zIndex: 1,
       position: "absolute",
       top: 0,
       bottom: 0,
@@ -217,6 +211,7 @@ function getPinDropStyle({
     };
   } else if (highlighted) {
     return {
+      zIndex: 1,
       position: "absolute",
       top: 0,
       bottom: 0,
@@ -226,6 +221,8 @@ function getPinDropStyle({
       borderRight: isBackTarget ? `4px solid ${color("bg-medium")}` : undefined,
     };
   } else {
-    return undefined;
+    return {
+      display: "none",
+    };
   }
 }

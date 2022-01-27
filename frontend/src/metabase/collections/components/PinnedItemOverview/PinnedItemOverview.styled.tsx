@@ -40,7 +40,7 @@ export const FullHeightPinDropTarget = styled<{
   pointer-events: none;
   background-color: transparent;
 
-  > * {
+  * {
     pointer-events: all;
   }
 `;
