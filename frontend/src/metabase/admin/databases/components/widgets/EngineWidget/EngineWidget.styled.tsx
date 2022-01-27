@@ -1,9 +1,7 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const EngineSearchRoot = styled.div`
   display: block;
@@ -84,14 +82,12 @@ export const EngineEmptyText = styled.div`
   text-align: center;
 `;
 
-export const EngineExpandButton = styled(Button)`
-  width: 100%;
-`;
-
 export const EngineButtonRoot = styled.button`
   display: flex;
+  justify-content: space-between;
   align-items: center;
   color: ${color("white")};
+  width: 100%;
   padding: 0.75rem;
   border-radius: 0.5rem;
   border: 1px solid ${color("brand")};
@@ -113,8 +109,8 @@ export const EngineButtonRoot = styled.button`
   }
 `;
 
-export const EngineButtonTitle = styled.div`
-  flex: 1 0 auto;
+export const EngineButtonTitle = styled.span`
+  flex: 0 1 auto;
   font-size: 1rem;
   font-weight: bold;
 `;

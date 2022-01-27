@@ -104,10 +104,12 @@ const EngineSearch = ({
       switch (event.key) {
         case "Enter":
           activeOption && field.onChange?.(activeOption.value);
+          event.preventDefault();
           break;
         case "ArrowUp":
         case "ArrowDown":
           setActiveIndex(getActiveIndex(event.key, activeIndex, optionCount));
+          event.preventDefault();
           break;
       }
     },
@@ -277,7 +279,7 @@ const getActiveIndex = (
   switch (key) {
     case "ArrowDown":
       if (activeIndex != null) {
-        return Math.max(activeIndex + 1, optionCount - 1);
+        return Math.min(activeIndex + 1, optionCount - 1);
       } else {
         return 0;
       }
