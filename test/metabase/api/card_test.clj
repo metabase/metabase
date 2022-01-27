@@ -587,11 +587,11 @@
                          (create-card! :rasta 403)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                   COPYING A CARD (POST /api/card/:id/copies)                                   |
+;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest copy-card
-  (testing "POST /api/card/:id/copies"
+  (testing "POST /api/card/:id/copy"
     (testing "Test that we can copy a Card"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
@@ -601,7 +601,7 @@
                                                            (mbql-count-query (mt/id) (mt/id :venues)))
                                  :collection_id (u/the-id collection))
                   card    (mt/user-http-request :rasta :post 202 "card" card)
-                  newcard (mt/user-http-request :rasta :post 202 (format "card/%d/copies" (u/the-id card)))]
+                  newcard (mt/user-http-request :rasta :post 202 (format "card/%d/copy" (u/the-id card)))]
               (is (= (:name newcard) (str "Copy of " (:name card))))
               (is (= (:display newcard) (:display card)))
               (is (not= (:id newcard) (:id card))))))))))
