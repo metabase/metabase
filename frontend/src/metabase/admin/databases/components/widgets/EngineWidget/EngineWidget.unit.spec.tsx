@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { specialChars } from "@testing-library/user-event";
 import EngineWidget from "./EngineWidget";
 import { EngineField, EngineOption } from "./types";
 
@@ -74,6 +74,21 @@ describe("EngineWidget", () => {
     userEvent.type(screen.getByRole("textbox"), "not found");
 
     expect(screen.getByText(/Didn’t find anything/)).toBeInTheDocument();
+  });
+
+  it("should allow selection via keyboard", () => {
+    const field = getField();
+    const options = getOptions();
+
+    render(<EngineWidget field={field} options={options} />);
+
+    const input = screen.getByRole("textbox");
+    userEvent.type(input, "sql");
+    userEvent.type(input, specialChars.arrowDown);
+    userEvent.type(input, specialChars.arrowDown);
+    userEvent.type(input, specialChars.enter);
+
+    expect(field.onChange).toHaveBeenCalledWith("postgres");
   });
 });
 
