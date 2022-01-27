@@ -21,18 +21,17 @@ describe("scenarios > x-rays", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not exist on homepage when person first signs in", () => {
+  it("should exist on homepage when person first signs in", () => {
     cy.visit("/");
-    cy.findByText("A look at your People table").should("not.exist");
+    cy.contains("A look at your People table");
+    cy.contains("A look at your Orders table");
+    cy.contains("A look at your Products table");
+    cy.contains("A look at your Reviews table");
   });
 
   it("should be populated", () => {
-    cy.visit("/reference/databases");
-
-    cy.findByText("Sample Database").click();
-    cy.findByText("Tables in Sample Database").click();
-    cy.findByText("People").click();
-    cy.findByText("X-ray this table").click();
+    cy.visit("/");
+    cy.findByText("People table").click();
 
     cy.findByText("Something's gone wrong").should("not.exist");
     cy.findByText("Here's an overview of the people in your People table");
@@ -143,12 +142,8 @@ describe("scenarios > x-rays", () => {
   });
 
   it("should be able to save an x-ray as a dashboard and visit it immediately (metabase#18028)", () => {
-    cy.visit("/reference/databases");
-
-    cy.findByText("Sample Database").click();
-    cy.findByText("Tables in Sample Database").click();
-    cy.findByText("Orders").click();
-    cy.findByText("X-ray this table").click();
+    cy.visit("/");
+    cy.contains("A look at your Orders table").click();
 
     // There are a lot of spinners in this dashboard. Give them some time to disappear.
     cy.findByTestId("loading-spinner", { timeout: 10000 }).should("not.exist");
@@ -167,12 +162,8 @@ describe("scenarios > x-rays", () => {
   it("should be able to click the title of an x-ray dashcard to see it in the query builder", () => {
     const timeout = { timeout: 10000 };
 
-    cy.visit("/reference/databases");
-
-    cy.findByText("Sample Database").click();
-    cy.findByText("Tables in Sample Database").click();
-    cy.findByText("Orders").click();
-    cy.findByText("X-ray this table").click();
+    cy.visit("/");
+    cy.contains("A look at your Orders table").click();
 
     // confirm results of "Total transactions" card are present
     cy.findByText("18,760", timeout);
