@@ -6,8 +6,7 @@
             [metabase.query-processor.streaming.interface :as i]
             [metabase.query-processor.streaming.xlsx :as xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
-            [metabase.test :as mt]
-            [metabase.util :as u])
+            [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
 
