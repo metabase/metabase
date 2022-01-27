@@ -47,21 +47,6 @@
   (alter-meta! #'stencil.core/render-file assoc :style/indent 1)
   (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
 
-(def ^:private ^:const data-uri-svg-regex #"^data:image/svg\+xml;base64,(.*)$")
-
-(defn- data-uri-svg? [url]
-  (re-matches data-uri-svg-regex url))
-
-(defn- themed-image-url
-  [url color]
-  (try
-    (let [base64 (second (re-matches data-uri-svg-regex url))
-          svg    (u/decode-base64 base64)
-          themed (str/replace svg #"<svg\b([^>]*)( fill=\"[^\"]*\")([^>]*)>" (str "<svg$1$3 fill=\"" color "\">"))]
-      (str "data:image/svg+xml;base64," (u/encode-base64 themed)))
-    (catch Throwable _e
-      url)))
-
 (defn- logo-url []
   (let [url (public-settings/application-logo-url)]
     (cond
