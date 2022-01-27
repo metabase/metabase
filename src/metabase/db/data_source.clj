@@ -41,8 +41,11 @@
   ^javax.sql.DataSource [connection-string]
   {:pre [(string? connection-string)]}
   (->DataSource
-   (cond->> connection-string
-     (not (str/starts-with? connection-string "jdbc:")) (str "jdbc:"))
+   ;; normalize the protocol in case someone is trying to trip us up. Heroku is known for this and passes stuff in like
+   ;; `postgres:...` to screw with us.
+   (cond-> connection-string
+     (str/starts-with? connection-string "postgres:")   (str/replace-first #"^postgres:" "postgresql:")
+     (not (str/starts-with? connection-string "jdbc:")) (str/replace-first #"^" "jdbc:"))
    nil))
 
 (defn broken-out-details->DataSource

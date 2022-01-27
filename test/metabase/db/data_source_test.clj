@@ -22,11 +22,18 @@
              (jdbc/query {:connection conn} "SELECT 1 AS one;")))))
 
   (testing "Without jdbc: at the beginning"
-    (let [data-source (mdb.data-source/raw-connection-string->DataSource
-                       (format "h2:mem:%s" (mt/random-name)))]
+    (let [db-name     (mt/random-name)
+          data-source (mdb.data-source/raw-connection-string->DataSource
+                       (format "h2:mem:%s" db-name))]
+      (is (= (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" db-name))
+             data-source))
       (with-open [conn (.getConnection data-source)]
         (is (= [{:one 1}]
-               (jdbc/query {:connection conn} "SELECT 1 AS one;")))))))
+               (jdbc/query {:connection conn} "SELECT 1 AS one;"))))))
+
+  (testing "Accept `postgres` as a subprotocol (I think Heroku or whatever does this to screw with us)"
+    (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql:localhost:5432/metabase")
+           (mdb.data-source/raw-connection-string->DataSource "postgres:localhost:5432/metabase")))))
 
 (deftest equality-test
   (testing "Two DataSources with the same URL should be equal"
