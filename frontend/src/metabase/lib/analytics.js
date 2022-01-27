@@ -17,7 +17,7 @@ export const createTracker = store => {
 };
 
 export const trackPageView = url => {
-  if (!url) {
+  if (!url || !Settings.trackingEnabled()) {
     return;
   }
 
@@ -31,7 +31,7 @@ export const trackPageView = url => {
 };
 
 export const trackStructEvent = (category, action, label, value) => {
-  if (!category || !label) {
+  if (!category || !label || Settings.trackingEnabled()) {
     return;
   }
 
@@ -41,7 +41,7 @@ export const trackStructEvent = (category, action, label, value) => {
 };
 
 export const trackSchemaEvent = (schema, version, data) => {
-  if (!schema) {
+  if (!schema || Settings.trackingEnabled()) {
     return;
   }
 
