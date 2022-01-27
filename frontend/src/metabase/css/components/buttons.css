@@ -87,6 +87,14 @@
   transition: none;
 }
 
+.Button--secondary:focus {
+  outline: 2px solid var(--color-outline);
+}
+
+.Button.Button--secondary:focus:not(:focus-visible):hover {
+  outline: 2px solid var(--color-outline);
+}
+
 .Button--warning {
   color: var(--color-text-white);
   background: var(--color-error);
