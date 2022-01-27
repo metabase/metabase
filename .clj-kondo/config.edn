@@ -1,4 +1,45 @@
-{:linters {:unresolved-symbol {:exclude [schema= re=]}}
+{:config-paths ["macros"]
+ :linters {:unresolved-symbol {:exclude [schema= re=
+                                         (metabase.util/prog1 [<>])
+                                         (metabase.mbql.util/match-one)
+                                         (metabase.mbql.util/match)
+                                         (metabase.mbql.util.match/match)
+                                         (metabase.mbql.util.match/match-one)
+                                         (metabase.mbql.util.match/replace)
+                                         (metabase.mbql.util/replace)
+                                         (metabase.mbql.util/replace-in)
+                                         (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
+                                         (metabase.util.regex/rx [opt])
+                                         (metabase.async.streaming-response/streaming-response)
+                                         (clojure.core.logic/fresh)
+                                         (clojure.core.logic/matcha)
+                                         (clojure.core.logic/run)]}
+           ;; TODO: clj-kondo should have a way to disable this in certain macro calls like
+           ;; metabase.mbql.util.match/replace
+           :unexpected-recur {:level :off}
+           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}}
+ :lint-as {metabase.api.common/let-404 clojure.core/let
+           metabase.db.data-migrations/defmigration clojure.core/def
+           metabase.query-processor.error-type/deferror clojure.core/def
+           metabase.models.setting/defsetting clj-kondo.lint-as/def-catch-all
+           metabase.mbql.schema.macros/defclause clj-kondo.lint-as/def-catch-all
+           metabase.public-settings.premium-features/define-premium-feature clojure.core/def
+           metabase.sync.util/sum-for clojure.core/for
+           metabase.sync.util/with-emoji-progress-bar clojure.core/let
+           metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info clojure.core/fn
+           metabase.util.files/with-open-path-to-resource clojure.core/let
+           metabase.db.liquibase/with-liquibase clojure.core/let
+           metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
+           metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           toucan.db/with-call-counting clojure.core/fn
+
+           potemkin.types/defprotocol+ clojure.core/defprotocol
+           potemkin/defprotocol+ clojure.core/defprotocol
+           potemkin.types/defrecord+ clojure.core/defrecord
+           potemkin/defrecord+ clojure.core/defrecord
+           potemkin.types/deftype+ clojure.core/deftype
+           potemkin/deftype+ clojure.core/deftype
+           clojurewerkz.quartzite.jobs/defjob clojure.core/defn}
  :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
                           metabase.test/dataset             hooks.metabase.test.data/dataset
                           metabase.test.data/$ids           hooks.metabase.test.data/$ids
@@ -6,4 +47,13 @@
                           metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
                           metabase.test/mbql-query          hooks.metabase.test.data/$ids
                           metabase.test.data/run-mbql-query hooks.metabase.test.data/$ids
-                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids}}}
+                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids}
+           :macroexpand {metabase.api.common/defendpoint*   metabase.api.common/defendpoint*
+                         metabase.api.common/defendpoint    metabase.api.common/defendpoint
+                         metabase.api.common/defendpoint-async metabase.api.common/defendpoint
+                         metabase.query-processor.streaming/streaming-response
+                         metabase.query-processor.streaming/streaming-response
+
+                         toucan.models/defmodel toucan.models/defmodel
+                         }}
+ :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}

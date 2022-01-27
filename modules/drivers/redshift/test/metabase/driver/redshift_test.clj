@@ -207,7 +207,7 @@
                     (partial into {})
                     (db/select [Field :name :database_type :base_type] :table_id table-id {:order-by [:name]}))))))))))
 
-(deftest syncable-schemas-test
+(deftest filtered-syncable-schemas-test
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
@@ -224,13 +224,17 @@
                                 random-schema
                                 temp-username)
         (try
-          (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+          (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
             (mt/with-temp Database [db {:engine :redshift, :details (assoc db-det :user temp-username :password user-pw)}]
               (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db))]
                 (let [schemas (reduce conj
                                       #{}
-                                      (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn)))]
-                  (testing "syncable-schemas for the user should contain the newly created random schema"
+                                      (sql-jdbc.sync/filtered-syncable-schemas :redshift
+                                                                               conn
+                                                                               (.getMetaData conn)
+                                                                               nil
+                                                                               nil))]
+                  (testing "filtered-syncable-schemas for the user should contain the newly created random schema"
                     (is (contains? schemas random-schema)))
                   (testing "should not contain the current session-schema name (since that was never granted)"
                     (is (not (contains? schemas redshift.test/session-schema-name))))))))
@@ -245,7 +249,7 @@
 
     (testing "Should filter out non-existent schemas (for which nobody has permissions)"
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
-        (binding [redshift.test/*use-original-syncable-schemas-impl?* true]
+        (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
           ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
           (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
                                                              (fn [metadata]
@@ -258,7 +262,7 @@
                           (reduce
                            conj
                            #{}
-                           (sql-jdbc.sync/syncable-schemas :redshift conn (.getMetaData conn))))]
+                           (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
                   (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
                     (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
                                                                                       reducible)]

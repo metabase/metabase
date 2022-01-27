@@ -32,6 +32,7 @@
                              {:type :aggregation :arg (:display-name options)}
 
                              [:aggregation-options ag _]
+                             #_:clj-kondo/ignore
                              (recur ag)
 
                              [(operator :guard #{:+ :- :/ :*}) & args]

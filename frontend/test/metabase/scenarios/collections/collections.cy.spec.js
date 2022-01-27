@@ -254,7 +254,7 @@ describe("scenarios > collection_defaults", () => {
       it("should not render collections in items list if user doesn't have collection access (metabase#16555)", () => {
         cy.visit("/collection/root");
         // Since this user doesn't have access rights to the root collection, it should render empty
-        cy.findByText("Nothing to see yet.");
+        cy.findByTestId("collection-empty-state");
       });
 
       it("should see a child collection in a sidebar even with revoked access to its parent (metabase#14114)", () => {
@@ -391,9 +391,6 @@ describe("scenarios > collection_defaults", () => {
       // Make sure modal closed
       cy.findByText("Update").should("not.exist");
 
-      // This click is a weird "hack" that simply gives time for an UI to update - nothing else worked (not even waiting for XHR)
-      cy.icon("info").click();
-
       cy.get("[class*=CollectionSidebar]")
         .as("sidebar")
         .within(() => {
@@ -453,7 +450,7 @@ describe("scenarios > collection_defaults", () => {
         .should("not.exist");
     });
 
-    it.skip("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
+    it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       cy.request("GET", "/api/collection").then(({ body }) => {
         // Get "Second collection's" id dynamically instead of hard-coding it
         const SECOND_COLLECTION = body.filter(collection => {
@@ -467,30 +464,20 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
-      cy.findByText("Saved Questions").click();
-      cy.findByText("Everything Else");
-      cy.findByText("Second Collection").should("not.exist");
-      cy.findByText("First Collection");
-    });
+      cy.visit("/");
+      cy.findByText("New").click();
+      cy.findByText("Question")
+        .should("be.visible")
+        .click();
 
-    it("should be possible to select pinned item using checkbox (metabase#15338)", () => {
-      cy.visit("/collection/root");
-      openEllipsisMenuFor("Orders in a dashboard");
-      cy.findByText("Pin this item").click();
-      selectItemUsingCheckbox("Orders in a dashboard", "dashboard");
-      cy.findByText("1 item selected");
+      cy.findByText("Saved Questions").click();
+      cy.findByText("First collection");
+      cy.findByText("Second collection").should("not.exist");
     });
 
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          bulkSelectDeselectWorkflow();
-        });
-
-        it("should be possible to apply bulk selection when all items are pinned (metabase#16497)", () => {
-          pinAllRootItems();
           bulkSelectDeselectWorkflow();
         });
 
@@ -588,18 +575,4 @@ function getSidebarCollectionChildrenFor(item) {
     .closest("a")
     .parent()
     .parent();
-}
-
-function pinAllRootItems() {
-  cy.request("GET", "/api/collection/root/items").then(resp => {
-    const ALL_ITEMS = resp.body.data;
-
-    ALL_ITEMS.forEach(({ model, id }, index) => {
-      if (model !== "collection") {
-        cy.request("PUT", `/api/${model}/${id}`, {
-          collection_position: index++,
-        });
-      }
-    });
-  });
 }

@@ -575,6 +575,11 @@ describe("parameters/utils/parameter-values", () => {
           ),
         ).toEqual(getParameterValuesBySlug(parameters, parameterValues));
       });
+
+      it("should handle nullish parameters", () => {
+        expect(getParameterValuesBySlug(undefined, {})).toEqual({});
+        expect(getParameterValuesBySlug(null, {})).toEqual({});
+      });
     });
 
     describe("`preserveDefaultedParameters` === true", () => {
@@ -602,6 +607,28 @@ describe("parameters/utils/parameter-values", () => {
           [defaultedParameter.slug]: undefined,
           [defaultedParameterWithValue.slug]: defaultedParameterWithValue.value,
         });
+      });
+
+      it("should handle nullish parameters", () => {
+        expect(
+          getParameterValuesBySlug(
+            undefined,
+            {},
+            {
+              preserveDefaultedParameters: true,
+            },
+          ),
+        ).toEqual({});
+
+        expect(
+          getParameterValuesBySlug(
+            null,
+            {},
+            {
+              preserveDefaultedParameters: true,
+            },
+          ),
+        ).toEqual({});
       });
     });
   });

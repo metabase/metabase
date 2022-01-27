@@ -406,6 +406,7 @@ export default class ExpressionEditorTextfield extends React.Component {
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor
             commands={this.commands}
+            mode="text"
             ref={this.input}
             value={source}
             markers={this.errorAsMarkers(errorMessage)}

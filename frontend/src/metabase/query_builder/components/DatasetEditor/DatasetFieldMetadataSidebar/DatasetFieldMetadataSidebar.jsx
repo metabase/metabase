@@ -362,7 +362,6 @@ function DatasetFieldMetadataSidebar({
                     options={TAB_OPTIONS}
                     onChange={setTab}
                     variant="underlined"
-                    py={1}
                   />
                 </FormTabsContainer>
               )}

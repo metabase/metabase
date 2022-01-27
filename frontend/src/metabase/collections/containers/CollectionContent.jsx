@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useCallback } from "react";
-import { Box } from "grid-styled";
+import { Flex, Box } from "grid-styled";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -8,12 +8,13 @@ import Collection from "metabase/entities/collections";
 import Search from "metabase/entities/search";
 
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
 import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
-import PinnedItemsTable from "metabase/collections/components/PinnedItemsTable";
+import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
@@ -31,6 +32,7 @@ const itemKeyFn = item => `${item.id}:${item.model}`;
 function mapStateToProps(state) {
   return {
     isAdmin: getUserIsAdmin(state),
+    metadata: getMetadata(state),
   };
 }
 
@@ -41,14 +43,11 @@ function CollectionContent({
   isAdmin,
   isRoot,
   handleToggleMobileSidebar,
+  metadata,
 }) {
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
   const [unpinnedItemsSorting, setUnpinnedItemsSorting] = useState({
-    sort_column: "name",
-    sort_direction: "asc",
-  });
-  const [pinnedItemsSorting, setPinnedItemsSorting] = useState({
     sort_column: "name",
     sort_direction: "asc",
   });
@@ -96,10 +95,6 @@ function CollectionContent({
     [setPage],
   );
 
-  const handlePinnedItemsSortingChange = useCallback(sortingOpts => {
-    setPinnedItemsSorting(sortingOpts);
-  }, []);
-
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
@@ -127,7 +122,8 @@ function CollectionContent({
   const pinnedQuery = {
     collection: collectionId,
     pinned_state: "is_pinned",
-    ...pinnedItemsSorting,
+    sort_column: "name",
+    sort_direction: "asc",
   };
 
   return (
@@ -154,20 +150,17 @@ function CollectionContent({
                 )}
                 handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
-
-              <PinnedItemsTable
-                items={pinnedItems}
-                collection={collection}
-                sortingOptions={pinnedItemsSorting}
-                onSortingOptionsChange={handlePinnedItemsSortingChange}
-                selectedItems={selected}
-                getIsSelected={getIsSelected}
-                onToggleSelected={toggleItem}
-                onDrop={clear}
-                onMove={handleMove}
-                onCopy={handleCopy}
-              />
-
+              {!loadingPinnedItems && (
+                <PinnedItemOverview
+                  items={pinnedItems}
+                  collection={collection}
+                  metadata={metadata}
+                  onMove={handleMove}
+                  onCopy={handleCopy}
+                  onToggleSelected={toggleItem}
+                  onDrop={clear}
+                />
+              )}
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}
@@ -194,11 +187,15 @@ function CollectionContent({
                   const isEmpty =
                     !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-                  if (isEmpty) {
+                  if (isEmpty && !loadingUnpinnedItems) {
                     return (
-                      <Box mt="120px">
+                      <Flex
+                        alignItems="start"
+                        justifyContent="center"
+                        mt="3rem"
+                      >
                         <CollectionEmptyState />
-                      </Box>
+                      </Flex>
                     );
                   }
 
@@ -252,6 +249,7 @@ function CollectionContent({
             <ItemsDragLayer
               selectedItems={selected}
               pinnedItems={pinnedItems}
+              collection={collection}
             />
           </Box>
         );

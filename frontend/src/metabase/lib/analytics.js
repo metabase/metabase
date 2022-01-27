@@ -22,11 +22,11 @@ export const trackPageView = url => {
   }
 
   if (Settings.googleAnalyticsEnabled()) {
-    trackGoogleAnalyticsPageView(url);
+    trackGoogleAnalyticsPageView(getSanitizedUrl(url));
   }
 
   if (Settings.snowplowEnabled()) {
-    trackSnowplowPageView(url);
+    trackSnowplowPageView(getSanitizedUrl(url));
   }
 };
 
@@ -115,10 +115,8 @@ const createSnowplowPlugin = store => {
 };
 
 const trackSnowplowPageView = url => {
-  const maskedUrl = new URL(url, Settings.snowplowUrl());
-
   Snowplow.setReferrerUrl("#");
-  Snowplow.setCustomUrl(maskedUrl.href);
+  Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
 };
 
@@ -142,4 +140,11 @@ const handleStructEventClick = event => {
       trackStructEvent(...parts);
     }
   }
+};
+
+const getSanitizedUrl = url => {
+  const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
+  const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl());
+
+  return urlWithoutHost.href;
 };

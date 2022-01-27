@@ -24,8 +24,8 @@
   (boolean (setting/get :google-auth-client-id)))
 
 (defn- ldap-configured? []
-  (do (classloader/require 'metabase.integrations.ldap)
-      ((resolve 'metabase.integrations.ldap/ldap-configured?))))
+  (classloader/require 'metabase.integrations.ldap)
+  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
