@@ -27,7 +27,7 @@ const DEFAULT_OPTIONS_COUNT = 6;
 export interface EngineWidget {
   field: EngineField;
   options: EngineOption[];
-  isHosted: boolean;
+  isHosted?: boolean;
 }
 
 const EngineWidget = ({
@@ -71,7 +71,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
 interface EngineSearchProps {
   field: EngineField;
   options: EngineOption[];
-  isHosted: boolean;
+  isHosted?: boolean;
 }
 
 const EngineSearch = ({
@@ -216,7 +216,7 @@ const EngineCard = ({
 };
 
 interface EngineEmptyStateProps {
-  isHosted: boolean;
+  isHosted?: boolean;
 }
 
 const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
