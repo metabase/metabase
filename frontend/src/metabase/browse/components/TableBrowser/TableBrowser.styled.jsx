@@ -12,7 +12,10 @@ export const TableLink = styled(Link)`
 
 export const TableActionLink = styled(Link)`
   line-height: initial;
-  margin-left: ${space(1)};
+
+  &:not(:first-child) {
+    margin-left: ${space(1)};
+  }
 `;
 
 export const TableCard = forwardRefToInnerRef(styled(Card)`

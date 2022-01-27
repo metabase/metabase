@@ -4,7 +4,6 @@ import { State } from "metabase-types/store";
 
 export interface DatabaseHelpCardProps {
   className?: string;
-  engine?: string;
 }
 
 interface DatabaseHelpCardStateProps {
