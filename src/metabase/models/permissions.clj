@@ -611,28 +611,28 @@
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
   See [[metabase.models.collection.graph]] for the Collection permissions graph code."
   []
-  (let [permissions (db/select [Permissions [:group_id :group-id] [:object :path]]
-                      {:where [:and
-                               [:not= :group_id (:id (group/metabot))]
-                               [:or
-                                [:= :object (hx/literal "/")]
-                                [:like :object (hx/literal "/db/%")]
-                                [:like :object (hx/literal "/block/db/%")]]]})
-        db-ids      (delay (db/select-ids 'Database))]
-    (let [group-id->paths (reduce
-                           (fn [m {:keys [group-id path]}]
-                             (update m group-id conj path))
-                           {}
-                           permissions)
-          group-id->graph (m/map-vals
-                           (fn [paths]
-                             (let [permissions-graph (perms-parse/permissions->graph paths)]
-                               (if (= :all permissions-graph)
-                                 (all-permissions @db-ids)
-                                 (:db permissions-graph))))
-                           group-id->paths)]
-      {:revision (perms-revision/latest-id)
-       :groups   group-id->graph})))
+  (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
+                                   {:where [:and
+                                            [:not= :group_id (:id (group/metabot))]
+                                            [:or
+                                             [:= :object (hx/literal "/")]
+                                             [:like :object (hx/literal "/db/%")]
+                                             [:like :object (hx/literal "/block/db/%")]]]})
+        db-ids          (delay (db/select-ids 'Database))
+        group-id->paths (reduce
+                         (fn [m {:keys [group-id path]}]
+                           (update m group-id conj path))
+                         {}
+                         permissions)
+        group-id->graph (m/map-vals
+                         (fn [paths]
+                           (let [permissions-graph (perms-parse/permissions->graph paths)]
+                             (if (= :all permissions-graph)
+                               (all-permissions @db-ids)
+                               (:db permissions-graph))))
+                         group-id->paths)]
+    {:revision (perms-revision/latest-id)
+     :groups   group-id->graph}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
