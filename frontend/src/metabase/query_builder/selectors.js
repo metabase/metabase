@@ -20,14 +20,13 @@ import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
-
-import { isAdHocDatasetQuestion } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -298,12 +297,12 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableMetadata,
   ) => {
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (question && isAdHocDatasetQuestion(question, originalQuestion)) {
+    if (question && isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
 
@@ -344,7 +343,7 @@ export const getIsDirty = createSelector(
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocDatasetQuestion(question, originalQuestion)) {
+    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);

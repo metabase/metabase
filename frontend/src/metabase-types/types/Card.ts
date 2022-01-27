@@ -20,6 +20,7 @@ export type Card = {
   id: CardId;
   name?: string;
   description?: string;
+  dataset?: boolean;
   dataset_query: DatasetQuery;
   display: string;
   visualization_settings: VisualizationSettings;
