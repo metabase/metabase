@@ -1104,6 +1104,8 @@ describe("scenarios > question > filter", () => {
       }
 
       function assertOnTheResult() {
+        // Fixes flaky tests in #16386
+        cy.wait(500);
         // Filter name
         cy.findByText(`boolean is ${condition}`);
         cy.findByTextEnsureVisible(integerAssociatedWithCondition);
