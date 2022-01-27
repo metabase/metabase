@@ -43,6 +43,7 @@ export default class ItemsDragLayer extends React.Component {
           transform: `translate(${x}px, ${y}px)`,
           pointerEvents: "none",
           opacity: 0.65,
+          zIndex: 2,
         }}
       >
         <DraggedItems

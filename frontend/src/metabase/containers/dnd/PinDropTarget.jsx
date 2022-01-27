@@ -13,9 +13,22 @@ const PinDropTarget = DropTarget(
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
+      const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
-      return props.pinIndex !== item.collection_position;
+      if (itemModel != null && item.model !== itemModel) {
+        return false;
+      }
+
+      if (isFrontTarget) {
+        const isInFrontOfItem = pinIndex < item.collection_position;
+        return isInFrontOfItem;
+      } else if (isBackTarget) {
+        const isBehindItem = pinIndex > item.collection_position;
+        return isBehindItem;
+      } else {
+        return pinIndex !== item.collection_position;
+      }
     },
   },
   (connect, monitor) => ({

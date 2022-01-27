@@ -11,7 +11,22 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { color } from "metabase/lib/colors";
 
-import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
+import {
+  Container,
+  Grid,
+  SectionHeader,
+  FullHeightPinDropTarget,
+} from "./PinnedItemOverview.styled";
+
+type PinDropTargetRenderOptions = {
+  isBackTarget?: boolean;
+  isFrontTarget?: boolean;
+  itemModel: string;
+  pinIndex?: number | null;
+  enableDropTargetBackground?: boolean;
+  hovered: boolean;
+  highlighted: boolean;
+};
 
 type Props = {
   items: Item[];
@@ -44,36 +59,39 @@ function PinnedItemOverview({
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <PinDropTarget key={item.id} pinIndex={item.collection_position}>
-              {(options: { hovered: boolean; highlighted: boolean }) => {
-                return (
-                  <ItemDragSource
-                    key={item.id}
+            <div key={item.id} style={{ position: "relative" }}>
+              <FullHeightPinDropTarget
+                isFrontTarget
+                itemModel="card"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              >
+                {(options: PinDropTargetRenderOptions) => {
+                  return <div style={getPinDropStyle(options)} />;
+                }}
+              </FullHeightPinDropTarget>
+              <ItemDragSource item={item} collection={collection}>
+                <div>
+                  <CollectionCardVisualization
                     item={item}
                     collection={collection}
-                  >
-                    <div style={getOutlineStyle(options)}>
-                      {item.model === "card" ? (
-                        <CollectionCardVisualization
-                          item={item}
-                          collection={collection}
-                          metadata={metadata}
-                          onCopy={onCopy}
-                          onMove={onMove}
-                        />
-                      ) : (
-                        <PinnedItemCard
-                          item={item}
-                          collection={collection}
-                          onCopy={onCopy}
-                          onMove={onMove}
-                        />
-                      )}
-                    </div>
-                  </ItemDragSource>
-                );
-              }}
-            </PinDropTarget>
+                    metadata={metadata}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </div>
+              </ItemDragSource>
+              <FullHeightPinDropTarget
+                isBackTarget
+                itemModel="card"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              >
+                {(options: PinDropTargetRenderOptions) => {
+                  return <div style={getPinDropStyle(options)} />;
+                }}
+              </FullHeightPinDropTarget>
+            </div>
           ))}
         </Grid>
       )}
@@ -81,22 +99,38 @@ function PinnedItemOverview({
       {dashboardItems.length > 0 && (
         <Grid>
           {dashboardItems.map(item => (
-            <PinDropTarget key={item.id} pinIndex={item.collection_position}>
-              {(options: { hovered: boolean; highlighted: boolean }) => {
-                return (
-                  <ItemDragSource item={item} collection={collection}>
-                    <div style={getOutlineStyle(options)}>
-                      <PinnedItemCard
-                        item={item}
-                        collection={collection}
-                        onCopy={onCopy}
-                        onMove={onMove}
-                      />
-                    </div>
-                  </ItemDragSource>
-                );
-              }}
-            </PinDropTarget>
+            <div key={item.id} style={{ position: "relative" }}>
+              <FullHeightPinDropTarget
+                isFrontTarget
+                itemModel="dashboard"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              >
+                {(options: PinDropTargetRenderOptions) => {
+                  return <div style={getPinDropStyle(options)} />;
+                }}
+              </FullHeightPinDropTarget>
+              <ItemDragSource item={item} collection={collection}>
+                <div>
+                  <PinnedItemCard
+                    item={item}
+                    collection={collection}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </div>
+              </ItemDragSource>
+              <FullHeightPinDropTarget
+                isBackTarget
+                itemModel="dashboard"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              >
+                {(options: PinDropTargetRenderOptions) => {
+                  return <div style={getPinDropStyle(options)} />;
+                }}
+              </FullHeightPinDropTarget>
+            </div>
           ))}
         </Grid>
       )}
@@ -113,22 +147,39 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <PinDropTarget key={item.id} pinIndex={item.collection_position}>
-                {(options: { hovered: boolean; highlighted: boolean }) => {
-                  return (
-                    <ItemDragSource item={item} collection={collection}>
-                      <div style={getOutlineStyle(options)}>
-                        <PinnedItemCard
-                          item={item}
-                          collection={collection}
-                          onCopy={onCopy}
-                          onMove={onMove}
-                        />
-                      </div>
-                    </ItemDragSource>
-                  );
-                }}
-              </PinDropTarget>
+              <div key={item.id} style={{ position: "relative" }}>
+                <FullHeightPinDropTarget
+                  isFrontTarget
+                  itemModel="dataset"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                >
+                  {(options: PinDropTargetRenderOptions) => {
+                    return <div style={getPinDropStyle(options)} />;
+                  }}
+                </FullHeightPinDropTarget>
+                <ItemDragSource item={item} collection={collection}>
+                  <div>
+                    <PinnedItemCard
+                      item={item}
+                      collection={collection}
+                      onCopy={onCopy}
+                      onMove={onMove}
+                    />
+                  </div>
+                </ItemDragSource>
+                <FullHeightPinDropTarget
+                  isBackTarget
+                  itemModel="dataset"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                >
+                  {(options: { hovered: boolean; highlighted: boolean }) => {
+                    console.log(options);
+                    return <div style={getPinDropStyle(options)} />;
+                  }}
+                </FullHeightPinDropTarget>
+              </div>
             ))}
           </Grid>
         </div>
@@ -139,20 +190,40 @@ function PinnedItemOverview({
 
 export default PinnedItemOverview;
 
-function getOutlineStyle({
+function getPinDropStyle({
   hovered,
   highlighted,
+  isFrontTarget,
+  isBackTarget,
 }: {
   hovered: boolean;
   highlighted: boolean;
+  isFrontTarget?: boolean;
+  isBackTarget?: boolean;
 }): React.CSSProperties | undefined {
   if (hovered) {
     return {
-      outline: `5px solid ${color("brand-light")}`,
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      borderLeft: isFrontTarget
+        ? `4px solid ${color("brand-light")}`
+        : undefined,
+      borderRight: isBackTarget
+        ? `4px solid ${color("brand-light")}`
+        : undefined,
     };
   } else if (highlighted) {
     return {
-      outline: `5px solid ${color("bg-medium")}`,
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      borderLeft: isFrontTarget ? `4px solid ${color("bg-medium")}` : undefined,
+      borderRight: isBackTarget ? `4px solid ${color("bg-medium")}` : undefined,
     };
   } else {
     return undefined;
