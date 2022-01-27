@@ -82,9 +82,9 @@ const EngineSearch = ({
   const rootId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOpened, setIsOpened] = useState(false);
   const isSearching = searchText.length > 0;
-  const isFullList = isExpanded || isSearching || activeIndex != null;
+  const isExpanded = isOpened || isSearching || activeIndex != null;
   const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
@@ -92,8 +92,8 @@ const EngineSearch = ({
   }, [options]);
 
   const visibleOptions = useMemo(
-    () => getVisibleOptions(sortedOptions, isFullList, isSearching, searchText),
-    [sortedOptions, isFullList, isSearching, searchText],
+    () => getVisibleOptions(sortedOptions, isExpanded, isSearching, searchText),
+    [sortedOptions, isExpanded, isSearching, searchText],
   );
 
   const optionCount = visibleOptions.length;
@@ -144,10 +144,10 @@ const EngineSearch = ({
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
-      {!isFullList && hasMoreOptions && (
+      {!isExpanded && hasMoreOptions && (
         <EngineToggle
-          isExpanded={isExpanded}
-          onExpandedChange={setIsExpanded}
+          isOpened={isOpened}
+          onOpenedChange={setIsOpened}
         />
       )}
     </EngineSearchRoot>
@@ -240,25 +240,25 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
 };
 
 interface EngineToggleProps {
-  isExpanded: boolean;
-  onExpandedChange: (isExpanded: boolean) => void;
+  isOpened: boolean;
+  onOpenedChange: (isOpened: boolean) => void;
 }
 
 const EngineToggle = ({
-  isExpanded,
-  onExpandedChange,
+  isOpened,
+  onOpenedChange,
 }: EngineToggleProps): JSX.Element => {
   const handleClick = useCallback(() => {
-    onExpandedChange(!isExpanded);
-  }, [isExpanded, onExpandedChange]);
+    onOpenedChange(!isOpened);
+  }, [isOpened, onOpenedChange]);
 
   return (
     <EngineToggleRoot
       primary
-      iconRight={isExpanded ? "chevronup" : "chevrondown"}
+      iconRight={isOpened ? "chevronup" : "chevrondown"}
       onClick={handleClick}
     >
-      {isExpanded ? t`Show less options` : t`Show more options`}
+      {isOpened ? t`Show less options` : t`Show more options`}
     </EngineToggleRoot>
   );
 };
@@ -279,13 +279,13 @@ const getSortedOptions = (options: EngineOption[]): EngineOption[] => {
 
 const getVisibleOptions = (
   options: EngineOption[],
-  isFullList: boolean,
+  isExpanded: boolean,
   isSearching: boolean,
   searchText: string,
 ): EngineOption[] => {
   if (isSearching) {
     return options.filter(e => includesIgnoreCase(e.name, searchText));
-  } else if (isFullList) {
+  } else if (isExpanded) {
     return options;
   } else {
     return options.slice(0, DEFAULT_OPTIONS_COUNT);
