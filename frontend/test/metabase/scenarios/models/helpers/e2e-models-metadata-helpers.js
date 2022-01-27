@@ -14,9 +14,7 @@ export function setColumnType(oldType, newType) {
   cy.findByText(oldType).click();
   cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
   cy.findByPlaceholderText("Search for a special type").type(newType);
-
   cy.findByText(newType).click();
-  cy.button("Save changes").click();
 }
 
 export function mapColumnTo({ table, column } = {}) {
