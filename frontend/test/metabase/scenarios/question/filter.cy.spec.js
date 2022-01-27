@@ -942,11 +942,11 @@ describe("scenarios > question > filter", () => {
           .check({ force: true })
           .should("be.checked");
         cy.button("Add filter").click();
+        // Fixes flaky tests in #16386
+        cy.wait("@dataset");
       }
 
       function assertOnTheResult() {
-        // Fixes flaky tests in #16386
-        cy.wait(500);
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition}`);
         cy.get(".cellData").should("contain", integerAssociatedWithCondition);
