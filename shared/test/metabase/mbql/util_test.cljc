@@ -721,7 +721,7 @@
   (t/testing "Should throw an Exception if expression does not exist"
     (t/is (thrown-with-msg?
            #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-           #"No expression named 'wow'"
+           #"No expression named"
            (mbql.u/expression-with-name {} "wow")))))
 
 (t/deftest ^:parallel update-field-options-test
