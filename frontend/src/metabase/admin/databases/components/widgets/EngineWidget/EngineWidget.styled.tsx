@@ -9,7 +9,7 @@ export const EngineSearchRoot = styled.div`
   display: block;
 `;
 
-export const EngineListRoot = styled.div`
+export const EngineListRoot = styled.ul`
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
@@ -20,13 +20,18 @@ export const EngineListRoot = styled.div`
   }
 `;
 
-export const EngineCardRoot = styled(IconButtonWrapper)`
+export const EngineCardRoot = styled.li`
+  display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   height: 5.375rem;
   padding: 1rem;
   border: 1px solid ${color("bg-medium")};
+  border-radius: 0.375rem;
   background-color: ${color("white")};
+  cursor: pointer;
 
   &:hover {
     border-color: ${color("brand")};

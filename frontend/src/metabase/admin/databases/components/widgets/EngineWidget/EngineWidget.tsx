@@ -111,7 +111,7 @@ interface EngineListProps {
 
 const EngineList = ({ field, options }: EngineListProps): JSX.Element => {
   return (
-    <EngineListRoot>
+    <EngineListRoot role="listbox">
       {options.map(option => (
         <EngineCard key={option.value} field={field} option={option} />
       ))}
@@ -132,7 +132,7 @@ const EngineCard = ({ field, option }: EngineCardProps): JSX.Element => {
   }, [field, option]);
 
   return (
-    <EngineCardRoot key={option.value} onClick={handleClick}>
+    <EngineCardRoot role="option" onClick={handleClick}>
       {logo ? (
         <EngineCardImage src={logo} />
       ) : (
