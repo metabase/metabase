@@ -10,6 +10,7 @@
             [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream]))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
