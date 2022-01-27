@@ -20,7 +20,11 @@ export const EngineListRoot = styled.ul`
   }
 `;
 
-export const EngineCardRoot = styled.li`
+export interface EngineCardRootProps {
+  isActive: boolean;
+}
+
+export const EngineCardRoot = styled.li<EngineCardRootProps>`
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -32,6 +36,8 @@ export const EngineCardRoot = styled.li`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   cursor: pointer;
+  outline: ${props =>
+    props.isActive ? `2px solid ${color("brand-light")}` : ""};
 
   &:hover {
     border-color: ${color("brand")};

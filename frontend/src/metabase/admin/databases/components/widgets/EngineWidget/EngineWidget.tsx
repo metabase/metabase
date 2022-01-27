@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { KeyboardEvent, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
@@ -76,6 +76,7 @@ const EngineSearch = ({
   isHosted,
 }: EngineSearchProps): JSX.Element => {
   const [searchText, setSearchText] = useState("");
+  const [activeIndex, setActiveIndex] = useState<number>();
   const isSearching = searchText.length > 0;
 
   const sortedOptions = useMemo(() => {
@@ -87,6 +88,29 @@ const EngineSearch = ({
     [sortedOptions, isSearching, searchText],
   );
 
+  const handleSearch = useCallback((value: string) => {
+    setSearchText(value);
+    setActiveIndex(undefined);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const optionCount = visibleOptions.length;
+      const activeOption = activeIndex != null && visibleOptions[activeIndex];
+
+      switch (event.key) {
+        case "Enter":
+          activeOption && field.onChange?.(activeOption.value);
+          break;
+        case "ArrowUp":
+        case "ArrowDown":
+          setActiveIndex(getActiveIndex(event.key, activeIndex, optionCount));
+          break;
+      }
+    },
+    [field, visibleOptions, activeIndex],
+  );
+
   return (
     <EngineSearchRoot role="combobox" aria-expanded="true">
       <TextInput
@@ -94,10 +118,15 @@ const EngineSearch = ({
         placeholder={t`Search for a database…`}
         autoFocus
         aria-autocomplete="list"
-        onChange={setSearchText}
+        onChange={handleSearch}
+        onKeyDown={handleKeyDown}
       />
       {visibleOptions.length ? (
-        <EngineList options={visibleOptions} onOptionChange={field.onChange} />
+        <EngineList
+          options={visibleOptions}
+          activeIndex={activeIndex}
+          onOptionChange={field.onChange}
+        />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
@@ -107,19 +136,22 @@ const EngineSearch = ({
 
 interface EngineListProps {
   options: EngineOption[];
+  activeIndex?: number;
   onOptionChange?: (value: string) => void;
 }
 
 const EngineList = ({
   options,
+  activeIndex,
   onOptionChange,
 }: EngineListProps): JSX.Element => {
   return (
     <EngineListRoot role="listbox">
-      {options.map(option => (
+      {options.map((option, optionIndex) => (
         <EngineCard
           key={option.value}
           option={option}
+          isActive={optionIndex === activeIndex}
           onOptionChange={onOptionChange}
         />
       ))}
@@ -129,11 +161,13 @@ const EngineList = ({
 
 export interface EngineCardProps {
   option: EngineOption;
+  isActive: boolean;
   onOptionChange?: (value: string) => void;
 }
 
 const EngineCard = ({
   option,
+  isActive,
   onOptionChange,
 }: EngineCardProps): JSX.Element => {
   const logo = getEngineLogo(option.value);
@@ -143,7 +177,7 @@ const EngineCard = ({
   }, [option, onOptionChange]);
 
   return (
-    <EngineCardRoot role="option" onClick={handleClick}>
+    <EngineCardRoot role="option" isActive={isActive} onClick={handleClick}>
       {logo ? (
         <EngineCardImage src={logo} />
       ) : (
@@ -206,6 +240,29 @@ const includesIgnoreCase = (
   searchText: string,
 ): boolean => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
+};
+
+const getActiveIndex = (
+  key: string,
+  activeIndex: number | undefined,
+  optionCount: number,
+): number | undefined => {
+  switch (key) {
+    case "ArrowDown":
+      if (activeIndex != null) {
+        return Math.max(activeIndex + 1, optionCount - 1);
+      } else {
+        return 0;
+      }
+    case "ArrowUp":
+      if (activeIndex != null) {
+        return Math.max(activeIndex - 1, 0);
+      } else {
+        return optionCount;
+      }
+    default:
+      return activeIndex;
+  }
 };
 
 export default EngineWidget;
