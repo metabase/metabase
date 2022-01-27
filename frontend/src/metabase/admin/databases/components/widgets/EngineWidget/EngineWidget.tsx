@@ -97,7 +97,7 @@ const EngineSearch = ({
         onChange={setSearchText}
       />
       {visibleOptions.length ? (
-        <EngineList field={field} options={visibleOptions} />
+        <EngineList options={visibleOptions} onOptionChange={field.onChange} />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
@@ -106,31 +106,41 @@ const EngineSearch = ({
 };
 
 interface EngineListProps {
-  field: EngineField;
   options: EngineOption[];
+  onOptionChange?: (value: string) => void;
 }
 
-const EngineList = ({ field, options }: EngineListProps): JSX.Element => {
+const EngineList = ({
+  options,
+  onOptionChange,
+}: EngineListProps): JSX.Element => {
   return (
     <EngineListRoot role="listbox">
       {options.map(option => (
-        <EngineCard key={option.value} field={field} option={option} />
+        <EngineCard
+          key={option.value}
+          option={option}
+          onOptionChange={onOptionChange}
+        />
       ))}
     </EngineListRoot>
   );
 };
 
 export interface EngineCardProps {
-  field: EngineField;
   option: EngineOption;
+  onOptionChange?: (value: string) => void;
 }
 
-const EngineCard = ({ field, option }: EngineCardProps): JSX.Element => {
+const EngineCard = ({
+  option,
+  onOptionChange,
+}: EngineCardProps): JSX.Element => {
   const logo = getEngineLogo(option.value);
 
   const handleClick = useCallback(() => {
-    field.onChange?.(option.value);
-  }, [field, option]);
+    onOptionChange?.(option.value);
+  }, [option, onOptionChange]);
 
   return (
     <EngineCardRoot role="option" onClick={handleClick}>
