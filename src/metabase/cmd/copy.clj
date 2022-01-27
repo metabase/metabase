@@ -120,14 +120,14 @@
 (def ^:private table-select-fragments
   {"metabase_field" "ORDER BY id ASC"}) ; ensure ID order to ensure that parent fields are inserted before children
 
-(defn- copy-data! [source-jdbc-spec target-db-type target-db-conn]
-  (jdbc/with-db-connection [source-conn source-jdbc-spec]
+(defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type ^java.sql.Connection target-db-conn]
+  (with-open [source-conn (.getConnection source-data-source)]
     (doseq [{table-name :table, :as entity} entities
             :let                            [fragment (table-select-fragments (str/lower-case (name table-name)))
                                              sql      (str "SELECT * FROM "
                                                            (name table-name)
                                                            (when fragment (str " " fragment)))
-                                             results (jdbc/reducible-query source-conn sql)]]
+                                             results (jdbc/reducible-query {:connection source-conn} sql)]]
       (transduce
        (partition-all chunk-size)
        ;; cnt    = the total number we've inserted so far
@@ -152,9 +152,9 @@
 
 (defn- assert-db-empty
   "Make sure [target] application DB is empty before we start copying data."
-  [jdbc-spec]
+  [data-source]
   ;; check that there are no permissions groups yet -- the default ones normally get created during data migrations
-  (let [[{:keys [cnt]}] (jdbc/query jdbc-spec "SELECT count(*) AS \"cnt\" FROM permissions_group;")]
+  (let [[{:keys [cnt]}] (jdbc/query {:datasource data-source} "SELECT count(*) AS \"cnt\" FROM permissions_group;")]
     (assert (integer? cnt))
     (when (pos? cnt)
       (throw (ex-info (trs "Target DB is already populated!")
@@ -236,7 +236,7 @@
   #{Setting Session DataMigrations})
 
 (defmulti ^:private update-sequence-values!
-  {:arglists '([db-type jdbc-spec])}
+  {:arglists '([db-type data-source])}
   (fn [db-type _]
     db-type))
 
@@ -244,8 +244,8 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres
-  [_ jdbc-spec]
-  (jdbc/with-db-transaction [target-db-conn jdbc-spec]
+  [_ data-source]
+  (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [e     entities
               :when (not (contains? entities-without-autoinc-ids e))
@@ -257,29 +257,29 @@
 
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."
-  [source-db-type   :- (s/enum :h2 :postgres :mysql)
-   source-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)
-   target-db-type   :- (s/enum :h2 :postgres :mysql)
-   target-jdbc-spec :- (s/cond-pre #"^jdbc:" su/Map)]
+  [source-db-type     :- (s/enum :h2 :postgres :mysql)
+   source-data-source :- javax.sql.DataSource
+   target-db-type     :- (s/enum :h2 :postgres :mysql)
+   target-data-source :- javax.sql.DataSource]
   ;; make sure the source database is up-do-date
   (step (trs "Set up {0} source database and run migrations..." (name source-db-type))
-    (mdb.setup/setup-db! source-db-type source-jdbc-spec true))
+    (mdb.setup/setup-db! source-db-type source-data-source true))
   ;; make sure the dest DB is up-to-date
   ;;
   ;; don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
   (step (trs "Set up {0} target database and run migrations..." (name target-db-type))
     (binding [mdb.setup/*disable-data-migrations* true]
-      (mdb.setup/setup-db! target-db-type target-jdbc-spec true)))
+      (mdb.setup/setup-db! target-db-type target-data-source true)))
   ;; make sure target DB is empty
   (step (trs "Testing if target {0} database is already populated..." (name target-db-type))
-    (assert-db-empty target-jdbc-spec))
+    (assert-db-empty target-data-source))
   ;; create a transaction and load the data.
-  (jdbc/with-db-transaction [target-conn target-jdbc-spec]
+  (jdbc/with-db-transaction [target-conn {:datasource target-data-source}]
     ;; transaction should be set as rollback-only until it completes. Only then should we disable rollback-only so the
     ;; transaction will commit (i.e., only commit if the whole thing succeeds)
     (with-connection-rollback-only target-conn
       ;; disable FK constraints for the duration of loading data.
       (with-disabled-db-constraints target-db-type target-conn
-        (copy-data! source-jdbc-spec target-db-type target-conn))))
+        (copy-data! source-data-source target-db-type target-conn))))
   ;; finally, update sequence values (if needed)
-  (update-sequence-values! target-db-type target-jdbc-spec))
+  (update-sequence-values! target-db-type target-data-source))

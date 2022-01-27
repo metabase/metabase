@@ -11,11 +11,10 @@
             [medley.core :as m]
             [metabase.api.card :as card-api]
             [metabase.api.common :as api]
-            [metabase.db.env :as mdb.env]
+            [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.collection.graph :as collection.graph]
-            #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.interface :as mi]
@@ -374,7 +373,7 @@
   (let [columns (m/index-by select-name select-columns)]
     (map (fn [col]
            (let [[col-name typpe] (u/one-or-many col)]
-             (get columns col-name (if (and typpe (= @mdb.env/db-type :postgres))
+             (get columns col-name (if (and typpe (= (mdb/db-type) :postgres))
                                      [(hx/cast typpe nil) col-name]
                                      [nil col-name]))))
          necessary-columns)))
@@ -444,7 +443,7 @@
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
-  (let [sql-order   (children-sort-clause sort-info @mdb.env/db-type)
+  (let [sql-order   (children-sort-clause sort-info (mdb/db-type))
         models      (sort (map keyword models))
         queries     (for [model models]
                       (-> (collection-children-query model collection options)

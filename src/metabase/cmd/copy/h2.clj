@@ -5,7 +5,8 @@
             [clojure.tools.logging :as log]
             [metabase.db.spec :as db.spec]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [metabase.db.data-source :as mdb.data-source]))
 
 (defn- add-file-prefix-if-needed [h2-filename]
   (letfn [(prepend-protocol [s]
@@ -19,11 +20,11 @@
       (str/ends-with? h2-filename ".mv.db")
       remove-extension)))
 
-(defn h2-jdbc-spec
-  "Create a `clojure.java.jdbc-spec` for the H2 database with `h2-filename`."
-  [h2-filename]
+(defn h2-data-source
+  "Create a [[javax.sql.DataSource]] for the H2 database with `h2-filename`."
+  ^javax.sql.DataSource [h2-filename]
   (let [h2-filename (add-file-prefix-if-needed h2-filename)]
-    (db.spec/h2 {:db h2-filename})))
+    (mdb.data-source/broken-out-details->DataSource :h2 {:db h2-filename})))
 
 (defn delete-existing-h2-database-files!
   "Delete existing h2 database files."
