@@ -13,16 +13,16 @@
             [clojure.tools.logging :as log]
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.conn]
+            [metabase.db.data-source :as mdb.data-source]
             [metabase.db.liquibase :as liquibase]
+            [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]
-            [toucan.db :as db]
-            [metabase.db.data-source :as mdb.data-source]
-            [metabase.db.test-util :as mdb.test-util])
+            [toucan.db :as db])
   (:import [liquibase Contexts Liquibase]
            [liquibase.changelog ChangeSet DatabaseChangeLog]))
 
@@ -48,7 +48,7 @@
         (tx/destroy-db! driver dbdef)))))
 
 (defmethod do-with-temp-empty-app-db* :h2
-  [driver f]
+  [_driver f]
   (log/debug "Creating empty H2 app db...")
   ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection closes
   ;; because we're not setting a `DB_CLOSE_DELAY`
@@ -63,11 +63,13 @@
   (do-with-temp-empty-app-db*
    driver
    (fn [^javax.sql.DataSource data-source]
+     ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
+     ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [toucan.db/*db-connection* {:connection conn}
+       (binding [toucan.db/*db-connection* {:datasource data-source}
                  toucan.db/*quoting-style* (mdb/quoting-style driver)
                  mdb.conn/*db-type*        driver
-                 mdb.conn/*data-source*    (mdb.test-util/->ConnectionDataSource conn)]
+                 mdb.conn/*data-source*    data-source]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db

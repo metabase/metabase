@@ -5,23 +5,6 @@
             [potemkin :as p]
             [pretty.core :as pretty]))
 
-(p/deftype+ ConnectionDataSource [^java.sql.Connection conn]
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list `->ConnectionDataSource conn))
-
-  javax.sql.DataSource
-  (getConnection [_]
-    conn)
-  (getConnection [_ _user _password]
-    conn))
-
-(alter-meta!
- #'->ConnectionDataSource
- assoc
- :arglists   '(^javax.sql.DataSource [^java.sql.Connection conn])
- :doc        "Return a [[javax.sql.DataSource]] that returns a [[java.sql.Connection]] as-is.")
-
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
   (pretty [_]
