@@ -120,6 +120,23 @@
     (translations \"es\") ;-> {\"Username\" \"Nombre Usuario\", ...}"
   (comp (memoize translations*) locale))
 
+(defn- validate-number-of-args
+  "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
+  [message-format args]
+  (let [;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
+        expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
+        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
+        expected-num-args          (count (.getFormats message-format))
+        actual-num-args            (count args)]
+    (assert (= expected-num-args expected-num-args-by-index)
+            (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
+                    (pr-str (.toPattern message-format))
+                    (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
+    (assert (= expected-num-args actual-num-args)
+            (str (format (str "(deferred-)trs/tru with format string %s expects %d args, got %d.")
+                         (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
+                 " Did you forget to escape a single quote?"))))
+
 (defn- translated-format-string*
   "Find the translated version of `format-string` for `locale-or-name`, or `nil` if none can be found.
   Does not search 'parent' (language-only) translations."
@@ -164,6 +181,7 @@
   [locale-or-name ^String format-string & args]
   (when (seq format-string)
     (try
+      (validate-number-of-args (message-format locale-or-name format-string) args)
       (.format (message-format locale-or-name format-string) (to-array args))
       (catch Throwable e
         ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one

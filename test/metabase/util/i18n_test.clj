@@ -34,6 +34,18 @@
                 (is (= "deben tener 140 caracteres o menos"
                        (f)))))))))))
 
+(comment
+  (defn example-translation-failure
+    []
+    (mt/with-mock-i18n-bundles {"fr"
+                                {"asdf" "le asdf {0}"
+                                 "execution duration: {0}; ''magic'' TTL: {1}"
+                                 "La durée d'exécution: {0}; TTL ''magique'': {1}"}}
+      [(mt/with-temporary-setting-values [site-locale "fr"]
+         (str (i18n/deferred-tru "asdf")))
+       (mt/with-temporary-setting-values [site-locale "en"]
+         (i18n/tru "execution duration: {0}; ''magic'' TTL: {1}" 2 "David Blaine"))])))
+
 (deftest trs-test
   (mt/with-mock-i18n-bundles {"es" {"must be {0} characters or less" "deben tener {0} caracteres o menos"}}
     (doseq [[message f] {"trs"          (fn [] (i18n/trs "must be {0} characters or less" 140))

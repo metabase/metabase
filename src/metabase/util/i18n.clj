@@ -103,20 +103,9 @@
   [format-string args]
   (assert (string? format-string)
           "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
-  (let [message-format             (MessageFormat. format-string)
-        ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
-        expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
-        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
-        expected-num-args          (count (.getFormats message-format))
-        actual-num-args            (count args)]
-    (assert (= expected-num-args expected-num-args-by-index)
-            (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
-                    (pr-str (.toPattern message-format))
-                    (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
-    (assert (= expected-num-args actual-num-args)
-            (str (format (str "(deferred-)trs/tru with format string %s expects %d args, got %d.")
-                         (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
-                 " Did you forget to escape a single quote?"))))
+  (let [validate-impl #'impl/validate-number-of-args
+        message-format             (MessageFormat. format-string)]
+    (validate-impl message-format args)))
 
 (defmacro deferred-tru
   "Similar to `tru` but creates a `UserLocalizedString` instance so that conversion to the correct locale can be delayed
