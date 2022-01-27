@@ -19,7 +19,7 @@
              (clojure.core.logic/run)]}
 
   :consistent-alias
-  {:level   :error
+  {:level   :warning
    :aliases {cheshire.core                       json
              clojure.core.cache                  cache
              clojure.core.logic                  l
