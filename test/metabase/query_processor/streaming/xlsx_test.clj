@@ -489,15 +489,13 @@
 
 (deftest poi-tempfiles-test
   (testing "POI temporary files are cleaned up if output stream is closed before export completes (#19480)"
-    (let [poifiles-directory (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
-      ;; Clear any existing contents of poifiles directory
-      (doseq [file (file-seq poifiles-directory)]
-        (u/ignore-exceptions (io/delete-file file)))
+    (let [poifiles-directory      (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
+          expected-poifiles-count (count (file-seq poifiles-directory))]
       (let [bos                (ByteArrayOutputStream.)
             os                 (BufferedOutputStream. bos)
             results-writer     (i/streaming-results-writer :xlsx os)]
         (.close os)
         (i/begin! results-writer {:data {:ordered-cols []}} {})
         (i/finish! results-writer {:row_count 0})
-        ;; Only the directory itself should be present in the file-seq results
-        (is (= 1 (count (file-seq poifiles-directory))))))))
+        ;; No additional files should exist in the temp directory
+        (is (= expected-poifiles-count (count (file-seq poifiles-directory))))))))
