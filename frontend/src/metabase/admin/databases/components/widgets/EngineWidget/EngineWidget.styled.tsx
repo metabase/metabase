@@ -77,7 +77,7 @@ export const EngineExpandButton = styled(Button)`
   width: 100%;
 `;
 
-export const EngineButtonRoot = styled.div`
+export const EngineButtonRoot = styled.button`
   display: flex;
   align-items: center;
   color: ${color("white")};
@@ -85,6 +85,21 @@ export const EngineButtonRoot = styled.div`
   border-radius: 0.5rem;
   border: 1px solid ${color("brand")};
   background-color: ${color("brand")};
+  transition: all 200ms linear;
+  transition-property: color, background-color;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${lighten("brand", 0.12)};
+  }
+
+  &:focus {
+    outline: 2px solid ${color("brand-light")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 `;
 
 export const EngineButtonTitle = styled.div`

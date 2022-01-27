@@ -52,7 +52,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   }, [field]);
 
   return (
-    <EngineButtonRoot>
+    <EngineButtonRoot onClick={handleClick}>
       <EngineButtonTitle>
         {option ? option.name : field.value}
       </EngineButtonTitle>
@@ -60,7 +60,6 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
         name="close"
         size={18}
         aria-label={t`Remove database`}
-        onClick={handleClick}
       />
     </EngineButtonRoot>
   );
