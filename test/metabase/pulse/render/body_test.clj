@@ -323,6 +323,21 @@
                                  :last-change 1.333333
                                  :col "value"
                                  :last-value 40.0}]}
+            sameres {:cols [{:name         "value",
+                             :display_name "VALUE",
+                             :base_type    :type/Decimal}
+                            {:name           "time",
+                             :display_name   "TIME",
+                             :base_type      :type/DateTime
+                             :effective_type :type/DateTime}]
+                     :rows [[40.0 :this-month]
+                            [40.0 :last-month]
+                            [40.0 :month-before]]
+                     :insights [{:previous-value 40.0
+                                 :unit :month
+                                 :last-change 1.0
+                                 :col "value"
+                                 :last-value 40.0}]}
             ;; by "dumb" it is meant "without nonnil insights"
             dumbres {:cols [{:name         "value",
                              :display_name "VALUE",
@@ -339,6 +354,8 @@
                                  :last-value 20.0}]}]
         (is (= "40.00\nUp 133.33%. Was 30.00 last month"
                (:render/text (body/render :smartscalar nil pacific-tz nil nil results))))
+        (is (= "40.00\nNo change. Was 40.00 last month"
+               (:render/text (body/render :smartscalar nil pacific-tz nil nil sameres))))
         (is (= "20.0\nNothing to compare to."
                (:render/text (body/render :smartscalar nil pacific-tz nil nil dumbres))))
         (is (schema= {:attachments (s/eq nil)
@@ -418,7 +435,7 @@
     :base_type    :type/BigInteger
     :semantic_type nil}])
 
-(def ^:private default-combo-columns
+(def ^:private default-multi-columns
   [{:name         "Price",
     :display_name "Price",
     :base_type    :type/BigInteger
@@ -465,7 +482,7 @@
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
           (render-multiseries-bar-graph
-            {:cols default-combo-columns
+            {:cols default-multi-columns
              :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-area-graph [results]
@@ -494,7 +511,7 @@
   (testing "Check multiseries in one card but without explicit combo"
     (is (has-inline-image?
           (render-multiseries-area-graph
-            {:cols default-combo-columns
+            {:cols default-multi-columns
              :rows [[10.0 1 1231 1] [5.0 10 nil 111] [2.50 20 11 1] [1.25 nil 1231 11]]})))))
 
 (defn- render-waterfall [results]
@@ -531,15 +548,15 @@
 (deftest render-combo-test
   (testing "Render a combo graph with non-nil values for the x and y axis"
     (is (has-inline-image?
-          (render-combo {:cols default-combo-columns
+          (render-combo {:cols default-multi-columns
                          :rows [[10.0 1 123 111] [5.0 10 12 111] [2.50 20 1337 12312] [1.25 30 -22 123124]]}))))
   (testing "Render a combo graph with multiple x axes"
     (is (has-inline-image?
-          (render-combo-multi-x {:cols default-combo-columns
+          (render-combo-multi-x {:cols default-multi-columns
                                  :rows [[10.0 "Bob" 123 123124] [5.0 "Dobbs" 12 23423] [2.50 "Robbs" 1337 234234] [1.25 "Mobbs" -22 1234123]]}))))
   (testing "Check to make sure we allow nil values for any axis"
     (is (has-inline-image?
-          (render-combo {:cols default-combo-columns
+          (render-combo {:cols default-multi-columns
                          :rows [[nil 1 1 23453] [10.0 1 nil nil] [5.0 10 22 1337] [2.50 nil 22 1231] [1.25 nil nil 1231232]]})))))
 
 ;; Test rendering a sparkline
@@ -587,6 +604,11 @@
          (render-funnel
           {:cols default-columns
            :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Test that we can render a funnel with extraneous columns and also weird strings stuck in places"
+    (is (has-inline-image?
+          (render-funnel
+            {:cols default-multi-columns
+             :rows [[10.0 1 2 2] [5.0 10 "11.1" 1] ["2.50" 20 1337 0] [1.25 30 -2 "-2"]]}))))
   (testing "Test that we can have some nil values stuck everywhere"
     (is (has-inline-image?
          (render-funnel

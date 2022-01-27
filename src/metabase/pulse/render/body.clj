@@ -685,7 +685,10 @@
       (if (and last-value previous-value unit last-change)
         (let [value           (format-cell timezone-id last-value metric-col viz-settings)
               previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))]
+              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
+              delta-statement (if (= last-value previous-value)
+                                "No change."
+                                (str adj " " (percentage last-change) "."))]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -694,10 +697,10 @@
                                                    :font-size     :16px
                                                    :font-weight   700
                                                    :padding-right :16px})}
-                          adj " " (percentage last-change) "."
+                          delta-statement
                           " Was " previous " last " (format-unit unit)]]
            :render/text (str value "\n"
-                             adj " " (percentage last-change) "."
+                             delta-statement
                              " Was " previous " last " (format-unit unit))})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
