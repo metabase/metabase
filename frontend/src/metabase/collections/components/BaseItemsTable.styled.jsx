@@ -31,6 +31,10 @@ export const ColumnHeader = styled.th`
   color: ${color("text-medium")};
 `;
 
+export const ItemCell = styled.td`
+  padding: 0.25em 0 0.25em 1em !important;
+`;
+
 export const EntityIconCheckBox = styled(EntityItem.IconCheckBox)`
   width: 3em;
   height: 3em;

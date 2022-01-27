@@ -12,6 +12,7 @@ import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import {
+  ItemCell,
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
@@ -87,7 +88,7 @@ export function BaseTableItem({
         data-testid={testId}
         style={trStyles}
       >
-        <td data-testid={`${testId}-type`}>
+        <ItemCell data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
             variant="list"
@@ -98,33 +99,33 @@ export function BaseTableItem({
             onToggleSelected={handleSelectionToggled}
             showCheckbox={isHoveringOverRow}
           />
-        </td>
-        <td data-testid={`${testId}-name`}>
+        </ItemCell>
+        <ItemCell data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={item.moderated_status}
             />
           </ItemLink>
-        </td>
-        <td data-testid={`${testId}-last-edited-by`}>
+        </ItemCell>
+        <ItemCell data-testid={`${testId}-last-edited-by`}>
           <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
-        </td>
-        <td data-testid={`${testId}-last-edited-at`}>
+        </ItemCell>
+        <ItemCell data-testid={`${testId}-last-edited-at`}>
           {lastEditInfo && (
             <Tooltip tooltip={<DateTime value={lastEditInfo.timestamp} />}>
               <TableItemSecondaryField>{lastEditedAt}</TableItemSecondaryField>
             </Tooltip>
           )}
-        </td>
-        <td>
+        </ItemCell>
+        <ItemCell>
           <ActionMenu
             item={item}
             collection={collection}
             onCopy={onCopy}
             onMove={onMove}
           />
-        </td>
+        </ItemCell>
       </tr>
     );
   }, [
