@@ -82,10 +82,9 @@ const EngineSearch = ({
   const rootId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
-  const [isOpened, setIsOpened] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const isSearching = searchText.length > 0;
   const isNavigating = activeIndex != null;
-  const isExpanded = isOpened || isSearching || isNavigating;
   const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
@@ -98,8 +97,7 @@ const EngineSearch = ({
   );
 
   const optionCount = visibleOptions.length;
-  const activeOption =
-    activeIndex != null ? visibleOptions[activeIndex] : undefined;
+  const activeOption = isNavigating ? visibleOptions[activeIndex] : undefined;
 
   const handleSearch = useCallback((value: string) => {
     setSearchText(value);
@@ -115,6 +113,7 @@ const EngineSearch = ({
           break;
         case "ArrowUp":
         case "ArrowDown":
+          setIsExpanded(true);
           setActiveIndex(getActiveIndex(event.key, activeIndex, optionCount));
           event.preventDefault();
           break;
@@ -145,8 +144,11 @@ const EngineSearch = ({
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
-      {!isSearching && !isNavigating && hasMoreOptions && (
-        <EngineToggle isOpened={isOpened} onOpenedChange={setIsOpened} />
+      {!isSearching && hasMoreOptions && (
+        <EngineToggle
+          isExpanded={isExpanded}
+          onExpandedChange={setIsExpanded}
+        />
       )}
     </EngineSearchRoot>
   );
@@ -238,25 +240,25 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
 };
 
 interface EngineToggleProps {
-  isOpened: boolean;
-  onOpenedChange: (isOpened: boolean) => void;
+  isExpanded: boolean;
+  onExpandedChange: (isExpanded: boolean) => void;
 }
 
 const EngineToggle = ({
-  isOpened,
-  onOpenedChange,
+  isExpanded,
+  onExpandedChange,
 }: EngineToggleProps): JSX.Element => {
   const handleClick = useCallback(() => {
-    onOpenedChange(!isOpened);
-  }, [isOpened, onOpenedChange]);
+    onExpandedChange(!isExpanded);
+  }, [isExpanded, onExpandedChange]);
 
   return (
     <EngineToggleRoot
       primary
-      iconRight={isOpened ? "chevronup" : "chevrondown"}
+      iconRight={isExpanded ? "chevronup" : "chevrondown"}
       onClick={handleClick}
     >
-      {isOpened ? t`Show less options` : t`Show more options`}
+      {isExpanded ? t`Show less options` : t`Show more options`}
     </EngineToggleRoot>
   );
 };
