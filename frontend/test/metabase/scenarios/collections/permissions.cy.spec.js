@@ -157,11 +157,23 @@ describe("collection permissions", () => {
 
               describe("archive", () => {
                 it("should be able to archive/unarchive question (metabase#15253)", () => {
-                  archiveUnarchive("Orders");
+                  archiveUnarchive("Orders", "question");
                 });
 
                 it("should be able to archive/unarchive dashboard", () => {
-                  archiveUnarchive("Orders in a dashboard");
+                  archiveUnarchive("Orders in a dashboard", "dashboard");
+                });
+
+                it("should be able to archive/unarchive model", () => {
+                  cy.skipOn(user === "nodata");
+                  cy.createNativeQuestion({
+                    name: "Model",
+                    dataset: true,
+                    native: {
+                      query: "SELECT * FROM ORDERS",
+                    },
+                  });
+                  archiveUnarchive("Model", "model");
                 });
 
                 describe("archive page", () => {
@@ -292,12 +304,12 @@ describe("collection permissions", () => {
                   });
                 });
 
-                function archiveUnarchive(item) {
+                function archiveUnarchive(item, expectedEntityName) {
                   cy.visit("/collection/root");
                   openEllipsisMenuFor(item);
                   cy.findByText("Archive this item").click();
                   cy.findByText(item).should("not.exist");
-                  cy.findByText(/Archived (question|dashboard)/);
+                  cy.findByText(`Archived ${expectedEntityName}`);
                   cy.findByText("Undo").click();
                   cy.findByText(
                     "Sorry, you don’t have permission to see that.",
