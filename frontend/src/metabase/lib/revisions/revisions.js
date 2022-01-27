@@ -65,13 +65,15 @@ function getSeriesChangeDescription(prevCards, cards) {
 
 function getCollectionChangeDescription(prevCollectionId, collectionId) {
   const key = `collection-from-${prevCollectionId}-to-${collectionId}`;
-  return jt`moved this to ${(
-    <EntityLink
-      key={key}
-      entityId={collectionId || "root"}
-      entityType="collections"
-    />
-  )}`;
+  return [
+    jt`moved this to ${(
+      <EntityLink
+        key={key}
+        entityId={collectionId || "root"}
+        entityType="collections"
+      />
+    )}`,
+  ];
 }
 
 const CHANGE_DESCRIPTIONS = {
@@ -232,7 +234,8 @@ export function getRevisionEventsForTimeline(
       if (
         !revision.is_creation &&
         !revision.is_reversion &&
-        Array.isArray(changes)
+        Array.isArray(changes) &&
+        changes.length > 1
       ) {
         event.title = t`${username} edited this`;
         event.description = <RevisionBatchedDescription changes={changes} />;
