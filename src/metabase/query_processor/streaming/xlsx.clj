@@ -461,6 +461,12 @@
   (let [workbook            (SXSSFWorkbook.)
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
+      (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
+        (doseq [i (range (count ordered-cols))]
+          (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
+        (setup-header-row! sheet (count ordered-cols))
+        (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
+
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order
                              (let [row-v (into [] row)]
