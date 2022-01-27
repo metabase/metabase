@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
