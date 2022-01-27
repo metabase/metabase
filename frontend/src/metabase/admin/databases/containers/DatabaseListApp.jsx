@@ -9,13 +9,11 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
 
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
@@ -130,7 +128,6 @@ export default class DatabaseList extends Component {
               <tr>
                 <th>{t`Name`}</th>
                 <th>{t`Engine`}</th>
-                <th />
               </tr>
             </thead>
             <tbody>
@@ -162,29 +159,6 @@ export default class DatabaseList extends Component {
                             ? engines[database.engine]["driver-name"]
                             : database.engine}
                         </td>
-                        {isDeleting ? (
-                          <td className="text-right">{t`Deleting...`}</td>
-                        ) : (
-                          <td className="Table-actions">
-                            <ModalWithTrigger
-                              ref={this["deleteDatabaseModal_" + database.id]}
-                              triggerClasses="Button Button--danger"
-                              triggerElement={t`Delete`}
-                            >
-                              <DeleteDatabaseModal
-                                database={database}
-                                onClose={() =>
-                                  this[
-                                    "deleteDatabaseModal_" + database.id
-                                  ].current.close()
-                                }
-                                onDelete={() =>
-                                  this.props.deleteDatabase(database.id)
-                                }
-                              />
-                            </ModalWithTrigger>
-                          </td>
-                        )}
                       </tr>
                     );
                   }),
