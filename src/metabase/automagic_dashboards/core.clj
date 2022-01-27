@@ -144,10 +144,12 @@
   [table]
   (isa? (:entity_type table) :entity/GoogleAnalyticsTable))
 
-(defmulti
-  ^{:doc ""
-    :arglists '([entity])}
-  ->root type)
+(defmulti ->root
+  "root is a datatype that is an entity augmented with metadata for the purposes of creating an automatic dashboard with
+  respect to that entity. It is called a root because the automated dashboard uses productions to recursively create a
+  tree of dashboard cards to fill the dashboards. This multimethod is for turning a given entity into a root."
+  {:arglists '([entity])}
+  type)
 
 (defmethod ->root (type Table)
   [table]
