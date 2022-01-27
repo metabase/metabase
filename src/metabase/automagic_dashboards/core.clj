@@ -312,7 +312,7 @@
       reference)))
 
 (defmethod ->reference [:string (type Field)]
-  [_ {:keys [display_name full-name link table_id]}]
+  [_ {:keys [display_name full-name link]}]
   (cond
     full-name full-name
     link      (format "%s → %s"
@@ -1111,7 +1111,7 @@
 (defmulti
   ^{:private true
     :arglists '([fieldset [op & args]])}
-  humanize-filter-value (fn [_ [op & args]]
+  humanize-filter-value (fn [_ [op & _args]]
                           (qp.util/normalize-token op)))
 
 (def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
@@ -1127,7 +1127,7 @@
 (defn- field-name
   ([root field-reference]
    (->> field-reference (field-reference->field root) field-name))
-  ([{:keys [display_name unit] :as field}]
+  ([{:keys [display_name unit] :as _field}]
    (cond->> display_name
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
@@ -1169,7 +1169,7 @@
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
             (loop [x coll-zip]
               (when-not (zip/end? x)
-                (if-let [v (k (zip/node x))] true (recur (zip/next x))))))))
+                (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]

@@ -180,7 +180,7 @@
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
-(defn- pre-insert [{query :dataset_query, :as card}]
+(defn- pre-insert [card]
   (u/prog1 card
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)

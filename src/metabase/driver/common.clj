@@ -251,7 +251,7 @@
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
                     "\n"
-                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
+                    (str/join " - " ips))))})
 
 (def default-connection-info-fields
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
@@ -335,15 +335,13 @@
   (driver/with-driver driver
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
-          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                            {:settings {:report-timezone report-tz}})
           time-str        (try
                             ;; need to initialize the store since we're calling `execute-reducible-query` directly
                             ;; instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}
-                                    reduce (fn [metadata reducible-rows]
+                                    reduce (fn [_metadata reducible-rows]
                                              (transduce
                                               identity
                                               (fn
