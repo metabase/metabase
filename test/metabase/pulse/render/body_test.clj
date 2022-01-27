@@ -308,13 +308,14 @@
                       :render/text (s/eq "foo")}
                      (body/render :scalar nil pacific-tz nil nil results)))))
     (testing "for smartscalars"
-      (let [results {:cols [{:name         "value",
-                             :display_name "VALUE",
-                             :base_type    :type/Decimal}
-                            {:name           "time",
-                             :display_name   "TIME",
-                             :base_type      :type/DateTime
-                             :effective_type :type/DateTime}]
+      (let [cols    [{:name         "value",
+                      :display_name "VALUE",
+                      :base_type    :type/Decimal}
+                     {:name           "time",
+                      :display_name   "TIME",
+                      :base_type      :type/DateTime
+                      :effective_type :type/DateTime}]
+            results {:cols cols
                      :rows [[40.0 :this-month]
                             [30.0 :last-month]
                             [20.0 :month-before]]
@@ -323,13 +324,7 @@
                                  :last-change 1.333333
                                  :col "value"
                                  :last-value 40.0}]}
-            sameres {:cols [{:name         "value",
-                             :display_name "VALUE",
-                             :base_type    :type/Decimal}
-                            {:name           "time",
-                             :display_name   "TIME",
-                             :base_type      :type/DateTime
-                             :effective_type :type/DateTime}]
+            sameres {:cols cols
                      :rows [[40.0 :this-month]
                             [40.0 :last-month]
                             [40.0 :month-before]]
@@ -339,13 +334,7 @@
                                  :col "value"
                                  :last-value 40.0}]}
             ;; by "dumb" it is meant "without nonnil insights"
-            dumbres {:cols [{:name         "value",
-                             :display_name "VALUE",
-                             :base_type    :type/Decimal}
-                            {:name           "time",
-                             :display_name   "TIME",
-                             :base_type      :type/DateTime
-                             :effective_type :type/DateTime}]
+            dumbres {:cols cols
                      :rows [[20.0 :month-before]]
                      :insights [{:previous-value nil
                                  :unit nil
