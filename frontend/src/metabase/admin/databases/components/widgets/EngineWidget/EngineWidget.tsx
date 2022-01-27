@@ -1,5 +1,6 @@
 import React, { KeyboardEvent, useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
+import _ from "underscore";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
@@ -75,6 +76,7 @@ const EngineSearch = ({
   options,
   isHosted,
 }: EngineSearchProps): JSX.Element => {
+  const rootId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const [activeIndex, setActiveIndex] = useState<number>();
   const isSearching = searchText.length > 0;
@@ -88,6 +90,10 @@ const EngineSearch = ({
     [sortedOptions, isSearching, searchText],
   );
 
+  const optionCount = visibleOptions.length;
+  const activeOption =
+    activeIndex != null ? visibleOptions[activeIndex] : undefined;
+
   const handleSearch = useCallback((value: string) => {
     setSearchText(value);
     setActiveIndex(undefined);
@@ -95,9 +101,6 @@ const EngineSearch = ({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      const optionCount = visibleOptions.length;
-      const activeOption = activeIndex != null && visibleOptions[activeIndex];
-
       switch (event.key) {
         case "Enter":
           activeOption && field.onChange?.(activeOption.value);
@@ -108,7 +111,7 @@ const EngineSearch = ({
           break;
       }
     },
-    [field, visibleOptions, activeIndex],
+    [field, activeIndex, activeOption, optionCount],
   );
 
   return (
@@ -118,11 +121,14 @@ const EngineSearch = ({
         placeholder={t`Search for a database…`}
         autoFocus
         aria-autocomplete="list"
+        aria-controls={getListBoxId(rootId)}
+        aria-activedescendant={getListOptionId(rootId, activeOption)}
         onChange={handleSearch}
         onKeyDown={handleKeyDown}
       />
       {visibleOptions.length ? (
         <EngineList
+          rootId={rootId}
           options={visibleOptions}
           activeIndex={activeIndex}
           onOptionChange={field.onChange}
@@ -135,21 +141,24 @@ const EngineSearch = ({
 };
 
 interface EngineListProps {
+  rootId: string;
   options: EngineOption[];
   activeIndex?: number;
   onOptionChange?: (value: string) => void;
 }
 
 const EngineList = ({
+  rootId,
   options,
   activeIndex,
   onOptionChange,
 }: EngineListProps): JSX.Element => {
   return (
-    <EngineListRoot role="listbox">
+    <EngineListRoot role="listbox" id={getListBoxId(rootId)}>
       {options.map((option, optionIndex) => (
         <EngineCard
           key={option.value}
+          rootId={rootId}
           option={option}
           isActive={optionIndex === activeIndex}
           onOptionChange={onOptionChange}
@@ -160,12 +169,14 @@ const EngineList = ({
 };
 
 export interface EngineCardProps {
+  rootId: string;
   option: EngineOption;
   isActive: boolean;
   onOptionChange?: (value: string) => void;
 }
 
 const EngineCard = ({
+  rootId,
   option,
   isActive,
   onOptionChange,
@@ -177,7 +188,12 @@ const EngineCard = ({
   }, [option, onOptionChange]);
 
   return (
-    <EngineCardRoot role="option" isActive={isActive} onClick={handleClick}>
+    <EngineCardRoot
+      role="option"
+      id={getListOptionId(rootId, option)}
+      isActive={isActive}
+      onClick={handleClick}
+    >
       {logo ? (
         <EngineCardImage src={logo} />
       ) : (
@@ -240,6 +256,17 @@ const includesIgnoreCase = (
   searchText: string,
 ): boolean => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
+};
+
+const getListBoxId = (rootId: string): string => {
+  return `${rootId}-listbox`;
+};
+
+const getListOptionId = (
+  rootId: string,
+  option?: EngineOption,
+): string | undefined => {
+  return option ? `${rootId}-option-${option.value}` : undefined;
 };
 
 const getActiveIndex = (
