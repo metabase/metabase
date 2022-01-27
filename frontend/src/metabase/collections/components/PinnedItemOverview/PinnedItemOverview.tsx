@@ -202,12 +202,8 @@ function getPinDropStyle({
       bottom: 0,
       left: 0,
       right: 0,
-      borderLeft: isFrontTarget
-        ? `4px solid ${color("brand-light")}`
-        : undefined,
-      borderRight: isBackTarget
-        ? `4px solid ${color("brand-light")}`
-        : undefined,
+      borderLeft: isFrontTarget ? `4px solid ${color("brand")}` : undefined,
+      borderRight: isBackTarget ? `4px solid ${color("brand")}` : undefined,
     };
   } else if (highlighted) {
     return {
