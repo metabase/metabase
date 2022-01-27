@@ -228,7 +228,7 @@ For more details, please refer to the complete VS Code documentation on [Debuggi
 
 These instructions allow you to work on Metabase codebase on Windows, Linux, or macOS using [Visual Studio Code](https://code.visualstudio.com/), **without** manually installing the necessary dependencies. This is possible by leveraging Docker container and the Remote Containers extension from VS Code.
 
-For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers). The summary is as follows.
+For more details, please follow the complete VS Code guide on [Developing inside a Container](https://code.visualstudio.com/docs/remote/containers).
 
 Requirements:
 
@@ -260,6 +260,8 @@ Steps:
 4. Use the menu _View_, _Command Palette_, search for and choose _Tasks: Run Build Task_ (alternatively, use the shortcut `Ctrl+Shift+B`).
 
 5. After a while (after all JavaScript and Clojure dependencies are completely downloaded), open localhost:3000 with your web browser.
+
+See [here](dev-branch-docker.md) for more on running development branches of Metabase using Docker.
 
 ## Continuous integration
 

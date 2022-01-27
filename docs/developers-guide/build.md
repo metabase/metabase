@@ -1,24 +1,131 @@
-# Build Metabase
+# Building Metabase
 
-## Install Prerequisites
+This doc will show you how you can build and run Metabase on your own computer so you can play around with it as you please or test features that are in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
 
-These are the tools which are required in order to complete any build of the Metabase code. Follow the links to download and install them on your own before continuing.
+## Install the prerequisites
+
+If you're using macOS, you'll want to install Xcode Command Line Tools first, by running: 
+
+```
+xcode-select --install
+```
+
+And here are the tools you'll need to complete any build of the Metabase code. Follow the links to download and install them before continuing.
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
+
 2. [Java Development Kit JDK (https://adoptopenjdk.net/releases.html)](https://adoptopenjdk.net/releases.html) - you need to install JDK 11 ([more info on Java versions](../operations-guide/java-versions.md))
+
 3. [Node.js (http://nodejs.org/)](http://nodejs.org/) - latest LTS release
-4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by doing `npm install --global yarn`
+
+4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
+ 
+```
+npm install --global yarn
+```
 
 On a most recent stable Ubuntu/Debian, all the tools above, with the exception of Clojure, can be installed by using:
 
 ```
 sudo apt install openjdk-11-jdk nodejs && sudo npm install --global yarn
 ```
-If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building by doing `sudo update-alternatives --config java` and selecting Java 11 in the menu
+
+If you have multiple JDK versions installed in your machine, be sure to switch your JDK before building with: 
+
+```
+sudo update-alternatives --config java
+``` 
+
+Then select Java 11 in the menu.
 
 If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
 
 Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
+
+## Copy the Metabase code to your computer
+
+Once you have all that installed, you’re going to get a copy of Metabase's source code from GitHub, where it’s stored.
+
+1. Create a `workspace` folder (you can name it that or whatever you want). You’ll put the Metabase code files inside this `workspace` folder.
+
+2. Open up your terminal app, and navigate to your workspace folder with: 
+
+```
+cd ~/workspace
+```
+
+1. Run this GitHub command to “clone” Metabase into this folder
+
+```
+gh repo clone metabase/metabase
+```
+
+## Choose the branch you want to run, and run it!
+
+This is the part that you’ll use over and over. 
+
+The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
+
+1. Open up your terminal app
+
+2. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
+   
+   ```
+   cd ~/workspace/metabase
+   ```
+
+3. "Pull” down the latest code by running: 
+
+   ```
+   git pull
+   ```
+
+   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch if the engineer make changes to it.
+
+4. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
+`fix-native-dataset-drill-popover`.
+
+5. Switch to, or “check out,” that branch by running:
+
+   ```
+   git checkout branch-name
+   ```
+    
+   If we wanted to switch to the branch in the previous step, we'd run:
+
+   ```
+   git checkout fix-native-dataset-drill-popover
+   ```
+    
+   When you want to switch back to `master`, run: 
+    
+   ```
+   git checkout master
+   ```
+
+6. Now we’ll start up the backend server of Metabase with:
+
+   ```
+   clojure -M:run
+   ```
+   
+   When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
+
+7. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command: 
+   
+   ```
+   yarn build-hot
+   ```
+
+8. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
+     
+    This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
+
+A couple useful tips:
+
+- To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 3, 4, and 5. You’ll need to do steps 6 and 7 too if Metabase wasn’t already running. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
+
+- If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing Step 6 again.
 
 ## Build Metabase Uberjar
 
