@@ -2,11 +2,10 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, assocIn, updateIn, merge } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-import Visualization from "metabase/visualizations/components/Visualization";
 
 import {
   extractRemappings,
@@ -21,7 +20,6 @@ import Utils from "metabase/lib/utils";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
 
 import Databases from "metabase/entities/databases";
 
@@ -570,20 +568,9 @@ export const getQuestionDetailsTimelineDrawerState = createSelector(
   uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
 );
 
-export const getSourceTable = createSelector([getQuestion], question => {
-  const query = question.isStructured()
-    ? question.query().rootQuery()
-    : question.query();
-  return query.table();
-});
-
 export const isBasedOnExistingQuestion = createSelector(
-  [getSourceTable, getOriginalQuestion],
-  (sourceTable, originalQuestion) => {
-    if (sourceTable != null) {
-      return isVirtualCardId(sourceTable.id);
-    } else {
-      return originalQuestion != null;
-    }
+  [getOriginalQuestion],
+  originalQuestion => {
+    return originalQuestion != null;
   },
 );

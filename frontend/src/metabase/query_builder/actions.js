@@ -63,7 +63,7 @@ import {
   getQueryResults,
   isBasedOnExistingQuestion,
 } from "./selectors";
-import { trackNewQuestionSaved } from "./tracking";
+import { trackNewQuestionSaved } from "./analytics";
 
 import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
