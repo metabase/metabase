@@ -14,6 +14,7 @@ const DEFAULT_EPOCH_TIMESTAMP = new Date(DEFAULT_TIMESTAMP).valueOf();
 function getRevision({
   isCreation = false,
   isReversion = false,
+  userId = 1,
   username = "Foo",
   before,
   after,
@@ -25,6 +26,7 @@ function getRevision({
       after,
     },
     user: {
+      id: userId,
       common_name: username,
     },
     is_creation: isCreation,
@@ -508,6 +510,25 @@ describe("getRevisionEvents", () => {
         title: <RevisionTitle username="Foo" message="added a description" />,
         isRevertable: false,
         revision: changeEvent,
+      }),
+    ]);
+  });
+
+  it("should use 'You' instead of a username if it's current user", () => {
+    const currentUser = { id: 5 };
+    const event = getRevision({
+      isCreation: true,
+      userId: currentUser.id,
+    });
+    const timelineEvents = getRevisionEventsForTimeline([event], {
+      currentUser,
+    });
+
+    expect(timelineEvents).toEqual([
+      getExpectedEvent({
+        title: <RevisionTitle username="You" message="created this" />,
+        isRevertable: false,
+        revision: event,
       }),
     ]);
   });

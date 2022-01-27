@@ -100,6 +100,7 @@ export function QuestionActivityTimeline({
       currentUser,
     );
     const revisionEvents = getRevisionEventsForTimeline(revisions, {
+      currentUser,
       canWrite,
     });
     return [...revisionEvents, ...moderationEvents];

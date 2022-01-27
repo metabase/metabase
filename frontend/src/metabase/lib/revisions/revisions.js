@@ -190,8 +190,11 @@ export function isValidRevision(revision) {
   return getChangedFields(revision).length > 0;
 }
 
-function getRevisionUsername(revision) {
-  return revision.user.common_name;
+function getRevisionUsername(revision, currentUser) {
+  const revisionUser = revision.user;
+  return revisionUser.id === currentUser?.id
+    ? t`You`
+    : revisionUser.common_name;
 }
 
 function getRevisionEpochTimestamp(revision) {
@@ -200,12 +203,15 @@ function getRevisionEpochTimestamp(revision) {
 
 export const REVISION_EVENT_ICON = "pencil";
 
-export function getRevisionEventsForTimeline(revisions = [], { canWrite }) {
+export function getRevisionEventsForTimeline(
+  revisions = [],
+  { currentUser, canWrite = false },
+) {
   return revisions
     .filter(isValidRevision)
     .map((revision, index) => {
       const isRevertable = canWrite && index !== 0;
-      const username = getRevisionUsername(revision);
+      const username = getRevisionUsername(revision, currentUser);
       const changes = getRevisionDescription(revision);
 
       const event = {
