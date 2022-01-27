@@ -28,18 +28,22 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id, model }, archived, opts) =>
       Questions.actions.update(
         { id },
         { archived },
-        undo(opts, "question", archived ? "archived" : "unarchived"),
+        undo(
+          opts,
+          model === "dataset" ? "model" : "question",
+          archived ? "archived" : "unarchived",
+        ),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: ({ id, model }, collection, opts) =>
       Questions.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "question", "moved"),
+        undo(opts, model === "dataset" ? "model" : "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
