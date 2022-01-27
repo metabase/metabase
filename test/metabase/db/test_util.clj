@@ -20,7 +20,7 @@
 (alter-meta!
  #'->ClojureJDBCSpecDataSource
  assoc
- :arglists   '(^javax.sql.DataSource [jdbc-spec])
+ :arglists '(^javax.sql.DataSource [jdbc-spec])
  :deprecated :true
  :doc "Return a [[javax.sql.DataSource]] for a [[clojure.java.jdbc]] spec. DEPRECATED -- this is only provided for
  backwards compatibility without having to rewrite a bunch of tests. Prefer
@@ -30,7 +30,7 @@
 (deftest jdbc-spec-test
   (let [data-source (->ClojureJDBCSpecDataSource
                      {:subprotocol "h2"
-                      :subname          (format "mem:%s" (mt/random-name))
+                      :subname     (format "mem:%s" (mt/random-name))
                       :classname   "org.h2.Driver"})]
     (with-open [conn (.getConnection data-source)]
       (is (= [{:one 1}]

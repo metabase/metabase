@@ -11,7 +11,8 @@
   * [[metabase.db.data-migrations]] - Clojure-land data migration definitions and functions for running them
 
   * [[metabase.db.data-source]] - Implementations of [[javax.sql.DataSource]] for raw connection strings and
-    broken-out db details.
+    broken-out db details. See [[metabase.db.env/broken-out-details]] for more details about what 'broken-out details'
+    means.
 
   * [[metabase.db.env]] - functions for getting application database connection information from environment variables
 

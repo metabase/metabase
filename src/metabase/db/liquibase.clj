@@ -124,7 +124,7 @@
         (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
 (s/defn force-migrate-up-if-needed!
-  "Force migrating up. This does two things differently from [[migrate-up-if-needed!]]:
+  "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:
 
   1.  This doesn't check to make sure the DB locks are cleared
   2.  This generates a sequence of individual DDL statements with [[migrations-lines]] and runs them each in turn
