@@ -245,7 +245,9 @@ function friendlySchedule(channel) {
     }
     case "monthly": {
       const ampm = formatHourAMPM(channel.schedule_hour);
-      const day = formatDay(channel.schedule_day);
+      const day = channel.schedule_day
+        ? formatDay(channel.schedule_day) + " "
+        : "calendar day";
       const frame = formatFrame(channel.schedule_frame);
       scheduleString += t`monthly on the ${frame} ${day} at ${ampm}`;
       break;
