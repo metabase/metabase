@@ -597,10 +597,7 @@ export default function StaticVizPage() {
         </Box>
 
         <Box py={3}>
-          <Subhead>
-            Line/Area/Bar chart with negative values, different X ranges, and
-            right Y-axis
-          </Subhead>
+          <Subhead>Stacked area chart</Subhead>
           <StaticChart
             type="combo-chart"
             options={{
@@ -633,6 +630,9 @@ export default function StaticVizPage() {
                     ["2020-10-18", 10],
                     ["2020-10-19", 20],
                     ["2020-10-20", 30],
+                    ["2020-10-21", 40],
+                    ["2020-10-22", 45],
+                    ["2020-10-23", 55],
                   ],
                 },
                 {
@@ -644,6 +644,9 @@ export default function StaticVizPage() {
                     ["2020-10-18", 10],
                     ["2020-10-19", 40],
                     ["2020-10-20", 80],
+                    ["2020-10-21", 60],
+                    ["2020-10-22", 70],
+                    ["2020-10-23", 65],
                   ],
                 },
                 {
@@ -655,6 +658,9 @@ export default function StaticVizPage() {
                     ["2020-10-18", -40],
                     ["2020-10-19", -20],
                     ["2020-10-20", -10],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -45],
+                    ["2020-10-23", -55],
                   ],
                 },
                 {
@@ -666,6 +672,9 @@ export default function StaticVizPage() {
                     ["2020-10-18", -40],
                     ["2020-10-19", -50],
                     ["2020-10-20", -60],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -10],
+                    ["2020-10-23", -5],
                   ],
                 },
               ],

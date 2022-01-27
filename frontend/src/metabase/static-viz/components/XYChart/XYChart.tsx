@@ -77,6 +77,7 @@ export const XYChart = ({
     yTickWidths.left,
     yTickWidths.right,
     xTicksDimensions.height,
+    xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
     !!settings.goal,
