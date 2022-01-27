@@ -9,6 +9,7 @@ import {
   Series,
   ChartSettings,
   ChartStyle,
+  HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
@@ -31,6 +32,7 @@ import {
   calculateYDomains,
   sortSeries,
   getLegendColumns,
+  calculateStackedItems,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -45,11 +47,16 @@ export interface XYChartProps {
 export const XYChart = ({
   width,
   height,
-  series,
+  series: originalSeries,
   settings,
   style,
 }: XYChartProps) => {
-  series = sortSeries(series, settings.x.type);
+  let series: HydratedSeries[] = sortSeries(originalSeries, settings.x.type);
+
+  if (settings.stacking === "stack") {
+    series = calculateStackedItems(series);
+  }
+
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,

@@ -13,6 +13,7 @@ import {
   Range,
   Series,
   YAxisType,
+  HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
 import {
   getX,
@@ -85,11 +86,11 @@ export const createXScale = (
 };
 
 const calculateYDomain = (
-  series: Series[],
+  series: HydratedSeries[],
   goalValue?: number,
 ): ContiniousDomain => {
   const values = series
-    .flatMap(series => series.data)
+    .flatMap(series => series.stackedData ?? series.data)
     .map(datum => getY(datum));
   const minValue = min(values);
   const maxValue = max(values);
@@ -100,7 +101,10 @@ const calculateYDomain = (
   ];
 };
 
-export const calculateYDomains = (series: Series[], goalValue?: number) => {
+export const calculateYDomains = (
+  series: HydratedSeries[],
+  goalValue?: number,
+) => {
   const leftScaleSeries = series.filter(
     series => series.yAxisPosition === "left",
   );
