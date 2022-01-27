@@ -101,7 +101,7 @@ export function BaseTableItem({
         </td>
         <td data-testid={`${testId}-name`}>
           <ItemLink {...linkProps} to={item.getUrl()}>
-            <EntityItem.Name name={item.name} />
+            <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
               status={item.moderated_status}
             />
