@@ -17,7 +17,6 @@
                                      User ViewLog]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import java.sql.SQLException))
 

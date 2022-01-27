@@ -7,7 +7,6 @@
             [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource))
