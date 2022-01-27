@@ -107,7 +107,3 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
 };
-
-export const PLUGIN_LICENSE_PAGE = {
-  LicenseAndBillingSettings: PluginPlaceholder,
-};

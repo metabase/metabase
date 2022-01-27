@@ -224,11 +224,23 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: undefined,
     }),
-    [onCloseQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onCloseQuestionDetails]: (
+      state,
+      { payload: { closeOtherSidebars } = {} } = {},
+    ) => {
+      if (closeOtherSidebars) {
+        return {
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          questionDetailsTimelineDrawerState: undefined,
+        };
+      }
+      return {
+        ...state,
+        isShowingQuestionDetailsSidebar: false,
+        questionDetailsTimelineDrawerState: undefined,
+      };
+    },
     [onOpenQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,

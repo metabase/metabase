@@ -1,4 +1,9 @@
-import { restore, visitQuestionAdhoc, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  getDimensionByName,
+  visitQuestionAdhoc,
+  popover,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
@@ -85,7 +90,8 @@ describe("scenarios > x-rays", () => {
   });
 
   ["X-ray", "Compare to the rest"].forEach(action => {
-    it.skip(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+    it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
+      cy.skipOn(action === "Compare to the rest");
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
       cy.createNativeQuestion({
         name: "15655",
@@ -97,9 +103,8 @@ describe("scenarios > x-rays", () => {
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
       cy.findByText("Summarize").click();
-      cy.get(".List-item-title")
-        .contains(/Source/i)
-        .click();
+      getDimensionByName({ name: "SOURCE" }).click();
+      cy.button("Done").click();
       cy.get(".bar")
         .first()
         .click({ force: true });
@@ -108,7 +113,7 @@ describe("scenarios > x-rays", () => {
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
-      cy.findByText("A look at the number of People");
+      cy.findByText(/A closer look at the number of/);
       cy.get(".DashCard");
     });
 

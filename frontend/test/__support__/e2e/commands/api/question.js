@@ -73,7 +73,11 @@ function question(
     }
 
     if (loadMetadata || visitQuestion) {
-      cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+      if (dataset) {
+        cy.intercept("POST", `/api/dataset`).as("cardQuery");
+      } else {
+        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+      }
       const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);
 

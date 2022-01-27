@@ -194,8 +194,8 @@
       :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
-      :required true}
-      ]))
+      :required true}]))
+
 
 (defn find-schema-filters-prop
   "Finds the first property of type `:schema-filters` for the given `driver` connection properties. Returns `nil`

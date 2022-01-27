@@ -16,7 +16,8 @@
            ["inclusion filter with commas and wildcards (include)" true "foo" "bar,f*,baz" ""]
            ["inclusion filter with commas and wildcards (exclude)" false "ban" "bar,f*,baz" ""]
            ["exclusion filter with commas and wildcards (include)" true "foo" "" "ba*,fob"]
-           ["exclusion filter with commas and wildcards (exclude)" false "foo" "" "bar,baz,fo*"]]]
+           ["exclusion filter with commas and wildcards (exclude)" false "foo" "" "bar,baz,fo*"]
+           ["multiple inclusion with whitespace trimming" true "bar" "  foo  ,  bar \n  ,  \nbaz  " ""]]]
     (t/testing (str "include-schema? works as expected for " test-kind)
       (t/is (= expect-match? (driver.s/include-schema? inclusion-filters exclusion-filters schema-name))))
     (t/testing "include-schema? throws an exception if both patterns are specified"
