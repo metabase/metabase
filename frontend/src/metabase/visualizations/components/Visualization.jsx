@@ -131,24 +131,30 @@ export default class Visualization extends React.PureComponent {
   }
 
   transform(newProps) {
-    const transformed = newProps.rawSeries
-      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
-      : null;
-    const series = transformed && transformed.series;
-    const visualization = transformed && transformed.visualization;
-    const computedSettings = series
-      ? getComputedSettingsForSeries(series)
-      : null;
-    this.setState({
-      hovered: null,
-      clicked: null,
-      error: null,
-      warnings: [],
-      yAxisSplit: null,
-      series: series,
-      visualization: visualization,
-      computedSettings: computedSettings,
-    });
+    try {
+      const transformed = newProps.rawSeries
+        ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
+        : null;
+      const series = transformed && transformed.series;
+      const visualization = transformed && transformed.visualization;
+      const computedSettings = series
+        ? getComputedSettingsForSeries(series)
+        : null;
+      this.setState({
+        hovered: null,
+        clicked: null,
+        error: null,
+        warnings: [],
+        yAxisSplit: null,
+        series: series,
+        visualization: visualization,
+        computedSettings: computedSettings,
+      });
+    } catch (error) {
+      this.setState({
+        error: new Error(error.message || t`Could not transform series.`),
+      });
+    }
   }
 
   handleHoverChange = hovered => {
