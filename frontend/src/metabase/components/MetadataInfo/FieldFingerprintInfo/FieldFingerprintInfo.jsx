@@ -71,9 +71,18 @@ function NumberFingerprint({ className, field }) {
   }
 
   const { avg, min, max } = numberFingerprint;
-  const fixedAvg = formatNumber(Number.isInteger(avg) ? avg : avg.toFixed(2));
-  const fixedMin = formatNumber(Number.isInteger(min) ? min : min.toFixed(2));
-  const fixedMax = formatNumber(Number.isInteger(max) ? max : max.toFixed(2));
+
+  function roundNumber(num, digits = 2) {
+    if (num === null) {
+      return "";
+    }
+
+    return formatNumber(Number.isInteger(num) ? num : num.toFixed(digits));
+  }
+
+  const fixedAvg = roundNumber(avg);
+  const fixedMin = roundNumber(min);
+  const fixedMax = roundNumber(max);
 
   return (
     <Table className={className}>
