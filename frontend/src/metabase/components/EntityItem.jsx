@@ -203,7 +203,7 @@ const EntityItem = ({
         }}
       />
 
-      <Box>
+      <Box className="overflow-hidden">
         <EntityItemName name={name} />
         <Box>{extraInfo && extraInfo}</Box>
       </Box>

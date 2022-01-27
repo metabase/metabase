@@ -3,7 +3,6 @@ import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/components/ExternalLink";
-import SlackHelpCard from "../SlackHelpCard";
 
 export const SetupRoot = styled.div`
   max-width: 42rem;
@@ -99,13 +98,4 @@ export const SectionCodeButton = styled(Button)`
   top: 1rem;
   right: 1rem;
   background-color: ${color("white")};
-`;
-
-export const SetupHelpCard = styled(SlackHelpCard)`
-  ${breakpointMinLarge} {
-    position: fixed;
-    right: 2rem;
-    bottom: 2rem;
-    max-width: 15%;
-  }
 `;
