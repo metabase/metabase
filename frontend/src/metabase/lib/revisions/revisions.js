@@ -93,7 +93,7 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.REMOVE]: getCollectionChangeDescription,
   },
 
-  // Questions
+  // Questions & Models
   dataset: {
     [CHANGE_TYPE.UPDATE]: (wasDataset, isDataset) =>
       isDataset
@@ -112,6 +112,11 @@ const CHANGE_DESCRIPTIONS = {
     [CHANGE_TYPE.ADD]: t`changed the visualization settings`,
     [CHANGE_TYPE.UPDATE]: t`changed the visualization settings`,
     [CHANGE_TYPE.REMOVE]: t`changed the visualization settings`,
+  },
+  result_metadata: {
+    [CHANGE_TYPE.ADD]: t`edited the metadata`,
+    [CHANGE_TYPE.UPDATE]: t`edited the metadata`,
+    [CHANGE_TYPE.REMOVE]: t`edited the metadata`,
   },
 
   // Dashboards
