@@ -21,6 +21,7 @@ module.exports = {
     resolve: {
       ...storybookConfig.resolve,
       alias: appConfig.resolve.alias,
+      extensions: appConfig.resolve.extensions,
     },
   }),
 };

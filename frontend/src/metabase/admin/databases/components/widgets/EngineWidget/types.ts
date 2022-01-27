@@ -1,6 +1,6 @@
 export interface EngineField {
-  value: string;
-  onChange: (value: string | undefined) => void;
+  value?: string;
+  onChange?: (value: string | undefined) => void;
 }
 
 export interface EngineOption {

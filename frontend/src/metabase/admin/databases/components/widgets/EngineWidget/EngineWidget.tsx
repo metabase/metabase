@@ -48,7 +48,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   const option = options.find(option => option.value === field.value);
 
   const handleClick = useCallback(() => {
-    field.onChange(undefined);
+    field.onChange?.(undefined);
   }, [field]);
 
   return (
@@ -129,7 +129,7 @@ const EngineCard = ({ field, option }: EngineCardProps): JSX.Element => {
   const logo = getEngineLogo(option.value);
 
   const handleClick = useCallback(() => {
-    field.onChange(option.value);
+    field.onChange?.(option.value);
   }, [field, option]);
 
   return (
