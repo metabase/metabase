@@ -1,7 +1,7 @@
 (ns metabase.models.permissions-group-membership
   (:require [metabase.models.permissions-group :as group]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 

@@ -3,7 +3,7 @@
             [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.sql.parameters.substitution :as substitution]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
 
 (defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [field value], :as v}]
@@ -81,12 +81,12 @@
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                        {:type         (or (:type (ex-data e)) error-type/qp)
+                                        {:type         (or (:type (ex-data e)) qp.error-type/qp)
                                          :params       param->value
                                          :parsed-query parsed-query}
                                         e))))]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-               {:type    error-type/missing-required-parameter
+               {:type    qp.error-type/missing-required-parameter
                 :missing missing})))
     [(str/trim sql) args]))

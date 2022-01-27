@@ -9,7 +9,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -184,7 +184,7 @@
       (when-not (driver/supports? driver/*driver* :foreign-keys)
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                  {:driver driver/*driver*
-                  :type   error-type/unsupported-feature})))
+                  :type   qp.error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))
     query))
 

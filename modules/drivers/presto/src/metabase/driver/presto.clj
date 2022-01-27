@@ -15,7 +15,7 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -238,7 +238,7 @@
    context
    respond]
   (let [sql     (str "-- "
-                     (qputil/query->remark :presto outer-query) "\n"
+                     (qp.util/query->remark :presto outer-query) "\n"
                      (binding [presto-common/*param-splice-style* :paranoid]
                        (unprepare/unprepare driver (cons sql params))))
         details (merge (:details (qp.store/database))

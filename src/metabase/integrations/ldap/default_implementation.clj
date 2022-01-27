@@ -6,7 +6,7 @@
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs]]
+            [metabase.util.i18n :as i18n :refer [trs]]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]

@@ -17,7 +17,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet]))
@@ -143,7 +143,7 @@
 (defmethod driver/execute-reducible-query :sparksql
   [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
-                               :remark (qputil/query->remark :sparksql outer-query)
+                               :remark (qp.util/query->remark :sparksql outer-query)
                                :query  (if (seq params)
                                          (binding [hive-like/*param-splice-style* :paranoid]
                                            (unprepare/unprepare driver (cons sql params)))

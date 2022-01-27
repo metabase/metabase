@@ -4,7 +4,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]

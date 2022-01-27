@@ -11,7 +11,7 @@
             [metabase.driver.common.parameters.values :as values]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -170,7 +170,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                {:type error-type/driver}))))
+                {:type qp.error-type/driver}))))
    [[] nil]
    xs))
 
@@ -178,7 +178,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-               {:type error-type/invalid-query})))
+               {:type qp.error-type/invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 

@@ -9,7 +9,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -49,7 +49,7 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  error-type/invalid-query
+           {:type  qp.error-type/invalid-query
             :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -69,7 +69,7 @@
                                expected-count actual-count))
                  {:expected-columns (map :name cols)
                   :first-row        (first rows)
-                  :type             error-type/qp}))))))
+                  :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]

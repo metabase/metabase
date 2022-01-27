@@ -15,7 +15,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as pubset]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs]])
   (:import [java.sql Connection PreparedStatement ResultSet Types]
@@ -236,7 +236,7 @@
                     [(:name (qp.store/field field-id)) (:value param)]))))
         user-parameters))
 
-(defmethod qputil/query->remark :redshift
+(defmethod qp.util/query->remark :redshift
   [_ {{:keys [executed-by query-hash card-id]} :info, :as query}]
   (str "/* partner: \"metabase\", "
        (json/generate-string {:dashboard_id        nil ;; requires metabase/metabase#11909
@@ -245,7 +245,7 @@
                               :optional_account_id (pubset/site-uuid)
                               :filter_values       (field->parameter-value query)})
        " */ "
-       (qputil/default-query->remark query)))
+       (qp.util/default-query->remark query)))
 
 (defn- reducible-schemas-with-usage-permissions
   "Takes something `reducible` that returns a collection of string schema names (e.g. an `Eduction`) and returns an

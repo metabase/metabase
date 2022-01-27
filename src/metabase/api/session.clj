@@ -18,7 +18,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
             [metabase.util.password :as pass]
             [metabase.util.schema :as su]
             [schema.core :as s]

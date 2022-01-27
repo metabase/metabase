@@ -10,7 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -128,7 +128,7 @@
                :database-id       (u/the-id database)
                :table-id          (u/the-id table)
                :model             "card"
-               :query-hash        (codec/base64-encode (qp-util/query-hash {:database 1, :type :native}))
+               :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
                :query-string      "toucans"
                :question-filter   "bird sales"
                :collection-filter "coin collection"

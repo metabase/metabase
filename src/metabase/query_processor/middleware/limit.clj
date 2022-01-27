@@ -3,12 +3,12 @@
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.models.setting :as setting]
             [metabase.query-processor.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+            [metabase.query-processor.util :as qp.util]))
 
 (defn- add-limit [max-rows {query-type :type, :as query}]
   (cond-> query
     (and (= query-type :query)
-         (qputil/query-without-aggregations-or-limits? query))
+         (qp.util/query-without-aggregations-or-limits? query))
     (assoc-in [:query :limit] max-rows)))
 
 (defn- limit-xform [max-rows rf]

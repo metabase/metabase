@@ -14,7 +14,7 @@
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :as i18n :refer [trs tru]]
             [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results

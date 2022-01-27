@@ -33,7 +33,7 @@
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -574,7 +574,7 @@
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (ui18n/localized-string? form)
+         (if (i18n/localized-string? form)
            (let [s     (str form)
                  new-s (fill-templates :string context bindings s)]
              (if (not= new-s s)

@@ -20,7 +20,7 @@
             [metabase.query-processor.middleware.cache.impl-test :as impl-test]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.server.middleware.session :as session]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -266,7 +266,7 @@
     (with-mock-cache [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
-      (let [query-hash (qputil/query-hash (test-query nil))]
+      (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
@@ -327,7 +327,7 @@
   (testing "Cached results don't impact average execution time"
     (let [query                         (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                                                :cache-ttl 5000)
-          q-hash                        (qputil/query-hash query)
+          q-hash                        (qp.util/query-hash query)
           call-count                    (atom 0)
           called-promise                (promise)
           save-query-execution-original (var-get #'process-userland-query/save-query-execution!*)]

@@ -77,7 +77,7 @@
             [metabase.models.setting.cache :as cache]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models])

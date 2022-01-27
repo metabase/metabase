@@ -17,7 +17,7 @@
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
@@ -52,7 +52,7 @@
   ;; and retry if it's not there yet.
   (letfn [(thunk []
             (db/select-one QueryExecution
-                           :hash (qp-util/query-hash query)
+                           :hash (qp.util/query-hash query)
                            {:order-by [[:started_at :desc]]}))]
     (loop [retries 3]
       (or (thunk)

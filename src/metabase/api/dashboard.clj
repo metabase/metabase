@@ -29,7 +29,7 @@
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util  :as qp.util]
             [metabase.related :as related]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -160,8 +160,8 @@
   run."
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
-    [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints constraints/default-query-constraints))]))
+    [(qp.util/query-hash dataset_query)
+     (qp.util/query-hash (assoc dataset_query :constraints constraints/default-query-constraints))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."

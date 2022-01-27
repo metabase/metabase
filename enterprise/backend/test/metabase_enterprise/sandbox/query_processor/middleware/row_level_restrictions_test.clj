@@ -19,7 +19,7 @@
             [metabase.query-processor.middleware.cache-test :as cache-test]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.test :as mt]
             [metabase.test.data.env :as tx.env]
@@ -389,8 +389,8 @@
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
-        orig   qputil/query->remark]
-    (with-redefs [qputil/query->remark (fn [driver outer-query]
+        orig   qp.util/query->remark]
+    (with-redefs [qp.util/query->remark (fn [driver outer-query]
                                          (u/prog1 (orig driver outer-query)
                                            (reset! remark <>)))]
       (let [results (run-query-fn)]

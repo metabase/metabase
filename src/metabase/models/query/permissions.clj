@@ -9,7 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -117,7 +117,7 @@
   (try
     (let [query (normalize/normalize query)]
       ;; if we are using a Card as our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (qputil/query->source-card-id query)]
+      (if-let [source-card-id (qp.util/query->source-card-id query)]
         (source-card-read-perms source-card-id)
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [{:keys [query database]} (cond-> query

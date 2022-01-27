@@ -16,7 +16,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.setting :as setting]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
@@ -216,7 +216,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-           {:type error-type/invalid-query})))
+           {:type qp.error-type/invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ t] (throw-unsupported-conversion "time" "date"))
@@ -550,7 +550,7 @@
       ((partial apply h/group) (for [breakout breakouts
                                      :let     [alias (or (sql.qp/field-clause->alias driver breakout)
                                                          (throw (ex-info (tru "Error compiling SQL: breakout does not have an alias")
-                                                                         {:type     error-type/qp
+                                                                         {:type     qp.error-type/qp
                                                                           :breakout breakout
                                                                           :query    query})))]]
                                  alias))
@@ -604,7 +604,7 @@
     ;; the first place
     (throw (ex-info (tru "Invalid query: you cannot add a {0} to a {1} column."
                          (name unit) (name t-type))
-             {:type error-type/invalid-query}))))
+             {:type qp.error-type/invalid-query}))))
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
 ;; Thus for something like filtering against a relative datetime
@@ -638,7 +638,7 @@
   (let [current-type (temporal-type (:hsql-form add-interval-form))]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-               {:type error-type/invalid-query}))))
+               {:type qp.error-type/invalid-query}))))
   (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery

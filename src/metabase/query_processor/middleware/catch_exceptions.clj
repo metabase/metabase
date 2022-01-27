@@ -2,7 +2,7 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require [clojure.tools.logging :as log]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
@@ -70,7 +70,7 @@
      ((get-method format-exception Throwable) e)
      (when (= error-type :schema.core/error)
        (merge
-        {:error_type error-type/invalid-query}
+        {:error_type qp.error-type/invalid-query}
         (when-let [error-msg (explain-schema-validation-error error)]
           {:error error-msg})))
      (when (error-type/known-error-type? error-type)

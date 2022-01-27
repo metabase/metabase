@@ -21,7 +21,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -346,7 +346,7 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+  (let [dashboard  (i18n/localized-strings->strings dashboard)
         dashcards  (:ordered_cards dashboard)
         collection (magic.populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)

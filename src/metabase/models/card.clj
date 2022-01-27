@@ -16,10 +16,10 @@
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.server.middleware.session :as session]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -159,7 +159,7 @@
   forth.)"
   [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
-    (let [source-card-id (qputil/query->source-card-id query)]
+    (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
         (not source-card-id)
         :ok

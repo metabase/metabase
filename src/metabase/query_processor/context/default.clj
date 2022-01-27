@@ -4,7 +4,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]))
 
@@ -58,7 +58,7 @@
                               (transduce identity rf reducible-rows)
                               (catch Throwable e
                                 (context/raisef (ex-info (tru "Error reducing result rows")
-                                                         {:type error-type/qp}
+                                                         {:type qp.error-type/qp}
                                                          e)
                                                 context)))]
       (context/reducedf metadata reduced-rows context))))
@@ -89,7 +89,7 @@
     (log/debug (trs "Query timed out after {0}, raising timeout exception." (u/format-milliseconds timeout)))
     (context/raisef (ex-info (tru "Timed out after {0}." (u/format-milliseconds timeout))
                       {:status :timed-out
-                       :type   error-type/timed-out})
+                       :type   qp.error-type/timed-out})
                     context)))
 
 (defn- identity1

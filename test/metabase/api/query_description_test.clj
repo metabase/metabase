@@ -6,7 +6,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru]]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db))

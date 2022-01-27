@@ -17,7 +17,7 @@
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -29,7 +29,7 @@
   `query-caching-ttl-ratio`. If the TTL is less than a second, this returns `nil` (i.e., the cache should not be
   utilized.)"
   [query]
-  (when-let [average-duration (query/average-execution-time-ms (qputil/query-hash query))]
+  (when-let [average-duration (query/average-execution-time-ms (qp.util/query-hash query))]
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)

@@ -12,7 +12,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
             [metabase.query-processor.middleware.add-implicit-clauses :as implicit-clauses]
@@ -166,7 +166,7 @@
     (when (>= *preprocessing-level* max-preprocessing-level)
       (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
                                 max-preprocessing-level))
-               {:type error-type/qp})))
+               {:type qp.error-type/qp})))
     (process-query-sync query context)))
 
 (defn query->preprocessed
@@ -186,7 +186,7 @@
   [{query-type :type, :as query}]
   (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-             {:type error-type/qp})))
+             {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store

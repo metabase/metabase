@@ -3,9 +3,9 @@
             [clojure.test :refer :all]
             [metabase.events :as events]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]
@@ -18,7 +18,7 @@
               (:running_time qe) (update :running_time int?)
               (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                  (when a-hash
-                                                   (java.util.Arrays/equals a-hash (qputil/query-hash query))))))))))))
+                                                   (java.util.Arrays/equals a-hash (qp.util/query-hash query))))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
@@ -71,7 +71,7 @@
            clojure.lang.ExceptionInfo
            #"Oops!"
            (process-userland-query query {:runf (fn [_ _ context]
-                                                  (context/raisef (ex-info "Oops!" {:type error-type/qp})
+                                                  (context/raisef (ex-info "Oops!" {:type qp.error-type/qp})
                                                                   context))})))
       (is (= {:hash         true
               :database_id  nil

@@ -6,7 +6,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
             [metabase.test.mock.util :as mutil]
@@ -79,7 +79,7 @@
       (let [result (qp/process-userland-query
                     (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
                            :info {:card-id    (u/the-id card)
-                                  :query-hash (qputil/query-hash {})}))]
+                                  :query-hash (qp.util/query-hash {})}))]
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
       (is (= default-card-results-native
@@ -188,7 +188,7 @@
                    :aggregation  [[:count]]
                    :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
         :info     {:card-id    (u/the-id card)
-                   :query-hash (qputil/query-hash {})}})
+                   :query-hash (qp.util/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
                :effective_type    :type/DateTime
                :coercion_strategy nil

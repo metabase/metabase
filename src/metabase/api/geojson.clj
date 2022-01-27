@@ -3,7 +3,7 @@
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as rc]
             [ring.util.response :as rr]

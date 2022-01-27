@@ -7,7 +7,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
@@ -25,7 +25,7 @@
     ;; (normally middleware takes care of calculating query hashes for 'userland' queries but this is not
     ;; technically a userland query -- we don't want to save a QueryExecution -- so we need to add `executed-by`
     ;; and `query-hash` ourselves so the remark gets added)
-    (assoc-in query [:info :query-hash] (qputil/query-hash query))))
+    (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
 
 (defn- async-result-metadata-reducedf [_ result context]
   (let [results-metdata (or (get-in result [:data :results_metadata :columns])

@@ -4,7 +4,7 @@
             [metabase.models.permissions-group :as group]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
             [metabase.test :as mt]
             [metabase.test.data :as data]
@@ -24,7 +24,7 @@
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
     (testing "lowest-level error `:type` should be pulled up to the top-level"
       (let [e1 (ex-info "1" {:level 1})
-            e2 (ex-info "2" {:level 2, :type error-type/qp} e1)
+            e2 (ex-info "2" {:level 2, :type qp.error-type/qp} e1)
             e3 (ex-info "3" {:level 3} e2)]
         (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo

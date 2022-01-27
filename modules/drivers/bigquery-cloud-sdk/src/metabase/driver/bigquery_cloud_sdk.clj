@@ -11,10 +11,10 @@
             [metabase.driver.sync :as driver.s]
             [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -162,7 +162,7 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query")
-           {:type error-type/invalid-query, :sql sql, :parameters parameters}
+           {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
            e)))
 
 (defn- ^TableResult execute-bigquery
@@ -293,7 +293,7 @@
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
-                  (str "-- " (qputil/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                  (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
         (process-native* respond database sql params (context/canceled-chan context))))))
 
