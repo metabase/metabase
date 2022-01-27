@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -43,7 +43,7 @@ function PinnedItemOverview({
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <div key={item.id} style={{ position: "relative" }}>
+            <div key={item.id} className="relative">
               <PinnedItemSortDropTarget
                 isFrontTarget
                 itemModel="card"
@@ -75,7 +75,7 @@ function PinnedItemOverview({
       {dashboardItems.length > 0 && (
         <Grid>
           {dashboardItems.map(item => (
-            <div key={item.id} style={{ position: "relative" }}>
+            <div key={item.id} className="relative">
               <PinnedItemSortDropTarget
                 isFrontTarget
                 itemModel="dashboard"
@@ -115,7 +115,7 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <div key={item.id} style={{ position: "relative" }}>
+              <div key={item.id} className="relative">
                 <PinnedItemSortDropTarget
                   isFrontTarget
                   itemModel="dataset"
