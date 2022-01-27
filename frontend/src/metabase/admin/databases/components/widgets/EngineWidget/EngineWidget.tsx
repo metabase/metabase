@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
+import _ from "underscore";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
@@ -15,7 +16,6 @@ import {
   EngineEmptyIcon,
   EngineEmptyStateRoot,
   EngineEmptyText,
-  EngineExpandButton,
   EngineListRoot,
   EngineSearchRoot,
 } from "./EngineWidget.styled";
@@ -52,7 +52,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   }, [field]);
 
   return (
-    <EngineButtonRoot onClick={handleClick}>
+    <EngineButtonRoot autoFocus onClick={handleClick}>
       <EngineButtonTitle>
         {option ? option.name : field.value}
       </EngineButtonTitle>
@@ -76,6 +76,7 @@ const EngineSearch = ({
   options,
   isHosted,
 }: EngineSearchProps): JSX.Element => {
+  const widgetId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText.length > 0;
 
@@ -89,14 +90,21 @@ const EngineSearch = ({
   );
 
   return (
-    <EngineSearchRoot>
+    <EngineSearchRoot role="combobox" aria-expanded="true">
       <TextInput
         value={searchText}
         placeholder={t`Search for a database…`}
+        autoFocus
+        aria-autocomplete="list"
+        aria-controls={getListBoxId(widgetId)}
         onChange={setSearchText}
       />
       {visibleOptions.length ? (
-        <EngineList field={field} options={visibleOptions} />
+        <EngineList
+          widgetId={widgetId}
+          field={field}
+          options={visibleOptions}
+        />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
@@ -105,13 +113,18 @@ const EngineSearch = ({
 };
 
 interface EngineListProps {
+  widgetId: string;
   field: EngineField;
   options: EngineOption[];
 }
 
-const EngineList = ({ field, options }: EngineListProps): JSX.Element => {
+const EngineList = ({
+  widgetId,
+  field,
+  options,
+}: EngineListProps): JSX.Element => {
   return (
-    <EngineListRoot role="listbox">
+    <EngineListRoot id={getListBoxId(widgetId)} role="listbox">
       {options.map(option => (
         <EngineCard key={option.value} field={field} option={option} />
       ))}
@@ -164,30 +177,6 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
   );
 };
 
-interface EngineToggleProps {
-  isExpanded: boolean;
-  onExpandedChange: (isExpanded: boolean) => void;
-}
-
-const EngineToggle = ({
-  isExpanded,
-  onExpandedChange,
-}: EngineToggleProps): JSX.Element => {
-  const handleClick = useCallback(() => {
-    onExpandedChange(!isExpanded);
-  }, [isExpanded, onExpandedChange]);
-
-  return (
-    <EngineExpandButton
-      primary
-      iconRight={isExpanded ? "chevronup" : "chevrondown"}
-      onClick={handleClick}
-    >
-      {isExpanded ? t`Show less options` : t`Show more options`}
-    </EngineExpandButton>
-  );
-};
-
 const getSortedOptions = (options: EngineOption[]): EngineOption[] => {
   return options.sort((a, b) => {
     if (a.index >= 0 && b.index >= 0) {
@@ -219,6 +208,10 @@ const includesIgnoreCase = (
   searchText: string,
 ): boolean => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
+};
+
+const getListBoxId = (widgetId: string): string => {
+  return `${widgetId}-listbox`;
 };
 
 export default EngineWidget;
