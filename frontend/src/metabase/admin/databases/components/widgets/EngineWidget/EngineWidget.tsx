@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
-import _ from "underscore";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
@@ -76,7 +75,6 @@ const EngineSearch = ({
   options,
   isHosted,
 }: EngineSearchProps): JSX.Element => {
-  const widgetId = useMemo(() => _.uniqueId(), []);
   const [searchText, setSearchText] = useState("");
   const isSearching = searchText.length > 0;
 
@@ -96,15 +94,10 @@ const EngineSearch = ({
         placeholder={t`Search for a database…`}
         autoFocus
         aria-autocomplete="list"
-        aria-controls={getListBoxId(widgetId)}
         onChange={setSearchText}
       />
       {visibleOptions.length ? (
-        <EngineList
-          widgetId={widgetId}
-          field={field}
-          options={visibleOptions}
-        />
+        <EngineList field={field} options={visibleOptions} />
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
@@ -113,18 +106,13 @@ const EngineSearch = ({
 };
 
 interface EngineListProps {
-  widgetId: string;
   field: EngineField;
   options: EngineOption[];
 }
 
-const EngineList = ({
-  widgetId,
-  field,
-  options,
-}: EngineListProps): JSX.Element => {
+const EngineList = ({ field, options }: EngineListProps): JSX.Element => {
   return (
-    <EngineListRoot id={getListBoxId(widgetId)} role="listbox">
+    <EngineListRoot role="listbox">
       {options.map(option => (
         <EngineCard key={option.value} field={field} option={option} />
       ))}
@@ -208,10 +196,6 @@ const includesIgnoreCase = (
   searchText: string,
 ): boolean => {
   return sourceText.toLowerCase().includes(searchText.toLowerCase());
-};
-
-const getListBoxId = (widgetId: string): string => {
-  return `${widgetId}-listbox`;
 };
 
 export default EngineWidget;
