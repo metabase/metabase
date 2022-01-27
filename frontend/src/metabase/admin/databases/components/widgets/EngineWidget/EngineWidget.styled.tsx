@@ -95,6 +95,7 @@ export const EngineButtonRoot = styled.button`
   background-color: ${color("brand")};
   transition: all 200ms linear;
   transition-property: color, background-color;
+  cursor: pointer;
 
   &:hover {
     color: ${color("white")};
