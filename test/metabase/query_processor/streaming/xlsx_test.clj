@@ -487,7 +487,7 @@
       (is (= 65280 col-width)))))
 
 (deftest poi-tempfiles-test
-  (testing "POI temporary files are cleaned up if output stream is closed before export completes"
+  (testing "POI temporary files are cleaned up if output stream is closed before export completes (#19480)"
     (let [poifiles-directory (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))]
       ;; Clear any existing contents of poifiles directory
       (doseq [file (file-seq poifiles-directory)]
