@@ -84,7 +84,8 @@ const EngineSearch = ({
   const [activeIndex, setActiveIndex] = useState<number>();
   const [isOpened, setIsOpened] = useState(false);
   const isSearching = searchText.length > 0;
-  const isExpanded = isOpened || isSearching || activeIndex != null;
+  const isNavigating = activeIndex != null;
+  const isExpanded = isOpened || isSearching || isNavigating;
   const hasMoreOptions = options.length > DEFAULT_OPTIONS_COUNT;
 
   const sortedOptions = useMemo(() => {
@@ -144,7 +145,7 @@ const EngineSearch = ({
       ) : (
         <EngineEmptyState isHosted={isHosted} />
       )}
-      {!isExpanded && hasMoreOptions && (
+      {!isSearching && !isNavigating && hasMoreOptions && (
         <EngineToggle isOpened={isOpened} onOpenedChange={setIsOpened} />
       )}
     </EngineSearchRoot>
