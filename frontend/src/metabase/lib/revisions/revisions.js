@@ -200,7 +200,7 @@ function getRevisionEpochTimestamp(revision) {
 
 export const REVISION_EVENT_ICON = "pencil";
 
-export function getRevisionEventsForTimeline(revisions = [], canWrite) {
+export function getRevisionEventsForTimeline(revisions = [], { canWrite }) {
   return revisions
     .filter(isValidRevision)
     .map((revision, index) => {

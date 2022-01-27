@@ -425,11 +425,9 @@ describe("getRevisionEvents", () => {
   const revisionEvents = [latestRevisionEvent, changeEvent, creationEvent];
 
   it("should convert a revision object into an object for use in a <Timeline /> component", () => {
-    const canWrite = false;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: false,
+    });
 
     expect(timelineEvents).toEqual([
       getExpectedEvent({
@@ -456,28 +454,23 @@ describe("getRevisionEvents", () => {
   });
 
   it("should set the `isRevertable` to false when the user doesn't have write access", () => {
-    const canWrite = false;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: false,
+    });
 
     expect(timelineEvents.every(event => event.isRevertable)).toBe(false);
   });
 
   it("should set the `isRevertable` to true on all revisions that are not the most recent revision when the user has write access", () => {
-    const canWrite = true;
-    const timelineEvents = getRevisionEventsForTimeline(
-      revisionEvents,
-      canWrite,
-    );
+    const timelineEvents = getRevisionEventsForTimeline(revisionEvents, {
+      canWrite: true,
+    });
 
     expect(timelineEvents[0].isRevertable).toBe(false);
     expect(timelineEvents[1].isRevertable).toBe(true);
   });
 
   it("should drop invalid revisions", () => {
-    const canWrite = true;
     const timelineEvents = getRevisionEventsForTimeline(
       [
         changeEvent,
@@ -486,7 +479,7 @@ describe("getRevisionEvents", () => {
           after: null,
         }),
       ],
-      canWrite,
+      { canWrite: true },
     );
     expect(timelineEvents).toEqual([
       getExpectedEvent({
@@ -498,7 +491,6 @@ describe("getRevisionEvents", () => {
   });
 
   it("should drop revisions with not registered fields", () => {
-    const canWrite = true;
     const timelineEvents = getRevisionEventsForTimeline(
       [
         changeEvent,
@@ -509,7 +501,7 @@ describe("getRevisionEvents", () => {
           after: { "dont-know-this-field": 2 },
         }),
       ],
-      canWrite,
+      { canWrite: true },
     );
     expect(timelineEvents).toEqual([
       getExpectedEvent({
