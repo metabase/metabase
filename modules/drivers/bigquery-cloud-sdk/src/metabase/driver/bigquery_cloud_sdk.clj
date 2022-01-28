@@ -4,12 +4,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
-            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
+            [metabase.driver.sync.fingerprint :as sync.f]
+            [metabase.models :refer [Database]]
+            ; 'Table clashes with the BigQuery SDK class name imported below
+            [metabase.models.table :as table :refer [Table] :rename {Table MetabaseTable}]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -21,10 +25,14 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.PersistentList
-           [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
-                                      BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
-                                      Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
-                                      TableResult]))
+           [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption
+                                      BigQuery$TableDataListOption BigQuery$TableListOption BigQuery$TableOption
+                                      BigQueryException BigQueryOptions Dataset DatasetId Field Field$Mode FieldValue
+                                      FieldValueList QueryJobConfiguration Schema Table TableDefinition$Type TableId
+                                      TableResult]
+           [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
+           java.time.Instant
+           java.time.temporal.ChronoField))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
@@ -146,6 +154,65 @@
                table-schema->metabase-field-info
                set)})
 
+(def ^:private ^DateTimeFormatter bq-ts-str-formatter
+  "For some crazy reason, the TIMESTAMP String values returned from [[FieldValue]] look like `1577836800.0`, so create
+  a parser for that.  This is basically '<epoch seconds>.<millis>'."
+  (.toFormatter (doto (DateTimeFormatterBuilder.)
+                  (.appendValue ChronoField/INSTANT_SECONDS 1 19 SignStyle/NEVER)
+                  (.appendLiteral \.)
+                  (.appendValue ChronoField/MILLI_OF_SECOND))))
+
+(defn- bq-ts-str->instant [ts-str]
+  (let [parsed (.parse bq-ts-str-formatter ts-str)]
+    (Instant/from parsed)))
+
+(defn- FieldValueList->fingerprint-structure [fields truncation-size ^FieldValueList values]
+  (map-indexed (fn [idx ^FieldValue fv]
+                 (let [{:keys [:database_type]} (nth fields idx)
+                       v (.getValue fv)]
+                      (if (string? v)
+                        (cond (= "TIMESTAMP" database_type)
+                              (bq-ts-str->instant v)
+
+                              (some? truncation-size)
+                              (let [^String str-val v]
+                                (.substring ^String str-val 0 (min truncation-size (.length str-val))))
+
+                              true
+                              v)
+                        v)))
+               ;; the list operation will return *all* field values for each row, in the database field order
+               ;; so, map over the requested fields and fetch only those values at each respective :database_position
+               (map #(-> values
+                         (.get (:database_position %))
+                         (.getValue))
+                    fields)))
+
+;; Override the table-rows-sample multimethod for :bigquery-cloud-sdk, to use a different mechanism for sampling
+;; table rows (the list operations, rather than a regular query), purely as a cost control measure.  For certain types
+;; of tables, BigQuery evidently does not honor the limit parameter of a query, and instead performs a full table scan
+;; and then truncates results at the end.  See #19470 for full details.
+(defmethod @#'sync.f/table-rows-sample :bigquery-cloud-sdk [driver
+                                                            {table-name :name, dataset-id :schema :as table}
+                                                            fields
+                                                            rff
+                                                            opts]
+  (let [database (table/database table)
+        bq-tbl   (get-table database dataset-id table-name)
+        tbl-type (-> (.getDefinition bq-tbl)
+                     (.getType))]
+    (if (contains? #{TableDefinition$Type/VIEW TableDefinition$Type/MATERIALIZED_VIEW} tbl-type)
+      (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
+                      dataset-id
+                      table-name)
+          ((get-method @#'sync.f/table-rows-sample :sql-jdbc) driver table fields rff opts))
+      (let [^TableResult rows (.list bq-tbl (u/varargs BigQuery$TableDataListOption))
+            trunc-size        (:truncation-size opts)
+            num-rows          metadata-queries/max-sample-rows]
+        (transduce (comp (take num-rows)
+                         (map (partial FieldValueList->fingerprint-structure fields trunc-size)))
+                   (rff nil) ; nil param is for JDBC ResultSet metadata, which doesn't apply here
+                   (seq (.iterateAll rows)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Running Queries                                                 |

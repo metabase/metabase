@@ -4,9 +4,11 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [honeysql.helpers :as h]
-            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.db.util :as mdb.u]
+            [metabase.driver.sync.fingerprint :as sync.f]
+            [metabase.driver.util :as driver.u]
             [metabase.models.field :as field :refer [Field]]
+            [metabase.models.table :as table]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.sync.interface :as i]
@@ -64,7 +66,10 @@
                                 (update count-info :updated-fingerprints inc))))
                           (empty-stats-map (count fingerprints))
                           (map vector fields fingerprints)))))]
-    (metadata-queries/table-rows-sample table fields rff {:truncation-size truncation-size})))
+    (let [database (table/database table)
+          driver   (driver.u/database->driver database)
+          opts     {:truncation-size truncation-size}]
+      (#'sync.f/table-rows-sample driver table fields rff opts))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -169,7 +174,8 @@
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (db/select Field
-         (honeysql-for-fields-that-need-fingerprint-updating table))))
+         (honeysql-for-fields-that-need-fingerprint-updating table)
+         {:order-by [[:database_position :asc]]})))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (s/defn fingerprint-fields!

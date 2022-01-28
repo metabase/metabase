@@ -1,29 +1,21 @@
 (ns metabase.driver.sync.fingerprint
-  (:require [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [redux.core :as redux]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.sync.interface :as i]
-            [metabase.driver.sync.fingerprint.interface :as driver.f.i]
-            [schema.core :as s]))
+  "Driver specific behavior related to fingerprinting operations."
+  (:require [metabase.db.metadata-queries :as metadata-queries]
+            [metabase.driver :as driver]))
 
-(defmethod @#'driver.f.i/fingerprint-table! :default [driver table fields]
-  (let [rff (fn [_metadata]
-              (redux/post-complete
-                (f/fingerprint-fields fields)
-                (fn [fingerprints]
-                  (reduce (fn [count-info [field fingerprint]]
-                            (cond
-                              (instance? Throwable fingerprint)
-                              (update count-info :failed-fingerprints inc)
+(defmulti ^:private table-rows-sample
+  "Produces a sample of rows using the given `driver`, from the given `table`'s `fields`.  The default implementation
+  runs a row sampling MBQL query through the regular qp, and passes the `rff` into that, but other drivers may
+  occasionally need different logic.  `opts` is an optional map that may contain additional parameters (see below).
 
-                              (some-> fingerprint :global :distinct-count zero?)
-                              (update count-info :no-data-fingerprints inc)
+  Note to driver developers: you should almost certainly NOT implement this method.  99% of the time, generating and
+  running a regular MBQL query to fingerprint fields is the right thing to do for sampling rows.
 
-                              :else
-                              (do
-                                ;; TODO: don't call this here, just have the multimethod return data (not modify app DB)
-                                (save-fingerprint! field fingerprint)
-                                (update count-info :updated-fingerprints inc))))
-                    (empty-stats-map (count fingerprints))
-                    (map vector fields fingerprints)))))]
-    (metadata-queries/table-rows-sample table fields rff {:truncation-size truncation-size})))
+  `opts` parameters:
+  `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions"
+  {:arglists '([driver table fields rff opts]), :style/indent 1}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod table-rows-sample :default [_driver & args]
+  (apply metadata-queries/table-rows-sample args))
