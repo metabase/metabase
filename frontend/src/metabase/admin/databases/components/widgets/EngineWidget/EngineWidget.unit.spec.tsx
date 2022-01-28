@@ -36,7 +36,7 @@ describe("EngineWidget", () => {
     expect(screen.getByText("H2")).toBeInTheDocument();
     expect(screen.getByText("Presto")).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Show less options"));
+    userEvent.click(screen.getByText("Show fewer options"));
     expect(screen.getByText("MySQL")).toBeInTheDocument();
     expect(screen.getByText("H2")).toBeInTheDocument();
     expect(screen.queryByText("Presto")).not.toBeInTheDocument();
