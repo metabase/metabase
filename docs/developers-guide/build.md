@@ -46,9 +46,9 @@ Alternatively, without the need to explicitly install the above dependencies, fo
 
 ## Clone the Metabase repo
 
-Once you've installed all the build tools, you'll need to clone the Metabase repository from GitHub.
+Once you've installed all the build tools, you'll need to clone the [Metabase repository](https://github.com/metabase/metabase) from GitHub.
 
-1. Create a `workspace` folder (you can name it that or whatever you want). You’ll put the Metabase code files inside this `workspace` folder.
+1. Create a `workspace` folder (you can name it that or whatever you want), which will store the Metabase code files.
 
 2. Open up your terminal app, and navigate to your workspace folder with: 
 
@@ -56,13 +56,13 @@ Once you've installed all the build tools, you'll need to clone the Metabase rep
 cd ~/workspace
 ```
 
-1. Run this GitHub command to “clone” Metabase into this folder
+1. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
-gh repo clone metabase/metabase
+git clone https://github.com/metabase/metabase
 ```
 
-## Choose the branch you want to run, and run it!
+## Choose the branch you want to run, and run it
 
 This is the part that you’ll use over and over. 
 
@@ -104,6 +104,8 @@ The “official” branch of Metabase is called `master`, and other feature deve
    ```
    git checkout master
    ```
+
+## Run Metabase
 
 6. Now we’ll start up the backend server of Metabase with:
 
