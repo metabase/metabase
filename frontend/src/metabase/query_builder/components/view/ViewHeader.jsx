@@ -25,7 +25,11 @@ import QuestionDescription from "./QuestionDescription";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
-import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
+import QuestionFilters, {
+  FilterHeaderToggle,
+  FilterHeader,
+  QuestionFilterWidget,
+} from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
 import ViewSection from "./ViewSection";
@@ -115,55 +119,47 @@ export function ViewTitleHeader(props) {
       .topLevelQuery()
       .hasAggregations();
 
-  const showFiltersInHeading = !isSummarized && !areFiltersExpanded;
-
   return (
-    <ViewHeaderContainer className={className} style={style}>
-      {isDataset ? (
-        <DatasetLeftSide
+    <>
+      <ViewHeaderContainer className={className} style={style}>
+        {isDataset ? (
+          <DatasetLeftSide {...props} />
+        ) : isSaved ? (
+          <SavedQuestionLeftSide {...props} lastEditInfo={lastEditInfo} />
+        ) : (
+          <AhHocQuestionLeftSide
+            {...props}
+            isNative={isNative}
+            isSummarized={isSummarized}
+          />
+        )}
+        <ViewTitleHeaderRightSide
           {...props}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
-      ) : isSaved ? (
-        <SavedQuestionLeftSide
-          {...props}
-          lastEditInfo={lastEditInfo}
-          areFiltersExpanded={areFiltersExpanded}
-          onExpandFilters={expandFilters}
-          onCollapseFilters={collapseFilters}
-        />
-      ) : (
-        <AhHocQuestionLeftSide
-          {...props}
+          isSaved={isSaved}
+          isDataset={isDataset}
           isNative={isNative}
           isSummarized={isSummarized}
           areFiltersExpanded={areFiltersExpanded}
-          showFiltersInHeading={showFiltersInHeading}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
         />
+      </ViewHeaderContainer>
+      {QuestionFilters.shouldRender(props) && (
+        <FilterHeader
+          {...props}
+          expanded={areFiltersExpanded}
+          question={question}
+        />
       )}
-      <ViewTitleHeaderRightSide
-        {...props}
-        isSaved={isSaved}
-        isDataset={isDataset}
-        isNative={isNative}
-        isSummarized={isSummarized}
-      />
-    </ViewHeaderContainer>
+    </>
   );
 }
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   lastEditInfo: PropTypes.object,
-  areFiltersExpanded: PropTypes.bool.isRequired,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
   onOpenQuestionHistory: PropTypes.func.isRequired,
@@ -172,11 +168,8 @@ SavedQuestionLeftSide.propTypes = {
 function SavedQuestionLeftSide(props) {
   const {
     question,
-    areFiltersExpanded,
     isObjectDetail,
     isShowingQuestionDetailsSidebar,
-    onExpandFilters,
-    onCollapseFilters,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
     lastEditInfo,
@@ -226,15 +219,6 @@ function SavedQuestionLeftSide(props) {
             subHead
           />
         )}
-        {QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mb1"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderLeftSubHeading>
     </div>
   );
@@ -246,8 +230,6 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
-  areFiltersExpanded: PropTypes.bool,
-  showFiltersInHeading: PropTypes.bool,
   onExpandFilters: PropTypes.func.isRequired,
   onCollapseFilters: PropTypes.func.isRequired,
 };
@@ -259,10 +241,6 @@ function AhHocQuestionLeftSide(props) {
     isNative,
     isObjectDetail,
     isSummarized,
-    areFiltersExpanded,
-    showFiltersInHeading,
-    onExpandFilters,
-    onCollapseFilters,
   } = props;
   return (
     <div>
@@ -278,15 +256,6 @@ function AhHocQuestionLeftSide(props) {
             />
           )}
         </AdHocViewHeading>
-        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mr2"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
         {QuestionLineage.shouldRender(props) && (
           <QuestionLineage
             question={question}
@@ -304,15 +273,6 @@ function AhHocQuestionLeftSide(props) {
             data-metabase-event={`Question Data Source Click`}
           />
         )}
-        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className={cx("mb1", { ml2: isSummarized })}
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderLeftSubHeading>
     </div>
   );
@@ -320,11 +280,7 @@ function AhHocQuestionLeftSide(props) {
 
 DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  areFiltersExpanded: PropTypes.bool.isRequired,
-  showFiltersInHeading: PropTypes.bool.isRequired,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
 };
@@ -332,13 +288,9 @@ DatasetLeftSide.propTypes = {
 function DatasetLeftSide(props) {
   const {
     question,
-    areFiltersExpanded,
     isShowingQuestionDetailsSidebar,
-    showFiltersInHeading,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
-    onExpandFilters,
-    onCollapseFilters,
   } = props;
 
   const onHeaderClick = useCallback(() => {
@@ -371,27 +323,7 @@ function DatasetLeftSide(props) {
             ]}
           />
         </AdHocViewHeading>
-        {showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mr2"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
-      <ViewHeaderLeftSubHeading>
-        {!showFiltersInHeading && QuestionFilters.shouldRender(props) && (
-          <QuestionFilters
-            className="mb1"
-            question={question}
-            expanded={areFiltersExpanded}
-            onExpand={onExpandFilters}
-            onCollapse={onCollapseFilters}
-          />
-        )}
-      </ViewHeaderLeftSubHeading>
     </div>
   );
 }
@@ -432,6 +364,9 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  areFiltersExpanded: PropTypes.bool,
+  onExpandFilters: PropTypes.func,
+  onCollapseFilters: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -458,6 +393,9 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
+    areFiltersExpanded,
+    onExpandFilters,
+    onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const hasExploreResultsLink =
@@ -480,6 +418,15 @@ function ViewTitleHeaderRightSide(props) {
         >
           {t`Save`}
         </SaveButton>
+      )}
+      {QuestionFilters.shouldRender(props) && (
+        <FilterHeaderToggle
+          className="ml2 mr1"
+          question={question}
+          expanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
+        />
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
@@ -525,7 +472,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {isRunnable && !isNativeEditorOpen && (
         <RunButtonWithTooltip
-          className={cx("text-brand-hover hide", {
+          className={cx("text-brand-hover text-dark hide", {
             "sm-show": !isShowingNotebook || isNative,
             "text-white-hover": isResultDirty,
           })}
