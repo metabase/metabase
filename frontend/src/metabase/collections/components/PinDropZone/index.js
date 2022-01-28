@@ -1,1 +1,1 @@
-export { default } from "./PinUnpinDropTarget";
+export { default } from "./PinDropZone";
