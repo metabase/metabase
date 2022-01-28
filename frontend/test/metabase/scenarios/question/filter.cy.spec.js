@@ -1062,6 +1062,7 @@ describe("scenarios > question > filter", () => {
             .check({ force: true }) // the radio input is hidden
             .should("be.checked");
           cy.button("Update filter").click();
+          cy.wait("@dataset");
         });
 
         assertOnTheResult();
@@ -1090,9 +1091,9 @@ describe("scenarios > question > filter", () => {
           addBooleanFilter();
         });
 
-        visualize();
-
-        assertOnTheResult();
+        visualize(() => {
+          assertOnTheResult();
+        });
       });
 
       function addBooleanFilter() {
