@@ -67,7 +67,7 @@ Once you're happy with your filter, click **Add filter**, and visualize your res
 
 ![An active filter](./images/notebook/filter-badge.png)
 
-If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
+If you want to edit your filter, just click the purple text that describes your filter. If you click on the X next to this filter description, you'll remove your filter. You can add as many filters as you need, and you can hide them from view by clicking the purple filter icon.
 
 ### Filtering by date
 
