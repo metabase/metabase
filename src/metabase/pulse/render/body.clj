@@ -348,12 +348,13 @@
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors (public-settings/application-colors)
-     :x      {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
-              :format x-format}
-     :y      {:type (or (:graph.y_axis.scale _viz-settings) "linear")
-              :format y-format }
-     :labels labels}))
+    {:colors   (public-settings/application-colors)
+     :stacking (or (:stackable.stack_type _viz-settings) "none")
+     :x        {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
+                :format x-format}
+     :y        {:type (or (:graph.y_axis.scale _viz-settings) "linear")
+                :format y-format }
+     :labels   labels}))
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
@@ -470,11 +471,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(def default-y-pos
+(defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (conj (repeat "right")
-        "left"))
+  [viz-settings]
+  (if (:stackable.stack_type viz-settings)
+    (repeat "left")
+    (conj (repeat "right")
+          "left")))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -514,7 +518,7 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) default-y-pos)
+        y-pos         (take (count names) (default-y-pos viz-settings))
         series        (join-series names colors types row-seqs y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
@@ -547,7 +551,7 @@
                             (nth default-combo-chart-types idx))
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth default-y-pos idx))]
+                            (nth (default-y-pos viz-settings) idx))]
     {:name          card-name
      :color         card-color
      :type          card-type
@@ -574,7 +578,7 @@
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth default-y-pos idx))]
+                                   (nth (default-y-pos viz-settings) idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
