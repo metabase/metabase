@@ -857,7 +857,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["false", "true"].forEach(condition => {
+  ["true", "false"].forEach(condition => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
