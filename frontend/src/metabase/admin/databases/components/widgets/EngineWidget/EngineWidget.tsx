@@ -230,7 +230,10 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{t`Didn’t find anything`}</EngineEmptyText>
       ) : (
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
-          <ExternalLink href={Settings.docsUrl("developers-guide-drivers")}>
+          <ExternalLink
+            key="link"
+            href={Settings.docsUrl("developers-guide-drivers")}
+          >
             {t`Community Drivers`}
           </ExternalLink>
         )} page to see if it’s available for self-hosting.`}</EngineEmptyText>
@@ -258,7 +261,7 @@ const EngineToggle = ({
       iconRight={isExpanded ? "chevronup" : "chevrondown"}
       onClick={handleClick}
     >
-      {isExpanded ? t`Show less options` : t`Show more options`}
+      {isExpanded ? t`Show fewer options` : t`Show more options`}
     </EngineToggleRoot>
   );
 };
