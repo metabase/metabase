@@ -9,7 +9,12 @@ import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBa
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
-import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
+import {
+  Container,
+  Grid,
+  SectionHeader,
+  SectionSubHeader,
+} from "./PinnedItemOverview.styled";
 
 type Props = {
   items: Item[];
@@ -87,12 +92,12 @@ function PinnedItemOverview({
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
-            <h4>{t`Useful data`}</h4>
-            <div>
+            <h3>{t`Useful data`}</h3>
+            <SectionSubHeader>
               {isRootCollection(collection)
                 ? t`Start new explorations here`
                 : t`Start new explorations about ${collection.name} here`}
-            </div>
+            </SectionSubHeader>
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
