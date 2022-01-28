@@ -138,7 +138,7 @@ export default class CustomGeoJSONWidget extends Component {
   render() {
     const { setting } = this.props;
 
-    if (setting.is_env_setting) {
+    if (!setting.value || setting.is_env_setting) {
       return null;
     }
 
