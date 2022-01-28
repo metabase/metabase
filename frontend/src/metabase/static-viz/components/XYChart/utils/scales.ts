@@ -14,6 +14,7 @@ import {
   Series,
   YAxisType,
   HydratedSeries,
+  StackedDatum,
 } from "metabase/static-viz/components/XYChart/types";
 import {
   getX,
@@ -90,7 +91,9 @@ const calculateYDomain = (
   goalValue?: number,
 ): ContiniousDomain => {
   const values = series
-    .flatMap(series => series.stackedData ?? series.data)
+    .flatMap<SeriesDatum | StackedDatum>(
+      series => series.stackedData ?? series.data,
+    )
     .map(datum => getY(datum));
   const minValue = min(values);
   const maxValue = max(values);
