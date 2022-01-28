@@ -56,7 +56,6 @@ function CollectionCardVisualization({
                       noWrapper
                     >
                       <Visualization
-                        onChangeCardAndRun={_.noop}
                         isDashboard
                         showTitle
                         metadata={metadata}
