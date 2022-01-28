@@ -942,8 +942,6 @@ describe("scenarios > question > filter", () => {
           .check({ force: true })
           .should("be.checked");
         cy.button("Add filter").click();
-        // Fixes flaky tests in #16386
-        cy.wait("@dataset");
       }
 
       function assertOnTheResult() {
