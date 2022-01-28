@@ -10,8 +10,6 @@
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sync :as driver.s]
-            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
-            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
             [metabase.driver.sync.fingerprint :as sync.f]
             [metabase.models :refer [Database]]
             ; 'Table clashes with the BigQuery SDK class name imported below
