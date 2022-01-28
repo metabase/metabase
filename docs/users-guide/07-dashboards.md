@@ -79,13 +79,13 @@ Metabase will automatically update a question's display to make sure your data l
 
 You can change a question's visualization settings on a dashboard (to add a goal line, for example,) without affecting the original question. Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the palette icon to edit the question's visualization's settings.
 
-![Visualization settings](images/dashboards/visualization-settings.png).
+![Visualization settings](images/dashboards/visualization-settings.png)
 
 ## Finding dashboards
 
-You can search for any dashboard (or question, collection, or pulse) by its title in the big search box at the top of Metabase.
+You can search for any dashboard (or question, model, collection, or pulse) by its title in the big search box at the top of Metabase.
 
-After a while, your team might accumulate a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click and drag a dashboard to the top, or click on the **...** menu and select **Pin this item**.
+After a while, your team might accumulate a lot of dashboards. To make it easier to find dashboards that your team looks at often, you can pin them to the top of a collection. From the collection screen, click on the **Pin icon** next to the dashboard you want to pin.
 
 ![Pinning a dashboard in a collection](images/dashboards/pinning-dashboard.png)
 
