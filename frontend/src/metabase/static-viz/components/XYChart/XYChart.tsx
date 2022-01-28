@@ -156,6 +156,7 @@ export const XYChart = ({
           yScaleLeft={yScaleLeft}
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
+          areStacked={settings.stacking === "stack"}
         />
         <LineSeries
           series={lines}

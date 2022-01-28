@@ -22,7 +22,7 @@ export const AreaSeries = ({
   yScaleLeft,
   yScaleRight,
   xAccessor,
-  areStacked = true,
+  areStacked,
 }: AreaSeriesProps) => {
   if (areStacked) {
     return (
