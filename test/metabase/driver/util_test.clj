@@ -137,6 +137,37 @@
                (driver.u/connection-props-server->client
                 nil
                 [{:name "test", :type :info}]))))))
+  (testing "connection-props-server->client works as expected for the schema-filters type"
+    (is (= [{:name "first-prop"}
+            {:default      "all"
+             :display-name "Schemas"
+             :name         "my-schema-filters-type"
+             :options      [{:name  "All" :value "all"}
+                            {:name  "Only these..." :value "inclusion"}
+                            {:name  "All except..." :value "exclusion"}]
+             :type         "select"}
+            {:name        "my-schema-filters-patterns"
+             :placeholder "E.x. public,auth*"
+             :description "Comma separated names of schemas that <strong>should</strong> appear in Metabase"
+             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
+             :type        "text"
+             :visible-if  {:my-schema-filters-type "inclusion"}
+             :required    true}
+            {:name        "my-schema-filters-patterns"
+             :placeholder "E.x. public,auth*"
+             :description "Comma separated names of schemas that <strong>should NOT</strong> appear in Metabase"
+             :helper-text "You can use patterns like <strong>auth*</strong> to match multiple schemas"
+             :type        "text"
+             :visible-if  {:my-schema-filters-type "exclusion"}
+             :required    true}
+            {:name "last-prop"}]
+           (driver.u/connection-props-server->client
+             nil
+             [{:name "first-prop"}
+              {:name         "my-schema-filters"
+               :type         :schema-filters
+               :display-name "Schemas"}
+              {:name "last-prop"}]))))
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
                       {:name "prop-b", :visible-if {:prop-a "something else"}}

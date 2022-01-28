@@ -13,7 +13,7 @@ describe("smoketest > user", () => {
 
   it("should be able to ask a custom question", () => {
     openNotebookEditor();
-    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Products").click();
     cy.findByText("Add filters to narrow your answer").click();
     cy.findByText("Vendor").click();
@@ -273,7 +273,7 @@ describe("smoketest > user", () => {
       .first()
       .click();
     // *** check that refresh has happened
-    cy.findByText("Sample Dataset");
+    cy.findByText("Sample Database");
   });
 
   it.skip("should ensuring that header actions are appropriate for different data types", () => {

@@ -61,7 +61,7 @@ describe("operators in questions", () => {
   describe("fields have proper operators", () => {
     it("text operators", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
 
@@ -78,7 +78,7 @@ describe("operators in questions", () => {
 
     it("number operators", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
 
@@ -95,7 +95,7 @@ describe("operators in questions", () => {
 
     it("date operators", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
 
@@ -112,7 +112,7 @@ describe("operators in questions", () => {
 
     it("id operators", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
 
@@ -129,7 +129,7 @@ describe("operators in questions", () => {
 
     it("geo operators", () => {
       openNotebookEditor();
-      cy.contains("Sample Dataset").click();
+      cy.contains("Sample Database").click();
       cy.contains("People").click();
       cy.findByText("Add filters to narrow your answer").click();
 

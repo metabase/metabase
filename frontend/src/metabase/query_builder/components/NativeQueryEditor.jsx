@@ -84,6 +84,7 @@ export default class NativeQueryEditor extends Component {
 
   static defaultProps = {
     isOpen: false,
+    cancelQueryOnLeave: true,
   };
 
   UNSAFE_componentWillMount() {
@@ -177,7 +178,9 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    this.props.cancelQuery();
+    if (this.props.cancelQueryOnLeave) {
+      this.props.cancelQuery();
+    }
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
   }
@@ -408,6 +411,9 @@ export default class NativeQueryEditor extends Component {
       isNativeEditorOpen,
       openSnippetModalWithSelectedText,
       hasParametersList = true,
+      hasTopBar = true,
+      hasEditingSidebar = true,
+      resizableBoxProps = {},
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -420,32 +426,34 @@ export default class NativeQueryEditor extends Component {
 
     return (
       <div className="NativeQueryEditor bg-light full">
-        <div className="flex align-center" style={{ minHeight: 55 }}>
-          <DataSourceSelectors
-            isNativeEditorOpen={isNativeEditorOpen}
-            query={query}
-            readOnly={readOnly}
-            setDatabaseId={this.setDatabaseId}
-            setTableId={this.setTableId}
-          />
-          {hasParametersList && (
-            <SyncedParametersList
-              className="mt1"
-              parameters={parameters}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              isEditing
-              commitImmediately
-            />
-          )}
-          {query.hasWritePermission() && (
-            <VisibilityToggler
-              isOpen={isNativeEditorOpen}
+        {hasTopBar && (
+          <div className="flex align-center" style={{ minHeight: 55 }}>
+            <DataSourceSelectors
+              isNativeEditorOpen={isNativeEditorOpen}
+              query={query}
               readOnly={readOnly}
-              toggleEditor={this.toggleEditor}
+              setDatabaseId={this.setDatabaseId}
+              setTableId={this.setTableId}
             />
-          )}
-        </div>
+            {hasParametersList && (
+              <SyncedParametersList
+                className="mt1"
+                parameters={parameters}
+                setParameterValue={setParameterValue}
+                setParameterIndex={this.setParameterIndex}
+                isEditing
+                commitImmediately
+              />
+            )}
+            {query.hasWritePermission() && (
+              <VisibilityToggler
+                isOpen={isNativeEditorOpen}
+                readOnly={readOnly}
+                toggleEditor={this.toggleEditor}
+              />
+            )}
+          </div>
+        )}
         <ResizableBox
           ref={this.resizeBox}
           className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
@@ -453,11 +461,13 @@ export default class NativeQueryEditor extends Component {
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
           handle={dragHandle}
+          resizeHandles={["s"]}
+          {...resizableBoxProps}
           onResizeStop={(e, data) => {
             this.props.handleResize();
+            resizableBoxProps?.onResizeStop(e, data);
             this._editor.resize();
           }}
-          resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref={this.editor} />
 
@@ -482,7 +492,7 @@ export default class NativeQueryEditor extends Component {
               closeModal={this.props.closeSnippetModal}
             />
           )}
-          {!readOnly && (
+          {hasEditingSidebar && !readOnly && (
             <NativeQueryEditorSidebar
               runQuery={this.runQuery}
               {...this.props}

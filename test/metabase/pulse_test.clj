@@ -608,6 +608,41 @@
                                     [test-card-result png-attachment png-attachment])
                  (mt/summarize-multipart-email test-card-regex))))}})))
 
+(deftest goal-met-test
+  (let [alert-above-pulse {:alert_above_goal true}
+        alert-below-pulse {:alert_above_goal false}
+        progress-result (fn [val] [{:card {:display :progress
+                                            :visualization_settings {:progress.goal 5}}
+                                     :result {:data {:rows [[val]]}}}])
+        timeseries-result (fn [val] [{:card {:display :bar
+                                             :visualization_settings {:graph.goal_value 5}}
+                                      :result {:data {:cols [{:source :breakout}
+                                                             {:name "avg"
+                                                              :source :aggregation
+                                                              :base_type :type/Integer
+                                                              :effective-type :type/Integer
+                                                              :semantic_type :type/Quantity}]
+                                                      :rows [["2021-01-01T00:00:00Z" val]]}}}])
+        goal-met? (fn [pulse [first-result]] (#'metabase.pulse/goal-met? pulse [first-result]))]
+    (testing "Progress bar"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+    (testing "Timeseries"
+      (testing "alert above"
+        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+      (testing "alert below"
+        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+
 (deftest native-query-with-user-specified-axes-test
   (testing "Native query with user-specified x and y axis"
     (mt/with-temp Card [{card-id :id} {:name                   "Test card"

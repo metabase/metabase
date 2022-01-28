@@ -30,7 +30,7 @@ export default class RecentViews extends Component {
     } else if (model === "dashboard") {
       return "dashboard";
     } else if (model === "dataset") {
-      return "dataset";
+      return "model";
     } else if (model === "table") {
       return "database";
     } else {

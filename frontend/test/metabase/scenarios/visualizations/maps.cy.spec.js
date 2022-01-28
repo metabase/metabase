@@ -4,9 +4,9 @@ import {
   visitQuestionAdhoc,
   openNativeEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {

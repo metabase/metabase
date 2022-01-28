@@ -12,8 +12,9 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase/lib/saved-questions";
 
+import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
@@ -39,6 +40,7 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import {
   DataBucketList,
@@ -47,6 +49,7 @@ import {
   RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
+  EmptyStateContainer,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
 
@@ -209,6 +212,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
     }),
+    hasDataAccess: getHasDataAccess(state),
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
@@ -294,6 +298,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleDatabase: false,
     hasTableSearch: false,
     canChangeDatabase: true,
+    hasTriggerExpandControl: true,
   };
 
   // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
@@ -456,6 +461,7 @@ export class UnconnectedDataSelector extends Component {
     // this logic cleans up invalid states, e.x. if a selectedSchema's database
     // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
     const {
+      activeStep,
       selectedDatabase,
       selectedSchema,
       selectedTable,
@@ -467,6 +473,13 @@ export class UnconnectedDataSelector extends Component {
       selectedSchema.database.id !== selectedDatabase.id &&
       selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
+    const onStepMissingSchemaAndTable =
+      !selectedSchema &&
+      !selectedTable &&
+      (activeStep === TABLE_STEP || activeStep === FIELD_STEP);
+
+    const onStepMissingTable = !selectedTable && activeStep === FIELD_STEP;
+
     const invalidTable =
       selectedSchema &&
       selectedTable &&
@@ -477,13 +490,13 @@ export class UnconnectedDataSelector extends Component {
       selectedField &&
       selectedField.table.id !== selectedTable.id;
 
-    if (invalidSchema) {
+    if (invalidSchema || onStepMissingSchemaAndTable) {
       await this.switchToStep(SCHEMA_STEP, {
         selectedSchemaId: null,
         selectedTableId: null,
         selectedFieldId: null,
       });
-    } else if (invalidTable) {
+    } else if (invalidTable || onStepMissingTable) {
       await this.switchToStep(TABLE_STEP, {
         selectedTableId: null,
         selectedFieldId: null,
@@ -789,13 +802,14 @@ export class UnconnectedDataSelector extends Component {
     await this.nextStep({ selectedFieldId: field && field.id });
   };
 
-  getTriggerElement() {
+  getTriggerElement = triggerProps => {
     const {
       className,
       style,
       triggerIconSize,
       triggerElement,
       getTriggerElementContent,
+      hasTriggerExpandControl,
     } = this.props;
 
     if (triggerElement) {
@@ -813,8 +827,9 @@ export class UnconnectedDataSelector extends Component {
           selectedDatabase,
           selectedTable,
           selectedField,
+          ...triggerProps,
         })}
-        {!this.props.readOnly && (
+        {!this.props.readOnly && hasTriggerExpandControl && (
           <Icon
             className="ml1"
             name="chevrondown"
@@ -823,7 +838,7 @@ export class UnconnectedDataSelector extends Component {
         )}
       </span>
     );
-  }
+  };
 
   getTriggerClasses() {
     if (this.props.triggerClasses) {
@@ -962,6 +977,7 @@ export class UnconnectedDataSelector extends Component {
 
   handleClose = () => {
     this.setState({ searchText: "" });
+    this.props?.onClose();
   };
 
   getSearchInputPlaceholder = () => {
@@ -999,6 +1015,11 @@ export class UnconnectedDataSelector extends Component {
     }[selectedDataBucketId];
   };
 
+  hasDataAccess = () => {
+    const { hasDataAccess, databases } = this.props;
+    return hasDataAccess || databases?.length > 0;
+  };
+
   render() {
     const {
       searchText,
@@ -1007,6 +1028,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTable,
     } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
+
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
@@ -1022,7 +1044,7 @@ export class UnconnectedDataSelector extends Component {
         ref={this.popover}
         isInitiallyOpen={this.props.isInitiallyOpen}
         containerClassName={this.props.containerClassName}
-        triggerElement={this.getTriggerElement()}
+        triggerElement={this.getTriggerElement}
         triggerClasses={this.getTriggerClasses()}
         horizontalAttachments={["center", "left", "right"]}
         hasArrow={this.props.hasArrow}
@@ -1033,8 +1055,8 @@ export class UnconnectedDataSelector extends Component {
       >
         {this.isLoadingDatasets() ? (
           <LoadingAndErrorWrapper loading />
-        ) : (
-          <React.Fragment>
+        ) : this.hasDataAccess() ? (
+          <>
             {this.showTableSearch() && (
               <ListSearchField
                 hasClearButton
@@ -1070,7 +1092,14 @@ export class UnconnectedDataSelector extends Component {
               ) : (
                 this.renderActiveStep()
               ))}
-          </React.Fragment>
+          </>
+        ) : (
+          <EmptyStateContainer>
+            <EmptyState
+              message={t`To pick some data, you'll need to add some first`}
+              icon="database"
+            />
+          </EmptyStateContainer>
         )}
       </PopoverWithTrigger>
     );
@@ -1127,7 +1156,7 @@ function CollectionDatasetList({ datasets, onSelect, onSeeAllData }) {
             name={dataset.name}
             onSelect={() => onSelect(dataset)}
             size="small"
-            icon={{ name: "dataset", size: 16 }}
+            icon={{ name: "model", size: 16 }}
             rightIcon={PLUGIN_MODERATION.getStatusIcon(
               dataset.moderated_status,
             )}
@@ -1152,8 +1181,8 @@ const DataBucketPicker = ({ onChangeDataBucket }) => {
   const BUCKETS = [
     {
       id: DATA_BUCKET.DATASETS,
-      icon: "dataset",
-      name: t`Datasets`,
+      icon: "model",
+      name: t`Models`,
       description: t`The best starting place for new questions.`,
     },
     {
@@ -1438,7 +1467,7 @@ const TablePicker = ({
           renderItemWrapper={(itemContent, item) => {
             if (item.table?.id != null) {
               return (
-                <TableInfoPopover tableId={item.table.id}>
+                <TableInfoPopover table={item.table}>
                   {itemContent}
                 </TableInfoPopover>
               );
@@ -1452,8 +1481,7 @@ const TablePicker = ({
             {t`Is a question missing?`}
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "users-guide/custom-questions",
-                "picking-your-starting-data",
+                "users-guide/referencing-saved-questions-in-queries",
               )}
               target="_blank"
               className="block link"

@@ -291,20 +291,27 @@
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)]
-    (for [col metadata]
-      (-> col
-          (update :base_type keyword)
-          (assoc
-           :table_id     (str "card__" card-id)
-           :id           (or (:id col)
-                             ;; TODO -- what????
-                             [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-           ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
-           ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
-           ;; the dimension options
-           :semantic_type (keyword (:semantic_type col)))
-          add-field-dimension-options))))
+  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)
+        underlying (u/key-by :id (when-let [ids (seq (keep :id metadata))]
+                                   (db/select Field :id [:in ids])))
+        fields (for [{col-id :id :as col} metadata]
+                 (-> col
+                     (update :base_type keyword)
+                     (merge (select-keys (underlying col-id)
+                                         [:semantic_type :fk_target_field_id :has_field_values]))
+                     (assoc
+                      :table_id     (str "card__" card-id)
+                      :id           (or col-id
+                                        ;; TODO -- what????
+                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make decisions
+                      ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+                      ;; the dimension options
+                      :semantic_type (keyword (:semantic_type col)))
+                     add-field-dimension-options))
+        field->annotated (let [with-ids (filter (comp number? :id) fields)]
+                           (zipmap with-ids (hydrate with-ids [:target :has_field_values] :has_field_values)))]
+    (map #(field->annotated % %) fields)))
 
 (defn root-collection-schema-name
   "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
@@ -332,9 +339,12 @@
   "This method clears the semantic_type attribute for PK/FK fields of nested queries. Those fields having a semantic
   type confuses the frontend and it can really used in the same way"
   [{:keys [fields] :as metadata-response}]
-  (assoc metadata-response :fields (for [{:keys [semantic_type] :as field} fields]
-                                     (if (or (isa? semantic_type :type/PK)
-                                             (isa? semantic_type :type/FK))
+  (assoc metadata-response :fields (for [{:keys [semantic_type id] :as field} fields]
+                                     (if (and (or (isa? semantic_type :type/PK)
+                                                  (isa? semantic_type :type/FK))
+                                              ;; if they have a user entered id let it stay
+                                              (or (nil? id)
+                                                  (not (number? id))))
                                        (assoc field :semantic_type nil)
                                        field))))
 

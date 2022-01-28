@@ -5,10 +5,10 @@ import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 
 import {
-  canonicalCollectionId,
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
 
 import { POST, DELETE } from "metabase/lib/api";
 
@@ -28,18 +28,22 @@ const Questions = createEntity({
   },
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id, model }, archived, opts) =>
       Questions.actions.update(
         { id },
         { archived },
-        undo(opts, "question", archived ? "archived" : "unarchived"),
+        undo(
+          opts,
+          model === "dataset" ? "model" : "question",
+          archived ? "archived" : "unarchived",
+        ),
       ),
 
-    setCollection: ({ id }, collection, opts) =>
+    setCollection: ({ id, model }, collection, opts) =>
       Questions.actions.update(
         { id },
         { collection_id: canonicalCollectionId(collection && collection.id) },
-        undo(opts, "question", "moved"),
+        undo(opts, model === "dataset" ? "model" : "question", "moved"),
       ),
 
     setPinned: ({ id }, pinned, opts) =>
@@ -109,13 +113,14 @@ const Questions = createEntity({
 
 function getIcon(question) {
   if (question.dataset || question.model === "dataset") {
-    return { name: "dataset" };
+    return { name: "model" };
   }
   const visualization = require("metabase/visualizations").default.get(
     question.display,
   );
   return {
     name: visualization?.iconName ?? "beaker",
+    color: color("bg-dark"),
   };
 }
 

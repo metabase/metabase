@@ -7,10 +7,10 @@ import {
   waitFor,
 } from "__support__/ui";
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 import { ViewTitleHeader } from "./ViewHeader";
@@ -20,7 +20,7 @@ const BASE_GUI_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     query: {
       "source-table": ORDERS.id,
     },
@@ -47,7 +47,7 @@ const BASE_NATIVE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATASET.id,
+    database: SAMPLE_DATABASE.id,
     native: {
       query: "select * from orders",
     },
@@ -118,7 +118,7 @@ function setup({ question, isRunnable = true, settings, ...props } = {}) {
     />,
     {
       withRouter: true,
-      withSampleDataset: true,
+      withSampleDatabase: true,
     },
   );
 

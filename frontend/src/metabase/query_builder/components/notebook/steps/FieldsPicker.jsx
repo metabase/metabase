@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 export default function FieldsPicker({

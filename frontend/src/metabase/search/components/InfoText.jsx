@@ -32,7 +32,7 @@ export function InfoText({ result }) {
     case "card":
       return jt`Saved question in ${formatCollection(result.getCollection())}`;
     case "dataset":
-      return jt`Dataset in ${formatCollection(result.getCollection())}`;
+      return jt`Model in ${formatCollection(result.getCollection())}`;
     case "collection":
       return getCollectionInfoText(result.collection);
     case "database":

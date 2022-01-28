@@ -15,7 +15,6 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    clicked.column.source !== "fields" ||
     _.any(DENYLIST_TYPES, t => isa(clicked.column.semantic_type, t))
   ) {
     return [];

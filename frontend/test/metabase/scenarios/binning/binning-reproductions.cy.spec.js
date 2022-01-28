@@ -6,10 +6,11 @@ import {
   visitQuestionAdhoc,
   changeBinningForDimension,
   getBinningButtonForDimension,
+  openNotebookEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("binning related reproductions", () => {
   beforeEach(() => {
@@ -180,13 +181,13 @@ describe("binning related reproductions", () => {
 
     cy.visit("/question/new");
     cy.findByText("Custom question").click();
-    cy.findByTextEnsureVisible("Sample Dataset").click();
+    cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Orders").click();
 
     cy.icon("join_left_outer").click();
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18646").click();
     });
@@ -213,6 +214,95 @@ describe("binning related reproductions", () => {
         .closest(".List-item")
         .findByText("by month");
     });
+  });
+
+  // Probably safe to delete in the future - we're covering this steps in the main binnig tests
+  it("should display timeseries filter and granularity widgets at the bottom of the screen (metabase#11183)", () => {
+    const questionDetails = {
+      name: "11183",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+      display: "line",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Reported missing in v0.33.1");
+    cy.findAllByTestId("select-button")
+      .as("select")
+      .contains(/All Time/i);
+    cy.get("@select").contains(/Month/i);
+  });
+
+  it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
+    // save "Orders" as question
+    cy.createQuestion({
+      name: "11439",
+      query: { "source-table": ORDERS_ID },
+    });
+
+    // it is essential for this repro to find question following these exact steps
+    // (for example, visiting `/collection/root` would yield different result)
+    openNotebookEditor();
+    cy.findByText("Saved Questions").click();
+    cy.findByText("11439").click();
+    visualize();
+    cy.findAllByTestId("toggle-summarize-sidebar-button")
+      .contains("Summarize")
+      .click();
+
+    cy.findByText("Group by")
+      .parent()
+      .within(() => {
+        cy.log("Reported failing since v0.33.5.1");
+        cy.log(
+          "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
+        );
+
+        cy.findAllByText("Created At")
+          .eq(0)
+          .closest("li")
+          .contains("by month")
+          // realHover() or mousemove don't work for whatever reason
+          // have to use this ugly hack for now
+          .click({ force: true });
+      });
+    // // this step is maybe redundant since it fails to even find "by month"
+    cy.findByText("Hour of Day");
+  });
+
+  it("binning on values from joined table should work (metabase#15648)", () => {
+    // Simple question
+    openOrdersTable();
+    cy.findByText("Summarize").click();
+    cy.findByText("Group by")
+      .parent()
+      .findByText("Rating")
+      .click();
+    cy.get(".Visualization .bar").should("have.length", 6);
+
+    // Custom question ("Notebook")
+    openOrdersTable({ mode: "notebook" });
+    cy.findByText("Summarize").click();
+    cy.findByText("Count of rows").click();
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      // Close expanded "Orders" section in order to bring everything else into view
+      cy.get(".List-section-title")
+        .contains(/Orders?/)
+        .click();
+      cy.get(".List-section-title")
+        .contains(/Products?/)
+        .click();
+      cy.findByText("Rating").click();
+    });
+
+    visualize();
+
+    cy.get(".Visualization .bar").should("have.length", 6);
   });
 
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {

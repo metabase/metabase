@@ -344,3 +344,39 @@ export function computeMaxDecimalsForValues(values, options) {
     return undefined;
   }
 }
+
+export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
+  if (!prevColumns || prevColumns.length === 0) {
+    return newColumns;
+  }
+
+  const newSet = new Set(newColumns);
+  const prevSet = new Set(prevColumns);
+
+  const addedColumns = newColumns.filter(column => !prevSet.has(column));
+  const prevOrderedColumnsExceptRemoved = prevColumns.map(column =>
+    newSet.has(column) ? column : null,
+  );
+
+  const mergedColumnsResult = [];
+
+  while (
+    prevOrderedColumnsExceptRemoved.length > 0 ||
+    addedColumns.length > 0
+  ) {
+    const column = prevOrderedColumnsExceptRemoved.shift();
+
+    if (column != null) {
+      mergedColumnsResult.push(column);
+      continue;
+    }
+
+    const addedColumn = addedColumns.shift();
+
+    if (addedColumn != null) {
+      mergedColumnsResult.push(addedColumn);
+    }
+  }
+
+  return mergedColumnsResult;
+};

@@ -21,8 +21,23 @@
             [schema.core :as s])
   (:import [java.text DecimalFormat DecimalFormatSymbols]))
 
+(def ^:private card-error-rendered-info
+  "Default rendered-info map when there is an error running a card on the card run.
+  Is a delay due to the call to `trs`."
+  (delay {:attachments
+          nil
+
+          :content
+          [:div {:style (style/style
+                         (style/font-style)
+                         {:color       style/color-error
+                          :font-weight 700
+                          :padding     :16px})}
+           (trs "There was a problem with this question.")]}))
+
 (def ^:private error-rendered-info
-  "Default rendered-info map when there is an error displaying a card. Is a delay due to the call to `trs`."
+  "Default rendered-info map when there is an error displaying a card on the static viz side.
+  Is a delay due to the call to `trs`."
   (delay {:attachments
           nil
 
@@ -458,7 +473,8 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (repeat "left"))
+  (conj (repeat "right")
+        "left"))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -654,7 +670,7 @@
      :render/text (str value)}))
 
 (s/defmethod render :smartscalar :- common/RenderedPulseCard
-  [_ _ timezone-id _card _ {:keys [cols _rows insights viz-settings]}]
+  [_ _ timezone-id _card _ {:keys [cols rows insights viz-settings] :as data}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
                                  ;; computed and agg columns don't have an effective type
                                  (isa? (:base_type c) t)))
@@ -684,7 +700,17 @@
            :render/text (str value "\n"
                              adj " " (percentage last-change) "."
                              " Was " previous " last " (format-unit unit))})
-        @error-rendered-info))))
+        ;; In other words, defaults to plain scalar if we don't have actual changes
+        {:attachments nil
+         :content     [:div
+                       [:div {:style (style/style (style/scalar-style))}
+                        (h last-value)]
+                       [:p {:style (style/style {:color         style/color-text-medium
+                                                 :font-size     :16px
+                                                 :font-weight   700
+                                                 :padding-right :16px})}
+                        (trs "Nothing to compare to.")]]
+         :render/text (str last-value "\n" (trs "Nothing to compare to."))}))))
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [_rows cols viz-settings] :as data}]
@@ -748,11 +774,17 @@
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
+        settings       (-> (->js-viz x-col y-col viz-settings)
+                           (update-in [:colors] assoc
+                                      :waterfallTotal (:waterfall.total_color viz-settings)
+                                      :waterfallPositive (:waterfall.increase_color viz-settings)
+                                      :waterfallNegative (:waterfall.decrease_color viz-settings))
+                           (assoc :showTotal (:waterfall.show_total viz-settings)))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
                                    labels
-                                   (->js-viz x-col y-col viz-settings)))]
+                                   settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -829,6 +861,10 @@
     [:br]
     (trs "Please view this card in Metabase.")]})
 
-(s/defmethod render :error :- common/RenderedPulseCard
+(s/defmethod render :card-error :- common/RenderedPulseCard
+  [_ _ _ _ _ _]
+  @card-error-rendered-info)
+
+(s/defmethod render :render-error :- common/RenderedPulseCard
   [_ _ _ _ _ _]
   @error-rendered-info)

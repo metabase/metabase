@@ -28,4 +28,8 @@ export interface DatabaseDetails {
   ssl: boolean;
 }
 
+export interface SubscribeInfo {
+  email: string;
+}
+
 export type LocaleData = [string, string];

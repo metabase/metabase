@@ -3,17 +3,19 @@ import { render, screen } from "@testing-library/react";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 import { DatabaseDetails, DatabaseInfo } from "../../types";
 
-const FormMock = () => <div />;
+const ComponentMock = () => <div />;
 
 jest.mock("metabase/entities/databases", () => ({
   forms: { setup: jest.fn() },
-  Form: FormMock,
+  Form: ComponentMock,
 }));
 
 jest.mock("metabase/entities/users", () => ({
   forms: { setup_invite: jest.fn() },
-  Form: FormMock,
+  Form: ComponentMock,
 }));
+
+jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
 describe("DatabaseStep", () => {
   it("should render in active state", () => {

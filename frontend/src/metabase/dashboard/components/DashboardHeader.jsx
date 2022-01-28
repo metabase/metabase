@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import Header from "metabase/components/Header";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";

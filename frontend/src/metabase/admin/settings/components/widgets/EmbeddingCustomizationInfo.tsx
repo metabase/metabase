@@ -1,7 +1,7 @@
 import React from "react";
 import { jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "../SettingHeader";
 
 export const EmbeddingCustomizationInfo = () => {

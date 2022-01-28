@@ -6,23 +6,28 @@ import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import { isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
   EntityItemSpinner,
   EntityItemWrapper,
+  EntityMenuContainer,
+  PinButton,
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
   item,
   variant,
-  iconName,
+  icon,
   pinned,
   selectable,
   selected,
+  showCheckbox,
   disabled,
   onToggleSelected,
   ...props
@@ -38,28 +43,40 @@ function EntityIconCheckBox({
       isPinned={pinned}
       model={item.model}
       onClick={selectable ? handleClick : null}
-      circle
+      rounded
       disabled={disabled}
       {...props}
     >
       {selectable ? (
         <Swapper
-          startSwapped={selected}
+          startSwapped={selected || showCheckbox}
           defaultElement={
-            <Icon name={iconName} color={"inherit"} size={iconSize} />
+            <Icon
+              name={icon.name}
+              color={icon.color ?? "inherit"}
+              size={iconSize}
+            />
           }
           swappedElement={<CheckBox checked={selected} size={iconSize} />}
         />
       ) : (
-        <Icon name={iconName} color={"inherit"} size={iconSize} />
+        <Icon
+          name={icon.name}
+          color={icon.color ?? "inherit"}
+          size={iconSize}
+        />
       )}
     </EntityIconWrapper>
   );
 }
 
-function EntityItemName({ name }) {
+function EntityItemName({ name, variant }) {
   return (
-    <h3 className="overflow-hidden">
+    <h3
+      className={cx("overflow-hidden", {
+        "text-list": variant === "list",
+      })}
+    >
       <Ellipsified>{name}</Ellipsified>
     </h3>
   );
@@ -74,14 +91,14 @@ function EntityItemMenu({
   className,
   analyticsContext,
 }) {
+  const isPinned = isItemPinned(item);
+  const showPinnedAction = onPin && isPinned;
+
   const actions = useMemo(
     () =>
       [
-        onPin && {
-          title:
-            item.collection_position != null
-              ? t`Unpin this item`
-              : t`Pin this item`,
+        showPinnedAction && {
+          title: isPinned ? t`Unpin this item` : t`Pin this item`,
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
@@ -105,17 +122,33 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
       ].filter(action => action),
-    [item, onPin, onMove, onCopy, onArchive, analyticsContext],
+    [
+      showPinnedAction,
+      isPinned,
+      onPin,
+      analyticsContext,
+      item.model,
+      onMove,
+      onCopy,
+      onArchive,
+    ],
   );
   if (actions.length === 0) {
     return null;
   }
   return (
-    <EntityMenu
-      className={cx(className, "hover-child")}
-      triggerIcon="ellipsis"
-      items={actions}
-    />
+    <EntityMenuContainer align="center">
+      {!isPinned && (
+        <Tooltip tooltip={t`Pin this`}>
+          <PinButton icon="pin" onClick={onPin} />
+        </Tooltip>
+      )}
+      <EntityMenu
+        className={cx(className, "hover-child")}
+        triggerIcon="ellipsis"
+        items={actions}
+      />
+    </EntityMenuContainer>
   );
 }
 
@@ -150,6 +183,7 @@ const EntityItem = ({
   disabled,
 }) => {
   const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
+  const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
   return (
     <EntityItemWrapper
@@ -162,7 +196,7 @@ const EntityItem = ({
       <EntityIconCheckBox
         item={item}
         variant={variant}
-        iconName={iconName}
+        icon={icon}
         pinned={pinned}
         selectable={selectable}
         selected={selected}
@@ -173,7 +207,7 @@ const EntityItem = ({
         }}
       />
 
-      <Box>
+      <Box className="overflow-hidden">
         <EntityItemName name={name} />
         <Box>{extraInfo && extraInfo}</Box>
       </Box>

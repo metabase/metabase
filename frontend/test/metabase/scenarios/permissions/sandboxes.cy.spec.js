@@ -12,7 +12,7 @@ import {
 } from "__support__/e2e/cypress";
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const {
   ORDERS,
@@ -23,7 +23,7 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
-} = SAMPLE_DATASET;
+} = SAMPLE_DATABASE;
 
 const { DATA_GROUP } = USER_GROUPS;
 

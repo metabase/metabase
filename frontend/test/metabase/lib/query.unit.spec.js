@@ -1,6 +1,6 @@
 import * as Q_DEPRECATED from "metabase/lib/query";
 
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 import Utils from "metabase/lib/utils";
 
 describe("Legacy Q_DEPRECATED library", () => {

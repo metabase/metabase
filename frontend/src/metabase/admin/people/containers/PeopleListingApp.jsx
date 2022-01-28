@@ -5,7 +5,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import SearchInput from "../components/SearchInput";
 import PeopleList from "../components/PeopleList";
@@ -26,7 +26,7 @@ export default function PeopleListingApp({ children }) {
   } = usePeopleQuery(PAGE_SIZE);
 
   const headingContent = (
-    <div className="mb2 flex">
+    <div className="mb2 flex align-center">
       <SearchInput
         className="text-small mr2"
         type="text"
@@ -43,7 +43,6 @@ export default function PeopleListingApp({ children }) {
           { name: t`Deactivated`, value: USER_STATUS.deactivated },
         ]}
         showButtons
-        py={1}
         onChange={updateStatus}
       />
     </div>

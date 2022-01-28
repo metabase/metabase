@@ -1,4 +1,4 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
 
 const EXAMPLE_JOIN = {
   alias: "join0",

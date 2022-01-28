@@ -46,7 +46,10 @@ const SummarizeSidebar = ({
   const sections = query.breakoutOptions(true).sections() ?? [];
 
   useEffect(() => {
-    if (previousQuestion == null || question.isEqual(previousQuestion)) {
+    if (
+      previousQuestion == null ||
+      question.isEqual(previousQuestion, { compareResultsMetadata: false })
+    ) {
       return;
     }
 

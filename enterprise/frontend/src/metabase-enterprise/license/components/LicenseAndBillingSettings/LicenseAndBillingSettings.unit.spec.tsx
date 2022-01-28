@@ -3,32 +3,53 @@ import React from "react";
 import xhrMock from "xhr-mock";
 import { renderWithProviders } from "__support__/ui";
 import LicenseAndBillingSettings from ".";
-import MetabaseSettings from "metabase/lib/settings";
 
-const mockSettings = (
-  isStoreManaged = true,
-  premiumEmbeddingToken?: string,
-) => {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "premium-embedding-token") {
-      return premiumEmbeddingToken;
-    }
+const setupState = ({
+  token,
+  is_env_setting = false,
+  env_name,
+}: {
+  token?: string;
+  is_env_setting?: boolean;
+  env_name?: string;
+  features?: string[];
+}) => {
+  const settings = {
+    values: {
+      "token-features": {},
+    },
+  };
 
-    if (key === "metabase-store-managed") {
-      return isStoreManaged;
-    }
-
-    return original(key);
-  });
+  const admin = {
+    settings: {
+      settings: [
+        {
+          key: "premium-embedding-token",
+          is_env_setting,
+          env_name,
+          value: token,
+        },
+      ],
+    },
+  };
+  return {
+    storeInitialState: {
+      admin,
+      settings,
+    },
+    reducers: {
+      settings: () => settings,
+      admin: () => admin,
+    },
+  };
 };
 
-const mockTokenStatus = (valid: boolean) => {
+const mockTokenStatus = (valid: boolean, features: string[] = []) => {
   xhrMock.get("/api/premium-features/token/status", {
     body: JSON.stringify({
       valid,
       "valid-thru": "2099-12-31T12:00:00",
+      features,
     }),
   });
 };
@@ -72,10 +93,12 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders settings for store managed billing with a valid token", async () => {
-    mockTokenStatus(true);
-    mockSettings(true, "token");
+    mockTokenStatus(true, ["metabase-store-managed"]);
 
-    renderWithProviders(<LicenseAndBillingSettings />);
+    renderWithProviders(
+      <LicenseAndBillingSettings />,
+      setupState({ token: "token" }),
+    );
 
     expect(
       await screen.findByText(
@@ -93,9 +116,11 @@ describe("LicenseAndBilling", () => {
 
   it("renders settings for non-store-managed billing with a valid token", async () => {
     mockTokenStatus(true);
-    mockSettings(false, "token");
 
-    renderWithProviders(<LicenseAndBillingSettings />);
+    renderWithProviders(
+      <LicenseAndBillingSettings />,
+      setupState({ token: "token" }),
+    );
 
     expect(
       await screen.findByText(
@@ -116,7 +141,7 @@ describe("LicenseAndBilling", () => {
 
   it("renders settings for unlicensed instances", async () => {
     mockTokenNotExist();
-    renderWithProviders(<LicenseAndBillingSettings />);
+    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
 
     expect(
       await screen.findByText(
@@ -125,10 +150,26 @@ describe("LicenseAndBilling", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders disabled input when tokens specified with an env variable", async () => {
+    mockTokenNotExist();
+    renderWithProviders(
+      <LicenseAndBillingSettings />,
+      setupState({
+        token: "token",
+        is_env_setting: true,
+        env_name: "MB_PREMIUM_EMBEDDING_TOKEN",
+      }),
+    );
+
+    expect(
+      await screen.findByPlaceholderText("Using MB_PREMIUM_EMBEDDING_TOKEN"),
+    ).toBeDisabled();
+  });
+
   it("shows an error when entered license is not valid", async () => {
     mockTokenNotExist();
     mockUpdateToken(false);
-    renderWithProviders(<LicenseAndBillingSettings />);
+    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
 
     expect(
       await screen.findByText(
@@ -157,7 +198,7 @@ describe("LicenseAndBilling", () => {
 
     mockTokenNotExist();
     mockUpdateToken(true);
-    renderWithProviders(<LicenseAndBillingSettings />);
+    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
 
     expect(
       await screen.findByText(

@@ -8,10 +8,10 @@ import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
-  SAMPLE_DATASET,
+  SAMPLE_DATABASE,
   ORDERS,
   metadata,
-} from "__support__/sample_dataset_fixture";
+} from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
 function mockCachingEnabled(enabled = true) {
@@ -78,7 +78,7 @@ function getQuestion({
       visualization_settings: {},
       dataset_query: {
         type: "query",
-        database: SAMPLE_DATASET.id,
+        database: SAMPLE_DATABASE.id,
         query: {
           "source-table": ORDERS.id,
           aggregation: [["count"]],
@@ -488,7 +488,7 @@ describe("SaveQuestionModal", () => {
     });
 
     const question = Question.create({
-      databaseId: SAMPLE_DATASET.id,
+      databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
       metadata,
     })

@@ -93,7 +93,7 @@ describeWithToken("scenarios > sharing > approved domains (EE)", () => {
 });
 
 function addEmailRecipient(email) {
-  cy.get("input")
+  cy.findByRole("textbox")
     .click()
     .type(`${email}`)
     .blur();

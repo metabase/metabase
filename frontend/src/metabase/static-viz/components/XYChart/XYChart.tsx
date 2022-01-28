@@ -27,10 +27,10 @@ import {
   calculateMargin,
   getXTicksDimensions,
   getXTickWidthLimit,
-  calculateLegendItems,
   calculateBounds,
   calculateYDomains,
   sortSeries,
+  getLegendColumns,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -95,20 +95,16 @@ export const XYChart = ({
 
   const defaultYScale = yScaleLeft || yScaleRight;
 
-  const legendWidth = width - 2 * CHART_PADDING;
-  const legend = calculateLegendItems(
-    series,
-    legendWidth,
-    style.legend.lineHeight,
-    style.legend.fontSize,
-  );
+  const { leftColumn, rightColumn } = getLegendColumns(series);
+  const legendHeight =
+    Math.max(leftColumn.length, rightColumn.length) * style.legend.lineHeight;
 
   const xTickWidthLimit = getXTickWidthLimit(
     settings.x,
     xTicksDimensions.maxTextWidth,
     xScale.bandwidth,
   );
-  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 5;
+  const xTicksCount = settings.x.type === "ordinal" ? Infinity : 4;
 
   const labelProps: Partial<TextProps> = {
     fontWeight: style.axes.labels.fontWeight,
@@ -125,8 +121,10 @@ export const XYChart = ({
     textAnchor: "end",
   };
 
+  const areXTicksRotated = settings.x.tick_display === "rotate-45";
+
   return (
-    <svg width={width} height={height + legend.height}>
+    <svg width={width} height={height + legendHeight}>
       <Group top={margin.top} left={xMin}>
         {defaultYScale && (
           <GridRows
@@ -206,7 +204,7 @@ export const XYChart = ({
 
       <AxisBottom
         scale={xScale.scale}
-        label={settings.labels.bottom}
+        label={areXTicksRotated ? undefined : settings.labels.bottom}
         top={yMin}
         left={xMin}
         numTicks={xTicksCount}
@@ -222,7 +220,7 @@ export const XYChart = ({
               props,
               style.axes.ticks.fontSize,
               xTickWidthLimit,
-              settings.x.tick_display === "rotate-45",
+              areXTicksRotated,
             )}
           />
         )}
@@ -230,10 +228,13 @@ export const XYChart = ({
       />
 
       <Legend
-        legend={legend}
-        left={CHART_PADDING}
+        leftColumn={leftColumn}
+        rightColumn={rightColumn}
+        padding={CHART_PADDING}
         top={height}
-        width={legendWidth}
+        width={width}
+        lineHeight={style.legend.lineHeight}
+        fontSize={style.legend.fontSize}
       />
     </svg>
   );

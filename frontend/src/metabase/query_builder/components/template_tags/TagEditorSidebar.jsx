@@ -24,7 +24,7 @@ export default class TagEditorSidebar extends React.Component {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
-    sampleDatasetId: PropTypes.number,
+    sampleDatabaseId: PropTypes.number,
     setDatasetQuery: PropTypes.func.isRequired,
     setTemplateTag: PropTypes.func.isRequired,
     setParameterValue: PropTypes.func.isRequired,
@@ -43,7 +43,7 @@ export default class TagEditorSidebar extends React.Component {
     const {
       databases,
       databaseFields,
-      sampleDatasetId,
+      sampleDatabaseId,
       setDatasetQuery,
       query,
       setTemplateTag,
@@ -65,7 +65,7 @@ export default class TagEditorSidebar extends React.Component {
 
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div>
+        <div data-testid="tag-editor-sidebar">
           <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
               className={cx("Button flex-full Button--small", {
@@ -96,7 +96,7 @@ export default class TagEditorSidebar extends React.Component {
           ) : (
             <TagEditorHelp
               database={database}
-              sampleDatasetId={sampleDatasetId}
+              sampleDatabaseId={sampleDatabaseId}
               setDatasetQuery={setDatasetQuery}
               switchToSettings={() => this.setSection("settings")}
             />

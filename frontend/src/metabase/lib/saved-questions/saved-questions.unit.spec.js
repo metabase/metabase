@@ -69,7 +69,7 @@ describe("saved question helpers", () => {
       });
     });
 
-    it("should return correct schema for collection datasets", () => {
+    it("should return correct schema for collection models", () => {
       const collection = { id: 1, name: "Marketing" };
       const payload = getEncodedPayload({ isDatasets: true });
       const expectedId = `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:Marketing:${payload}`;

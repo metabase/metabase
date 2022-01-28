@@ -7,7 +7,7 @@ describe("issue 18148", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.addH2SampleDataset({
+    cy.addH2SampleDatabase({
       name: dbName,
     });
 

@@ -15,13 +15,14 @@
 
 (deftest field-filter->replacement-snippet-info-test
   (testing "Ensure native snippet expansion uses proper names for fields (#15460)"
-    (is (= {:replacement-snippet "\"PUBLIC\".\"VENUES\".\"NAME\" = ?"
-            :prepared-statement-args ["Doohickey"]}
-           (#'substitution/field-filter->replacement-snippet-info
-            :h2
-            {:field (Field (mt/id :venues :name))
-             :value {:type  :string/=
-                     :value ["Doohickey"]}})))))
+    (mt/with-everything-store
+      (is (= {:replacement-snippet     "\"PUBLIC\".\"VENUES\".\"NAME\" = ?"
+              :prepared-statement-args ["Doohickey"]}
+             (#'substitution/field-filter->replacement-snippet-info
+              :h2
+              {:field (Field (mt/id :venues :name))
+               :value {:type  :string/=
+                       :value ["Doohickey"]}}))))))
 
 (deftest card-with-params->replacement-snippet-test
   (testing "Make sure Card params are preserved when expanding a Card reference (#12236)"

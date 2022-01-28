@@ -5,27 +5,40 @@ import { hideAll } from "tippy.js";
 import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import { WidthBoundTableInfo } from "./TableInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [500, 300];
 
+interface TableSubset {
+  id: number | string;
+  description?: string;
+}
+
 const propTypes = {
-  tableId: PropTypes.number.isRequired,
+  table: PropTypes.shape({
+    id: PropTypes.oneOf([PropTypes.number, PropTypes.string]),
+    description: PropTypes.string,
+  }).isRequired,
   children: PropTypes.node,
   placement: PropTypes.string,
   offset: PropTypes.arrayOf(PropTypes.number),
 };
 
-type Props = { tableId: number } & Pick<
+type Props = { table: TableSubset } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "offset" | "delay"
 >;
 
 const className = "table-info-popover";
 
+function isRealTable(id: number | string): id is number {
+  return !isVirtualCardId(id);
+}
+
 function TableInfoPopover({
-  tableId,
+  table,
   children,
   placement,
   offset,
@@ -33,14 +46,18 @@ function TableInfoPopover({
 }: Props) {
   placement = placement || "left-start";
 
-  return tableId != null ? (
+  const { id, description } = table;
+  const hasDescription = !!description;
+  const showPopover = hasDescription && isRealTable(id);
+
+  return showPopover ? (
     <TippyPopover
       className={className}
       interactive
       delay={delay}
       placement={placement}
       offset={offset}
-      content={<WidthBoundTableInfo tableId={tableId} />}
+      content={<WidthBoundTableInfo tableId={id} />}
       onTrigger={instance => {
         const dimensionInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,

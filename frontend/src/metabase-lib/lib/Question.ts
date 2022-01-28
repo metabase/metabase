@@ -251,7 +251,7 @@ export default class Question {
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
   @memoize
-  query(): Query {
+  query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -1005,14 +1005,28 @@ export default class Question {
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
-  isEqual(other) {
+  isEqual(other, { compareResultsMetadata = true } = {}) {
     if (!other) {
       return false;
-    } else if (this.id() !== other.id()) {
+    }
+    if (this.id() !== other.id()) {
       return false;
-    } else if (!_.isEqual(this.card(), other.card())) {
+    }
+
+    const card = this.card();
+    const otherCard = other.card();
+    const areCardsEqual = compareResultsMetadata
+      ? _.isEqual(card, otherCard)
+      : _.isEqual(
+          _.omit(card, "result_metadata"),
+          _.omit(otherCard, "result_metadata"),
+        );
+
+    if (!areCardsEqual) {
       return false;
-    } else if (!_.isEqual(this.parameters(), other.parameters())) {
+    }
+
+    if (!_.isEqual(this.parameters(), other.parameters())) {
       return false;
     }
 

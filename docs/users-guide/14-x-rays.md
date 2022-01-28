@@ -31,7 +31,7 @@ From the Browse Data page, you can also click on `Learn about our data` to view 
 
 ![Data Reference X-ray](images/x-rays/data-reference.png)
 
-### Exploring newly added datasets
+### Exploring newly added data sources
 
 If you're an administrator, when you first connect a database to Metabase, Metabot will offer to show you some automated explorations of your newly-connected data.
 

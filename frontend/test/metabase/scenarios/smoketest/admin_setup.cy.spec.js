@@ -40,7 +40,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Databases").click();
 
-      cy.findByText("Sample Dataset");
+      cy.findByText("Sample Database");
       cy.findByText("Updates").should("not.exist");
 
       cy.findByText("Add database").click();
@@ -313,7 +313,9 @@ describe("smoketest > admin_setup", () => {
         .clear()
         .type("Test Table");
 
-      cy.get("[value='This is a confirmed order for a product from a user.']")
+      cy.get(
+        "[value='Confirmed Sample Company orders for a product, from a user.']",
+      )
         .clear()
         .type("Testing table description");
     });
@@ -389,7 +391,7 @@ describe("smoketest > admin_setup", () => {
       // Navigating to Test Table table
 
       browse().click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
       cy.icon("database").should("not.exist");
 
@@ -551,7 +553,7 @@ describe("smoketest > admin_setup", () => {
       // Check column names and visiblity
 
       browse().click();
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Test Table").click();
 
       cy.findByText("Visualization");
@@ -587,7 +589,7 @@ describe("smoketest > admin_setup", () => {
 
       // Access to SQl queries as user
 
-      cy.findByText("Create").click();
+      cy.findByText("New").click();
       cy.findByText("SQL query");
 
       // Cannot see Review table as no collection user
@@ -624,7 +626,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("All Users").click();
 
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
       cy.findByText("Products");
 
@@ -643,7 +645,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Marketing").click();
 
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
 
       // Turn on data access for Marketing users to Products
       cy.icon("eye")
@@ -662,7 +664,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save changes").click();
 
       cy.contains(
-        "All Users will be given access to 1 table in Sample Dataset.",
+        "All Users will be given access to 1 table in Sample Database.",
       );
       cy.findByText("Are you sure you want to do this?");
 
@@ -681,7 +683,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Save changes").click();
 
       cy.contains(
-        "data will no longer be able to read or write native queries for Sample Dataset.",
+        "data will no longer be able to read or write native queries for Sample Database.",
       );
       cy.findByText("Yes").click();
     });
@@ -886,7 +888,7 @@ describe("smoketest > admin_setup", () => {
       cy.icon("pencil");
 
       openNotebookEditor({ fromCurrentPage: true });
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("People").click();
       cy.findByText("Save").click();
       cy.findByLabelText("Name")

@@ -90,9 +90,9 @@ import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
 
 const MetabaseIsSetup = UserAuthWrapper({
-  predicate: authData => !authData.hasSetupToken,
+  predicate: authData => authData.hasUserSetup,
   failureRedirectPath: "/setup",
-  authSelector: state => ({ hasSetupToken: MetabaseSettings.hasSetupToken() }), // HACK
+  authSelector: state => ({ hasUserSetup: MetabaseSettings.hasUserSetup() }), // HACK
   wrapperDisplayName: "MetabaseIsSetup",
   allowRedirectBack: false,
   redirectAction: routerActions.replace,
@@ -141,7 +141,7 @@ export const getRoutes = store => (
       path="/setup"
       component={SetupApp}
       onEnter={(nextState, replace) => {
-        if (!MetabaseSettings.hasSetupToken()) {
+        if (MetabaseSettings.hasUserSetup()) {
           replace("/");
         }
         trackPageView(location.pathname);
@@ -236,12 +236,13 @@ export const getRoutes = store => (
           <Route path=":slug/notebook" component={QueryBuilder} />
         </Route>
 
-        <Route path="/dataset">
+        <Route path="/model">
           <IndexRoute component={QueryBuilder} />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":slug" component={QueryBuilder} />
           <Route path=":slug/notebook" component={QueryBuilder} />
           <Route path=":slug/query" component={QueryBuilder} />
+          <Route path=":slug/metadata" component={QueryBuilder} />
         </Route>
 
         <Route path="browse" component={BrowseApp}>

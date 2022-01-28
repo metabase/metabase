@@ -24,8 +24,8 @@
   (boolean (setting/get :google-auth-client-id)))
 
 (defn- ldap-configured? []
-  (do (classloader/require 'metabase.integrations.ldap)
-      ((resolve 'metabase.integrations.ldap/ldap-configured?))))
+  (classloader/require 'metabase.integrations.ldap)
+  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
@@ -181,7 +181,7 @@
   :visibility :public)
 
 (defsetting enable-nested-queries
-  (deferred-tru "Allow using a saved question as the source for other queries?")
+  (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type    :boolean
   :default true
   :visibility :authenticated)
@@ -236,8 +236,8 @@
   :type    :integer
   :default 10)
 
-(defsetting engine-deprecation-notice-version
-  (deferred-tru "Metabase version for which a notice about usage of a deprecated driver has been shown.")
+(defsetting deprecation-notice-version
+  (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)
 
 (defsetting application-name
@@ -370,8 +370,8 @@
   :setter     :none
   :getter     driver.u/available-drivers-info)
 
-(defsetting has-sample-dataset?
-  "Whether this instance has a Sample Dataset database"
+(defsetting has-sample-database?
+  "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
   :getter     (fn [] (db/exists? 'Database, :is_sample true)))
@@ -454,14 +454,13 @@
 (def ^:private fetch-cloud-gateway-ips-fn
   (memoize/ttl
    (fn []
-       (when (premium-features/is-hosted?)
-         (try
-           (-> (http/get (cloud-gateway-ips-url))
-               :body
-               (json/parse-string keyword)
-               :ip_addresses)
-           (catch Exception e
-             (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:"))))))
+     (try
+       (-> (http/get (cloud-gateway-ips-url))
+           :body
+           (json/parse-string keyword)
+           :ip_addresses)
+       (catch Exception e
+         (log/error e (trs "Error fetching Metabase Cloud gateway IP addresses:")))))
    :ttl/threshold (* 1000 60 60 24)))
 
 (defsetting cloud-gateway-ips
@@ -469,7 +468,9 @@
   :visibility :public
   :type       :json
   :setter     :none
-  :getter     fetch-cloud-gateway-ips-fn)
+  :getter     (fn []
+                (when (premium-features/is-hosted?)
+                  (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
   (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")

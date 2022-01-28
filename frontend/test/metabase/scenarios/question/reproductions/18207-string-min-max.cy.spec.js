@@ -16,7 +16,7 @@ describe("issue 18207", () => {
   it("should be possible to use MIN on a string column (metabase#18207)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();
@@ -34,7 +34,7 @@ describe("issue 18207", () => {
   it("should be possible to use MAX on a string column (metabase#18207)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();
@@ -52,7 +52,7 @@ describe("issue 18207", () => {
   it("should be not possible to use AVERAGE on a string column (metabase#18207)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();
@@ -66,7 +66,7 @@ describe("issue 18207", () => {
   it("should be possible to group by a string expression (metabase#18207)", () => {
     cy.visit("/question/new");
     cy.contains("Custom question").click();
-    cy.contains("Sample Dataset").click();
+    cy.contains("Sample Database").click();
     cy.contains("Products").click();
 
     cy.contains("Pick the metric").click();

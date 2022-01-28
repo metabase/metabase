@@ -38,21 +38,33 @@
   (su/with-api-error-message (s/constrained su/NonBlankString setup/token-match?)
     "Token does not match the setup token."))
 
+(def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
+  "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
+  to. This var is redef'd to false by certain tests to allow that."
+  false)
+
 (defn- setup-create-user! [{:keys [email first-name last-name password]}]
+  (when (and (setup/has-user-setup)
+             (not *allow-api-setup-after-first-user-is-created*))
+    ;; many tests use /api/setup to setup multiple users, so *allow-api-setup-after-first-user-is-created* is
+    ;; redefined by them
+    (throw (ex-info
+            (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
+            {:status-code 403})))
   (let [session-id (str (UUID/randomUUID))
         new-user   (db/insert! User
-                               :email        email
-                               :first_name   first-name
-                               :last_name    last-name
-                               :password     (str (UUID/randomUUID))
-                               :is_superuser true)
+                     :email        email
+                     :first_name   first-name
+                     :last_name    last-name
+                     :password     (str (UUID/randomUUID))
+                     :is_superuser true)
         user-id    (u/the-id new-user)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (user/set-password! user-id password)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (let [session (or (db/insert! Session
-                                  :id      session-id
-                                  :user_id user-id)
+                        :id      session-id
+                        :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
                       (t.models/post-insert (Session (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
@@ -63,7 +75,9 @@
     (if-not (email/email-configured?)
       (log/error (trs "Could not invite user because email is not configured."))
       (u/prog1 (user/create-and-invite-user! user invitor true)
-        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])))))
+        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])
+        (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
+                                                                             :source          "setup"})))))
 
 (defn- setup-create-database!
   "Create a new Database. Returns newly created Database."
@@ -135,8 +149,6 @@
                  (setup-set-settings!
                   request
                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 ;; clear the setup token now, it's no longer needed
-                 (setup/clear-token!)
                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
@@ -199,7 +211,7 @@
   [_]
   {:title       (tru "Set Slack credentials")
    :group       (tru "Get connected")
-   :description (tru "Does your team use Slack? If so, you can send automated updates via pulses and ask questions with MetaBot.")
+   :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
    :link        "/admin/settings/slack"
    :completed   (slack/slack-configured?)
    :triggered   :always})

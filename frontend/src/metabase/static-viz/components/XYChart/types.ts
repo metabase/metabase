@@ -30,11 +30,11 @@ export type ChartSettings = {
   x: {
     type: XAxisType;
     tick_display?: TickDisplay;
-    format: DateFormatOptions | NumberFormatOptions;
+    format?: DateFormatOptions | NumberFormatOptions;
   };
   y: {
     type: YAxisType;
-    format: NumberFormatOptions;
+    format?: NumberFormatOptions;
   };
   goal?: {
     value: number;

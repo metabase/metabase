@@ -11,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 const CONSUMED_PROPS = [
   "entityType",
   "entityId",
+  "entityAlias",
   // "reload", // Masked by `reload` function. Should we rename that?
   "wrapped",
   "properties",
@@ -80,7 +81,14 @@ export default class EntityObjectLoader extends React.Component {
     }
   }
   renderChildren = () => {
-    let { children, entityDef, wrapped, object, ...props } = this.props; // eslint-disable-line no-unused-vars
+    let {
+      children,
+      entityDef,
+      entityAlias,
+      wrapped,
+      object,
+      ...props
+    } = this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
       object = this._getWrappedObject(this.props);
@@ -90,7 +98,7 @@ export default class EntityObjectLoader extends React.Component {
       ..._.omit(props, ...CONSUMED_PROPS),
       object,
       // alias the entities name:
-      [entityDef.nameOne]: object,
+      [entityAlias || entityDef.nameOne]: object,
       reload: this.reload,
       remove: this.remove,
     });

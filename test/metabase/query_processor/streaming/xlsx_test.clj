@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming.xlsx-test
   (:require [cheshire.generate :as generate]
+            [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase.query-processor.streaming.interface :as i]
@@ -484,3 +485,16 @@
                                            [[(apply str (repeat 256 "0"))]]
                                            parse-column-width))]
       (is (= 65280 col-width)))))
+
+(deftest poi-tempfiles-test
+  (testing "POI temporary files are cleaned up if output stream is closed before export completes (#19480)"
+    (let [poifiles-directory      (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
+          expected-poifiles-count (count (file-seq poifiles-directory))]
+      (let [bos                (ByteArrayOutputStream.)
+            os                 (BufferedOutputStream. bos)
+            results-writer     (i/streaming-results-writer :xlsx os)]
+        (.close os)
+        (i/begin! results-writer {:data {:ordered-cols []}} {})
+        (i/finish! results-writer {:row_count 0})
+        ;; No additional files should exist in the temp directory
+        (is (= expected-poifiles-count (count (file-seq poifiles-directory))))))))

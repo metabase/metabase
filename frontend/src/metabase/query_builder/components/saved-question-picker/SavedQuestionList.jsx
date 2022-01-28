@@ -65,7 +65,7 @@ function SavedQuestionList({
                     size="small"
                     name={t.display_name}
                     icon={{
-                      name: isDatasets ? "dataset" : "table2",
+                      name: isDatasets ? "model" : "table2",
                       size: 16,
                     }}
                     onSelect={() => onSelect(t)}

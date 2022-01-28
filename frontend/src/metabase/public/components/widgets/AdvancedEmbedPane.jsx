@@ -2,7 +2,7 @@
 import React from "react";
 
 import ToggleLarge from "metabase/components/ToggleLarge";
-import Button from "metabase/components/Button";
+import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import { t } from "ttag";
 import AdvancedSettingsPane from "./AdvancedSettingsPane";

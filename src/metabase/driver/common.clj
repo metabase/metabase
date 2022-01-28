@@ -117,12 +117,12 @@
   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
     :display-name (deferred-tru "SSH tunnel host")
-    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :helper-text  (deferred-tru "The hostname that you use to connect to SSH tunnels.")
     :placeholder  "hostname"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
@@ -154,7 +154,7 @@
    {:name         "tunnel-private-key"
     :display-name (deferred-tru "SSH private key to connect to the tunnel")
     :type         :string
-    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :placeholder  (deferred-tru "Paste the contents of an SSH private key here")
     :required     true
     :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"
@@ -186,7 +186,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
@@ -323,13 +323,13 @@
   :hierarchy #'driver/hierarchy)
 
 (defn ^:deprecated current-db-time
-  "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
-  `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
-  the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided.
+  "Implementation of [[metabase.driver/current-db-time]] using the [[current-db-time-native-query]] and
+  [[current-db-time-date-formatters]] multimethods defined above. Execute a native query for the current time, and
+  parse the results using the date formatters, preserving the timezone. To use this implementation, you must implement
+  the aforementioned multimethods; no default implementation is provided.
 
-  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
-  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
+  DEPRECATED — [[metabase.driver/current-db-time]], the method this function provides an implementation for, is itself
+  deprecated. Implement [[metabase.driver/db-default-timezone]] instead directly."
   ^org.joda.time.DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver
@@ -354,8 +354,10 @@
                                 (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
                             (catch Exception e
                               (throw
-                               (Exception.
-                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+                               (ex-info (tru "Error querying database {0} for current time: {1}"
+                                             (pr-str (:name database)) (ex-message e))
+                                        {:driver driver, :query native-query}
+                                        e))))]
       (try
         (when time-str
           (first-successful-parse date-formatters time-str))

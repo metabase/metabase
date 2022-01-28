@@ -1,5 +1,6 @@
 (ns metabase.mbql.util-test
-  (:require [clojure.test :as t]
+  (:require [clojure.string :as str]
+            [clojure.test :as t]
             [metabase.mbql.util :as mbql.u]
             metabase.types))
 
@@ -597,7 +598,26 @@
              (map (mbql.u/unique-name-generator) [:x :y :x :z] ["count" "sum" "count" "count_2"]))))
   (t/testing "Can the same object have multiple aliases"
     (t/is (= ["count" "sum" "count" "count_2"]
-             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
+             (map (mbql.u/unique-name-generator) [:x :y :x :x] ["count" "sum" "count" "count_2"]))))
+
+  (t/testing "idempotence (2-arity calls to generated function)"
+    (let [unique-name (mbql.u/unique-name-generator)]
+      (t/is (= ["A" "B" "A" "A_2"]
+               [(unique-name :x "A")
+                (unique-name :x "B")
+                (unique-name :x "A")
+                (unique-name :y "A")]))))
+
+  (t/testing "options"
+    (t/testing :name-key-fn
+      (let [f (mbql.u/unique-name-generator :name-key-fn str/lower-case)]
+        (t/is (= ["x" "X_2" "X_3"]
+                 (map f ["x" "X" "X"])))))
+
+    (t/testing :unique-alias-fn
+      (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
+        (t/is (= ["x" "2~~x"]
+                 (map f ["x" "x"])))))))
 
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
@@ -701,4 +721,22 @@
 
   (t/testing "Should normalize the clause"
     (t/is (= [:field 1 nil]
-             (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil)))))
+             (mbql.u/update-field-options [:field 1 {:a {:b 1}}] assoc-in [:a :b] nil))))
+
+  (t/testing "Should work with `:expression` and `:aggregation` references as well"
+    (t/is (= [:expression "wow" {:a 1}]
+             (mbql.u/update-field-options [:expression "wow"] assoc :a 1)))
+    (t/is (= [:expression "wow" {:a 1, :b 2}]
+             (mbql.u/update-field-options [:expression "wow" {:b 2}] assoc :a 1)))
+    (t/is (= [:aggregation 0 {:a 1}]
+             (mbql.u/update-field-options [:aggregation 0] assoc :a 1)))
+    (t/is (= [:aggregation 0 {:a 1, :b 2}]
+             (mbql.u/update-field-options [:aggregation 0 {:b 2}] assoc :a 1)))
+
+    ;; in the future when we make the 3-arg version the normalized/"official" version we will probably want to stop
+    ;; doing this.
+    (t/testing "Remove empty options entirely from `:expression` and `:aggregation` (for now)"
+      (t/is (= [:expression "wow"]
+               (mbql.u/update-field-options [:expression "wow" {:b 2}] dissoc :b)))
+      (t/is (= [:aggregation 0]
+               (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))

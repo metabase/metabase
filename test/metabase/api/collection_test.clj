@@ -176,10 +176,22 @@
                     :location          "/"
                     :namespace         nil
                     :children          []
-                    :authority_level nil}
+                    :authority_level   nil}
                    (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
                             %)
-                         response)))))))))
+                         response))))))
+      (testing "Excludes archived collections (#19603)"
+        (mt/with-temp* [Collection [a {:name "A"}]
+                        Collection [b {:name     "B archived"
+                                       :location (collection/location-path a)
+                                       :archived true}]
+                        Collection [c {:name "C archived"
+                                       :archived true}]]
+          (let [ids      (set (map :id [a b c]))
+                response (mt/user-http-request :rasta :get 200
+                                               "collection/tree?exclude-archived=true")]
+            (is (= [{:name "A" :children []}]
+                   (collection-tree-names-only ids response)))))))))
 
 (deftest collection-tree-child-permissions-test
   (testing "GET /api/collection/tree"

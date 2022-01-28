@@ -45,7 +45,7 @@ describe("scenarios > question > native", () => {
     cy.contains("Question #…")
       .parent()
       .parent()
-      .contains("Pick a saved question")
+      .contains("Pick a question or a model")
       .click({ force: true });
 
     // selecting a question should update the query

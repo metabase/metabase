@@ -7,8 +7,8 @@ import {
 import {
   metadata,
   PRODUCTS,
-  SAMPLE_DATASET,
-} from "__support__/sample_dataset_fixture";
+  SAMPLE_DATABASE,
+} from "__support__/sample_database_fixture";
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
@@ -53,7 +53,7 @@ describe("parameters/utils/targets", () => {
 
     it("should return the mapped field behind a template tag field filter", () => {
       const target = ["dimension", ["template-tag", "foo"]];
-      const question = SAMPLE_DATASET.nativeQuestion({
+      const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
           foo: {
@@ -70,7 +70,7 @@ describe("parameters/utils/targets", () => {
 
     it("should return the target field", () => {
       const target = ["dimension", ["field", PRODUCTS.CATEGORY.id, null]];
-      const question = SAMPLE_DATASET.question({
+      const question = SAMPLE_DATABASE.question({
         "source-table": PRODUCTS.id,
       });
       expect(getParameterTargetField(target, metadata, question)).toBe(

@@ -13,7 +13,7 @@ describe("scenarios > home > homepage", () => {
     it("should allow basic navigation", () => {
       cy.visit("/");
       cy.findByText("Add my data").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
 
       cy.visit("/");
       cy.findByText("invite another teammate").click();
@@ -29,12 +29,12 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Other users' personal collections");
 
       cy.visit("/");
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByText("Learn about our data");
 
       cy.visit("/");
       cy.findByText("Add a database").click();
-      cy.findByText("Need help setting up your database?");
+      cy.findByText("Need help connecting?");
     });
 
     it("should show pinned dashboards", () => {
@@ -97,7 +97,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Your personal collection");
 
       cy.visit("/");
-      cy.findByTextEnsureVisible("Sample Dataset").click();
+      cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByText("Learn about our data");
     });
 

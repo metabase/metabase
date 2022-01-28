@@ -69,7 +69,8 @@ export type SettingName =
   | "ga-code"
   | "ga-enabled"
   | "google-auth-client-id"
-  | "has-sample-dataset?"
+  | "has-sample-database?"
+  | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
@@ -87,7 +88,7 @@ export type SettingName =
   | "cloud-gateway-ips"
   | "snowplow-enabled"
   | "snowplow-url"
-  | "engine-deprecation-notice-version"
+  | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
   | "metabase-store-managed";
@@ -97,10 +98,10 @@ type SettingsMap = Record<SettingName, any>; // provides access to Metabase appl
 type SettingListener = (value: any) => void;
 
 class Settings {
-  _settings: SettingsMap;
+  _settings: Partial<SettingsMap>;
   _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
 
-  constructor(settings: SettingsMap) {
+  constructor(settings: Partial<SettingsMap> = {}) {
     this._settings = settings;
   }
 
@@ -156,10 +157,6 @@ class Settings {
     return this.get("is-hosted?");
   }
 
-  isStoreManaged(): boolean {
-    return this.get("metabase-store-managed");
-  }
-
   cloudGatewayIps(): string[] {
     return this.get("cloud-gateway-ips") || [];
   }
@@ -168,8 +165,8 @@ class Settings {
     return this.get("google-auth-client-id") != null;
   }
 
-  hasSetupToken() {
-    return this.get("setup-token") != null;
+  hasUserSetup() {
+    return this.get("has-user-setup");
   }
 
   hideEmbedBranding() {
@@ -200,12 +197,12 @@ class Settings {
     return this.get("snowplow-url");
   }
 
-  engineDeprecationNoticeVersion() {
-    return this.get("engine-deprecation-notice-version");
+  deprecationNoticeVersion() {
+    return this.get("deprecation-notice-version");
   }
 
-  engineDeprecationNoticeEnabled() {
-    return this.currentVersion() !== this.engineDeprecationNoticeVersion();
+  deprecationNoticeEnabled() {
+    return this.currentVersion() !== this.deprecationNoticeVersion();
   }
 
   token() {

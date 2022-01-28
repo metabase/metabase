@@ -54,7 +54,7 @@
   [driver details]
   (if (confirm-file-is-sqlite (:db details))
     (sql-jdbc.conn/can-connect? driver details)
-    false ))
+    false))
 
 (defmethod driver/db-start-of-week :sqlite
   [_]
@@ -102,8 +102,9 @@
                                   :from   [(sql.qp/->honeysql driver (hx/identifier :table schema table))]
                                   :limit  1}))
 
-;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
-;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
+;; register the SQLite concatenation operator `||` with HoneySQL as `sqlite-concat`
+;;
+;;    (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat"
   [_ & args]
   (str "(" (str/join " || " (map hformat/to-sql args)) ")"))
@@ -273,12 +274,9 @@
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
   [driver [_ & args]]
-  (hsql/raw (str/join " || " (for [arg args]
-                               (let [arg (sql.qp/->honeysql driver arg)]
-                                 (hformat/to-sql
-                                  (if (string? arg)
-                                    (hx/literal arg)
-                                    arg)))))))
+  (apply
+   hsql/call :sqlite-concat
+   (mapv (partial sql.qp/->honeysql driver) args)))
 
 (defmethod sql.qp/->honeysql [:sqlite :floor]
   [driver [_ arg]]

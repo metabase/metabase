@@ -14,7 +14,6 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s])
-
   (:import [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
             TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableDataInsertAllResponse TableFieldSchema
             TableReference TableSchema]))
@@ -302,7 +301,7 @@
             (println (u/format-color 'red error-message))
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
-(defn- base-type->bigquery-type [base-type]
+(defn base-type->bigquery-type [base-type]
   (let [types {:type/BigInteger     :INTEGER
                :type/Boolean        :BOOLEAN
                :type/Date           :DATE

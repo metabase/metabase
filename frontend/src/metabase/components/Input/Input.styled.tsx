@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import { color, darken } from "metabase/lib/colors";
+import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export interface InputProps {
   hasError?: boolean;
@@ -14,12 +15,12 @@ export const InputRoot = styled.div<InputProps>`
   width: ${props => (props.fullWidth ? "100%" : "")};
 `;
 
-export const InputField = styled.input<InputProps>`
+export const InputField = forwardRefToInnerRef(styled.input<InputProps>`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
   color: ${color("text-dark")};
-  background-color: ${color("bg-white")};
+  background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
   padding: 0.75rem;
   border: 1px solid ${darken("border", 0.1)};
   border-radius: 4px;
@@ -47,7 +48,7 @@ export const InputField = styled.input<InputProps>`
     css`
       width: 100%;
     `}
-`;
+`);
 
 export const InputIconContainer = styled.div`
   display: flex;

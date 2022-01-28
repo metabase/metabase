@@ -1,13 +1,16 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
+import _ from "underscore";
+import Button from "metabase/core/components/Button";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import { Locale, LocaleData } from "../../types";
 import { getLocales } from "../../utils";
 import {
-  StepLocaleList,
-  StepLocaleListItem,
+  LocaleGroup,
+  LocaleInput,
+  LocaleLabel,
+  LocaleButton,
   StepDescription,
 } from "./LanguageStep.styled";
 
@@ -32,6 +35,7 @@ const LanguageStep = ({
   onStepSelect,
   onStepSubmit,
 }: LanguageStepProps): JSX.Element => {
+  const fieldId = useMemo(() => _.uniqueId(), []);
   const locales = useMemo(() => getLocales(localeData), [localeData]);
 
   if (!isStepActive) {
@@ -51,24 +55,55 @@ const LanguageStep = ({
       <StepDescription>
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>
-      <StepLocaleList>
+      <LocaleGroup role="radiogroup">
         {locales.map(item => (
-          <StepLocaleListItem
+          <LocaleItem
             key={item.code}
-            isSelected={item.code === locale?.code}
-            data-testid={`language-option-${item.code}`}
-            onClick={() => onLocaleChange(item)}
-          >
-            {item.name}
-          </StepLocaleListItem>
+            locale={item}
+            checked={item.code === locale?.code}
+            fieldId={fieldId}
+            onLocaleChange={onLocaleChange}
+          />
         ))}
-      </StepLocaleList>
+      </LocaleGroup>
       <Button
         primary={locale != null}
         disabled={locale == null}
         onClick={onStepSubmit}
       >{t`Next`}</Button>
     </ActiveStep>
+  );
+};
+
+export interface LocaleItemProps {
+  locale: Locale;
+  checked: boolean;
+  fieldId: string;
+  onLocaleChange: (locale: Locale) => void;
+}
+
+const LocaleItem = ({
+  locale,
+  checked,
+  fieldId,
+  onLocaleChange,
+}: LocaleItemProps): JSX.Element => {
+  const handleChange = useCallback(() => {
+    onLocaleChange(locale);
+  }, [locale, onLocaleChange]);
+
+  return (
+    <LocaleLabel key={locale.code}>
+      <LocaleInput
+        type="radio"
+        name={fieldId}
+        value={locale.code}
+        checked={checked}
+        autoFocus={checked}
+        onChange={handleChange}
+      />
+      <LocaleButton checked={checked}>{locale.name}</LocaleButton>
+    </LocaleLabel>
   );
 };
 
