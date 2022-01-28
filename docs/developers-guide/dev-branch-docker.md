@@ -19,7 +19,7 @@ brew install docker
 ```
 Once Docker is installed, you’re ready to go.
 
-## Run an in development branch to test or verify features
+## Run a development branch to test or verify features
 
 1. Open your terminal app of choice.
 

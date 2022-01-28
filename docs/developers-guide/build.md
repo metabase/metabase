@@ -1,6 +1,6 @@
 # Building Metabase
 
-This doc will show you how you can build and run Metabase on your own computer so you can play around with it as you please or test features that are in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
+This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
 
 ## Install the prerequisites
 
@@ -10,7 +10,7 @@ If you're using macOS, you'll want to install Xcode Command Line Tools first, by
 xcode-select --install
 ```
 
-And here are the tools you'll need to complete any build of the Metabase code. Follow the links to download and install them before continuing.
+To complete any build of the Metabase code, you'll need to install the following.
 
 1. [Clojure (https://clojure.org)](https://clojure.org/guides/getting_started) - install the latest release by following the guide depending on your OS
 
@@ -38,13 +38,15 @@ sudo update-alternatives --config java
 
 Then select Java 11 in the menu.
 
-If you are developing on Windows, make sure to use Ubuntu on Windows and follow instructions for Ubuntu/Linux instead of installing ordinary Windows versions.
+### If you're running Windows, use WSL
 
+If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
+### Developing with VS Code in a remote container
 Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
 
-## Copy the Metabase code to your computer
+## Clone the Metabase repo
 
-Once you have all that installed, you’re going to get a copy of Metabase's source code from GitHub, where it’s stored.
+Once you've installed all the build tools, you'll need to clone the Metabase repository from GitHub.
 
 1. Create a `workspace` folder (you can name it that or whatever you want). You’ll put the Metabase code files inside this `workspace` folder.
 
@@ -80,7 +82,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
    git pull
    ```
 
-   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch if the engineer make changes to it.
+   You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch someone make changes to it.
 
 4. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
 `fix-native-dataset-drill-popover`.
@@ -88,7 +90,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 5. Switch to, or “check out,” that branch by running:
 
    ```
-   git checkout branch-name
+   git checkout <branch-name>
    ```
     
    If we wanted to switch to the branch in the previous step, we'd run:
@@ -125,9 +127,12 @@ A couple useful tips:
 
 - To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 3, 4, and 5. You’ll need to do steps 6 and 7 too if Metabase wasn’t already running. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
 
-- If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing Step 6 again.
 
-## Build Metabase Uberjar
+## Shutting down Metabase
+
+If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing Step 6 again.
+
+## Building the Metabase Uberjar
 
 The entire Metabase application is compiled and assembled into a single .jar file which can run on any modern JVM. There is a script which will execute all steps in the process and output the final artifact for you. You can pass the environment variable MB_EDITION before running the build script to choose the version that you want to build. If you don't provide a value, the default is `oss` which will build the Community Edition.
 
