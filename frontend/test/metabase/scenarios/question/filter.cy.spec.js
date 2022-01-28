@@ -1017,7 +1017,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  ["false", "true"].forEach(condition => {
+  ["true", "false"].forEach(condition => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
@@ -1107,7 +1107,7 @@ describe("scenarios > question > filter", () => {
       function assertOnTheResult() {
         // Filter name
         cy.findByTextEnsureVisible(`boolean is ${condition}`);
-        cy.findByText(integerAssociatedWithCondition, { timeout: 10000 });
+        cy.get(".cellData").should("contain", integerAssociatedWithCondition);
       }
     });
   });
