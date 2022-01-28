@@ -26,6 +26,22 @@ function getFiltersForColumn(column) {
   }
 }
 
+function getFKFilter({ question, query, column, value }) {
+  const formattedColumnName = singularize(stripId(column.display_name));
+  const formattedTableName = pluralize(query.table().display_name);
+  return {
+    name: "view-fks",
+    section: "standalone_filter",
+    buttonType: "horizontal",
+    icon: "filter",
+    title: (
+      <span>
+        {jt`View this ${formattedColumnName}'s ${formattedTableName}`}
+      </span>
+    ),
+    question: () => question.filter("=", column, value),
+  };
+}
 export default function QuickFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
@@ -43,23 +59,9 @@ export default function QuickFilterDrill({ question, clicked }) {
   if (isPK(column.semantic_type)) {
     return [];
   }
+
   if (isFK(column.semantic_type)) {
-    return [
-      {
-        name: "view-fks",
-        section: "standalone_filter",
-        buttonType: "horizontal",
-        icon: "filter",
-        title: (
-          <span>
-            {jt`View this ${singularize(
-              stripId(column.display_name),
-            )}'s ${pluralize(query.table().display_name)}`}
-          </span>
-        ),
-        question: () => question.filter("=", column, value),
-      },
-    ];
+    return [getFKFilter({ question, query, column, value })];
   }
 
   const operators = getFiltersForColumn(column) || [];
