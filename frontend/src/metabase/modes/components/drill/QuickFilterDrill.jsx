@@ -1,17 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { jt } from "ttag";
-import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
+import { isFK, isPK } from "metabase/lib/types";
+import { isDate, isNumeric } from "metabase/lib/schema_metadata";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function getFiltersForColumn(column) {
-  if (
-    isa(column.base_type, TYPE.Number) ||
-    isa(column.base_type, TYPE.Temporal) ||
-    // change to semantic_type or ideally effective_type if that is known after merging into master
-    isa(column.special_type, TYPE.Temporal)
-  ) {
+  if (isNumeric(column) || isDate(column)) {
     return [
       { name: "<", operator: "<" },
       { name: ">", operator: ">" },
