@@ -496,5 +496,5 @@
       (.close os)
       (i/begin! results-writer {:data {:ordered-cols []}} {})
       (i/finish! results-writer {:row_count 0})
-        ;; No additional files should exist in the temp directory
+      ;; No additional files should exist in the temp directory
       (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
