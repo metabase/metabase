@@ -41,7 +41,9 @@ Then select Java 11 in the menu.
 ### If you're running Windows, use WSL
 
 If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
+
 ### Developing with VS Code in a remote container
+
 Alternatively, without the need to explicitly install the above dependencies, follow the guide [on using Visual Studio Code](deven.md#developing-with-visual-studio-code.md) and its remote container support.
 
 ## Clone the Metabase repo
@@ -56,7 +58,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 cd ~/workspace
 ```
 
-1. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
+3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
 git clone https://github.com/metabase/metabase
@@ -68,15 +70,15 @@ This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
-1. Open up your terminal app
+4. Open up your terminal app
 
-2. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
+5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
    
    ```
    cd ~/workspace/metabase
    ```
 
-3. "Pull” down the latest code by running: 
+6. "Pull” down the latest code by running: 
 
    ```
    git pull
@@ -84,10 +86,10 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
    You should do this every time to make sure that you have all the latest Metabase branches and code on your computer. It’s also how you’ll get updates on a feature branch someone make changes to it.
 
-4. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
+7. Find the name of the branch you want to run by going to the “pull request” page for that feature on GitHub and copying the branch name from there. Here’s [an example PR page](https://github.com/metabase/metabase/pull/19138), with the branch name
 `fix-native-dataset-drill-popover`.
 
-5. Switch to, or “check out,” that branch by running:
+8. Switch to, or “check out,” that branch by running:
 
    ```
    git checkout <branch-name>
@@ -107,7 +109,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
-6. Now we’ll start up the backend server of Metabase with:
+9. Now we’ll start up the backend server of Metabase with:
 
    ```
    clojure -M:run
@@ -115,24 +117,21 @@ The “official” branch of Metabase is called `master`, and other feature deve
    
    When it’s done, you should see a message that says something like “Metabase initialization complete.” Keep this tab in your terminal app running, otherwise it’ll stop Metabase.
 
-7. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command: 
-   
+10. Open up another tab or window of your terminal app, and then “build” the frontend (all the UI) with this command: 
+
    ```
    yarn build-hot
    ```
 
-8. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
+11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
      
-    This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
+   This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
 
-A couple useful tips:
-
-- To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 3, 4, and 5. You’ll need to do steps 6 and 7 too if Metabase wasn’t already running. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
-
+To switch to a different branch or back to `master`, open up another Terminal tab, and repeat steps 6, 7, and 8. If Metabase wasn’t already running, you'll need to complete steps 9 and 10 again too. If it was already running, the frontend will automatically rebuild itself. You can check its progress by switching to that tab in your Terminal — it usually takes something like 15 seconds, but will depend on your hardware.
 
 ## Shutting down Metabase
 
-If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing Step 6 again.
+If you want to make Metabase stop running, you can either quit your terminal program, or go to the tab with the backend running and hit `Ctrl+C` to stop the backend. Most of the time you don’t have to do this to switch branches, but there are some cases where the change or feature you’re trying to see is a change with the backend, and you may need to stop the backend with `Ctrl+C` and then restart it by completing step 9 again.
 
 ## Building the Metabase Uberjar
 
