@@ -6,10 +6,10 @@
   Ex:
   clojure -X:dev:test :only '\"test/metabase/pulse/render\"'
 
-  This would not have had the random namespace that requires these helpers and the run fails.
-  "
+  This would not have had the random namespace that requires these helpers and the run fails."
   (:require [clojure.data :as data]
             [clojure.test :as t]
+            [clojure.walk :as walk]
             [metabase.util.date-2 :as date-2]
             [metabase.util.i18n.impl :as i18n.impl]
             [schema.core :as s]))
@@ -45,10 +45,22 @@
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
 
+(defn derecordize
+  "Convert all record types in `form` to plain maps, so tests won't fail."
+  [form]
+  (walk/postwalk
+   (fn [form]
+     (if (record? form)
+       (into {} form)
+       form))
+   form))
+
 (defn query=-report
   "Impl for [[t/assert-expr]] `query=`."
   [message expected actual]
-  (let [pass? (= expected actual)]
+  (let [expected (derecordize expected)
+        actual   (derecordize actual)
+        pass?    (= expected actual)]
     (merge
      {:type     (if pass? :pass :fail)
       :message  message
@@ -95,7 +107,9 @@
 
 (defn partial=-report
   [message expected actual]
-  (let [actual'                           (remove-keys-not-in-expected expected actual)
+  (let [expected                          (derecordize expected)
+        actual                            (derecordize actual)
+        actual'                           (remove-keys-not-in-expected expected actual)
         [only-in-actual only-in-expected] (data/diff actual' expected)
         pass?                             (if (coll? only-in-expected)
                                             (empty? only-in-expected)

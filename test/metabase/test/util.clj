@@ -834,7 +834,7 @@
                                           :name                    (:display_name original)
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
-                (testing (format "With FK remapping %s -> %s" (describe-field original) (describe-field remapped))
+                (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
                   (thunk)))))
           ;; remap is sequential or map => HRV remap
           (let [values-map (if (sequential? remap)
@@ -848,7 +848,7 @@
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)
                                               :human_readable_values (vals values-map)}]]
-                (testing (format "With human readable values remapping %s -> %s"
+                (testing (format "With human readable values remapping %s -> %s\n"
                                  (describe-field original) (pr-str values-map))
                   (thunk)))))))))
    orig->remapped))

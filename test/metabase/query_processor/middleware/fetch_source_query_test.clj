@@ -35,14 +35,14 @@
 (deftest resolve-mbql-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves MBQL queries"
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
-      (is (= (assoc (default-result-with-inner-query
-                     {:source-query   {:source-table (mt/id :venues)}
-                      :source-card-id (u/the-id card)}
-                     (qp/query->expected-cols (mt/mbql-query venues)))
-                    :info {:card-id (u/the-id card)})
-             (resolve-card-id-source-tables
-              (wrap-inner-query
-               {:source-table (str "card__" (u/the-id card))}))))
+      (is (partial= (assoc (default-result-with-inner-query
+                            {:source-query   {:source-table (mt/id :venues)}
+                             :source-card-id (u/the-id card)}
+                            (qp/query->expected-cols (mt/mbql-query venues)))
+                           :info {:card-id (u/the-id card)})
+                    (resolve-card-id-source-tables
+                     (wrap-inner-query
+                      {:source-table (str "card__" (u/the-id card))}))))
 
       (testing "with aggregations/breakouts"
         (is (= (assoc (default-result-with-inner-query
@@ -60,32 +60,32 @@
 
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query checkins)}]
       (testing "with filters"
-        (is (= (assoc (default-result-with-inner-query
-                       {:source-query   {:source-table (mt/id :checkins)}
-                        :source-card-id (u/the-id card)
-                        :filter         [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
-                       (qp/query->expected-cols (mt/mbql-query :checkins)))
-                      :info {:card-id (u/the-id card)})
-               (resolve-card-id-source-tables
-                (wrap-inner-query
-                 {:source-table (str "card__" (u/the-id card))
-                  :filter       [:between
-                                 [:field "date" {:base-type :type/Date}]
-                                 "2015-01-01"
-                                 "2015-02-01"]})))))))
+        (is (partial= (assoc (default-result-with-inner-query
+                              {:source-query   {:source-table (mt/id :checkins)}
+                               :source-card-id (u/the-id card)
+                               :filter         [:between [:field "date" {:base-type :type/Date}] "2015-01-01" "2015-02-01"]}
+                              (qp/query->expected-cols (mt/mbql-query :checkins)))
+                             :info {:card-id (u/the-id card)})
+                      (resolve-card-id-source-tables
+                       (wrap-inner-query
+                        {:source-table (str "card__" (u/the-id card))
+                         :filter       [:between
+                                        [:field "date" {:base-type :type/Date}]
+                                        "2015-01-01"
+                                        "2015-02-01"]})))))))
   (testing "respects `enable-nested-queries` server setting"
     (mt/with-temp* [Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]]
       (letfn [(resolve [] (resolve-card-id-source-tables
                            (mt/mbql-query nil
-                                          {:source-table (str "card__" card-id)})))]
+                             {:source-table (str "card__" card-id)})))]
         (mt/with-temporary-setting-values [enable-nested-queries true]
           (is (some? (resolve-card-id-source-tables
                       (mt/mbql-query nil
-                                     {:source-table (str "card__" card-id)})))))
+                        {:source-table (str "card__" card-id)})))))
         (mt/with-temporary-setting-values [enable-nested-queries false]
           (try (resolve-card-id-source-tables
                 (mt/mbql-query nil
-                               {:source-table (str "card__" card-id)}))
+                  {:source-table (str "card__" card-id)}))
                (is false "Nested queries disabled not honored")
                (catch Exception e
                  (is (schema= {:clause {:source-table (s/eq (str "card__" card-id))}}

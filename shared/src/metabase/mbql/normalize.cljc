@@ -93,17 +93,17 @@
     (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
     [:binning-strategy (normalize-tokens field :ignore-path) (maybe-normalize-token strategy-name)]))
 
+(defn- normalize-field-options [opts]
+  (cond-> (normalize-tokens opts :ignore-path)
+    (:base-type opts)     (update :base-type keyword)
+    (:temporal-unit opts) (update :temporal-unit keyword)
+    (:binning opts)       (update :binning (fn [binning]
+                                             (cond-> binning
+                                               (:strategy binning) (update :strategy keyword))))))
+
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
-  (let [opts (normalize-tokens opts :ignore-path)]
-    [:field
-     id-or-name
-     (cond-> opts
-       (:base-type opts)     (update :base-type keyword)
-       (:temporal-unit opts) (update :temporal-unit keyword)
-       (:binning opts)       (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))]))
+  [:field id-or-name (normalize-field-options opts)])
 
 (defmethod normalize-mbql-clause-tokens :field-literal
   ;; Similarly, for Field literals, keep the arg as-is, but make sure it is a string."
@@ -279,6 +279,9 @@
   {:pre [(map? metadata)]}
   (-> (reduce #(m/update-existing %1 %2 keyword) metadata [:base_type :effective_type :semantic_type :visibility_type :source :unit])
       (m/update-existing :field_ref (comp canonicalize-mbql-clauses normalize-tokens))
+      ;; TODO -- doesn't *REALLY* need to be disabled but it's not used by the FE and I don't want to update a million
+      ;; tests.
+      (update :options normalize-field-options)
       (m/update-existing :fingerprint walk/keywordize-keys)))
 
 (defn- normalize-native-query

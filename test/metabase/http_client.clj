@@ -5,10 +5,10 @@
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
-            [clojure.walk :as walk]
             [java-time :as java-time]
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
+            [metabase.test-runner.effects :as test-runner.effects]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
@@ -169,21 +169,11 @@
    (s/optional-key :query-parameters) (s/maybe su/Map)
    (s/optional-key :request-options)  (s/maybe su/Map)})
 
-(defn derecordize
-  "Convert all record types in `form` to plain maps, so tests won't fail."
-  [form]
-  (walk/postwalk
-   (fn [form]
-     (if (record? form)
-       (into {} form)
-       form))
-   form))
-
 (s/defn ^:private -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
-  (let [http-body   (derecordize http-body)
+  (let [http-body   (test-runner.effects/derecordize http-body)
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)

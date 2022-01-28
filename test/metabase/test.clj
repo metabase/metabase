@@ -22,6 +22,7 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test-runner.init :as test-runner.init]
+            [metabase.test-runner.effects :as test-runner.effects]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
@@ -63,6 +64,7 @@
   qp.test/keep-me
   sql-jdbc.tu/keep-me
   sql.qp-test-util/keep-me
+  test-runner.effects/keep-me
   test-users/keep-me
   tt/keep-me
   tu/keep-me
@@ -115,8 +117,7 @@
   authenticate
   build-url
   client
-  client-full-response
-  derecordize]
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles
@@ -160,6 +161,9 @@
 
  [sql.qp-test-util
   with-native-query-testing-context]
+
+ [test-runner.effects
+  derecordize]
 
  [test-users
   fetch-user

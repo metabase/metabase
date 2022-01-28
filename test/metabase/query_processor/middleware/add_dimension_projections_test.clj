@@ -1,12 +1,18 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.models.dimension :refer [Dimension]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [toucan.hydrate :as hydrate]))
+            [toucan.hydrate :as hydrate]
+            [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+#_(use-fixtures :each (fn [thunk]
+                      (mt/with-driver :h2
+                        (thunk))))
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
@@ -21,7 +27,8 @@
 
 (def ^:private remapped-field
   (delay
-    {:name                      "Product"
+    {:id                        1000
+     :name                      "Product"
      :field_id                  (mt/id :venues :category_id)
      :human_readable_field_id   (mt/id :categories :name)
      :field_name                "CATEGORY_ID"
@@ -175,7 +182,6 @@
     :schema_name     nil
     :semantic_type   :type/Category
     :name            "CATEGORY"
-    :fk_field_id     32
     :id              27
     :visibility_type :normal
     :display_name    "Category"
@@ -259,46 +265,200 @@
                 [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text]))))
 
   (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
-    (is (= {:status    :completed
-            :row_count 0
-            :data      {:rows []
-                        :cols [example-result-cols-id
-                               example-result-cols-name
-                               (assoc example-result-cols-category-id
-                                      :remapped_to "CATEGORY")
-                               example-result-cols-price
-                               (assoc example-result-cols-category
-                                      :remapped_from "CATEGORY_ID"
-                                      :display_name  "My Venue Category")]}}
-           (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
-                                                             [[{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
-                                                              query])]
+    (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
+                                                      [[{:name                      "My Venue Category"
+                                                         :field_id                  11
+                                                         :field_name                "CATEGORY_ID"
+                                                         :human_readable_field_id   27
+                                                         :human_readable_field_name "CATEGORY"}]
+                                                       query])]
+      (is (= {:status    :completed
+              :row_count 0
+              :data      {:rows []
+                          :cols [example-result-cols-id
+                                 example-result-cols-name
+                                 (assoc example-result-cols-category-id
+                                        :remapped_to "CATEGORY")
+                                 example-result-cols-price
+                                 (assoc example-result-cols-category
+                                        :fk_field_id (:id example-result-cols-category-id)
+                                        :remapped_from "CATEGORY_ID"
+                                        :display_name  "My Venue Category")]}}
              (add-remapping
               {}
               {:cols [example-result-cols-id
                       example-result-cols-name
                       example-result-cols-category-id
                       example-result-cols-price
-                      example-result-cols-category]}
+                      (assoc example-result-cols-category :fk_field_id (:id example-result-cols-category-id))]}
               []))))))
 
 (deftest dimension-remappings-test
   (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
     (mt/dataset sample-dataset
-      (let [query (mt/mbql-query orders
-                    {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
-                     :joins    [{:fields       :all
-                                 :source-table $$products
-                                 :condition    [:= $product_id &Products.products.id]
-                                 :alias        "Products"}]
-                     :order-by [[:asc $id]]
-                     :limit    2})]
-        (doseq [nesting-level [0 1]
-                :let          [query (mt/nest-query query nesting-level)]]
-          (testing (format "nesting level = %d" nesting-level)
-            (mt/with-column-remappings [orders.product_id products.title]
-              (is (= (update-in
+      (mt/with-column-remappings [orders.product_id products.title]
+        (let [query        (mt/mbql-query orders
+                             {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
+                              :joins    [{:fields       :all
+                                          :source-table $$products
+                                          :condition    [:= $product_id &Products.products.id]
+                                          :alias        "Products"}]
+                              :order-by [[:asc $id]]
+                              :limit    2})
+              dimension-id (db/select-one-id Dimension
+                             :field_id                (mt/id :orders :product_id)
+                             :human_readable_field_id (mt/id :products :title))]
+          (is (integer? dimension-id))
+          (doseq [nesting-level [0 1]
+                  :let          [query (mt/nest-query query nesting-level)]]
+            (testing (format "nesting level = %d" nesting-level)
+              (is (= (assoc-in
                       query
                       (concat [:query] (repeat nesting-level :source-query) [:fields])
-                      concat [(mt/$ids orders $product_id->products.title)])
-                     (:pre (mt/test-qp-middleware add-dim-projections/add-remapping query)))))))))))
+                      (mt/$ids orders
+                        [$id
+                         $user_id
+                         [:field %product_id {::add-dim-projections/target-dimension dimension-id}]
+                         $subtotal
+                         $tax
+                         $total
+                         $discount
+                         !default.created_at
+                         $quantity
+                         [:field %products.title {:source-field                          %product_id
+                                                  ::add-dim-projections/source-dimension dimension-id}]]))
+                     (second (#'add-dim-projections/add-fk-remaps query)))))))))))
+
+(deftest fk-remaps-with-multiple-columns-with-same-name-test
+  (testing "Make sure we remap to the correct column when some of them have duplicate names"
+    (mt/with-column-remappings [venues.category_id categories.name]
+      (let [query                     (mt/mbql-query venues
+                                        {:fields   [$name $category_id]
+                                         :order-by [[:asc $name]]
+                                         :limit    4})
+            [remap-info preprocessed] (#'add-dim-projections/add-fk-remaps query)
+            dimension-id              (db/select-one-id Dimension
+                                        :field_id                (mt/id :venues :category_id)
+                                        :human_readable_field_id (mt/id :categories :name))]
+        (is (integer? dimension-id))
+        (testing "Preprocessing"
+          (testing "Remap info"
+            (is (query= (mt/$ids venues
+                          [{:id                        dimension-id
+                            :field_id                  %category_id
+                            :name                      "Category ID"
+                            :human_readable_field_id   %categories.name
+                            :field_name                "CATEGORY_ID"
+                            :human_readable_field_name "NAME"}])
+                        remap-info)))
+          (testing "query"
+            (is (query= (mt/mbql-query venues
+                          {:fields   [$name
+                                      [:field %category_id {::add-dim-projections/target-dimension dimension-id}]
+                                      [:field %categories.name {:source-field                          %category_id
+                                                                ::add-dim-projections/source-dimension dimension-id}]]
+                           :order-by [[:asc $name]]
+                           :limit    4})
+                        preprocessed))))
+        (testing "Post-processing"
+          (let [metadata (mt/$ids venues
+                           {:cols [{:name         "NAME"
+                                    :id           %name
+                                    :display_name "Name"}
+                                   {:name         "CATEGORY_ID"
+                                    :id           %category_id
+                                    :display_name "Category ID"
+                                    :options      {::add-dim-projections/target-dimension dimension-id}}
+                                   {:name         "NAME_2"
+                                    :id           %categories.name
+                                    :display_name "Category → Name"
+                                    :fk_field_id  %category_id
+                                    :options      {::add-dim-projections/source-dimension dimension-id}}]})
+                rows     [["20th Century Cafe"               2 "Café"]
+                          ["25°"                             2 "Burger"]
+                          ["33 Taps"                         2 "Bar"]
+                          ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]]
+            (testing "metadata"
+              (is (partial= {:cols [{:name "NAME", :display_name "Name"}
+                                    {:name "CATEGORY_ID", :display_name "Category ID", :remapped_to "NAME_2"}
+                                    {:name "NAME_2", :display_name "Category ID", :remapped_from "CATEGORY_ID"}]}
+                            (#'add-dim-projections/add-remapped-cols metadata remap-info nil))))))))))
+
+(deftest multiple-fk-remaps-test
+  (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)\n"
+    (mt/dataset avian-singles
+      (mt/with-column-remappings [messages.sender_id   users.name
+                                  messages.receiver_id users.name]
+        (let [query                 (mt/mbql-query messages
+                                      {:fields   [$sender_id $receiver_id $text]
+                                       :order-by [[:asc $id]]
+                                       :limit    3})
+              sender-dimension-id   (db/select-one-id Dimension
+                                      :field_id                (mt/id :messages :sender_id)
+                                      :human_readable_field_id (mt/id :users :name))
+              receiver-dimension-id (db/select-one-id Dimension
+                                      :field_id                (mt/id :messages :receiver_id)
+                                      :human_readable_field_id (mt/id :users :name))]
+          (let [[remap-info preprocessed] (#'add-dim-projections/add-fk-remaps query)]
+            (testing "Pre-processing"
+              (testing "Remap info"
+                (is (query= (mt/$ids messages
+                              [{:id                        sender-dimension-id
+                                :field_id                  %sender_id
+                                :name                      "Sender ID"
+                                :human_readable_field_id   %users.name
+                                :field_name                "SENDER_ID"
+                                :human_readable_field_name "NAME"}
+                               {:id                        receiver-dimension-id
+                                :field_id                  %receiver_id
+                                :name                      "Receiver ID"
+                                :human_readable_field_id   %users.name
+                                :field_name                "RECEIVER_ID"
+                                :human_readable_field_name "NAME_2"}])
+                            remap-info))))
+            (testing "query"
+              (is (query= (mt/mbql-query messages
+                            {:fields   [[:field %sender_id {::add-dim-projections/target-dimension sender-dimension-id}]
+                                        [:field %receiver_id {::add-dim-projections/target-dimension receiver-dimension-id}]
+                                        $text
+                                        [:field %users.name {:source-field                          %sender_id
+                                                             ::add-dim-projections/source-dimension sender-dimension-id}]
+                                        [:field %users.name {:source-field                          %receiver_id
+                                                             ::add-dim-projections/source-dimension receiver-dimension-id}]]
+                             :order-by [[:asc $id]]
+                             :limit    3})
+                          preprocessed)))
+
+            (testing "Post-processing"
+              (let [metadata (mt/$ids messages
+                               {:cols [{:name         "SENDER_ID"
+                                        :id           %sender_id
+                                        :display_name "Sender ID"
+                                        :options      {::add-dim-projections/target-dimension sender-dimension-id}}
+                                       {:name         "RECEIVER_ID"
+                                        :id           %receiver_id
+                                        :display_name "Receiver ID"
+                                        :options      {::add-dim-projections/target-dimension receiver-dimension-id}}
+                                       {:name         "TEXT"
+                                        :id           %text
+                                        :display_name "Text"}
+                                       {:name         "NAME"
+                                        :id           %users.name
+                                        :display_name "Sender → Name"
+                                        :fk_field_id  %sender_id
+                                        :options      {::add-dim-projections/source-dimension sender-dimension-id}}
+                                       {:name         "NAME_2"
+                                        :id           %users.name
+                                        :display_name "Receiver → Name"
+                                        :fk_field_id  %receiver_id
+                                        :options      {::add-dim-projections/source-dimension receiver-dimension-id}}]})
+                    rows     [[8 7 "Coo"             "Annie Albatross" "Brenda Blackbird"]
+                              [8 3 "Bip bip bip bip" "Annie Albatross" "Peter Pelican"]
+                              [3 2 "Coo"             "Peter Pelican"   "Lucky Pigeon"]]]
+                (testing "metadata"
+                  (is (partial= {:cols [{:display_name "Sender ID", :name "SENDER_ID", :remapped_to "NAME"}
+                                        {:display_name "Receiver ID", :name "RECEIVER_ID", :remapped_to "NAME_2"}
+                                        {:display_name "Text", :name "TEXT"}
+                                        {:display_name "Sender ID", :name "NAME", :remapped_from "SENDER_ID"}
+                                        {:display_name "Receiver ID", :name "NAME_2", :remapped_from "RECEIVER_ID"}]}
+                                (#'add-dim-projections/add-remapped-cols metadata remap-info nil))))))))))))

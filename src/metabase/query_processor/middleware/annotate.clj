@@ -187,7 +187,7 @@
         join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref clause}
+    (cond-> {:field_ref clause, :options opts}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 

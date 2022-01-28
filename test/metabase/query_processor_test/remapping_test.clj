@@ -93,26 +93,27 @@
 (deftest foreign-keys-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-column-remappings [venues.category_id categories.name]
-      (is (= {:rows [["20th Century Cafe"               2 "Café"]
-                     ["25°"                             2 "Burger"]
-                     ["33 Taps"                         2 "Bar"]
-                     ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
-              :cols [(mt/col :venues :name)
-                     (mt/col :venues :price)
-                     (mt/$ids venues
-                       (assoc (mt/col :categories :name)
-                              :fk_field_id   %category_id
-                              :display_name  "Category ID"
-                              :name          (mt/format-name "name_2")
-                              :remapped_from (mt/format-name "category_id")
-                              :field_ref     $category_id->categories.name))]}
-             (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                                 (mt/format-rows-by [int str int double double int str]
-                                   (mt/run-mbql-query venues
-                                     {:order-by [[:asc $name]]
-                                      :limit    4})))
-                 (update :cols (fn [[c1 c2 c3]]
-                                 [c1 c2 (dissoc c3 :source_alias)]))))))))
+      (let [query         (mt/mbql-query venues
+                            {:fields   [$name $category_id]
+                             :order-by [[:asc $name]]
+                             :limit    4})
+            results       (qp/process-query query)
+            relevant-keys #(select-keys % [:name :display_name :fk_field_id :remapped_from :remapped_to])]
+        (is (= (mt/$ids venues
+                 [(relevant-keys (mt/col :venues :name))
+                  (assoc (relevant-keys (mt/col :venues :category_id))
+                         :remapped_to (mt/format-name "name_2"))
+                  (assoc (relevant-keys (mt/col :categories :name))
+                         :fk_field_id   %category_id
+                         :display_name  "Category ID"
+                         :name          (mt/format-name "name_2")
+                         :remapped_from (mt/format-name "category_id"))])
+               (map relevant-keys (mt/cols results))))
+        (is (= [["20th Century Cafe"               12 "Café"]
+                ["25°"                             11 "Burger"]
+                ["33 Taps"                          7 "Bar"]
+                ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
+               (mt/formatted-rows [str int str] results)))))))
 
 (deftest remappings-with-field-clause-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -186,7 +187,7 @@
   (testing "Remapping should work for native queries"
     (mt/dataset sample-dataset
       (letfn [(remappings-with-metadata [metadata]
-                (mt/with-column-remappings [orders.product_id products.title]
+                (metabase.test/with-column-remappings [orders.product_id products.title]
                   (mt/rows
                     (mt/run-mbql-query nil
                       {:source-query    {:native "SELECT * FROM ORDERS WHERE USER_ID = 1 AND TOTAL > 10 ORDER BY ID ASC LIMIT 2;"}
@@ -214,3 +215,27 @@
                       :filter       [:= $product_id->products.category "Doohickey"]
                       :order-by     [[:asc $id] [:asc $product_id->products.category]]
                       :limit        1})))))))))
+
+(deftest multiple-fk-remaps-test
+  (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
+    (mt/dataset avian-singles
+      (let [query (mt/mbql-query messages
+                    {:fields   [$id $sender_id $receiver_id $text]
+                     :order-by [[:asc $id]]
+                     :limit    3})]
+        (mt/with-column-remappings [messages.sender_id   users.name
+                                    messages.receiver_id users.name]
+          (mt/with-native-query-testing-context query
+            (let [results (qp/process-query query)]
+              (is (= [{:display_name "ID",          :name "ID"}
+                      {:display_name "Sender ID",   :name "SENDER_ID",   :remapped_to "NAME"}
+                      {:display_name "Receiver ID", :name "RECEIVER_ID", :remapped_to "NAME_2"}
+                      {:display_name "Text",        :name "TEXT"}
+                      {:display_name "Receiver ID", :name "NAME",        :remapped_from "SENDER_ID"}
+                      {:display_name "Sender ID",   :name "NAME_2",      :remapped_from "RECEIVER_ID"}]
+                     (map #(select-keys % [:display_name :name :remapped_from :remapped_to])
+                          (mt/cols results))))
+              (is (= [[1 8 7 "Coo"             "Annie Albatross" "Brenda Blackbird"]
+                      [2 8 3 "Bip bip bip bip" "Annie Albatross" "Peter Pelican"]
+                      [3 3 2 "Coo"             "Peter Pelican"   "Lucky Pigeon"]]
+                     (mt/rows results))))))))))
