@@ -30,7 +30,7 @@ The default way to connect to MongoDB is to fill out your connection details in 
 - Port
 - Username
 - Password
-- Authentication Database (optional database to use when authenticating)
+- Authentication Database (optional)
 - Additional connection string options (optional)
 
 Additional settings:

@@ -1,5 +1,4 @@
 import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils";
-import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 // Query Builder Mode
@@ -34,22 +33,6 @@ export function getPathNameFromQueryBuilderMode({
     return `${pathname}/${datasetEditorTab}`;
   }
   return `${pathname}/${queryBuilderMode}`;
-}
-
-// Datasets
-
-export function isAdHocDatasetQuestion(question, originalQuestion) {
-  if (!originalQuestion || !question.isStructured()) {
-    return false;
-  }
-
-  const isDataset = question.isDataset() || originalQuestion.isDataset();
-  const isSameCard = question.id() === originalQuestion.id();
-  const isSelfReferencing =
-    question.query().sourceTableId() ===
-    getQuestionVirtualTableId(originalQuestion.card());
-
-  return isDataset && isSameCard && isSelfReferencing;
 }
 
 function getTemplateTagWithoutSnippetsCount(question) {

@@ -281,6 +281,16 @@
   ;; Return a channel that can be used to fetch the results asynchronously
   (create-card-async! body))
 
+(api/defendpoint ^:returns-chan POST "/:id/copy"
+  "Copy a `Card`, with the new name 'Copy of _name_'"
+  [id]
+  {id (s/maybe su/IntGreaterThanZero)}
+  (let [orig-card (api/read-check Card id)
+        new-name  (str (trs "Copy of ") (:name orig-card))
+        new-card  (assoc orig-card :name new-name)]
+    ;; Return a channel that can be used to fetch the results asynchronously
+    (create-card-async! new-card)))
+
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 

@@ -17,6 +17,7 @@ import {
   RadioLabelBubble,
   RadioLabelNormal,
   RadioLabelText,
+  RadioGroup,
   RadioGroupBubble,
   RadioGroupNormal,
 } from "./Radio.styled";
@@ -52,7 +53,6 @@ export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>>
   disabled?: boolean;
   vertical?: boolean;
   showButtons?: boolean;
-  py?: number;
   onChange?: (value: TValue) => void;
   onOptionClick?: (value: TValue) => void;
 }
@@ -78,7 +78,6 @@ const Radio = forwardRef(function Radio<
     disabled = false,
     vertical = false,
     showButtons = vertical && variant !== "bubble",
-    py,
     onChange,
     onOptionClick,
     ...props
@@ -114,7 +113,6 @@ const Radio = forwardRef(function Radio<
             disabled={disabled}
             vertical={vertical}
             showButtons={showButtons}
-            py={py}
             onChange={onChange}
             onOptionClick={onOptionClick}
           />
@@ -134,7 +132,6 @@ interface RadioItemProps<TValue extends Key> {
   disabled: boolean;
   vertical: boolean;
   showButtons: boolean;
-  py: number | undefined;
   onChange?: (value: TValue) => void;
   onOptionClick?: (value: TValue) => void;
 }
@@ -149,7 +146,6 @@ const RadioItem = <TValue extends Key, TOption>({
   disabled,
   vertical,
   showButtons,
-  py,
   onChange,
   onOptionClick,
 }: RadioItemProps<TValue>): JSX.Element => {
@@ -164,12 +160,7 @@ const RadioItem = <TValue extends Key, TOption>({
   }, [value, onOptionClick]);
 
   return (
-    <RadioLabel
-      variant={variant}
-      vertical={vertical}
-      py={py}
-      onClick={handleClick}
-    >
+    <RadioLabel variant={variant} vertical={vertical} onClick={handleClick}>
       <RadioInput
         type="radio"
         name={name}
@@ -230,4 +221,6 @@ function isDefaultOption<TValue>(
   return typeof option === "object";
 }
 
-export default Radio;
+export default Object.assign(Radio, {
+  RadioGroup,
+});
