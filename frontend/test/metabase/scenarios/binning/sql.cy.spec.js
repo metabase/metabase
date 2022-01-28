@@ -1,5 +1,6 @@
 import {
   restore,
+  snapshot,
   visualize,
   changeBinningForDimension,
 } from "__support__/e2e/cypress";
@@ -13,12 +14,20 @@ const questionDetails = {
 };
 
 describe("scenarios > binning > from a saved sql question", () => {
+  before(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
+
+    snapshot("binningSql");
+  });
+
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    restore();
+    restore("binningSql");
     cy.signInAsAdmin();
-    cy.createNativeQuestion(questionDetails, { loadMetadata: true });
   });
 
   context("via simple question", () => {
