@@ -7,5 +7,6 @@ export interface Database {
   is_sample: boolean;
   creator_id?: number;
   created_at: string;
+  timezone?: string;
   initial_sync_status: InitialSyncStatus;
 }
