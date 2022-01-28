@@ -9,7 +9,6 @@
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
@@ -21,7 +20,7 @@
   (:import [java.sql Connection PreparedStatement ResultSet Types]
            java.time.OffsetTime))
 
-(driver/register! :redshift, :parent #{:postgres ::legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :redshift, :parent #{:postgres})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -206,20 +205,6 @@
      :OpenSourceSubProtocolOverride false}
     (dissoc opts :host :port :db))))
 
-(prefer-method
- sql-jdbc.execute/read-column-thunk
- [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
- [:postgres Types/TIMESTAMP])
-
-(prefer-method
- sql-jdbc.execute/read-column-thunk
- [::legacy/use-legacy-classes-for-read-and-set Types/TIME]
- [:postgres Types/TIME])
-
-(prefer-method
- sql-jdbc.execute/set-parameter
- [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
- [:postgres OffsetTime])
 
 (defn- field->parameter-value
   "Map fields used in parameters to parameter `:value`s."
