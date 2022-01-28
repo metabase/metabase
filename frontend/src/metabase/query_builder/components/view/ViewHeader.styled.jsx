@@ -68,6 +68,10 @@ export const HeaderButton = styled(Button)`
   > .Icon {
     opacity: 0.6;
   }
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 export const FilterHeaderButton = styled(Button)`
@@ -82,6 +86,10 @@ export const FilterHeaderButton = styled(Button)`
     color: white;
   }
   transition: background 300ms linear, border 300ms linear;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
 `;
 
 const getDefaultColor = () => color("brand");
