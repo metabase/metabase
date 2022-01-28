@@ -48,7 +48,6 @@ export default function QuickFilterDrill({ question, clicked }) {
     !(query instanceof StructuredQuery) ||
     !clicked ||
     !clicked.column ||
-    clicked.column.id == null ||
     clicked.value === undefined
   ) {
     return [];
