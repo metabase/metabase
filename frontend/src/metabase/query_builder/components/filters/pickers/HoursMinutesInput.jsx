@@ -48,7 +48,7 @@ const HoursMinutesInput = ({
       <div className="flex align-center pl1">
         <span
           className={cx("text-purple-hover mr1", {
-            "text-purple": hours < 12,
+            "text-purple text-heavy": hours < 12,
             "cursor-pointer": hours >= 12,
           })}
           onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}
@@ -57,7 +57,7 @@ const HoursMinutesInput = ({
         </span>
         <span
           className={cx("text-purple-hover mr1", {
-            "text-purple": hours >= 12,
+            "text-purple text-heavy": hours >= 12,
             "cursor-pointer": hours < 12,
           })}
           onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}
