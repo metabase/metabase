@@ -140,6 +140,10 @@
   color: var(--color-text-medium); /* TODO - is this bad? */
 }
 
+.text-list {
+  font-size: 1em;
+}
+
 .text-paragraph,
 :local(.text-paragraph) {
   font-size: 1.143em;
