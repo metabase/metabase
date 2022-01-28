@@ -1,5 +1,6 @@
 import styled from "styled-components";
 
+import { color } from "metabase/lib/colors";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -20,4 +21,10 @@ export const Grid = styled.div`
 
 export const SectionHeader = styled.div`
   padding-bottom: 1.15rem;
+  margin-top: 1.5rem;
+`;
+
+export const SectionSubHeader = styled.div`
+  color: ${color("text-medium")};
+  padding-top: 0.5rem;
 `;
