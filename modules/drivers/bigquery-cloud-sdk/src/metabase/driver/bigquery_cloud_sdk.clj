@@ -163,16 +163,34 @@
                                        (.appendValue ChronoField/MILLI_OF_SECOND))]
     (.toFormatter fb)))
 
-(defn- bq-ts-str->instant [ts-str]
+(defn- bq-ts-str->instant
+  "Parses the given `ts-str` (assumed to be a String representing a BigQuery TIMESTAMP value) to an [[Instant]].  See
+  [[bq-ts-str-formatter]] for more details."
+  [ts-str]
   (let [parsed (.parse bq-ts-str-formatter ts-str)]
     (Instant/from parsed)))
 
+;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#integer_type
+(def ^:private int-fingerprint-types
+  "Integral types for fingerprinting purposes (to be parsed via BigInteger)"
+  #{"INT64" "INT" "SMALLINT" "INTEGER" "BIGINT" "TINYINT" "BYTEINT"})
+
+;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types
+;; https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#floating_point_types
+(def ^:private dec-fingerprint-types
+  "Decimal and floating point types for fingerprinting purposes (to be parsed via BigDecimal)"
+  #{"NUMERIC" "DECIMAL" "BIGNUMERIC" "BIGDEIMAL" "FLOAT" "FLOAT64"})
+
 (defn- FieldValueList->fingerprint-structure [fields ^FieldValueList values]
   (map-indexed (fn [idx ^FieldValue fv]
-                 (let [{:keys [:database_type]} (nth fields idx)
-                       v                        (.getValue fv)]
-                      (if (and (string? v) (= "TIMESTAMP" database_type))
-                        (bq-ts-str->instant v)
+                 (let [{database-type :database_type} (nth fields idx)
+                       v                              (.getValue fv)]
+                      (if (string? v)
+                        (condp contains? (some-> database-type str/upper-case)
+                          #{"TIMESTAMP"} (bq-ts-str->instant v)
+                          int-fingerprint-types (java.math.BigInteger. ^String v)
+                          dec-fingerprint-types (java.math.BigDecimal. ^String v)
+                          v)
                         v)))
                ;; the list operation will return *all* field values for each row, in the database field order
                ;; so, map over the requested fields and fetch only those values at each respective :database_position
