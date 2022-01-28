@@ -1,6 +1,6 @@
 import styled from "styled-components";
 
-import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
+import PinnedItemSortDropTarget from "metabase/containers/dnd/PinnedItemSortDropTarget";
 import { GAP_REM } from "metabase/collections/components/PinnedItemOverview/PinnedItemOverview.styled";
 import { color } from "metabase/lib/colors";
 
@@ -17,7 +17,9 @@ export type PinDropTargetRenderArgs = PinDropTargetProps & {
   highlighted: boolean;
 };
 
-export const StyledPinDropTarget = styled<PinDropTargetProps>(PinDropTarget)`
+export const StyledPinDropTarget = styled<PinDropTargetProps>(
+  PinnedItemSortDropTarget,
+)`
   position: absolute !important;
   top: 0;
   bottom: 0;

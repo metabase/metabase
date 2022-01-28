@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -9,6 +9,7 @@ import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBa
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import PinDropZone from "metabase/collections/components/PinDropZone";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 
@@ -37,6 +38,7 @@ function PinnedItemOverview({
   return items.length === 0 ? (
     <Container>
       <EmptyPinnedItemsBanner />
+      <PinDropZone variant="pin" />
     </Container>
   ) : (
     <Container data-testid="pinned-items">
@@ -143,6 +145,7 @@ function PinnedItemOverview({
           </Grid>
         </div>
       )}
+      <PinDropZone variant="pin" />
     </Container>
   );
 }
