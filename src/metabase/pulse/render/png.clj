@@ -70,7 +70,6 @@
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-    ;; todo: get rid of this hardcoded 1200. it is passed down from metabase.pulse.render/card-width = 400
     (let [dimension       (Dimension. width 1)
           doc             (.parse (DefaultDOMSource. doc-source))
           da              (dom-analyzer doc doc-source dimension)
@@ -86,7 +85,12 @@
                                 (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
-      (write-image! (.getImage graphics-engine) "png" os))))
+      (let [image     (.getImage graphics-engine)
+            min-width (int (.getMinimalWidth (.getViewport graphics-engine)))
+            crop      (if (< min-width (.getWidth image))
+                        (.getSubimage image 0 0 min-width (.getHeight image))
+                        image)]
+        (write-image! crop "png" os)))))
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
