@@ -157,35 +157,27 @@
 (def ^:private ^DateTimeFormatter bq-ts-str-formatter
   "For some crazy reason, the TIMESTAMP String values returned from [[FieldValue]] look like `1577836800.0`, so create
   a parser for that.  This is basically '<epoch seconds>.<millis>'."
-  (.toFormatter (doto (DateTimeFormatterBuilder.)
-                  (.appendValue ChronoField/INSTANT_SECONDS 1 19 SignStyle/NEVER)
-                  (.appendLiteral \.)
-                  (.appendValue ChronoField/MILLI_OF_SECOND))))
+  (let [^DateTimeFormatterBuilder fb (doto (DateTimeFormatterBuilder.)
+                                       (.appendValue ChronoField/INSTANT_SECONDS 1 19 SignStyle/NEVER)
+                                       (.appendLiteral \.)
+                                       (.appendValue ChronoField/MILLI_OF_SECOND))]
+    (.toFormatter fb)))
 
 (defn- bq-ts-str->instant [ts-str]
   (let [parsed (.parse bq-ts-str-formatter ts-str)]
     (Instant/from parsed)))
 
-(defn- FieldValueList->fingerprint-structure [fields truncation-size ^FieldValueList values]
+(defn- FieldValueList->fingerprint-structure [fields ^FieldValueList values]
   (map-indexed (fn [idx ^FieldValue fv]
                  (let [{:keys [:database_type]} (nth fields idx)
-                       v (.getValue fv)]
-                      (if (string? v)
-                        (cond (= "TIMESTAMP" database_type)
-                              (bq-ts-str->instant v)
-
-                              (some? truncation-size)
-                              (let [^String str-val v]
-                                (.substring ^String str-val 0 (min truncation-size (.length str-val))))
-
-                              true
-                              v)
+                       v                        (.getValue fv)]
+                      (if (and (string? v) (= "TIMESTAMP" database_type))
+                        (bq-ts-str->instant v)
                         v)))
                ;; the list operation will return *all* field values for each row, in the database field order
                ;; so, map over the requested fields and fetch only those values at each respective :database_position
-               (map #(-> values
-                         (.get (:database_position %))
-                         (.getValue))
+               (map (fn [{^Integer database-pos :database_position}]
+                      (.get values database-pos))
                     fields)))
 
 ;; Override the table-rows-sample multimethod for :bigquery-cloud-sdk, to use a different mechanism for sampling
@@ -207,10 +199,9 @@
                       table-name)
           ((get-method @#'sync.f/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (let [^TableResult rows (.list bq-tbl (u/varargs BigQuery$TableDataListOption))
-            trunc-size        (:truncation-size opts)
             num-rows          metadata-queries/max-sample-rows]
         (transduce (comp (take num-rows)
-                         (map (partial FieldValueList->fingerprint-structure fields trunc-size)))
+                         (map (partial FieldValueList->fingerprint-structure fields)))
                    (rff nil) ; nil param is for JDBC ResultSet metadata, which doesn't apply here
                    (seq (.iterateAll rows)))))))
 
