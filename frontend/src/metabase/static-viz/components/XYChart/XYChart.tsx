@@ -131,7 +131,7 @@ export const XYChart = ({
 
   const areXTicksRotated = settings.x.tick_display === "rotate-45";
   const areXTicksHidden = settings.x.tick_display === "hide";
-  const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : 0;
+  const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
   return (
     <svg width={width} height={height + legendHeight}>
