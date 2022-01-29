@@ -85,11 +85,11 @@
                                 (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
-      (let [image     (.getImage graphics-engine)
-            min-width (int (.getMinimalWidth (.getViewport graphics-engine)))
-            crop      (if (< min-width (.getWidth image))
-                        (.getSubimage image 0 0 min-width (.getHeight image))
-                        image)]
+      (let [image         (.getImage graphics-engine)
+            content-width (max 250 (int (.getMinimalWidth (.getViewport graphics-engine))))
+            crop          (if (< content-width (.getWidth image))
+                            (.getSubimage image 0 0 content-width (.getHeight image))
+                            image)]
         (write-image! crop "png" os)))))
 
 (s/defn render-html-to-png :- bytes
