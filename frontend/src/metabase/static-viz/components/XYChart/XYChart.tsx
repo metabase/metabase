@@ -130,6 +130,8 @@ export const XYChart = ({
   };
 
   const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksHidden = settings.x.tick_display === "hide";
+  const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : 0;
 
   return (
     <svg width={width} height={height + legendHeight}>
@@ -217,22 +219,26 @@ export const XYChart = ({
         top={yMin}
         left={xMin}
         numTicks={xTicksCount}
+        labelOffset={xLabelOffset}
         stroke={style.axes.color}
         tickStroke={style.axes.color}
+        hideTicks={settings.x.tick_display === "hide"}
         labelProps={labelProps}
         tickFormat={value =>
           formatXTick(value.valueOf(), settings.x.type, settings.x.format)
         }
-        tickComponent={props => (
-          <Text
-            {...getXTickProps(
-              props,
-              style.axes.ticks.fontSize,
-              xTickWidthLimit,
-              areXTicksRotated,
-            )}
-          />
-        )}
+        tickComponent={props =>
+          areXTicksHidden ? null : (
+            <Text
+              {...getXTickProps(
+                props,
+                style.axes.ticks.fontSize,
+                xTickWidthLimit,
+                areXTicksRotated,
+              )}
+            />
+          )
+        }
         tickLabelProps={() => tickProps}
       />
 
