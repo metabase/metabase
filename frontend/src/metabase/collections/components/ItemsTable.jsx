@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { Flex } from "grid-styled";
 
-import PinDropTarget from "metabase/containers/dnd/PinDropTarget";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 
@@ -33,13 +33,18 @@ function ItemsTable(props) {
   const { items } = props;
 
   if (items.length === 0) {
-    return <PinDropZone variant="unpin" />;
+    return (
+      <Flex className="relative" align="center" justify="center" p={4} m={2}>
+        <PinDropZone variant="unpin" />
+      </Flex>
+    );
   }
 
   return (
-    <PinDropTarget variant="unpin">
+    <div className="relative">
+      <PinDropZone variant="unpin" />
       <BaseItemsTable {...props} renderItem={Item} />
-    </PinDropTarget>
+    </div>
   );
 }
 

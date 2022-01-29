@@ -5,6 +5,7 @@ import { breakpointMaxMedium } from "metabase/styled-components/theme";
 export const GAP_REM = 1.15;
 
 export const Container = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: ${GAP_REM}rem;

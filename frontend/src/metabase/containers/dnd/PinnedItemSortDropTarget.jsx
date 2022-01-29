@@ -1,6 +1,8 @@
 import { DropTarget } from "react-dnd";
 import PropTypes from "prop-types";
 
+import { isItemPinned } from "metabase/collections/utils";
+
 import DropArea from "./DropArea";
 import { PinnableDragTypes } from ".";
 
@@ -15,8 +17,13 @@ const PinnedItemSortDropTarget = DropTarget(
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
       const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
+
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
+      if (!isItemPinned(item)) {
+        return false;
+      }
+
       if (itemModel != null && item.model !== itemModel) {
         return false;
       }

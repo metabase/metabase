@@ -8,8 +8,8 @@ import CollectionCardVisualization from "metabase/collections/components/Collect
 import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import PinDropZone from "metabase/collections/components/PinDropZone";
+import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import { Container, Grid, SectionHeader } from "./PinnedItemOverview.styled";
 
@@ -37,11 +37,12 @@ function PinnedItemOverview({
 
   return items.length === 0 ? (
     <Container>
-      <EmptyPinnedItemsBanner />
       <PinDropZone variant="pin" />
+      <EmptyPinnedItemsBanner />
     </Container>
   ) : (
     <Container data-testid="pinned-items">
+      <PinDropZone variant="pin" />
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
@@ -145,7 +146,6 @@ function PinnedItemOverview({
           </Grid>
         </div>
       )}
-      <PinDropZone variant="pin" />
     </Container>
   );
 }
