@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -29,6 +29,8 @@ function CollectionCardVisualization({
   onCopy,
   onMove,
 }) {
+  const questionRef = useRef();
+
   return (
     <ItemLink to={item.getUrl()}>
       <VizCard flat>
@@ -40,9 +42,12 @@ function CollectionCardVisualization({
         />
         <Questions.Loader id={item.id}>
           {({ question: card }) => {
-            const question = new Question(card, metadata);
+            // reusing the initial question instance avoids triggering queries every time this component rerenders
+            questionRef.current =
+              questionRef.current || new Question(card, metadata);
+
             return (
-              <QuestionResultLoader question={question}>
+              <QuestionResultLoader question={questionRef.current}>
                 {({ loading, error, reload, rawSeries, results, result }) => {
                   const shouldShowLoader = loading && results == null;
                   const { errorMessage, errorIcon } = getErrorProps(
@@ -56,7 +61,6 @@ function CollectionCardVisualization({
                       noWrapper
                     >
                       <Visualization
-                        onChangeCardAndRun={_.noop}
                         isDashboard
                         showTitle
                         metadata={metadata}

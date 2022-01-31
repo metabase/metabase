@@ -15,6 +15,7 @@ export const PinnableDragTypes = [
   DragTypes.QUESTION,
   DragTypes.DASHBOARD,
   DragTypes.PULSE,
+  DragTypes.DATASET,
 ];
 
 export const MoveableDragTypes = [
