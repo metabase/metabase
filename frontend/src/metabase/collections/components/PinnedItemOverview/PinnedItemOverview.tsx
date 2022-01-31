@@ -5,7 +5,6 @@ import { t } from "ttag";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
-import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
@@ -43,7 +42,6 @@ function PinnedItemOverview({
   return items.length === 0 ? (
     <Container>
       <PinDropZone variant="pin" />
-      <EmptyPinnedItemsBanner />
     </Container>
   ) : (
     <Container data-testid="pinned-items">
