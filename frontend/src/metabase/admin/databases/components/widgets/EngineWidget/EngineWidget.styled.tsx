@@ -91,12 +91,6 @@ export const EngineButtonRoot = styled(Button)`
   }
 `;
 
-export const EngineButtonTitle = styled.span`
-  flex: 0 1 auto;
-  font-size: 1rem;
-  font-weight: bold;
-`;
-
 export const EngineToggleRoot = styled(Button)`
   width: 100%;
 `;
