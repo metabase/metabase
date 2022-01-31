@@ -82,6 +82,7 @@ jobs:
           ./SHA256.sum
   
   containerize:
+    if: github.ref_name != 'master' || !contains(github.ref_name,'backport') || !contains(github.ref_name,'release')
     runs-on: ubuntu-20.04
     needs: build
     steps:
