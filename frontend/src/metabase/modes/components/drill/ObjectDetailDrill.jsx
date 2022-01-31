@@ -3,9 +3,8 @@ import { t } from "ttag";
 
 export default ({ question, clicked }) => {
   if (
-    !clicked ||
-    !clicked.column ||
-    clicked.value === undefined ||
+    !clicked?.column ||
+    clicked?.value === undefined ||
     !(isFK(clicked.column) || isPK(clicked.column))
   ) {
     return [];
@@ -18,10 +17,6 @@ export default ({ question, clicked }) => {
 
   if (field.target) {
     field = field.target;
-  }
-
-  if (!clicked) {
-    return [];
   }
 
   return [
