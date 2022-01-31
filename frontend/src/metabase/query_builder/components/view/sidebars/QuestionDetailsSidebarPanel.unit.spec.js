@@ -67,6 +67,7 @@ function setup({ question } = {}) {
       },
       reducers: {
         settings: () => settingsState,
+        qb: () => ({}),
       },
     },
   );
@@ -116,6 +117,16 @@ describe("QuestionDetailsSidebarPanel", () => {
       expect(
         screen.queryByText("Turn back into a saved question"),
       ).not.toBeInTheDocument();
+    });
+
+    it("displays database and table names", () => {
+      const question = getQuestion();
+      setup({ question });
+      const databaseName = question.database().displayName();
+      const tableName = question.table().displayName();
+
+      expect(screen.queryByText(databaseName)).toBeInTheDocument();
+      expect(screen.queryByText(tableName)).toBeInTheDocument();
     });
 
     describe("content moderation", () => {

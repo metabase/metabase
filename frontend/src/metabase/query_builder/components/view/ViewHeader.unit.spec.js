@@ -222,15 +222,6 @@ describe("ViewHeader", () => {
       const { question, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays database and table names", () => {
-          setup({ question });
-          const databaseName = question.database().displayName();
-          const tableName = question.table().displayName();
-
-          expect(screen.queryByText(databaseName)).toBeInTheDocument();
-          expect(screen.queryByText(tableName)).toBeInTheDocument();
-        });
-
         it("offers to filter query results", () => {
           const { onAddFilter } = setup({
             question,
@@ -485,12 +476,6 @@ describe("View Header | Saved native question", () => {
 
   afterEach(() => {
     xhrMock.teardown();
-  });
-
-  it("displays database a question is using", () => {
-    const { question } = setupSavedNative();
-    const databaseName = question.database().displayName();
-    expect(screen.queryByText(databaseName)).toBeInTheDocument();
   });
 
   it("offers to explore query results", () => {
