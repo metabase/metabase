@@ -199,8 +199,8 @@ export type ColorMapping = (color: string) => string;
 const COLOR_MAPPINGS: Record<ColorName, Record<ColorName, ColorMapping>> = {
   brand: {
     brand: color => color,
-    focus: color => lighten(color, 0.7),
     "brand-light": color => lighten(color, 0.532),
+    focus: color => lighten(color, 0.7),
   },
 };
 export const getColorMappings = (
