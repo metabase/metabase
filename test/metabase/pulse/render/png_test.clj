@@ -29,4 +29,5 @@
 (deftest table-width-test
   (testing "The PNG of a table should be cropped to the width of its content"
     (let [png (@#'png/render-to-png! test-table-html 1200)]
-      (is (= 180 (.getWidth png))))))
+      ;; Check that width is within a range, since actual rendered result can very slightly by environment
+      (is (< 170 (.getWidth png) 210)))))
