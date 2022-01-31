@@ -78,6 +78,7 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 }
 
 QuestionSidebarDataSource.shouldRender = ({ question, isObjectDetail }) =>
+  !question.isDataset() &&
   getDataSourceParts({ question, isObjectDetail }).length > 0;
 
 function getDataSourceParts({ question }) {
