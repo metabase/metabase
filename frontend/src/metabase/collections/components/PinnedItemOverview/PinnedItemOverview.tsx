@@ -41,7 +41,7 @@ function PinnedItemOverview({
 
   return items.length === 0 ? (
     <Container>
-      <PinDropZone variant="pin" />
+      <PinDropZone variant="pin" empty />
     </Container>
   ) : (
     <Container data-testid="pinned-items">
