@@ -169,9 +169,11 @@ function getVisualization(binningType) {
 
 function assertOnXYAxisLabels() {
   cy.get(".y-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Count");
   cy.get(".x-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Created At");
 }
