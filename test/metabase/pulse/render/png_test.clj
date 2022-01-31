@@ -22,3 +22,11 @@
                         (s/one Throwable "exception")
                         (s/one #"^Error registering fonts" "message")]
                        (first messages))))))))
+
+(def ^:private test-table-html
+  "<table><tr><th>Column 1</th><th>Column 2</th></tr><tr><td>Data</td><td>Data</td></tr></table>")
+
+(deftest table-width-test
+  (testing "The PNG of a table should be cropped to the width of its content"
+    (let [png (@#'png/render-to-png! test-table-html 1200)]
+      (is (= 180 (.getWidth png))))))

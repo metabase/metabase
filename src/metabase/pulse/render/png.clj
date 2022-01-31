@@ -66,7 +66,7 @@
     .getStyleSheets))
 
 (defn- render-to-png!
-  [^String html, ^ByteArrayOutputStream os, width]
+  [^String html, width]
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
@@ -86,11 +86,10 @@
                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
       (.createLayout graphics-engine dimension)
       (let [image         (.getImage graphics-engine)
-            content-width (max 250 (int (.getMinimalWidth (.getViewport graphics-engine))))
-            crop          (if (< content-width (.getWidth image))
-                            (.getSubimage image 0 0 content-width (.getHeight image))
-                            image)]
-        (write-image! crop "png" os)))))
+            content-width (int (.getMaximalWidth (.getViewport graphics-engine)))]
+        (if (< content-width (.getWidth image))
+          (.getSubimage image 0 0 content-width (.getHeight image))
+          image)))))
 
 (s/defn render-html-to-png :- bytes
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
@@ -103,7 +102,8 @@
                                              :background-color :white})}
                              content]])]
       (with-open [os (ByteArrayOutputStream.)]
-        (render-to-png! html os width)
+        (-> (render-to-png! html width)
+            (write-image! "png" os))
         (.toByteArray os)))
     (catch Throwable e
       (log/error e (trs "Error rendering Pulse"))
