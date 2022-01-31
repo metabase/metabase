@@ -132,7 +132,6 @@
    [:table {:style (style/style {:max-width "100%"
                                  :white-space :nowrap
                                  :padding-bottom :8px
-                                 :padding-right  :20px
                                  :border-collapse :collapse
                                  :width "1%"})
             :cellpadding "0"
