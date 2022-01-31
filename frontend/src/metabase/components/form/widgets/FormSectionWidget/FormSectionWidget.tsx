@@ -8,13 +8,18 @@ export interface FormSectionWidgetProps {
 }
 
 const FormSectionWidget = ({ field }: FormSectionWidgetProps): JSX.Element => {
+  const { value, onChange } = field;
+
   const handleClick = useCallback(() => {
-    field.onChange(!field.value);
-  }, [field]);
+    onChange(!value);
+  }, [value, onChange]);
 
   return (
-    <WidgetButton onClick={handleClick}>
-      {field.value ? t`Hide advanced options` : t`Show advanced options`}
+    <WidgetButton
+      iconRight={value ? "chevronup" : "chevrondown"}
+      onClick={handleClick}
+    >
+      {value ? t`Hide advanced options` : t`Show advanced options`}
     </WidgetButton>
   );
 };
