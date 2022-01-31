@@ -7,7 +7,7 @@ interface AreaProps<Datum> {
   y: number | AccessorForArrayItem<Datum, number>;
   y1: number | AccessorForArrayItem<Datum, number>;
   yScale: PositionScale;
-  data: Datum[];
+  data?: Datum[];
   color: string;
 }
 

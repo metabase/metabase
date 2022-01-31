@@ -6,7 +6,9 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
 import EmptyPinnedItemsBanner from "../EmptyPinnedItemsBanner/EmptyPinnedItemsBanner";
+import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import { Item, Collection, isRootCollection } from "metabase/collections/utils";
+import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import {
@@ -22,7 +24,6 @@ type Props = {
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
-  onDrop: () => void;
 };
 
 function PinnedItemOverview({
@@ -31,9 +32,8 @@ function PinnedItemOverview({
   metadata,
   onCopy,
   onMove,
-  onDrop,
 }: Props) {
-  const sortedItems = _.sortBy(items, item => item.name);
+  const sortedItems = _.sortBy(items, item => item.collection_position);
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
@@ -42,53 +42,75 @@ function PinnedItemOverview({
 
   return items.length === 0 ? (
     <Container>
+      <PinDropZone variant="pin" />
       <EmptyPinnedItemsBanner />
     </Container>
   ) : (
     <Container data-testid="pinned-items">
+      <PinDropZone variant="pin" />
       {cardItems.length > 0 && (
         <Grid>
           {cardItems.map(item => (
-            <ItemDragSource
-              key={item.id}
-              item={item}
-              collection={collection}
-              onDrop={onDrop}
-            >
-              <div>
-                <CollectionCardVisualization
-                  item={item}
-                  collection={collection}
-                  metadata={metadata}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                />
-              </div>
-            </ItemDragSource>
+            <div key={item.id} className="relative">
+              <PinnedItemSortDropTarget
+                isFrontTarget
+                itemModel="card"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              />
+              <ItemDragSource item={item} collection={collection}>
+                <div>
+                  <CollectionCardVisualization
+                    item={item}
+                    collection={collection}
+                    metadata={metadata}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </div>
+              </ItemDragSource>
+              <PinnedItemSortDropTarget
+                isBackTarget
+                itemModel="card"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              />
+            </div>
           ))}
         </Grid>
       )}
+
       {dashboardItems.length > 0 && (
         <Grid>
           {dashboardItems.map(item => (
-            <ItemDragSource
-              key={item.id}
-              item={item}
-              collection={collection}
-              onDrop={onDrop}
-            >
-              <div>
-                <PinnedItemCard
-                  item={item}
-                  collection={collection}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                />
-              </div>
-            </ItemDragSource>
+            <div key={item.id} className="relative">
+              <PinnedItemSortDropTarget
+                isFrontTarget
+                itemModel="dashboard"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              />
+              <ItemDragSource item={item} collection={collection}>
+                <div>
+                  <PinnedItemCard
+                    item={item}
+                    collection={collection}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </div>
+              </ItemDragSource>
+              <PinnedItemSortDropTarget
+                isBackTarget
+                itemModel="dashboard"
+                pinIndex={item.collection_position}
+                enableDropTargetBackground={false}
+              />
+            </div>
           ))}
         </Grid>
       )}
+
       {dataModelItems.length > 0 && (
         <div>
           <SectionHeader>
@@ -101,21 +123,30 @@ function PinnedItemOverview({
           </SectionHeader>
           <Grid>
             {dataModelItems.map(item => (
-              <ItemDragSource
-                key={item.id}
-                item={item}
-                collection={collection}
-                onDrop={onDrop}
-              >
-                <div>
-                  <PinnedItemCard
-                    item={item}
-                    collection={collection}
-                    onCopy={onCopy}
-                    onMove={onMove}
-                  />
-                </div>
-              </ItemDragSource>
+              <div key={item.id} className="relative">
+                <PinnedItemSortDropTarget
+                  isFrontTarget
+                  itemModel="dataset"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                />
+                <ItemDragSource item={item} collection={collection}>
+                  <div>
+                    <PinnedItemCard
+                      item={item}
+                      collection={collection}
+                      onCopy={onCopy}
+                      onMove={onMove}
+                    />
+                  </div>
+                </ItemDragSource>
+                <PinnedItemSortDropTarget
+                  isBackTarget
+                  itemModel="dataset"
+                  pinIndex={item.collection_position}
+                  enableDropTargetBackground={false}
+                />
+              </div>
             ))}
           </Grid>
         </div>

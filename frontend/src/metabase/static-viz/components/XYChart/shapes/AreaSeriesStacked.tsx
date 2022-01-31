@@ -27,7 +27,7 @@ export const AreaSeriesStacked = ({
             key={s.name}
             yScale={yScale}
             color={s.color}
-            data={s.stackedData!}
+            data={s.stackedData}
             x={xAccessor as any}
             y={d => yScale(getY(d)) ?? 0}
             y1={d => yScale(getY1(d)) ?? 0}
