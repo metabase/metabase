@@ -738,7 +738,7 @@ describe("collection permissions", () => {
             });
           });
 
-          On(permission === "view", () => {
+          onlyOn(permission === "view", () => {
             describe(`${user} user`, () => {
               it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
