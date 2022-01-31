@@ -35,8 +35,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   cursor: pointer;
-  outline: ${props =>
-    props.isActive ? `2px solid ${color("brand-light")}` : ""};
+  outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
 
   &:hover {
     border-color: ${color("brand")};
@@ -103,7 +102,7 @@ export const EngineButtonRoot = styled.button`
   }
 
   &:focus {
-    outline: 2px solid ${color("brand-light")};
+    outline: 2px solid ${color("focus")};
   }
 
   &:focus:not(:focus-visible) {
