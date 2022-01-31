@@ -87,6 +87,7 @@ describe("scenarios > models > revision history", () => {
     saveQuestionBasedOnModel({ modelId: 3, name: "Q1" });
 
     assertQuestionIsBasedOnModel({
+      isSaved: true,
       questionName: "Q1",
       model: "Orders Model",
       collection: "Our analytics",
