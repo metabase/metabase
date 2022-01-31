@@ -1,9 +1,10 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button";
+import { WidgetButton } from "./FormSectionWidget.styled";
+import { FormField } from "./types";
 
 export interface FormSectionWidgetProps {
-  field: any;
+  field: FormField;
 }
 
 const FormSectionWidget = ({ field }: FormSectionWidgetProps): JSX.Element => {
@@ -12,9 +13,9 @@ const FormSectionWidget = ({ field }: FormSectionWidgetProps): JSX.Element => {
   }, [field]);
 
   return (
-    <Button onClick={handleClick}>
+    <WidgetButton onClick={handleClick}>
       {field.value ? t`Hide advanced options` : t`Show advanced options`}
-    </Button>
+    </WidgetButton>
   );
 };
 
