@@ -473,7 +473,7 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
     cy.focused()
       .should("have.attr", "class")
-      .and("eq", "link");
+      .and("contain", "link");
     cy.focused()
       .should("have.attr", "target")
       .and("eq", "_blank");
