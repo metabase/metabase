@@ -704,7 +704,7 @@ describe("collection permissions", () => {
                 cy.findByText("117.03");
               });
 
-              it.only("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+              it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
@@ -738,7 +738,7 @@ describe("collection permissions", () => {
             });
           });
 
-          onlyOn(permission === "view", () => {
+          On(permission === "view", () => {
             describe(`${user} user`, () => {
               it("should not see dashboard revert buttons (metabase#13229)", () => {
                 cy.signIn(user);

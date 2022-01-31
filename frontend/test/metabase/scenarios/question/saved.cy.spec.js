@@ -151,7 +151,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 
-  it.only("should show table name in header with a table info popover on hover", () => {
+  it("should show table name in header with a table info popover on hover", () => {
     cy.visit("/question/1");
     cy.findByTestId("saved-question-header-button").click();
     cy.findByTestId("question-table-badges").within(() => {
