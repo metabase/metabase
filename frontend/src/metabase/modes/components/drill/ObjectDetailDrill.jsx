@@ -28,7 +28,7 @@ export default ({ question, clicked }) => {
       icon: "document",
       default: true,
       question: () =>
-        field ? question.drillPK(field, clicked && clicked.value) : question,
+        field ? question.drillPK(field, clicked.value) : question,
     },
   ];
 };
