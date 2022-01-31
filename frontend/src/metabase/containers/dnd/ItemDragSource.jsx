@@ -43,7 +43,7 @@ import { dragTypeForItem } from ".";
 
           onDrop && onDrop();
         } catch (e) {
-          alert("There was a problem moving these items: " + e);
+          console.error("There was a problem moving these items: " + e);
         }
       }
     },

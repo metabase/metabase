@@ -95,7 +95,6 @@ describe("Database", () => {
     });
   });
   describe("hasFeature", () => {
-    beforeEach(() => {});
     it("returns true when given a falsy `feature`", () => {
       expect(new Database({}).hasFeature(null)).toBe(true);
       expect(new Database({}).hasFeature("")).toBe(true);
