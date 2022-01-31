@@ -20,6 +20,7 @@ import {
 
 type Props = {
   items: Item[];
+  isLoading: boolean;
   collection: Collection;
   metadata: Metadata;
   onCopy: (items: Item[]) => void;
@@ -28,6 +29,7 @@ type Props = {
 
 function PinnedItemOverview({
   items,
+  isLoading,
   collection,
   metadata,
   onCopy,
@@ -43,7 +45,7 @@ function PinnedItemOverview({
   return items.length === 0 ? (
     <Container>
       <PinDropZone variant="pin" />
-      <EmptyPinnedItemsBanner />
+      {!isLoading && <EmptyPinnedItemsBanner />}
     </Container>
   ) : (
     <Container data-testid="pinned-items">

@@ -152,6 +152,7 @@ function CollectionContent({
               />
               <PinnedItemOverview
                 items={pinnedItems}
+                isLoading={loadingPinnedItems}
                 collection={collection}
                 metadata={metadata}
                 onMove={handleMove}
