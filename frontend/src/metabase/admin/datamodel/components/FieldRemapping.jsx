@@ -279,7 +279,7 @@ export default class FieldRemapping extends React.Component {
               triggerElement={
                 <SelectButton
                   hasValue={hasFKMappingValue}
-                  className={cx("flex inline-block no-decoration", {
+                  className={cx({
                     "border-error": dismissedInitialFkTargetPopover,
                     "border-dark": !dismissedInitialFkTargetPopover,
                   })}
