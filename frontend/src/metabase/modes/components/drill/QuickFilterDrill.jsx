@@ -5,7 +5,6 @@ import { isFK, isPK } from "metabase/lib/types";
 import { isLocalField } from "metabase/lib/query/field_ref";
 import { isDate, isNumeric } from "metabase/lib/schema_metadata";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function getFiltersForColumn(column) {
   if (isNumeric(column) || isDate(column)) {
