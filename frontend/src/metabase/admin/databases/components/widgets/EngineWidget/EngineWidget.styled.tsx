@@ -103,7 +103,7 @@ export const EngineButtonRoot = styled.button`
   }
 
   &:focus {
-    outline: 2px solid ${color("brand-light")};
+    outline: 2px solid ${color("focus")};
   }
 
   &:focus:not(:focus-visible) {

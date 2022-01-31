@@ -33,6 +33,7 @@ const colors: Record<string, string> = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
+  focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
   outline: "#CBE7FF",

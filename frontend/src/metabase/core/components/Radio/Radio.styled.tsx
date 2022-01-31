@@ -71,7 +71,7 @@ export const RadioContainer = styled.div<RadioContainerProps>`
   }
 
   ${RadioInput}:focus + & {
-    outline: 2px solid ${color("brand-light")};
+    outline: 2px solid ${color("focus")};
   }
 
   ${RadioInput}:focus:not(:focus-visible) + & {
