@@ -87,7 +87,13 @@ describe("QuickFilterDrill", () => {
   });
 
   it("should not be valid when clicked value is undefined", () => {
-    const { actions } = setup({ column: ORDERS.ID.column(), value: undefined });
+    const actions = QuickFilterDrill({
+      question: ORDERS.question(),
+      clicked: {
+        column: ORDERS.TOTAL.column(),
+        value: undefined,
+      },
+    });
     expect(actions).toHaveLength(0);
   });
 
