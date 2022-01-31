@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import PropTypes from "prop-types";
 
 import {
@@ -6,7 +7,9 @@ import {
   getQuestionIdFromVirtualTableId,
 } from "metabase/lib/saved-questions";
 import * as Urls from "metabase/lib/urls";
+import { color } from "metabase/lib/colors";
 import Questions from "metabase/entities/questions";
+import Tooltip from "metabase/components/Tooltip";
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import {
@@ -15,73 +18,22 @@ import {
   SourceBadge,
 } from "./QuestionDataSource.styled";
 
-QuestionSidebarDataSource.propTypes = {
-  question: PropTypes.object,
-  originalQuestion: PropTypes.object,
-  subHead: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
-};
-
 function isMaybeBasedOnDataset(question) {
   const tableId = question.query().sourceTableId();
   return isVirtualCardId(tableId);
 }
 
-function QuestionSidebarDataSource({
-  question,
-  originalQuestion,
-  subHead,
-  ...props
-}) {
-  if (!question) {
-    return null;
-  }
-
-  const variant = subHead ? "subhead" : "head";
-
-  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
-    return (
-      <DataSourceCrumbs question={question} variant={variant} {...props} />
-    );
-  }
-
-  const sourceTable = question.query().sourceTableId();
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
-
-  return (
-    <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
-      {({ question: sourceQuestion }) => {
-        if (!sourceQuestion) {
-          return null;
-        }
-        return (
-          <DataSourceCrumbs question={question} variant={variant} {...props} />
-        );
-      }}
-    </Questions.Loader>
-  );
-}
-
 DataSourceCrumbs.propTypes = {
   question: PropTypes.object,
-  variant: PropTypes.oneOf(["head", "subhead"]),
   isObjectDetail: PropTypes.bool,
 };
 
-function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
-  const parts = getDataSourceParts({
-    question,
-    subHead: variant === "subhead",
-    isObjectDetail,
-  });
-  return <DataSource parts={parts} variant={variant} {...props} />;
+function DataSourceCrumbs({ question, isObjectDetail, ...props }) {
+  const parts = getDataSourceParts(question);
+  return <DataSource parts={parts} {...props} />;
 }
 
-QuestionSidebarDataSource.shouldRender = ({ question, isObjectDetail }) =>
-  !question.isDataset() &&
-  getDataSourceParts({ question, isObjectDetail }).length > 0;
-
-function getDataSourceParts({ question }) {
+function getDataSourceParts(question) {
   if (!question) {
     return [];
   }
@@ -144,13 +96,12 @@ const crumbShape = PropTypes.shape({
 const partPropType = PropTypes.oneOfType([crumbShape, PropTypes.node]);
 
 DataSource.propTypes = {
-  variant: PropTypes.oneOf(["head", "subhead"]),
   parts: PropTypes.arrayOf(partPropType).isRequired,
 };
 
-export function DataSource({ variant = "head", parts, ...props }) {
+function DataSource({ parts, ...props }) {
   return (
-    <Container {...props} variant={variant}>
+    <Container {...props}>
       {parts.map((part, index) => {
         return (
           <React.Fragment key={index}>
@@ -198,4 +149,76 @@ function getTableURL(table) {
   return table.newQuestion().getUrl();
 }
 
-export default QuestionSidebarDataSource;
+SourceDataset.propTypes = {
+  dataset: PropTypes.object.isRequired,
+};
+
+function SourceDataset({ dataset, ...props }) {
+  const { collection } = dataset;
+  return (
+    <DataSource
+      {...props}
+      parts={[
+        <SourceBadge
+          key="dataset-collection"
+          to={Urls.collection(collection)}
+          icon="folder"
+        >
+          {collection?.name || t`Our analytics`}
+        </SourceBadge>,
+        dataset.archived ? (
+          <Tooltip
+            key="dataset-name"
+            tooltip={t`This model is archived and shouldn't be used.`}
+            maxWidth="auto"
+            placement="bottom"
+          >
+            <SourceBadge icon={{ name: "warning", color: color("danger") }}>
+              {dataset.name}
+            </SourceBadge>
+          </Tooltip>
+        ) : (
+          <SourceBadge icon="model" to={Urls.question(dataset)}>
+            {dataset.name}
+          </SourceBadge>
+        ),
+      ]}
+    />
+  );
+}
+
+export default function QuestionSidebarDataSource({ question, ...props }) {
+  if (!question) {
+    return null;
+  }
+
+  if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
+    return <DataSourceCrumbs question={question} {...props} />;
+  }
+
+  const sourceTable = question.query().sourceTableId();
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+
+  return (
+    <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
+      {({ question: sourceQuestion }) => {
+        if (!sourceQuestion) {
+          return null;
+        }
+        if (sourceQuestion.dataset) {
+          return <SourceDataset dataset={sourceQuestion} {...props} />;
+        }
+        return <DataSourceCrumbs question={question} {...props} />;
+      }}
+    </Questions.Loader>
+  );
+}
+
+QuestionSidebarDataSource.propTypes = {
+  question: PropTypes.object,
+  subHead: PropTypes.bool,
+  isObjectDetail: PropTypes.bool,
+};
+
+QuestionSidebarDataSource.shouldRender = ({ question }) =>
+  !question.isDataset() && getDataSourceParts(question).length > 0;

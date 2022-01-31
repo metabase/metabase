@@ -54,6 +54,7 @@ describe("scenarios > models", () => {
     saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
     assertQuestionIsBasedOnModel({
+      isSaved: true,
       questionName: "Q1",
       model: "Orders Model",
       collection: "Our analytics",
@@ -104,6 +105,7 @@ describe("scenarios > models", () => {
     saveQuestionBasedOnModel({ modelId: 4, name: "Q1" });
 
     assertQuestionIsBasedOnModel({
+      isSaved: true,
       questionName: "Q1",
       model: "Orders Model",
       collection: "Our analytics",
@@ -322,6 +324,7 @@ describe("scenarios > models", () => {
       saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
+        isSaved: true,
         questionName: "Q1",
         model: "Orders Model",
         collection: "Our analytics",
@@ -347,6 +350,7 @@ describe("scenarios > models", () => {
       saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
+        isSaved: true,
         questionName: "Q1",
         model: "Orders Model",
         collection: "Our analytics",

@@ -5,10 +5,10 @@ export function assertQuestionIsBasedOnModel({
   collection,
   model,
   table,
+  isSaved,
 }) {
-  if (questionName) {
-    cy.findByText(questionName);
-  }
+  questionName && cy.findByText(questionName);
+  isSaved && cy.findByTestId("saved-question-header-button").click();
 
   // Asserts shows model and its collection names
   // instead of db + table
