@@ -28,10 +28,11 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
+            [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -174,24 +175,44 @@
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
-;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is
-;; ran.  As a workaround, we'll calculate this metadata and return it with all query responses, and then let the
-;; frontend pass it back to us when saving or updating a Card.  As a basic step to make sure the Metadata is valid
-;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
-;; middleware namespace for more details
-
 (s/defn ^:private result-metadata-async :- ManyToManyChannel
-  "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the
-  `metadata` passed in seems valid,and, if so, return a channel that returns the value as-is; otherwise, we'll run the
-  query ourselves to get the right values, and return a channel where you can listen for the results."
-  [query metadata]
-  (let [valid-metadata? (s/validate qr/ResultsMetadata metadata)]
-    (log/info
-     (if valid-metadata?
-       (trs "Card results metadata passed in to API is VALID. Thanks!")
-       (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
-    (if valid-metadata?
+  "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
+  `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
+  fresh metadata to preserve metadata edits from the dataset.
+
+  Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
+  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
+
+  This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
+  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
+  [{:keys [original-query query metadata original-metadata dataset?]}]
+  (let [valid-metadata? (and metadata (nil? (s/check qr/ResultsMetadata metadata)))]
+    (cond
+      (or
+       ;; query didn't change, preserve existing metadata
+       (and (= (mbql.normalize/normalize original-query)
+               (mbql.normalize/normalize query))
+            valid-metadata?)
+       ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
+       (and (nil? query)
+            valid-metadata?))
       (a/to-chan! [metadata])
+
+      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
+      ;; means the metadata won't be updated at all.
+      (nil? query)
+      (doto (a/chan) a/close!)
+
+      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
+      ;; re-run and blend the saved into the new metadata
+      (and dataset? (or valid-metadata? (seq original-metadata)))
+      (a/go (let [metadata' (if valid-metadata?
+                              (map mbql.normalize/normalize-source-metadata metadata)
+                              original-metadata)
+                  fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+              (qputil/combine-metadata fresh metadata')))
+      :else
+      ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
 
 (defn check-data-permissions-for-query
@@ -239,7 +260,7 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata], :as card-data}]
+  [{:keys [dataset_query result_metadata dataset], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name
@@ -247,7 +268,9 @@
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
                                     :dataset (boolean (:dataset card-data)))
-        result-metadata-chan (result-metadata-async dataset_query result_metadata)
+        result-metadata-chan (result-metadata-async {:query dataset_query
+                                                     :metadata result_metadata
+                                                     :dataset? dataset})
         out-chan             (a/promise-chan)]
     (a/go
       (try
@@ -299,20 +322,6 @@
             (api/column-will-change? :embedding_params card-before-updates card-updates))
     (api/check-embedding-enabled)
     (api/check-superuser)))
-
-(defn- result-metadata-for-updating-async
-  "If `card`'s query is being updated, return the value that should be saved for `result_metadata`. This *should* be
-  passed in to the API; if so, verifiy that it was correct (the checksum is valid); if not, go fetch it. If the query
-  has not changed, this returns a closed channel (so you will get `nil` when you attempt to fetch the result, and
-  will know not to update the value in the DB.)
-
-  Either way, results are returned asynchronously on a channel."
-  [card query metadata]
-  (if (and query
-           (not= query (:dataset_query card)))
-    (result-metadata-async query metadata)
-    (doto (a/chan)
-      (a/onto-chan! (when (seq metadata) [metadata])))))
 
 (defn- publish-card-update!
   "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
@@ -515,10 +524,13 @@
     (check-allowed-to-modify-query                 card-before-update card-updates)
     (check-allowed-to-change-embedding             card-before-update card-updates)
     ;; make sure we have the correct `result_metadata`
-    (let [result-metadata-chan (result-metadata-for-updating-async
-                                card-before-update
-                                dataset_query
-                                result_metadata)
+    (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
+                                                       :query             dataset_query
+                                                       :metadata          result_metadata
+                                                       :original-metadata (:result_metadata card-before-update)
+                                                       :dataset?          (if (some? dataset)
+                                                                            dataset
+                                                                            (:dataset card-before-update))})
           out-chan             (a/promise-chan)
           card-updates         (merge card-updates
                                       (when dataset

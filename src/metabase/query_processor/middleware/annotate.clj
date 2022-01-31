@@ -12,6 +12,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
@@ -474,24 +475,7 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(def ^:private preserved-keys
-  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
-  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
 
-(defn- combine-metadata
-  "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
-  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
-  ensure survives."
-  [computed from-db]
-  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
-    (for [{:keys [field_ref] :as col} computed]
-      (if-let [existing (get by-key (u/field-ref->key field_ref))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
@@ -523,7 +507,7 @@
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field preserved-keys))))
+                                            (select-keys source-metadata-for-field qputil/preserved-keys))))
         col))))
 
 (declare mbql-cols)
@@ -533,7 +517,7 @@
   (let [columns       (if native-source-query
                         (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
                         (mbql-cols source-query results))]
-    (combine-metadata columns source-metadata)))
+    (qputil/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -666,13 +650,13 @@
        (if (= query-type :query)
          (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
                 (seq dataset-metadata)
-                (update :cols combine-metadata dataset-metadata)))
+                (update :cols qputil/combine-metadata dataset-metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                           ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                           (seq dataset-metadata)
-                          (update :cols combine-metadata dataset-metadata)
+                          (update :cols qputil/combine-metadata dataset-metadata)
                           ;; but we want those column refs removed since they have type info which we don't know yet
                           :always
                           (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
