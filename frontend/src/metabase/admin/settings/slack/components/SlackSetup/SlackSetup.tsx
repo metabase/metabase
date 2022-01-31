@@ -112,7 +112,7 @@ interface ActivateAppSectionProps {
 const ActivateAppSection = ({ Form }: ActivateAppSectionProps): JSX.Element => {
   return (
     <SetupSection
-      title={t`3. Activate the OAuth Token and create a new slack channel`}
+      title={t`2. Activate the OAuth Token and create a new slack channel`}
     >
       <SectionMessage>
         {jt`Click on "${(
