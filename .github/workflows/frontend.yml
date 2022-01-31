@@ -41,7 +41,7 @@ jobs:
 
   fe-linter-eslint:
     runs-on: ubuntu-20.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
