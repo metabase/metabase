@@ -2,10 +2,6 @@ name: Uberjar
 
 on:
   push:
-    branches-ignore:
-      - 'master'
-      - 'release**'
-      - 'backport**'
     paths-ignore:
     - 'docs/**'
     - 'frontend/test/**'
