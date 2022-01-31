@@ -60,6 +60,37 @@ describe("QuickFilterDrill", () => {
     expect(actions).toHaveLength(0);
   });
 
+  it("should not be valid for native questions", () => {
+    const actions = QuickFilterDrill({
+      question: new Question({
+        dataset_query: {
+          type: "native",
+          native: {
+            query: "SELECT * FROM ORDERS",
+          },
+          database: SAMPLE_DATABASE.id,
+        },
+      }),
+      column: createMockColumn({
+        name: "TOTAL",
+        field_ref: ["field", "TOTAL", { base_type: "type/BigInteger" }],
+        base_type: "type/BigInteger",
+        source: "native",
+      }),
+    });
+    expect(actions).toHaveLength(0);
+  });
+
+  it("should not be valid when clicked column is missing", () => {
+    const { actions } = setup({ column: null });
+    expect(actions).toHaveLength(0);
+  });
+
+  it("should not be valid when clicked value is undefined", () => {
+    const { actions } = setup({ column: ORDERS.ID.column(), value: undefined });
+    expect(actions).toHaveLength(0);
+  });
+
   it("should not be valid for PK cells", () => {
     const { actions } = setup({ column: ORDERS.ID.column() });
     expect(actions).toHaveLength(0);
