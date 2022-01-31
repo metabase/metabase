@@ -29,7 +29,7 @@ const WelcomePage = ({
         <LogoIcon height={118} />
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>
         <PageBody>
-          {t`Looks like everything is working.`}{" "}
+          {t`asdaas.`}{" "}
           {`Now let’s get to know you, connect to your data, and start finding you some answers!`}
         </PageBody>
         <PageButton
