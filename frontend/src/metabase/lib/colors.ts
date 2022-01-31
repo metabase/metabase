@@ -194,6 +194,24 @@ export function lighten(
     .lighten(f)
     .string();
 }
+
+export type ColorMapping = (color: string) => string;
+const COLOR_MAPPINGS: Record<ColorName, Record<ColorName, ColorMapping>> = {
+  brand: {
+    brand: (color: string) => color,
+    focus: (color: string) => lighten(color, 0.7),
+  },
+};
+export const getColorMappings = (
+  colorName: ColorName,
+): Record<ColorName, ColorMapping> => {
+  if (colorName in COLOR_MAPPINGS) {
+    return COLOR_MAPPINGS[colorName];
+  } else {
+    return { [colorName]: color => color };
+  }
+};
+
 const PREFERRED_COLORS: Record<string, string[]> = {
   success: [
     "success",
