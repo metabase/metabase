@@ -1,6 +1,6 @@
 import React, { ChangeEvent, FocusEvent } from "react";
-import cx from "classnames";
 import { formDomOnlyProps } from "metabase/lib/redux";
+import { FileInput } from "./FormTextFileWidget.styled";
 import { FormField, TreatBeforePosting } from "./types";
 
 export interface FormTextFileWidgetProps {
@@ -23,13 +23,10 @@ const FormTextFileWidget = ({
   };
 
   return (
-    <input
+    <FileInput
       type="file"
-      className={cx(
-        { "Form-file-input--has-value": value },
-        "Form-file-input full",
-      )}
       aria-labelledby={`${field.name}-label`}
+      hasValue={Boolean(value)}
       {...otherProps}
       onChange={handleChange}
       onBlur={handleBlur}
