@@ -96,9 +96,8 @@ function getComparisonFilter({ question, name, operator, column, value }) {
 export default function QuickFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
-    !(query instanceof StructuredQuery) ||
-    !clicked ||
-    !clicked.column ||
+    !question.isStructured() ||
+    !clicked?.column ||
     clicked.value === undefined
   ) {
     return [];
