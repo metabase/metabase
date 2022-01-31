@@ -398,8 +398,12 @@ function ViewTitleHeaderRightSide(props) {
     onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
+  const canRunAdhocQueries = !question.query().readOnly();
   const hasExploreResultsLink =
-    isNative && isSaved && MetabaseSettings.get("enable-nested-queries");
+    isNative &&
+    isSaved &&
+    canRunAdhocQueries &&
+    MetabaseSettings.get("enable-nested-queries");
 
   return (
     <div
