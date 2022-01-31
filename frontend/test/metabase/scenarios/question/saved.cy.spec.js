@@ -151,9 +151,13 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 
-  it("should show table name in header with a table info popover on hover", () => {
+  it.only("should show table name in header with a table info popover on hover", () => {
     cy.visit("/question/1");
-    cy.findByTestId("question-table-badges").trigger("mouseenter");
+    cy.findByTestId("saved-question-header-button").click();
+    cy.findByTestId("question-table-badges").within(() => {
+      cy.findByText("Orders").trigger("mouseenter");
+    });
+
     cy.findByText("9 columns");
   });
 });

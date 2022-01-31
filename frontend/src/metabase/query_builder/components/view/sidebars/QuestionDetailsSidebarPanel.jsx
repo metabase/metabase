@@ -108,6 +108,7 @@ function QuestionDetailsSidebarPanel(props) {
           <LastEditInfoButton
             className="text-paragraph"
             onClick={onDrawerStateChange}
+            data-testid="revision-history-button"
           >
             <LastEditInfo item={question.card()} />
           </LastEditInfoButton>

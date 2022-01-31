@@ -30,6 +30,7 @@ describe("scenarios > collection items metadata", () => {
       cy.visit("/dashboard/1");
       cy.findByText(/Edited .* by you/i);
       cy.visit("/question/1");
+      cy.findByTestId("saved-question-header-button").click();
       cy.findByText(/Edited .* by you/i);
     });
 
@@ -42,6 +43,7 @@ describe("scenarios > collection items metadata", () => {
       cy.visit("/dashboard/1");
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
       cy.visit("/question/1");
+      cy.findByTestId("saved-question-header-button").click();
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });
 

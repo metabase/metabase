@@ -357,7 +357,10 @@ describe("scenarios > question > new", () => {
     it("should show a table info popover when hovering over the table name in the header", () => {
       cy.visit("/question/1");
 
-      cy.findByTestId("question-table-badges").trigger("mouseenter");
+      cy.findByTestId("saved-question-header-button").click();
+      cy.findByTestId("question-table-badges").within(() => {
+        cy.findByText("Orders").trigger("mouseenter");
+      });
 
       cy.findByText("9 columns");
     });

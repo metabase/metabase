@@ -704,10 +704,11 @@ describe("collection permissions", () => {
                 cy.findByText("117.03");
               });
 
-              it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+              it.only("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
+                cy.findByTestId("saved-question-header-button").click();
                 cy.findByTestId("revision-history-button").click();
                 cy.findByText("Revert").click();
 
@@ -752,6 +753,7 @@ describe("collection permissions", () => {
               it("should not see question revert buttons (metabase#13229)", () => {
                 cy.signIn(user);
                 cy.visit("/question/1");
+                cy.findByTestId("saved-question-header-button").click();
                 cy.findByRole("button", { name: /Edited .*/ }).click();
 
                 cy.findAllByRole("button", { name: "Revert" }).should(
