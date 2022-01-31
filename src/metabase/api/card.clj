@@ -32,7 +32,7 @@
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
