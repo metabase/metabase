@@ -65,7 +65,7 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
-(defn- render-to-png!
+(defn- render-to-png
   [^String html, width]
   (register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
@@ -102,7 +102,7 @@
                                              :background-color :white})}
                              content]])]
       (with-open [os (ByteArrayOutputStream.)]
-        (-> (render-to-png! html width)
+        (-> (render-to-png html width)
             (write-image! "png" os))
         (.toByteArray os)))
     (catch Throwable e
