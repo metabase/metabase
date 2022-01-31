@@ -80,9 +80,9 @@ const DatabaseStep = ({
         onEngineChange={onEngineChange}
       />
       <StepActions>
-        <StepButton
-          onClick={handleCancel}
-        >{t`I'll add my data later`}</StepButton>
+        <StepButton onClick={handleCancel}>
+          {t`I'll add my data later`}
+        </StepButton>
       </StepActions>
       {isEmailConfigured && (
         <SetupSection
