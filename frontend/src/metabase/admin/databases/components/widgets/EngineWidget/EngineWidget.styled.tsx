@@ -83,32 +83,8 @@ export const EngineEmptyText = styled.div`
   text-align: center;
 `;
 
-export const EngineButtonRoot = styled.button`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: ${color("white")};
-  width: 100%;
+export const EngineButtonRoot = styled(Button)`
   padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid ${color("brand")};
-  background-color: ${color("brand")};
-  transition: all 200ms linear;
-  transition-property: color, background-color;
-  cursor: pointer;
-
-  &:hover {
-    color: ${color("white")};
-    background-color: ${lighten("brand", 0.12)};
-  }
-
-  &:focus {
-    outline: 2px solid ${color("brand-light")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
 `;
 
 export const EngineButtonTitle = styled.span`

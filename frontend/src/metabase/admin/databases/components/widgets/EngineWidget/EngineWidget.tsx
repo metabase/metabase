@@ -3,11 +3,11 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
+import Button from "metabase/core/components/Button";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   EngineButtonIcon,
-  EngineButtonRoot,
   EngineButtonTitle,
   EngineCardIcon,
   EngineCardImage,
@@ -55,16 +55,16 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   }, [field]);
 
   return (
-    <EngineButtonRoot autoFocus onClick={handleClick}>
-      <EngineButtonTitle>
-        {option ? option.name : field.value}
-      </EngineButtonTitle>
-      <EngineButtonIcon
-        name="close"
-        size={18}
-        aria-label={t`Remove database`}
-      />
-    </EngineButtonRoot>
+    <Button
+      primary
+      iconRight="close"
+      autoFocus
+      fullWidth
+      aria-label={t`Remove database`}
+      onClick={handleClick}
+    >
+      {option ? option.name : field.value}
+    </Button>
   );
 };
 
