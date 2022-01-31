@@ -3,12 +3,10 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 import { getEngineLogo } from "metabase/lib/engine";
 import Settings from "metabase/lib/settings";
-import Button from "metabase/core/components/Button";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import {
-  EngineButtonIcon,
-  EngineButtonTitle,
+  EngineButtonRoot,
   EngineCardIcon,
   EngineCardImage,
   EngineCardRoot,
@@ -55,7 +53,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   }, [field]);
 
   return (
-    <Button
+    <EngineButtonRoot
       primary
       iconRight="close"
       autoFocus
@@ -64,7 +62,7 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
       onClick={handleClick}
     >
       {option ? option.name : field.value}
-    </Button>
+    </EngineButtonRoot>
   );
 };
 

@@ -84,7 +84,11 @@ export const EngineEmptyText = styled.div`
 `;
 
 export const EngineButtonRoot = styled(Button)`
-  padding: 0.75rem;
+  padding: 0.8125rem 0.75rem;
+
+  ${Button.Content} {
+    justify-content: space-between;
+  }
 `;
 
 export const EngineButtonTitle = styled.span`
