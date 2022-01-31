@@ -22,7 +22,7 @@
 }
 
 .link:focus {
-  outline: 2px solid var(--color-brand-light);
+  outline: 2px solid var(--color-focus);
 }
 
 .link:focus:not(:focus-visible) {
