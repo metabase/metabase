@@ -54,10 +54,11 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
 
   return (
     <EngineButtonRoot
+      type="button"
       primary
-      iconRight="close"
       autoFocus
       fullWidth
+      iconRight="close"
       aria-label={t`Remove database`}
       onClick={handleClick}
     >

@@ -16,6 +16,7 @@ const FormSectionWidget = ({ field }: FormSectionWidgetProps): JSX.Element => {
 
   return (
     <WidgetButton
+      type="button"
       iconRight={value ? "chevronup" : "chevrondown"}
       onClick={handleClick}
     >
