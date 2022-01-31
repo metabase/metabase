@@ -138,9 +138,14 @@ function initColorJS(colorName) {
   if (JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName]) {
     return;
   }
+
+  const colorMappings = getColorMappings(colorName);
+
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName] = [];
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-    colors[colorName] = themeColor;
+    for (const [newColorName, colorMapping] of Object.entries(colorMappings)) {
+      colors[newColorName] = colorMapping(themeColor);
+    }
   });
 }
 
