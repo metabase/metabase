@@ -89,14 +89,14 @@ const LicenseAndBillingSettings = ({
   const isInvalid = !!error || (tokenStatus != null && !tokenStatus.isValid);
   const description = getDescription(tokenStatus, !!token);
 
-  const isStoreManagedBilling = tokenStatus?.features.includes(
+  const isStoreManagedBilling = tokenStatus?.features?.includes(
     STORE_MANAGED_FEATURE_KEY,
   );
-  const shouldShowLicenseInput = !tokenStatus?.features.includes(
+  const shouldShowLicenseInput = !tokenStatus?.features?.includes(
     HOSTING_FEATURE_KEY,
   );
 
-  const shouldUpsell = !tokenStatus?.features.includes(NO_UPSELL_FEATURE_HEY);
+  const shouldUpsell = !tokenStatus?.features?.includes(NO_UPSELL_FEATURE_HEY);
 
   return (
     <SettingsLicenseContainer data-testid="license-and-billing-content">
