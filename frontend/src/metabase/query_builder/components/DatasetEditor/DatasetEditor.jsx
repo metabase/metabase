@@ -288,7 +288,7 @@ function DatasetEditor(props) {
       setDatasetEditorTab(tab);
       setEditorHeight(tab === "query" ? initialEditorHeight : 0);
     },
-    [setDatasetEditorTab],
+    [initialEditorHeight, setDatasetEditorTab],
   );
 
   const handleCancel = useCallback(() => {
