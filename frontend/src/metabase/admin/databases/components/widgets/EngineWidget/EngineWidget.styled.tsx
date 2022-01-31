@@ -97,10 +97,6 @@ export const EngineButtonTitle = styled.span`
   font-weight: bold;
 `;
 
-export const EngineButtonIcon = styled(Icon)`
-  cursor: pointer;
-`;
-
 export const EngineToggleRoot = styled(Button)`
   width: 100%;
 `;
