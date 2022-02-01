@@ -52,7 +52,12 @@ export function SearchResults({
             <ul>
               {list.map(item => (
                 <li key={`${item.id}_${item.model}`}>
-                  <SearchResult result={item} onClick={onSelect} compact />
+                  <SearchResult
+                    result={item}
+                    onClick={onSelect}
+                    compact
+                    hasDescription={false}
+                  />
                 </li>
               ))}
             </ul>
