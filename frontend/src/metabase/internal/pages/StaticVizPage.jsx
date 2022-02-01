@@ -714,7 +714,7 @@ export default function StaticVizPage() {
         </Box>
 
         <Box py={3}>
-          <Subhead>Ordinal chart with 80 items</Subhead>
+          <Subhead>Ordinal chart with 200 items</Subhead>
           <StaticChart
             type="combo-chart"
             options={{
@@ -736,7 +736,7 @@ export default function StaticVizPage() {
                   color: "#509ee3",
                   yAxisPosition: "left",
                   type: "bar",
-                  data: _.range(80).map(n => [`bar ${n + 1}`, n + 1]),
+                  data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
                 },
               ],
             }}
