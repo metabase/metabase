@@ -1,12 +1,14 @@
-## Adding and managing databases
+# Adding and managing databases
 
-- [Adding a database connection](#adding-a-database-connection)
-- [Officially supported databases](#officially-supported-databases)
-- [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
-- [Database connection options](#database-connection-options)
-- [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
-- [Deleting databases](#deleting-databases)
+  - [Adding a database connection](#adding-a-database-connection)
+    - [Officially supported databases](#officially-supported-databases)
+    - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
+    - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
+  - [Database connection options](#database-connection-options)
+  - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
+  - [Deleting databases](#deleting-databases)
+  - [Troubleshooting](#troubleshooting)
+  - [Further reading](#further-reading)
 
 ## Adding a database connection
 
@@ -52,7 +54,7 @@ Connection options differ depending on which database you're connecting to. Here
 
 - [Use a secure connection (SSL)](#use-a-secure-connection-ssl)
 - [Use an SSH-tunnel for database connections](#use-an-ssh-tunnel-for-database-connections)
-- [Choose when Metabase syncs and scans his](#choose-when-metabase-syncs-and-scans)
+- [Choose when Metabase syncs and scans](#choose-when-metabase-syncs-and-scans)
 - [Automatically run queries when doing simple filtering and summarizing](#automatically-run-queries-when-doing-simple-filtering-and-summarizing)
 
 ### Use a secure connection (SSL)
@@ -65,11 +67,7 @@ See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
 
 ### Choose when Metabase syncs and scans
 
-By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning on the option "This is a large database, let me choose when Metabase syncs and scans". Once on, you can review when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.")
-
-If you enable this and save your changes, you'll see a new tab at the top of the form called "Scheduling." Click on that, and you'll see options to change when and how often Metabase syncs and scans.
-
-![Sync scheduling tab](images/sync-scheduling.png)
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend enabling the toggle **Choose when syncs and scans happen** found when you select **Show advanced options**. Once on, you can review when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.")
 
 #### Database syncing
 
@@ -97,11 +95,13 @@ If for some reason you need to flush out the cached field values for your databa
 
 ### Automatically run queries when doing simple filtering and summarizing
 
-By default, Metabase will auto-run queries when you use the Summarize and Filter buttons when viewing a table or chart. If your users are exploring data that is stored in a slow database, you may want to turn the auto-run off to avoid re-running the query every time your users change an option in the Summarize view. Turning this off presents the users with the option to re-run the query when they choose to.
+By default, Metabase will auto-run queries when you use the Summarize and Filter buttons when viewing a table or chart. If your users are exploring data that is stored in a slow database, you may want to turn the auto-run off to avoid re-running the query every time your users change an option in the Summarize view. You can turn this option off in the **Show advanced options** section by deselecting the toggle next to **Rerun queries for simple explorations**. Turning this off presents the users with the option to re-run the query when they choose to.
 
 ### Periodically refingerprint tables
 
-When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.
+If this option is enabled, Metabase will scan a subset of values of fields when syncing with this database to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.
+
+You can turn this option on and off in the **Show advanced options** section.
 
 ### Additional JDBC connection string options
 
@@ -134,7 +134,7 @@ You can also delete a database from the database list: hover over the row with t
 
 ## Troubleshooting
 
-If you're having trouble with your BigQuery connection, you can check out this [troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/search?q=bigquery) to see if someone has encountered and resolved a similar issue.
+If you're having trouble with your database connection, you can check out this [troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/) to see if someone has encountered and resolved a similar issue.
 
 ## Further reading
 
