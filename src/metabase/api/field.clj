@@ -64,7 +64,7 @@
     ;; ...but if we do, return the Field <3
     field))
 
-(defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as field}]
+(defn- clear-dimension-on-fk-change! [{{dimension-id :id dimension-type :type} :dimensions :as _field}]
   (when (and dimension-id (= :external dimension-type))
     (db/delete! Dimension :id dimension-id))
   true)
@@ -85,7 +85,7 @@
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
-  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as old-field} base-type new-semantic-type]
+  [{{old-dim-id :id, old-dim-type :type} :dimensions, :as _old-field} base-type new-semantic-type]
   (when (and old-dim-id
              (= :internal old-dim-type)
              (not (internal-remapping-allowed? base-type new-semantic-type)))

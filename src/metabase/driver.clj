@@ -15,8 +15,7 @@
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+            [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -438,7 +437,7 @@
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
-  (fn [driver feature database]
+  (fn [driver feature _database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])

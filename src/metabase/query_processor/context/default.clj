@@ -42,7 +42,7 @@
        (vswap! rows conj row)
        result))))
 
-(defn- default-reducedf [metadata reduced-result context]
+(defn- default-reducedf [_metadata reduced-result context]
   (context/resultf reduced-result context))
 
 (defn default-reducef

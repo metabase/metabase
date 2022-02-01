@@ -6,9 +6,7 @@ import Settings from "metabase/lib/settings";
 import TextInput from "metabase/components/TextInput";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import {
-  EngineButtonIcon,
   EngineButtonRoot,
-  EngineButtonTitle,
   EngineCardIcon,
   EngineCardImage,
   EngineCardRoot,
@@ -55,15 +53,16 @@ const EngineButton = ({ field, options }: EngineButtonProps): JSX.Element => {
   }, [field]);
 
   return (
-    <EngineButtonRoot autoFocus onClick={handleClick}>
-      <EngineButtonTitle>
-        {option ? option.name : field.value}
-      </EngineButtonTitle>
-      <EngineButtonIcon
-        name="close"
-        size={18}
-        aria-label={t`Remove database`}
-      />
+    <EngineButtonRoot
+      type="button"
+      primary
+      autoFocus
+      fullWidth
+      iconRight="close"
+      aria-label={t`Remove database`}
+      onClick={handleClick}
+    >
+      {option ? option.name : field.value}
     </EngineButtonRoot>
   );
 };

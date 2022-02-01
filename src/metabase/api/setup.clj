@@ -70,7 +70,7 @@
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
-(defn- setup-maybe-create-and-invite-user! [{:keys [email first_name last_name] :as user}, invitor]
+(defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
     (if-not (email/email-configured?)
       (log/error (trs "Could not invite user because email is not configured."))
@@ -93,7 +93,7 @@
        (when schedules
          (sync.schedules/schedule-map->cron-strings schedules))))))
 
-(defn- setup-set-settings! [request {:keys [email site-name site-locale allow-tracking?]}]
+(defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
   (public-settings/site-name site-name)
   (public-settings/admin-email email)

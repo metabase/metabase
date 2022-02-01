@@ -92,7 +92,7 @@ function Context({ context }) {
 export default function SearchResult({
   result,
   compact,
-  hasDescription,
+  hasDescription = true,
   onClick,
 }) {
   const active = isItemActive(result);
