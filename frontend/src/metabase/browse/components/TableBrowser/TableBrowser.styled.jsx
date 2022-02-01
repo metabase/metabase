@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { space } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const TableLink = styled(Link)`

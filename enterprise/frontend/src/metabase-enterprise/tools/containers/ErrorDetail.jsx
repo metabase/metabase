@@ -11,7 +11,7 @@ import { getIn } from "icepick";
 import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { CardApi } from "metabase/services";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Question from "metabase-lib/lib/Question";
 import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 import { columnNameToUrl } from "../../audit_app/lib/mode";

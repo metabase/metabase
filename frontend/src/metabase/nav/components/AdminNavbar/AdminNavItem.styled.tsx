@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import Link, { LinkProps } from "metabase/components/Link";
+import Link, { LinkProps } from "metabase/core/components/Link";
 import { alpha, color } from "metabase/lib/colors";
 
 interface AdminNavLinkProps extends LinkProps {
