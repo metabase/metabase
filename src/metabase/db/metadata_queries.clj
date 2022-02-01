@@ -72,7 +72,7 @@
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 
-  ([field, max-results :- su/IntGreaterThanZero]
+  ([field max-results :- su/IntGreaterThanZero]
    (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
                                    :limit    max-results}))))
 
