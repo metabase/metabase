@@ -41,6 +41,8 @@
   [middleware]
   (reduce
    (fn [qp middleware]
+     (when (var? middleware)
+       (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
      (if (some? middleware)
        (middleware qp)
        qp))
@@ -194,7 +196,7 @@
   {:pre [(fn? primary-rf) (sequential? additional-rfs) (every? fn? additional-rfs) (fn? combine)]}
   (let [additional-accs (volatile! (mapv (fn [rf] (rf))
                                          additional-rfs))]
-    (fn
+    (fn combine-additional-reducing-fns-rf*
       ([] (primary-rf))
 
       ([acc]

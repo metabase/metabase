@@ -38,6 +38,7 @@
           ":row_count should match the limit added by middleware")
       (is (= {:constraints {:max-results 46}
               :type        :query
-              :query       {:limit 46}}
+              :query       {:limit                 46
+                            ::limit/original-limit nil}}
              (#'limit/add-default-limit query))
           "Preprocessed query should have :limit added to it"))))

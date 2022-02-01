@@ -1,10 +1,17 @@
 (ns metabase.query-processor.middleware.add-rows-truncated
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
   (:require [metabase.query-processor.interface :as i]
-            [metabase.query-processor.util :as qputil]))
+            [metabase.query-processor.middleware.forty-three :as m.43]
+            [metabase.query-processor.middleware.limit :as limit]))
 
-(defn- results-limit [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
-  (or (when (qputil/query-without-aggregations-or-limits? query)
+(defn- results-limit
+  [{{:keys [max-results max-results-bare-rows]}                                    :constraints
+    {aggregations :aggregation, :keys [limit page], ::limit/keys [original-limit]} :query
+    :as                                                                            query}]
+  (or (when (and (or (not limit)
+                     (= original-limit nil))
+                 (not page)
+                 (empty? aggregations))
         max-results-bare-rows)
       max-results
       i/absolute-max-results))
@@ -26,13 +33,12 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn add-rows-truncated
+(defn- add-rows-truncated [query rff]
+  (fn add-rows-truncated-rff* [metadata]
+    (add-rows-truncated-xform (results-limit query) (rff metadata))))
+
+(def add-rows-truncated-middleware
   "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
   results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
   a CSV are unaffected.)"
-  [qp]
-  (fn [query rff context]
-    (qp query
-        (fn [metadata]
-          (add-rows-truncated-xform (results-limit query) (rff metadata)))
-        context)))
+  (m.43/wrap-43-post-processing-middleware add-rows-truncated))

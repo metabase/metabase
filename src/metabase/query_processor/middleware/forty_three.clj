@@ -14,8 +14,8 @@
 
     (f qp) -> (f query rff context)"
   [f]
-  (fn [qp]
-    (fn [query rff context]
+  (fn wrap-43-pre-processing-middleware-qp* [qp]
+    (fn wrap-43-pre-processing-middleware-fn* [query rff context]
       (qp (f query) rff context))))
 
 (defn wrap-43-post-processing-middleware
@@ -31,6 +31,6 @@
 
     (f qp) -> (f query rff context)"
   [f]
-  (fn [qp]
-    (fn [query rff context]
+  (fn wrap-43-post-processing-middleware-qp* [qp]
+    (fn wrap-43-post-processing-middleware-fn* [query rff context]
       (qp query (f query rff) context))))
