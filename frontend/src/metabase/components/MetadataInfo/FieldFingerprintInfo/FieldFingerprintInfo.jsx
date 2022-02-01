@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
 import Field from "metabase-lib/lib/metadata/Field";
