@@ -215,6 +215,36 @@
                   (is (nil? (db/select-one Secret :id secret-id))
                       (format "Secret ID %d was not removed from the app DB" secret-id)))))))))))
 
+(deftest user-may-not-update-sample-database-test
+  (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-temp Database [{:keys [id details] :as sample-database} {:engine    :my-engine
+                                                                      :is_sample true
+                                                                      :name      "the sample database"
+                                                                      :details   {:host "localhost" :password-value "my-password-123"}}]
+      (testing " updating the details of a sample database is not allowed"
+        (try (db/update! Database id :details (assoc details :host "new-host"))
+             (catch Exception e
+               (is (= "One may not update the engine or details of a sample database." (.getMessage e)))
+               (is (= {:status-code      400,
+                       :existing-engine  :my-engine,
+                       :new-engine       nil,
+                       :existing-details nil,
+                       :new-details      {:host "new-host", :password-value "my-password-123"}}
+                      (ex-data e))))))
+      (testing " updating the engine of a sample database is not allowed"
+        (try (db/update! Database id :engine :engine-X)
+             (catch Exception e
+               (is (= "One may not update the engine or details of a sample database." (.getMessage e)))
+               (is (= {:status-code      400,
+                       :existing-engine  :my-engine,
+                       :new-details      nil,
+                       :existing-details nil,
+                       :new-engine       :engine-X}
+                      (ex-data e))))))
+      (testing " updating other attributes of a sample database is allowed"
+        (db/update! Database id :name "Big Joe'S Data Rows")
+        (is (= "Big Joe'S Data Rows" (db/select-one-field :name Database :id id)))))))
+
 (driver/register! ::test, :abstract? true)
 
 (deftest preserve-driver-namespaces-test
