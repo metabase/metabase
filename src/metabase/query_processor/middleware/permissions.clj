@@ -9,7 +9,6 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
