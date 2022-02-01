@@ -1,8 +1,21 @@
-import React, { ChangeEvent, FocusEvent, forwardRef, Ref } from "react";
+import React, {
+  ChangeEvent,
+  FocusEvent,
+  forwardRef,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+  useState,
+} from "react";
 import { t } from "ttag";
 import { InputButton, InputField, InputRoot } from "./FileInput.styled";
 
-export interface FileInputProps {
+export type FileInputAttributes = Omit<
+  HTMLAttributes<HTMLLabelElement>,
+  "onChange" | "onFocus" | "onBlur"
+>;
+
+export interface FileInputProps extends FileInputAttributes {
   className?: string;
   name?: string;
   autoFocus?: boolean;
@@ -15,13 +28,25 @@ const FileInput = forwardRef(function FileInput(
   { className, name, autoFocus, onChange, onFocus, onBlur }: FileInputProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
+  const [hasValue, setHasValue] = useState(false);
+
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const { files } = event.target;
+      setHasValue(files != null && files.length > 0);
+      onChange && onChange(event);
+    },
+    [onChange],
+  );
+
   return (
     <InputRoot innerRef={ref as any} className={className}>
       <InputField
         type="file"
         name={name}
+        hasValue={hasValue}
         autoFocus={autoFocus}
-        onChange={onChange}
+        onChange={handleChange}
         onFocus={onFocus}
         onBlur={onBlur}
       />

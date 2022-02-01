@@ -5,9 +5,15 @@ export const InputRoot = styled.label`
   display: flex;
 `;
 
-export const InputField = styled.input`
+export interface InputFieldProps {
+  hasValue: boolean;
+}
+
+export const InputField = styled.input<InputFieldProps>`
+  color: ${color("text-dark")};
   flex: 1 1 auto;
   font-family: inherit;
+  font-weight: ${props => (props.hasValue ? "bold" : "")};
   order: 1;
 
   &:active,

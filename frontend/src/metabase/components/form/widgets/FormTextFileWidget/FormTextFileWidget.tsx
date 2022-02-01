@@ -1,6 +1,5 @@
 import React, { ChangeEvent, FocusEvent } from "react";
-import { formDomOnlyProps } from "metabase/lib/redux";
-import { FileInput } from "./FormTextFileWidget.styled";
+import FileInput from "metabase/core/components/FileInput";
 import { FormField, TreatBeforePosting } from "./types";
 
 export interface FormTextFileWidgetProps {
@@ -12,22 +11,21 @@ const FormTextFileWidget = ({
   field,
   treatBeforePosting,
 }: FormTextFileWidgetProps): JSX.Element => {
-  const { value, ...otherProps } = formDomOnlyProps(field as any);
+  const { name, autoFocus, onChange, onBlur } = field;
 
   const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    field.onChange(await getFieldValue(event.target, treatBeforePosting));
+    onChange(await getFieldValue(event.target, treatBeforePosting));
   };
 
   const handleBlur = async (event: FocusEvent<HTMLInputElement>) => {
-    field.onBlur(await getFieldValue(event.target, treatBeforePosting));
+    onBlur(await getFieldValue(event.target, treatBeforePosting));
   };
 
   return (
     <FileInput
-      type="file"
+      name={name}
+      autoFocus={autoFocus}
       aria-labelledby={`${field.name}-label`}
-      hasValue={Boolean(value)}
-      {...otherProps}
       onChange={handleChange}
       onBlur={handleBlur}
     />
