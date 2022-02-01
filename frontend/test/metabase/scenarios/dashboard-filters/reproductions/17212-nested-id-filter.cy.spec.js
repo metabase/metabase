@@ -27,7 +27,7 @@ describe.skip("issue 17212", () => {
         ({ body: { card_id, dashboard_id } }) => {
           cy.intercept(
             "POST",
-            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
           cy.visit(`/dashboard/${dashboard_id}`);

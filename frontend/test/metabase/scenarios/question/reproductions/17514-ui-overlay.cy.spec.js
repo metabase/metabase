@@ -56,7 +56,7 @@ describe("issue 17514", () => {
 
           cy.intercept(
             "POST",
-            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
 
           const mapFilterToCard = {
