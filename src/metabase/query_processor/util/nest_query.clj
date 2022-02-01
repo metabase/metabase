@@ -9,12 +9,10 @@
             [metabase.api.common :as api]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util :as u]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
