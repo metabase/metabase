@@ -160,13 +160,13 @@
   (mt/dataset sample-dataset
     (is (query= (mt/mbql-query products
                   {:source-table $$products
-                   :expressions  {:CATEGORY [:concat
-                                             [:field %category
-                                              {::add/source-table  $$products
-                                               ::add/source-alias  "CATEGORY"
-                                               ::add/desired-alias "CATEGORY"
-                                               ::add/position      0}]
-                                             "2"]}
+                   :expressions  {"CATEGORY" [:concat
+                                              [:field %category
+                                               {::add/source-table  $$products
+                                                ::add/source-alias  "CATEGORY"
+                                                ::add/desired-alias "CATEGORY"
+                                                ::add/position      0}]
+                                              "2"]}
                    :fields       [[:field %category {::add/source-table  $$products
                                                      ::add/source-alias  "CATEGORY"
                                                      ::add/desired-alias "CATEGORY"
@@ -176,7 +176,7 @@
                    :limit        1})
                 (add-alias-info
                  (mt/mbql-query products
-                   {:expressions {:CATEGORY [:concat [:field %category nil] "2"]}
+                   {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
                     :fields      [[:field %category nil]
                                   [:expression "CATEGORY"]]
                     :limit       1}))))))
@@ -258,8 +258,8 @@
                    [:expression "price_divided_by_big_price"] 2})
                 (#'add/selected-clauses
                  (mt/$ids venues
-                   {:expressions {:big_price                  [:+ $price 2]
-                                  :price_divided_by_big_price [:/ $price [:expression "big_price"]]}
+                   {:expressions {"big_price"                  [:+ $price 2]
+                                  "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
                     :fields      [$price
                                   [:expression "big_price"]
                                   [:expression "price_divided_by_big_price"]]
@@ -279,8 +279,8 @@
                                                   {::add/position      2
                                                    ::add/desired-alias "price_divided_by_big_price"}]]
                   {:source-table $$venues
-                   :expressions  {:big_price                  [:+ price 2]
-                                  :price_divided_by_big_price [:/ price big-price]}
+                   :expressions  {"big_price"                  [:+ price 2]
+                                  "price_divided_by_big_price" [:/ price big-price]}
                    :fields       [price
                                   big-price
                                   price-divided-by-big-price]
@@ -288,8 +288,8 @@
               (:query
                (add-alias-info
                 (mt/mbql-query venues
-                  {:expressions {:big_price                  [:+ $price 2]
-                                 :price_divided_by_big_price [:/ $price [:expression "big_price"]]}
+                  {:expressions {"big_price"                  [:+ $price 2]
+                                 "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
                    :fields      [$price
                                  [:expression "big_price"]
                                  [:expression "price_divided_by_big_price"]]
@@ -384,7 +384,7 @@
                                                                      ::add/desired-alias "COOL.PRICE"
                                                                      ::add/position      0}]]
                                            {:source-table $$venues
-                                            :expressions  {:double_price [:* price 2]}
+                                            :expressions  {"double_price" [:* price 2]}
                                             :fields       [price
                                                            [:expression "double_price" {::add/desired-alias "COOL.double_price"
                                                                                         ::add/position      1}]]
@@ -407,7 +407,7 @@
                              :order-by    [[:asc double-price]]})))
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues
-                                          :expressions  {:double_price [:* $price 2]}
+                                          :expressions  {"double_price" [:* $price 2]}
                                           :fields       [$price
                                                          [:expression "double_price"]]
                                           :limit        1}
@@ -471,7 +471,7 @@
 
 (deftest uniquify-aggregation-names-text
   (is (query= (mt/mbql-query checkins
-                {:expressions {:count [:+ 1 1]}
+                {:expressions {"count" [:+ 1 1]}
                  :breakout    [[:expression "count" {::add/desired-alias "count"
                                                      ::add/position      0}]]
                  :aggregation [[:aggregation-options [:count] {:name               "count_2"

@@ -9,12 +9,10 @@
             [metabase.api.common :as api]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util :as u]))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -49,12 +47,8 @@
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
-  [{:keys [expressions source-query], :as query} [_ expression-name opts :as clause]]
-  (let [expression-definition        (or (get expressions (keyword expression-name))
-                                         (throw (ex-info (tru "No expression named {0}" (pr-str expression-name))
-                                                         {:type            qp.error-type/invalid-query
-                                                          :expression-name expression-name
-                                                          :query           query})))
+  [{:keys [source-query], :as query} [_ expression-name opts :as clause]]
+  (let [expression-definition        (mbql.u/expression-with-name query expression-name)
         {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
         {::add/keys [desired-alias]} (mbql.u/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
