@@ -7,7 +7,15 @@ const SyncingModal = () => <div>Explore sample data</div>;
 jest.mock("metabase/containers/SyncingModal", () => SyncingModal);
 
 describe("SyncingSection", () => {
-  it("should display a modal for a syncing database", () => {
+  beforeEach(() => {
+    jest.useFakeTimers("modern");
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("should display a modal for a syncing database after timeout", () => {
     const user = createMockUser({ id: 1 });
     const databases = [
       createMockDatabase({ is_sample: true }),

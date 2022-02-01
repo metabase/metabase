@@ -12,6 +12,7 @@ describe("calculateMargin", () => {
     const leftYTickWidth = 100;
     const rightYTickWidth = 200;
     const xTickHeight = 300;
+    const xTickWidth = 20;
     const labelFontSize = 11;
 
     const labels = {};
@@ -20,6 +21,7 @@ describe("calculateMargin", () => {
       leftYTickWidth,
       rightYTickWidth,
       xTickHeight,
+      xTickWidth,
       labels,
       labelFontSize,
     );
@@ -34,6 +36,7 @@ describe("calculateMargin", () => {
     const leftYTickWidth = 100;
     const rightYTickWidth = 200;
     const xTickHeight = 300;
+    const xTickWidth = 20;
     const labelFontSize = 11;
 
     const labels = { left: "left label", right: "right label" };
@@ -42,6 +45,7 @@ describe("calculateMargin", () => {
       leftYTickWidth,
       rightYTickWidth,
       xTickHeight,
+      xTickWidth,
       labels,
       labelFontSize,
     );

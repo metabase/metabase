@@ -5,8 +5,7 @@
             [metabase.models.permissions :as perms]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
-            [metabase.util :as u]
-            [schema.core :as s]))
+            [metabase.util :as u]))
 
 (deftest query->native-test
   (testing "Can we convert an MBQL query to a native query?"
@@ -46,35 +45,28 @@
 ;; use `query->native`
 (defn- query->native-with-user-perms
   [{database-id :database, {source-table-id :source-table} :query, :as query} {:keys [object-perms? native-perms?]}]
-  (try
-    (binding [api/*current-user-id*              Integer/MAX_VALUE
-              api/*current-user-permissions-set* (delay (cond-> #{}
-                                                          object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
-                                                          native-perms? (conj (perms/adhoc-native-query-path database-id))))]
-      (qp/query->native query))
-    (catch clojure.lang.ExceptionInfo e
-      (merge {:error (.getMessage e)}
-             (ex-data e)))))
+  (binding [api/*current-user-id*              Integer/MAX_VALUE
+            api/*current-user-permissions-set* (delay (cond-> #{}
+                                                        object-perms? (conj (perms/data-perms-path database-id "PUBLIC" source-table-id))
+                                                        native-perms? (conj (perms/adhoc-native-query-path database-id))))]
+    (qp/query->native query)))
 
 (deftest permissions-test
-  (testing "If user permissions are bound, we should do permissions checking when you call `query->native`"
+  (testing "If user permissions are bound, we should still NOT do permissions checking when you call `query->native`"
     (testing "Should work if you have the right perms"
-      (is (= true
-             (boolean
-              (query->native-with-user-perms
-               (mt/mbql-query venues)
-               {:object-perms? true, :native-perms? true})))))
-    (testing "If you don't have MBQL permissions for the original query it should throw an error"
-      (is (schema= {:error (s/eq "You do not have permissions to run this query.")
-                    s/Any  s/Any}
-                   (query->native-with-user-perms
-                    (mt/mbql-query venues)
-                    {:object-perms? false, :native-perms? true}))))))
+      (is (query->native-with-user-perms
+           (mt/mbql-query venues)
+           {:object-perms? true, :native-perms? true})))
+    (testing "Should still work even WITHOUT the right perms"
+      (is (query->native-with-user-perms
+           (mt/mbql-query venues)
+           {:object-perms? false, :native-perms? true})))))
 
 (deftest error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"
-    (is (schema= {:error (s/eq (format "Database %d does not exist." Integer/MAX_VALUE))
-                  s/Any  s/Any}
-                 (query->native-with-user-perms
-                  {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}}
-                  {:object-perms? true, :native-perms? true})))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Database \d+ does not exist"
+         (query->native-with-user-perms
+          {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}}
+          {:object-perms? true, :native-perms? true})))))

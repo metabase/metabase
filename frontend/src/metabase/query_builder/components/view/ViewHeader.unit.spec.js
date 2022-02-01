@@ -455,6 +455,29 @@ describe("View Header | Saved GUI question", () => {
   });
 });
 
+describe("View Header | native question without write permissions on database (eg user without self serve data permissions)", () => {
+  let originalNativePermissions;
+  beforeEach(() => {
+    setupNative();
+    originalNativePermissions = SAMPLE_DATABASE.native_permissions;
+    SAMPLE_DATABASE.native_permissions = "none";
+  });
+
+  afterEach(() => {
+    SAMPLE_DATABASE.native_permissions = originalNativePermissions;
+  });
+
+  it("does not display question database", () => {
+    const { question } = setupNative();
+    const databaseName = question.database().displayName();
+    expect(screen.queryByText(databaseName)).not.toBeInTheDocument();
+  });
+
+  it("does not offer to explore query results", () => {
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+});
+
 describe("View Header | Not saved native question", () => {
   it("does not display question database", () => {
     const { question } = setupNative();

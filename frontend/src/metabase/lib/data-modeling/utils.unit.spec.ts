@@ -4,15 +4,30 @@ import {
   TemplateTag,
   TemplateTagType,
   TemplateTags,
+  SourceTableId,
 } from "metabase-types/types/Query";
+import { CardId } from "metabase-types/types/Card";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
-import { checkCanBeModel } from "./utils";
+import {
+  checkCanBeModel,
+  isAdHocModelQuestion,
+  isAdHocModelQuestionCard,
+} from "./utils";
 
-function getNativeQuestion(tags: TemplateTags = {}) {
-  const question = new Question(
+type NativeQuestionFactoryOpts = {
+  isModel?: boolean;
+  tags?: TemplateTags;
+};
+
+function getNativeQuestion({
+  tags = {},
+  isModel,
+}: NativeQuestionFactoryOpts = {}) {
+  return new Question(
     {
       id: 1,
+      dataset: isModel,
       display: "table",
       can_write: true,
       public_uuid: "",
@@ -28,7 +43,37 @@ function getNativeQuestion(tags: TemplateTags = {}) {
     },
     metadata,
   );
-  return question;
+}
+
+type StructuredQuestionFactoryOpts = {
+  id?: CardId;
+  sourceTable?: SourceTableId;
+  isModel?: boolean;
+};
+
+function getStructuredQuestion({
+  id = 1,
+  sourceTable = 1,
+  isModel = false,
+}: StructuredQuestionFactoryOpts = {}) {
+  return new Question(
+    {
+      id,
+      dataset: isModel,
+      display: "table",
+      can_write: true,
+      public_uuid: "",
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": sourceTable,
+        },
+      },
+      visualization_settings: {},
+    },
+    metadata,
+  );
 }
 
 function getTemplateTag(tag: Partial<TemplateTag> = {}): TemplateTag {
@@ -82,7 +127,9 @@ describe("data model utils", () => {
       });
       it("returns true when 'card' variables are used", () => {
         const question = getNativeQuestion({
-          "#5": getTemplateTag({ type: "card" }),
+          tags: {
+            "#5": getTemplateTag({ type: "card" }),
+          },
         });
         expect(checkCanBeModel(question)).toBe(true);
       });
@@ -90,7 +137,9 @@ describe("data model utils", () => {
       UNSUPPORTED_TEMPLATE_TAG_TYPES.forEach(tagType => {
         it(`returns false when '${tagType}' variables are used`, () => {
           const question = getNativeQuestion({
-            foo: getTemplateTag({ type: tagType }),
+            tags: {
+              foo: getTemplateTag({ type: tagType }),
+            },
           });
           expect(checkCanBeModel(question)).toBe(false);
         });
@@ -98,11 +147,106 @@ describe("data model utils", () => {
 
       it("returns false if at least one unsupported variable type is used", () => {
         const question = getNativeQuestion({
-          "#5": getTemplateTag({ type: "card" }),
-          foo: getTemplateTag({ type: "dimension" }),
+          tags: {
+            "#5": getTemplateTag({ type: "card" }),
+            foo: getTemplateTag({ type: "dimension" }),
+          },
         });
         expect(checkCanBeModel(question)).toBe(false);
       });
+    });
+  });
+
+  describe("isAdHocModelQuestion & isAdHocModelQuestionCard", () => {
+    it("returns false when original question is not provided", () => {
+      const question = getStructuredQuestion({
+        id: 1,
+        sourceTable: "card__1",
+        isModel: true,
+      });
+
+      expect(isAdHocModelQuestion(question)).toBe(false);
+      expect(isAdHocModelQuestionCard(question.card())).toBe(false);
+    });
+
+    it("returns false for native questions", () => {
+      const question = getNativeQuestion({ isModel: true });
+      const card = question.card();
+
+      expect(isAdHocModelQuestion(question, question)).toBe(false);
+      expect(isAdHocModelQuestionCard(card, card)).toBe(false);
+    });
+
+    it("identifies when model goes into ad-hoc exploration mode", () => {
+      const originalQuestion = getStructuredQuestion({
+        id: 1,
+        isModel: true,
+        sourceTable: 1,
+      });
+      const question = getStructuredQuestion({
+        id: 1,
+        isModel: false,
+        sourceTable: "card__1",
+      });
+
+      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(true);
+      expect(
+        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
+      ).toBe(true);
+    });
+
+    it("returns false when IDs don't match", () => {
+      const originalQuestion = getStructuredQuestion({
+        id: 2,
+        isModel: true,
+        sourceTable: 1,
+      });
+      const question = getStructuredQuestion({
+        id: 1,
+        isModel: false,
+        sourceTable: "card__1",
+      });
+
+      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(
+        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
+      ).toBe(false);
+    });
+
+    it("returns false when questions are not marked as models", () => {
+      const originalQuestion = getStructuredQuestion({
+        id: 1,
+        isModel: false,
+        sourceTable: 1,
+      });
+      const question = getStructuredQuestion({
+        id: 1,
+        isModel: false,
+        sourceTable: "card__1",
+      });
+
+      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(
+        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
+      ).toBe(false);
+    });
+
+    it("returns false when potential ad-hoc model question is not self-referencing", () => {
+      const originalQuestion = getStructuredQuestion({
+        id: 1,
+        isModel: true,
+        sourceTable: 1,
+      });
+      const question = getStructuredQuestion({
+        id: 1,
+        isModel: false,
+        sourceTable: 1,
+      });
+
+      expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
+      expect(
+        isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
+      ).toBe(false);
     });
   });
 });

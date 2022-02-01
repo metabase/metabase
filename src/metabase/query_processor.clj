@@ -74,58 +74,123 @@
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))
 
-;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
-(def default-middleware
-  "The default set of middleware applied to queries ran via `process-query`."
-  [#'mbql-to-native/mbql->native
-   #'check-features/check-features
-   #'limit/limit
-   #'cache/maybe-return-cached-results
+(def ^:private pre-processing-middleware
+  "Pre-processing middleware. Has the form
+
+    (f query) -> query
+
+  in 43+."
+  [#'check-features/check-features
+   #'limit/add-default-limit-middleware
    #'optimize-temporal-filters/optimize-temporal-filters
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'auto-parse-filter-values/auto-parse-filter-values
    #'wrap-value-literals/wrap-value-literals
-   #'annotate/add-column-info
-   #'perms/check-query-permissions
    #'pre-alias-ags/pre-alias-aggregations
-   #'cumulative-ags/handle-cumulative-aggregations
+   #'cumulative-ags/rewrite-cumulative-aggregations-middleware
    ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
-   #'viz-settings/update-viz-settings
+   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
    #'fix-bad-refs/fix-bad-references-middleware
    #'resolve-joined-fields/resolve-joined-fields
    #'resolve-joins/resolve-joins
    #'add-implicit-joins/add-implicit-joins
-   #'large-int-id/convert-id-to-string
-   #'format-rows/format-rows
    #'add-default-temporal-unit/add-default-temporal-unit
    #'desugar/desugar
    #'binning/update-binning-strategy
    #'resolve-fields/resolve-fields
-   #'add-dim/add-remapping
+   #'add-dim/add-remapped-columns-middleware
    #'implicit-clauses/add-implicit-clauses
-   (resolve 'ee.sandbox.rows/apply-row-level-permissions)
+   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
    #'upgrade-field-literals/upgrade-field-literals
    #'add-source-metadata/add-source-metadata-for-source-queries
-   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'bucket-datetime/auto-bucket-datetimes
    #'resolve-source-table/resolve-source-tables
    #'parameters/substitute-parameters
    #'resolve-referenced/resolve-referenced-card-resources
    #'expand-macros/expand-macros
+   #'validate/validate-query
+   #'perms/remove-permissions-key-middleware])
+;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
+
+(def ^:private compile-middleware
+  "Middleware for query compilation. Happens after pre-processing. Has the form
+
+    (f query) -> query
+
+  in 43+."
+  [#'mbql-to-native/mbql->native])
+
+(def ^:private execution-middleware
+  "Middleware that happens after compilation, AROUND query execution itself. Has the form
+
+    (f qp) -> qp
+
+  Where `qp` has the form
+
+    (f query rff context)"
+  ;; TODO -- limit SEEMS like it should be post-processing but it actually has to happen only if we don't return cached
+  ;; results. Otherwise things break. There's probably some way to fix this. e.g. maybe it doesn't do anything if the
+  ;; query has the `:cached?` key.
+  [#'limit/limit-result-rows-middleware
+   #'cache/maybe-return-cached-results
+   #'perms/check-query-permissions
+   (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
+
+(def ^:private post-processing-middleware
+  "Post-processing middleware that transforms results. Has the form
+
+    (f preprocessed-query rff) -> rff
+
+  Where `rff` has the form
+
+    (f metadata) -> rf"
+  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
+  [#'annotate/add-column-info
+   #'cumulative-ags/sum-cumulative-aggregation-columns-middleware
+   #'viz-settings/update-viz-settings
+   #'large-int-id/convert-id-to-string
+   #'format-rows/format-rows
+   #'add-dim/remap-results-middleware
+   (resolve 'ee.sandbox.rows/merge-sandboxing-metadata-middleware)
    #'add-timezone-info/add-timezone-info
    #'splice-params-in-response/splice-params-in-response
-   #'resolve-database-and-driver/resolve-database-and-driver
+   #'add-rows-truncated/add-rows-truncated-middleware])
+
+(def ^:private around-middleware
+  "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
+  form
+
+    (f qp) -> qp
+
+  Where `qp` has the form
+
+    (f query rff context)"
+  [#'resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
-   #'validate/validate-query
+   ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
+   ;; It doesn't really need to be 'around' middleware tho.
    #'normalize/normalize
-   #'add-rows-truncated/add-rows-truncated
    (resolve 'ee.audit/handle-internal-queries)
+   ;; TODO -- I think this is actually supposed to be post-processing middleware? #idk¿?
    #'results-metadata/record-and-return-metadata!])
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
-;; `substitute-parameters`
+
+;; query -> preprocessed = around + pre-process
+;; query -> native       = around + pre-process + compile
+;; query -> results      = around + pre-process + compile + execute + post-process = default-middleware
+
+(def default-middleware
+  "The default set of middleware applied to queries ran via [[process-query]]."
+  (into
+   []
+   (comp cat (keep identity))
+   [execution-middleware       ;   → → execute → → ↓
+    compile-middleware         ;   ↑ compile       ↓
+    post-processing-middleware ;   ↑               ↓ post-process
+    pre-processing-middleware  ;   ↑ pre-process   ↓
+    around-middleware]))       ;   ↑ query         ↓ results
+
 
 ;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
 ;; middleware is changed. Outside of dev only build the QP once for performance/locality

@@ -95,7 +95,7 @@ export function CategoryFingerprint({
         </RelativeContainer>
       )}
       {showFieldValuesBlock && (
-        <RelativeContainer height={isLoading && "1.8em"}>
+        <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
           <Fade visible={isLoading}>
             <LoadingSpinner />
           </Fade>

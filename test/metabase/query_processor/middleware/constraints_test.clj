@@ -15,7 +15,7 @@
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:add-default-userland-constraints? true},
             :constraints {:max-results           @#'constraints/max-results
-                          :max-results-bare-rows @#'constraints/max-results-bare-rows}}
+                          :max-results-bare-rows @#'constraints/default-max-results-bare-rows}}
            (add-default-userland-constraints
             {:middleware {:add-default-userland-constraints? true}})))))
 

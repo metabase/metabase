@@ -5,6 +5,7 @@ import { color, space } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import { ButtonContent, ButtonRoot } from "./Button.styled";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -12,6 +13,7 @@ const BUTTON_VARIANTS = [
   "large",
   "round",
   "primary",
+  "secondary",
   "danger",
   "warning",
   "cancel",
@@ -38,6 +40,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   large?: boolean;
 
   primary?: boolean;
+  secondary?: boolean;
   success?: boolean;
   danger?: boolean;
   warning?: boolean;
@@ -71,17 +74,14 @@ const BaseButton = forwardRef(function BaseButton(
   );
 
   return (
-    <button
+    <ButtonRoot
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, "flex-no-shrink", variantClasses, {
+      className={cx("Button", className, variantClasses, {
         p1: !children,
       })}
-      ref={ref}
+      innerRef={ref as any}
     >
-      <div
-        className={cx("flex layout-centered", { "flex-column": iconVertical })}
-        style={iconVertical ? { minWidth: 60 } : undefined}
-      >
+      <ButtonContent iconVertical={iconVertical}>
         {icon && (
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}
@@ -103,8 +103,8 @@ const BaseButton = forwardRef(function BaseButton(
             size={iconSize ? iconSize : 14}
           />
         )}
-      </div>
-    </button>
+      </ButtonContent>
+    </ButtonRoot>
   );
 });
 
@@ -115,4 +115,7 @@ const Button = forwardRefToInnerRef(styled(BaseButton)`
 
 Button.displayName = "Button";
 
-export default Button;
+export default Object.assign(Button, {
+  Root: ButtonRoot,
+  Content: ButtonContent,
+});

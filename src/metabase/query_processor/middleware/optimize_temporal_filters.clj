@@ -118,7 +118,7 @@
   (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [optimize-temporal-value-fn [filter-type field temporal-value] new-filter-type]
+  [optimize-temporal-value-fn [_filter-type field temporal-value] new-filter-type]
   [new-filter-type
    (change-temporal-unit-to-default field)
    (optimize-temporal-value-fn temporal-value (temporal-unit field))])

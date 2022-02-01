@@ -9,7 +9,10 @@ import { createSelector } from "reselect";
 import { GET } from "metabase/lib/api";
 
 import { getUser, getUserPersonalCollectionId } from "metabase/selectors/user";
-import { isPersonalCollection } from "metabase/collections/utils";
+import {
+  isPersonalCollection,
+  canonicalCollectionId,
+} from "metabase/collections/utils";
 
 import { t } from "ttag";
 
@@ -157,13 +160,6 @@ export function getCollectionIcon(collection, { tooltip = "default" } = {}) {
       }
     : { name: "folder" };
 }
-
-// API requires items in "root" collection be persisted with a "null" collection ID
-// Also ensure it's parsed as a number
-export const canonicalCollectionId = collectionId =>
-  collectionId == null || collectionId === "root"
-    ? null
-    : parseInt(collectionId, 10);
 
 export function normalizedCollection(collection) {
   if (canonicalCollectionId(collection.id) === null) {

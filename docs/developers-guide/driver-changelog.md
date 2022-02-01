@@ -1,5 +1,16 @@
 # Driver Interface Changelog
 
+## Metabase 0.43.0
+
+- The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see
+  [#14647](https://github.com/metabase/metabase/issues/14647)). You only need to be concerned with this if you are
+  accessing or manipulating this map directly. Drivers deriving from `:sql` implementing `->honeysql` for `[<driver>
+  :expression]` may need to be updated. A utility function, `metabase.mbql.util/expression-with-name`, has been
+  available since at least Metabase 0.35.0 and handles both types of keys. It is highly recommended that you use this
+  function rather than accessing `:expressions` directly, as doing so can make your driver compatible with both 0.42.0
+  and with 0.43.0 and newer.
+
+## Metabase 0.42.0
 
 Changes in Metabase 0.42.0 affect drivers that derive from `:sql` (including `:sql-jdbc`).
 Non-SQL drivers likely will require no changes.
@@ -47,6 +58,10 @@ If you were manipulating Field or Table aliases, we consolidated a lot of overla
   used consistently across the SQL QP code. If you need to transform generated Field aliases for any reason (such as
   escaping disallowed characters), implement this method.
 
+- `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` has been added, and will eventually replace
+  `metabase.driver.sql-jdbc.sync.interface/syncable-schemas`.  It serves a similar purpose, except that it's also
+  passed the inclusion and exclusion patterns (ex: `auth*,data*`) to further filter schemas that will be synced.
+
 ### Deprecated methods and vars
 
 The following methods and vars are slated for removal in Metabase 0.45.0 unless otherwise noted.
@@ -84,6 +99,10 @@ The following methods and vars are slated for removal in Metabase 0.45.0 unless 
   give drivers a chance to escape automatically generated aliases for joined Fields. This is no longer necessary,
   because `metabase.driver/escape-alias` is called on automatically generates aliases. Implement
   `metabase.driver/escape-alias` if you need to do something special.
+- `metabase.driver.sql-jdbc.sync.interface/syncable-schemas` has been deprecated in favor of
+  `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` (see above). The existing default implementation
+  of `syncable-schemas` currently calls `filtered-syncable-schemas` (with `nil` filters, i.e. the filtering operation
+  is actually a no-op), but it will eventually be removed.
 
 #### Removed Methods and Vars
 

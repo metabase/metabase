@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.context.default :as context.default]
@@ -186,7 +185,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
@@ -251,7 +250,7 @@
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru "If your database is behind a firewall, you may need to allow connections from our Metabase Cloud IP addresses:")
                     "\n"
-                    (str/join " - " (public-settings/cloud-gateway-ips)))))})
+                    (str/join " - " ips))))})
 
 (def default-connection-info-fields
   "Default definitions for informational banners that can be included in a database connection form. These keys can be
@@ -335,15 +334,13 @@
   (driver/with-driver driver
     (let [native-query    (current-db-time-native-query driver)
           date-formatters (current-db-time-date-formatters driver)
-          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                            {:settings {:report-timezone report-tz}})
           time-str        (try
                             ;; need to initialize the store since we're calling `execute-reducible-query` directly
                             ;; instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/the-id database))
                               (let [query {:database (u/the-id database), :native {:query native-query}}
-                                    reduce (fn [metadata reducible-rows]
+                                    reduce (fn [_metadata reducible-rows]
                                              (transduce
                                               identity
                                               (fn

@@ -143,7 +143,7 @@
 (defn will-delete-channel
   "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
   deleted. Archives `Pulse` if the channel being deleted is its last channel."
-  [{pulse-id :pulse_id, pulse-channel-id :id, :as pulse-channel}]
+  [{pulse-id :pulse_id, pulse-channel-id :id}]
   (when *automatically-archive-when-last-channel-is-deleted*
     (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
       (when (zero? other-channels-count)

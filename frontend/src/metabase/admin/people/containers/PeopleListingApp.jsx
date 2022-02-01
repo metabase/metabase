@@ -26,7 +26,7 @@ export default function PeopleListingApp({ children }) {
   } = usePeopleQuery(PAGE_SIZE);
 
   const headingContent = (
-    <div className="mb2 flex">
+    <div className="mb2 flex align-center">
       <SearchInput
         className="text-small mr2"
         type="text"
@@ -43,7 +43,6 @@ export default function PeopleListingApp({ children }) {
           { name: t`Deactivated`, value: USER_STATUS.deactivated },
         ]}
         showButtons
-        py={1}
         onChange={updateStatus}
       />
     </div>

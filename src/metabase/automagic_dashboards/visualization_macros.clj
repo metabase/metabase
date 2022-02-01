@@ -9,7 +9,7 @@
 
 (defmethod expand-visualization "smart-row"
   [card dimensions metrics]
-  (let [[display settings] (:visualization card)]
+  (let [[_display settings] (:visualization card)]
     (-> card
         (assoc :visualization (if (->> dimensions
                                        (keep #(get-in % [:fingerprint :global :distinct-count]))

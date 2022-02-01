@@ -38,7 +38,9 @@ describe("scenarios > models query editor", () => {
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton").click();
+    cy.get(".RunButton")
+      .should("be.visible")
+      .click();
 
     cy.get(".TableInteractive").within(() => {
       cy.findByText("Created At: Month");
@@ -90,7 +92,9 @@ describe("scenarios > models query editor", () => {
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton").click();
+    cy.get(".RunButton")
+      .should("be.visible")
+      .click();
     cy.wait("@dataset");
 
     cy.get(".LineAreaBarChart").should("not.exist");
@@ -142,5 +146,41 @@ describe("scenarios > models query editor", () => {
     cy.button("Cancel").click();
     cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
     cy.url().should("not.include", "/query");
+  });
+
+  it("handles failing queries", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Erroring Model",
+        dataset: true,
+        native: {
+          // Let's use API to type the most of the query, but stil make it invalid
+          query: "SELECT ",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openDetailsSidebar();
+
+    cy.findByText("Customize metadata").click();
+    cy.findByText(/Syntax error in SQL/);
+
+    cy.findByText("Query").click();
+    cy.findByText(/Syntax error in SQL/);
+
+    // Using `text-input` here, which is the textarea HTML element instead of the `ace_content` (div)
+    cy.get(".ace_text-input").type("1");
+
+    runNativeQuery();
+
+    cy.get(".cellData").contains(1);
+    cy.findByText(/Syntax error in SQL/).should("not.exist");
+
+    cy.button("Save changes").click();
+    cy.wait("@updateCard");
+
+    cy.get(".cellData").contains(1);
+    cy.findByText(/Syntax error in SQL/).should("not.exist");
   });
 });

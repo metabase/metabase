@@ -11,7 +11,6 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as pubset]
@@ -271,10 +270,11 @@
                         false))))
           reducible))))))
 
-(defmethod sql-jdbc.sync/syncable-schemas :redshift
-  [driver conn metadata]
-  (reducible-schemas-with-usage-permissions
-   conn
-   (eduction
-    (remove (set (sql-jdbc.sync/excluded-schemas driver)))
-    (sync.describe-database/all-schemas metadata))))
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
+  [driver conn metadata schema-inclusion-patterns schema-exclusion-patterns]
+  (let [parent-method (get-method sql-jdbc.sync/filtered-syncable-schemas :sql-jdbc)]
+    (reducible-schemas-with-usage-permissions conn (parent-method driver
+                                                                  conn
+                                                                  metadata
+                                                                  schema-inclusion-patterns
+                                                                  schema-exclusion-patterns))))
