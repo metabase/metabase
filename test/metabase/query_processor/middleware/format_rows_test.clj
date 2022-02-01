@@ -163,6 +163,11 @@
     (is (format-rows/format-value java.time.OffsetDateTime/MAX (t/zone-id "UTC")))
     (is (format-rows/format-value java.time.OffsetDateTime/MIN (t/zone-id "UTC")))))
 
+(defn- format-rows [rows]
+  (let [rff (format-rows/format-rows {} (constantly conj))
+        rf  (rff nil)]
+    (transduce identity rf rows)))
+
 (deftest results-timezone-test
   (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
     (driver/with-driver ::timezone-driver
@@ -174,10 +179,8 @@
                                                           "2011-04-18T19:12:47.232+09:00"]]}]
         (mt/with-results-timezone-id timezone-id
           (testing (format "timezone ID '%s'" timezone-id)
-            (let [query   {}
-                  rows    [[(t/instant "2011-04-18T10:12:47.232Z")
-                            (t/local-date 2011 4 18)
-                            (t/offset-date-time "2011-04-18T10:12:47.232Z")]]
-                  results (mt/test-qp-middleware format-rows/format-rows query rows)]
+            (let [rows [[(t/instant "2011-04-18T10:12:47.232Z")
+                         (t/local-date 2011 4 18)
+                         (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (:post results))))))))))
+                     (format-rows rows))))))))))

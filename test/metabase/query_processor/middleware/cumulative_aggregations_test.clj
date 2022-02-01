@@ -80,15 +80,14 @@
 
 
 (defn- handle-cumulative-aggregations [query]
-  (-> (mt/test-qp-middleware
-       cumulative-aggregations/sum-cumulative-aggregation-columns-middleware
-       (#'cumulative-aggregations/rewrite-cumulative-aggregations query)
-       [[1 1]
-        [2 2]
-        [3 3]
-        [4 4]
-        [5 5]])
-      :post))
+  (let [query (#'cumulative-aggregations/rewrite-cumulative-aggregations query)
+        rff   (cumulative-aggregations/sum-cumulative-aggregation-columns query (constantly conj))
+        rf    (rff nil)]
+    (transduce identity rf [[1 1]
+                            [2 2]
+                            [3 3]
+                            [4 4]
+                            [5 5]])))
 
 (deftest e2e-test
   (testing "make sure we take breakout fields into account"

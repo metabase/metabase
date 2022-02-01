@@ -275,7 +275,7 @@
 
 ;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn test-qp-middleware
+(defn ^:deprecated test-qp-middleware
   "Helper for testing QP middleware. Changes are returned in a map with keys:
 
     * `:result`   ­ final result

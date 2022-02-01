@@ -136,7 +136,8 @@
     (f (f query rff context)) -> (f query rff context)"
   ;; TODO -- limit SEEMS like it should be post-processing but it actually has to happen only if we don't return cached
   ;; results. Otherwise things break. There's probably some way to fix this. e.g. maybe it doesn't do anything if the
-  ;; query has the `:cached?` key.
+  ;; query has the `:cached?` key. Alternatively, figure out why things are breaking. It doesn't seem like they should.
+  ;; I think it's because of things getting mixed up with `reduced` and unreduced results.
   [#'limit/limit-result-rows-middleware
    #'cache/maybe-return-cached-results
    #'perms/check-query-permissions
@@ -150,17 +151,28 @@
   Where `rff` has the form
 
     (f metadata) -> rf"
-  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
-  [#'annotate/add-column-info
-   #'cumulative-ags/sum-cumulative-aggregation-columns-middleware
-   #'viz-settings/update-viz-settings
-   #'large-int-id/convert-id-to-string
-   #'format-rows/format-rows
-   #'add-dim/remap-results-middleware
-   (resolve 'ee.sandbox.rows/merge-sandboxing-metadata-middleware)
-   #'add-timezone-info/add-timezone-info
+  [#'add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
-   #'add-rows-truncated/add-rows-truncated-middleware])
+   #'add-timezone-info/add-timezone-info
+   (resolve 'ee.sandbox.rows/merge-sandboxing-metadata)
+   #'add-dim/remap-results
+   #'format-rows/format-rows
+   #'large-int-id/convert-id-to-string
+   #'viz-settings/update-viz-settings
+   #'cumulative-ags/sum-cumulative-aggregation-columns
+   #'annotate/add-column-info])
+;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
+
+(defn apply-post-processing-middleware
+  "Apply post-processing middleware to `rff`. Returns an rff."
+  [query rff]
+  (reduce
+   (fn [rff middleware]
+     (u/prog1 (cond->> rff
+                middleware (middleware query))
+       (assert (fn? <>) (format "%s did not return a valid function" (pr-str middleware)))))
+   rff
+   post-processing-middleware))
 
 (def ^:private around-middleware
   "Middleware that goes AROUND *all* the other middleware (even for pre-processing only or compilation only). Has the
@@ -187,17 +199,20 @@
 
 (def default-middleware
   "The default set of middleware applied to queries ran via [[process-query]]."
-  (letfn [(combined-preprocess [qp]
-            (fn combined-preprocess* [query rff context]
-              (qp (preprocess* query) rff context)))]
+  (letfn [(combined-pre-process [qp]
+            (fn combined-pre-process* [query rff context]
+              (qp (preprocess* query) rff context)))
+          (combined-post-process [qp]
+            (fn combined-post-process* [query rff context]
+              (qp query (apply-post-processing-middleware query rff) context)))]
     (into
      []
      (comp cat (keep identity))
-     [execution-middleware        ; → → execute → → ↓
-      compile-middleware          ; ↑ compile       ↓
-      post-processing-middleware  ; ↑               ↓ post-process
-      [combined-preprocess]       ; ↑ pre-process   ↓
-      around-middleware])))       ; ↑ query         ↓ results
+     [execution-middleware      ; → → execute → → ↓
+      compile-middleware        ; ↑ compile       ↓
+      [combined-post-process]   ; ↑               ↓ post-process
+      [combined-pre-process]    ; ↑ pre-process   ↓
+      around-middleware])))     ; ↑ query         ↓ results
 
 
 ;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
