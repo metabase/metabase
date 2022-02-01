@@ -1,8 +1,9 @@
 import styled from "styled-components";
-import Link, { LinkProps } from "metabase/core/components/Link";
+import Link from "metabase/core/components/Link";
 import { alpha, color } from "metabase/lib/colors";
 
-interface AdminNavLinkProps extends LinkProps {
+interface AdminNavLinkProps {
+  to: string;
   isSelected?: boolean;
 }
 
