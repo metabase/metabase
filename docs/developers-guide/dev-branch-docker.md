@@ -21,9 +21,11 @@ Once Docker is installed, you’re ready to go.
 
 ## Run a development branch to test or verify features
 
+[See here](https://hub.docker.com/r/metabase/metabase-dev/tags) for a list of development branches that you can run via Docker.
+
 1. Open your terminal app of choice.
 
-2. Copy and paste this command, switching out `<branch-name>` for the name of the branch you’d like to test:
+2. Copy and paste this command, switching out `<branch-name>` for the name of the branch you’d like to test: 
 
 ```bash
 docker run --platform linux/amd64 -d -p 3000:3000 --name metabase-dev metabase/metabase-dev:<branch-name>
