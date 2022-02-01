@@ -11,7 +11,6 @@
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
@@ -146,7 +145,8 @@
   Where `rff` has the form
 
     (f metadata) -> rf"
-  [#'limit/limit-result-rows
+  [#'results-metadata/record-and-return-metadata!
+   #'limit/limit-result-rows
    #'add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
    #'add-timezone-info/add-timezone-info
@@ -187,7 +187,7 @@
    #'normalize/normalize
    (resolve 'ee.audit/handle-internal-queries)
    ;; TODO -- I think this is actually supposed to be post-processing middleware? #idk¿?
-   #'results-metadata/record-and-return-metadata!])
+   ])
 
 ;; query -> preprocessed = around + pre-process
 ;; query -> native       = around + pre-process + compile

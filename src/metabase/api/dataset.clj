@@ -60,8 +60,7 @@
                          (db/select-one [Card :result_metadata :dataset] :id source-card-id))
         info           (cond-> {:executed-by api/*current-user-id*
                                 :context     context
-                                :card-id     source-card-id
-                                :nested?     (boolean source-card-id)}
+                                :card-id     source-card-id}
                          (:dataset source-card)
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
