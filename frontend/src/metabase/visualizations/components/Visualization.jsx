@@ -248,12 +248,15 @@ export default class Visualization extends React.PureComponent {
       return;
     }
 
-    if (
-      performDefaultAction(this.getClickActions(clicked), {
+    const didPerformDefaultAction = performDefaultAction(
+      this.getClickActions(clicked),
+      {
         dispatch: this.props.dispatch,
         onChangeCardAndRun: this.handleOnChangeCardAndRun,
-      })
-    ) {
+      },
+    );
+
+    if (didPerformDefaultAction) {
       return;
     }
 
