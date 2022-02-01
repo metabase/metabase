@@ -160,7 +160,7 @@
     "@types/mustache": "^4.1.2",
     "@types/postcss-import": "^12.0.1",
     "@types/postcss-url": "^8.0.2",
-    "@types/prettier": "2.5.1",
+    "@types/prettier": "2.4.3",
     "@types/prop-types": "^15.7.4",
     "@types/raf": "^3.4.0",
     "@types/react": "~16.14.17",
