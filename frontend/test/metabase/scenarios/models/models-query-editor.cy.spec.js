@@ -35,6 +35,9 @@ describe("scenarios > models query editor", () => {
       .findByText("Summarize")
       .click();
     selectFromDropdown("Count of rows");
+
+    cy.wait("@dataset");
+
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
@@ -89,13 +92,15 @@ describe("scenarios > models query editor", () => {
       .findByText("Summarize")
       .click();
     selectFromDropdown("Count of rows");
+
+    cy.wait("@dataset");
+
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
     cy.get(".RunButton")
       .should("be.visible")
       .click();
-    cy.wait("@dataset");
 
     cy.get(".LineAreaBarChart").should("not.exist");
     cy.get(".TableInteractive");
