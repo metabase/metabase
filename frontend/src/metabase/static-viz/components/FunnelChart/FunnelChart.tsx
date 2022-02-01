@@ -118,10 +118,10 @@ const Funnel = ({ data, settings }: FunnelProps) => {
                   <>
                     <Text
                       textAnchor="end"
-                      fontWeight={700}
                       y={firstMeasureTop}
                       fontSize={layout.initialMeasureFontSize}
                       fill="black"
+                      style={{ fontWeight: 700 }}
                     >
                       {measure}
                     </Text>
