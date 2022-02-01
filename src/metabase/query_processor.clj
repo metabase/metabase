@@ -309,8 +309,10 @@
 ;; things like API endpoints and pulses, while `process-query` is more of a low-level internal function.
 ;;
 (def userland-middleware
-  "The default set of middleware applied to 'userland' queries ran via `process-query-and-save-execution!` (i.e., via
-  the REST API)."
+  "The default set of middleware applied to 'userland' queries ran via [[process-query-and-save-execution!]] (i.e., via
+  the REST API). This middleware has the pattern
+
+    (f (f query rff context)) -> (f query rff context)"
   (concat
    default-middleware
    [#'constraints/add-default-userland-constraints
@@ -318,15 +320,15 @@
     #'catch-exceptions/catch-exceptions]))
 
 (def ^{:arglists '([query] [query context])} process-userland-query-async
-  "Like `process-query-async`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
+  "Like [[process-query-async]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (base-qp userland-middleware))
 
 (def ^{:arglists '([query] [query context])} process-userland-query-sync
-  "Like `process-query-sync`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
+  "Like [[process-query-sync]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (qp.reducible/sync-qp process-userland-query-async))
 
 (defn process-userland-query
-  "Like `process-query`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
+  "Like [[process-query]], but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   {:arglists '([query] [query context])}
   [{:keys [async?], :as query} & args]
   (apply (if async? process-userland-query-async process-userland-query-sync)
@@ -346,7 +348,7 @@
   (assoc-in query [:middleware :add-default-userland-constraints?] true))
 
 (s/defn process-query-and-save-with-max-results-constraints!
-  "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
+  "Same as [[process-query-and-save-execution!]] but will include the default max rows returned as a constraint. (This
   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
   ([query info]
    (process-query-and-save-execution! (add-default-constraints query) info))
