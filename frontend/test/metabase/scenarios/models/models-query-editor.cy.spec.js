@@ -154,35 +154,33 @@ describe("scenarios > models query editor", () => {
         name: "Erroring Model",
         dataset: true,
         native: {
-          query: "S",
+          // Let's use API to type the most of the query, but stil make it invalid
+          query: "SELECT ",
         },
       },
       { visitQuestion: true },
     );
 
     openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
 
+    cy.findByText("Customize metadata").click();
     cy.findByText(/Syntax error in SQL/);
-    cy.findByText("Metadata").click();
-    cy.findByText(/Syntax error in SQL/);
+
     cy.findByText("Query").click();
+    cy.findByText(/Syntax error in SQL/);
 
-    cy.get(".ace_content").type("{backspace}SELECT * FROM ORDERS");
+    // Using `text-input` here, which is the textarea HTML element instead of the `ace_content` (div)
+    cy.get(".ace_text-input").type("1");
+
     runNativeQuery();
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("TAX");
-      cy.findByText("TOTAL");
-    });
+
+    cy.get(".cellData").contains(1);
     cy.findByText(/Syntax error in SQL/).should("not.exist");
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");
 
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("TAX");
-      cy.findByText("TOTAL");
-    });
+    cy.get(".cellData").contains(1);
     cy.findByText(/Syntax error in SQL/).should("not.exist");
   });
 });
