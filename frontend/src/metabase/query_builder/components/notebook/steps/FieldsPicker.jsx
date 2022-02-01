@@ -4,7 +4,6 @@ import React from "react";
 import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import CheckBox from "metabase/components/CheckBox";
 import StackedCheckBox from "metabase/components/StackedCheckBox";
 
@@ -49,19 +48,17 @@ export default function FieldsPicker({
           </li>
         )}
         {dimensions.map(dimension => (
-          <DimensionInfoPopover dimension={dimension} key={dimension.key()}>
-            <li className="px1 pb1 flex align-center">
-              <CheckBox
-                disabled={disableSelected && selected.has(dimension.key())}
-                checked={selected.has(dimension.key())}
-                label={dimension.displayName()}
-                onChange={() => {
-                  onToggleDimension(dimension, !selected.has(dimension.key()));
-                }}
-                className="mr1"
-              />
-            </li>
-          </DimensionInfoPopover>
+          <li key={dimension.key()} className="px1 pb1 flex align-center">
+            <CheckBox
+              disabled={disableSelected && selected.has(dimension.key())}
+              checked={selected.has(dimension.key())}
+              label={dimension.displayName()}
+              onChange={() => {
+                onToggleDimension(dimension, !selected.has(dimension.key()));
+              }}
+              className="mr1"
+            />
+          </li>
         ))}
       </ul>
     </PopoverWithTrigger>
