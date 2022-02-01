@@ -129,7 +129,7 @@
     (try
       (i/map->ReferencedCardQuery
        (merge {:card-id card-id}
-              (qp/query->native (assoc query :parameters params, :info {:card-id card-id}))))
+              (qp/compile (assoc query :parameters params, :info {:card-id card-id}))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"

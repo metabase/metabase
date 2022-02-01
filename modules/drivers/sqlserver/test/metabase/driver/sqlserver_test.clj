@@ -131,7 +131,7 @@
                            "ORDER BY \"dbo\".\"venues\".\"id\" ASC"
                            " ) \"source\" ")
               :params nil}
-             (qp/query->native
+             (qp/compile
               (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :fields       [$name]
@@ -291,7 +291,7 @@
           (testing (format "\nUnit = %s\n" unit)
             (testing "Should generate the correct SQL query"
               (is (= expected-sql
-                     (pretty-sql (:query (qp/query->native (query-with-bucketing unit)))))))
+                     (pretty-sql (:query (qp/compile (query-with-bucketing unit)))))))
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows

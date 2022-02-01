@@ -3,7 +3,6 @@
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
-            [metabase.test :as mt]
             [metabase.test.data :as data]))
 
 (defn- do-with-splice-params-call? [f]
@@ -44,7 +43,7 @@
               :filter       [:= [:field (data/id :venues :name) nil] "Beyond Sushi"]
               :limit 1}})
 
-(deftest query->native-with-spliced-params
+(deftest compile-and-splice-parameters
   (testing "`qp/compile-and-splice-parameters`, should, as the name implies, attempt to splice the params into the query"
     (with-splice-params-call?
       (is (= '(splice-parameters-into-native-query
@@ -53,8 +52,8 @@
                 :params ["Beyond Sushi"]})
              (qp/compile-and-splice-parameters (sushi-query)))))))
 
-(deftest query->native-test
-  (testing "`query->native` should not call `splice-parameters-into-native-query`"
+(deftest compile-test
+  (testing "`compile` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
       (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
               :params ["Beyond Sushi"]}

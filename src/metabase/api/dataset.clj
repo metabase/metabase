@@ -150,7 +150,7 @@
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-  (qp/query->native-with-spliced-params query))
+  (qp/compile-and-splice-parameters query))
 
 (api/defendpoint ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

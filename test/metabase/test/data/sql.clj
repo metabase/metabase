@@ -273,7 +273,7 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/query->native mbql-query)
+          {:keys [query]} (qp/compile mbql-query)
           ;; preserve stuff like cast(1 AS datetime) in the resulting query
           query           (str/replace query (re-pattern #"= (.*)(?:1)(.*)") (format "= $1{{%s}}$2" (name field)))]
       {:query query})))
@@ -285,6 +285,6 @@
                             {:source-table (data/id table)
                              :aggregation  [[:count]]
                              :filter       [:= [:field-id (data/id table field)] 1]})
-          {:keys [query]} (qp/query->native mbql-query)
+          {:keys [query]} (qp/compile mbql-query)
           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
       {:query query})))

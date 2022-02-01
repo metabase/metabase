@@ -129,9 +129,9 @@
   with-current-user]
 
  [qp
-  process-query
-  query->native
-  query->preprocessed]
+  compile
+  preprocess
+  process-query]
 
  [qp.test
   col

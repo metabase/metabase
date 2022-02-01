@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]
-            [metabase.test :as mt]))
+            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-aggregations]))
 
 (deftest add-values-from-last-row-test
   (are [expected indecies] (= expected

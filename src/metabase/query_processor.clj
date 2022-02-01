@@ -279,26 +279,17 @@
               (mbql-to-native/query->native-form (preprocess* query))))]
     (qp query nil nil)))
 
-(defn ^:deprecated query->native
-  "DEPRECATED: Use [[compile]] instead."
-  [query]
-  (compile query))
-
 (defn compile-and-splice-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
-  (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
-  simliar functionality for queries that are actually executed.)"
+  (Currently, this function is mostly used by tests and in the
+  REPL; [[splice-params-in-response/splice-params-in-response]] middleware handles similar functionality for queries
+  that are actually executed.)"
   [query]
   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
   ;; ID is the virtual DB identifier
   (let [driver (driver.u/database->driver (:database (preprocess query)))]
     (driver/splice-parameters-into-native-query driver (compile query))))
-
-(defn ^:deprecated query->native-with-spliced-params
-  "DEPRECATED: use [[compile-and-splice-parameters]] instead."
-  [query]
-  (compile-and-splice-parameters query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
