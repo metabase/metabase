@@ -356,7 +356,6 @@
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery)           (conj :bigquery)
     (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
     true                                       (disj :presto-jdbc)))
 

@@ -628,9 +628,6 @@
              (mt/first-row
                (process-native
                  :native     {:query (case driver/*driver*
-                                       :bigquery
-                                       "SELECT {{date}} as date"
-
                                        :oracle
                                        "SELECT cast({{date}} as date) from dual"
 

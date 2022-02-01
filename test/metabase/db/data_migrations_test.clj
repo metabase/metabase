@@ -23,51 +23,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; only run these tests when we're running tests for BigQuery because when a Database gets deleted it calls
-;; `driver/notify-database-updated` which attempts to load the BQ driver
-(deftest add-legacy-sql-directive-to-bigquery-sql-cards-test
-  (mt/test-driver :bigquery
-    ;; Create a BigQuery database with 2 SQL Cards, one that already has a directive and one that doesn't.
-    (mt/with-temp* [Database [database {:engine "bigquery"}]
-                    Card     [card-1   {:name          "Card that should get directive"
-                                        :database_id   (u/the-id database)
-                                        :dataset_query {:database (u/the-id database)
-                                                        :type     :native
-                                                        :native   {:query "SELECT * FROM [dataset.table];"}}}]
-                    Card     [card-2   {:name          "Card that already has directive"
-                                        :database_id   (u/the-id database)
-                                        :dataset_query {:database (u/the-id database)
-                                                        :type     :native
-                                                        :native   {:query "#standardSQL\nSELECT * FROM `dataset.table`;"}}}]]
-      ;; manually running the migration function should cause card-1, which needs a directive, to get updated, but
-      ;; should not affect card-2.
-      (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards)
-      (is (= {"Card that should get directive"
-              {:database true
-               :type     :native
-               :native   {:query "#legacySQL\nSELECT * FROM [dataset.table];"}}
-              "Card that already has directive"
-              {:database true
-               :type     :native
-               :native   {:query "#standardSQL\nSELECT * FROM `dataset.table`;"}}}
-             (->> (db/select-field->field :name :dataset_query Card :id [:in (map u/the-id [card-1 card-2])])
-                  (m/map-vals #(update % :database integer?))))))))
-
-(deftest add-legacy-sql-directive-to-bigquery-sql-cards-empty-query-test
-  (mt/test-driver :bigquery
-    (testing (str "If for some reason we have a BigQuery native query that does not actually have any SQL, ignore it "
-                  "rather than barfing (#8924) (No idea how this was possible, but clearly it was)")
-      (mt/with-temp* [Database [database {:engine "bigquery"}]
-                      Card     [card     {:database_id   (u/the-id database)
-                                          :dataset_query {:database (u/the-id database)
-                                                          :type     :native
-                                                          :native   {:query 1000}}}]]
-        (mt/suppress-output
-          (#'migrations/add-legacy-sql-directive-to-bigquery-sql-cards))
-        (is (= {:database true, :type :native, :native {:query 1000}}
-               (-> (db/select-one-field :dataset_query Card :id (u/the-id card))
-                   (update :database integer?))))))))
-
 (deftest clear-ldap-user-local-passwords-test
   (testing "Test clearing of LDAP user local passwords"
     (mt/with-temp* [User [ldap-user {:email     "ldapuser@metabase.com"
@@ -510,3 +465,12 @@
           (testing "And it is idempotent"
             (#'migrations/migrate-click-through)
             (is (= expected-settings (get-settings!)))))))))
+
+(deftest remove-bigquery-driver-test
+  (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
+    (mt/with-temp Database [db {:name "Legacy BigQuery driver DB"
+                                :engine :bigquery
+                                :details {:service-account-json "{\"fake_key\": 14}"}}]
+       (#'migrations/remove-bigquery-driver)
+       (is (= (assoc (:details db) :engine :bigquery-cloud-sdk)
+              (db/select-one-field :details Database (u/the-id db)))))))

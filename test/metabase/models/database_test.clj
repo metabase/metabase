@@ -89,7 +89,7 @@
                                       :use-jvm-timezone     false
                                       :project-id           project-id}
                         :id          2
-                        :engine      :bigquery})]
+                        :engine      :bigquery-cloud-sdk})]
     (testing "sensitive fields are redacted when database details are encoded"
       (testing "details removed for non-admin users"
         (mw.session/with-current-user
@@ -101,7 +101,7 @@
           (is (= {"description" nil
                   "name"        "testbq"
                   "id"          2
-                  "engine"      "bigquery"}
+                  "engine"      "bigquery-cloud-sdk"}
                  (encode-decode bq-db)))))
 
       (testing "details are obfuscated for admin users"
@@ -133,7 +133,7 @@
                                  "use-jvm-timezone"     false
                                  "project-id"           project-id}
                   "id"          2
-                  "engine"      "bigquery"}
+                  "engine"      "bigquery-cloud-sdk"}
                  (encode-decode bq-db))))))))
 
 ;; register a dummy "driver" for the sole purpose of running sensitive-fields-test
