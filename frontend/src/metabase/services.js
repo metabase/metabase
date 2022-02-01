@@ -143,7 +143,7 @@ export const DashboardApi = {
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
   cardQueryPivot: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/pivot/:cardId/query",
+    "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
   ),
   exportCardQuery: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
