@@ -304,7 +304,9 @@ describe("scenarios > collection_defaults", () => {
         .click();
 
       openEllipsisMenuFor("Orders");
-      cy.findByText("Move").click();
+      popover().within(() => {
+        cy.findByText("Move").click();
+      });
 
       modal().within(() => {
         cy.findByText("My personal collection")
