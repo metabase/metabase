@@ -38,7 +38,9 @@ describe("scenarios > models query editor", () => {
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton").click();
+    cy.get(".RunButton")
+      .should("be.visible")
+      .click();
 
     cy.get(".TableInteractive").within(() => {
       cy.findByText("Created At: Month");
@@ -90,7 +92,9 @@ describe("scenarios > models query editor", () => {
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton").click();
+    cy.get(".RunButton")
+      .should("be.visible")
+      .click();
     cy.wait("@dataset");
 
     cy.get(".LineAreaBarChart").should("not.exist");
