@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
@@ -43,6 +44,7 @@ import { memoize } from "metabase-lib/lib/utils";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 @ExplicitSize({ selector: ".CardVisualization" })
+@connect()
 export default class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
