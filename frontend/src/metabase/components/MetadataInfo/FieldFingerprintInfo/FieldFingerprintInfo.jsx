@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
 import Field from "metabase-lib/lib/metadata/Field";
@@ -64,6 +65,18 @@ function DateTimeFingerprint({ className, field }) {
   );
 }
 
+/**
+ * @param {(number|null|undefined)} num - a number value from the type/Number fingerprint; might not be a number
+ * @returns {[boolean, string]} - a tuple, [isNumber, formattedNumber]
+ */
+function roundNumber(num) {
+  if (num == null) {
+    return [false, null];
+  }
+
+  return [true, formatNumber(Number.isInteger(num) ? num : num.toFixed(2))];
+}
+
 function NumberFingerprint({ className, field }) {
   const numberFingerprint = field.fingerprint.type?.["type/Number"];
   if (!numberFingerprint) {
@@ -71,37 +84,30 @@ function NumberFingerprint({ className, field }) {
   }
 
   const { avg, min, max } = numberFingerprint;
+  const [isAvgNumber, formattedAvg] = roundNumber(avg);
+  const [isMinNumber, formattedMin] = roundNumber(min);
+  const [isMaxNumber, formattedMax] = roundNumber(max);
 
-  function roundNumber(num, digits = 2) {
-    if (num === null) {
-      return "";
-    }
+  const someNumberIsDefined = isAvgNumber || isMinNumber || isMaxNumber;
 
-    return formatNumber(Number.isInteger(num) ? num : num.toFixed(digits));
-  }
-
-  const fixedAvg = roundNumber(avg);
-  const fixedMin = roundNumber(min);
-  const fixedMax = roundNumber(max);
-
-  return (
+  return someNumberIsDefined ? (
     <Table className={className}>
       <thead>
         <tr>
-          <th>{t`Average`}</th>
-          <th>{t`Min`}</th>
-          <th>{t`Max`}</th>
+          {isAvgNumber && <th>{t`Average`}</th>}
+          {isMinNumber && <th>{t`Min`}</th>}
+          {isMaxNumber && <th>{t`Max`}</th>}
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>{fixedAvg}</td>
-          <td>{fixedMin}</td>
-          <td>{fixedMax}</td>
+          {isAvgNumber && <td>{formattedAvg}</td>}
+          {isMinNumber && <td>{formattedMin}</td>}
+          {isMaxNumber && <td>{formattedMax}</td>}
         </tr>
       </tbody>
     </Table>
-  );
+  ) : null;
 }
 
 FieldFingerprintInfo.propTypes = propTypes;
