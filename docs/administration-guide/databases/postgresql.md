@@ -24,6 +24,8 @@ You'll also need to input your **SSL Client Key Password**.
 
 You can set up an SSH tunnel by supplying the tunnel host, port, tunnel username, and SSH authentication credentials, either using an SSH Key and passphrase, or a password.
 
+For more, see [SSH tunneling in Metabase][ssh-tunnel].
+
 ## Advanced options
 
 ### Additional JDBC connection string options
@@ -41,8 +43,6 @@ This is a lightweight process that checks for updates to this database’s schem
 ### Periodically refingerprint tables
 
 This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
-
-For more, see [SSH tunneling in Metabase][ssh-tunnel].
 
 [ssl-modes]: https://www.postgresql.org/docs/current/libpq-ssl.html
 [ssh-tunnel]: ../administration-guide/ssh-tunnel-for-database-connections.html
