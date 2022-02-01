@@ -6,7 +6,7 @@ import { isItemPinned } from "metabase/collections/utils";
 import DropArea from "./DropArea";
 import { PinnableDragTypes } from ".";
 
-const PinDropTarget = DropTarget(
+const PinnedItemSortDropTarget = DropTarget(
   PinnableDragTypes,
   {
     drop(props, monitor, component) {
@@ -16,13 +16,24 @@ const PinDropTarget = DropTarget(
     },
     canDrop(props, monitor) {
       const { item } = monitor.getItem();
-      const { variant } = props;
+      const { isFrontTarget, isBackTarget, itemModel, pinIndex } = props;
+
       // NOTE: not necessary to check collection permission here since we
       // enforce it when beginning to drag and item within the same collection
-      if (variant === "pin") {
-        return !isItemPinned(item);
-      } else if (variant === "unpin") {
-        return isItemPinned(item);
+      if (!isItemPinned(item)) {
+        return false;
+      }
+
+      if (itemModel != null && item.model !== itemModel) {
+        return false;
+      }
+
+      if (isFrontTarget) {
+        const isInFrontOfItem = pinIndex < item.collection_position;
+        return isInFrontOfItem;
+      } else if (isBackTarget) {
+        const isBehindItem = pinIndex > item.collection_position;
+        return isBehindItem;
       }
 
       return false;
@@ -35,8 +46,11 @@ const PinDropTarget = DropTarget(
   }),
 )(DropArea);
 
-PinDropTarget.propTypes = {
-  variant: PropTypes.oneOf(["pin", "unpin"]).isRequired,
+PinnedItemSortDropTarget.propTypes = {
+  isFrontTarget: PropTypes.bool,
+  isBackTarget: PropTypes.bool,
+  itemModel: PropTypes.string,
+  pinIndex: PropTypes.number,
 };
 
-export default PinDropTarget;
+export default PinnedItemSortDropTarget;
