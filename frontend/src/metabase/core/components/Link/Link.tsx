@@ -5,7 +5,6 @@ import React, {
   ReactNode,
   Ref,
 } from "react";
-import { stripLayoutProps } from "metabase/lib/utils";
 import Tooltip from "metabase/components/Tooltip";
 import { LinkRoot } from "./Link.styled";
 
@@ -25,12 +24,7 @@ const Link = forwardRef(function Link(
   ref: Ref<HTMLAnchorElement>,
 ) {
   const link = (
-    <LinkRoot
-      to={to}
-      innerRef={ref as any}
-      className={className}
-      {...stripLayoutProps(props)}
-    >
+    <LinkRoot to={to} innerRef={ref as any} className={className}>
       {children}
     </LinkRoot>
   );
