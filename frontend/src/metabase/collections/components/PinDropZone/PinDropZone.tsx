@@ -8,13 +8,17 @@ import {
   PinDropTargetRenderArgs,
 } from "./PinDropZone.styled";
 
-type PinDropZoneProps = Pick<PinDropTargetProps, "variant">;
+type PinDropZoneProps = {
+  variant: "pin" | "unpin";
+  empty?: boolean;
+};
 
 PinDropZone.propTypes = {
   variant: PropTypes.oneOf(["pin", "unpin"]).isRequired,
+  empty: PropTypes.bool,
 };
 
-function PinDropZone({ variant, ...props }: PinDropZoneProps) {
+function PinDropZone({ variant, empty, ...props }: PinDropZoneProps) {
   return (
     <StyledPinDropTarget
       variant={variant}
@@ -22,7 +26,9 @@ function PinDropZone({ variant, ...props }: PinDropZoneProps) {
       hideUntilDrag
       {...props}
     >
-      {(args: PinDropTargetRenderArgs) => <PinDropTargetIndicator {...args} />}
+      {(args: PinDropTargetRenderArgs) => (
+        <PinDropTargetIndicator empty={empty} {...args} />
+      )}
     </StyledPinDropTarget>
   );
 }
