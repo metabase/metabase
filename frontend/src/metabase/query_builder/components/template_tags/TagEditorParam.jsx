@@ -8,7 +8,7 @@ import { Link } from "react-router";
 import Schemas from "metabase/entities/schemas";
 import Toggle from "metabase/core/components/Toggle";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { getParameterOptionsForField } from "metabase/parameters/utils/template-tag-options";

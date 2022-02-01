@@ -1,15 +1,15 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
-import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import ListSearchField from "metabase/components/ListSearchField";
-import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
+import { memoize } from "metabase-lib/lib/utils";
+import { AccordionListCell } from "./AccordionListCell";
+import { AccordionListRoot } from "./AccordionList.styled";
+import { getNextCursor, getPrevCursor } from "./utils";
 
 export default class AccordionList extends Component {
   constructor(props, context) {
@@ -37,12 +37,16 @@ export default class AccordionList extends Component {
     this.state = {
       openSection,
       searchText: "",
+      cursor: null,
+      scrollToAlignment: "start",
     };
 
     this._cache = new CellMeasurerCache({
       fixedWidth: true,
       minHeight: 10,
     });
+
+    this.containerRef = React.createRef();
   }
 
   static propTypes = {
@@ -128,13 +132,16 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
+      this.containerRef?.current?.focus();
+
       const index = this._initialSelectedRowIndex;
+
       if (
         this._list &&
         index != null &&
         !(index >= this._startIndex && index <= this._stopIndex)
       ) {
-        this._list.scrollToRow(this._initialSelectedRowIndex);
+        this._list.scrollToRow(index);
       }
     }, 0);
   }
@@ -211,7 +218,7 @@ export default class AccordionList extends Component {
     return openSection;
   }
 
-  sectionIsSelected(section, sectionIndex) {
+  sectionIsSelected(_section, sectionIndex) {
     const { sections } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
@@ -253,30 +260,97 @@ export default class AccordionList extends Component {
     return section.items.filter(searchFilter).length > 0;
   };
 
-  render() {
-    const {
-      id,
-      style,
-      className,
-      searchable,
-      searchProp,
-      sections,
-      alwaysTogglable,
-      alwaysExpanded,
-      hideSingleSectionTitle,
-      hideEmptySectionsInSearch,
-    } = this.props;
+  getFirstSelectedItemCursor = () => {
+    const { sections, itemIsSelected } = this.props;
 
-    const openSection = this.getOpenSection();
+    for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+      const section = sections[sectionIndex];
+      for (let itemIndex = 0; itemIndex < section.items.length; itemIndex++) {
+        const item = section.items[itemIndex];
+        if (itemIsSelected(item)) {
+          return {
+            sectionIndex,
+            itemIndex,
+          };
+        }
+      }
+    }
+    return null;
+  };
+
+  handleKeyDown = event => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+
+      const prevCursor = getPrevCursor(
+        this.state.cursor ?? this.getFirstSelectedItemCursor(),
+        this.props.sections,
+        this.isSectionExpanded,
+        !this.props.alwaysExpanded,
+      );
+
+      return this.setState({
+        cursor: prevCursor,
+        scrollToAlignment: "auto",
+      });
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+
+      const nextCursor = getNextCursor(
+        this.state.cursor ?? this.getFirstSelectedItemCursor(),
+        this.props.sections,
+        this.isSectionExpanded,
+        !this.props.alwaysExpanded,
+      );
+
+      return this.setState({
+        cursor: nextCursor,
+        scrollToAlignment: "auto",
+      });
+    }
+
+    if (event.key === "Enter") {
+      const { cursor } = this.state;
+
+      if (!cursor) {
+        return;
+      }
+
+      const isSection = cursor.sectionIndex != null && cursor.itemIndex == null;
+
+      if (isSection && this.canToggleSections()) {
+        this.toggleSection(cursor.sectionIndex);
+        return;
+      }
+      const { sections } = this.props;
+
+      const item = sections[cursor.sectionIndex].items[cursor.itemIndex];
+
+      this.props.onChange(item);
+    }
+  };
+
+  @memoize
+  getRowsCached = (
+    searchText,
+    searchable,
+    searchProp,
+    sections,
+    alwaysTogglable,
+    alwaysExpanded,
+    hideSingleSectionTitle,
+    itemIsSelected,
+    hideEmptySectionsInSearch,
+    openSection,
+  ) => {
     const sectionIsExpanded = sectionIndex =>
       alwaysExpanded || openSection === sectionIndex;
     const sectionIsSearchable = sectionIndex =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
-    const sectionIsTogglable = sectionIndex =>
-      alwaysTogglable || sections.length > 1;
 
-    const { searchText } = this.state;
     let searchFilter = () => true;
     if (searchText) {
       searchFilter = item => {
@@ -306,7 +380,12 @@ export default class AccordionList extends Component {
           !hideEmptySectionsInSearch ||
           this.checkSectionHasItemsMatchingSearch(section, searchFilter)
         ) {
-          rows.push({ type: "header", section, sectionIndex, isLastSection });
+          rows.push({
+            type: "header",
+            section,
+            sectionIndex,
+            isLastSection,
+          });
         }
       } else {
         rows.push({
@@ -326,7 +405,12 @@ export default class AccordionList extends Component {
         if (alwaysExpanded) {
           globalSearch = true;
         } else {
-          rows.push({ type: "search", section, sectionIndex, isLastSection });
+          rows.push({
+            type: "search",
+            section,
+            sectionIndex,
+            isLastSection,
+          });
         }
       }
       if (
@@ -338,7 +422,7 @@ export default class AccordionList extends Component {
         for (const [itemIndex, item] of section.items.entries()) {
           if (searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
-            if (this.props.itemIsSelected(item)) {
+            if (itemIsSelected(item)) {
               this._initialSelectedRowIndex = rows.length;
             }
             rows.push({
@@ -372,9 +456,79 @@ export default class AccordionList extends Component {
       });
     }
 
+    return rows;
+  };
+
+  getRows() {
+    const {
+      searchable,
+      searchProp,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+      hideSingleSectionTitle,
+      itemIsSelected,
+      hideEmptySectionsInSearch,
+    } = this.props;
+
+    const { searchText } = this.state;
+
+    const openSection = this.getOpenSection();
+
+    return this.getRowsCached(
+      searchText,
+      searchable,
+      searchProp,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+      hideSingleSectionTitle,
+      itemIsSelected,
+      hideEmptySectionsInSearch,
+      openSection,
+    );
+  }
+
+  canToggleSections = () => {
+    const { alwaysTogglable, sections } = this.props;
+    return alwaysTogglable || sections.length > 1;
+  };
+
+  isRowSelected = row => {
+    if (!this.state.cursor) {
+      return false;
+    }
+
+    const { sectionIndex, itemIndex } = this.state.cursor;
+    return (
+      row.sectionIndex === sectionIndex &&
+      (row.itemIndex === itemIndex ||
+        (itemIndex == null && row.itemIndex == null))
+    );
+  };
+
+  isSectionExpanded = sectionIndex => {
+    const openSection = this.getOpenSection();
+
+    return this.props.alwaysExpanded || openSection === sectionIndex;
+  };
+
+  render() {
+    const { id, style, className, sections } = this.props;
+    const { cursor } = this.state;
+
+    const rows = this.getRows();
+
+    const scrollToIndex =
+      cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
+
     if (this.props.maxHeight === Infinity) {
       return (
-        <div
+        <AccordionListRoot
+          role="tree"
+          innerRef={this.containerRef}
+          onKeyDown={this.handleKeyDown}
+          tabIndex={-1}
           className={className}
           style={{
             width: this.props.width,
@@ -390,12 +544,12 @@ export default class AccordionList extends Component {
               onChange={this.handleChange}
               searchText={this.state.searchText}
               onChangeSearchText={this.handleChangeSearchText}
-              sectionIsExpanded={sectionIsExpanded}
-              sectionIsTogglable={sectionIsTogglable}
+              sectionIsExpanded={this.isSectionExpanded}
+              canToggleSections={this.canToggleSections()}
               toggleSection={this.toggleSection}
             />
           ))}
-        </div>
+        </AccordionListRoot>
       );
     }
 
@@ -420,228 +574,60 @@ export default class AccordionList extends Component {
     };
 
     return (
-      <List
-        id={id}
-        ref={list => (this._list = list)}
-        className={className}
-        style={{ ...defaultListStyle, ...style }}
-        containerStyle={{ pointerEvents: "auto" }}
-        width={width}
-        height={height}
-        rowCount={rows.length}
-        deferredMeasurementCache={this._cache}
-        rowHeight={this._cache.rowHeight}
-        // HACK: needs to be large enough to render enough rows to fill the screen since we used
-        // the CellMeasurerCache to calculate the height
-        overscanRowCount={100}
-        // ensure `scrollToRow` scrolls the row to the top of the list
-        scrollToAlignment="start"
-        rowRenderer={({ key, index, parent, style }) => {
-          return (
-            <CellMeasurer
-              cache={this._cache}
-              columnIndex={0}
-              key={key}
-              rowIndex={index}
-              parent={parent}
-            >
-              {({ measure }) => (
-                <AccordionListCell
-                  {...this.props}
-                  style={style}
-                  row={rows[index]}
-                  sections={sections}
-                  onChange={this.handleChange}
-                  searchText={this.state.searchText}
-                  onChangeSearchText={this.handleChangeSearchText}
-                  sectionIsExpanded={sectionIsExpanded}
-                  sectionIsTogglable={sectionIsTogglable}
-                  toggleSection={this.toggleSection}
-                />
-              )}
-            </CellMeasurer>
-          );
-        }}
-        onRowsRendered={({ startIndex, stopIndex }) => {
-          this._startIndex = startIndex;
-          this._stopIndex = stopIndex;
-        }}
-      />
+      <AccordionListRoot
+        role="tree"
+        innerRef={this.containerRef}
+        onKeyDown={this.handleKeyDown}
+        tabIndex={-1}
+      >
+        <List
+          id={id}
+          ref={list => (this._list = list)}
+          className={className}
+          style={{ ...defaultListStyle, ...style }}
+          containerStyle={{ pointerEvents: "auto" }}
+          width={width}
+          height={height}
+          rowCount={rows.length}
+          deferredMeasurementCache={this._cache}
+          rowHeight={this._cache.rowHeight}
+          // HACK: needs to be large enough to render enough rows to fill the screen since we used
+          // the CellMeasurerCache to calculate the height
+          overscanRowCount={100}
+          scrollToIndex={scrollToIndex}
+          rowRenderer={({ key, index, parent, style }) => {
+            return (
+              <CellMeasurer
+                cache={this._cache}
+                columnIndex={0}
+                key={key}
+                rowIndex={index}
+                parent={parent}
+              >
+                {({ measure }) => (
+                  <AccordionListCell
+                    hasCursor={this.isRowSelected(rows[index])}
+                    {...this.props}
+                    style={style}
+                    row={rows[index]}
+                    sections={sections}
+                    onChange={this.handleChange}
+                    searchText={this.state.searchText}
+                    onChangeSearchText={this.handleChangeSearchText}
+                    sectionIsExpanded={this.isSectionExpanded}
+                    canToggleSections={this.canToggleSections()}
+                    toggleSection={this.toggleSection}
+                  />
+                )}
+              </CellMeasurer>
+            );
+          }}
+          onRowsRendered={({ startIndex, stopIndex }) => {
+            this._startIndex = startIndex;
+            this._stopIndex = stopIndex;
+          }}
+        />
+      </AccordionListRoot>
     );
   }
 }
-
-/* eslint-disable react/prop-types */
-
-const AccordionListCell = ({
-  style,
-  sections,
-  row,
-  onChange,
-  itemIsSelected,
-  itemIsClickable,
-  sectionIsExpanded,
-  sectionIsTogglable,
-  alwaysExpanded,
-  toggleSection,
-  renderSectionIcon,
-  renderSectionExtra,
-  renderItemName,
-  renderItemDescription,
-  renderItemIcon,
-  renderItemExtra,
-  renderItemWrapper,
-  renderSearchSection,
-  searchText,
-  onChangeSearchText,
-  searchPlaceholder,
-  searchInputProps,
-  showItemArrows,
-  itemTestId,
-  getItemClassName,
-}) => {
-  const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
-  let content;
-  if (type === "header") {
-    if (alwaysExpanded) {
-      content = (
-        <div
-          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
-          style={{ color: color }}
-        >
-          {section.name}
-        </div>
-      );
-    } else {
-      const icon = renderSectionIcon(section, sectionIndex);
-      const extra = renderSectionExtra(section, sectionIndex);
-      const name = section.name;
-      content = (
-        <div
-          className={cx(
-            "List-section-header mx2 py2 flex align-center hover-parent hover--opacity",
-            {
-              "cursor-pointer": sectionIsTogglable(sectionIndex),
-              "text-brand": sectionIsExpanded(sectionIndex),
-            },
-          )}
-          onClick={
-            sectionIsTogglable(sectionIndex) &&
-            (() => toggleSection(sectionIndex))
-          }
-        >
-          {icon && (
-            <span className="List-section-icon mr1 flex align-center">
-              {icon}
-            </span>
-          )}
-          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
-          {extra}
-          {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className="flex-align-right ml1 hover-child">
-              <Icon
-                name={
-                  sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"
-                }
-                size={12}
-              />
-            </span>
-          )}
-        </div>
-      );
-    }
-  } else if (type === "header-hidden") {
-    content = <div className="my1" />;
-  } else if (type === "loading") {
-    content = (
-      <div className="m1 flex layout-centered">
-        <LoadingSpinner />
-      </div>
-    );
-  } else if (type === "search") {
-    const searchFieldProps = {
-      autoFocus: true,
-      hasClearButton: true,
-      value: searchText,
-      onChange: onChangeSearchText,
-      placeholder: searchPlaceholder,
-      ...searchInputProps,
-    };
-    content =
-      typeof renderSearchSection === "function" ? (
-        renderSearchSection(
-          <ListSearchField
-            {...searchFieldProps}
-            className="bg-white flex flex-full"
-          />,
-        )
-      ) : (
-        <ListSearchField {...searchFieldProps} className="bg-white m1" />
-      );
-  } else if (type === "item") {
-    const isSelected = itemIsSelected(item, itemIndex);
-    const isClickable = itemIsClickable(item, itemIndex);
-    const icon = renderItemIcon(item, itemIndex, isSelected);
-    const name = renderItemName(item, itemIndex, isSelected);
-    const description = renderItemDescription(item, itemIndex, isSelected);
-    content = (
-      <div
-        data-testid={itemTestId}
-        aria-selected={isSelected}
-        className={cx(
-          "List-item flex mx1",
-          {
-            "List-item--selected": isSelected,
-            "List-item--disabled": !isClickable,
-            mb1: isLastItem,
-          },
-          getItemClassName(item, itemIndex),
-        )}
-      >
-        <a
-          className={cx(
-            "p1 flex-auto flex align-center",
-            isClickable ? "cursor-pointer" : "cursor-default",
-          )}
-          onClick={isClickable ? () => onChange(item) : null}
-        >
-          {icon && (
-            <span className="List-item-icon text-default flex align-center">
-              {icon}
-            </span>
-          )}
-          <div>
-            {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
-            {description && (
-              <p className="List-item-description ml1 text-wrap">
-                {description}
-              </p>
-            )}
-          </div>
-        </a>
-        {renderItemExtra(item, itemIndex, isSelected)}
-        {showItemArrows && (
-          <div className="List-item-arrow flex align-center px1">
-            <Icon name="chevronright" size={8} />
-          </div>
-        )}
-      </div>
-    );
-
-    if (renderItemWrapper) {
-      content = renderItemWrapper(content, item);
-    }
-  }
-
-  return (
-    <div
-      style={style}
-      className={cx("List-section", section.className, {
-        "List-section--expanded": sectionIsExpanded(sectionIndex),
-        "List-section--togglable": sectionIsTogglable(sectionIndex),
-      })}
-    >
-      {content}
-    </div>
-  );
-};

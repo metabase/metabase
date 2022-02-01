@@ -18,7 +18,7 @@ import SchedulePicker from "metabase/components/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/core/components/Toggle";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";

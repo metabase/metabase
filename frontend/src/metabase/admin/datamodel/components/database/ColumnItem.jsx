@@ -5,7 +5,7 @@ import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { isCurrency } from "metabase/lib/schema_metadata";

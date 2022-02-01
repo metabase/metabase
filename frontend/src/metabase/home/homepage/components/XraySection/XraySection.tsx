@@ -3,7 +3,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Ellipsified from "metabase/components/Ellipsified";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Tooltip from "metabase/components/Tooltip";
 import { DatabaseCandidate, TableCandidate, User } from "metabase-types/api";
 import Section, {
