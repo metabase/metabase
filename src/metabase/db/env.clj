@@ -22,8 +22,7 @@
             [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.db.data-source :as mdb.data-source]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util :as u]))
 
 (defn- get-db-file
   "Takes a filename and converts it to H2-compatible filename."
@@ -68,10 +67,12 @@
 (when (and (= raw-connection-string-type :postgres)
            (str/includes? raw-connection-string "ssl=true")
            (not (str/includes? raw-connection-string "sslmode=require")))
-  (log/warn (str/join " " [(trs "Warning: Postgres connection string with `ssl=true` detected.")
-                           (trs "You may need to add `?sslmode=require` to your application DB connection string.")
-                           (trs "If Metabase fails to launch, please add it and try again.")
-                           (trs "See https://github.com/metabase/metabase/issues/8908 for more details.")])))
+  ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log this
+  ;; and thus the site locale is unavailable.
+  (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
+                           "You may need to add `?sslmode=require` to your application DB connection string."
+                           "If Metabase fails to launch, please add it and try again."
+                           "See https://github.com/metabase/metabase/issues/8908 for more details."])))
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
@@ -81,16 +82,16 @@
 
 (when (= db-type :h2)
   (log/warn
-   (u/format-color 'red
-       (str
-        (trs "WARNING: Using Metabase with an H2 application database is not recommended for production deployments.")
-        " "
-        (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
-        " "
-        (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
-        " "
-        (trs "For more information, see")
-        " https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
+   (u/format-color
+    :red
+    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+    ;; this and thus the site locale is unavailable.
+    (str/join
+     " "
+     ["WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
+      "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead."
+      "If you decide to continue to use H2, please be sure to back up the database file regularly."
+      "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
 
 (def ^:private broken-out-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
