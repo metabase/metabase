@@ -19,10 +19,7 @@ describeWithToken("scenarios > question > caching", () => {
     openEditingModalForm();
     modal().within(() => {
       cy.findByText("More options").click();
-      cy.findByPlaceholderText("24")
-        .clear()
-        .type("48")
-        .blur();
+      cy.findByPlaceholderText("24").clear().type("48").blur();
       cy.button("Save").click();
     });
 
@@ -32,10 +29,7 @@ describeWithToken("scenarios > question > caching", () => {
     openEditingModalForm();
     modal().within(() => {
       cy.findByText("More options").click();
-      cy.findByDisplayValue("48")
-        .clear()
-        .type("0")
-        .blur();
+      cy.findByDisplayValue("48").clear().type("0").blur();
       cy.button("Save").click();
     });
 

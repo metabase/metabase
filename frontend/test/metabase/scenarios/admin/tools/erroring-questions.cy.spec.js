@@ -33,9 +33,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
       // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
       cy.visit("/admin");
 
-      cy.get("nav")
-        .contains("Tools")
-        .click();
+      cy.get("nav").contains("Tools").click();
 
       cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
       cy.findByRole("link", { name: "Erroring Questions" })
@@ -68,9 +66,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
 
       selectQuestion(brokenQuestionDetails.name);
 
-      cy.button("Rerun Selected")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Rerun Selected").should("not.be.disabled").click();
 
       cy.wait("@dataset");
 
@@ -96,9 +92,7 @@ describeWithToken("admin > tools > erroring questions ", () => {
 
       selectQuestion(brokenQuestionDetails.name);
 
-      cy.button("Rerun Selected")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Rerun Selected").should("not.be.disabled").click();
 
       cy.wait("@dataset");
 
@@ -126,8 +120,6 @@ function selectQuestion(name) {
   cy.findByText(name)
     .closest("tr")
     .within(() => {
-      cy.findByRole("checkbox")
-        .click()
-        .should("be.checked");
+      cy.findByRole("checkbox").click().should("be.checked");
     });
 }

@@ -139,31 +139,21 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseenter");
+      cy.get(".cellData").contains(column).trigger("mouseenter");
 
       popover().within(() => {
         test();
       });
 
-      cy.get(".cellData")
-        .contains(column)
-        .trigger("mouseleave");
+      cy.get(".cellData").contains(column).trigger("mouseleave");
     });
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findAllByTestId("dimension-list-item-name")
-      .first()
-      .click();
+    cy.findAllByText("Summarize").first().click();
+    cy.findAllByTestId("dimension-list-item-name").first().click();
 
     cy.icon("table2").click();
 
-    cy.get(".cellData")
-      .contains("Count")
-      .trigger("mouseenter");
+    cy.get(".cellData").contains("Count").trigger("mouseenter");
 
     popover().within(() => {
       cy.contains("No special type");
@@ -187,9 +177,7 @@ describe("scenarios > visualizations > table", () => {
     openNativeEditor().type("select * from products");
     cy.get(".NativeQueryEditor .Icon-play").click();
 
-    cy.get(".cellData")
-      .contains("CATEGORY")
-      .trigger("mouseenter");
+    cy.get(".cellData").contains("CATEGORY").trigger("mouseenter");
     popover().within(() => {
       cy.contains("No special type");
       cy.findByText("No description");

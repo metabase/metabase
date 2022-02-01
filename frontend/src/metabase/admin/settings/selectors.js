@@ -426,7 +426,7 @@ export const getSections = createSelector(getSettings, settings => {
   const settingsByKey = _.groupBy(settings, "key");
   const sectionsWithAPISettings = {};
   for (const [slug, section] of Object.entries(SECTIONS)) {
-    const settings = section.settings.map(function(setting) {
+    const settings = section.settings.map(function (setting) {
       const apiSetting =
         settingsByKey[setting.key] && settingsByKey[setting.key][0];
       if (apiSetting) {

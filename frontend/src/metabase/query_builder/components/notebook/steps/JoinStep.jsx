@@ -193,10 +193,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
   }
 
   function addNewDimensionsPair(index) {
-    join
-      .addEmptyDimensionsPair()
-      .parent()
-      .update(updateQuery);
+    join.addEmptyDimensionsPair().parent().update(updateQuery);
 
     // Need to wait, so a new dimensions pair renders
     // and a corresponding ref is created, so we can reference it here
@@ -259,10 +256,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
               }
 
               function removeDimensionPair() {
-                join
-                  .removeCondition(index)
-                  .parent()
-                  .update(updateQuery);
+                join.removeCondition(index).parent().update(updateQuery);
               }
 
               return (
@@ -448,10 +442,7 @@ function JoinTypePicker({ join, color, updateQuery }) {
   const strategyOption = join.strategyOption();
 
   function onChange(strategy) {
-    join
-      .setStrategy(strategy)
-      .parent()
-      .update(updateQuery);
+    join.setStrategy(strategy).parent().update(updateQuery);
   }
 
   return (
@@ -651,17 +642,11 @@ const JoinFieldsPicker = ({ join, updateQuery, ...props }) => {
   const selected = new Set(selectedDimensions.map(d => d.key()));
 
   function onSelectAll() {
-    join
-      .setFields("all")
-      .parent()
-      .update(updateQuery);
+    join.setFields("all").parent().update(updateQuery);
   }
 
   function onSelectNone() {
-    join
-      .setFields("none")
-      .parent()
-      .update(updateQuery);
+    join.setFields("none").parent().update(updateQuery);
   }
 
   function onToggleDimension(dimension) {

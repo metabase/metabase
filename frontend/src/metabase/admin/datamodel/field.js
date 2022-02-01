@@ -9,8 +9,8 @@ export const DISCARD_FIELD_VALUES =
 
 export const rescanFieldValues = createThunkAction(
   RESCAN_FIELD_VALUES,
-  function(fieldId) {
-    return async function(dispatch, getState) {
+  function (fieldId) {
+    return async function (dispatch, getState) {
       try {
         const call = await MetabaseApi.field_rescan_values({ fieldId });
         MetabaseAnalytics.trackStructEvent(
@@ -27,8 +27,8 @@ export const rescanFieldValues = createThunkAction(
 
 export const discardFieldValues = createThunkAction(
   DISCARD_FIELD_VALUES,
-  function(fieldId) {
-    return async function(dispatch, getState) {
+  function (fieldId) {
+    return async function (dispatch, getState) {
       try {
         const call = await MetabaseApi.field_discard_values({ fieldId });
         MetabaseAnalytics.trackStructEvent(

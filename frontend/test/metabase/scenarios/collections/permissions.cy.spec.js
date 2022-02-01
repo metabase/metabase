@@ -63,9 +63,7 @@ describe("collection permissions", () => {
                     cy.visit("/collection/root");
                     cy.findByText("Orders in a dashboard").click();
                     cy.icon("add").click();
-                    popover()
-                      .findByText("Dashboard")
-                      .click();
+                    popover().findByText("Dashboard").click();
                     cy.findByTestId("select-button").findByText(
                       "Our analytics",
                     );
@@ -217,9 +215,7 @@ describe("collection permissions", () => {
                     });
                     cy.icon("pencil").click();
                     cy.findByText("Archive this collection").click();
-                    cy.get(".Modal")
-                      .findByText("Archive")
-                      .click();
+                    cy.get(".Modal").findByText("Archive").click();
                     cy.get("[class*=PageHeading]")
                       .as("title")
                       .contains("Second collection");
@@ -298,9 +294,7 @@ describe("collection permissions", () => {
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                       cy.icon("pencil").click();
                       cy.findByText("Archive this collection").click();
-                      cy.get(".Modal")
-                        .findByText("Cancel")
-                        .click();
+                      cy.get(".Modal").findByText("Cancel").click();
                       cy.location("pathname").should(
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
@@ -338,9 +332,7 @@ describe("collection permissions", () => {
                 it("should be able to edit question details (metabase#11719-1)", () => {
                   cy.skipOn(user === "nodata");
                   cy.findByTestId("edit-details-button").click();
-                  cy.findByLabelText("Name")
-                    .click()
-                    .type("1");
+                  cy.findByLabelText("Name").click().type("1");
                   clickButton("Save");
                   assertOnRequest("updateQuestion");
                   cy.findByText("Orders1");
@@ -353,9 +345,7 @@ describe("collection permissions", () => {
                     name: "Add a description",
                   }).click();
 
-                  cy.findByLabelText("Description")
-                    .click()
-                    .type("foo");
+                  cy.findByLabelText("Description").click().type("foo");
 
                   clickButton("Save");
                   assertOnRequest("updateQuestion");
@@ -413,12 +403,8 @@ describe("collection permissions", () => {
                 it("should be able to change title and description", () => {
                   cy.findByText("Edit dashboard details").click();
                   cy.location("pathname").should("eq", "/dashboard/1/details");
-                  cy.findByLabelText("Name")
-                    .click()
-                    .type("1");
-                  cy.findByLabelText("Description")
-                    .click()
-                    .type("Foo");
+                  cy.findByLabelText("Name").click().type("1");
+                  cy.findByLabelText("Description").click().type("Foo");
                   clickButton("Update");
                   assertOnRequest("updateDashboard");
                   cy.findByText("Orders in a dashboard1");
@@ -493,9 +479,7 @@ describe("collection permissions", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
               openEllipsisMenuFor("Orders in a dashboard");
-              popover()
-                .findByText("Duplicate")
-                .click();
+              popover().findByText("Duplicate").click();
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
               );
@@ -593,18 +577,14 @@ describe("collection permissions", () => {
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
-                popover()
-                  .findByText("Archive")
-                  .should("not.exist");
+                popover().findByText("Archive").should("not.exist");
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit("/dashboard/1");
                 cy.icon("ellipsis").click();
-                popover()
-                  .findByText("Duplicate")
-                  .click();
+                popover().findByText("Duplicate").click();
                 cy.findByTestId("select-button").findByText(
                   `${first_name} ${last_name}'s Personal Collection`,
                 );
@@ -648,9 +628,7 @@ describe("collection permissions", () => {
         cy.signInAsAdmin();
         visitAndEditDashboard(1);
         // Add another question without changing its size or moving it afterwards
-        cy.icon("add")
-          .last()
-          .click();
+        cy.icon("add").last().click();
         cy.findByText("Orders, Count").click();
         saveDashboard();
         // Revert the card to the state when the second card was added
@@ -803,9 +781,7 @@ function openEllipsisMenuFor(item, index = 0) {
 }
 
 function clickButton(name) {
-  cy.findByRole("button", { name })
-    .should("not.be.disabled")
-    .click();
+  cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function pinItem(item) {

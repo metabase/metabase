@@ -34,8 +34,6 @@ export const excludePinnedItems = (items, pinnedItems) =>
 export const filterItems = (items, filter) => {
   const trimmedFilter = filter.trim().toLowerCase();
   return items.filter(item =>
-    getItemName(item)
-      .toLowerCase()
-      .includes(trimmedFilter),
+    getItemName(item).toLowerCase().includes(trimmedFilter),
   );
 };

@@ -60,9 +60,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -110,9 +108,7 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
-      .first()
-      .click();
+    cy.findAllByText("Our analytics").first().click();
     getCollectionItemRow("Orders Model").within(() => {
       cy.icon("model");
     });
@@ -365,12 +361,8 @@ describe("scenarios > models", () => {
         cy.icon("pencil").click();
       });
       modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
+        cy.findByLabelText("Name").clear().type("M1");
+        cy.findByLabelText("Description").clear().type("foo");
         cy.button("Save").click();
       });
       cy.wait("@updateCard");
@@ -498,9 +490,7 @@ describe("scenarios > models", () => {
     });
     selectFromDropdown("Orders");
     cy.findByText("Save").click();
-    modal()
-      .findByText("Save")
-      .click();
+    modal().findByText("Save").click();
 
     turnIntoModel();
     assertIsModel();
@@ -537,9 +527,7 @@ describe("scenarios > models", () => {
         cy.visit(`/dashboard/${dashboardId}`);
         cy.icon("pencil").click();
         cy.get(".QueryBuilder-section .Icon-add").click();
-        sidebar()
-          .findByText("Orders Model")
-          .click();
+        sidebar().findByText("Orders Model").click();
         cy.button("Save").click();
         cy.wait("@fetchDashboard");
         cy.findByText("Orders Model");
@@ -551,9 +539,7 @@ describe("scenarios > models", () => {
       openNativeEditor().type("select * from {{#}}", {
         parseSpecialCharSequences: false,
       });
-      sidebar()
-        .findByText("Pick a question or a model")
-        .click();
+      sidebar().findByText("Pick a question or a model").click();
       selectFromDropdown("Orders Model");
       cy.get("@editor").contains("select * from {{#1}}");
       cy.get(".NativeQueryEditor .Icon-play").click();

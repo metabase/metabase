@@ -12,16 +12,10 @@ describe("issue 12614", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover()
-      .contains("Time")
-      .click();
-    popover()
-      .contains("All Options")
-      .click();
+    popover().contains("Time").click();
+    popover().contains("All Options").click();
 
-    cy.get(".DashCard")
-      .contains("Select")
-      .click();
+    cy.get(".DashCard").contains("Select").click();
 
     popover().contains("CREATED_AT");
   });

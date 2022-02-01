@@ -9,9 +9,7 @@ export function getDimensions(isSelected) {
 }
 
 export function getDimensionByName({ name, index = 0, isSelected }) {
-  return getDimensions(isSelected)
-    .filter(`:contains("${name}")`)
-    .eq(index);
+  return getDimensions(isSelected).filter(`:contains("${name}")`).eq(index);
 }
 
 export function getBinningButtonForDimension({ name, index, isSelected }) {

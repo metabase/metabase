@@ -75,10 +75,7 @@ function getComparisonFilter({ question, name, operator, column, value }) {
        * }
        */
 
-      const nestedQuestion = question
-        .query()
-        .nest()
-        .question();
+      const nestedQuestion = question.query().nest().question();
 
       return nestedQuestion.filter(
         operator,

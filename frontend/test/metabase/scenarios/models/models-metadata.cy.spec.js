@@ -139,9 +139,7 @@ describe("scenarios > models metadata", () => {
 
     sidebar().within(() => {
       cy.findByText("History").click();
-      cy.findAllByText("Revert")
-        .first()
-        .click();
+      cy.findAllByText("Revert").first().click();
     });
 
     cy.wait("@revert");

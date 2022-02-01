@@ -78,9 +78,8 @@ if (hasPremiumFeature("sandboxes")) {
     actionCreator: (entityId, groupId, view) =>
       push(getEditSegementedAccessUrl(entityId, groupId, view)),
   });
-  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[
-    "controlled"
-  ] = getEditSegmentedAcessPostAction;
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION["controlled"] =
+    getEditSegmentedAcessPostAction;
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE["controlled"] = {
     read: "all",
     query: "segmented",

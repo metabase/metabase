@@ -119,11 +119,13 @@ export default class FieldApp extends React.Component {
     ]);
   }
 
-  linkWithSaveStatus = saveMethod => async (...args) => {
-    this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
-    await saveMethod(...args);
-    this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
-  };
+  linkWithSaveStatus =
+    saveMethod =>
+    async (...args) => {
+      this.saveStatusRef.current && this.saveStatusRef.current.setSaving();
+      await saveMethod(...args);
+      this.saveStatusRef.current && this.saveStatusRef.current.setSaved();
+    };
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { field } = this.props;

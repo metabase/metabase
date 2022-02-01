@@ -208,10 +208,7 @@ export default class NativeQueryEditor extends Component {
     const selectedText = this._editor?.getSelectedText();
 
     if (selectedText) {
-      const temporaryCard = query
-        .setQueryText(selectedText)
-        .question()
-        .card();
+      const temporaryCard = query.setQueryText(selectedText).question().card();
 
       runQuestionQuery({
         overrideWithCard: temporaryCard,
@@ -292,7 +289,7 @@ export default class NativeQueryEditor extends Component {
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
           const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
-          const js_results = results.map(function(result) {
+          const js_results = results.map(function (result) {
             return {
               name: result[0],
               value: result[0],

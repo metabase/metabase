@@ -5,14 +5,8 @@ import {
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS_ID,
-  ORDERS,
-  PEOPLE_ID,
-  PEOPLE,
-  PRODUCTS_ID,
-  PRODUCTS,
-} = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > binning > from a saved QB question with explicit joins", () => {
   beforeEach(() => {
@@ -82,9 +76,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -150,9 +142,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       });
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -215,9 +205,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.get("circle");
 
       // Make sure time series footer works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Month")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Month").click();
       cy.findByText("Quarter").click();
 
       // Reproduces metabase#16693
@@ -263,13 +251,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label")
-    .invoke("text")
-    .should("eq", xLabel);
+  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
 
-  cy.get(".y-axis-label")
-    .invoke("text")
-    .should("eq", yLabel);
+  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {

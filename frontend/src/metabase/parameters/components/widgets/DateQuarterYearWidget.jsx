@@ -40,10 +40,7 @@ export default class DateQuarterYearWidget extends Component {
   componentWillUnmount() {
     const { quarter, year } = this.state;
     if (quarter != null && year != null) {
-      const value = moment()
-        .year(year)
-        .quarter(quarter)
-        .format("[Q]Q-YYYY");
+      const value = moment().year(year).quarter(quarter).format("[Q]Q-YYYY");
       if (this.props.value !== value) {
         this.props.setValue(value);
       }
@@ -88,8 +85,6 @@ const Quarter = ({ quarter, selected, onClick }) => (
     style={{ width: 75, height: 75 }}
     onClick={onClick}
   >
-    {moment()
-      .quarter(quarter)
-      .format(QUARTER_FORMAT_STRING)}
+    {moment().quarter(quarter).format(QUARTER_FORMAT_STRING)}
   </li>
 );

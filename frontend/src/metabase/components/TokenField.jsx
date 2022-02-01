@@ -183,11 +183,8 @@ export default class TokenField extends Component {
   };
 
   onInputChange = ({ target: { value } }) => {
-    const {
-      updateOnInputChange,
-      onInputChange,
-      parseFreeformValue,
-    } = this.props;
+    const { updateOnInputChange, onInputChange, parseFreeformValue } =
+      this.props;
 
     if (onInputChange) {
       value = onInputChange(value) || "";

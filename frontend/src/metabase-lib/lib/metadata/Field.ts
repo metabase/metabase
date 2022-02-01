@@ -76,9 +76,7 @@ export default class Field extends Base {
     }
 
     if (includePath) {
-      displayName += this.path()
-        .map(formatField)
-        .join(": ");
+      displayName += this.path().map(formatField).join(": ");
     } else {
       displayName += formatField(this);
     }

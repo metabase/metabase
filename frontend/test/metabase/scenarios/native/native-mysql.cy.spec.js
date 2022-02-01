@@ -29,15 +29,11 @@ describe("scenatios > question > native > mysql", () => {
     cy.get("@queryPreview").contains("Widget");
 
     // Filter by Product ID = 1 (its category is Gizmo)
-    cy.findByPlaceholderText(/Id/i)
-      .click()
-      .type("1");
+    cy.findByPlaceholderText(/Id/i).click().type("1");
 
     cy.get(".NativeQueryEditor .Icon-play").click();
 
-    cy.get("@queryPreview")
-      .contains("Widget")
-      .should("not.exist");
+    cy.get("@queryPreview").contains("Widget").should("not.exist");
 
     cy.get("@queryPreview").contains("Gizmo");
   });
@@ -51,13 +47,9 @@ describe("scenatios > question > native > mysql", () => {
     cy.contains("Save").click();
 
     modal().within(() => {
-      cy.findByLabelText("Name")
-        .focus()
-        .type("sql count");
+      cy.findByLabelText("Name").focus().type("sql count");
 
-      cy.button("Save")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

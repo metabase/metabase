@@ -65,15 +65,9 @@ describe.skip("scenarios > public", () => {
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByTestId("add-to-dashboard-button").click();
-      modal()
-        .contains("Create a new dashboard")
-        .click();
-      modal()
-        .get('input[name="name"]')
-        .type("parameterized dashboard");
-      modal()
-        .contains("Create")
-        .click();
+      modal().contains("Create a new dashboard").click();
+      modal().get('input[name="name"]').type("parameterized dashboard");
+      modal().contains("Create").click();
 
       cy.icon("filter").click();
 
@@ -83,9 +77,7 @@ describe.skip("scenarios > public", () => {
       });
 
       cy.contains("Select…").click();
-      popover()
-        .contains("Text")
-        .click();
+      popover().contains("Text").click();
 
       cy.contains("Done").click();
       cy.contains("Save").click();
@@ -120,10 +112,7 @@ describe.skip("scenarios > public", () => {
 
       cy.icon("share").click();
 
-      cy.contains("Enable sharing")
-        .parent()
-        .find("a")
-        .click();
+      cy.contains("Enable sharing").parent().find("a").click();
 
       cy.contains("Public link")
         .parent()
@@ -165,10 +154,7 @@ describe.skip("scenarios > public", () => {
       cy.icon("share").click();
       cy.contains("Sharing and embedding").click();
 
-      cy.contains("Enable sharing")
-        .parent()
-        .find("a")
-        .click();
+      cy.contains("Enable sharing").parent().find("a").click();
 
       cy.contains("Public link")
         .parent()

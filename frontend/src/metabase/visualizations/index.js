@@ -3,7 +3,7 @@ import _ from "underscore";
 
 const visualizations = new Map();
 const aliases = new Map();
-visualizations.get = function(key) {
+visualizations.get = function (key) {
   return (
     Map.prototype.get.call(this, key) ||
     aliases.get(key) ||

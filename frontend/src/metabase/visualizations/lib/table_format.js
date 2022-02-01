@@ -25,7 +25,7 @@ export function makeCellBackgroundGetter(rows, cols, settings) {
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
   } else {
-    return function(value, rowIndex, colName) {
+    return function (value, rowIndex, colName) {
       if (formatters[colName]) {
         // const value = rows[rowIndex][colIndexes[colName]];
         for (let i = 0; i < formatters[colName].length; i++) {
@@ -68,10 +68,10 @@ export const OPERATOR_FORMATTER_FACTORIES = {
     typeof value === "number" && v >= value ? color : null,
   ">": (value, color) => v =>
     typeof value === "number" && v > value ? color : null,
-  "=": (value, color) => v => (v === value ? color : null),
-  "!=": (value, color) => v => (v !== value ? color : null),
-  "is-null": (_value, color) => v => (v === null ? color : null),
-  "not-null": (_value, color) => v => (v !== null ? color : null),
+  "=": (value, color) => v => v === value ? color : null,
+  "!=": (value, color) => v => v !== value ? color : null,
+  "is-null": (_value, color) => v => v === null ? color : null,
+  "not-null": (_value, color) => v => v !== null ? color : null,
   contains: (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
       ? color

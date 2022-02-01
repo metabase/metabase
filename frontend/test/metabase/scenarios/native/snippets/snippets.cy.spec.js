@@ -3,9 +3,7 @@ import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
 // HACK which lets us type (even very long words) without losing focus
 // this is needed for fields where autocomplete suggestions are enabled
 function _clearAndIterativelyTypeUsingLabel(label, string) {
-  cy.findByLabelText(label)
-    .click()
-    .clear();
+  cy.findByLabelText(label).click().clear();
 
   for (const char of string) {
     cy.findByLabelText(label).type(char);
@@ -120,9 +118,7 @@ describe("scenarios > question > snippets", () => {
       });
     });
 
-    cy.get(".Visualization")
-      .as("results")
-      .findByText("37.65");
+    cy.get(".Visualization").as("results").findByText("37.65");
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
@@ -134,8 +130,8 @@ describe("scenarios > question > snippets", () => {
       .click()
       .type(
         "{end}" +
-        "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
-        "{backspace}".repeat("Orders".length) + // Delete orders character by character
+          "{leftarrow}".repeat("}} limit 1".length) + // move left to "reach" the "Orders"
+          "{backspace}".repeat("Orders".length) + // Delete orders character by character
           "Reviews",
       );
     // Check 2

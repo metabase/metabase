@@ -339,8 +339,8 @@ describe("meta/Dashboard", () => {
 
       expect(mappings).toEqual({
         parameter1: {
-          "81": {
-            "56": {
+          81: {
+            56: {
               card_id: 56,
               dashcard_id: 81,
               field: metadata.field(120),
@@ -349,8 +349,8 @@ describe("meta/Dashboard", () => {
               target: ["dimension", ["field", 120, null]],
             },
           },
-          "86": {
-            "59": {
+          86: {
+            59: {
               card_id: 59,
               dashcard_id: 86,
               field: metadata.field(134),
@@ -359,8 +359,8 @@ describe("meta/Dashboard", () => {
               target: ["dimension", ["template-tag", "bbb"]],
             },
           },
-          "87": {
-            "62": {
+          87: {
+            62: {
               card_id: 62,
               dashcard_id: 87,
               field: expect.any(Field),

@@ -39,12 +39,8 @@ describe("metabase-smoketest > admin", () => {
       cy.findByLabelText("Email").type(admin.email);
       cy.findByLabelText("Company or team name").type("Epic Team");
 
-      cy.findByLabelText("Create a password")
-        .clear()
-        .type(admin.password);
-      cy.findByLabelText("Confirm your password")
-        .clear()
-        .type(admin.password);
+      cy.findByLabelText("Create a password").clear().type(admin.password);
+      cy.findByLabelText("Confirm your password").clear().type(admin.password);
       cy.findByText("Next").click();
 
       // Database
@@ -102,21 +98,15 @@ describe("metabase-smoketest > admin", () => {
       // Filter for created within previous 5 years
 
       cy.findByText("Filter").click();
-      cy.findAllByText("Created At")
-        .last()
-        .click();
+      cy.findAllByText("Created At").last().click();
       cy.get("input[type='text']").type("{selectall}{del}5");
       cy.findByText("Days").click();
       cy.findByText("Years").click();
-      sidebar()
-        .findByText("Add filter")
-        .click();
+      sidebar().findByText("Add filter").click();
 
       // Summarize by source
 
-      cy.get(".Button")
-        .contains("Summarize")
-        .click();
+      cy.get(".Button").contains("Summarize").click();
       cy.findByText("Source").click();
       cy.findByText("Done").click();
 
@@ -127,9 +117,7 @@ describe("metabase-smoketest > admin", () => {
 
     it.skip("should add question to a new dashboard in my personal collection as admin", () => {
       cy.findByText("Save").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("People per Source");
+      cy.findByLabelText("Name").clear().type("People per Source");
       cy.findByLabelText("Description").type(
         "Bar graph illustrating where our customers come from",
       );
@@ -138,9 +126,7 @@ describe("metabase-smoketest > admin", () => {
       // cy.findByText("Our analytics").click();
       // cy.findByText("My personal collection").click();
       // cy.contains("My personal collection");
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText("Yes please!").click();
       cy.findByText("Create a new dashboard").click();
       cy.findByLabelText("Name").type("Demo Dash");
@@ -167,9 +153,7 @@ describe("metabase-smoketest > admin", () => {
       visualize();
 
       // Summarize by State
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      cy.findAllByText("Summarize").first().click();
       cy.findByText("State").click();
       cy.findByText("Done").click();
 
@@ -178,12 +162,8 @@ describe("metabase-smoketest > admin", () => {
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Order Totals by State");
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findByLabelText("Name").clear().type("Order Totals by State");
+      cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();
     });
 
@@ -198,25 +178,16 @@ describe("metabase-smoketest > admin", () => {
       cy.findByText("Pick your data").should("not.exist");
 
       // Summarize by date ordered
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
-      sidebar()
-        .contains("Created At")
-        .click();
+      cy.findAllByText("Summarize").first().click();
+      sidebar().contains("Created At").click();
       cy.findByText("Done").click();
 
       cy.icon("line").should("have.length", 2);
 
       // Save question (not to a dashboard)
       cy.findByText("Save").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Orders Over Time");
-      cy.get(".ModalContent")
-        .get(".Button")
-        .contains("Save")
-        .click();
+      cy.findByLabelText("Name").clear().type("Orders Over Time");
+      cy.get(".ModalContent").get(".Button").contains("Save").click();
       cy.findByText("Not now").click();
     });
 
@@ -331,12 +302,8 @@ describe("metabase-smoketest > admin", () => {
         cy.findByTextEnsureVisible("Sample Database").click();
         cy.findByTextEnsureVisible("Reviews").click();
 
-        cy.get(".Button")
-          .findByText("Summarize")
-          .click();
-        cy.findAllByText("Rating")
-          .last()
-          .click();
+        cy.get(".Button").findByText("Summarize").click();
+        cy.findAllByText("Rating").last().click();
         cy.findByText("Done").click();
 
         cy.contains("Auto binned");
@@ -347,14 +314,10 @@ describe("metabase-smoketest > admin", () => {
           .clear()
           .type("Number of Reviews by Range of Rating");
         cy.icon("chevrondown").click();
-        cy.findAllByText("Our analytics")
-          .last()
-          .click();
+        cy.findAllByText("Our analytics").last().click();
         // *** Won't save into personal collection (metabase#12718)
         // cy.findByText("My personal collection").click();
-        cy.findAllByText("Save")
-          .last()
-          .click();
+        cy.findAllByText("Save").last().click();
         cy.findByText("Not now").click();
 
         // =================
@@ -364,21 +327,15 @@ describe("metabase-smoketest > admin", () => {
         cy.findByText("Dashboard").click();
         cy.findByLabelText("Name").type("New User Demo Dash");
         cy.findByLabelText("Description").type("This is my own demo dash!");
-        cy.get(".ModalBody")
-          .find(".Icon-chevrondown")
-          .click();
-        cy.findAllByText("Our analytics")
-          .last()
-          .click();
+        cy.get(".ModalBody").find(".Icon-chevrondown").click();
+        cy.findAllByText("Our analytics").last().click();
         // *** Won't save into personal collection (metabase#12718)
         cy.findByText("Create").click();
 
         cy.findByText("This dashboard is looking empty.");
         cy.contains("Number of").should("not.exist");
 
-        cy.icon("add")
-          .last()
-          .click();
+        cy.icon("add").last().click();
         cy.findByText("Number of Reviews by Range of Rating").click();
         cy.findByText("Save").click();
 

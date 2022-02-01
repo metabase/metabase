@@ -31,16 +31,12 @@ describe("scenarios > models query editor", () => {
     cy.get(".TableInteractive");
     cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
 
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
+    cy.findByTestId("action-buttons").findByText("Summarize").click();
     selectFromDropdown("Count of rows");
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton")
-      .should("be.visible")
-      .click();
+    cy.get(".RunButton").should("be.visible").click();
 
     cy.get(".TableInteractive").within(() => {
       cy.findByText("Created At: Month");
@@ -76,25 +72,19 @@ describe("scenarios > models query editor", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
     cy.visit("/model/1/query");
 
-    cy.findByTestId("action-buttons")
-      .findByText("Join data")
-      .click();
+    cy.findByTestId("action-buttons").findByText("Join data").click();
     selectFromDropdown("People");
 
     cy.button("Save changes").click();
     openDetailsSidebar();
     cy.findByText("Edit query definition").click();
 
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
+    cy.findByTestId("action-buttons").findByText("Summarize").click();
     selectFromDropdown("Count of rows");
     cy.findByText("Pick a column to group by").click();
     selectFromDropdown("Created At");
 
-    cy.get(".RunButton")
-      .should("be.visible")
-      .click();
+    cy.get(".RunButton").should("be.visible").click();
     cy.wait("@dataset");
 
     cy.get(".LineAreaBarChart").should("not.exist");

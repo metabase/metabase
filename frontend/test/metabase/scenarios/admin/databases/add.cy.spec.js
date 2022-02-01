@@ -6,17 +6,11 @@ import {
 } from "__support__/e2e/cypress";
 
 function typeField(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByLabelText(label).clear().type(value).blur();
 }
 
 function toggleFieldWithDisplayName(displayName) {
-  cy.contains(displayName)
-    .closest(".Form-field")
-    .find("input")
-    .click();
+  cy.contains(displayName).closest(".Form-field").find("input").click();
 }
 
 function selectFieldOption(fieldName, option) {
@@ -24,9 +18,7 @@ function selectFieldOption(fieldName, option) {
     .parents(".Form-field")
     .findByTestId("select-button")
     .click();
-  popover()
-    .contains(option)
-    .click({ force: true });
+  popover().contains(option).click({ force: true });
 }
 
 describe("scenarios > admin > databases > add", () => {
@@ -62,9 +54,7 @@ describe("scenarios > admin > databases > add", () => {
     typeField("Database name", "test_postgres_db");
     typeField("Username", "uberadmin");
 
-    cy.button("Save")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Save").should("not.be.disabled").click();
 
     cy.wait("@createDatabase");
 
@@ -337,13 +327,8 @@ describe("scenarios > admin > databases > add", () => {
 
       cy.findByText("Show advanced options").click();
       cy.findByText("Use instance default (TTL)").click();
-      popover()
-        .findByText("Custom")
-        .click();
-      cy.findByDisplayValue("24")
-        .clear()
-        .type("48")
-        .blur();
+      popover().findByText("Custom").click();
+      cy.findByDisplayValue("24").clear().type("48").blur();
 
       cy.button("Save").click();
 
@@ -403,7 +388,5 @@ function chooseDatabase(database) {
 
 function isSyncOptionSelected(option) {
   // This is a really bad way to assert that the text element is selected/active. Can it be fixed in the FE code?
-  cy.findByText(option)
-    .parent()
-    .should("have.class", "text-brand");
+  cy.findByText(option).parent().should("have.class", "text-brand");
 }

@@ -41,8 +41,8 @@ describe("StructuredQuery behavioral tests", () => {
 
     const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
-    const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
-      .dimensions;
+    const filterDimensionOptions =
+      queryWithBreakout.filterDimensionOptions().dimensions;
     const filterDimension = filterDimensionOptions.find(
       d => d.field().id === ORDERS.TOTAL.id,
     );
@@ -217,9 +217,7 @@ describe("StructuredQuery", () => {
       });
       it("returns a standard aggregation name", () => {
         expect(
-          makeQueryWithAggregation(["count"])
-            .aggregations()[0]
-            .displayName(),
+          makeQueryWithAggregation(["count"]).aggregations()[0].displayName(),
         ).toBe("Count");
       });
       it("returns a standard aggregation name with field", () => {

@@ -24,9 +24,7 @@ describeWithToken("scenarios > question > snippets", () => {
       cy.findByLabelText("Give your snippet a name").type("night snippet");
       cy.contains("Save").click();
     });
-    cy.icon("play")
-      .first()
-      .click();
+    cy.icon("play").first().click();
     cy.get(".ScalarValue").contains("a snippet darkly");
   });
 
@@ -77,17 +75,11 @@ describeWithToken("scenarios > question > snippets", () => {
     modal().within(() => {
       cy.findByText("Permissions for Top folder");
       cy.contains("All Users");
-      cy.get(".ReactVirtualized__Grid .Icon-close")
-        .first()
-        .click();
+      cy.get(".ReactVirtualized__Grid .Icon-close").first().click();
     });
     // The click action is very flaky, sometimes it doesn't click the right thing
-    popover()
-      .contains("Grant Edit access")
-      .click();
-    modal()
-      .contains("Save")
-      .click();
+    popover().contains("Grant Edit access").click();
+    modal().contains("Save").click();
     // Now the user should be able to create a snippet
     cy.signInAsNormalUser();
 
@@ -123,10 +115,7 @@ describeWithToken("scenarios > question > snippets", () => {
 
     // create folder
     cy.icon("snippet").click();
-    cy.findByTestId("sidebar-right")
-      .as("sidebar")
-      .find(".Icon-add")
-      .click();
+    cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
     popover().within(() => cy.findByText("New folder").click());
     modal().within(() => {
       cy.findByText("Create your new folder");
@@ -196,24 +185,15 @@ describeWithToken("scenarios > question > snippets", () => {
 
       // Update permissions for "All users"
       modal().within(() => {
-        cy.findByTestId("permission-table")
-          .find(".Icon-close")
-          .first()
-          .click();
+        cy.findByTestId("permission-table").find(".Icon-close").first().click();
       });
 
-      cy.findAllByRole("option")
-        .contains("View")
-        .click();
+      cy.findAllByRole("option").contains("View").click();
       cy.button("Save").click();
 
       cy.wait("@updatePermissions");
 
-      cy.findByText("Snippets")
-        .parent()
-        .next()
-        .find(".Icon-ellipsis")
-        .click();
+      cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
       cy.findByText("Change permissions").click();
 
       // UI check

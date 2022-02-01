@@ -43,9 +43,7 @@ describe("scenarios > filters > sql filters > field filter > Category", () => {
       cy.findByText("Add filter").click();
     });
 
-    cy.get(".RunButton")
-      .first()
-      .click();
+    cy.get(".RunButton").first().click();
     cy.findByText("Showing 51 rows");
 
     cy.findByText("Open Editor").click();

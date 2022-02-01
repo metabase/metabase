@@ -461,9 +461,7 @@ export class FieldValuesWidget extends Component {
               return option.some(
                 value =>
                   value != null &&
-                  String(value)
-                    .toLowerCase()
-                    .includes(lowerCaseFilterString),
+                  String(value).toLowerCase().includes(lowerCaseFilterString),
               );
             }}
             onInputChange={this.onInputChange}

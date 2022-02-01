@@ -18,9 +18,7 @@ describe("scenarios > admin > permissions", () => {
 
   it("shows hidden tables", () => {
     cy.visit("/admin/datamodel/database/1");
-    cy.icon("eye_crossed_out")
-      .eq(0)
-      .click();
+    cy.icon("eye_crossed_out").eq(0).click();
 
     cy.visit("admin/permissions/data/group/1/database/1");
 
@@ -35,12 +33,8 @@ describe("scenarios > admin > permissions", () => {
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit("/admin/permissions/data/group/1");
-    cy.icon("eye")
-      .first()
-      .click();
-    cy.findAllByRole("option")
-      .contains("Unrestricted")
-      .click();
+    cy.icon("eye").first().click();
+    cy.findAllByRole("option").contains("Unrestricted").click();
 
     // stub out the PUT and save
     cy.server();
@@ -77,9 +71,7 @@ describe("scenarios > admin > permissions", () => {
       modal().should("not.exist");
 
       // Switching to data permissions page
-      cy.get("label")
-        .contains("Data permissions")
-        .click();
+      cy.get("label").contains("Data permissions").click();
 
       modal().within(() => {
         cy.findByText("Discard your unsaved changes?");
@@ -93,9 +85,7 @@ describe("scenarios > admin > permissions", () => {
       cy.url().should("include", "/admin/permissions/collections/root");
 
       // Switching to data permissions page again
-      cy.get("label")
-        .contains("Data permissions")
-        .click();
+      cy.get("label").contains("Data permissions").click();
 
       modal().within(() => {
         cy.button("Discard changes").click();
@@ -210,17 +200,13 @@ describe("scenarios > admin > permissions", () => {
       cy.findByText("You've made changes to permissions.");
 
       // Switching to databases focus should not show any warnings
-      cy.get("label")
-        .contains("Databases")
-        .click();
+      cy.get("label").contains("Databases").click();
 
       cy.url().should("include", "/admin/permissions/data/database");
       modal().should("not.exist");
 
       // Switching to collection permissions page
-      cy.get("label")
-        .contains("Collection permissions")
-        .click();
+      cy.get("label").contains("Collection permissions").click();
 
       modal().within(() => {
         cy.findByText("Discard your unsaved changes?");
@@ -234,9 +220,7 @@ describe("scenarios > admin > permissions", () => {
       cy.url().should("include", "/admin/permissions/data/database");
 
       // Switching to collection permissions page again
-      cy.get("label")
-        .contains("Collection permissions")
-        .click();
+      cy.get("label").contains("Collection permissions").click();
 
       modal().within(() => {
         cy.button("Discard changes").click();
@@ -393,9 +377,7 @@ describe("scenarios > admin > permissions", () => {
       it("allows view and edit permissions", () => {
         cy.visit("/admin/permissions/");
 
-        cy.get("label")
-          .contains("Databases")
-          .click();
+        cy.get("label").contains("Databases").click();
 
         cy.findByText("Select a database to see group permissions");
 
@@ -442,9 +424,7 @@ describe("scenarios > admin > permissions", () => {
         ]);
 
         // Navigate back
-        cy.get("a")
-          .contains("Sample Database")
-          .click();
+        cy.get("a").contains("Sample Database").click();
 
         assertPermissionTable([
           ["Administrators", "Unrestricted", "Yes"],
@@ -604,9 +584,7 @@ describeWithToken("scenarios > admin > permissions", () => {
         isPermissionDisabled("No self-service", false).click();
       });
 
-    popover()
-      .contains("Block")
-      .click();
+    popover().contains("Block").click();
 
     cy.get("@allUsersRow").within(() => {
       isPermissionDisabled("Block", false);
@@ -616,9 +594,7 @@ describeWithToken("scenarios > admin > permissions", () => {
 });
 
 function selectSidebarItem(item) {
-  cy.findAllByRole("menuitem")
-    .contains(item)
-    .click();
+  cy.findAllByRole("menuitem").contains(item).click();
 }
 
 function assertSidebarItems(items) {
@@ -633,9 +609,7 @@ function modifyPermission(
   value,
   shouldPropagate = null,
 ) {
-  getPermissionRowPermissions(item)
-    .eq(permissionIndex)
-    .click();
+  getPermissionRowPermissions(item).eq(permissionIndex).click();
 
   popover().within(() => {
     if (shouldPropagate !== null) {

@@ -57,9 +57,7 @@ describe("scenarios > dashboard", () => {
       cy.findByText("State").click();
     });
     cy.icon("close");
-    cy.get(".Button--primary")
-      .contains("Done")
-      .click();
+    cy.get(".Button--primary").contains("Done").click();
 
     saveDashboard();
 
@@ -109,9 +107,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("This dashboard is looking empty.");
     // add previously created question to it
     cy.icon("pencil").click();
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
     cy.findByText("11007").click();
 
     // add first filter
@@ -317,9 +313,7 @@ describe("scenarios > dashboard", () => {
 
     cy.visit("/dashboard/1");
 
-    filterWidget()
-      .as("filterWidget")
-      .click();
+    filterWidget().as("filterWidget").click();
 
     ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
       cy.findByText(category);
@@ -415,9 +409,7 @@ describe("scenarios > dashboard", () => {
     cy.intercept("GET", "/api/search").as("search");
     cy.visit("/dashboard/1");
     cy.icon("pencil").click();
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
 
     sidebar().within(() => {
       // From the list
@@ -435,10 +427,7 @@ describe("scenarios > dashboard", () => {
 });
 
 function checkOptionsForFilter(filter) {
-  cy.findByText("Available filters")
-    .parent()
-    .contains(filter)
-    .click();
+  cy.findByText("Available filters").parent().contains(filter).click();
   popover()
     .should("contain", "Columns")
     .and("contain", "COUNT(*)")
@@ -451,8 +440,6 @@ function checkOptionsForFilter(filter) {
 function assertScrollBarExists() {
   cy.get("body").then($body => {
     const bodyWidth = $body[0].getBoundingClientRect().width;
-    cy.window()
-      .its("innerWidth")
-      .should("be.gte", bodyWidth);
+    cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
 }

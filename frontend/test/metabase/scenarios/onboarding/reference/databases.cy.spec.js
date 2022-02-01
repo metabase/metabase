@@ -46,9 +46,7 @@ describe("scenarios > reference > databases", () => {
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
     cy.contains("Edit").click();
-    cy.get(".wrapper input")
-      .clear()
-      .type("My definitely profitable business");
+    cy.get(".wrapper input").clear().type("My definitely profitable business");
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
   });
@@ -80,13 +78,8 @@ describe("scenarios > reference > databases", () => {
 });
 
 function checkReferenceDatabasesOrder() {
-  cy.get("[class*=Card]")
-    .as("databaseCard")
-    .first()
-    .should("have.text", "a");
-  cy.get("@databaseCard")
-    .last()
-    .should("have.text", "Sample Database");
+  cy.get("[class*=Card]").as("databaseCard").first().should("have.text", "a");
+  cy.get("@databaseCard").last().should("have.text", "Sample Database");
 }
 
 function checkQuestionSourceDatabasesOrder(question_type) {
@@ -100,10 +93,7 @@ function checkQuestionSourceDatabasesOrder(question_type) {
   cy.visit("/question/new");
   cy.findByText(question_type).click();
   popover().within(() => {
-    cy.get(selector)
-      .as("databaseName")
-      .first()
-      .should("have.text", "a");
+    cy.get(selector).as("databaseName").first().should("have.text", "a");
     cy.get("@databaseName")
       .eq(lastDatabaseIndex)
       .should("have.text", "Sample Database");

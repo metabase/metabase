@@ -26,7 +26,5 @@ function saveQuestion() {
   modal().within(() => {
     cy.button("Save").click();
   });
-  modal()
-    .findByText("Not now")
-    .click();
+  modal().findByText("Not now").click();
 }

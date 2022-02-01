@@ -25,36 +25,28 @@ const items = [
     icon: "verified",
     title: "John Someone verified this",
     description: "idk lol",
-    timestamp: moment()
-      .subtract(1, "day")
-      .valueOf(),
+    timestamp: moment().subtract(1, "day").valueOf(),
     numComments: 5,
   },
   {
     icon: "pencil",
     title: "Foo edited this",
     description: "Did a thing.",
-    timestamp: moment()
-      .subtract(1, "week")
-      .valueOf(),
+    timestamp: moment().subtract(1, "week").valueOf(),
   },
   {
     icon: "warning_colorized",
     title: "Someone McSomeone thinks something looks wrong",
     description:
       "Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. \nUh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not correct. Uh oh that's not",
-    timestamp: moment()
-      .subtract(2, "month")
-      .valueOf(),
+    timestamp: moment().subtract(2, "month").valueOf(),
   },
   {
     icon: "clarification",
     title: "Someone is confused",
     description:
       "Something something something something something something something something something something something something?",
-    timestamp: moment()
-      .subtract(1, "year")
-      .valueOf(),
+    timestamp: moment().subtract(1, "year").valueOf(),
     numComments: 123,
   },
 ];

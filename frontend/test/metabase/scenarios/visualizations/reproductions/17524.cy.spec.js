@@ -53,9 +53,7 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      cy.icon("play")
-        .last()
-        .click();
+      cy.icon("play").last().click();
 
       cy.get("polygon");
       cy.findByText("Save").should("not.exist");
@@ -70,9 +68,7 @@ describe("issue 17524", () => {
     it("should not alter visualization type when applying filter on a QB question (metabase#17524-2)", () => {
       cy.get("polygon");
 
-      cy.findAllByRole("button")
-        .contains("Filter")
-        .click();
+      cy.findAllByRole("button").contains("Filter").click();
       cy.findByText("ID").click();
       cy.findByText("Is").click();
       cy.findByText("Greater than").click();

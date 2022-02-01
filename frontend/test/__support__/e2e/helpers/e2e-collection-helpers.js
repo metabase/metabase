@@ -14,7 +14,5 @@ export function openNewCollectionItemFlowFor(type) {
   cy.findByTestId("collection-menu").within(() => {
     cy.icon("add").click();
   });
-  popover()
-    .findByText(new RegExp(type, "i"))
-    .click();
+  popover().findByText(new RegExp(type, "i")).click();
 }

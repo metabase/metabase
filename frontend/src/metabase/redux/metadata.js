@@ -45,7 +45,8 @@ export const fetchRealDatabases = (reload = false) => {
   return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
-export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
+export const FETCH_DATABASE_METADATA =
+  Databases.actions.fetchDatabaseMetadata.toString();
 export const fetchDatabaseMetadata = (dbId, reload = false) => {
   deprecated("metabase/redux/metadata fetchDatabaseMetadata");
   return Databases.actions.fetchDatabaseMetadata({ id: dbId }, { reload });
@@ -132,13 +133,15 @@ export const updateField = field => {
   return Fields.actions.update(slimField);
 };
 
-export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
+export const DELETE_FIELD_DIMENSION =
+  Fields.actions.deleteFieldDimension.toString();
 export const deleteFieldDimension = fieldId => {
   deprecated("metabase/redux/metadata deleteFieldDimension");
   return Fields.actions.deleteFieldDimension({ id: fieldId });
 };
 
-export const UPDATE_FIELD_DIMENSION = Fields.actions.updateFieldDimension.toString();
+export const UPDATE_FIELD_DIMENSION =
+  Fields.actions.updateFieldDimension.toString();
 export const updateFieldDimension = (fieldId, dimension) => {
   deprecated("metabase/redux/metadata updateFieldDimension");
   return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
@@ -315,9 +318,11 @@ export const loadMetadataForQueries = queries => dispatch =>
       .uniq(false, dep => dep.type + dep.id)
       .map(({ type, id, foreignTables }) => {
         if (type === "table") {
-          return (foreignTables
-            ? Tables.actions.fetchMetadataAndForeignTables
-            : Tables.actions.fetchMetadata)({ id });
+          return (
+            foreignTables
+              ? Tables.actions.fetchMetadataAndForeignTables
+              : Tables.actions.fetchMetadata
+          )({ id });
         } else if (type === "field") {
           return Fields.actions.fetch({ id });
         } else {

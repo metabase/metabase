@@ -29,9 +29,7 @@ describe.skip("issue 17777", () => {
       cy.findByText("People");
     });
 
-    cy.findAllByText("No self-service")
-      .first()
-      .click();
+    cy.findAllByText("No self-service").first().click();
 
     popover().contains("Unrestricted");
   });

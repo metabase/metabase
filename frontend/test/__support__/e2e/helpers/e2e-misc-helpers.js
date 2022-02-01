@@ -1,10 +1,7 @@
 // Find a text field by label text, type it in, then blur the field.
 // Commonly used in our Admin section as we auto-save settings.
 export function typeAndBlurUsingLabel(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
+  cy.findByLabelText(label).clear().type(value).blur();
 }
 
 export function visitAlias(alias) {
@@ -37,10 +34,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy
-    .get(".ace_content")
-    .as(alias)
-    .should("be.visible");
+  return cy.get(".ace_content").as(alias).should("be.visible");
 }
 
 /**
@@ -57,9 +51,7 @@ export function openNotebookEditor({ fromCurrentPage } = {}) {
   }
 
   cy.findByText("New").click();
-  cy.findByText("Question")
-    .should("be.visible")
-    .click();
+  cy.findByText("Question").should("be.visible").click();
 }
 
 /**
@@ -112,7 +104,7 @@ const chainStart = Symbol();
  *   cy.visit(`/dashboard/1`);
  * });
  */
-export const cypressWaitAll = function(commands) {
+export const cypressWaitAll = function (commands) {
   const _ = Cypress._;
   const chain = cy.wrap(null, { log: false });
 

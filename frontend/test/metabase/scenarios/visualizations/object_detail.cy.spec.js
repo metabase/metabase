@@ -12,22 +12,15 @@ describe("scenarios > visualizations > object detail", () => {
     // click on product #1's id
     cy.contains(/^1$/).click();
     // check that the correct counts of related tables appear
-    cy.contains("Orders")
-      .parent()
-      .contains("93");
-    cy.contains("Reviews")
-      .parent()
-      .contains("8");
+    cy.contains("Orders").parent().contains("93");
+    cy.contains("Reviews").parent().contains("8");
   });
 
   it("should show the correct filter when clicking through on a fk", () => {
     cy.visit("/browse/1");
     cy.findByText("Products").click();
     cy.findByText("1").click();
-    cy.findByText("Orders")
-      .parent()
-      .findByText("93")
-      .click();
+    cy.findByText("Orders").parent().findByText("93").click();
     cy.findByText("Product ID is 1");
   });
 

@@ -31,14 +31,10 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderState works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Month").click();
 
-      cy.get(".cellData")
-        .should("contain", "April, 1958")
-        .and("contain", "37");
+      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
@@ -97,14 +93,10 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
       });
 
       // Make sure time series assertQueryBuilderStateter works as well
-      cy.findAllByTestId("select-button-content")
-        .contains("Year")
-        .click();
+      cy.findAllByTestId("select-button-content").contains("Year").click();
       cy.findByText("Month").click();
 
-      cy.get(".cellData")
-        .should("contain", "April, 1958")
-        .and("contain", "37");
+      cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
@@ -156,7 +148,5 @@ function assertQueryBuilderState({ title, mode = null, values } = {}) {
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
   cy.findByText(title);
-  cy.get(".cellData")
-    .should("contain", firstValue)
-    .and("contain", lastValue);
+  cy.get(".cellData").should("contain", firstValue).and("contain", lastValue);
 }

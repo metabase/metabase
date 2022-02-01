@@ -36,10 +36,7 @@ export default class DateMonthYearWidget extends React.Component {
   componentWillUnmount() {
     const { month, year } = this.state;
     if (month != null && year != null) {
-      const value = moment()
-        .year(year)
-        .month(month)
-        .format("YYYY-MM");
+      const value = moment().year(year).month(month).format("YYYY-MM");
       if (this.props.value !== value) {
         this.props.setValue(value);
       }
@@ -84,8 +81,6 @@ const Month = ({ month, selected, onClick }) => (
     )}
     onClick={onClick}
   >
-    {moment()
-      .month(month)
-      .format("MMMM")}
+    {moment().month(month).format("MMMM")}
   </div>
 );

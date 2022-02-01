@@ -18,21 +18,12 @@ describe("scenarios > admin > settings > map settings", () => {
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
     cy.findByText("Load").click();
-    cy.wait(2000)
-      .findAllByText("Select…")
-      .first()
-      .click();
+    cy.wait(2000).findAllByText("Select…").first().click();
     cy.findByText("NAME").click();
-    cy.findAllByText("Select…")
-      .last()
-      .click();
-    cy.findAllByText("NAME")
-      .last()
-      .click();
+    cy.findAllByText("Select…").last().click();
+    cy.findAllByText("NAME").last().click();
     cy.findByText("Add map").click();
-    cy.wait(3000)
-      .findByText("NAME")
-      .should("not.exist");
+    cy.wait(3000).findByText("NAME").should("not.exist");
     cy.findByText("Test Map");
   });
 

@@ -117,14 +117,14 @@ export default class SettingsBatchForm extends Component {
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function(element) {
+      elements.forEach(function (element) {
         // test for required elements
         if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
           valid = false;
         }
 
         if (element.validations) {
-          element.validations.forEach(function(validation) {
+          element.validations.forEach(function (validation) {
             validationErrors[element.key] = this.validateElement(
               validation,
               formData[element.key],

@@ -32,14 +32,9 @@ describe("scenarios > question > view", () => {
       cy.contains("Summarize").click();
 
       // alias @sidebar so we can more easily click dimensions
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
+      cy.contains("Summarize by").parent().parent().as("sidebar");
 
-      cy.get("@sidebar")
-        .contains("Created At")
-        .click();
+      cy.get("@sidebar").contains("Created At").click();
       cy.findByText("Done").click();
 
       cy.contains("Count by Created At: Month");
@@ -48,16 +43,9 @@ describe("scenarios > question > view", () => {
       cy.contains("Summarize").click();
 
       // change grouping from month to year
-      cy.contains("Summarize by")
-        .parent()
-        .parent()
-        .as("sidebar");
-      cy.get("@sidebar")
-        .contains("by month")
-        .click();
-      cy.get(".PopoverBody")
-        .contains("Year")
-        .click();
+      cy.contains("Summarize by").parent().parent().as("sidebar");
+      cy.get("@sidebar").contains("by month").click();
+      cy.get(".PopoverBody").contains("Year").click();
 
       cy.contains("Count by Created At: Year");
 
@@ -77,9 +65,7 @@ describe("scenarios > question > view", () => {
       openOrdersTable();
       cy.contains("Filter").click();
       cy.contains("Vendor").click();
-      cy.findByPlaceholderText("Search by Vendor")
-        .clear()
-        .type("A");
+      cy.findByPlaceholderText("Search by Vendor").clear().type("A");
       cy.findByText("Alfreda Konopelski II Group").click();
 
       cy.contains("Add filter").click();
@@ -101,12 +87,8 @@ describe("scenarios > question > view", () => {
     beforeEach(() => {
       // All users upgraded to collection view access
       cy.visit("/admin/permissions/collections/root");
-      cy.icon("close")
-        .first()
-        .click();
-      cy.findAllByRole("option")
-        .contains("View")
-        .click();
+      cy.icon("close").first().click();
+      cy.findAllByRole("option").contains("View").click();
       cy.findByText("Save changes").click();
       cy.findByText("Yes").click();
 
@@ -149,9 +131,7 @@ describe("scenarios > question > view", () => {
     it("should show filters by list for Category without a search box", () => {
       cy.visit("/question/4");
 
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByText("Doohickey");
         cy.findByText("Gizmo");
@@ -166,9 +146,7 @@ describe("scenarios > question > view", () => {
     it("should show filters by search for Vendor", () => {
       cy.visit("/question/4");
 
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Search by Vendor");
         cy.findByText("Search the list").should("not.exist");
@@ -182,24 +160,18 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text").type("Widget");
         cy.findByText("Add filter").click();
       });
 
-      cy.get(".RunButton")
-        .last()
-        .click();
+      cy.get(".RunButton").last().click();
 
       cy.findAllByText("Widget");
       cy.findAllByText("Gizmo").should("not.exist");
@@ -214,9 +186,7 @@ describe("scenarios > question > view", () => {
       // Filter by category and vendor
       // TODO: this should show values and allow searching
       cy.findByText("This question is written in SQL.");
-      cy.findAllByText("VENDOR")
-        .first()
-        .click();
+      cy.findAllByText("VENDOR").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Search by Vendor")
           .focus()
@@ -224,12 +194,8 @@ describe("scenarios > question > view", () => {
           .type("Balistreri-Muller");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton")
-        .first()
-        .click();
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
+      cy.get(".RunButton").first().click();
+      cy.findAllByText("CATEGORY").first().click();
       popover().within(() => {
         cy.findByPlaceholderText("Enter some text")
           .click()
@@ -237,9 +203,7 @@ describe("scenarios > question > view", () => {
           .type("Widget");
         cy.findByText("Add filter").click();
       });
-      cy.get(".RunButton")
-        .last()
-        .click();
+      cy.get(".RunButton").last().click();
 
       cy.get(".TableInteractive-cellWrapper--firstColumn").should(
         "have.length",

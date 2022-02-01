@@ -286,12 +286,8 @@ export default class SnippetSidebar extends React.Component {
 @Snippets.loadList({ query: { archived: true }, wrapped: true })
 class ArchivedSnippets extends React.Component {
   render() {
-    const {
-      onBack,
-      snippets,
-      snippetCollections,
-      archivedSnippetCollections,
-    } = this.props;
+    const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
+      this.props;
     const collectionsById = _.indexBy(
       snippetCollections.concat(archivedSnippetCollections),
       c => canonicalCollectionId(c.id),

@@ -37,14 +37,10 @@ describe("issue 17512", () => {
 
 function addSummarizeCustomExpression(formula, name) {
   cy.findByText("Summarize").click();
-  popover()
-    .contains("Custom Expression")
-    .click();
+  popover().contains("Custom Expression").click();
 
   popover().within(() => {
-    cy.get(".ace_text-input")
-      .type(formula)
-      .blur();
+    cy.get(".ace_text-input").type(formula).blur();
     cy.findByPlaceholderText("Name (required)").type(name);
     cy.button("Done").click();
   });
@@ -53,9 +49,7 @@ function addSummarizeCustomExpression(formula, name) {
 function addCustomColumn(formula, name) {
   cy.findByText("Custom column").click();
   popover().within(() => {
-    cy.get(".ace_text-input")
-      .type(formula)
-      .blur();
+    cy.get(".ace_text-input").type(formula).blur();
     cy.findByPlaceholderText("Something nice and descriptive").type(name);
     cy.button("Done").click();
   });

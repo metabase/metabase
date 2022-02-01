@@ -47,4 +47,5 @@ PLUGIN_COLLECTIONS.authorityLevelFormFields = [
 
 PLUGIN_FORM_WIDGETS.collectionAuthorityLevel = FormCollectionAuthorityLevel;
 
-PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon = CollectionAuthorityLevelIcon;
+PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon =
+  CollectionAuthorityLevelIcon;

@@ -95,15 +95,8 @@ export default class PeopleList extends Component {
   }
 
   render() {
-    const {
-      user,
-      users,
-      groups,
-      query,
-      metadata,
-      onNextPage,
-      onPreviousPage,
-    } = this.props;
+    const { user, users, groups, query, metadata, onNextPage, onPreviousPage } =
+      this.props;
     const { total } = metadata;
 
     const { page, pageSize, status } = query;

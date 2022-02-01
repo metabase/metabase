@@ -113,11 +113,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured &&
-    question
-      .query()
-      .topLevelQuery()
-      .hasAggregations();
+    isStructured && question.query().topLevelQuery().hasAggregations();
 
   return (
     <>
@@ -235,13 +231,8 @@ AhHocQuestionLeftSide.propTypes = {
 };
 
 function AhHocQuestionLeftSide(props) {
-  const {
-    question,
-    originalQuestion,
-    isNative,
-    isObjectDetail,
-    isSummarized,
-  } = props;
+  const { question, originalQuestion, isNative, isObjectDetail, isSummarized } =
+    props;
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>

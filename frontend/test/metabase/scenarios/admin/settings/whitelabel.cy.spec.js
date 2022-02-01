@@ -19,9 +19,7 @@ const colors = {
 };
 
 function changeThemeColor(location, colorhex) {
-  cy.get("td")
-    .eq(location)
-    .click();
+  cy.get("td").eq(location).click();
   cy.get(`div[title='#${colorhex}']`).click();
   cy.findByText("Done").click();
 }
@@ -54,9 +52,7 @@ describeWithToken("formatting > whitelabel", () => {
       changeThemeColor(1, colors.primary.hex);
 
       cy.log("Select color by entering rgb value");
-      cy.get("td")
-        .eq(5)
-        .click();
+      cy.get("td").eq(5).click();
       cy.get(".sketch-picker")
         .find("input")
         .eq(1)
@@ -75,9 +71,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByText("Done").click();
 
       cy.log("Select color by typing hex code");
-      cy.get("td")
-        .eq(29)
-        .click();
+      cy.get("td").eq(29).click();
       cy.get(".sketch-picker")
         .find("input")
         .first()
@@ -93,9 +87,7 @@ describeWithToken("formatting > whitelabel", () => {
     beforeEach(() => {
       cy.log("Change company name");
       cy.visit("/admin/settings/whitelabel");
-      cy.findByLabelText("Application Name")
-        .clear()
-        .type(COMPANY_NAME);
+      cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
       cy.findByText("Application Name").click();
       cy.findByText("Saved");
@@ -156,9 +148,7 @@ describeWithToken("formatting > whitelabel", () => {
       // *** Test should pass when issue #470 is resolved
       cy.signInAsNormalUser();
       openOrdersTable();
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      cy.findAllByText("Summarize").first().click();
       cy.findByText("Price").click();
       cy.findByText("Done").click();
 
@@ -206,9 +196,7 @@ describeWithToken("formatting > whitelabel", () => {
       cy.findByLabelText("Favicon").type(
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
-      cy.get("ul")
-        .eq(2)
-        .click("right");
+      cy.get("ul").eq(2).click("right");
       cy.findByText("Saved");
       checkFavicon();
     });

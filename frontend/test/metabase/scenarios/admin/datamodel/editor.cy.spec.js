@@ -85,19 +85,12 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   });
 
   function field(name) {
-    return cy
-      .get(`input[value="${name}"]`)
-      .parent()
-      .parent();
+    return cy.get(`input[value="${name}"]`).parent().parent();
   }
 
   function testSelect(alias, initialOption, desiredOption) {
-    cy.get(alias)
-      .contains(initialOption)
-      .click({ force: true });
-    popover()
-      .contains(desiredOption)
-      .click({ force: true });
+    cy.get(alias).contains(initialOption).click({ force: true });
+    popover().contains(desiredOption).click({ force: true });
     cy.get(alias).contains(desiredOption);
 
     cy.wait("@fieldUpdate");
@@ -150,16 +143,12 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.contains("Column order:").click();
 
     // switch to alphabetical ordering
-    popover()
-      .contains("Alphabetical")
-      .click({ force: true });
+    popover().contains("Alphabetical").click({ force: true });
 
     cy.wait("@tableUpdate");
 
     // move product_id to the top
-    cy.get(".Grabber")
-      .eq(3)
-      .trigger("mousedown", 0, 0);
+    cy.get(".Grabber").eq(3).trigger("mousedown", 0, 0);
     cy.get("#ColumnsList")
       .trigger("mousemove", 10, 10)
       .trigger("mouseup", 10, 10);

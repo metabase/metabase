@@ -1,14 +1,8 @@
 import { restore } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard cards > click behavior", () => {
   beforeEach(() => {
@@ -40,9 +34,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
                     col: 0,
                     sizeX: 12,
                     sizeY: 10,
-                    visualization_settings: getVisualizationSettings(
-                      question1Id,
-                    ),
+                    visualization_settings:
+                      getVisualizationSettings(question1Id),
                   },
                 ],
               });
@@ -65,9 +58,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
     // Drill-through
     cy.wait("@nativeQuery");
-    cy.get(".cellData .link")
-      .contains("0")
-      .realClick();
+    cy.get(".cellData .link").contains("0").realClick();
 
     cy.wait("@cardQuery");
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
@@ -145,10 +136,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     cy.wait("@cardQuery");
-    cy.get(".cellData")
-      .contains("5")
-      .first()
-      .click();
+    cy.get(".cellData").contains("5").first().click();
 
     // Make sure filter is set
     cy.findByText("Rating is equal to 5");

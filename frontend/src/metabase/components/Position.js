@@ -7,8 +7,8 @@ import { Box } from "grid-styled";
 import { top, left, bottom, right } from "styled-system";
 
 export const Position = styled(Box)`
-    ${top}
-    ${left}
+  ${top}
+  ${left}
     ${bottom}
     ${right}
 `;

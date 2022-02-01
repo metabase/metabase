@@ -20,7 +20,7 @@ describe("ClampedText", () => {
 
   describe("and the text is greater than the height of the container", () => {
     beforeEach(() => {
-      getBoundingClientRectMock.mockImplementation(function() {
+      getBoundingClientRectMock.mockImplementation(function () {
         return {
           height: isTextEl(this) ? MORE_HEIGHT : LESS_HEIGHT,
         };
@@ -38,7 +38,7 @@ describe("ClampedText", () => {
 
   describe("and the text is less than the height of the container", () => {
     beforeEach(() => {
-      getBoundingClientRectMock.mockImplementation(function() {
+      getBoundingClientRectMock.mockImplementation(function () {
         return {
           height: isTextEl(this) ? LESS_HEIGHT : MORE_HEIGHT,
         };

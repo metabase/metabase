@@ -41,13 +41,9 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 });
 
 function shouldNotBeDisabled(selector) {
-  cy.get(selector)
-    .parent()
-    .should("not.have.attr", "disabled");
+  cy.get(selector).parent().should("not.have.attr", "disabled");
 }
 
 function shouldBeDisabled(selector) {
-  cy.get(selector)
-    .parent()
-    .should("have.attr", "disabled");
+  cy.get(selector).parent().should("have.attr", "disabled");
 }

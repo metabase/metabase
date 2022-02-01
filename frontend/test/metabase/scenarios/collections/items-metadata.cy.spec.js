@@ -84,9 +84,7 @@ function changeQuestion() {
   cy.intercept("PUT", "/api/card/**").as("updateQuestion");
   cy.findByTestId("saved-question-header-button").click();
   cy.findByTestId("edit-details-button").click();
-  cy.findByLabelText("Description")
-    .click()
-    .type("Very insightful");
+  cy.findByLabelText("Description").click().type("Very insightful");
   cy.button("Save").click();
   cy.wait("@updateQuestion");
 }

@@ -26,12 +26,8 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("Visualization").click();
     cy.icon("pinmap").click();
 
-    cy.contains("Map type")
-      .next()
-      .click();
-    popover()
-      .contains("Pin map")
-      .click();
+    cy.contains("Map type").next().click();
+    popover().contains("Pin map").click();
 
     // When the settings sidebar opens, both latitude and longitude selects are
     // open. That makes it difficult to select each in Cypress, so we click
@@ -40,19 +36,11 @@ describe("scenarios > visualizations > maps", () => {
     cy.contains("New question").click();
 
     // select both columns
-    cy.contains("Latitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LAT")
-      .click();
+    cy.contains("Latitude field").next().click();
+    popover().contains("LAT").click();
 
-    cy.contains("Longitude field")
-      .next()
-      .click();
-    popover()
-      .contains("LNG")
-      .click();
+    cy.contains("Longitude field").next().click();
+    popover().contains("LNG").click();
 
     // check that a map appears
     cy.get(".leaflet-container");
@@ -77,9 +65,7 @@ describe("scenarios > visualizations > maps", () => {
       cy.visit(`/question/${QUESTION_ID}`);
     });
 
-    cy.findByText("Visualization")
-      .closest(".Button")
-      .as("vizButton");
+    cy.findByText("Visualization").closest(".Button").as("vizButton");
     cy.get("@vizButton").find(".Icon-pinmap");
     cy.get("@vizButton").click();
     cy.findByText("Choose a visualization");
@@ -88,13 +74,9 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get("@vizSidebar").within(() => {
       // There should be a unique class for "selected" viz type
-      cy.icon("pinmap")
-        .parent()
-        .should("have.class", "text-white");
+      cy.icon("pinmap").parent().should("have.class", "text-white");
 
-      cy.findByText("Map")
-        .parent()
-        .should("have.css", "opacity", "1");
+      cy.findByText("Map").parent().should("have.css", "opacity", "1");
     });
   });
 
@@ -116,9 +98,7 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
-    cy.get(".CardVisualization svg path")
-      .eq(22)
-      .as("texas");
+    cy.get(".CardVisualization svg path").eq(22).as("texas");
 
     // hover to see the tooltip
     cy.get("@texas").trigger("mousemove");

@@ -62,9 +62,7 @@ describe("issue 12581", () => {
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
-    cy.get("@editor")
-      .should("be.visible")
-      .contains(ORIGINAL_QUERY);
+    cy.get("@editor").should("be.visible").contains(ORIGINAL_QUERY);
     // Filter dropdown field
     filterWidget().contains("Filter");
   });

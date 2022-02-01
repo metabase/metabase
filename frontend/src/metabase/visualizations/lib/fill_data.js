@@ -86,9 +86,7 @@ function fillMissingValuesInData(
       return rows;
     }
 
-    xValues = timeseriesScale(xInterval)
-      .domain(xDomain)
-      .ticks();
+    xValues = timeseriesScale(xInterval).domain(xDomain).ticks();
     getKey = m => m.toISOString();
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);

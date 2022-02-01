@@ -64,7 +64,7 @@ export interface RadioOption<TValue> {
 
 const Radio = forwardRef(function Radio<
   TValue extends Key,
-  TOption = RadioOption<TValue>
+  TOption = RadioOption<TValue>,
 >(
   {
     name,

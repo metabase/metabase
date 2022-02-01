@@ -36,31 +36,19 @@ export function setAdHocFilter({
   includeCurrent = false,
 } = {}) {
   if (condition) {
-    cy.findAllByTestId("select-button")
-      .contains("Previous")
-      .click();
+    cy.findAllByTestId("select-button").contains("Previous").click();
 
-    popover()
-      .last()
-      .contains(condition)
-      .click();
+    popover().last().contains(condition).click();
   }
 
   if (quantity) {
-    cy.findByPlaceholderText("30")
-      .clear()
-      .type(quantity);
+    cy.findByPlaceholderText("30").clear().type(quantity);
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("select-button")
-      .contains("Days")
-      .click();
+    cy.findAllByTestId("select-button").contains("Days").click();
 
-    popover()
-      .last()
-      .contains(timeBucket)
-      .click();
+    popover().last().contains(timeBucket).click();
   }
 
   includeCurrent && cy.findByText(/^Include/).click();

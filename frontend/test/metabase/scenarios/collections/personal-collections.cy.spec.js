@@ -53,9 +53,7 @@ describe("personal collections", () => {
       cy.findByText("Your personal collection").click();
       // Create new collection inside admin's personal collection and navigate to it
       addNewCollection("Foo");
-      sidebar()
-        .findByText("Foo")
-        .click();
+      sidebar().findByText("Foo").click();
       assertCanAddItemsToCollection();
       cy.icon("pencil");
       cy.icon("lock").should("not.exist");
@@ -68,9 +66,7 @@ describe("personal collections", () => {
         cy.url().should("eq", String(location));
 
         // Check can't open permissions modal via URL for personal collection child
-        sidebar()
-          .findByText("Foo")
-          .click();
+        sidebar().findByText("Foo").click();
         cy.location().then(location => {
           cy.visit(`${location}/permissions`);
           cy.get(".Modal").should("not.exist");
@@ -98,18 +94,13 @@ describe("personal collections", () => {
           cy.findByText("Your personal collection").click();
           // Create initial collection inside the personal collection and navigate inside it
           addNewCollection("Foo");
-          sidebar()
-            .as("sidebar")
-            .findByText("Foo")
-            .click();
+          sidebar().as("sidebar").findByText("Foo").click();
         });
 
         it("should be able to edit collection(s) inside personal collection", () => {
           // Create new collection inside previously added collection
           addNewCollection("Bar");
-          cy.get("@sidebar")
-            .findByText("Bar")
-            .click();
+          cy.get("@sidebar").findByText("Bar").click();
           cy.icon("pencil").click();
           /**
            * We're testing a few things here:
@@ -134,22 +125,16 @@ describe("personal collections", () => {
           cy.button("Update").click();
           // Clicking on "Foo" would've closed it and would hide its sub-collections (if there were any).
           // By doing this, we're making sure "Bar" lives at the same level as "Foo"
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .click();
+          cy.get("@sidebar").findByText("Foo").click();
           cy.get("@sidebar").findByText("Bar1");
         });
 
         it("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
           cy.icon("pencil").click();
           cy.findByText("Archive this collection").click();
-          modal()
-            .findByRole("button", { name: "Archive" })
-            .click();
+          modal().findByRole("button", { name: "Archive" }).click();
           cy.findByText("Archived collection");
-          cy.get("@sidebar")
-            .findByText("Foo")
-            .should("not.exist");
+          cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });
     });

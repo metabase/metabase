@@ -255,14 +255,8 @@ class SharingSidebar extends React.Component {
 
   render() {
     const { editingMode } = this.state;
-    const {
-      pulse,
-      pulses,
-      formInput,
-      testPulse,
-      users,
-      dashboard,
-    } = this.props;
+    const { pulse, pulses, formInput, testPulse, users, dashboard } =
+      this.props;
 
     // protect from empty values that will mess this up
     if (!formInput.channels || !pulse) {

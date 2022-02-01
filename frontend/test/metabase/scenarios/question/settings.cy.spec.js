@@ -27,9 +27,7 @@ describe("scenarios > question > settings", () => {
       cy.contains("Settings").click();
 
       // wait for settings sidebar to open
-      cy.findByTestId("sidebar-left")
-        .invoke("width")
-        .should("be.gt", 350);
+      cy.findByTestId("sidebar-left").invoke("width").should("be.gt", 350);
 
       cy.contains("Table options")
         .parents(".scroll-y")
@@ -67,9 +65,7 @@ describe("scenarios > question > settings", () => {
       cy.get(".Visualization .TableInteractive").as("table");
       cy.get("@table").contains("Product → Category");
       cy.get("@table").contains("Product → Ean");
-      cy.get("@table")
-        .contains("Total")
-        .should("not.exist");
+      cy.get("@table").contains("Total").should("not.exist");
     });
 
     it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
@@ -135,15 +131,11 @@ describe("scenarios > question > settings", () => {
        */
 
       function reloadResults() {
-        cy.icon("play")
-          .last()
-          .click();
+        cy.icon("play").last().click();
       }
 
       function findColumnAtIndex(column_name, index) {
-        cy.get("@sidebarColumns")
-          .eq(index)
-          .contains(column_name);
+        cy.get("@sidebarColumns").eq(index).contains(column_name);
       }
     });
 
@@ -158,17 +150,13 @@ describe("scenarios > question > settings", () => {
 
       cy.findByText("Settings").click(); // open settings sidebar
       cy.findByText("Table options"); // confirm it's open
-      cy.get(".TableInteractive")
-        .findByText("Subtotal")
-        .click(); // open subtotal column header actions
+      cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
       cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
       cy.findByText("Separator style"); // shows subtotal column settings
 
-      cy.get(".TableInteractive")
-        .findByText("Created At")
-        .click(); // open created_at column header actions
+      cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
       popover().within(() => cy.icon("gear").click()); // open created_at column settings
       cy.findByText("Date style"); // shows created_at column settings
     });
@@ -208,9 +196,7 @@ describe("scenarios > question > settings", () => {
       openOrdersTable();
 
       cy.contains("Save").click();
-      cy.get(".ModalContent")
-        .contains("button", "Save")
-        .click();
+      cy.get(".ModalContent").contains("button", "Save").click();
       cy.contains("Yes please!").click();
       cy.contains("Orders in a dashboard").click();
 

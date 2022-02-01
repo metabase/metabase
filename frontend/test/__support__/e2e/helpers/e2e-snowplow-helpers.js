@@ -20,9 +20,7 @@ export const expectGoodSnowplowEvents = count => {
 };
 
 export const expectNoBadSnowplowEvents = () => {
-  sendSnowplowRequest("micro/bad")
-    .its("body")
-    .should("have.length", 0);
+  sendSnowplowRequest("micro/bad").its("body").should("have.length", 0);
 };
 
 const sendSnowplowRequest = url => {

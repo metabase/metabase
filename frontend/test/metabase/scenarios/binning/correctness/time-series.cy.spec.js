@@ -152,9 +152,7 @@ describe("scenarios > binning > correctness > time series", () => {
 });
 
 function openPopoverFromDefaultBucketSize(name, bucket) {
-  getBinningButtonForDimension({ name })
-    .should("have.text", bucket)
-    .click();
+  getBinningButtonForDimension({ name }).should("have.text", bucket).click();
 }
 
 function getTitle(title) {

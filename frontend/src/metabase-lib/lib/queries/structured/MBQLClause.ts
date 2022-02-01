@@ -21,7 +21,7 @@ export default class MBQLArrayClause extends Array {
   // so we need to reconcile things in the MBQLArrayClause[Symbol.species] constructor function
   // See https://stackoverflow.com/questions/54522949
   static get [Symbol.species]() {
-    return Object.assign(function(...items) {
+    return Object.assign(function (...items) {
       return new MBQLArrayClause(new Array(...items), this._index, this._query);
     }, MBQLArrayClause);
   }

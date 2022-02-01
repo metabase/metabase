@@ -16,9 +16,7 @@ describe.skip("issue 15946", () => {
   it("converting a question to the native query should pre-select a table (metabase#15946)", () => {
     cy.get(".QueryBuilder .Icon-sql").click();
 
-    modal()
-      .findByText("Convert this question to a native query")
-      .click();
+    modal().findByText("Convert this question to a native query").click();
     modal().should("not.exist");
 
     cy.get(".GuiBuilder-data").contains(MONGO_DB_NAME);

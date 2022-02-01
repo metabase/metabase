@@ -88,7 +88,7 @@ export default function rowRenderer(
     }
 
     if (onVisualizationClick) {
-      chart.selectAll(".row rect").on("click", function(d) {
+      chart.selectAll(".row rect").on("click", function (d) {
         onVisualizationClick({
           value: d.value,
           column: cols[1],

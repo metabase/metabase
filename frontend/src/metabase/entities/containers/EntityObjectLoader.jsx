@@ -81,14 +81,8 @@ export default class EntityObjectLoader extends React.Component {
     }
   }
   renderChildren = () => {
-    let {
-      children,
-      entityDef,
-      entityAlias,
-      wrapped,
-      object,
-      ...props
-    } = this.props; // eslint-disable-line no-unused-vars
+    let { children, entityDef, entityAlias, wrapped, object, ...props } =
+      this.props; // eslint-disable-line no-unused-vars
 
     if (wrapped) {
       object = this._getWrappedObject(this.props);
@@ -130,11 +124,13 @@ export default class EntityObjectLoader extends React.Component {
   };
 }
 
-export const entityObjectLoader = eolProps =>
+export const entityObjectLoader =
+  eolProps =>
   // eslint-disable-line react/display-name
   ComposedComponent =>
-    // eslint-disable-next-line react/display-name
-    props => (
+  // eslint-disable-next-line react/display-name
+  props =>
+    (
       <EntityObjectLoader {...props} {...eolProps}>
         {childProps => (
           <ComposedComponent

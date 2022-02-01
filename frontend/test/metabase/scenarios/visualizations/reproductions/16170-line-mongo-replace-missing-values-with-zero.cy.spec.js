@@ -14,25 +14,17 @@ describe.skip("issue 16170", () => {
   });
 
   it("should correctly replace only the missing values with zero (metabase#16170)", () => {
-    cy.findAllByRole("button")
-      .contains("Summarize")
-      .click();
+    cy.findAllByRole("button").contains("Summarize").click();
 
-    cy.findByTestId("sidebar-right")
-      .findByText("Created At")
-      .click();
+    cy.findByTestId("sidebar-right").findByText("Created At").click();
 
     assertOnTheYAxis();
 
     cy.findByTestId("viz-settings-button").click();
 
-    cy.findByTestId("sidebar-left")
-      .findByText("Linear Interpolated")
-      .click();
+    cy.findByTestId("sidebar-left").findByText("Linear Interpolated").click();
 
-    popover()
-      .findByText("Zero")
-      .click();
+    popover().findByText("Zero").click();
 
     assertOnTheYAxis();
   });
@@ -40,7 +32,5 @@ describe.skip("issue 16170", () => {
 
 function assertOnTheYAxis() {
   cy.get(".y-axis-label").findByText("Count");
-  cy.get(".axis.y .tick")
-    .should("have.length.gt", 10)
-    .and("contain", "200");
+  cy.get(".axis.y .tick").should("have.length.gt", 10).and("contain", "200");
 }

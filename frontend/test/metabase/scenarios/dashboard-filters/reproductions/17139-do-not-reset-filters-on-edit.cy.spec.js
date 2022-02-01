@@ -26,18 +26,13 @@ describe.skip("issue 17139", () => {
     });
 
     cy.findByText("Select…").click();
-    popover()
-      .contains("Created At")
-      .first()
-      .click();
+    popover().contains("Created At").first().click();
 
     saveDashboard();
   });
 
   it("should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#17139)", () => {
-    filterWidget()
-      .contains("Month and Year")
-      .click();
+    filterWidget().contains("Month and Year").click();
 
     setMonthAndYear({ month: "November", year: "2016" });
 

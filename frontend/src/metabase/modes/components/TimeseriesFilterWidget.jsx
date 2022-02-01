@@ -61,9 +61,8 @@ export default class TimeseriesFilterWidget extends Component {
     let currentDescription;
 
     if (currentFilter) {
-      currentDescription = generateTimeFilterValuesDescriptions(
-        currentFilter,
-      ).join(" - ");
+      currentDescription =
+        generateTimeFilterValuesDescriptions(currentFilter).join(" - ");
       if (currentFilter[0] === ">") {
         currentDescription = t`After ${currentDescription}`;
       } else if (currentFilter[0] === "<") {

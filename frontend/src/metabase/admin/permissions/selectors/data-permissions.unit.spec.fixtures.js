@@ -5,20 +5,17 @@ export const normalizedMetadata = {
   metrics: {},
   segments: {},
   databases: {
-    "2": {
+    2: {
       name: "Imaginary Multi-Schema Dataset",
       tables: [
         // In schema_1
-        5,
-        6,
+        5, 6,
         // In schema_2
-        7,
-        8,
-        9,
+        7, 8, 9,
       ],
       id: 2,
     },
-    "3": {
+    3: {
       name: "Imaginary Schemaless Dataset",
       tables: [10, 11, 12, 13],
       id: 3,
@@ -42,7 +39,7 @@ export const normalizedMetadata = {
     },
   },
   tables: {
-    "5": {
+    5: {
       schema: "2:schema_1",
       schema_name: "schema_1",
       name: "Avian Singles Messages",
@@ -50,7 +47,7 @@ export const normalizedMetadata = {
       id: 5,
       db_id: 2,
     },
-    "6": {
+    6: {
       schema: "2:schema_1",
       schema_name: "schema_1",
       name: "Avian Singles Users",
@@ -58,7 +55,7 @@ export const normalizedMetadata = {
       id: 6,
       db_id: 2,
     },
-    "7": {
+    7: {
       schema: "2:schema_2",
       schema_name: "schema_2",
       name: "Tupac Sightings Sightings",
@@ -66,7 +63,7 @@ export const normalizedMetadata = {
       id: 7,
       db_id: 2,
     },
-    "8": {
+    8: {
       schema: "2:schema_2",
       schema_name: "schema_2",
       name: "Tupac Sightings Categories",
@@ -74,7 +71,7 @@ export const normalizedMetadata = {
       id: 8,
       db_id: 2,
     },
-    "9": {
+    9: {
       schema: "2:schema_2",
       schema_name: "schema_2",
       name: "Tupac Sightings Cities",
@@ -82,7 +79,7 @@ export const normalizedMetadata = {
       id: 9,
       db_id: 2,
     },
-    "10": {
+    10: {
       schema: "3:",
       schema_name: null,
       name: "Badminton Men's Double Results",
@@ -90,7 +87,7 @@ export const normalizedMetadata = {
       id: 10,
       db_id: 3,
     },
-    "11": {
+    11: {
       schema: "3:",
       schema_name: null,
       name: "Badminton Mixed Double Results",
@@ -98,7 +95,7 @@ export const normalizedMetadata = {
       id: 11,
       db_id: 3,
     },
-    "12": {
+    12: {
       schema: "3:",
       schema_name: null,
       name: "Badminton Women's Singles Results",
@@ -106,7 +103,7 @@ export const normalizedMetadata = {
       id: 12,
       db_id: 3,
     },
-    "13": {
+    13: {
       schema: "3:",
       schema_name: null,
       name: "Badminton Mixed Singles Results",
@@ -122,15 +119,15 @@ export const normalizedMetadata = {
   databasesList: [2, 3],
 
   groups: {
-    "1": {
+    1: {
       id: 1,
       name: "Group starting with full access",
     },
-    "2": {
+    2: {
       id: 2,
       name: "Group starting with no access at all",
     },
-    "3": {
+    3: {
       id: 3,
       name: "All Users",
     },

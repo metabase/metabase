@@ -10,9 +10,7 @@ describe.skip("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     setupMetabaseCloud();
     cy.visit("/admin");
-    cy.get(".AdminList-items")
-      .findByText("Cloud")
-      .click();
+    cy.get(".AdminList-items").findByText("Cloud").click();
     cy.findByText(/Cloud Settings/i);
     cy.findByText("Go to the Metabase Store").should(
       "have.attr",
@@ -23,9 +21,7 @@ describe.skip("Cloud settings section", () => {
 
   it("should be invisible when self-hosting", () => {
     cy.visit("/admin");
-    cy.get(".AdminList-items")
-      .findByText("Cloud")
-      .should("not.exist");
+    cy.get(".AdminList-items").findByText("Cloud").should("not.exist");
     cy.visit("/admin/settings/cloud");
     cy.findByText(/Cloud Settings/i).should("not.exist");
   });

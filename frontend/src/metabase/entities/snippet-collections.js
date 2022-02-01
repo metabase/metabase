@@ -14,8 +14,11 @@ const SnippetCollections = createEntity({
   name: "snippetCollections",
   schema: SnippetCollectionSchema,
 
-  api: _.mapObject(NormalCollections.api, f => (first, ...rest) =>
-    f({ ...first, namespace: "snippets" }, ...rest),
+  api: _.mapObject(
+    NormalCollections.api,
+    f =>
+      (first, ...rest) =>
+        f({ ...first, namespace: "snippets" }, ...rest),
   ),
 
   displayNameOne: t`snippet collection`,

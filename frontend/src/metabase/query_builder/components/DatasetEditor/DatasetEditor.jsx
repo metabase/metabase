@@ -173,9 +173,10 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
-  const orderedColumns = useMemo(() => dataset.setting("table.columns"), [
-    dataset,
-  ]);
+  const orderedColumns = useMemo(
+    () => dataset.setting("table.columns"),
+    [dataset],
+  );
 
   const fields = useMemo(() => {
     // Columns in results_metadata contain all the necessary metadata
@@ -259,10 +260,8 @@ function DatasetEditor(props) {
     [focusedFieldRef, setFieldMetadata, inheritMappedFieldProperties],
   );
 
-  const [
-    isTabHintVisible,
-    { turnOn: showTabHint, turnOff: hideTabHint },
-  ] = useToggle(false);
+  const [isTabHintVisible, { turnOn: showTabHint, turnOff: hideTabHint }] =
+    useToggle(false);
 
   useEffect(() => {
     let timeoutId;

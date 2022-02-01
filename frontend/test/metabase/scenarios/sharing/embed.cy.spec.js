@@ -44,13 +44,8 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
       .split("\n")
       .join("");
 
-    cy.get(".ace_content")
-      .first()
-      .invoke("text")
-      .should("match", JS_CODE);
-    cy.get(".ace_content")
-      .last()
-      .should("have.text", IFRAME_CODE);
+    cy.get(".ace_content").first().invoke("text").should("match", JS_CODE);
+    cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
   });
 
   it("should update the name and description", () => {
@@ -71,9 +66,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
 
     // refresh page and check that title/desc were updated
     cy.visit("/dashboard/1");
-    cy.findByText("Orders per year")
-      .next()
-      .trigger("mouseenter");
+    cy.findByText("Orders per year").next().trigger("mouseenter");
     cy.findByText("How many orders were placed in each year?");
   });
 
@@ -83,10 +76,7 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     cy.icon("pencil").click();
     // add text box with text
     cy.icon("string").click();
-    cy.get(".DashCard")
-      .last()
-      .find("textarea")
-      .type("text text text");
+    cy.get(".DashCard").last().find("textarea").type("text text text");
     cy.icon("filter").click();
     popover().within(() => {
       cy.findByText("Text or Category").click();

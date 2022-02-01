@@ -13,9 +13,7 @@ export function setWidgetType(type) {
     .findByTestId("select-button")
     .click();
 
-  popover()
-    .findByText(type)
-    .click();
+  popover().findByText(type).click();
 }
 
 // FIELD FILTER STRING FILTERS
@@ -26,9 +24,7 @@ export function setWidgetType(type) {
  * @param {string} value
  */
 export function addWidgetStringFilter(value) {
-  popover()
-    .find("input")
-    .type(value);
+  popover().find("input").type(value);
   cy.button("Add filter").click();
 }
 
@@ -104,13 +100,9 @@ export function addDefaultNumberFilter(value) {
  * @param {string} options.field
  */
 export function mapTo({ table, field } = {}) {
-  popover()
-    .contains(table)
-    .click();
+  popover().contains(table).click();
 
-  popover()
-    .contains(field)
-    .click();
+  popover().contains(field).click();
 }
 
 /**
@@ -135,13 +127,9 @@ export function openEntryForm(isFilterRequired) {
  */
 function addBetweenFilter([low, high] = []) {
   popover().within(() => {
-    cy.get("input")
-      .first()
-      .type(low);
+    cy.get("input").first().type(low);
 
-    cy.get("input")
-      .last()
-      .type(high);
+    cy.get("input").last().type(high);
   });
 
   cy.button("Add filter").click();

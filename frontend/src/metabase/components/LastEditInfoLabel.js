@@ -37,9 +37,12 @@ function formatEditorName(firstName, lastName) {
 }
 
 function LastEditInfoLabel({ item, user, onClick, className }) {
-  const { first_name, last_name, id: editorId, timestamp } = item[
-    "last-edit-info"
-  ];
+  const {
+    first_name,
+    last_name,
+    id: editorId,
+    timestamp,
+  } = item["last-edit-info"];
   const time = moment(timestamp).fromNow();
 
   const editor =

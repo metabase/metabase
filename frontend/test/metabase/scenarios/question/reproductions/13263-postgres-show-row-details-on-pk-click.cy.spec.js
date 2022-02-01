@@ -9,18 +9,14 @@ describe("postgres > user > query", () => {
 
     cy.visit("/question/new");
     cy.findByText("Simple question").click();
-    cy.findByText(PG_DB_NAME)
-      .should("be.visible")
-      .click();
+    cy.findByText(PG_DB_NAME).should("be.visible").click();
     cy.findByTextEnsureVisible("Orders").click();
   });
 
   it("should show row details when clicked on its entity key (metabase#13263)", () => {
     // We're clicking on ID: 1 (the first order) => do not change!
     // It is tightly coupled to the assertion ("37.65"), which is "Subtotal" value for that order.
-    cy.get(".Table-ID")
-      .eq(0)
-      .click();
+    cy.get(".Table-ID").eq(0).click();
 
     // Wait until "doing science" spinner disappears (DOM is ready for assertions)
     // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render

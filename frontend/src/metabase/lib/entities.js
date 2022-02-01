@@ -154,8 +154,12 @@ export function createEntity(def) {
         ({ id }) => [...getObjectStatePath(id), "fetch"],
       ),
       withEntityActionDecorators("fetch"),
-    )((entityObject, options = {}) => async (dispatch, getState) =>
-      entity.normalize(await entity.api.get({ id: entityObject.id }, options)),
+    )(
+      (entityObject, options = {}) =>
+        async (dispatch, getState) =>
+          entity.normalize(
+            await entity.api.get({ id: entityObject.id }, options),
+          ),
     ),
 
     create: compose(
@@ -175,52 +179,50 @@ export function createEntity(def) {
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
-      (entityObject, updatedObject = null, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        // save the original object for undo
-        const originalObject = entity.selectors.getObject(getState(), {
-          entityId: entityObject.id,
-        });
-        // If a second object is provided just take the id from the first and
-        // update it with all the properties in the second
-        // NOTE: this is so that the object.update(updatedObject) method on
-        // the default entity wrapper class works correctly
-        if (updatedObject) {
-          entityObject = { id: entityObject.id, ...updatedObject };
-        }
-
-        const result = entity.normalize(
-          await entity.api.update(getWritableProperties(entityObject)),
-        );
-
-        if (notify) {
-          if (notify.undo) {
-            // pick only the attributes that were updated
-            const undoObject = _.pick(
-              originalObject,
-              ...Object.keys(updatedObject || {}),
-            );
-            dispatch(
-              addUndo({
-                actions: [
-                  entity.objectActions.update(
-                    entityObject,
-                    undoObject,
-                    // don't show an undo for the undo
-                    { notify: false },
-                  ),
-                ],
-                ...notify,
-              }),
-            );
-          } else {
-            dispatch(addUndo(notify));
+      (entityObject, updatedObject = null, { notify } = {}) =>
+        async (dispatch, getState) => {
+          // save the original object for undo
+          const originalObject = entity.selectors.getObject(getState(), {
+            entityId: entityObject.id,
+          });
+          // If a second object is provided just take the id from the first and
+          // update it with all the properties in the second
+          // NOTE: this is so that the object.update(updatedObject) method on
+          // the default entity wrapper class works correctly
+          if (updatedObject) {
+            entityObject = { id: entityObject.id, ...updatedObject };
           }
-        }
-        return result;
-      },
+
+          const result = entity.normalize(
+            await entity.api.update(getWritableProperties(entityObject)),
+          );
+
+          if (notify) {
+            if (notify.undo) {
+              // pick only the attributes that were updated
+              const undoObject = _.pick(
+                originalObject,
+                ...Object.keys(updatedObject || {}),
+              );
+              dispatch(
+                addUndo({
+                  actions: [
+                    entity.objectActions.update(
+                      entityObject,
+                      undoObject,
+                      // don't show an undo for the undo
+                      { notify: false },
+                    ),
+                  ],
+                  ...notify,
+                }),
+              );
+            } else {
+              dispatch(addUndo(notify));
+            }
+          }
+          return result;
+        },
     ),
 
     delete: compose(
@@ -518,7 +520,7 @@ export function createEntity(def) {
     // object selectors
     for (const [methodName, method] of Object.entries(entity.objectSelectors)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           return method(this, ...args);
         };
       }
@@ -526,7 +528,7 @@ export function createEntity(def) {
     // object actions
     for (const [methodName, method] of Object.entries(entity.objectActions)) {
       if (method) {
-        EntityWrapper.prototype[methodName] = function(...args) {
+        EntityWrapper.prototype[methodName] = function (...args) {
           if (this._dispatch) {
             // if dispatch was provided to the constructor go ahead and dispatch
             return this._dispatch(method(this, ...args));

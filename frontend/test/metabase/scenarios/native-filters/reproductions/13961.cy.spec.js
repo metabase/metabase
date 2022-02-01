@@ -54,11 +54,7 @@ describe.skip("issue 13961", () => {
     // Remove default filter (category)
     cy.get("fieldset .Icon-close").click();
 
-    cy.icon("play")
-      .first()
-      .should("be.visible")
-      .as("rerunQuestion")
-      .click();
+    cy.icon("play").first().should("be.visible").as("rerunQuestion").click();
     cy.wait("@cardQuery");
 
     cy.url().should("not.include", "?category=Doohickey");

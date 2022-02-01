@@ -61,21 +61,15 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("X")
-      .click();
+    cy.get(".List-item").contains("X").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("Y")
-      .click();
+    cy.get(".List-item").contains("Y").click();
 
     cy.contains("Axes").click();
 
     cy.contains("Linear").click();
-    cy.get(".List-item")
-      .contains("Ordinal")
-      .click();
+    cy.get(".List-item").contains("Ordinal").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -89,13 +83,9 @@ describe("scenarios > visualizations > waterfall", () => {
     cy.icon("waterfall").click();
 
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("X")
-      .click();
+    cy.get(".List-item").contains("X").click();
     cy.contains("Select a field").click();
-    cy.get(".List-item")
-      .contains("Y")
-      .click();
+    cy.get(".List-item").contains("Y").click();
 
     verifyWaterfallRendering("X", "Y");
   });
@@ -202,16 +192,9 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label")
-      .as("labels")
-      .eq(-3)
-      .invoke("text")
-      .should("eq", "0");
+    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
 
-    cy.get("@labels")
-      .last()
-      .invoke("text")
-      .should("eq", "0.1");
+    cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
   it("should display correct values when one of them is null (metabase#16246)", () => {
@@ -231,16 +214,9 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    cy.get(".value-label")
-      .as("labels")
-      .eq(-3)
-      .invoke("text")
-      .should("eq", "0");
+    cy.get(".value-label").as("labels").eq(-3).invoke("text").should("eq", "0");
 
-    cy.get("@labels")
-      .last()
-      .invoke("text")
-      .should("eq", "0.1");
+    cy.get("@labels").last().invoke("text").should("eq", "0.1");
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
@@ -264,17 +240,13 @@ describe("scenarios > visualizations > waterfall", () => {
     it("should allow toggling of the total bar", () => {
       cy.contains("Display").click();
 
-      cy.contains("Show total")
-        .next()
-        .click();
+      cy.contains("Show total").next().click();
 
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total").should("not.exist");
       });
 
-      cy.contains("Show total")
-        .next()
-        .click();
+      cy.contains("Show total").next().click();
       cy.get(".Visualization .axis.x").within(() => {
         cy.findByText("Total");
       });
@@ -285,9 +257,7 @@ describe("scenarios > visualizations > waterfall", () => {
 
       cy.get(".Visualization .value-label").should("not.exist");
 
-      cy.contains("Show values on data points")
-        .next()
-        .click();
+      cy.contains("Show values on data points").next().click();
       cy.get(".Visualization .value-label").within(() => {
         cy.findByText("(4.56)"); // negative in parentheses
       });

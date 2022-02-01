@@ -354,9 +354,11 @@ export default class Popover extends Component {
               (best, attachmentY) => ({
                 ...best,
                 attachmentY: attachmentY,
-                targetAttachmentY: (this.props.alignVerticalEdge
-                ? attachmentY === "bottom"
-                : attachmentY === "top")
+                targetAttachmentY: (
+                  this.props.alignVerticalEdge
+                    ? attachmentY === "bottom"
+                    : attachmentY === "top"
+                )
                   ? "bottom"
                   : "top",
                 offsetY: {

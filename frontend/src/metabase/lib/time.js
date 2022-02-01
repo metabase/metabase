@@ -39,18 +39,9 @@ const TEXT_UNIT_FORMATS = {
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
-  year: value =>
-    moment()
-      .year(value)
-      .startOf("year"),
-  "minute-of-hour": value =>
-    moment()
-      .minute(value)
-      .startOf("minute"),
-  "hour-of-day": value =>
-    moment()
-      .hour(value)
-      .startOf("hour"),
+  year: value => moment().year(value).startOf("year"),
+  "minute-of-hour": value => moment().minute(value).startOf("minute"),
+  "hour-of-day": value => moment().hour(value).startOf("hour"),
   "day-of-week": value =>
     moment()
       .weekday(value - 1)
@@ -63,18 +54,12 @@ const NUMERIC_UNIT_FORMATS = {
     moment("2016-01-01") // initial date must be in leap year to format properly
       .dayOfYear(value)
       .startOf("day"),
-  "week-of-year": value =>
-    moment()
-      .week(value)
-      .startOf("week"),
+  "week-of-year": value => moment().week(value).startOf("week"),
   "month-of-year": value =>
     moment()
       .month(value - 1)
       .startOf("month"),
-  "quarter-of-year": value =>
-    moment()
-      .quarter(value)
-      .startOf("quarter"),
+  "quarter-of-year": value => moment().quarter(value).startOf("quarter"),
 };
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)

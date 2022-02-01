@@ -9,9 +9,7 @@ describe.skip("issue 14957", () => {
 
     cy.visit("/question/new");
     cy.findByText("Native query").click();
-    cy.findByText(PG_DB_NAME)
-      .should("be.visible")
-      .click();
+    cy.findByText(PG_DB_NAME).should("be.visible").click();
   });
 
   it("should save a question before query has been executed (metabase#14957)", () => {

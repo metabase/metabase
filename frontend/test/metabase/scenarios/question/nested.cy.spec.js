@@ -184,9 +184,7 @@ describe("scenarios > question > nested", () => {
     cy.findByText("Pick a column to group by").click();
     cy.findByText("ID").click();
     // add another aggregation ("Count by Average of Total")
-    cy.get(".Button")
-      .contains("Summarize")
-      .click();
+    cy.get(".Button").contains("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
     cy.log("Reported failing on v0.34.3 - v0.37.0.2");
@@ -222,9 +220,7 @@ describe("scenarios > question > nested", () => {
 
     // Add Q2 to that dashboard
     cy.icon("pencil").click();
-    cy.icon("add")
-      .last()
-      .click();
+    cy.icon("add").last().click();
     cy.findByText("13816_Q2").click();
 
     // Add filter to the dashboard...
@@ -455,9 +451,7 @@ describe("scenarios > question > nested", () => {
       cy.findByText("15397").click();
 
       cy.wait("@dataset");
-      cy.findAllByText("Summarize")
-        .first()
-        .click();
+      cy.findAllByText("Summarize").first().click();
 
       if (test === "average") {
         cy.findByTestId("sidebar-right")
@@ -465,16 +459,11 @@ describe("scenarios > question > nested", () => {
           .findByText("Count")
           .click();
         cy.findByText("Average of ...").click();
-        popover()
-          .findByText("COUNT(*)")
-          .click();
+        popover().findByText("COUNT(*)").click();
         cy.wait("@dataset");
       }
 
-      cy.findByText("Group by")
-        .parent()
-        .findByText("COUNT(*)")
-        .click();
+      cy.findByText("Group by").parent().findByText("COUNT(*)").click();
 
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
@@ -562,9 +551,7 @@ describe("scenarios > question > nested", () => {
     });
 
     it("Count of rows AND Sum of VAL by CAT (metabase#15725-1)", () => {
-      cy.icon("add")
-        .last()
-        .click();
+      cy.icon("add").last().click();
       cy.findByText(/^Sum of/).click();
       cy.findByText("VAL").click();
       cy.findByText("Sum of VAL");
@@ -586,14 +573,10 @@ describe("scenarios > question > nested", () => {
 
       visualize();
 
-      cy.findAllByRole("button")
-        .contains("Summarize")
-        .click();
+      cy.findAllByRole("button").contains("Summarize").click();
       cy.findByTestId("add-aggregation-button").click();
       cy.findByText(/^Sum of/).click();
-      popover()
-        .findByText("VAL")
-        .click();
+      popover().findByText("VAL").click();
       cy.wait("@dataset").then(xhr => {
         expect(xhr.response.body.error).not.to.exist;
       });

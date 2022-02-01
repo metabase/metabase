@@ -102,9 +102,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.visit("/reference/segments/1/questions");
       cy.get(".full .Button").click();
       cy.findAllByText("37.65");
-      cy.findAllByText("Filter")
-        .first()
-        .click();
+      cy.findAllByText("Filter").first().click();
       cy.findByTestId("sidebar-right").within(() => {
         cy.contains("Product ID").click();
       });
@@ -115,9 +113,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByText("Add filter").click();
       cy.findByText("Product ID is 14");
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
 
       // Check list
       cy.visit("/reference/segments/1/questions");
@@ -144,26 +140,16 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.url().should("match", /segment\/1$/);
       cy.contains("Edit Your Segment");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
-      cy.get('[name="name"]')
-        .clear()
-        .type("Orders > 10");
+      cy.get('[name="name"]').clear().type("Orders > 10");
       cy.get('[name="description"]')
         .clear()
         .type("All orders with a total over $10.");
@@ -182,12 +168,8 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Segment").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 });

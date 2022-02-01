@@ -126,15 +126,10 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click();
+    popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
-    cy.contains("Redirect to HTTPS")
-      .parent()
-      .parent()
-      .contains("Disabled");
+    cy.contains("Redirect to HTTPS").parent().parent().contains("Disabled");
 
     restore(); // avoid leaving https site url
   });
@@ -153,9 +148,7 @@ describe("scenarios > admin > settings", () => {
       .parent()
       .findByTestId("select-button")
       .click();
-    popover()
-      .contains("https://")
-      .click();
+    popover().contains("https://").click();
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -238,10 +231,7 @@ describe("scenarios > admin > settings", () => {
         cy.contains("Enter a token").click();
 
         // Try an invalid token format
-        cy.contains("Enter the token")
-          .next()
-          .type("Hi")
-          .blur();
+        cy.contains("Enter the token").next().type("Hi").blur();
         cy.wait("@saveEmbeddingToken").then(({ response }) => {
           expect(response.body).to.equal(
             "Token format is invalid. Token should be 64 hexadecimal characters.",
@@ -302,10 +292,7 @@ describe("scenarios > admin > settings", () => {
           ],
         }).as("getSettings");
 
-        cy.contains("Enter the token")
-          .next()
-          .type(embeddingToken)
-          .blur();
+        cy.contains("Enter the token").next().type(embeddingToken).blur();
         cy.wait("@saveEmbeddingToken").then(({ response }) => {
           expect(response.body).to.equal(embeddingToken);
         });
@@ -354,9 +341,7 @@ describe("scenarios > admin > settings", () => {
       .as("settingsOptions")
       .first()
       .contains("Setup");
-    cy.get("@settingsOptions")
-      .last()
-      .contains(lastItem);
+    cy.get("@settingsOptions").last().contains(lastItem);
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)

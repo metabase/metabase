@@ -10,7 +10,8 @@ import memoize from "lodash.memoize";
 export const originalColors = { ...colors };
 
 const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
-const COLOR_REGEX = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
+const COLOR_REGEX =
+  /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 
 const CSS_COLOR_UPDATORS_BY_COLOR_NAME = {};
 const JS_COLOR_UPDATORS_BY_COLOR_NAME = {};
@@ -63,9 +64,7 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
     const color = Color(colorString);
     if (color.hex() === Color(matchColor).hex()) {
       if (color.alpha() < 1) {
-        return Color(replacementColor)
-          .alpha(color.alpha())
-          .string();
+        return Color(replacementColor).alpha(color.alpha()).string();
       } else {
         return replacementColor;
       }
@@ -74,7 +73,7 @@ const replaceColors = (cssValue, matchColor, replacementColor) => {
   });
 };
 
-const getColorStyleProperties = memoize(function() {
+const getColorStyleProperties = memoize(function () {
   const properties = [];
   walkStyleSheets(
     document.styleSheets,
@@ -126,10 +125,7 @@ function initCSSBrandHueUpdator() {
   // only contain the brand color or completely desaturated colors
   const rotateHueRule = addCSSRule(".brand-hue", "filter: hue-rotate(0);");
   CSS_COLOR_UPDATORS_BY_COLOR_NAME["brand"].push(themeColor => {
-    const degrees =
-      Color(themeColor)
-        .hsl()
-        .hue() - BRAND_NORMAL_COLOR.hue();
+    const degrees = Color(themeColor).hsl().hue() - BRAND_NORMAL_COLOR.hue();
     rotateHueRule.style["filter"] = `hue-rotate(${degrees}deg)`;
   });
 }

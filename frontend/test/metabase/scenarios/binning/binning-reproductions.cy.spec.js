@@ -192,9 +192,7 @@ describe("binning related reproductions", () => {
       cy.findByText("18646").click();
     });
 
-    popover()
-      .findByText("Product ID")
-      .click();
+    popover().findByText("Product ID").click();
 
     popover().within(() => {
       cy.findByText("CREATED_AT")
@@ -210,9 +208,7 @@ describe("binning related reproductions", () => {
     cy.findByText(/Question \d/).click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT")
-        .closest(".List-item")
-        .findByText("by month");
+      cy.findByText("CREATED_AT").closest(".List-item").findByText("by month");
     });
   });
 
@@ -278,10 +274,7 @@ describe("binning related reproductions", () => {
     // Simple question
     openOrdersTable();
     cy.findByText("Summarize").click();
-    cy.findByText("Group by")
-      .parent()
-      .findByText("Rating")
-      .click();
+    cy.findByText("Group by").parent().findByText("Rating").click();
     cy.get(".Visualization .bar").should("have.length", 6);
 
     // Custom question ("Notebook")

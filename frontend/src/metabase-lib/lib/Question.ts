@@ -454,9 +454,7 @@ export default class Question {
   }
 
   setDefaultQuery() {
-    return this.query()
-      .setDefaultQuery()
-      .question();
+    return this.query().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {

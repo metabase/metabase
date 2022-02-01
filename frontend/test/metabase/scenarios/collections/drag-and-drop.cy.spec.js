@@ -13,9 +13,7 @@ describe("scenarios > collections > drag and drop functionality", () => {
     cy.findByText("First collection").click();
 
     cy.findByText("Orders").as("dragSubject");
-    sidebar()
-      .findByText("Our analytics")
-      .as("dropTarget");
+    sidebar().findByText("Our analytics").as("dropTarget");
 
     dragAndDrop("dragSubject", "dropTarget");
     cy.findByText("Moved question");

@@ -46,13 +46,8 @@ export default class BreakoutWidget extends Component {
   };
 
   render() {
-    const {
-      breakout,
-      query,
-      enableSubDimensions,
-      className,
-      children,
-    } = this.props;
+    const { breakout, query, enableSubDimensions, className, children } =
+      this.props;
 
     const breakoutOptions =
       this.props.breakoutOptions || query.breakoutOptions();

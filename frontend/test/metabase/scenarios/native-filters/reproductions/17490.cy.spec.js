@@ -23,10 +23,7 @@ describe("issue 17490", () => {
      * Cypress fails to click any element that is not "actionable" (for example - when it's covered).
      * In other words, the `.click()` part is essential for this repro to work. Don't remove it.
      */
-    cy.findByPlaceholderText("Find...")
-      .click()
-      .type("Orders")
-      .blur();
+    cy.findByPlaceholderText("Find...").click().type("Orders").blur();
 
     cy.findByDisplayValue("Orders");
   });

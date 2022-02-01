@@ -135,10 +135,7 @@ export const getColorScale = (
   quantile: boolean = false,
 ): ColorScale => {
   if (quantile) {
-    return d3.scale
-      .quantile<any>()
-      .domain(extent)
-      .range(colors);
+    return d3.scale.quantile<any>().domain(extent).range(colors);
   } else {
     const [start, end] = extent;
     return d3.scale
@@ -174,25 +171,19 @@ export function color(color: ColorString | ColorName): ColorString {
   return color;
 }
 export function alpha(c: ColorString | ColorName, a: number): ColorString {
-  return Color(color(c))
-    .alpha(a)
-    .string();
+  return Color(color(c)).alpha(a).string();
 }
 export function darken(
   c: ColorString | ColorName,
   f: number = 0.25,
 ): ColorString {
-  return Color(color(c))
-    .darken(f)
-    .string();
+  return Color(color(c)).darken(f).string();
 }
 export function lighten(
   c: ColorString | ColorName,
   f: number = 0.5,
 ): ColorString {
-  return Color(color(c))
-    .lighten(f)
-    .string();
+  return Color(color(c)).lighten(f).string();
 }
 
 export type ColorMapping = (color: string) => string;

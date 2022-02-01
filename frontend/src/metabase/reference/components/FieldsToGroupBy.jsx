@@ -24,14 +24,8 @@ const mapStateToProps = (state, props) => ({
 @connect(mapStateToProps, mapDispatchToProps)
 export default class FieldsToGroupBy extends Component {
   render() {
-    const {
-      fields,
-      databaseId,
-      metric,
-      title,
-      onChangeLocation,
-      metadata,
-    } = this.props;
+    const { fields, databaseId, metric, title, onChangeLocation, metadata } =
+      this.props;
 
     return (
       <div>

@@ -113,9 +113,7 @@ describe("scenarios > question > saved", () => {
     cy.findByText("History").click();
 
     cy.findByTestId("edit-details-button").click();
-    cy.findByLabelText("Description")
-      .click()
-      .type("This is a question");
+    cy.findByLabelText("Description").click().type("This is a question");
 
     cy.button("Save").click();
     cy.wait("@updateQuestion");
@@ -136,17 +134,13 @@ describe("scenarios > question > saved", () => {
     cy.findByText("Simple question").click();
     cy.findByText("Saved Questions").click();
     cy.findByText("15808").click();
-    cy.findAllByText("Filter")
-      .first()
-      .click();
+    cy.findAllByText("Filter").first().click();
     cy.findByTestId("sidebar-right")
       .findByText(/Rating/i)
       .click();
     cy.findByTestId("select-button").findByText("Equal to");
     cy.findByPlaceholderText("Enter a number").type("4");
-    cy.button("Add filter")
-      .should("not.be.disabled")
-      .click();
+    cy.button("Add filter").should("not.be.disabled").click();
     cy.findByText("Synergistic Granite Chair");
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });

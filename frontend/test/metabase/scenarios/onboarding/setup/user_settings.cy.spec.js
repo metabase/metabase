@@ -44,10 +44,7 @@ describe("user > settings", () => {
     cy.server();
     cy.route("GET", "/api/permissions/membership").as("membership");
     cy.visit("/account/profile");
-    cy.findByDisplayValue(first_name)
-      .click()
-      .clear()
-      .type("John");
+    cy.findByDisplayValue(first_name).click().clear().type("John");
     cy.findByText("Update").click();
     cy.findByDisplayValue("John");
 

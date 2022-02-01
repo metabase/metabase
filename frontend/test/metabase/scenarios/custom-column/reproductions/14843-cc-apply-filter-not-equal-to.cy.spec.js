@@ -26,9 +26,7 @@ describe("issue 14843", () => {
     cy.icon("notebook").click();
     cy.icon("filter").click();
 
-    popover()
-      .findByText(CC_NAME)
-      .click();
+    popover().findByText(CC_NAME).click();
 
     cy.findByText("Equal to").click();
     cy.findByText("Not equal to").click();

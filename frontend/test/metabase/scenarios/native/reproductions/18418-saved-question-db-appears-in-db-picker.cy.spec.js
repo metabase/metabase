@@ -24,9 +24,7 @@ describe("issue 18418", () => {
 
     cy.findByText("Save").click();
 
-    cy.get(".Modal")
-      .button("Save")
-      .click();
+    cy.get(".Modal").button("Save").click();
 
     cy.button("Not now").click();
 

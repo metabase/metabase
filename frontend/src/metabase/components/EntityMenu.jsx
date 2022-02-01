@@ -40,14 +40,8 @@ class EntityMenu extends Component {
   render() {
     const preferReducedMotion = isReducedMotionPreferred();
 
-    const {
-      items,
-      triggerIcon,
-      triggerProps,
-      className,
-      tooltip,
-      trigger,
-    } = this.props;
+    const { items, triggerIcon, triggerProps, className, tooltip, trigger } =
+      this.props;
     const { open, menuItemContent } = this.state;
     return (
       <Container className={className} open={open}>

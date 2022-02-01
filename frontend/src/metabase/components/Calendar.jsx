@@ -124,9 +124,7 @@ export default class Calendar extends Component {
 
   renderWeeks(current) {
     const weeks = [];
-    const date = moment(current)
-      .startOf("month")
-      .day("Sunday");
+    const date = moment(current).startOf("month").day("Sunday");
     let done = false;
     let monthIndex = date.month();
     let count = 0;

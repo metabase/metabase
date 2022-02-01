@@ -30,9 +30,7 @@ describe("smoketest > admin_setup", () => {
 
       // Navigate to page
 
-      cy.icon("gear")
-        .first()
-        .click();
+      cy.icon("gear").first().click();
       cy.findByText("Admin settings").click();
 
       cy.findByText("Metabase Admin");
@@ -102,9 +100,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("2 other groups");
 
-      cy.findAllByText("Groups")
-        .first()
-        .click();
+      cy.findAllByText("Groups").first().click();
 
       cy.findByText(
         "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.",
@@ -148,25 +144,17 @@ describe("smoketest > admin_setup", () => {
       // Check member count
 
       // *** Unnecessary click (metabase#12693)
-      cy.findAllByText("People")
-        .last()
-        .click();
+      cy.findAllByText("People").last().click();
 
       cy.findAllByText("2 other groups").should("have.length", 2);
 
-      cy.findAllByText("Groups")
-        .first()
-        .click();
+      cy.findAllByText("Groups").first().click();
 
-      cy.findByText("Marketing")
-        .closest("tr")
-        .contains("2");
+      cy.findByText("Marketing").closest("tr").contains("2");
     });
 
     it("should create new users in different groups", () => {
-      cy.findAllByText("People")
-        .last()
-        .click();
+      cy.findAllByText("People").last().click();
 
       // Add new user into 2 groups
 
@@ -174,9 +162,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("First name").type(new_user.first_name);
       cy.findByLabelText("Last name").type(new_user.last_name);
       cy.findByLabelText("Email").type(new_user.email);
-      cy.findAllByText("Default")
-        .last()
-        .click();
+      cy.findAllByText("Default").last().click();
       popover().within(() => {
         cy.findByText("collection").click({ force: true });
         cy.findByText("Marketing").click({ force: true });
@@ -190,19 +176,11 @@ describe("smoketest > admin_setup", () => {
       cy.findAllByText("2 other groups").should("have.length", 3);
 
       // *** Unnecessary click (metabase#12693)
-      cy.findAllByText("Groups")
-        .first()
-        .click();
-      cy.findAllByText("People")
-        .last()
-        .click();
+      cy.findAllByText("Groups").first().click();
+      cy.findAllByText("People").last().click();
 
-      cy.findAllByText("Groups")
-        .first()
-        .click();
-      cy.findByText("Marketing")
-        .closest("tr")
-        .contains("3");
+      cy.findAllByText("Groups").first().click();
+      cy.findByText("Marketing").closest("tr").contains("3");
 
       cy.findByText("Marketing").click();
 
@@ -227,22 +205,13 @@ describe("smoketest > admin_setup", () => {
         "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
       );
       cy.findByText("Load").click();
-      cy.wait(2000)
-        .findAllByText("Select…")
-        .first()
-        .click();
+      cy.wait(2000).findAllByText("Select…").first().click();
       cy.findByText("NAME").click();
-      cy.findAllByText("Select…")
-        .last()
-        .click();
-      cy.findAllByText("NAME")
-        .last()
-        .click();
+      cy.findAllByText("Select…").last().click();
+      cy.findAllByText("NAME").last().click();
       cy.findByText("Add map").click();
 
-      cy.wait(3000)
-        .findByText("NAME")
-        .should("not.exist");
+      cy.wait(3000).findByText("NAME").should("not.exist");
       cy.findByText("Test Map");
     });
   });
@@ -288,18 +257,14 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByTestId("saved-question-header-button").click();
       cy.findByTestId("edit-details-button").click();
-      cy.findByLabelText("Name")
-        .clear()
-        .type("Test Question");
+      cy.findByLabelText("Name").clear().type("Test Question");
       cy.findByLabelText("Description").type("Testing question description");
       cy.findByText("Save").click();
     });
 
     it("should rename a table and add a description as admin", () => {
       cy.visit("/");
-      cy.icon("gear")
-        .first()
-        .click();
+      cy.icon("gear").first().click();
       cy.findByText("Admin settings").click();
 
       cy.findByText("Getting set up");
@@ -330,12 +295,7 @@ describe("smoketest > admin_setup", () => {
         .parent()
         .parent()
         .within(() => {
-          cy.get("input")
-            .first()
-            .wait(1)
-            .clear()
-            .wait(1)
-            .type("Sale");
+          cy.get("input").first().wait(1).clear().wait(1).type("Sale");
         });
 
       // Changing visibility of Created At column
@@ -370,9 +330,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Normal").click();
       cy.findByText("Currency").click({ force: true });
-      cy.findByText("Code (USD)")
-        .parent()
-        .click();
+      cy.findByText("Code (USD)").parent().click();
       cy.findByText("In every table cell").click();
 
       cy.findByText("Saved");
@@ -399,9 +357,7 @@ describe("smoketest > admin_setup", () => {
 
       // Checking three things in table display
 
-      cy.wait(1)
-        .findByText("Discount")
-        .should("not.exist");
+      cy.wait(1).findByText("Discount").should("not.exist");
       cy.findByText("Sale ($)");
 
       cy.findByText("Created At").should("not.exist");
@@ -413,9 +369,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.icon("notebook").click({ force: true });
 
-      cy.wait(1000)
-        .findByText("Orders")
-        .should("not.exist");
+      cy.wait(1000).findByText("Orders").should("not.exist");
       cy.findByText("Custom column");
 
       cy.findByText("Filter").click();
@@ -455,27 +409,15 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Product ID");
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Mediocre Wooden Bench");
-      cy.get(".Table-ID")
-        .eq("1")
-        .contains("14")
-        .should("not.exist");
+      cy.get(".Table-ID").eq("1").contains("14").should("not.exist");
 
       // Check key config in notebook editor (pulls up title with ID #, not from actual title)
 
       cy.icon("notebook").click({ force: true });
-      cy.wait(3000)
-        .findByText("Filter")
-        .click();
-      cy.findAllByText("Product ID")
-        .last()
-        .click();
-      cy.get("input")
-        .last()
-        .type("Awesome Concrete");
-      cy.wait(1000)
-        .findAllByText("Awesome Concrete Shoes")
-        .last()
-        .click();
+      cy.wait(3000).findByText("Filter").click();
+      cy.findAllByText("Product ID").last().click();
+      cy.get("input").last().type("Awesome Concrete");
+      cy.wait(1000).findAllByText("Awesome Concrete Shoes").last().click();
       cy.findByText("Add filter").click();
 
       visualize();
@@ -514,9 +456,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Join data").click();
 
-      popover()
-        .should("contain", "People")
-        .and("not.contain", "Reviews");
+      popover().should("contain", "People").and("not.contain", "Reviews");
     });
 
     it("should see changes to visibility, formatting, and foreign key mapping as user", () => {
@@ -569,10 +509,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findByText("Mediocre Wooden Bench");
-      cy.get(".Table-ID")
-        .eq("1")
-        .contains("14")
-        .should("not.exist");
+      cy.get(".Table-ID").eq("1").contains("14").should("not.exist");
     });
   });
 
@@ -631,13 +568,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Products");
 
       // Turn on data access for all users to Test Table
-      cy.icon("eye")
-        .eq(2)
-        .click();
+      cy.icon("eye").eq(2).click();
 
-      cy.findAllByRole("option")
-        .contains("Unrestricted")
-        .click();
+      cy.findAllByRole("option").contains("Unrestricted").click();
 
       cy.findByText("Change access to this database to limited?");
 
@@ -648,12 +581,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByTextEnsureVisible("Sample Database").click();
 
       // Turn on data access for Marketing users to Products
-      cy.icon("eye")
-        .eq(1)
-        .click();
-      cy.findAllByRole("option")
-        .contains("Unrestricted")
-        .click();
+      cy.icon("eye").eq(1).click();
+      cy.findAllByRole("option").contains("Unrestricted").click();
 
       cy.findByText("Are you sure you want to do this?");
 
@@ -675,9 +604,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Data permissions").click();
 
       cy.findByText("data").click();
-      cy.icon("check")
-        .eq(1)
-        .click();
+      cy.icon("check").eq(1).click();
       cy.findByText("No").click();
 
       cy.findByText("Save changes").click();
@@ -710,9 +637,7 @@ describe("smoketest > admin_setup", () => {
       });
 
       popover().within(() => {
-        cy.findAllByText("Our analytics")
-          .last()
-          .click();
+        cy.findAllByText("Our analytics").last().click();
       });
       cy.findByText("Create").click();
 
@@ -726,16 +651,11 @@ describe("smoketest > admin_setup", () => {
       cy.findByText(`Permissions for ${subCollectionName}`);
 
       // Collection can no longer access sub-collection
-      cy.wait(1)
-        .get(".Icon-check")
-        .last()
-        .click();
+      cy.wait(1).get(".Icon-check").last().click();
       cy.findByText("Revoke access").click();
 
       // Marketing now has access to sub-collection
-      cy.icon("close")
-        .last()
-        .click();
+      cy.icon("close").last().click();
       cy.findByText("Curate collection").click();
 
       cy.findByText("Save").click();
@@ -751,9 +671,7 @@ describe("smoketest > admin_setup", () => {
       // Modify permissions for top-level collection
 
       cy.findByText("Collection permissions").click();
-      cy.icon("close")
-        .eq(1)
-        .click();
+      cy.icon("close").eq(1).click();
       cy.findByText("View collection").click();
       cy.findByText("Save changes").click();
 
@@ -764,14 +682,10 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("View sub-collections").click();
 
       // Give collection full access to sub-collection
-      cy.icon("close")
-        .last()
-        .click();
+      cy.icon("close").last().click();
       cy.findByText("Curate collection").click();
       // Revoke Marketing access to sub-collection
-      cy.icon("check")
-        .last()
-        .click();
+      cy.icon("check").last().click();
       cy.findByText("Revoke access").click();
       // Revoke data access to sub-collection
       cy.icon("eye").click();
@@ -820,22 +734,15 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Orders").click();
       cy.findByText("Summarize").click();
-      cy.wait(1000)
-        .findAllByText("Quantity")
-        .eq(1)
-        .click();
+      cy.wait(1000).findAllByText("Quantity").eq(1).click();
       cy.findAllByText("Done").click();
 
       cy.findByText("Product ID").should("not.exist");
       cy.wait(1000).findByText("Quantity");
 
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText('Replace original question, "Orders"').click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       // *** There should be an error message here saying I'm not allowed to make any changes
 
       // Normal user should not see changes that no collection user made
@@ -852,18 +759,14 @@ describe("smoketest > admin_setup", () => {
     it.skip("should add a sub collection as a user", () => {
       cy.visit("/collection/root");
 
-      cy.wait(3000)
-        .findByText("New collection")
-        .click();
+      cy.wait(3000).findByText("New collection").click();
 
       cy.findByLabelText("Name").type("test user added sub-collection");
       cy.findByLabelText("Description").type(
         "very descriptive of test user added sub-collection",
       );
       cy.icon("chevrondown").click();
-      cy.findAllByText("Our analytics")
-        .last()
-        .click();
+      cy.findAllByText("Our analytics").last().click();
 
       cy.findByText("Create").click();
 
@@ -900,9 +803,7 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("My personal collection");
 
       cy.findByText("test sub-collection").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();
 
       cy.contains("test sub-collection").click();
@@ -966,8 +867,5 @@ describe("smoketest > admin_setup", () => {
 });
 
 function openEllipsisMenuForUser(user) {
-  cy.findByText(user)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click();
+  cy.findByText(user).closest("tr").find(".Icon-ellipsis").click();
 }

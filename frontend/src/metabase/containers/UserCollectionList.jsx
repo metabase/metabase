@@ -39,32 +39,34 @@ const UserCollectionList = ({ collectionsById }) => (
         return (
           <Box>
             <Grid>
-              {// map through all users that have logged in at least once
-              // which gives them a personal collection ID
-              list.map(
-                user =>
-                  user.personal_collection_id && (
-                    <GridItem width={1 / 3} key={user.personal_collection_id}>
-                      <Link
-                        to={Urls.collection(
-                          collectionsById[user.personal_collection_id],
-                        )}
-                      >
-                        <Card p={2} hoverable>
-                          <Flex align="center">
-                            <Icon
-                              name="person"
-                              mr={1}
-                              color={color("text-medium")}
-                              size={18}
-                            />
-                            <h3>{user.common_name}</h3>
-                          </Flex>
-                        </Card>
-                      </Link>
-                    </GridItem>
-                  ),
-              )}
+              {
+                // map through all users that have logged in at least once
+                // which gives them a personal collection ID
+                list.map(
+                  user =>
+                    user.personal_collection_id && (
+                      <GridItem width={1 / 3} key={user.personal_collection_id}>
+                        <Link
+                          to={Urls.collection(
+                            collectionsById[user.personal_collection_id],
+                          )}
+                        >
+                          <Card p={2} hoverable>
+                            <Flex align="center">
+                              <Icon
+                                name="person"
+                                mr={1}
+                                color={color("text-medium")}
+                                size={18}
+                              />
+                              <h3>{user.common_name}</h3>
+                            </Flex>
+                          </Card>
+                        </Link>
+                      </GridItem>
+                    ),
+                )
+              }
             </Grid>
           </Box>
         );

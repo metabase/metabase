@@ -227,26 +227,26 @@ export function withRequestState(getRequestStatePath) {
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      async (dispatch, getState) => {
-        const statePath = getRequestStatePath(...args);
-        try {
-          dispatch(setRequestLoading(statePath));
+    // thunk:
+    async (dispatch, getState) => {
+      const statePath = getRequestStatePath(...args);
+      try {
+        dispatch(setRequestLoading(statePath));
 
-          const result = await thunkCreator(...args)(dispatch, getState);
+        const result = await thunkCreator(...args)(dispatch, getState);
 
-          // Dispatch `setRequestLoaded` after clearing the call stack because
-          // we want to the actual data to be updated before we notify
-          // components that fetching the data is completed
-          setTimeout(() => dispatch(setRequestLoaded(statePath)));
+        // Dispatch `setRequestLoaded` after clearing the call stack because
+        // we want to the actual data to be updated before we notify
+        // components that fetching the data is completed
+        setTimeout(() => dispatch(setRequestLoaded(statePath)));
 
-          return result;
-        } catch (error) {
-          console.error(`Request ${statePath.join(",")} failed:`, error);
-          dispatch(setRequestError(statePath, error));
-          throw error;
-        }
-      };
+        return result;
+      } catch (error) {
+        console.error(`Request ${statePath.join(",")} failed:`, error);
+        dispatch(setRequestError(statePath, error));
+        throw error;
+      }
+    };
 }
 
 /**
@@ -269,36 +269,36 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      (dispatch, getState) => {
-        const options = args[args.length - 1] || {};
-        const { reload, properties } = options;
+    // thunk:
+    (dispatch, getState) => {
+      const options = args[args.length - 1] || {};
+      const { reload, properties } = options;
 
-        const existingStatePath = getExistingStatePath(...args);
-        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
-        const existingData = getIn(getState(), existingStatePath);
-        const { loading, loaded } = getIn(getState(), requestStatePath) || {};
+      const existingStatePath = getExistingStatePath(...args);
+      const requestStatePath = ["requests", ...getRequestStatePath(...args)];
+      const existingData = getIn(getState(), existingStatePath);
+      const { loading, loaded } = getIn(getState(), requestStatePath) || {};
 
-        const hasRequestedProperties =
-          properties &&
-          existingData &&
-          _.all(properties, p => existingData[p] !== undefined);
+      const hasRequestedProperties =
+        properties &&
+        existingData &&
+        _.all(properties, p => existingData[p] !== undefined);
 
-        // return existing data if
-        if (
-          // we don't want to reload
-          // the check is a workaround for EntityListLoader passing reload function to children
-          reload !== true &&
-          // and we have a an non-error request state or have a list of properties that all exist on the object
-          (loading || loaded || hasRequestedProperties)
-        ) {
-          // TODO: if requestState is LOADING can we wait for the other reques
-          // to complete and return that result instead?
-          return existingData;
-        } else {
-          return thunkCreator(...args)(dispatch, getState);
-        }
-      };
+      // return existing data if
+      if (
+        // we don't want to reload
+        // the check is a workaround for EntityListLoader passing reload function to children
+        reload !== true &&
+        // and we have a an non-error request state or have a list of properties that all exist on the object
+        (loading || loaded || hasRequestedProperties)
+      ) {
+        // TODO: if requestState is LOADING can we wait for the other reques
+        // to complete and return that result instead?
+        return existingData;
+      } else {
+        return thunkCreator(...args)(dispatch, getState);
+      }
+    };
 }
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -308,29 +308,31 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
   return thunkCreator =>
     // thunk creator:
     (...args) =>
-      // thunk:
-      (dispatch, getState) => {
-        function get(valueOrFn, extra = {}) {
-          if (typeof valueOrFn === "function") {
-            return valueOrFn(args, { ...extra }, getState);
-          }
+    // thunk:
+    (dispatch, getState) => {
+      function get(valueOrFn, extra = {}) {
+        if (typeof valueOrFn === "function") {
+          return valueOrFn(args, { ...extra }, getState);
         }
-        try {
-          const category = get(categoryOrFn);
-          const action = get(actionOrFn, { category });
-          const label = get(labelOrFn, { category, action });
-          const value = get(valueOrFn, { category, action, label });
-          MetabaseAnalytics.trackStructEvent(category, action, label, value);
-        } catch (error) {
-          console.warn("withAnalytics threw an error:", error);
-        }
-        return thunkCreator(...args)(dispatch, getState);
-      };
+      }
+      try {
+        const category = get(categoryOrFn);
+        const action = get(actionOrFn, { category });
+        const label = get(labelOrFn, { category, action });
+        const value = get(valueOrFn, { category, action, label });
+        MetabaseAnalytics.trackStructEvent(category, action, label, value);
+      } catch (error) {
+        console.warn("withAnalytics threw an error:", error);
+      }
+      return thunkCreator(...args)(dispatch, getState);
+    };
 }
 
 import { normalize } from "normalizr";
 
 export function withNormalize(schema) {
-  return thunkCreator => (...args) => async (dispatch, getState) =>
-    normalize(await thunkCreator(...args)(dispatch, getState), schema);
+  return thunkCreator =>
+    (...args) =>
+    async (dispatch, getState) =>
+      normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

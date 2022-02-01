@@ -31,18 +31,15 @@ export default class UserGroupSelect extends Component {
   };
 
   handleGroupChange = (group, isAdded) => {
-    const {
-      userId,
-      userMemberships,
-      createMembership,
-      deleteMembership,
-    } = this.props;
+    const { userId, userMemberships, createMembership, deleteMembership } =
+      this.props;
 
     if (isAdded) {
       createMembership({ groupId: group.id, userId });
     } else {
-      const membershipId = userMemberships.find(m => m.group_id === group.id)
-        .membership_id;
+      const membershipId = userMemberships.find(
+        m => m.group_id === group.id,
+      ).membership_id;
 
       deleteMembership({ membershipId });
     }

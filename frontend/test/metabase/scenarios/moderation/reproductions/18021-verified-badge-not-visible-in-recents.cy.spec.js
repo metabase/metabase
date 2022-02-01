@@ -25,9 +25,7 @@ describe.skip("issue 18021", () => {
     cy.findByText("Recently viewed")
       .parent()
       .within(() => {
-        cy.findByText("Orders")
-          .closest("a")
-          .find(".Icon-verified");
+        cy.findByText("Orders").closest("a").find(".Icon-verified");
       });
   });
 });

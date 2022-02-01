@@ -46,12 +46,10 @@ const CHANNEL_NOUN_PLURAL = {
   slack: t`Slack messages`,
 };
 
-export const AddEditEmailSidebar = connect(mapStateToProps)(
-  _AddEditEmailSidebar,
-);
-export const AddEditSlackSidebar = connect(mapStateToProps)(
-  _AddEditSlackSidebar,
-);
+export const AddEditEmailSidebar =
+  connect(mapStateToProps)(_AddEditEmailSidebar);
+export const AddEditSlackSidebar =
+  connect(mapStateToProps)(_AddEditSlackSidebar);
 
 function _AddEditEmailSidebar({
   pulse,
@@ -121,9 +119,9 @@ function _AddEditEmailSidebar({
           )}
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-            channelSpec && channelSpec.type
-          ] || t`Messages`} will be sent at`}
+          textBeforeSendTime={t`${
+            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+          } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }
@@ -320,9 +318,9 @@ function _AddEditSlackSidebar({
           )}
           scheduleOptions={channelSpec.schedules}
           textBeforeInterval={t`Sent`}
-          textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-            channelSpec && channelSpec.type
-          ] || t`Messages`} will be sent at`}
+          textBeforeSendTime={t`${
+            CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] || t`Messages`
+          } will be sent at`}
           onScheduleChange={(newSchedule, changedProp) =>
             onChannelScheduleChange(newSchedule, changedProp)
           }

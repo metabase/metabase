@@ -96,27 +96,29 @@ export const setUIControls = createAction(SET_UI_CONTROLS);
 export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
 export const resetUIControls = createAction(RESET_UI_CONTROLS);
 
-export const setQueryBuilderMode = (
-  queryBuilderMode,
-  { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
-) => async dispatch => {
-  await dispatch(
-    setUIControls({
-      queryBuilderMode,
-      datasetEditorTab,
-      isShowingChartSettingsSidebar: false,
-    }),
-  );
-  if (shouldUpdateUrl) {
-    await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
-  }
-  if (queryBuilderMode === "notebook") {
-    dispatch(cancelQuery());
-  }
-  if (queryBuilderMode === "dataset") {
-    dispatch(runQuestionQuery());
-  }
-};
+export const setQueryBuilderMode =
+  (
+    queryBuilderMode,
+    { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
+  ) =>
+  async dispatch => {
+    await dispatch(
+      setUIControls({
+        queryBuilderMode,
+        datasetEditorTab,
+        isShowingChartSettingsSidebar: false,
+      }),
+    );
+    if (shouldUpdateUrl) {
+      await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
+    }
+    if (queryBuilderMode === "notebook") {
+      dispatch(cancelQuery());
+    }
+    if (queryBuilderMode === "dataset") {
+      dispatch(runQuestionQuery());
+    }
+  };
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
@@ -162,10 +164,8 @@ export const popState = createThunkAction(
       }
     }
 
-    const {
-      mode: queryBuilderModeFromURL,
-      ...uiControls
-    } = getQueryBuilderModeFromLocation(location);
+    const { mode: queryBuilderModeFromURL, ...uiControls } =
+      getQueryBuilderModeFromLocation(location);
 
     if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
       await dispatch(
@@ -187,29 +187,27 @@ const getURL = (location, { includeMode = false } = {}) =>
   location.hash;
 
 // Logic for handling location changes, dispatched by top-level QueryBuilder component
-export const locationChanged = (location, nextLocation, nextParams) => (
-  dispatch,
-  getState,
-) => {
-  if (location !== nextLocation) {
-    if (nextLocation.action === "POP") {
-      if (
-        getURL(nextLocation, { includeMode: true }) !==
-        getURL(location, { includeMode: true })
+export const locationChanged =
+  (location, nextLocation, nextParams) => (dispatch, getState) => {
+    if (location !== nextLocation) {
+      if (nextLocation.action === "POP") {
+        if (
+          getURL(nextLocation, { includeMode: true }) !==
+          getURL(location, { includeMode: true })
+        ) {
+          // the browser forward/back button was pressed
+          dispatch(popState(nextLocation));
+        }
+      } else if (
+        (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
+        // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
+        nextLocation.state === undefined
       ) {
-        // the browser forward/back button was pressed
-        dispatch(popState(nextLocation));
+        // a link to a different qb url was clicked
+        dispatch(initializeQB(nextLocation, nextParams));
       }
-    } else if (
-      (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
-      // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
-      nextLocation.state === undefined
-    ) {
-      // a link to a different qb url was clicked
-      dispatch(initializeQB(nextLocation, nextParams));
     }
-  }
-};
+  };
 
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) =>
@@ -237,94 +235,95 @@ export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
-    card,
-    {
-      dirty,
-      replaceState,
-      preserveParameters = true,
-      queryBuilderMode,
-      datasetEditorTab,
-    } = {},
-  ) => (dispatch, getState) => {
-    let question;
-    if (!card) {
-      card = getCard(getState());
-      question = getQuestion(getState());
-    } else {
-      question = new Question(card, getMetadata(getState()));
-    }
-
-    if (dirty == null) {
-      const originalQuestion = getOriginalQuestion(getState());
-      dirty =
-        !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
-    }
-
-    // prevent clobbering of hash when there are fake parameters on the question
-    // consider handling this in a more general way, somehow
-    if (question.isStructured() && question.parameters().length > 0) {
-      dirty = true;
-    }
-
-    if (!queryBuilderMode) {
-      queryBuilderMode = getQueryBuilderMode(getState());
-    }
-    if (!datasetEditorTab) {
-      datasetEditorTab = getDatasetEditorTab(getState());
-    }
-
-    const copy = cleanCopyCard(card);
-
-    const newState = {
-      card: copy,
-      cardId: copy.id,
-      serializedCard: serializeCardForUrl(copy),
-    };
-
-    const { currentState } = getState().qb;
-    const url = urlForCardState(newState, dirty);
-
-    const urlParsed = urlParse(url);
-    const locationDescriptor = {
-      pathname: getPathNameFromQueryBuilderMode({
-        pathname: urlParsed.pathname || "",
+      card,
+      {
+        dirty,
+        replaceState,
+        preserveParameters = true,
         queryBuilderMode,
         datasetEditorTab,
-      }),
-      search: preserveParameters ? window.location.search : "",
-      hash: urlParsed.hash,
-      state: newState,
-    };
+      } = {},
+    ) =>
+    (dispatch, getState) => {
+      let question;
+      if (!card) {
+        card = getCard(getState());
+        question = getQuestion(getState());
+      } else {
+        question = new Question(card, getMetadata(getState()));
+      }
 
-    const isSameURL =
-      locationDescriptor.pathname === window.location.pathname &&
-      (locationDescriptor.search || "") === (window.location.search || "") &&
-      (locationDescriptor.hash || "") === (window.location.hash || "");
-    const isSameCard =
-      currentState && currentState.serializedCard === newState.serializedCard;
-    const isSameMode =
-      getQueryBuilderModeFromLocation(locationDescriptor).mode ===
-      getQueryBuilderModeFromLocation(window.location).mode;
+      if (dirty == null) {
+        const originalQuestion = getOriginalQuestion(getState());
+        dirty =
+          !originalQuestion ||
+          (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+      }
 
-    if (isSameCard && isSameURL) {
-      return;
-    }
+      // prevent clobbering of hash when there are fake parameters on the question
+      // consider handling this in a more general way, somehow
+      if (question.isStructured() && question.parameters().length > 0) {
+        dirty = true;
+      }
 
-    if (replaceState == null) {
-      // if the serialized card is identical replace the previous state instead of adding a new one
-      // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-      replaceState = isSameCard && isSameMode;
-    }
+      if (!queryBuilderMode) {
+        queryBuilderMode = getQueryBuilderMode(getState());
+      }
+      if (!datasetEditorTab) {
+        datasetEditorTab = getDatasetEditorTab(getState());
+      }
 
-    // this is necessary because we can't get the state from history.state
-    dispatch(setCurrentState(newState));
-    if (replaceState) {
-      dispatch(replace(locationDescriptor));
-    } else {
-      dispatch(push(locationDescriptor));
-    }
-  },
+      const copy = cleanCopyCard(card);
+
+      const newState = {
+        card: copy,
+        cardId: copy.id,
+        serializedCard: serializeCardForUrl(copy),
+      };
+
+      const { currentState } = getState().qb;
+      const url = urlForCardState(newState, dirty);
+
+      const urlParsed = urlParse(url);
+      const locationDescriptor = {
+        pathname: getPathNameFromQueryBuilderMode({
+          pathname: urlParsed.pathname || "",
+          queryBuilderMode,
+          datasetEditorTab,
+        }),
+        search: preserveParameters ? window.location.search : "",
+        hash: urlParsed.hash,
+        state: newState,
+      };
+
+      const isSameURL =
+        locationDescriptor.pathname === window.location.pathname &&
+        (locationDescriptor.search || "") === (window.location.search || "") &&
+        (locationDescriptor.hash || "") === (window.location.hash || "");
+      const isSameCard =
+        currentState && currentState.serializedCard === newState.serializedCard;
+      const isSameMode =
+        getQueryBuilderModeFromLocation(locationDescriptor).mode ===
+        getQueryBuilderModeFromLocation(window.location).mode;
+
+      if (isSameCard && isSameURL) {
+        return;
+      }
+
+      if (replaceState == null) {
+        // if the serialized card is identical replace the previous state instead of adding a new one
+        // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+        replaceState = isSameCard && isSameMode;
+      }
+
+      // this is necessary because we can't get the state from history.state
+      dispatch(setCurrentState(newState));
+      if (replaceState) {
+        dispatch(replace(locationDescriptor));
+      } else {
+        dispatch(push(locationDescriptor));
+      }
+    },
 );
 
 export const REDIRECT_TO_NEW_QUESTION_FLOW =
@@ -366,10 +365,8 @@ export const initializeQB = (location, params, queryParams) => {
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
 
-    const {
-      mode: queryBuilderMode,
-      ...otherUiControls
-    } = getQueryBuilderModeFromLocation(location);
+    const { mode: queryBuilderMode, ...otherUiControls } =
+      getQueryBuilderModeFromLocation(location);
     const uiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
@@ -764,45 +761,41 @@ function hasNewColumns(question, queryResult) {
   return _.difference(nextColumns, previousColumns).length > 0;
 }
 
-export const updateCardVisualizationSettings = settings => async (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  const queryBuilderMode = getQueryBuilderMode(getState());
-  const datasetEditorTab = getDatasetEditorTab(getState());
-  const isEditingDatasetMetadata =
-    queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
-  const changedSettings = Object.keys(settings);
-  const isColumnWidthResetEvent =
-    changedSettings.length === 1 &&
-    changedSettings.includes("table.column_widths") &&
-    settings["table.column_widths"] === undefined;
+export const updateCardVisualizationSettings =
+  settings => async (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const queryBuilderMode = getQueryBuilderMode(getState());
+    const datasetEditorTab = getDatasetEditorTab(getState());
+    const isEditingDatasetMetadata =
+      queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+    const changedSettings = Object.keys(settings);
+    const isColumnWidthResetEvent =
+      changedSettings.length === 1 &&
+      changedSettings.includes("table.column_widths") &&
+      settings["table.column_widths"] === undefined;
 
-  if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
-    return;
-  }
+    if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
+      return;
+    }
 
-  await dispatch(
-    updateQuestion(question.updateSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
-    }),
-  );
-};
+    await dispatch(
+      updateQuestion(question.updateSettings(settings), {
+        run: "auto",
+        shouldUpdateUrl: true,
+      }),
+    );
+  };
 
-export const replaceAllCardVisualizationSettings = settings => async (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  await dispatch(
-    updateQuestion(question.setSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
-    }),
-  );
-};
+export const replaceAllCardVisualizationSettings =
+  settings => async (dispatch, getState) => {
+    const question = getQuestion(getState());
+    await dispatch(
+      updateQuestion(question.setSettings(settings), {
+        run: "auto",
+        shouldUpdateUrl: true,
+      }),
+    );
+  };
 
 export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
 export const setTemplateTag = createThunkAction(
@@ -1116,13 +1109,11 @@ export const updateQuestion = (
 };
 
 // DEPRECATED, still used in a couple places
-export const setDatasetQuery = (datasetQuery, options) => (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
-};
+export const setDatasetQuery =
+  (datasetQuery, options) => (dispatch, getState) => {
+    const question = getQuestion(getState());
+    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
+  };
 
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
@@ -1483,12 +1474,7 @@ export const viewNextObjectDetail = () => {
     dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
 
     dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
+      updateQuestion(question.query().updateFilter(0, newFilter).question()),
     );
 
     dispatch(runQuestionQuery());
@@ -1512,12 +1498,7 @@ export const viewPreviousObjectDetail = () => {
     dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
 
     dispatch(
-      updateQuestion(
-        question
-          .query()
-          .updateFilter(0, newFilter)
-          .question(),
-      ),
+      updateQuestion(question.query().updateFilter(0, newFilter).question()),
     );
 
     dispatch(runQuestionQuery());
@@ -1529,7 +1510,8 @@ export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
-export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
+export const onReplaceAllVisualizationSettings =
+  replaceAllCardVisualizationSettings;
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
@@ -1587,32 +1569,31 @@ export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
 export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
 
-export const setFieldMetadata = ({ field_ref, changes }) => (
-  dispatch,
-  getState,
-) => {
-  const question = getQuestion(getState());
-  const resultsMetadata = getResultsMetadata(getState());
+export const setFieldMetadata =
+  ({ field_ref, changes }) =>
+  (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const resultsMetadata = getResultsMetadata(getState());
 
-  const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-    const compareExact =
-      !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
-    const isTargetField = isSameField(
-      field_ref,
-      fieldMetadata.field_ref,
-      compareExact,
-    );
-    return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
-  });
+    const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
+      const compareExact =
+        !isLocalField(field_ref) || !isLocalField(fieldMetadata.field_ref);
+      const isTargetField = isSameField(
+        field_ref,
+        fieldMetadata.field_ref,
+        compareExact,
+      );
+      return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
+    });
 
-  const nextResultsMetadata = {
-    ...resultsMetadata,
-    columns: nextColumnMetadata,
+    const nextResultsMetadata = {
+      ...resultsMetadata,
+      columns: nextColumnMetadata,
+    };
+
+    const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
+
+    dispatch(updateQuestion(nextQuestion));
+    dispatch(setMetadataDiff({ field_ref, changes }));
+    dispatch(setResultsMetadata(nextResultsMetadata));
   };
-
-  const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
-
-  dispatch(updateQuestion(nextQuestion));
-  dispatch(setMetadataDiff({ field_ref, changes }));
-  dispatch(setResultsMetadata(nextResultsMetadata));
-};

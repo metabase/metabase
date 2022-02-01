@@ -10,14 +10,8 @@ import {
 import { USER_GROUPS } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  PEOPLE,
-  PEOPLE_ID,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > visualizations > drillthroughs > chart drill", () => {
@@ -293,19 +287,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("CA People").click();
     cy.contains("Hudson Borer");
     cy.contains("Summarize").click();
-    cy.contains("Summarize by")
-      .parent()
-      .parent()
-      .contains("City")
-      .click();
+    cy.contains("Summarize by").parent().parent().contains("City").click();
 
     // wait for chart to load
     cy.wait("@dataset");
     cy.contains("Count by City");
     // drill into the first bar
-    cy.get(".bar")
-      .first()
-      .click({ force: true });
+    cy.get(".bar").first().click({ force: true });
     cy.contains("View this CA Person").click();
 
     // check that filter is applied and person displayed
@@ -330,9 +318,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("January, 2019");
 
     // drill into a recent week
-    cy.get(".dot")
-      .eq(-4)
-      .click({ force: true });
+    cy.get(".dot").eq(-4).click({ force: true });
     cy.contains("View these Orders").click();
 
     // check that filter is applied and rows displayed
@@ -357,9 +343,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Equal to").click();
     });
     cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number")
-      .click()
-      .type("1");
+    cy.findByPlaceholderText("Enter a number").click().type("1");
     cy.findByText("Add filter").click();
 
     visualize();
@@ -427,9 +411,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       },
     });
 
-    cy.get(".bar")
-      .last()
-      .trigger("mousemove");
+    cy.get(".bar").last().trigger("mousemove");
     popover().findByText("12");
   });
 
@@ -497,9 +479,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
         // Initial visualization has rendered and we can now drill-through
         cy.wait("@cardQuery");
-        cy.get(".Visualization .bar")
-          .eq(4)
-          .click({ force: true });
+        cy.get(".Visualization .bar").eq(4).click({ force: true });
         cy.findByText(/View these People/i).click();
 
         // We should see the resulting dataset of that drill-through
@@ -631,9 +611,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
 
       // Drill-through the last bar (Widget)
-      cy.get(".bar")
-        .last()
-        .click({ force: true });
+      cy.get(".bar").last().click({ force: true });
       cy.findByText("View these Products").click();
     });
 
@@ -651,7 +629,5 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 });
 
 function clickLineDot({ index } = {}) {
-  cy.get(".Visualization .dot")
-    .eq(index)
-    .click({ force: true });
+  cy.get(".Visualization .dot").eq(index).click({ force: true });
 }

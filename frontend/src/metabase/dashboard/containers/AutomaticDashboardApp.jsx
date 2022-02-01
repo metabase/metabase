@@ -88,12 +88,8 @@ class AutomaticDashboardApp extends React.Component {
   }
 
   render() {
-    const {
-      dashboard,
-      parameters,
-      parameterValues,
-      setParameterValue,
-    } = this.props;
+    const { dashboard, parameters, parameterValues, setParameterValue } =
+      this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
     const more = dashboard && dashboard.more;

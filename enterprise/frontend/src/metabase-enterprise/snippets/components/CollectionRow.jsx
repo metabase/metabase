@@ -12,10 +12,8 @@ const ICON_SIZE = 16;
 @SnippetCollections.load({ id: (state, props) => props.item.id, wrapped: true })
 export default class CollectionRow extends React.Component {
   render() {
-    const {
-      snippetCollection: collection,
-      setSnippetCollectionId,
-    } = this.props;
+    const { snippetCollection: collection, setSnippetCollectionId } =
+      this.props;
     const onSelectCollection = () => setSnippetCollectionId(collection.id);
 
     return (

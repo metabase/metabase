@@ -68,11 +68,7 @@ describe("query_time", () => {
     it('should convert relative-datetime -1 "month"', () => {
       expect(
         absolute(["relative-datetime", -1, "month"]).format("YYYY-MM-DD HH"),
-      ).toBe(
-        moment()
-          .subtract(1, "month")
-          .format("YYYY-MM-DD HH"),
-      );
+      ).toBe(moment().subtract(1, "month").format("YYYY-MM-DD HH"));
     });
   });
 
@@ -243,14 +239,10 @@ describe("query_time", () => {
           ["relative-datetime", 1, "day"],
         ]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
-          moment()
-            .subtract(1, "day")
-            .format("YYYY-MM-DD 00:00:00"),
+          moment().subtract(1, "day").format("YYYY-MM-DD 00:00:00"),
         );
         expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(
-          moment()
-            .add(1, "day")
-            .format("YYYY-MM-DD 23:59:59"),
+          moment().add(1, "day").format("YYYY-MM-DD 23:59:59"),
         );
       });
     });
@@ -264,14 +256,10 @@ describe("query_time", () => {
           "day",
         ]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
-          moment()
-            .subtract(8, "day")
-            .format("YYYY-MM-DD 00:00:00"),
+          moment().subtract(8, "day").format("YYYY-MM-DD 00:00:00"),
         );
         expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(
-          moment()
-            .subtract(1, "day")
-            .format("YYYY-MM-DD 23:59:59"),
+          moment().subtract(1, "day").format("YYYY-MM-DD 23:59:59"),
         );
       });
       // it ('should handle "last week"', () => {

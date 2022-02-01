@@ -99,15 +99,11 @@ describe("scenarios > admin > localization", () => {
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}`);
-      cy.get(".TableInteractive-header")
-        .next()
-        .as("resultTable");
+      cy.get(".TableInteractive-header").next().as("resultTable");
 
       cy.get("@resultTable").within(() => {
         // The third cell in the first row (CREATED_AT_DAY)
-        cy.get(".cellData")
-          .eq(2)
-          .should("not.contain", "Sunday");
+        cy.get(".cellData").eq(2).should("not.contain", "Sunday");
       });
     });
   });

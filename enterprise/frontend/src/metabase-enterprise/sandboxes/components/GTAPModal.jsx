@@ -164,8 +164,7 @@ export default class GTAPModal extends React.Component {
                     options={[
                       { name: "Filter by a column in the table", value: true },
                       {
-                        name:
-                          "Use a saved question to create a custom view for this table",
+                        name: "Use a saved question to create a custom view for this table",
                         value: false,
                       },
                     ]}

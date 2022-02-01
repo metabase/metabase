@@ -27,30 +27,32 @@ export const refreshSession = createThunkAction(
 export const LOGIN = "metabase/auth/LOGIN";
 export const login = createThunkAction(
   LOGIN,
-  (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
-    await SessionApi.create(data);
-    trackLogin();
+  (data: LoginData, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      await SessionApi.create(data);
+      trackLogin();
 
-    await dispatch(refreshSession());
-    dispatch(push(redirectUrl));
-  },
+      await dispatch(refreshSession());
+      dispatch(push(redirectUrl));
+    },
 );
 
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
 export const loginGoogle = createThunkAction(
   LOGIN_GOOGLE,
-  (token: string, redirectUrl = "/") => async (dispatch: any) => {
-    try {
-      await SessionApi.createWithGoogleAuth({ token });
-      trackLoginGoogle();
+  (token: string, redirectUrl = "/") =>
+    async (dispatch: any) => {
+      try {
+        await SessionApi.createWithGoogleAuth({ token });
+        trackLoginGoogle();
 
-      await dispatch(refreshSession());
-      dispatch(push(redirectUrl));
-    } catch (error) {
-      await clearGoogleAuthCredentials();
-      throw error;
-    }
-  },
+        await dispatch(refreshSession());
+        dispatch(push(redirectUrl));
+      } catch (error) {
+        await clearGoogleAuthCredentials();
+        throw error;
+      }
+    },
 );
 
 export const LOGOUT = "metabase/auth/LOGOUT";

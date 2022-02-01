@@ -88,22 +88,20 @@ const Dashboards = createEntity({
       ]),
       withAnalytics("entities", "dashboard", "copy"),
     )(
-      (entityObject, overrides, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        const result = Dashboards.normalize(
-          await Dashboards.api.copy({
-            id: entityObject.id,
-            ...overrides,
-          }),
-        );
-        if (notify) {
-          dispatch(addUndo(notify));
-        }
-        dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-        return result;
-      },
+      (entityObject, overrides, { notify } = {}) =>
+        async (dispatch, getState) => {
+          const result = Dashboards.normalize(
+            await Dashboards.api.copy({
+              id: entityObject.id,
+              ...overrides,
+            }),
+          );
+          if (notify) {
+            dispatch(addUndo(notify));
+          }
+          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+          return result;
+        },
     ),
   },
 

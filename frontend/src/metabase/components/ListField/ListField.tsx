@@ -63,10 +63,7 @@ export const ListField = ({
     }
 
     return options.filter(option =>
-      option[0]
-        .toString()
-        .toLowerCase()
-        .startsWith(trimmedFilter),
+      option[0].toString().toLowerCase().startsWith(trimmedFilter),
     );
   }, [options, debouncedFilter, sortedOptions]);
 

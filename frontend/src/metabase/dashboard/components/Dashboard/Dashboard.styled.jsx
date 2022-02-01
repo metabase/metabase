@@ -13,8 +13,9 @@ export const DashboardLoadingAndErrorWrapper = styled(
   LoadingAndErrorWrapper,
 ).attrs({
   className: ({ isFullscreen, isNightMode }) =>
-    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
-      "Dashboard--night"}`,
+    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${
+      isNightMode && "Dashboard--night"
+    }`,
 })`
   flex: 1 0 auto;
 

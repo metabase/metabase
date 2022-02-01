@@ -103,7 +103,5 @@ function getFKTargetField(targetField) {
 function setFKTargetField(field) {
   cy.findByText("Select a target").click();
 
-  popover()
-    .contains(field)
-    .click();
+  popover().contains(field).click();
 }

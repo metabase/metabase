@@ -494,7 +494,7 @@ function setChartColor({ series, settings, chartType }, chart, groups, index) {
   }
 
   if (chartType === "waterfall") {
-    chart.on("pretransition", function(chart) {
+    chart.on("pretransition", function (chart) {
       chart
         .selectAll("g.stack._0 rect.bar")
         .style("fill", "transparent")
@@ -551,7 +551,7 @@ function getCharts(
         .svg()
         // shift bar/line and dots
         .selectAll(".stack, .dc-tooltip")
-        .each(function() {
+        .each(function () {
           this.setAttribute("transform", `translate(${spacing / 2}, 0)`);
         });
     });
@@ -640,7 +640,7 @@ function addGoalChartAndGetOnGoalHover(
     .lineChart(parent)
     .dimension(goalDimension)
     .group(goalGroup)
-    .on("renderlet", function(chart) {
+    .on("renderlet", function (chart) {
       // remove "sub" class so the goal is not used in voronoi computation
       chart
         .select(".sub._" + goalIndex)
@@ -713,7 +713,7 @@ function addTrendlineChart(
       .lineChart(parent)
       .dimension(trendDimension)
       .group(trendGroup)
-      .on("renderlet", function(chart) {
+      .on("renderlet", function (chart) {
         // remove "sub" class so the trend is not used in voronoi computation
         chart
           .select(".sub._" + trendIndex)
@@ -749,7 +749,7 @@ function applyYAxisSettings(parent, { yLeftSplit, yRightSplit }) {
 
 // TODO - better name
 function doGroupedBarStuff(parent) {
-  parent.on("renderlet.grouped-bar", function(chart) {
+  parent.on("renderlet.grouped-bar", function (chart) {
     // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
     // https://github.com/dc-js/dc.js/issues/558
     const barCharts = chart
@@ -780,7 +780,7 @@ function doGroupedBarStuff(parent) {
 
 // TODO - better name
 function doHistogramBarStuff(parent) {
-  parent.on("renderlet.histogram-bar", function(chart) {
+  parent.on("renderlet.histogram-bar", function (chart) {
     // manually size bars to fill space, minus 1 pixel padding
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
@@ -840,11 +840,8 @@ export default function lineAreaBar(element, props) {
     xAxisProps.xValues = datas.map(data => data[0][0]);
   } // TODO - what is this for?
 
-  const {
-    dimension,
-    groups,
-    yExtents,
-  } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
+  const { dimension, groups, yExtents } =
+    getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
   const yAxisProps = getYAxisProps(props, yExtents, datas);
 

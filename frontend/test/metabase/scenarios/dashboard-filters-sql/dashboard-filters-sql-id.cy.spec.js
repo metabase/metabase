@@ -36,9 +36,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
       saveDashboard();
@@ -66,9 +64,7 @@ describe("scenarios > dashboard > filters > SQL > ID", () => {
     });
 
     it("when set as the default filter", () => {
-      cy.findByText("Default value")
-        .next()
-        .click();
+      cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
       saveDashboard();
@@ -115,7 +111,5 @@ function prepareDashboardWithFilterConnectedTo(rowId) {
   setFilter("ID");
 
   cy.findByText("Select…").click();
-  popover()
-    .contains("Filter")
-    .click();
+  popover().contains("Filter").click();
 }

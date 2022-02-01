@@ -106,11 +106,8 @@ export class ObjectDetail extends Component {
   };
 
   cellRenderer(column, value, isColumn) {
-    const {
-      settings,
-      onVisualizationClick,
-      visualizationIsClickable,
-    } = this.props;
+    const { settings, onVisualizationClick, visualizationIsClickable } =
+      this.props;
 
     let cellValue;
     let clicked;

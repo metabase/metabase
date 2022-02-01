@@ -42,13 +42,8 @@ describe("scenarios > question > custom column", () => {
 
     visualize();
 
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findByText("Group by")
-      .parent()
-      .findByText("Math")
-      .trigger("mouseenter");
+    cy.findAllByText("Summarize").first().click();
+    cy.findByText("Group by").parent().findByText("Math").trigger("mouseenter");
 
     popover().contains("Math");
     popover().contains("No description");
@@ -267,10 +262,7 @@ describe("scenarios > question > custom column", () => {
       cy.visit(`/question/${QUESTION_ID}`);
 
       // Test displays collapsed filter - click on number 1 to expand and show the filter name
-      cy.icon("filter")
-        .parent()
-        .contains("1")
-        .click();
+      cy.icon("filter").parent().contains("1").click();
 
       cy.findByText(/Subtotal is greater than 0/i)
         .parent()
@@ -341,9 +333,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Join data").should("not.exist");
 
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
-    cy.get("[class*=NotebookCellItem]")
-      .contains(CE_NAME)
-      .should("not.exist");
+    cy.get("[class*=NotebookCellItem]").contains(CE_NAME).should("not.exist");
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
@@ -404,12 +394,8 @@ describe("scenarios > question > custom column", () => {
     });
     cy.findByText("Summarize").click();
     cy.findByText("Sum of ...").click();
-    popover()
-      .findByText("MyCC [2021]")
-      .click();
-    cy.get("[class*=NotebookCellItem]")
-      .contains("Sum of MyCC [2021]")
-      .click();
+    popover().findByText("MyCC [2021]").click();
+    cy.get("[class*=NotebookCellItem]").contains("Sum of MyCC [2021]").click();
     popover().within(() => {
       cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
@@ -446,9 +432,7 @@ describe("scenarios > question > custom column", () => {
     cy.button("Done").click();
 
     cy.findByText("Filter").click();
-    popover()
-      .contains("MiscDate")
-      .click();
+    popover().contains("MiscDate").click();
     // The popover shows up with the default value selected - previous 30 days.
     // Since we don't have any orders in the Sample Database for that period, we have to change it to the previous 30 years.
     cy.findByText("Days").click();
@@ -471,18 +455,12 @@ describe("scenarios > question > custom column", () => {
 
     // next focus: a link
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "class")
-      .and("contain", "link");
-    cy.focused()
-      .should("have.attr", "target")
-      .and("eq", "_blank");
+    cy.focused().should("have.attr", "class").and("contain", "link");
+    cy.focused().should("have.attr", "target").and("eq", "_blank");
 
     // next focus: the textbox for the name
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "value")
-      .and("eq", "");
+    cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
@@ -490,9 +468,7 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab twice and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.realPress(["Shift", "Tab"]);
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 
   it("should allow tabbing away from, then back to editor, while formatting expression and placing caret after reformatted expression", () => {
@@ -523,16 +499,12 @@ describe("scenarios > question > custom column", () => {
     cy.realPress("Tab");
 
     // Focus remains on the expression editor
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
 
     // Tab twice to focus on the name box
     cy.realPress("Tab");
     cy.realPress("Tab");
-    cy.focused()
-      .should("have.attr", "value")
-      .and("eq", "");
+    cy.focused().should("have.attr", "value").and("eq", "");
     cy.focused()
       .should("have.attr", "placeholder")
       .and("eq", "Something nice and descriptive");
@@ -540,8 +512,6 @@ describe("scenarios > question > custom column", () => {
     // Shift+Tab twice and we're back at the editor
     cy.realPress(["Shift", "Tab"]);
     cy.realPress(["Shift", "Tab"]);
-    cy.focused()
-      .should("have.attr", "class")
-      .and("eq", "ace_text-input");
+    cy.focused().should("have.attr", "class").and("eq", "ace_text-input");
   });
 });

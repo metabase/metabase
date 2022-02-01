@@ -27,13 +27,9 @@ describe("scenatios > question > native > mongo", () => {
     cy.findByText("Save").click();
 
     modal().within(() => {
-      cy.findByLabelText("Name")
-        .focus()
-        .type("mongo count");
+      cy.findByLabelText("Name").focus().type("mongo count");
 
-      cy.button("Save")
-        .should("not.be.disabled")
-        .click();
+      cy.button("Save").should("not.be.disabled").click();
     });
 
     cy.wait("@createQuestion");

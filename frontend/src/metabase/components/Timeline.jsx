@@ -53,13 +53,8 @@ function Timeline({ className, items = [], renderFooter }) {
       className={className}
     >
       {sortedFormattedItems.map((item, index) => {
-        const {
-          icon,
-          title,
-          description,
-          timestamp,
-          formattedTimestamp,
-        } = item;
+        const { icon, title, description, timestamp, formattedTimestamp } =
+          item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
         const iconProps = _.isObject(icon)

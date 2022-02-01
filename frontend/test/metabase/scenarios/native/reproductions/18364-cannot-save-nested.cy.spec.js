@@ -20,9 +20,7 @@ describe("issue 18364", () => {
 
     cy.findByText("Save").click();
 
-    cy.get(".Modal")
-      .button("Save")
-      .click();
+    cy.get(".Modal").button("Save").click();
 
     cy.wait("@cardCreated").then(({ response: { body } }) => {
       expect(body.error).not.to.exist;

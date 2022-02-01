@@ -39,16 +39,12 @@ describe("scenarios > admin > datamodel > metrics", () => {
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
-    popover()
-      .contains("Revenue")
-      .click();
+    popover().contains("Revenue").click();
 
     // Let's make sure it's possible to sort descending as well
     cy.icon("arrow_up").click();
 
-    cy.icon("arrow_down")
-      .parent()
-      .contains("Revenue");
+    cy.icon("arrow_down").parent().contains("Revenue");
 
     visualize();
     // Visualization will render line chart by default. Switch to the table.
@@ -59,20 +55,14 @@ describe("scenarios > admin > datamodel > metrics", () => {
       .first()
       .as("tableHeader")
       .within(() => {
-        cy.get(".cellData")
-          .eq(1)
-          .invoke("text")
-          .should("eq", "Revenue");
+        cy.get(".cellData").eq(1).invoke("text").should("eq", "Revenue");
       });
 
     cy.get("@table")
       .last()
       .as("tableBody")
       .within(() => {
-        cy.get(".cellData")
-          .eq(1)
-          .invoke("text")
-          .should("eq", "50,072.98");
+        cy.get(".cellData").eq(1).invoke("text").should("eq", "50,072.98");
       });
   });
 
@@ -136,9 +126,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should see a newly asked question in its questions list", () => {
       // Ask a new qustion
       cy.visit("/reference/metrics/1/questions");
-      cy.get(".full")
-        .find(".Button")
-        .click();
+      cy.get(".full").find(".Button").click();
       cy.findByText("Filter").click();
       cy.findByText("Total").click();
       cy.findByText("Equal to").click();
@@ -146,9 +134,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByPlaceholderText("Enter a number").type("50");
       cy.findByText("Add filter").click();
       cy.findByText("Save").click();
-      cy.findAllByText("Save")
-        .last()
-        .click();
+      cy.findAllByText("Save").last().click();
       cy.findByText("Not now").click();
 
       // Check the list
@@ -181,18 +167,10 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.url().should("match", /metric\/1$/);
       cy.contains("Edit Your Metric");
       cy.contains(/Total\s+is less than/).click();
-      popover()
-        .contains("Less than")
-        .click();
-      popover()
-        .contains("Greater than")
-        .click();
-      popover()
-        .find("input")
-        .type("{SelectAll}10");
-      popover()
-        .contains("Update filter")
-        .click();
+      popover().contains("Less than").click();
+      popover().contains("Greater than").click();
+      popover().find("input").type("{SelectAll}10");
+      popover().contains("Update filter").click();
 
       // confirm that the preview updated
       cy.contains("Result: 18758");
@@ -217,12 +195,8 @@ describe("scenarios > admin > datamodel > metrics", () => {
         .find(".Icon-ellipsis")
         .click();
       cy.contains("Retire Metric").click();
-      modal()
-        .find("textarea")
-        .type("delete it");
-      modal()
-        .contains("button", "Retire")
-        .click();
+      modal().find("textarea").type("delete it");
+      modal().contains("button", "Retire").click();
     });
   });
 

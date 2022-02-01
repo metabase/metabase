@@ -15,9 +15,7 @@ const colors = {
 };
 
 function changeThemeColor(location, colorhex) {
-  cy.get("td")
-    .eq(location)
-    .click();
+  cy.get("td").eq(location).click();
   cy.get(`div[title='#${colorhex}']`).click();
   cy.findByText("Done").click();
 }
@@ -60,14 +58,8 @@ describeWithToken("formatting > whitelabel > color theme", () => {
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     // brand color
-    cy.get("td")
-      .eq(5)
-      .click();
-    cy.get(".sketch-picker")
-      .find("input")
-      .first()
-      .clear()
-      .type(colors.nav.hex);
+    cy.get("td").eq(5).click();
+    cy.get(".sketch-picker").find("input").first().clear().type(colors.nav.hex);
     cy.findByText("Done").click();
     cy.wait("@setting");
 
@@ -96,9 +88,7 @@ describeWithToken("formatting > whitelabel > color theme", () => {
     cy.intercept("GET", "/api/session/properties").as("sessionProperties");
 
     // admin nav
-    cy.get("td")
-      .eq(33)
-      .click();
+    cy.get("td").eq(33).click();
     cy.get(".sketch-picker")
       .find("input")
       .first()

@@ -110,13 +110,8 @@ export default class GroupMappingsWidget extends React.Component {
   };
 
   render() {
-    const {
-      showEditModal,
-      showAddRow,
-      groups,
-      mappings,
-      saveError,
-    } = this.state;
+    const { showEditModal, showAddRow, groups, mappings, saveError } =
+      this.state;
 
     return (
       <div className="flex align-center">

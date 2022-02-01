@@ -104,8 +104,6 @@ function clickThrough(title) {
   cy.visit("/dashboard/1");
   cy.wait("@cardQuery");
   cy.wait("@sqlQuery");
-  cy.get(".LegendItem")
-    .contains(title)
-    .click();
+  cy.get(".LegendItem").contains(title).click();
   cy.findByText(/^January 17, 2020/);
 }
