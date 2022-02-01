@@ -190,17 +190,15 @@
 (defn public-dashcard-results-async
   "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
   `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
-  [dashboard-id card-id export-format parameters & {:keys [qp-runner]
-                                                    :or   {qp-runner qp/process-query-and-save-execution!}
-                                                    :as   options}]
+  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
+  [& {:keys [export-format parameters qp-runner]
+      :or   {qp-runner qp/process-query-and-save-execution!}
+      :as   options}]
   (let [options (merge
                  {:context     :public-dashboard
                   :constraints constraints/default-query-constraints}
                  options
-                 {:dashboard-id  dashboard-id
-                  :card-id       card-id
-                  :export-format export-format
-                  :parameters    (cond-> parameters
+                 {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
                   :qp-runner     qp-runner
                   :run           (run-query-for-card-with-id-async-run-fn qp-runner export-format)})]
@@ -209,14 +207,19 @@
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
-(api/defendpoint ^:streaming GET "/dashboard/:uuid/card/:card-id"
+(api/defendpoint ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
-  [uuid card-id parameters]
+  [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async dashboard-id card-id :api parameters)))
+    (public-dashcard-results-async
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters)))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
@@ -413,6 +416,7 @@
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
+;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
 (api/defendpoint ^:streaming GET "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -420,15 +424,19 @@
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid :api (json/parse-string parameters keyword) :qp-runner qp.pivot/run-pivot-query))
 
-(api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/card/:card-id"
+(api/defendpoint ^:streaming GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
-  [uuid card-id parameters]
+  [uuid card-id dashcard-id parameters]
   {parameters (s/maybe su/JSONString)}
   (api/check-public-sharing-enabled)
-
   (let [dashboard-id (api/check-404 (db/select-one-id Dashboard :public_uuid uuid, :archived false))]
-    (public-dashcard-results-async dashboard-id card-id :api parameters :qp-runner qp.pivot/run-pivot-query)))
+    (public-dashcard-results-async
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format :api
+     :parameters    parameters :qp-runner qp.pivot/run-pivot-query)))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 
