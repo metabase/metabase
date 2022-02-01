@@ -31,7 +31,7 @@ const SlackSetup = ({
   return (
     <SetupRoot>
       <SetupHeader isBot={isBot} isValid={isValid} />
-      <CreateAppSection />
+      <CreateAppSection manifest={manifest} />
       <ActivateAppSection Form={Form} />
     </SetupRoot>
   );
