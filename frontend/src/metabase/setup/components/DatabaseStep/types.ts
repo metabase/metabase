@@ -19,6 +19,7 @@ export interface FormValues {
 
 export interface FormFieldProps {
   name: string;
+  onChange?: (value?: string) => void;
 }
 
 export interface FormFooterProps {

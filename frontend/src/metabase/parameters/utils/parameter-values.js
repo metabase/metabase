@@ -166,6 +166,7 @@ export function getParameterValuesBySlug(
   parameterValuesById,
   { preserveDefaultedParameters } = {},
 ) {
+  parameters = parameters || [];
   parameterValuesById = parameterValuesById || {};
   const parameterValuePairs = parameters.map(parameter => [
     parameter,

@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [java-time :as t]
+            [metabase.analytics.snowplow :as snowplow]
             [metabase.config :as config]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
@@ -82,7 +83,7 @@
                                    "www.google-analytics.com")
                                  ;; Snowplow analytics
                                  (when (public-settings/anon-tracking-enabled)
-                                   "sp.metabase.com")
+                                   (snowplow/snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    "localhost:8080 ws://localhost:8080")]

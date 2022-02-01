@@ -1,15 +1,14 @@
 import styled from "styled-components";
 import { color, lighten } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-import Icon from "metabase/components/Icon";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Button from "metabase/core/components/Button";
+import Icon from "metabase/components/Icon";
 
 export const EngineSearchRoot = styled.div`
   display: block;
 `;
 
-export const EngineListRoot = styled.div`
+export const EngineListRoot = styled.ul`
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
@@ -20,13 +19,23 @@ export const EngineListRoot = styled.div`
   }
 `;
 
-export const EngineCardRoot = styled(IconButtonWrapper)`
+export interface EngineCardRootProps {
+  isActive: boolean;
+}
+
+export const EngineCardRoot = styled.li<EngineCardRootProps>`
+  display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   height: 5.375rem;
   padding: 1rem;
   border: 1px solid ${color("bg-medium")};
+  border-radius: 0.375rem;
   background-color: ${color("white")};
+  cursor: pointer;
+  outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
 
   &:hover {
     border-color: ${color("brand")};
@@ -73,26 +82,44 @@ export const EngineEmptyText = styled.div`
   text-align: center;
 `;
 
-export const EngineExpandButton = styled(Button)`
-  width: 100%;
-`;
-
-export const EngineInfoRoot = styled.div`
+export const EngineButtonRoot = styled.button`
   display: flex;
+  justify-content: space-between;
   align-items: center;
   color: ${color("white")};
+  width: 100%;
   padding: 0.75rem;
   border-radius: 0.5rem;
   border: 1px solid ${color("brand")};
   background-color: ${color("brand")};
+  transition: all 200ms linear;
+  transition-property: color, background-color;
+  cursor: pointer;
+
+  &:hover {
+    color: ${color("white")};
+    background-color: ${lighten("brand", 0.12)};
+  }
+
+  &:focus {
+    outline: 2px solid ${color("focus")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 `;
 
-export const EngineInfoTitle = styled.div`
-  flex: 1 0 auto;
+export const EngineButtonTitle = styled.span`
+  flex: 0 1 auto;
   font-size: 1rem;
   font-weight: bold;
 `;
 
-export const EngineInfoIcon = styled(Icon)`
+export const EngineButtonIcon = styled(Icon)`
   cursor: pointer;
+`;
+
+export const EngineToggleRoot = styled(Button)`
+  width: 100%;
 `;

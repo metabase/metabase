@@ -150,17 +150,14 @@ function CollectionContent({
                 )}
                 handleToggleMobileSidebar={handleToggleMobileSidebar}
               />
-              {!loadingPinnedItems && (
-                <PinnedItemOverview
-                  items={pinnedItems}
-                  collection={collection}
-                  metadata={metadata}
-                  onMove={handleMove}
-                  onCopy={handleCopy}
-                  onToggleSelected={toggleItem}
-                  onDrop={clear}
-                />
-              )}
+              <PinnedItemOverview
+                items={pinnedItems}
+                collection={collection}
+                metadata={metadata}
+                onMove={handleMove}
+                onCopy={handleCopy}
+                onToggleSelected={toggleItem}
+              />
               <Search.ListLoader
                 query={unpinnedQuery}
                 loadingAndErrorWrapper={false}

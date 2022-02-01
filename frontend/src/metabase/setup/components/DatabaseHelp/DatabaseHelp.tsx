@@ -15,7 +15,7 @@ const DatabaseHelp = ({
 
   return (
     <DatabaseHelpRoot isVisible={isVisible}>
-      <DatabaseHelpCard engine={engine} />
+      <DatabaseHelpCard />
     </DatabaseHelpRoot>
   );
 };

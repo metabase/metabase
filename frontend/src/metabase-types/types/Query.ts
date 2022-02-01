@@ -67,8 +67,13 @@ export type NativeQuery = {
   "template-tags": TemplateTags;
 };
 
+// "card__4" like syntax meaning a query is using card 4 as a data source
+type NestedQueryTableId = string;
+
+export type SourceTableId = TableId | NestedQueryTableId;
+
 export type StructuredQuery = {
-  "source-table"?: TableId;
+  "source-table"?: SourceTableId;
   "source-query"?: StructuredQuery;
   aggregation?: AggregationClause;
   breakout?: BreakoutClause;

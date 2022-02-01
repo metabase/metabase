@@ -79,6 +79,8 @@
   [user-id]
   (-> (Subject$SubjectBuilder.)
       (.userId (str user-id))
+      ;; Override with localhost IP to avoid logging actual user IP addresses
+      (.ipAddress "127.0.0.1")
       .build))
 
 (def ^:private schema->version

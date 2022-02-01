@@ -111,7 +111,7 @@ export default class Gauge extends Component {
       getDefault(series) {
         let value = 100;
         try {
-          value = series[0].data.rows[0][0];
+          value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
         return [
           { min: 0, max: value / 2, color: color("error"), label: "" },
@@ -203,7 +203,7 @@ export default class Gauge extends Component {
       ])
       .clamp(true);
 
-    const value = rows[0][0];
+    const value = rows[0][0] || 0;
     const column = cols[0];
 
     const valuePosition = (value, distance) => {
