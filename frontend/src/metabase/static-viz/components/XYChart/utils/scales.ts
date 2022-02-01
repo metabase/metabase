@@ -40,7 +40,6 @@ export const createXScale = (
     const xScale = scaleBand({
       domain,
       range,
-      round: true,
       padding: 0.1,
     });
 
