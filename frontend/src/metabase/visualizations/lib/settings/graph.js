@@ -9,6 +9,7 @@ import {
   columnsAreValid,
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
+  preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
 
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
@@ -104,7 +105,11 @@ export const GRAPH_DATA_SETTINGS = {
             vizSettings["graph._metric_filter"],
           ),
       ),
-    getDefault: (series, vizSettings) => getDefaultColumns(series).dimensions,
+    getDefault: (series, vizSettings) =>
+      preserveExistingColumnsOrder(
+        vizSettings["graph.dimensions"] ?? [],
+        getDefaultColumns(series).dimensions,
+      ),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings) => {
       const value = vizSettings["graph.dimensions"];

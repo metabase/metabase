@@ -11,12 +11,14 @@ export interface LicenseInputProps {
   token?: string;
   error?: string;
   onUpdate: (license: string) => void;
+  disabled?: boolean;
   loading?: boolean;
   invalid?: boolean;
   placeholder?: string;
 }
 
 export const LicenseInput = ({
+  disabled,
   token,
   error,
   onUpdate,
@@ -32,13 +34,15 @@ export const LicenseInput = ({
     onUpdate(value);
   };
 
+  const isDisabled = loading || disabled;
+
   return (
     <>
       <LicenseInputContainer>
         <LicenseTextInput
           invalid={invalid}
           data-testid="license-input"
-          disabled={loading}
+          disabled={isDisabled}
           onChange={handleChange}
           value={value}
           placeholder={
@@ -47,7 +51,7 @@ export const LicenseInput = ({
           }
         />
         <Button
-          disabled={loading}
+          disabled={isDisabled}
           data-testid="activate-button"
           className="px2"
           onClick={handleActivate}

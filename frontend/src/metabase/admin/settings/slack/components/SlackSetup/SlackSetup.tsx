@@ -18,7 +18,6 @@ import {
   SectionRoot,
   SectionTitle,
   SectionToggle,
-  SetupHelpCard,
   SetupRoot,
 } from "./SlackSetup.styled";
 
@@ -41,7 +40,6 @@ const SlackSetup = ({
       <CreateAppSection />
       <CopyManifestSection manifest={manifest} />
       <ActivateAppSection Form={Form} />
-      <SetupHelpCard />
     </SetupRoot>
   );
 };

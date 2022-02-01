@@ -26,7 +26,7 @@
 }
 
 .Button:focus {
-  outline: 2px solid var(--color-brand-light);
+  outline: 2px solid var(--color-focus);
 }
 
 .Button:focus:not(:focus-visible) {
@@ -71,6 +71,28 @@
   color: var(--color-text-white);
   border-color: var(--color-brand);
   background-color: color-mod(var(--color-brand) alpha(-12%));
+}
+
+.Button--secondary {
+  color: var(--color-text-dark);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.Button--secondary:hover {
+  color: var(--color-text-dark);
+  background-color: transparent;
+  border: 1px solid transparent;
+  outline: 2px solid var(--color-outline);
+  transition: none;
+}
+
+.Button--secondary:focus {
+  outline: 2px solid var(--color-outline);
+}
+
+.Button.Button--secondary:focus:not(:focus-visible):hover {
+  outline: 2px solid var(--color-outline);
 }
 
 .Button--warning {

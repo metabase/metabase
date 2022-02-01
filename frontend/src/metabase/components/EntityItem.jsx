@@ -70,9 +70,13 @@ function EntityIconCheckBox({
   );
 }
 
-function EntityItemName({ name }) {
+function EntityItemName({ name, variant }) {
   return (
-    <h3 className="overflow-hidden">
+    <h3
+      className={cx("overflow-hidden", {
+        "text-list": variant === "list",
+      })}
+    >
       <Ellipsified>{name}</Ellipsified>
     </h3>
   );
@@ -203,7 +207,7 @@ const EntityItem = ({
         }}
       />
 
-      <Box>
+      <Box className="overflow-hidden">
         <EntityItemName name={name} />
         <Box>{extraInfo && extraInfo}</Box>
       </Box>

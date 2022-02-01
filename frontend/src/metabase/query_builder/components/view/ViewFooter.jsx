@@ -20,8 +20,14 @@ import QuestionEmbedWidget, {
   QuestionEmbedWidgetTrigger,
 } from "metabase/query_builder/containers/QuestionEmbedWidget";
 
-import { QuestionFilterWidget } from "./QuestionFilters";
-import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import {
+  QuestionFilterWidget,
+  MobileQuestionFilterWidget,
+} from "./QuestionFilters";
+import {
+  QuestionSummarizeWidget,
+  MobileQuestionSummarizeWidget,
+} from "./QuestionSummaries";
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
@@ -70,7 +76,7 @@ const ViewFooter = ({
         className="flex-full"
         left={[
           QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
-            <QuestionFilterWidget
+            <MobileQuestionFilterWidget
               className="sm-hide"
               mr={1}
               p={2}
@@ -83,7 +89,7 @@ const ViewFooter = ({
             question,
             queryBuilderMode,
           }) && (
-            <QuestionSummarizeWidget
+            <MobileQuestionSummarizeWidget
               className="sm-hide"
               mr={1}
               p={2}

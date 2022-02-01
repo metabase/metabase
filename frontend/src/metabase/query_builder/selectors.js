@@ -2,11 +2,10 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, assocIn, updateIn, merge } from "icepick";
+import { assocIn, getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
-import Visualization from "metabase/visualizations/components/Visualization";
 
 import {
   extractRemappings,
@@ -20,14 +19,12 @@ import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import { isVirtualCardId } from "metabase/lib/saved-questions";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
-
-import { isAdHocDatasetQuestion } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -298,12 +295,12 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableMetadata,
   ) => {
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+    // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (question && isAdHocDatasetQuestion(question, originalQuestion)) {
+    if (question && isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
 
@@ -344,7 +341,7 @@ export const getIsDirty = createSelector(
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocDatasetQuestion(question, originalQuestion)) {
+    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);
@@ -571,20 +568,9 @@ export const getQuestionDetailsTimelineDrawerState = createSelector(
   uiControls => uiControls && uiControls.questionDetailsTimelineDrawerState,
 );
 
-export const getSourceTable = createSelector([getQuestion], question => {
-  const query = question.isStructured()
-    ? question.query().rootQuery()
-    : question.query();
-  return query.table();
-});
-
 export const isBasedOnExistingQuestion = createSelector(
-  [getSourceTable, getOriginalQuestion],
-  (sourceTable, originalQuestion) => {
-    if (sourceTable != null) {
-      return isVirtualCardId(sourceTable.id);
-    } else {
-      return originalQuestion != null;
-    }
+  [getOriginalQuestion],
+  originalQuestion => {
+    return originalQuestion != null;
   },
 );

@@ -24,9 +24,17 @@ export type Series = {
   yAxisPosition: YAxisPosition;
 };
 
+export type StackedDatum = [XValue, YValue, YValue];
+
+export type HydratedSeries = Series & {
+  stackedData?: StackedDatum[];
+};
+
 type TickDisplay = "show" | "hide" | "rotate-45";
+type Stacking = "stack" | "none";
 
 export type ChartSettings = {
+  stacking?: Stacking;
   x: {
     type: XAxisType;
     tick_display?: TickDisplay;
