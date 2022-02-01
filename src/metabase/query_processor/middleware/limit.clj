@@ -3,7 +3,6 @@
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.util :as qputil]))
 
 ;;;; Pre-processing
@@ -37,26 +36,11 @@
 
 (defn- limit-xform [max-rows rf]
   {:pre [(fn? rf)]}
-  (let [row-count (volatile! 0)]
-    (fn
-      ([]
-       (rf))
+  ((take max-rows) rf))
 
-      ([result]
-       (rf result))
-
-      ([result row]
-       (let [result'       (rf result row)
-             new-row-count (vswap! row-count inc)]
-         (if (>= new-row-count max-rows)
-           (ensure-reduced result')
-           result'))))))
-
-(defn- limit-result-rows [query rff]
-  (let [max-rows (determine-query-max-rows query)]
-    (fn limit-result-rows-rff* [metadata]
-      (limit-xform max-rows (rff metadata)))))
-
-(def limit-result-rows-middleware
+(defn limit-result-rows
   "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
-  (m.43/wrap-43-post-processing-middleware limit-result-rows))
+  [query rff]
+  (let [max-rows (determine-query-max-rows query)]
+    (fn limit-result-rows-rff* [{:keys [cached], :as metadata}]
+      (limit-xform max-rows (rff metadata)))))

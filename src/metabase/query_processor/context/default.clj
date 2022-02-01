@@ -48,7 +48,7 @@
 (defn default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
   function inside the custom impl instead of attempting to duplicate the logic. See
-  `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
+  [[metabase.query-processor.reducible-test/write-rows-to-file-test]] for an example of a custom implementation."
   [rff context metadata reducible-rows]
   {:pre [(fn? rff)]}
   ;; TODO -- how to pass updated metadata to reducedf?

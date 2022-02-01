@@ -134,12 +134,7 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff context)) -> (f query rff context)"
-  ;; TODO -- limit SEEMS like it should be post-processing but it actually has to happen only if we don't return cached
-  ;; results. Otherwise things break. There's probably some way to fix this. e.g. maybe it doesn't do anything if the
-  ;; query has the `:cached?` key. Alternatively, figure out why things are breaking. It doesn't seem like they should.
-  ;; I think it's because of things getting mixed up with `reduced` and unreduced results.
-  [#'limit/limit-result-rows-middleware
-   #'cache/maybe-return-cached-results
+  [#'cache/maybe-return-cached-results
    #'perms/check-query-permissions
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
 
@@ -151,7 +146,8 @@
   Where `rff` has the form
 
     (f metadata) -> rf"
-  [#'add-rows-truncated/add-rows-truncated
+  [#'limit/limit-result-rows
+   #'add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
    #'add-timezone-info/add-timezone-info
    (resolve 'ee.sandbox.rows/merge-sandboxing-metadata)
