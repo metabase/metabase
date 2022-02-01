@@ -14,6 +14,7 @@
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.models.table :refer [Table]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.query-processor.middleware.forty-three :as m.43]
@@ -137,7 +138,8 @@
                         :type     :query
                         :query    source-query}
           preprocessed (binding [api/*current-user-id* nil]
-                         ((requiring-resolve 'metabase.query-processor/query->preprocessed) query))]
+                         (classloader/require 'metabase.query-processor)
+                         ((resolve 'metabase.query-processor/query->preprocessed) query))]
       (select-keys (:query preprocessed) [:source-query :source-metadata]))
     (catch Throwable e
       (throw (ex-info (tru "Error preprocessing source query when applying GTAP: {0}" (ex-message e))
