@@ -14,7 +14,7 @@ Because MongoDB contains unstructured data, Metabase takes a different approach 
 
 ## Connecting to MongoDB
 
-Go to Admin -> Databases, and click the **Add database** button. Select MongoDB from the dropdown.
+Go to Admin -> Databases, and click the **Add database** button. Select MongoDB from the dropdown, and enter your desired **Display name** for this database.
 
 There are two ways to connect to MongoDB:
 
@@ -30,19 +30,18 @@ The default way to connect to MongoDB is to fill out your connection details in 
 - Port
 - Username
 - Password
-- Authentication Database (optional database to use when authenticating)
+- Authentication Database (optional)
 - Additional connection string options (optional)
 
-Additional settings:
+You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
+
+#### Advanced settings for direct connection
 
 - **Use DNS SRV when connecting** Using this option requires that provided host is a FQDN. If connecting to an Atlas cluster, you might need to enable this option. If you don't know what this means, leave this disabled.
 
-- **Use a secure connection (SSL)** Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
-
 ### Using a connection string
 
-If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/),
-click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
+If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
 Metabase currently does NOT support the following connection string parameters:
 
@@ -54,9 +53,10 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ### Settings common to both connection options
 
-- **Use an SSH tunnel for database connections.** Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
-- **Automatically run queries when doing simple filtering and summarizing.** When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
-- **This is a large database, so let me choose when Metabase syncs and scans.** By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+- **Use an SSH tunnel**: Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
+- **Rerun queries for simple exploration**: When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
+- **Choose when syncs and scans happen**: By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+- **Periodically refingerprint tables**: This setting — disabled by default — enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
 
 ## Configuring SSL via the command line
 
@@ -111,4 +111,4 @@ One workaround is to include all possible keys in the first document of the coll
 
 ## Further reading
 
-See our troubleshooting guide for [troubleshooting your connection](../../troubleshooting-guide/datawarehouse.md)
+See our troubleshooting guide for [troubleshooting your connection](../../troubleshooting-guide/datawarehouse.md).

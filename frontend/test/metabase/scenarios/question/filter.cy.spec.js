@@ -902,6 +902,7 @@ describe("scenarios > question > filter", () => {
             .check({ force: true }) // the radio input is hidden
             .should("be.checked");
           cy.button("Update filter").click();
+          cy.wait("@dataset");
         });
 
         assertOnTheResult();
@@ -930,9 +931,9 @@ describe("scenarios > question > filter", () => {
           addBooleanFilter();
         });
 
-        visualize();
-
-        assertOnTheResult();
+        visualize(() => {
+          assertOnTheResult();
+        });
       });
 
       function addBooleanFilter() {
@@ -945,8 +946,8 @@ describe("scenarios > question > filter", () => {
 
       function assertOnTheResult() {
         // Filter name
-        cy.findByText(`boolean is ${condition}`);
-        cy.findByText(integerAssociatedWithCondition);
+        cy.findByTextEnsureVisible(`boolean is ${condition}`);
+        cy.get(".cellData").should("contain", integerAssociatedWithCondition);
       }
     });
   });

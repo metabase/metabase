@@ -15,6 +15,7 @@
   db-default-timezone
   excluded-schemas
   fallback-metadata-query
+  filtered-syncable-schemas
   have-select-privilege?
   syncable-schemas]
 

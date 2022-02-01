@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
@@ -48,10 +48,6 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
-  useEffect(() => {
-    engine && onEngineChange(engine);
-  }, [engine, onEngineChange]);
-
   const handleCancel = () => {
     onStepCancel(engine);
   };
@@ -81,6 +77,7 @@ const DatabaseStep = ({
         database={database}
         engine={engine}
         onSubmit={onDatabaseSubmit}
+        onEngineChange={onEngineChange}
       />
       <StepActions>
         <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
@@ -101,12 +98,14 @@ interface DatabaseFormProps {
   database?: DatabaseInfo;
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
+  onEngineChange: (engine: string) => void;
 }
 
 const DatabaseForm = ({
   database,
   engine,
   onSubmit,
+  onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
   const handleSubmit = async (database: DatabaseInfo) => {
     try {
@@ -114,6 +113,10 @@ const DatabaseForm = ({
     } catch (error) {
       throw getSubmitError(error);
     }
+  };
+
+  const handleEngineChange = (value?: string) => {
+    value && onEngineChange(value);
   };
 
   return (
@@ -132,7 +135,7 @@ const DatabaseForm = ({
         onChangeField,
       }: FormProps) => (
         <Form>
-          <FormField name="engine" />
+          <FormField name="engine" onChange={handleEngineChange} />
           <DriverWarning
             engine={values.engine}
             hasBorder={true}

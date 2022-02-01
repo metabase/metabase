@@ -10,27 +10,27 @@ This page will teach you how to create and manage your collections. For more inf
 
 ### Creating and editing collections
 
-If a user has Curate access for a collection, they can create new sub-collections inside it and edit the contents of the collection. From the detail view of any collection, click on the `Create a collection` button to make a new one. Give your collection a name, choose where it should live, and give it a description if you'd like.
+If a user has Curate access for a collection, they can create new sub-collections inside it and edit the contents of the collection. From the detail view of any collection, click on the **+** button and select **Collection** to make a new one. Give your collection a name, choose where it should live, and give it a description if you'd like.
 
 ![Create collection](images/collections/create-collection.png)
 
-By default, new collections will have the same permissions settings as the collection it was created in (its "parent" collection), but you can change those settings from the Edit menu.
+By default, any new collection will have the same permissions settings as the collection it was created in (its "parent" collection), but you can change those settings from the Edit menu.
 
 ### Pinning things in collections
 
 ![Pins](images/collections/pinned-items.png)
 
-One great feature in Metabase is that you can pin the most important couple of items in each of your collections to the top. Pinning an item in a collection turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important.
+One great feature in Metabase is that you can pin the most important couple of items in each of your collections to the top. Pinning an item in a collection turns it into a big, eye-catching card that will help make sure that folks who are browsing your Metabase instance will always know what's most important. And if you pin a question, Metabase will display a preview of its visualization. 
 
-Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, you can either click and drag it to the top of the page, or click on its menu and choose the pin action. Note that collections themselves can't be pinned, but if you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
+Any user with curate permissions for a collection can pin items in it, making it easy to delegate curation responsibilities to other members of your team. To pin something, select the **pin icon** next to the item's name. Note that collections themselves can't be pinned, but if you're running [Metabase Pro or Enterprise Edition](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
 
 ### Setting permissions for collections
 
-Collection permissions are similar to [data access permissions](05-setting-permissions.md). You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on `Edit permissions`. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:
+Collection permissions are similar to [data access permissions](05-setting-permissions.md). You can set permissions on collections by clicking on the lock icon in the top-right of the screen while viewing the collection and clicking on **Edit permissions**. Only Administrators can edit collection permissions. Each [user group](05-setting-permissions.md) can have either View, Curate, or No access to a collection:
 
-- **Curate access:** the user can edit, move, and archive items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
-- **View access:** the user can see all the questions, dashboards, and pulses in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard or pulse then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
-- **No access:** the user won't see this collection listed, and doesn't have access to any of the items saved within it.
+- **Curate access**: the user can edit, move, and archive items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
+- **View access**: the user can see all the questions, dashboards, and pulses in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard or pulse then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
+- **No access**: the user won't see this collection listed, and doesn't have access to any of the items saved within it.
 
 ![Permissions](images/collections/collection-permissions.png)
 
@@ -48,15 +48,15 @@ To learn more, check out our Learn article on [working with collection permissio
 
 ### Personal collections
 
-Each user has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections. Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the "All personal collections" link from the "Our analytics" collection.
+Each user has a personal collection where they're always allowed to save things, even if they don't have Curate permissions for any other collections. Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
 
 A personal collection works just like any other collection except that its permissions can't be changed. If a sub-collection within a personal collection is moved to a different collection, it will inherit the permissions of that collection.
 
 ### Archiving collections
 
-Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select `Archive this collection` to archive it. This will also archive all questions, dashboards, pulses, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards and Pulses that use them.
+Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, pulses, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards and Pulses that use them.
 
-**Note:** the "Our analytics" collection and personal collections can't be archived.
+**Note:** The "Our analytics" collection and personal collections can't be archived.
 
 You can always _unarchive_ items. In the Collections list sidebar, at the bottom, click on __View archive__. Search for the item you'd like to unarchive (you'll either need to scroll down the page, or use the browser's find in page functionality, as archived items won't appear in Metabase's search results). Select the open box with an up arrow icon to "Unarchive this".
 

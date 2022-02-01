@@ -473,7 +473,8 @@
 (def default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (repeat "left"))
+  (conj (repeat "right")
+        "left"))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -685,7 +686,10 @@
       (if (and last-value previous-value unit last-change)
         (let [value           (format-cell timezone-id last-value metric-col viz-settings)
               previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))]
+              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
+              delta-statement (if (= last-value previous-value)
+                                "No change."
+                                (str adj " " (percentage last-change) "."))]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -694,10 +698,10 @@
                                                    :font-size     :16px
                                                    :font-weight   700
                                                    :padding-right :16px})}
-                          adj " " (percentage last-change) "."
+                          delta-statement
                           " Was " previous " last " (format-unit unit)]]
            :render/text (str value "\n"
-                             adj " " (percentage last-change) "."
+                             delta-statement
                              " Was " previous " last " (format-unit unit))})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
@@ -773,11 +777,17 @@
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
+        settings       (-> (->js-viz x-col y-col viz-settings)
+                           (update-in [:colors] assoc
+                                      :waterfallTotal (:waterfall.total_color viz-settings)
+                                      :waterfallPositive (:waterfall.increase_color viz-settings)
+                                      :waterfallNegative (:waterfall.decrease_color viz-settings))
+                           (assoc :showTotal (:waterfall.show_total viz-settings)))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
                                    labels
-                                   (->js-viz x-col y-col viz-settings)))]
+                                   settings))]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -789,16 +799,17 @@
 
 (s/defmethod render :funnel :- common/RenderedPulseCard
   [_ render-type timezone-id card _ {:keys [rows cols viz-settings] :as data}]
-  ;; x-axis-rowfn is always first, y-axis-rowfn is always second
-  (let [rows          (common/row-preprocess first second rows)
-        [x-col y-col] cols
-        settings      (->js-viz x-col y-col viz-settings)
-        settings      (assoc settings
-                             :step    {:name   (:display_name x-col)
-                                       :format (:x settings)}
-                             :measure {:format (:y settings)})
-        svg           (js-svg/funnel rows settings)
-        image-bundle  (image-bundle/make-image-bundle render-type svg)]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+                            (common/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        [x-col y-col]  cols
+        settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
+                         (assoc jsviz-settings :step    {:name   (:display_name x-col)
+                                                         :format (:x jsviz-settings)}
+                                :measure {:format (:y jsviz-settings)}))
+        svg            (js-svg/funnel rows settings)
+        image-bundle   (image-bundle/make-image-bundle render-type svg)]
   {:attachments
    (image-bundle/image-bundle->attachment image-bundle)
 

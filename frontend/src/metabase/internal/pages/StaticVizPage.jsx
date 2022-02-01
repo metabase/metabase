@@ -17,6 +17,7 @@ export default function StaticVizPage() {
           /static-viz/ and see the effects. You might need to hard refresh to
           see updates.
         </Text>
+
         <Box py={3}>
           <Subhead>Line chart with timeseries data</Subhead>
           <StaticChart
@@ -588,6 +589,92 @@ export default function StaticVizPage() {
                     ["Kaya Rowe", 50],
                     ["Roderick Herman", 40],
                     ["Ruth Dougherty", 65],
+                  ],
+                },
+              ],
+            }}
+          />
+        </Box>
+
+        <Box py={3}>
+          <Subhead>Stacked area chart</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                stacking: "stack",
+                x: {
+                  type: "timeseries",
+                },
+                y: {
+                  type: "linear",
+                  format: {
+                    number_style: "currency",
+                    currency: "USD",
+                    currency_style: "symbol",
+                    decimals: 2,
+                  },
+                },
+                labels: {
+                  left: "Sum",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "series 1",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", 10],
+                    ["2020-10-19", 20],
+                    ["2020-10-20", 30],
+                    ["2020-10-21", 40],
+                    ["2020-10-22", 45],
+                    ["2020-10-23", 55],
+                  ],
+                },
+                {
+                  name: "series 2",
+                  color: "#a989c5",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", 10],
+                    ["2020-10-19", 40],
+                    ["2020-10-20", 80],
+                    ["2020-10-21", 60],
+                    ["2020-10-22", 70],
+                    ["2020-10-23", 65],
+                  ],
+                },
+                {
+                  name: "series 3",
+                  color: "#ef8c8c",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", -40],
+                    ["2020-10-19", -20],
+                    ["2020-10-20", -10],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -45],
+                    ["2020-10-23", -55],
+                  ],
+                },
+                {
+                  name: "series 4",
+                  color: "#88bf4d",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", -40],
+                    ["2020-10-19", -50],
+                    ["2020-10-20", -60],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -10],
+                    ["2020-10-23", -5],
                   ],
                 },
               ],

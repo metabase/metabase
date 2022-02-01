@@ -1,12 +1,14 @@
-## Adding and managing databases
+# Adding and managing databases
 
-- [Adding a database connection](#adding-a-database-connection)
-- [Officially supported databases](#officially-supported-databases)
-- [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
-- [Database connection options](#database-connection-options) 
-- [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
-- [Deleting databases](#deleting-databases)
+  - [Adding a database connection](#adding-a-database-connection)
+    - [Officially supported databases](#officially-supported-databases)
+    - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
+    - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
+  - [Database connection options](#database-connection-options)
+  - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
+  - [Deleting databases](#deleting-databases)
+  - [Troubleshooting](#troubleshooting)
+  - [Further reading](#further-reading)
 
 ## Adding a database connection
 
@@ -14,7 +16,7 @@ In the main navigation bar, click on the **gears** icon in the top right, and se
 
 Once in the Admin section, select the **Databases** tab from the navigation bar at the top of the screen. You’ll see a list of your connected databases (if any). To connect a database to Metabase, click **Add database** and follow the connection instructions for your database.
 
-Although connection details differ database to database, in general you'll need to get connection info from your database admin, usually some combination of hostname (sometimes called endpoint), port, database username and password, and the name of the database. 
+Although connection details differ database to database, in general you'll need to get connection info from your database admin, usually some combination of hostname (sometimes called endpoint), port, database username and password, and the name of the database.
 
 ### Officially supported databases
 
@@ -51,8 +53,8 @@ Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 Connection options differ depending on which database you're connecting to. Here's an overview:
 
 - [Use a secure connection (SSL)](#use-a-secure-connection-ssl)
-- [Use an SSH-tunnel for database connections](#use-an-ssh-tunnel-for-database-connections) 
-- [Choose when Metabase syncs and scans his](#choose-when-metabase-syncs-and-scans)
+- [Use an SSH-tunnel for database connections](#use-an-ssh-tunnel-for-database-connections)
+- [Choose when Metabase syncs and scans](#choose-when-metabase-syncs-and-scans)
 - [Automatically run queries when doing simple filtering and summarizing](#automatically-run-queries-when-doing-simple-filtering-and-summarizing)
 
 ### Use a secure connection (SSL)
@@ -63,15 +65,11 @@ Metabase automatically tries to connect to databases with SSL first, then withou
 
 See our [guide to SSH tunneling](ssh-tunnel-for-database-connections.md).
 
-### Choose when Metabase syncs and scans 
+### Choose when Metabase syncs and scans
 
-By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning on the option "This is a large database, let me choose when Metabase syncs and scans". Once on, you can review when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.") 
+By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend enabling the toggle **Choose when syncs and scans happen** found when you select **Show advanced options**. Once on, you can review when and how often the field value scans happen. (Note: this setting used to be called "Enable in-depth analysis.")
 
-If you enable this and save your changes, you'll see a new tab at the top of the form called "Scheduling." Click on that, and you'll see options to change when and how often Metabase syncs and scans.
-
-![Sync scheduling tab](images/sync-scheduling.png)
-
-#### Database syncing 
+#### Database syncing
 
 Metabase maintains its own information about the various tables and fields in each database to aid in querying. By default, Metabase performs this lightweight sync hourly to look for changes to the database such as new tables or fields. Metabase does _not_ copy any data from your database. It only maintains lists of the tables and columns.
 
@@ -95,13 +93,15 @@ By default, Metabase also performs a more intensive daily sampling of each field
 
 If for some reason you need to flush out the cached field values for your database, click the button that says **Discard saved field values** in the top-right of the database's page.
 
-### Automatically run queries when doing simple filtering and summarizing 
+### Automatically run queries when doing simple filtering and summarizing
 
-By default, Metabase will auto-run queries when you use the Summarize and Filter buttons when viewing a table or chart. If your users are exploring data that is stored in a slow database, you may want to turn the auto-run off to avoid re-running the query every time your users change an option in the Summarize view. Turning this off presents the users with the option to re-run the query when they choose to.
+By default, Metabase will auto-run queries when you use the Summarize and Filter buttons when viewing a table or chart. If your users are exploring data that is stored in a slow database, you may want to turn the auto-run off to avoid re-running the query every time your users change an option in the Summarize view. You can turn this option off in the **Show advanced options** section by deselecting the toggle next to **Rerun queries for simple explorations**. Turning this off presents the users with the option to re-run the query when they choose to.
 
 ### Periodically refingerprint tables
 
-When syncing with this database, Metabase will scan a subset of values of fields to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.
+If this option is enabled, Metabase will scan a subset of values of fields when syncing with this database to gather statistics that enable things like improved binning behavior in charts, and to generally make your Metabase instance smarter.
+
+You can turn this option on and off in the **Show advanced options** section.
 
 ### Additional JDBC connection string options
 
@@ -132,6 +132,16 @@ You can also delete a database from the database list: hover over the row with t
 
 ![deletedatabasebutton](images/DatabaseDeleteButton.png)
 
+## Troubleshooting
+
+If you're having trouble with your database connection, you can check out this [troubleshooting guide](https://www.metabase.com/docs/latest/troubleshooting-guide/datawarehouse.html), or visit [Metabase's discussion forum](https://discourse.metabase.com/) to see if someone has encountered and resolved a similar issue.
+
+## Further reading
+
+- [Managing databases](https://www.metabase.com/docs/latest/administration-guide/01-managing-databases.html).
+- [Metadata editing](https://www.metabase.com/docs/latest/administration-guide/03-metadata-editing.html).
+- [Models](../../users-guide/models.md).
+- [Setting data access permissions](https://www.metabase.com/docs/latest/administration-guide/05-setting-permissions.html).
 
 ---
 
