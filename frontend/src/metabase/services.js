@@ -139,10 +139,14 @@ export const DashboardApi = {
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
 
-  cardQuery: POST("/api/dashboard/:dashboardId/card/:cardId/query"),
-  cardQueryPivot: POST("/api/dashboard/:dashboardId/card/pivot/:cardId/query"),
+  cardQuery: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
+  cardQueryPivot: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/pivot/:cardId/query",
+  ),
   exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/card/:cardId/query/:exportFormat",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 

@@ -611,6 +611,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         maybeUsePivotEndpoint(endpoint, card)(
           {
             dashboardId: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
             cardId: card.id,
             parameters: datasetQuery.parameters,
             ignore_cache: ignoreCache,
