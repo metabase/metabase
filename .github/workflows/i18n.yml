@@ -1,18 +1,11 @@
 name: i18n
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.clj*'
-    - '**.js'
-    - '**.jsx'
-    - '**.ts'
-    - '**.tsx'
-    - '.github/workflows/**'
-    - 'bin/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 

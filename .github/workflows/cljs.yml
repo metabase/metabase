@@ -3,12 +3,8 @@ name: CLJS
 on:
   push:
     branches:
-      - '**'
-    paths:
-    - 'shared/src/'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
   pull_request:
 
 jobs:
