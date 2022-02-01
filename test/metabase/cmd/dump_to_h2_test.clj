@@ -10,6 +10,7 @@
             [metabase.cmd.test-util :as cmd.test-util]
             [metabase.db.connection :as mdb.connection]
             [metabase.db.spec :as db.spec]
+            [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Setting]]
             [metabase.models.setting :as setting]
@@ -48,31 +49,31 @@
                 cmd/system-exit! identity]
     (is (= 1 (cmd/dump-to-h2 "file1")))))
 
-(defn- persistent-jdbcspec
+(defn persistent-data-source
   "Return a jdbc spec for the specified `db-type` on the db `db-name`. In case of H2, makes the connection persistent
   10secs to give us time to fetch the results later."
-  [db-type db-name]
-  (case db-type
-    :h2 {:subprotocol "h2"
-         :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
-         :classname   "org.h2.Driver"}
-    :postgres (db.spec/postgres (tx/dbdef->connection-details :postgres :db {:database-name db-name}))
-    :mysql (db.spec/mysql (tx/dbdef->connection-details :mysql :db {:database-name db-name}))))
+  ^javax.sql.DataSource [db-type db-name]
+  (let [spec (if (= db-type :h2)
+               {:subprotocol "h2"
+                :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
+                :classname   "org.h2.Driver"}
+               (db.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
+    (mdb.test-util/->ClojureJDBCSpecDataSource spec)))
 
 (deftest dump-to-h2-dump-plaintext-test
   (testing "dump-to-h2 --dump-plaintext"
-    (let [h2-fixture-db-file  @cmd.test-util/fixture-db-file-path
-          db-name             (str "test_" (mt/random-name))]
+    (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
+          db-name            (str "test_" (mt/random-name))]
       (mt/with-temp-file [h2-file-plaintext   (format "out-%s.db" (mt/random-name))
                           h2-file-enc         (format "out-%s.db" (mt/random-name))
                           h2-file-default-enc (format "out-%s.db" (mt/random-name))]
         (mt/test-drivers #{:h2 :postgres :mysql}
           (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
-            (binding [setting/*disable-cache*    true
-                      mdb.connection/*db-type*   driver/*driver*
-                      mdb.connection/*jdbc-spec* (persistent-jdbcspec driver/*driver* db-name)
-                      db/*db-connection*         (persistent-jdbcspec driver/*driver* db-name)
-                      db/*quoting-style*         driver/*driver*]
+            (binding [setting/*disable-cache*      true
+                      mdb.connection/*db-type*     driver/*driver*
+                      mdb.connection/*data-source* (persistent-data-source driver/*driver* db-name)
+                      db/*db-connection*           {:datasource (persistent-data-source driver/*driver* db-name)}
+                      db/*quoting-style*           driver/*driver*]
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
@@ -84,21 +85,27 @@
                 (dump-to-h2/dump-to-h2! h2-file-default-enc))
 
               (testing "decodes settings and dashboard.details"
-                (jdbc/with-db-connection [target-conn (copy.h2/h2-jdbc-spec h2-file-plaintext)]
-                  (is (= "baz" (:value (first (jdbc/query target-conn "select value from SETTING where key='my-site-admin';")))))
+                (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
+                  (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
+                                                          "select value from SETTING where key='my-site-admin';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
-                         (:details (first (jdbc/query target-conn "select details from metabase_database where id=1;")))))))
+                         (:details (first (jdbc/query {:connection target-conn}
+                                                      "select details from metabase_database where id=1;")))))))
 
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
-                (jdbc/with-db-connection [target-conn (copy.h2/h2-jdbc-spec h2-file-enc)]
+                (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
-                              (:value (first (jdbc/query target-conn "select value from SETTING where key='my-site-admin';"))))))
+                              (:value (first (jdbc/query {:connection target-conn}
+                                                         "select value from SETTING where key='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
-                              (:details (first (jdbc/query target-conn "select details from metabase_database where id=1;"))))))))
+                              (:details (first (jdbc/query {:connection target-conn}
+                                                           "select details from metabase_database where id=1;"))))))))
 
               (testing "defaults to not decrypting"
-                (jdbc/with-db-connection [target-conn (copy.h2/h2-jdbc-spec h2-file-default-enc)]
+                (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
-                              (:value (first (jdbc/query target-conn "select value from SETTING where key='my-site-admin';"))))))
+                              (:value (first (jdbc/query {:connection target-conn}
+                                                         "select value from SETTING where key='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
-                              (:details (first (jdbc/query target-conn "select details from metabase_database where id=1;")))))))))))))))
+                              (:details (first (jdbc/query {:connection target-conn}
+                                                           "select details from metabase_database where id=1;")))))))))))))))

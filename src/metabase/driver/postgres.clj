@@ -397,12 +397,12 @@
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :as details-map}]
   (let [props (-> details-map
-                (update :port (fn [port]
-                                (if (string? port)
-                                  (Integer/parseInt port)
-                                  port)))
-                ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-                (dissoc :ssl))
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+                  (dissoc :ssl))
         props (if ssl?
                 (let [ssl-prms (ssl-params details-map)]
                   ;; if the user happened to specify any of the SSL options directly, allow those to take
@@ -412,10 +412,10 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
-        props (-> props
-                (set/rename-keys {:dbname :db})
-                db.spec/postgres
-                (sql-jdbc.common/handle-additional-options details-map))]
+        props (as-> props it
+                (set/rename-keys it {:dbname :db})
+                (db.spec/spec :postgres it)
+                (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres

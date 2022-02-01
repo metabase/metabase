@@ -271,7 +271,7 @@
   the output.
 
     (format-color :red \"%d cans\" 2)"
-  {:arglists '(^String [color x] ^String [color format-string & args]), :style/indent 2}
+  {:arglists '(^String [color x] ^String [color format-string & args])}
   (^String [color x]
    (colorize color x))
 

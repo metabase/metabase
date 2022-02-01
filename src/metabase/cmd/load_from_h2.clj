@@ -30,6 +30,6 @@
   ([]
    (load-from-h2! @mdb.env/db-file))
   ([h2-filename]
-   (let [h2-filename  (str h2-filename ";IFEXISTS=TRUE")
-         h2-jdbc-spec (copy.h2/h2-jdbc-spec h2-filename)]
-     (copy/copy! :h2 h2-jdbc-spec (mdb.conn/db-type) (mdb.conn/jdbc-spec)))))
+   (let [h2-filename    (str h2-filename ";IFEXISTS=TRUE")
+         h2-data-source (copy.h2/h2-data-source h2-filename)]
+     (copy/copy! :h2 h2-data-source (mdb.conn/db-type) (mdb.conn/data-source)))))
