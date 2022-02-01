@@ -64,7 +64,7 @@ export const ResultLink = styled(Link)`
     }
   }
 
-  ${Link} {
+  ${Link.Root} {
     text-underline-position: under;
     text-decoration: underline ${color("text-light")};
     text-decoration-style: dashed;

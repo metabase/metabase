@@ -32,4 +32,6 @@ const Link = forwardRef(function Link(
   return tooltip ? <Tooltip tooltip={tooltip}>{link}</Tooltip> : link;
 });
 
-export default Link;
+export default Object.assign(Link, {
+  Root: LinkRoot,
+});
