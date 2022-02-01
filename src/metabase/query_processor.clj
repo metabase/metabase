@@ -185,9 +185,7 @@
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
    ;; It doesn't really need to be 'around' middleware tho.
    #'normalize/normalize
-   (resolve 'ee.audit/handle-internal-queries)
-   ;; TODO -- I think this is actually supposed to be post-processing middleware? #idk¿?
-   ])
+   (resolve 'ee.audit/handle-internal-queries)])
 
 ;; query -> preprocessed = around + pre-process
 ;; query -> native       = around + pre-process + compile
