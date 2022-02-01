@@ -361,12 +361,12 @@
    So, if :stackable.stack_type is not specified, it's stacked.
    However, if key is explicitly set in :stackable.stack_type and is nil, that indicates not stacked."
   [viz-settings card]
-  (let [is-stacked     (if (contains? viz-settings :stackable.stack_type)
-                         (= (:stackable.stack_type viz-settings) "stacked")
-                         (and
-                           (= (:display card) :area)
-                           (> (count (:graph.metrics viz-settings)) 1)))]
-    (if is-stacked
+  (let [stacked     (if (contains? viz-settings :stackable.stack_type)
+                      (= (:stackable.stack_type viz-settings) "stacked")
+                      (and
+                        (= (:display card) :area)
+                        (> (count (:graph.metrics viz-settings)) 1)))]
+    (if stacked
       (assoc viz-settings :stackable.stack_type "stacked")
       viz-settings)))
 
