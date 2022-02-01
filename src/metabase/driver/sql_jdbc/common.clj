@@ -72,12 +72,14 @@
          (or (nil? name-value-separator?) (and (string? name-value-separator?)
                                             (= 1 (count name-value-separator?))))
          (or (nil? lowercase-keys?) (boolean? lowercase-keys?))]}
-  (let [entry-sep (separator-style->entry-separator separator-style)
-        nv-sep    (or name-value-separator? default-name-value-separator)
-        pairs     (str/split additional-options (re-pattern entry-sep))
-        k-fn      (if (or (nil? lowercase-keys?) (false? lowercase-keys?)) str/lower-case identity)
-        kv-fn     (fn [part]
-                    (let [[k v] (str/split part (re-pattern (str "\\" nv-sep)))]
-                      [(k-fn k) v]))
-        kvs       (map kv-fn pairs)]
-    (into {} kvs)))
+  (if (str/blank? additional-options)
+    {}
+    (let [entry-sep (separator-style->entry-separator separator-style)
+          nv-sep    (or name-value-separator? default-name-value-separator)
+          pairs     (str/split additional-options (re-pattern entry-sep))
+          k-fn      (if (or (nil? lowercase-keys?) (true? lowercase-keys?)) str/lower-case identity)
+          kv-fn     (fn [part]
+                      (let [[k v] (str/split part (re-pattern (str "\\" nv-sep)))]
+                        [(k-fn k) v]))
+          kvs       (map kv-fn pairs)]
+      (into {} kvs))))

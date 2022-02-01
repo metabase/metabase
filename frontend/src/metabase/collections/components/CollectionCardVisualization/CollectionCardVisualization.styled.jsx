@@ -3,6 +3,7 @@ import styled from "styled-components";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import Card from "metabase/components/Card";
 import { color } from "metabase/lib/colors";
+import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
 
 const HEIGHT = 250;
 
@@ -25,6 +26,10 @@ export const VizCard = styled(Card)`
   &:hover {
     ${HoverMenu} {
       visibility: visible;
+    }
+
+    ${LegendLabel} {
+      color: ${color("brand")};
     }
   }
 `;

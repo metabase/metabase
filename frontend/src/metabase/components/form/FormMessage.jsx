@@ -1,31 +1,41 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import cx from "classnames";
 import { t } from "ttag";
+
+import { FormMessageStyled } from "./FormMessage.styled";
+
 export const SERVER_ERROR_MESSAGE = t`Server error encountered`;
 export const UNKNOWN_ERROR_MESSAGE = t`Unknown error encountered`;
 
 export default class FormMessage extends Component {
   render() {
-    let { className, formError, formSuccess, message } = this.props;
+    const { className, formSuccess, message } = this.props;
 
-    if (!message) {
-      if (formError) {
-        message = getErrorMessage(formError);
-      } else if (formSuccess) {
-        message = getSuccessMessage(formSuccess);
-      }
-    }
+    const treatedMessage = getMessage(this.props);
 
-    const classes = cx("Form-message", "px2", className, {
-      "Form-message--visible": !!message,
-      "text-success": formSuccess,
-      "text-error": formError,
-    });
-
-    return <span className={classes}>{message}</span>;
+    return (
+      <FormMessageStyled
+        className={className}
+        visible={!!message}
+        hasSucceeded={formSuccess}
+      >
+        {treatedMessage}
+      </FormMessageStyled>
+    );
   }
 }
+
+const getMessage = ({ message, formError, formSuccess }) => {
+  if (message) {
+    return message;
+  }
+
+  if (formError) {
+    return getErrorMessage(formError);
+  }
+
+  return getSuccessMessage(formSuccess);
+};
 
 export const getErrorMessage = formError => {
   if (formError) {

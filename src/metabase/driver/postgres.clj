@@ -365,22 +365,23 @@
                           (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
         ssl-key-pw      (when (:ssl-use-client-auth db-details)
                           (secret/db-details-prop->secret-map db-details "ssl-key-password"))
-        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))]
+        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
+        has-value?      (comp some? :value)]
     (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
       (nil? (:ssl-mode db-details))
       (assoc :sslmode "require")
 
-      ssl-root-cert
+      (has-value? ssl-root-cert)
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
-      ssl-client-key
+      (has-value? ssl-client-key)
       (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
 
-      ssl-client-cert
+      (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
 
-      ssl-key-pw
+      (has-value? ssl-key-pw)
       (assoc :sslpassword (secret/value->string ssl-key-pw))
 
       true

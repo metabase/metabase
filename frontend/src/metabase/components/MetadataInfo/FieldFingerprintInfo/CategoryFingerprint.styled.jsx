@@ -22,6 +22,7 @@ export const NoWrap = styled.div`
   overflow: hidden;
   font-weight: bold;
   padding-top: 0.3em 0;
+  line-height: 1.3em;
 `;
 
 export const LoadingSpinner = styled(_LoadingSpinner).attrs({

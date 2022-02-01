@@ -64,7 +64,7 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Try these x-rays based on your data").should("not.exist");
     });
 
-    it("should show a modal when there is a newly created database", () => {
+    it("should show a modal when there is a newly created syncing database", () => {
       mockSyncingDatabase();
       cy.visit("/");
 
@@ -142,6 +142,7 @@ const mockSyncingDatabase = () => {
           id: sampleDatabase.id + 1,
           name: "H2",
           creator_id: user.id,
+          created_at: "2015-01-01T20:10:30.200",
           is_sample: false,
           initial_sync_status: "incomplete",
         };
