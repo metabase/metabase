@@ -67,11 +67,11 @@ function DateTimeFingerprint({ className, field }) {
 
 /**
  * @param {(number|null|undefined)} num - a number value from the type/Number fingerprint; might not be a number
- * @returns {[boolean, string]} - a tuple, [isNumber, formattedNumber]
+ * @returns {[boolean, string]} - a tuple, [isFormattedNumber, formattedNumber]
  */
 function roundNumber(num) {
   if (num == null) {
-    return [false, null];
+    return [false, ""];
   }
 
   return [true, formatNumber(Number.isInteger(num) ? num : num.toFixed(2))];
