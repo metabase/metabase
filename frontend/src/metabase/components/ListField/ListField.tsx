@@ -97,7 +97,10 @@ export const ListField = ({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" && shouldShowEmptyState) {
+    if (
+      event.key === "Enter" &&
+      !_.find(augmentedOptions, option => option[0] === filter)
+    ) {
       setAddedOptions([...addedOptions, [filter]]);
     }
   };
