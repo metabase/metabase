@@ -3,15 +3,8 @@ name: Fuzzing
 on:
   push:
     branches:
-      - '**'
-    paths:
-    - 'frontend/**'
-    - 'shared/**'
-    - 'enterprise/frontend/**'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '**/.eslintrc'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
   pull_request:
     paths-ignore:
     - 'docs/**'
