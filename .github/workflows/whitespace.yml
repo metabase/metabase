@@ -1,20 +1,11 @@
 name: Whitespace
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-      - '**.yaml'
-      - '**.yml'
-      - '**.clj'
-      - '**.edn'
-      - '**.el'
-      - '**.html'
-      - '**.json'
-      - '**.js*'
-      - '**.sh'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
   whitespace-linter:
