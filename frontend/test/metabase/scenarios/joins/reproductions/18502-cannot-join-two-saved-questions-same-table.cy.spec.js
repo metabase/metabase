@@ -14,6 +14,8 @@ describe("issue 18502", () => {
   });
 
   it("should be able to join two saved questions based on the same table (metabase#18502)", () => {
+    cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
+
     cy.createQuestion(question1);
     cy.createQuestion(question2);
 
@@ -23,6 +25,7 @@ describe("issue 18502", () => {
 
     cy.findByText("18502#1").click();
     cy.icon("join_left_outer").click();
+    cy.wait("@schema");
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Sample Database").click();
