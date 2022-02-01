@@ -77,9 +77,10 @@
 ;; basically the same as normal `=` but will add comment forms to MBQL queries for Field clauses and source tables
 ;; telling you the name of the referenced Fields/Tables
 (defmethod t/assert-expr 'query=
-  [message [_ expected actual]]
-  `(t/do-report
-    (query=-report ~message ~expected ~actual)))
+  [message [_ expected & actuals]]
+  `(do ~@(for [actual actuals]
+           `(t/do-report
+             (query=-report ~message ~expected ~actual)))))
 
 ;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
 
@@ -121,9 +122,10 @@
      :diffs    [[actual [only-in-expected only-in-actual]]]}))
 
 (defmethod t/assert-expr 'partial=
-  [message [_ expected actual]]
-  `(t/do-report
-    (partial=-report ~message ~expected ~actual)))
+  [message [_ expected & actuals]]
+  `(do ~@(for [actual actuals]
+           `(t/do-report
+             (partial=-report ~message ~expected ~actual)))))
 
 (defn sql=-report
   [message expected query]

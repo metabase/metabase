@@ -67,9 +67,12 @@
           (thunk))
         (thunk)))))
 
-(s/defn ^:private create-remap-col-tuples :- [[(s/one mbql.s/field            "Field")
-                                               (s/one mbql.s/field            "remapped FK Field")
-                                               (s/one ExternalRemappingDimension "remapping Dimension info")]]
+(def ^:private RemapColumnInfo
+  {:original-field-clause mbql.s/field
+   :new-field-clause      mbql.s/field
+   :dimension             ExternalRemappingDimension})
+
+(s/defn ^:private remap-column-infos :- [RemapColumnInfo]
   "Return tuples of `:field-id` clauses, the new remapped column `:fk->` clauses that the Field should be remapped to
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
   important here, because the results are added to the `:fields` column in order. (TODO - why is it important, if they
@@ -84,76 +87,126 @@
       (vec
        (mbql.u/match fields
          ;; don't match Fields that have been joined from another Table
-         [:field (id :guard (every-pred integer? field-id->remapping-dimension)) (_ :guard (complement (some-fn :join-alias :source-field)))]
+         [:field
+          (id :guard (every-pred integer? field-id->remapping-dimension))
+          (_ :guard (complement (some-fn :join-alias :source-field)))]
          (let [dimension (field-id->remapping-dimension id)]
-           [&match
-            [:field (:human_readable_field_id dimension) {:source-field id, ::source-dimension (u/the-id dimension)}]
-            (assoc dimension
-              :field_name                (-> dimension :field_id unique-name)
-              :human_readable_field_name (-> dimension :human_readable_field_id unique-name))]))))))
+           {:original-field-clause &match
+            :new-field-clause      [:field
+                                    (u/the-id (:human_readable_field_id dimension))
+                                    {:source-field            id
+                                     ::new-field-dimension-id (u/the-id dimension)}]
+            :dimension             (assoc dimension
+                                          :field_name                (-> dimension :field_id unique-name)
+                                          :human_readable_field_name (-> dimension :human_readable_field_id unique-name))}))))))
 
-(s/defn ^:private update-remapped-order-by :- [mbql.s/OrderBy]
+(s/defn ^:private add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [mbql.s/Field]
+  "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
+  remapped-from."
+  [infos  :- [RemapColumnInfo]
+   fields :- [mbql.s/Field]]
+  (let [field->remapped-col (into {} (map (juxt :original-field-clause :new-field-clause)) infos)]
+    (mapv
+     (fn [field]
+       (let [[_ _ {::keys [new-field-dimension-id]}] (get field->remapped-col field)]
+         (cond-> field
+           new-field-dimension-id (mbql.u/update-field-options assoc ::original-field-dimension-id new-field-dimension-id))))
+     fields)))
+
+(s/defn ^:private add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [mbql.s/Field]
+  "Rewrite existing `:fields` in a query. Add `::new-field-dimension-id` to any existing remap-to Fields that *would*
+  have been added if they did not already exist."
+  [infos  :- [RemapColumnInfo]
+   fields :- [mbql.s/Field]]
+  (let [normalized-clause->new-options (into {}
+                                             (map (juxt (fn [{clause :new-field-clause}]
+                                                          (mbql.u/remove-namespaced-options clause))
+                                                        (fn [{[_ _ options] :new-field-clause}]
+                                                          options)))
+                                             infos)]
+    (mapv (fn [field]
+            (let [options (normalized-clause->new-options (mbql.u/remove-namespaced-options field))]
+              (cond-> field
+                options (mbql.u/update-field-options merge options))))
+          fields)))
+
+(s/defn ^:private add-fk-remaps-rewrite-existing-fields :- [mbql.s/Field]
+  "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` and ::new-field-dimension-id` where
+  appropriate."
+  [infos  :- [RemapColumnInfo]
+   fields :- [mbql.s/Field]]
+  (->> fields
+       (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
+       (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
+
+(s/defn ^:private add-fk-remaps-rewrite-order-by :- [mbql.s/OrderBy]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
-  [field->remapped-col :- {mbql.s/field mbql.s/field}, order-by-clauses :- [mbql.s/OrderBy]]
-  (->> (for [[direction field, :as order-by-clause] order-by-clauses]
-         (if-let [remapped-col (get field->remapped-col field)]
-           [direction remapped-col]
-           order-by-clause))
-       distinct
-       vec))
+  [field->remapped-col :- {mbql.s/field mbql.s/field}
+   order-by-clauses    :- [mbql.s/OrderBy]]
+  (into []
+        (comp (map (fn [[direction field, :as order-by-clause]]
+                     (if-let [remapped-col (get field->remapped-col field)]
+                       [direction remapped-col]
+                       order-by-clause)))
+              (distinct))
+        order-by-clauses))
 
-(defn- update-remapped-breakout
+(defn- add-fk-remaps-rewrite-breakout
   [field->remapped-col breakout-clause]
-  (->> breakout-clause
-       (mapcat (fn [field]
-                 (if-let [remapped-col (get field->remapped-col field)]
-                   [remapped-col field]
-                   [field])))
-       distinct
-       vec))
+  (into []
+        (comp (mapcat (fn [field]
+                        (if-let [[_ _ {::keys [new-field-dimension-id]} :as remapped-col] (get field->remapped-col field)]
+                          [remapped-col (mbql.u/update-field-options field assoc ::original-field-dimension-id new-field-dimension-id)]
+                          [field])))
+              (distinct))
+        breakout-clause))
 
-(defn- add-target-dimension-info
-  [field->remapped-col fields]
-  (mapv
-   (fn [field]
-     (let [[_ _ {::keys [source-dimension]}] (get field->remapped-col field)]
-       (cond-> field
-         source-dimension (mbql.u/update-field-options assoc ::target-dimension source-dimension))))
-   fields))
+(def ^:private QueryAndRemaps
+  {:remaps (s/maybe (su/distinct [ExternalRemappingDimension]))
+   :query  mbql.s/Query})
 
-(s/defn ^:private add-fk-remaps :- [(s/one (s/maybe [ExternalRemappingDimension]) "external remapping dimensions")
-                                    (s/one mbql.s/Query "query")]
-  "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by`
+(declare add-fk-remaps)
+
+(s/defn ^:private source-query-remaps :- QueryAndRemaps
+  [{{:keys [source-query]} :query, :as query}]
+  (if (and source-query (not (:native source-query)))
+    ;; Only do lifting if source is MBQL query
+    (let [{source-query-remaps :remaps, source-query :query} (add-fk-remaps (assoc query :query source-query))]
+      {:remaps source-query-remaps
+       :query  (assoc-in query [:query :source-query] (:query source-query))})
+    {:remaps nil, :query query}))
+
+(s/defn ^:private add-fk-remaps :- QueryAndRemaps
+  "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
-  [{{:keys [fields order-by breakout source-query]} :query, :as query} :- mbql.s/Query]
-  (let [[source-query-remappings query]
-        (if (and source-query (not (:native source-query))) ; Only do lifting if source is MBQL query
-          (let [[source-query-remappings source-query] (add-fk-remaps (assoc query :query source-query))]
-            [source-query-remappings (assoc-in query [:query :source-query] (:query source-query))])
-          [nil query])]
+  [{{:keys [fields order-by breakout]} :query, :as query} :- mbql.s/Query]
+  (let [{source-query-remaps :remaps, query :query} (source-query-remaps query)]
     ;; fetch remapping column pairs if any exist...
-    (if-let [remap-col-tuples (seq (create-remap-col-tuples (concat fields breakout)))]
+    (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
-            field->remapped-col (into {} (for [[field-clause fk-clause] remap-col-tuples]
-                                           [field-clause fk-clause]))
-            new-fields          (->> remap-col-tuples
-                                     (map second)
-                                     (concat (add-target-dimension-info field->remapped-col fields))
-                                     distinct #_(m/distinct-by add/normalize-clause)
-                                     vec)
-            new-breakout        (update-remapped-breakout field->remapped-col breakout)
-            new-order-by        (update-remapped-order-by field->remapped-col order-by)]
+            original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
+            existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
+            ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so we don't
+            ;; add new entries even if the existing Field has some extra info e.g. extra unknown namespaced keys.
+            existing-normalized-fields-set (into #{} (map mbql.u/remove-namespaced-options) existing-fields)
+            new-fields                     (into
+                                            existing-fields
+                                            (comp (map :new-field-clause)
+                                                  (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
+                                            infos)
+            new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
+            new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)]
         ;; return the Dimensions we are using and the query
-        [(concat source-query-remappings (map last remap-col-tuples))
-         (cond-> query
-           (seq fields)   (assoc-in [:query :fields] new-fields)
-           (seq order-by) (assoc-in [:query :order-by] new-order-by)
-           (seq breakout) (assoc-in [:query :breakout] new-breakout))])
+        {:remaps (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])
+         :query  (cond-> query
+                   (seq fields)   (assoc-in [:query :fields] new-fields)
+                   (seq order-by) (assoc-in [:query :order-by] new-order-by)
+                   (seq breakout) (assoc-in [:query :breakout] new-breakout))})
       ;; otherwise return query as-is
-      [source-query-remappings query])))
+      {:remaps source-query-remaps, :query query})))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
@@ -191,13 +244,6 @@
    columns
    internal-only-dims))
 
-(defn- actual-column-name [columns column-id]
-  (some
-   (fn [{a-column-id :id, a-column-name :name}]
-     (when (= a-column-id column-id)
-       a-column-name))
-   columns))
-
 ;; Example external dimension:
 ;;
 ;;    {:name                      "Sender ID"
@@ -207,23 +253,23 @@
 ;;     :human_readable_field_id   %users.name
 ;;     :human_readable_field_name "NAME"}
 ;;
-;; Example remap-form column (need to add info about column it is `:remapped_to`):
+;; Example remap-from column (need to add info about column it is `:remapped_to`):
 ;;
 ;;    {:id           %messages.sender_id
 ;;     :name         "SENDER_ID"
-;;     :options      {::target-dimension 1000}
+;;     :options      {::original-field-dimension-id 1000}
 ;;     :display_name "Sender ID"}
 ;;
 ;; Example remap-to column (need to add info about column it is `:remapped_from`):
 ;;
 ;;    {:fk_field_id   %messages.sender_id
 ;;     :id            %users.name
-;;     :options       {::source-dimension 1000}
+;;     :options       {::new-field-dimension-id 1000}
 ;;     :name          "NAME"
 ;;     :display_name  "Sender ID"}
 (s/defn ^:private merge-metadata-for-externally-remapped-column* :- su/Map
   [columns
-   {{::keys [target-dimension source-dimension]} :options
+   {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column}
    {dimension-id      :id
     from-name         :field_name
@@ -232,28 +278,32 @@
   (log/trace "Considering column\n"
              (u/pprint-to-str 'cyan (select-keys column [:id :name :fk_field_id :display_name :options]))
              (u/colorize :magenta "\nAdd :remapped_to metadata?")
-             "\n=>" '(= dimension-id target-dimension)
-             "\n=>" (list '= dimension-id target-dimension)
-             "\n=>" (if (= dimension-id target-dimension)
+             "\n=>" '(= dimension-id original-field-dimension-id)
+             "\n=>" (list '= dimension-id original-field-dimension-id)
+             "\n=>" (if (= dimension-id original-field-dimension-id)
                       (u/colorize :green true)
                       (u/colorize :red false))
              (u/colorize :magenta "\nAdd :remapped_from metadata?")
-             "\n=>" '(= dimension-id source-dimension)
-             "\n=>" (list '= dimension-id source-dimension)
-             "\n=>" (if (= dimension-id source-dimension)
+             "\n=>" '(= dimension-id new-field-dimension-id)
+             "\n=>" (list '= dimension-id new-field-dimension-id)
+             "\n=>" (if (= dimension-id new-field-dimension-id)
                       (u/colorize :green true)
                       (u/colorize :red false)))
   (u/prog1 (merge
             column
-            (when (= dimension-id target-dimension)
-              {:remapped_to (or (some (fn [{{::keys [source-dimension]} :options, target-name :name}]
-                                        (when (= source-dimension dimension-id)
+            ;; if this is a column we're remapping FROM, we need to add information about which column we're remapping
+            ;; TO
+            (when (= dimension-id original-field-dimension-id)
+              {:remapped_to (or (some (fn [{{::keys [new-field-dimension-id]} :options, target-name :name}]
+                                        (when (= new-field-dimension-id dimension-id)
                                           target-name))
                                       columns)
                                 to-name)})
-            (when (= dimension-id source-dimension)
-              {:remapped_from (or (some (fn [{{::keys [target-dimension]} :options, source-name :name}]
-                                          (when (= target-dimension dimension-id)
+            ;; if this is a column we're remapping TO, we need to add information about which column we're remapping
+            ;; FROM
+            (when (= dimension-id new-field-dimension-id)
+              {:remapped_from (or (some (fn [{{::keys [original-field-dimension-id]} :options, source-name :name}]
+                                          (when (= original-field-dimension-id dimension-id)
                                             source-name))
                                         columns)
                                   from-name)
@@ -341,7 +391,8 @@
        :to              remap-to
        :value->readable (zipmap (transform-values-for-col col values)
                                 human-readable-values)
-       :new-column      (create-remapped-col remap-to remap-from
+       :new-column      (create-remapped-col remap-to
+                                             remap-from
                                              (infer-human-readable-values-type human-readable-values))})))
 
 (s/defn ^:private make-row-map-fn :- (s/maybe (s/pred fn? "function"))
@@ -411,5 +462,5 @@
     (if (or (= query-type :native)
             disable-remaps?)
       (qp query rff context)
-      (let [[remapping-dimensions query'] (add-fk-remaps query)]
-        (qp query' (remap-results-rff remapping-dimensions rff) context)))))
+      (let [{:keys [query remaps]} (add-fk-remaps query)]
+        (qp query (remap-results-rff remaps rff) context)))))

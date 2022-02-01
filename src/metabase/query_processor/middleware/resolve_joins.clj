@@ -2,7 +2,8 @@
   "Middleware that fetches tables that will need to be joined, referred to by `:field` clauses with `:source-field`
   options, and adds information to the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [metabase.mbql.schema :as mbql.s]
+  (:require [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
@@ -128,7 +129,10 @@
                                                            (keyword? fields) (dissoc :fields)))
                                                        joins)))]
     (cond-> inner-query
-      (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
+      (seq join-fields) (update :fields (fn [fields]
+                                          (into []
+                                                (comp cat (m/distinct-by mbql.u/remove-namespaced-options))
+                                                [fields join-fields]))))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]

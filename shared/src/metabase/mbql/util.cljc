@@ -680,6 +680,13 @@
   (assert (is-clause? :field clause))
   (assoc-field-options clause :temporal-unit unit))
 
+(defn remove-namespaced-options
+  "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all the "
+  [field-or-ref]
+  (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
+                                                                (when (keyword? k)
+                                                                  (namespace k)))))))
+
 #?(:clj
    (p/import-vars
     [mbql.match

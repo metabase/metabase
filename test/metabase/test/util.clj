@@ -831,7 +831,7 @@
           (let [remapped (db/select-one Field :id (u/the-id remap))]
             (fn []
               (tt/with-temp Dimension [_ {:field_id                (:id original)
-                                          :name                    (:display_name original)
+                                          :name                    (format "%s [external remap]" (:display_name original))
                                           :type                    :external
                                           :human_readable_field_id (:id remapped)}]
                 (testing (format "With FK remapping %s -> %s\n" (describe-field original) (describe-field remapped))
@@ -843,7 +843,7 @@
                              remap)]
             (fn []
               (tt/with-temp* [Dimension   [_ {:field_id (:id original)
-                                              :name     (:display_name original)
+                                              :name     (format "%s [internal remap]" (:display_name original))
                                               :type     :internal}]
                               FieldValues [_ {:field_id              (:id original)
                                               :values                (keys values-map)

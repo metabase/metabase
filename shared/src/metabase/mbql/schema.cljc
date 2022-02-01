@@ -1056,6 +1056,8 @@
   driver supports `:full-join` before generating a Join clause using that strategy."
   (apply s/enum join-strategies))
 
+(declare Fields)
+
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
   specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.
@@ -1110,7 +1112,7 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      [field])
+      (s/recursive #'Fields))
     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
