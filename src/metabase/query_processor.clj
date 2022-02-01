@@ -5,6 +5,7 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
   `process-userland-query` (see documentation below)."
+  (:refer-clojure :exclude [compile])
   (:require [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -126,19 +127,13 @@
 (def ^:private compile-middleware
   "Middleware for query compilation. Happens after pre-processing. Has the form
 
-    (f query) -> query
-
-  in 43+."
+    (f (f query rff context)) -> (f query rff context)"
   [#'mbql-to-native/mbql->native])
 
 (def ^:private execution-middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
-    (f qp) -> qp
-
-  Where `qp` has the form
-
-    (f query rff context)"
+    (f (f query rff context)) -> (f query rff context)"
   ;; TODO -- limit SEEMS like it should be post-processing but it actually has to happen only if we don't return cached
   ;; results. Otherwise things break. There's probably some way to fix this. e.g. maybe it doesn't do anything if the
   ;; query has the `:cached?` key.
@@ -264,15 +259,23 @@
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
         (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 
-(defn query->native
+(defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
   [query]
-  (process-query-sync query {:nativef
-                             (fn [query context]
-                               (context/raisef (qp.reducible/quit query) context))}))
+  (let [qp (qp.reducible/combine-middleware
+            (conj (vec around-middleware)
+                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
+            (fn [query _rff _context]
+              (mbql-to-native/query->native-form (preprocess* query))))]
+    (qp query nil nil)))
 
-(defn query->native-with-spliced-params
+(defn ^:deprecated query->native
+  "DEPRECATED: Use [[compile]] instead."
+  [query]
+  (compile query))
+
+(defn compile-and-splice-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
   (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
@@ -281,7 +284,12 @@
   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
   ;; ID is the virtual DB identifier
   (let [driver (driver.u/database->driver (:database (preprocess query)))]
-    (driver/splice-parameters-into-native-query driver (query->native query))))
+    (driver/splice-parameters-into-native-query driver (compile query))))
+
+(defn ^:deprecated query->native-with-spliced-params
+  "DEPRECATED: use [[compile-and-splice-parameters]] instead."
+  [query]
+  (compile-and-splice-parameters query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

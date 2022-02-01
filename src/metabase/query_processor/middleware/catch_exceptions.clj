@@ -4,10 +4,9 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :as perms]
-            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            schema.utils)
+            [schema.utils])
   (:import clojure.lang.ExceptionInfo
            java.sql.SQLException
            [schema.utils NamedError ValidationError]))
@@ -147,26 +146,19 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query rff {:keys [nativef raisef], :as context}]
+  (fn [query rff {:keys [raisef], :as context}]
     (let [extra-info (atom
-                      {:preprocessed (u/ignore-exceptions
+                      {:native       (u/ignore-exceptions
+                                       ((resolve 'metabase.query-processor/compile) query))
+                       :preprocessed (u/ignore-exceptions
                                        ((resolve 'metabase.query-processor/preprocess) query))})]
-      (letfn [(nativef* [query context]
-                (swap! extra-info assoc :native query)
-                (nativef query context))
-              (raisef* [e context]
-               ;; if the exception is the special quit-result exception, forward this to our parent `raisef` exception
-               ;; handler, which has logic for handling that case
-                (if (qp.reducible/quit-result e)
-                  (raisef e context)
-                  ;; otherwise format the Exception and return it
-                  (let [formatted-exception (format-exception* query e @extra-info)]
-                    (log/error (str (trs "Error processing query: {0}" (:error format-exception))
-                                    "\n" (u/pprint-to-str formatted-exception)))
-                    (context/resultf formatted-exception context))))]
+      (letfn [(raisef* [e context]
+                ;; format the Exception and return it
+                (let [formatted-exception (format-exception* query e @extra-info)]
+                  (log/error (str (trs "Error processing query: {0}" (:error format-exception))
+                                  "\n" (u/pprint-to-str formatted-exception)))
+                  (context/resultf formatted-exception context)))]
         (try
-          (qp query rff (assoc context
-                                  :nativef nativef*
-                                  :raisef raisef*))
+          (qp query rff (assoc context :raisef raisef*))
           (catch Throwable e
             (raisef* e context)))))))
