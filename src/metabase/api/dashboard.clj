@@ -717,9 +717,9 @@
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
 
-(api/defendpoint POST "/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [dashboard-id card-id dashcard-id :as {{:keys [parameters], :as body} :body}]
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
@@ -728,13 +728,13 @@
               :card-id      card-id
               :dashcard-id  dashcard-id})))
 
-(api/defendpoint POST "/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query/:export-format"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id card-id dashcard-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format api.dataset/ExportFormat}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
@@ -755,9 +755,9 @@
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
-(api/defendpoint POST "/pivot/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
-  "Pivot table version of `POST /api/dashboard/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query`."
-  [dashboard-id card-id dashcard-id :as {{:keys [parameters], :as body} :body}]
+(api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+  "Run a pivot table query for a specific DashCard."
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge

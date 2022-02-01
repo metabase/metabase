@@ -1599,7 +1599,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- dashboard-card-query-url [dashboard-id card-id dashcard-id]
-  (format "dashboard/%d/card/%d/dashcard/%d/query" dashboard-id card-id dashcard-id))
+  (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
 (defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
   {:database_id (s/eq (mt/id))
@@ -1609,7 +1609,7 @@
    s/Keyword    s/Any})
 
 (deftest dashboard-card-query-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/with-temp-copy-of-db
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
         (letfn [(url [& {:keys [dashboard-id card-id]
@@ -1704,7 +1704,7 @@
     (streaming.test-util/parse-result export-format is)))
 
 (deftest dashboard-card-query-export-format-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format"
+  (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
       (doseq [export-format [:csv :json :xlsx]]
         (testing (format "Export format = %s" export-format)
@@ -1719,17 +1719,17 @@
                                                                               :value 4}]))
                     export-format)))))))))
 
+(defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
+  (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
+
 (deftest dashboard-card-query-pivot-test
-  (testing "POST /api/dashboard/pivot/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
+  (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (pivots/applicable-drivers)
       (mt/dataset sample-dataset
         (mt/with-temp* [Dashboard     [{dashboard-id :id}]
                         Card          [{card-id :id} (pivots/pivot-card)]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
-          (let [result (mt/user-http-request :rasta :post 202 (format "dashboard/pivot/%d/card/%d/dashcard/%d/query"
-                                                                      dashboard-id
-                                                                      card-id
-                                                                      dashcard-id))
+          (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
                   rows   (mt/rows result)]
               (is (= 1144 (:row_count result)))
               (is (= "completed" (:status result)))
