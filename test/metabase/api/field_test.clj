@@ -207,7 +207,16 @@
 
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
-             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
+             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
+
+    (testing "External remapping"
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:has_field_values "list"}
+          (is (partial= {:field_id (mt/id :venues :category_id)
+                         :values   [[1 "African"]
+                                    [2 "American"]
+                                    [3 "Artisan"]]}
+                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 

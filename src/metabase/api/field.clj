@@ -199,14 +199,15 @@
 (defn field->values
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
-  [{has-field-values-type :has_field_values, :as field}]
+  [{has-field-values-type :has_field_values, field-id :id, :as field}]
   ;; if there's a human-readable remapping, we need to do all sorts of nonsense to make this work and return pairs of
   ;; `[original remapped]`. The code for this exists in the [[search-values]] function below. So let's just use
   ;; [[search-values]] without a search term to fetch all values.
   (if-let [human-readable-field-id (when (= has-field-values-type :list)
                                      (db/select-one-field :human_readable_field_id Dimension :field_id (u/the-id field)))]
-    {:values (search-values (api/check-404 field)
-                            (api/check-404 (Field human-readable-field-id)))}
+    {:values   (search-values (api/check-404 field)
+                              (api/check-404 (Field human-readable-field-id)))
+     :field_id field-id}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
 
 (defn- check-perms-and-return-field-values
