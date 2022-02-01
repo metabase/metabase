@@ -3,17 +3,17 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/components/ExternalLink";
 
-export const ButtonRoot = styled(ExternalLink)`
+export const LinkRoot = styled(ExternalLink)`
   display: inline-flex;
   align-items: center;
   padding: 0.75rem 1.25rem;
 `;
 
-export const ButtonText = styled.div`
+export const LinkText = styled.div`
   font-weight: bold;
 `;
 
-export const ButtonIcon = styled(Icon)`
+export const LinkIcon = styled(Icon)`
   color: ${color("white")};
   margin-left: 0.5rem;
   width: 0.75rem;
