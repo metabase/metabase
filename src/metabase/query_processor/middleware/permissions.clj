@@ -9,6 +9,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -17,7 +18,7 @@
             [toucan.db :as db]))
 
 (def ^:dynamic *card-id*
-  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution context so we will use
+  "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
   nil)
 
@@ -67,8 +68,8 @@
 (declare check-query-permissions*)
 
 (defn- required-perms
-  {:arglists '([outer-query context])}
-  [outer-query {:keys [gtap-perms]}]
+  {:arglists '([outer-query])}
+  [{{gtap-perms :gtaps} ::perms, :as outer-query}]
   (set/difference
    (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)
    gtap-perms))
@@ -77,26 +78,25 @@
   (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms))
 
 (s/defn ^:private check-ad-hoc-query-perms
-  [outer-query context]
-  (let [required-perms (required-perms outer-query context)]
+  [outer-query]
+  (let [required-perms (required-perms outer-query)]
     (when-not (has-data-perms? required-perms)
       (throw (perms-exception required-perms))))
   ;; check perms for any Cards referenced by this query (if it is a native query)
   (doseq [{query :dataset_query} (qp.resolve-referenced/tags-referenced-cards outer-query)]
-    ;; TODO: review needed:
-    (check-query-permissions* query context)))
+    (check-query-permissions* query)))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
-  [outer-query :- su/Map context]
+  [outer-query :- su/Map]
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if *card-id*
       (do
         (check-card-read-perms *card-id*)
-        (when-not (has-data-perms? (required-perms outer-query context))
+        (when-not (has-data-perms? (required-perms outer-query))
           (check-block-permissions outer-query)))
-      (check-ad-hoc-query-perms outer-query context))))
+      (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -105,8 +105,17 @@
   'publishing' a Card)."
   [qp]
   (fn [query rff context]
-    (check-query-permissions* query context)
+    (check-query-permissions* query)
     (qp query rff context)))
+
+(defn- remove-permissions-key [query]
+  (dissoc query ::perms))
+
+(def remove-permissions-key-middleware
+  "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
+  information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
+  but we definitely don't want users passing it in themselves. So remove it if it's present."
+  (m.43/wrap-43-pre-processing-middleware #'remove-permissions-key))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

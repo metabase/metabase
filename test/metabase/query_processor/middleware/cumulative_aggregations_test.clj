@@ -81,8 +81,8 @@
 
 (defn- handle-cumulative-aggregations [query]
   (-> (mt/test-qp-middleware
-       cumulative-aggregations/handle-cumulative-aggregations
-       query
+       cumulative-aggregations/sum-cumulative-aggregation-columns-middleware
+       (#'cumulative-aggregations/rewrite-cumulative-aggregations query)
        [[1 1]
         [2 2]
         [3 3]
