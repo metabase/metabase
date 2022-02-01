@@ -234,14 +234,10 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as clause]]
-  (when-not (get-in *inner-query* [:expressions (keyword expression-name)])
-    (throw (ex-info (tru "No expression named {0} at this level of the query" (pr-str expression-name))
-                    {:type       qp.error-type/invalid-query
-                     :expression clause
-                     :query      *inner-query*})))
-  (->honeysql driver (if (= source-table ::add/source)
-                       (apply hx/identifier :field source-query-alias source-alias)
-                       (mbql.u/expression-with-name *inner-query* expression-name))))
+  (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
+    (->honeysql driver (if (= source-table ::add/source)
+                         (apply hx/identifier :field source-query-alias source-alias)
+                         expression-definition))))
 
 (defn semantic-type->unix-timestamp-unit
   "Translates coercion types like `:Coercion/UNIXSeconds->DateTime` to the corresponding unit of time to use in

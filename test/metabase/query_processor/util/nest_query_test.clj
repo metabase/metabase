@@ -29,11 +29,11 @@
 (deftest nest-expressions-test
   (is (partial= (mt/$ids venues
                   {:source-query {:source-table $$venues
-                                  :expressions  {:double_price [:* [:field %price {::add/source-table  $$venues
-                                                                                   ::add/source-alias  "PRICE"
-                                                                                   ::add/desired-alias "PRICE"
-                                                                                   ::add/position      5}]
-                                                                2]}
+                                  :expressions  {"double_price" [:* [:field %price {::add/source-table  $$venues
+                                                                                    ::add/source-alias  "PRICE"
+                                                                                    ::add/desired-alias "PRICE"
+                                                                                    ::add/position      5}]
+                                                                 2]}
                                   :fields       [[:field %id          {::add/source-table  $$venues
                                                                        ::add/source-alias  "ID"
                                                                        ::add/desired-alias "ID"
@@ -78,7 +78,7 @@
                                                         ::add/position      0}]]]})
                 (nest-expressions
                  (mt/mbql-query venues
-                   {:expressions {:double_price [:* $price 2]}
+                   {:expressions {"double_price" [:* $price 2]}
                     :breakout    [$price]
                     :aggregation [[:count]]
                     :fields      [[:expression "double_price"]]})))))
@@ -87,12 +87,12 @@
   (testing "Other `:fields` besides the `:expressions` should be preserved in the top level"
     (is (partial= (mt/$ids checkins
                     {:source-query {:source-table $$checkins
-                                    :expressions  {:double_id [:*
-                                                               [:field %checkins.id {::add/source-table  $$checkins
-                                                                                     ::add/source-alias  "ID"
-                                                                                     ::add/desired-alias "ID"
-                                                                                     ::add/position      0}]
-                                                               2]}
+                                    :expressions  {"double_id" [:*
+                                                                [:field %checkins.id {::add/source-table  $$checkins
+                                                                                      ::add/source-alias  "ID"
+                                                                                      ::add/desired-alias "ID"
+                                                                                      ::add/position      0}]
+                                                                2]}
                                     :fields       [[:field %id {::add/source-table  $$checkins
                                                                 ::add/source-alias  "ID"
                                                                 ::add/desired-alias "ID"
@@ -132,7 +132,7 @@
                      :limit        1})
                   (nest-expressions
                    (mt/mbql-query checkins
-                     {:expressions {:double_id [:* $id 2]}
+                     {:expressions {"double_id" [:* $id 2]}
                       :fields      [[:expression "double_id"]
                                     !day.date
                                     !month.date]
@@ -142,7 +142,7 @@
   (testing "Make sure the nested version of the query doesn't mix up expressions if we have ones that reference others"
     (is (partial= (mt/$ids venues
                     {:source-query {:source-table $$venues
-                                    :expressions  {:big_price
+                                    :expressions  {"big_price"
                                                    [:+
                                                     [:field %price {::add/position      5
                                                                     ::add/source-table  $$venues
@@ -150,7 +150,7 @@
                                                                     ::add/desired-alias "PRICE"}]
                                                     2]
 
-                                                   :my_cool_new_field
+                                                   "my_cool_new_field"
                                                    [:/
                                                     [:field %price {::add/position      5
                                                                     ::add/source-table  $$venues
@@ -196,8 +196,8 @@
                      :limit    3})
                   (nest-expressions
                    (mt/mbql-query venues
-                     {:expressions {:big_price         [:+ $price 2]
-                                    :my_cool_new_field [:/ $price [:expression "big_price"]]}
+                     {:expressions {"big_price"         [:+ $price 2]
+                                    "my_cool_new_field" [:/ $price [:expression "big_price"]]}
                       :fields      [[:expression "my_cool_new_field"]]
                       :order-by    [[:asc $id]]
                       :limit       3}))))))
@@ -207,9 +207,9 @@
                 "names correctly.")
     (let [query (mt/mbql-query venues
                   {:source-query {:source-table $$venues
-                                  :expressions  {:x [:* $price 2]}
+                                  :expressions  {"x" [:* $price 2]}
                                   :fields       [$id [:expression "x"]]}
-                   :expressions  {:x [:* $price 4]}
+                   :expressions  {"x" [:* $price 4]}
                    :fields       [$id [:expression "x"]]
                    :limit        1})]
       (mt/with-native-query-testing-context query
@@ -223,10 +223,10 @@
                                                        ::add/source-alias  "x_2"
                                                        ::add/desired-alias "x_2"
                                                        ::add/position      1}]]
-                         :source-query {:expressions  {:x [:*
-                                                           [:field %price {::add/source-table ::add/source
-                                                                           ::add/source-alias "PRICE"}]
-                                                           4]}
+                         :source-query {:expressions  {"x" [:*
+                                                            [:field %price {::add/source-table ::add/source
+                                                                            ::add/source-alias "PRICE"}]
+                                                            4]}
                                         :fields       [[:field %id {::add/source-table  ::add/source
                                                                     ::add/source-alias  "ID"
                                                                     ::add/desired-alias "ID"
@@ -239,10 +239,10 @@
                                                        [:expression "x" {::add/desired-alias "x_2"
                                                                          ::add/position      2}]]
                                         :source-query {:source-table $$venues
-                                                       :expressions  {:x [:*
-                                                                          [:field %price {::add/source-table $$venues
-                                                                                          ::add/source-alias "PRICE"}]
-                                                                          2]}
+                                                       :expressions  {"x" [:*
+                                                                           [:field %price {::add/source-table $$venues
+                                                                                           ::add/source-alias "PRICE"}]
+                                                                           2]}
                                                        :fields       [[:field %id {::add/source-table  $$venues
                                                                                    ::add/source-alias  "ID"
                                                                                    ::add/desired-alias "ID"
@@ -321,17 +321,17 @@
                                                                                        ::add/source-alias  "MinPrice"
                                                                                        ::add/desired-alias "CategoriesStats__MinPrice"
                                                                                        ::add/position      10}]]}]
-                                    :expressions  {:RelativePrice [:/
-                                                                   [:field %price {::add/source-table  $$venues
-                                                                                   ::add/source-alias  "PRICE"
-                                                                                   ::add/desired-alias "PRICE"
-                                                                                   ::add/position      5}]
-                                                                   [:field "AvgPrice" {:base-type          :type/Integer
-                                                                                       :join-alias         "CategoriesStats"
-                                                                                       ::add/source-table  "CategoriesStats"
-                                                                                       ::add/source-alias  "AvgPrice"
-                                                                                       ::add/desired-alias "CategoriesStats__AvgPrice"
-                                                                                       ::add/position      9}]]}
+                                    :expressions  {"RelativePrice" [:/
+                                                                    [:field %price {::add/source-table  $$venues
+                                                                                    ::add/source-alias  "PRICE"
+                                                                                    ::add/desired-alias "PRICE"
+                                                                                    ::add/position      5}]
+                                                                    [:field "AvgPrice" {:base-type          :type/Integer
+                                                                                        :join-alias         "CategoriesStats"
+                                                                                        ::add/source-table  "CategoriesStats"
+                                                                                        ::add/source-alias  "AvgPrice"
+                                                                                        ::add/desired-alias "CategoriesStats__AvgPrice"
+                                                                                        ::add/position      9}]]}
                                     :fields       [[:field %id {::add/source-table  $$venues
                                                                 ::add/source-alias  "ID"
                                                                 ::add/desired-alias "ID"
@@ -447,7 +447,7 @@
                                     &CategoriesStats.*MaxPrice/Integer
                                     &CategoriesStats.*AvgPrice/Integer
                                     &CategoriesStats.*MinPrice/Integer]
-                      :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]}
+                      :expressions {"RelativePrice" [:/ $price &CategoriesStats.*AvgPrice/Integer]}
                       :joins       [{:strategy     :left-join
                                      :condition    [:= $category_id &CategoriesStats.category_id]
                                      :source-query {:source-table $$venues
@@ -465,7 +465,7 @@
                                                            :effective_type    :type/DateTime}
       (is (partial= (mt/$ids venues
                       {:source-query {:source-table $$venues
-                                      :expressions  {:test [:* 1 1]}
+                                      :expressions  {"test" [:* 1 1]}
                                       :fields       [[:field %id {::add/source-table  $$venues
                                                                   ::add/source-alias  "ID"
                                                                   ::add/desired-alias "ID"
@@ -507,7 +507,7 @@
                        :limit        1})
                     (nest-expressions
                      (mt/mbql-query venues
-                       {:expressions {:test ["*" 1 1]}
+                       {:expressions {"test" ["*" 1 1]}
                         :fields      [$price
                                       [:expression "test"]]
                         :limit       1})))))))
@@ -571,7 +571,7 @@
                                                                :condition    [:= product-id products-id]
                                                                :strategy     :left-join
                                                                :fk-field-id  %product_id}]
-                                               :expressions  {:pivot-grouping [:abs 0]}
+                                               :expressions  {"pivot-grouping" [:abs 0]}
                                                :fields       [id
                                                               user-id
                                                               product-id
@@ -613,7 +613,7 @@
                         :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
                                       !year.created_at
                                       [:expression "pivot-grouping"]]
-                        :expressions {:pivot-grouping [:abs 0]}
+                        :expressions {"pivot-grouping" [:abs 0]}
                         :order-by    [[:asc &PRODUCTS__via__PRODUCT_ID.products.category]
                                       [:asc !year.created_at]
                                       [:asc [:expression "pivot-grouping"]]]
@@ -629,12 +629,12 @@
       (mt/with-everything-store
         (is (partial= (mt/$ids products
                         {:source-query       {:source-table $$products
-                                              :expressions  {:CATEGORY [:concat
-                                                                        [:field %category {::add/source-table  $$products
-                                                                                           ::add/source-alias  "CATEGORY"
-                                                                                           ::add/desired-alias "CATEGORY"
-                                                                                           ::add/position      3}]
-                                                                        "2"]}
+                                              :expressions  {"CATEGORY" [:concat
+                                                                         [:field %category {::add/source-table  $$products
+                                                                                            ::add/source-alias  "CATEGORY"
+                                                                                            ::add/desired-alias "CATEGORY"
+                                                                                            ::add/position      3}]
+                                                                         "2"]}
                                               :fields       [[:field %id {::add/source-table  $$products
                                                                           ::add/source-alias  "ID"
                                                                           ::add/desired-alias "ID"
@@ -685,10 +685,10 @@
                                                                           ::add/position      0}]]]
                          :limit              1})
                       (-> (mt/mbql-query products
-                            {:expressions {:CATEGORY [:concat $category "2"]}
-                             :breakout    [:expression :CATEGORY]
+                            {:expressions {"CATEGORY" [:concat $category "2"]}
+                             :breakout    [:expression"CATEGORY"]
                              :aggregation [[:count]]
-                             :order-by    [[:asc [:expression :CATEGORY]]]
+                             :order-by    [[:asc [:expression"CATEGORY"]]]
                              :limit       1})
                           qp/query->preprocessed
                           add/add-alias-info

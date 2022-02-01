@@ -347,7 +347,7 @@
 
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
-  [inner-query, expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
+  [inner-query expression-name :- (s/cond-pre s/Keyword schema.helpers/NonBlankString)]
   (let [allowed-names [(qualified-name expression-name) (keyword expression-name)]]
     (loop [{:keys [expressions source-query]} inner-query, found #{}]
       (or
