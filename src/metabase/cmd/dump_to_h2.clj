@@ -23,7 +23,7 @@
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
   tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using `@metabase.db.env/db-file` as the connection string.
+  Defaults to using [[metabase.db.env/db-file]] as the connection string.
 
   Target H2 DB will be deleted if it exists, unless `keep-existing?` is truthy."
   ([h2-filename]
