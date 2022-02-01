@@ -12,7 +12,7 @@ import {
   StepActions,
   StepDescription,
   StepFormGroup,
-  StepLink,
+  StepButton,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo, InviteInfo, UserInfo } from "../../types";
@@ -80,7 +80,9 @@ const DatabaseStep = ({
         onEngineChange={onEngineChange}
       />
       <StepActions>
-        <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
+        <StepButton onClick={handleCancel}>
+          {t`I'll add my data later`}
+        </StepButton>
       </StepActions>
       {isEmailConfigured && (
         <SetupSection

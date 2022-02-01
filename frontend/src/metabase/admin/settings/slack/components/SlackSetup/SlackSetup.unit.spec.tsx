@@ -8,13 +8,13 @@ const FormMock = () => <div />;
 describe("SlackSetup", () => {
   it("should toggle setup sections", () => {
     render(<SlackSetup Form={FormMock} />);
-    expect(screen.getByText("Create New App")).toBeInTheDocument();
+    expect(screen.getByText("Install to workspace")).toBeInTheDocument();
 
     userEvent.click(screen.getByText("1. Create your Slack App"));
-    expect(screen.queryByText("Create New App")).not.toBeInTheDocument();
+    expect(screen.queryByText("Install to workspace")).not.toBeInTheDocument();
 
     userEvent.click(screen.getByText("1. Create your Slack App"));
-    expect(screen.getByText("Create New App")).toBeInTheDocument();
+    expect(screen.getByText("Install to workspace")).toBeInTheDocument();
   });
 
   it("should render the page when there is no existing bot", () => {
