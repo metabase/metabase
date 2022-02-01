@@ -54,10 +54,10 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (let [{collection-id :collection_id, :as card} (or (db/select-one [Card :collection_id] :id card-id)
-                                                     (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                                                     {:type    error-type/invalid-query
-                                                                      :card-id card-id})))]
+  (let [card (or (db/select-one [Card :collection_id] :id card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                 {:type    error-type/invalid-query
+                                  :card-id card-id})))]
     (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
     (when-not (mi/can-read? card)
       (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
@@ -124,7 +124,7 @@
   [[metabase.query-processor/compile]] and
   the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
   allowed to see the native query before converting the MBQL query to native.)"
-  [{database-id :database, :as query}]
+  [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
    (let [required-perms (perms/adhoc-native-query-path database-id)]

@@ -85,9 +85,9 @@ export default class Column extends Component {
               </div>
             </div>
           </div>
-          <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
+          <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
             <InputBlurChange
-              className="AdminInput TableEditor-field-description"
+              className="AdminInput TableEditor-field-description bordered rounded"
               type="text"
               value={this.props.field.description || ""}
               onBlurChange={this.handleChangeDescription}

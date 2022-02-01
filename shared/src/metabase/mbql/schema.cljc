@@ -1162,8 +1162,7 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (helpers/non-empty [Aggregation])
     (s/optional-key :breakout)     (helpers/non-empty [Field])
-    ;; TODO - expressions keys should be strings; fix this when we get a chance (#14647)
-    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
+    (s/optional-key :expressions)  {helpers/NonBlankString FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        helpers/IntGreaterThanOrEqualToZero

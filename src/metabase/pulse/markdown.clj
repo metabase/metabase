@@ -159,7 +159,7 @@
     (str (.getChars this)))
 
   nil
-  (to-clojure [this]
+  (to-clojure [_this]
     nil))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -311,7 +311,7 @@
         lr-factory (reify LinkResolverFactory
                      (^LinkResolver apply [_this ^LinkResolverBasicContext _context]
                       (reify LinkResolver
-                        (resolveLink [_this node context link]
+                        (resolveLink [_this _node _context link]
                           (if-let [url (resolve-uri (.getUrl link))]
                             (.. link
                                 (withStatus LinkStatus/VALID)

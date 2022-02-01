@@ -25,7 +25,7 @@
   "Handle processing for a single event notification received on the driver-notifications-channel"
   [driver-notifications-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
-  (when-let [{topic :topic database :item} driver-notifications-event]
+  (when-let [{_topic :topic database :item} driver-notifications-event]
     (try
       ;; notify the appropriate driver about the updated database
       (driver/notify-database-updated (:engine database) database)

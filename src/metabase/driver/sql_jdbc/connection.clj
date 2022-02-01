@@ -19,7 +19,7 @@
 
 (defmulti connection-details->spec
   "Given a Database `details-map`, return a JDBC connection spec."
-  {:arglists '([driver details-map]), :style/indent 1}
+  {:arglists '([driver details-map])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

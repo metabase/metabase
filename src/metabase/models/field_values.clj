@@ -203,7 +203,7 @@
 (defn field-values->pairs
   "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
   `field-values` instance."
-  [{:keys [values human_readable_values] :as field-values}]
+  [{:keys [values human_readable_values]}]
   (if (seq human_readable_values)
     (map vector values human_readable_values)
     (map vector values)))

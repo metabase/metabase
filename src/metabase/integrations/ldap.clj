@@ -162,13 +162,13 @@
        (try
          (when-not (ldap/get conn user-base)
            user-base-error)
-         (catch Exception e
+         (catch Exception _e
            user-base-error))
        (when group-base
          (try
            (when-not (ldap/get conn group-base)
              group-base-error)
-           (catch Exception e
+           (catch Exception _e
              group-base-error)))
        {:status :SUCCESS}))
     (catch LDAPException e

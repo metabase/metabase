@@ -34,15 +34,14 @@
       0
       (if (empty? source-query)
         clause
-        (do
-          (recur field source-query clause)))
+        (recur field source-query clause))
 
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [id name]} (qp.store/table table-id)]
+          (let [{:keys [_id name]} (qp.store/table table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
