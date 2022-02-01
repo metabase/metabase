@@ -70,28 +70,29 @@
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://localhost:5432/metabase")
            (mdb.data-source/raw-connection-string->DataSource "postgres://localhost:5432/metabase")))))
 
-(deftest wonky-postgres-string-test
+(deftest wonky-connection-string-test
   (testing "Should handle malformed user:password@host:port strings (#14678, #20121)"
-    (testing "user AND password"
-      (is (= (->DataSource
-              "jdbc:postgresql://localhost:5432/metabase"
-              {"user" "cam", "password" "1234"})
-             (mdb.data-source/raw-connection-string->DataSource "postgres://cam:1234@localhost:5432/metabase")))
-      (testing "no port"
+    (doseq [subprotocol ["postgresql" "mysql"]]
+      (testing "user AND password"
         (is (= (->DataSource
-                "jdbc:postgresql://localhost/metabase"
+                (str "jdbc:" subprotocol "://localhost:5432/metabase")
                 {"user" "cam", "password" "1234"})
-               (mdb.data-source/raw-connection-string->DataSource "postgres://cam:1234@localhost/metabase")))))
-    (testing "user only"
-      (is (= (->DataSource
-              "jdbc:postgresql://localhost:5432/metabase?password=1234"
-              {"user" "cam"})
-             (mdb.data-source/raw-connection-string->DataSource "postgres://cam@localhost:5432/metabase?password=1234")))
-      (testing "no port"
+               (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam:1234@localhost:5432/metabase"))))
+        (testing "no port"
+          (is (= (->DataSource
+                  (str "jdbc:" subprotocol "://localhost/metabase")
+                  {"user" "cam", "password" "1234"})
+                 (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam:1234@localhost/metabase"))))))
+      (testing "user only"
         (is (= (->DataSource
-                "jdbc:postgresql://localhost/metabase?password=1234"
+                (str "jdbc:" subprotocol "://localhost:5432/metabase?password=1234")
                 {"user" "cam"})
-               (mdb.data-source/raw-connection-string->DataSource "postgres://cam@localhost/metabase?password=1234")))))))
+               (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam@localhost:5432/metabase?password=1234"))))
+        (testing "no port"
+          (is (= (->DataSource
+                  (str "jdbc:" subprotocol "://localhost/metabase?password=1234")
+                  {"user" "cam"})
+                 (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam@localhost/metabase?password=1234")))))))))
 
 (deftest equality-test
   (testing "Two DataSources with the same URL should be equal"

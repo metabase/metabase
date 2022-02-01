@@ -55,8 +55,8 @@
     ;; one point, but that was only because [[clojure.java.jdbc]] tries to parse connection strings itself if you let it
     ;; -- see #14836. We never let it see connection strings anymore, so that shouldn't be a problem. At any rate #20122
     ;; would probably solve most people's problems if their password contains special characters.
-    (if-let [[_ user password more] (re-find #"^jdbc:postgresql://([^:@]+)(?::([^@:]+))?@(.+$)" s)]
-      (->DataSource (str "jdbc:postgresql://" more)
+    (if-let [[_ subprotocol user password more] (re-find #"^jdbc:((?:postgresql)|(?:mysql))://([^:@]+)(?::([^@:]+))?@(.+$)" s)]
+      (->DataSource (str "jdbc:" subprotocol "://" more)
                     (pool/map->properties
                      (merge {:user user}
                             (when (seq password)
