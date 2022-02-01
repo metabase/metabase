@@ -1,0 +1,202 @@
+name: Cypress
+
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  build:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        edition: [oss]
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+        cache: 'yarn'
+    - name: Prepare JDK 8
+      uses: actions/setup-java@v2
+      with:
+        java-version: 8
+        distribution: 'temurin'
+    - name: Install Clojure CLI
+      run: |
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
+    - name: Check versions
+      run: |
+        echo "Node.js `node --version`"
+        echo "yarn `yarn --version`"
+        java -version
+        clojure --version
+
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.m2
+          ~/.gitlibs
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/deps.edn') }}
+
+    - run: yarn install --frozen-lockfile --prefer-offline
+
+    - name: Java/AOT prep
+      run: |
+        source "./bin/prep.sh"
+        prep_deps
+
+    - run: ./bin/build version
+    - run: ./bin/build translations
+    - run: ./bin/build frontend
+    - run: ./bin/build licenses
+    - run: ./bin/build drivers
+    - run: ./bin/build uberjar
+
+    - name: Mark with the commit hash
+      run:  git rev-parse --short HEAD > COMMIT-ID
+    - name: Calculate SHA256 checksum
+      run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+    - name: Upload JARs as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        retention-days: 1
+        name: metabase-${{ matrix.edition }}-uberjar
+        path: |
+          ./target/uberjar/metabase.jar
+          ./COMMIT-ID
+          ./SHA256.sum
+
+  e2e-tests:
+    runs-on: ubuntu-20.04
+    timeout-minutes: 45
+    needs: build
+    name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      DISPLAY: ""
+      QA_DB_ENABLED: true
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [oss]
+        folder:
+          - "admin"
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
+          - "downloads"
+          - "joins"
+          - "models"
+          - "moderation"
+          - "native"
+          - "native-filters"
+          - "onboarding"
+          - "permissions"
+          - "question"
+          - "sharing"
+          - "smoketest"
+          - "visualizations"
+    services:
+      maildev:
+        image: maildev/maildev
+        ports:
+          - "80:80"
+          - "25:25"
+      postgres-sample:
+        image: metabase/qa-databases:postgres-sample-12
+        ports:
+          - "5432:5432"
+      mongo-sample:
+        image: metabase/qa-databases:mongo-sample-4.0
+        ports:
+          - 27017:27017
+      mysql-sample:
+        image: metabase/qa-databases:mysql-sample-8
+        ports:
+          - 3306:3306
+    steps:
+    - uses: actions/checkout@v2
+    - name: Prepare Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+        cache: 'yarn'
+    - name: Prepare JDK 8
+      uses: actions/setup-java@v2
+      with:
+        java-version: 8
+        distribution: 'temurin'
+    - name: Install Clojure CLI
+      run: |
+        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
+        sudo bash ./linux-install-1.10.3.933.sh
+    - name: Check versions
+      run: |
+        echo "Node.js `node --version`"
+        echo "yarn `yarn --version`"
+        java -version
+        clojure --version
+
+    - name: Get M2 cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/project.clj') }}-${{ hashFiles('**/deps.edn') }}
+
+    - name: Get node_modules cache
+      uses: actions/cache@v2
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+
+    - run: yarn install --frozen-lockfile --prefer-offline
+
+    - name: Get Cypress cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/Cypress
+        key: ${{ runner.os }}-Cypress-${{ hashFiles('**/yarn.lock') }}
+    - name: Ensure that Cypress is ready
+      run: |
+        yarn cypress install
+        yarn cypress cache path
+        yarn cypress cache list
+        yarn cypress verify
+
+    - uses: actions/download-artifact@v2
+      name: Retrieve uberjar artifact for ${{ matrix.edition }}
+      with:
+        name: metabase-${{ matrix.edition }}-uberjar
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        mv version.properties resources/
+
+    - run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      name: Run Cypress tests on ${{ matrix.folder }}
+      env:
+        TERM: xterm
+    - name: Upload Cypress recording upon failure
+      uses: actions/upload-artifact@v2
+      if: failure()
+      with:
+        retention-days: 1
+        name: cypress-recording-${{ matrix.folder }}
+        path: ./cypress
+        if-no-files-found: ignore
