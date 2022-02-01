@@ -1598,8 +1598,8 @@
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashboard-card-query-url [dashboard-id card-id]
-  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+(defn- dashboard-card-query-url [dashboard-id card-id dashcard-id]
+  (format "dashboard/%d/card/%d/dashcard/%d/query" dashboard-id card-id dashcard-id))
 
 (defn- dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
   {:database_id (s/eq (mt/id))
@@ -1609,13 +1609,13 @@
    s/Keyword    s/Any})
 
 (deftest dashboard-card-query-test
-  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
+  (testing "POST /api/dashboard/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
     (mt/with-temp-copy-of-db
-      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card}]
+      (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
         (letfn [(url [& {:keys [dashboard-id card-id]
                          :or   {dashboard-id dashboard-id
                                 card-id      card-id}}]
-                  (format "dashboard/%d/card/%d/query" dashboard-id card-id))
+                  (dashboard-card-query-url dashboard-id card-id dashcard-id))
                 (dashboard-card-query-expected-results-schema [& {:keys [row-count], :or {row-count 100}}]
                   {:database_id (s/eq (mt/id))
                    :row_count   (s/eq row-count)
@@ -1655,7 +1655,7 @@
 (deftest dashboard-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
-      (let [url (dashboard-card-query-url dashboard-id card-id)]
+      (let [url (dashboard-card-query-url dashboard-id card-id dashcard-id)]
         (testing "parameters"
           (testing "Should respect valid parameters"
             (is (schema= (dashboard-card-query-expected-results-schema :row-count 6)
@@ -1708,7 +1708,7 @@
     (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
       (doseq [export-format [:csv :json :xlsx]]
         (testing (format "Export format = %s" export-format)
-          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id) (name export-format))]
+          (let [url (format "%s/%s" (dashboard-card-query-url dashboard-id card-id dashcard-id) (name export-format))]
             (is (= (streaming.test-util/process-query-basic-streaming
                     export-format
                     (mt/mbql-query venues {:filter [:= $price 4]}))
@@ -1720,15 +1720,16 @@
                     export-format)))))))))
 
 (deftest dashboard-card-query-pivot-test
-  (testing "POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query"
+  (testing "POST /api/dashboard/pivot/:dashboard-id/card/:card-id/dashcard/:dashcard-id/query"
     (mt/test-drivers (pivots/applicable-drivers)
       (mt/dataset sample-dataset
         (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                        Card          [card (pivots/pivot-card)]
-                        DashboardCard [_ {:dashboard_id dashboard-id, :card_id (u/the-id card)}]]
-          (let [result (mt/user-http-request :rasta :post 202 (format "dashboard/%d/card/pivot/%d/query"
+                        Card          [{card-id :id} (pivots/pivot-card)]
+                        DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+          (let [result (mt/user-http-request :rasta :post 202 (format "dashboard/pivot/%d/card/%d/dashcard/%d/query"
                                                                       dashboard-id
-                                                                      (u/the-id card)))
+                                                                      card-id
+                                                                      dashcard-id))
                   rows   (mt/rows result)]
               (is (= 1144 (:row_count result)))
               (is (= "completed" (:status result)))
