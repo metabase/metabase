@@ -9,7 +9,7 @@
 
 (defn- limit [query]
   (with-redefs [i/absolute-max-results test-max-results]
-    (mt/test-qp-middleware limit/limit query (repeat (inc test-max-results) [:ok]))))
+    (mt/test-qp-middleware limit/limit-result-rows-middleware query (repeat (inc test-max-results) [:ok]))))
 
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `i/absolute-max-results`"
@@ -26,15 +26,18 @@
 
 (deftest no-aggregation-test
   (testing "Apply a max-results-bare-rows limit specifically on no-aggregation query"
-    (let [result (limit {:constraints {:max-results 46}
-                         :type        :query
-                         :query       {}})]
+    (let [query  {:constraints {:max-results 46}
+                  :type        :query
+                  :query       {}}
+          result (limit query)]
       (is (= 46
              (-> result :post count))
           "number of rows in results should match limit added by middleware")
       (is (= 46
              (-> result :metadata :row_count))
           ":row_count should match the limit added by middleware")
-      (is (= 46
-             (-> result :pre :query :limit))
+      (is (= {:constraints {:max-results 46}
+              :type        :query
+              :query       {:limit 46}}
+             (#'limit/add-default-limit query))
           "Preprocessed query should have :limit added to it"))))
