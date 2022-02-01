@@ -11,7 +11,6 @@
            org.apache.sshd.client.SshClient
            [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
            [org.apache.sshd.common.session
-            SessionHeartbeatController
             SessionHeartbeatController$HeartbeatType
             SessionHolder]
            org.apache.sshd.common.util.GenericUtils
@@ -110,7 +109,7 @@
         (ssh-tunnel-open? db-details)
         ;; tunnel in use, and is open
         db-details
-        :default
+        :else
         ;; tunnel in use, and is not open
         (include-ssh-tunnel! db-details)))
 

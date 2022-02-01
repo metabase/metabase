@@ -4,7 +4,7 @@
     "config:base",
     ":preserveSemverRanges"
   ],
-  "schedule": ["every month on the first day of the month"],
+  "schedule": ["every month"],
   "prHourlyLimit": 10,
   "prConcurrentLimit": 20,
   "postUpdateOptions": ["yarnDedupeFewer"],

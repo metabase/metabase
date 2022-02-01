@@ -25,7 +25,7 @@
    :stacktrace (u/filtered-stacktrace e)})
 
 (defmethod format-exception InterruptedException
-  [^InterruptedException e]
+  [^InterruptedException _e]
   {:status :interrupted})
 
 ;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a

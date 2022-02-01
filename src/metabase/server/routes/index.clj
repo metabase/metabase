@@ -92,7 +92,7 @@
 
 (defn- entrypoint
   "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
-  [entrypoint-name embeddable? {:keys [uri]} respond raise]
+  [entrypoint-name embeddable? {:keys [uri]} respond _raise]
   (respond
     (-> (resp/response (if (init-status/complete?)
                          (load-entrypoint-template entrypoint-name embeddable? uri)

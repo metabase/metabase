@@ -137,7 +137,7 @@
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
   {:total-tables      (count tables)
@@ -151,7 +151,7 @@
 
 (s/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
   (apply merge-with +

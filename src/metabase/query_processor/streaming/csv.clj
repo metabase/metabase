@@ -26,7 +26,7 @@
         (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))
 
-      (write-row! [_ row row-num _ {:keys [output-order]}]
+      (write-row! [_ row _row-num _ {:keys [output-order]}]
         (let [ordered-row (if output-order
                             (let [row-v (into [] row)]
                               (for [i output-order] (row-v i)))

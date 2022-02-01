@@ -92,7 +92,7 @@
 
 (defn do-google-auth
   "Call to Google to perform an authentication"
-  [{{:keys [token]} :body, :as request}]
+  [{{:keys [token]} :body, :as _request}]
   (let [token-info-response                    (http/post (format google-auth-token-info-url token))
         {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Sign-In token for: {0} {1}" given_name family_name))

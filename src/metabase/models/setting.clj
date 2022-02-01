@@ -140,7 +140,7 @@
 (defn- validate-default-value-for-type
   "Check whether the `:default` value of a Setting (if provided) agrees with the Setting's `:type` and its `:tag` (which
   usually comes from [[default-tag-for-type]])."
-  [{setting-type :type, setting-name :name, :keys [tag default], :as setting-definition}]
+  [{:keys [tag default] :as _setting-definition}]
   ;; the errors below don't need to be i18n'ed since they're definition-time errors rather than user-facing
   (when (some? tag)
     (assert ((some-fn symbol? string?) tag) (format "Setting :tag should be a symbol or string, got: ^%s %s"
@@ -882,7 +882,7 @@
       parsed-value)))
 
 (defn- user-facing-info
-  [{:keys [sensitive? default description], k :name, :as setting} & {:as options}]
+  [{:keys [default description], k :name, :as setting} & {:as options}]
   (let [set-via-env-var? (boolean (env-var-value setting))]
     {:key            k
      :value          (try

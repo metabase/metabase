@@ -66,7 +66,7 @@
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
   event and returns updated/hydrated Segment."
-  [id {:keys [revision_message archived], :as body}]
+  [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check Segment id)
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
