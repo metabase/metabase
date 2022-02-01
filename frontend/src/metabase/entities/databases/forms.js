@@ -296,6 +296,7 @@ function getEngineFormFields(engine, details, id) {
         readOnly: field.readOnly || false,
         helperText: field["helper-text"],
         visibleIf: field["visible-if"],
+        treatBeforePosting: field["treat-before-posting"],
         ...(overrides && overrides(engine, details, id)),
       };
     })
