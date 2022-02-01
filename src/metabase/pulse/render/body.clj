@@ -347,9 +347,16 @@
                          y-col-settings)
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
-                         "ordinal")]
+                         "ordinal")
+        ;; Default stack type is stacked. So, if :stackable.stack_type is not specified, it's stacked.
+        ;; However, if key is explicitly set in :stackable.stack_type and is nil, that indicates not stacked.
+        is-stacked     (if (contains? _viz-settings :stackable.stack_type)
+                         (= (:stackable.stack_type _viz-settings) "stacked")
+                         true)
+(or (:stackable.stack_type _viz-settings) "stacked")
+        ]
     {:colors   (public-settings/application-colors)
-     :stacking (or (:stackable.stack_type _viz-settings) "none")
+     :stacking (if is-stacked "stacked" "none")
      :x        {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
                 :format x-format}
      :y        {:type (or (:graph.y_axis.scale _viz-settings) "linear")
