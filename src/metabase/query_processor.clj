@@ -11,7 +11,6 @@
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]

@@ -6,7 +6,7 @@
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [schema.utils])
+            schema.utils)
   (:import clojure.lang.ExceptionInfo
            java.sql.SQLException
            [schema.utils NamedError ValidationError]))
@@ -146,7 +146,7 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query rff {:keys [raisef], :as context}]
+  (fn [query rff context]
     (let [extra-info (atom
                       {:native       (u/ignore-exceptions
                                        ((resolve 'metabase.query-processor/compile) query))
