@@ -24,7 +24,7 @@ const Link = forwardRef(function Link(
   ref: Ref<HTMLAnchorElement>,
 ) {
   const link = (
-    <LinkRoot to={to} innerRef={ref as any} className={className}>
+    <LinkRoot to={to} innerRef={ref as any} className={className} {...props}>
       {children}
     </LinkRoot>
   );

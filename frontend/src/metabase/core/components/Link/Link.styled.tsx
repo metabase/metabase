@@ -1,6 +1,7 @@
 import styled from "styled-components";
+import { display, space, hover, color } from "styled-system";
 import { Link } from "react-router";
-import { color, display, hover, space } from "styled-system";
+import { color as colors } from "metabase/lib/colors";
 
 export const LinkRoot = styled(Link)`
   ${display};
@@ -13,7 +14,7 @@ export const LinkRoot = styled(Link)`
   transition: opacity 0.3s linear;
 
   &:focus {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${colors("focus")};
   }
 
   &:focus:not(:focus-visible) {
