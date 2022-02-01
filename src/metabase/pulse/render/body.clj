@@ -330,7 +330,7 @@
   4. Must explicitly have yAxisPosition in all the series
 
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
-  [x-col y-col labels {::mb.viz/keys [column-settings] :as _viz-settings}]
+  [x-col y-col labels {::mb.viz/keys [column-settings] :as viz-settings} card]
   (let [default-format {:number_style "decimal"
                         :decimals 0
                         :currency "USD"
@@ -348,18 +348,19 @@
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")
-        ;; Default stack type is stacked. So, if :stackable.stack_type is not specified, it's stacked.
+        ;; Default stack type is stacked for area chart with more than one metric.
+        ;; So, if :stackable.stack_type is not specified, it's stacked.
         ;; However, if key is explicitly set in :stackable.stack_type and is nil, that indicates not stacked.
-        is-stacked     (if (contains? _viz-settings :stackable.stack_type)
-                         (= (:stackable.stack_type _viz-settings) "stacked")
-                         true)
-(or (:stackable.stack_type _viz-settings) "stacked")
-        ]
+        is-stacked     (if (contains? viz-settings :stackable.stack_type)
+                         (= (:stackable.stack_type viz-settings) "stacked")
+                         (and
+                           (= (:display card) :area)
+                           (> (count (:graph.metrics viz-settings)) 1)))]
     {:colors   (public-settings/application-colors)
-     :stacking (if is-stacked "stacked" "none")
-     :x        {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
+     :stacking (if is-stacked "stack" "none")
+     :x        {:type (or (:graph.x_axis.scale viz-settings) default-x-type)
                 :format x-format}
-     :y        {:type (or (:graph.y_axis.scale _viz-settings) "linear")
+     :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
                 :format y-format }
      :labels   labels}))
 
@@ -524,7 +525,7 @@
         names         (map :name cards)
         colors        (take (count multi-data) colors)
         types         (map :display cards)
-        settings      (->ts-viz x-col y-col labels viz-settings)
+        settings      (->ts-viz x-col y-col labels viz-settings card)
         y-pos         (take (count names) (default-y-pos viz-settings))
         series        (join-series names colors types row-seqs y-pos)
         image-bundle  (image-bundle/make-image-bundle
@@ -613,7 +614,7 @@
                            (double-x-axis-combo-series enforced-type joined-rows x-cols y-cols viz-settings))
 
         labels           (combo-label-info x-cols y-cols viz-settings)
-        settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings)]
+        settings         (->ts-viz (first x-cols) (first y-cols) labels viz-settings card)]
     (image-bundle/make-image-bundle
       render-type
       (js-svg/combo-chart series settings))))
