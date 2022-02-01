@@ -16,8 +16,8 @@ export const ItemLink = styled(Link)`
 
 export const ItemIcon = styled(Icon)`
   color: ${color("brand")};
-  height: 1.7rem;
-  width: 1.7rem;
+  height: 1.5rem;
+  width: 1.5rem;
 `;
 
 export const HoverMenu = styled(ActionMenu)`
@@ -43,7 +43,7 @@ export const Description = forwardRefToInnerRef(styled.div`
 `);
 
 export const Body = styled.div`
-  padding: 1.7rem;
+  padding: 1rem 1.5rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;
@@ -60,7 +60,7 @@ export const Body = styled.div`
 `;
 
 export const Header = styled.div`
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;

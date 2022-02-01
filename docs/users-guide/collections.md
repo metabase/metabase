@@ -38,7 +38,7 @@ You can use your personal collection as a scratch space to put experiments and e
 
 ![Pins](images/collections/pinned-items.png)
 
-In each collection, you can pin important or useful dashboards or questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
+In each collection, you can pin important or useful dashboards, models, and questions to make them stick to the top of the screen. Pinned items will also be displayed as large cards to make them stand out well. If you have Curate permissions for a collection, you can pin and un-pin things, and drag and drop pins to change their order.
 
 Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
 

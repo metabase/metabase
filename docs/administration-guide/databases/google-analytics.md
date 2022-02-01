@@ -18,13 +18,11 @@ To enable the Google Analytics API, go to <https://console.cloud.google.com/apis
 
 Refer to Google's Analytics API documentation to set up the required [scopes][google-oauth-scopes].
 
-## Metabase: adding a Google Analytics Dataset
+## Metabase: adding a Google Analytics dataset
 
 In your Metabase, click on **Settings** and select "Admin" to bring up the **Admin Panel**. In the **Databases** section, click on the **Add database** button, then select "Google Analytics" from the "Database type" dropdown and fill in the configuration settings:
 
-![images](../images/google_analytics_add_database.png)
-
-- **Name** is the title of your database in Metabase.
+- **Display name** is the title of your database in Metabase.
 
 - To get the **Google Analytics Account ID**, go to [Google Analytics][google-analytics] and click the **Admin** cog.  In the admin tab, go to the **Account Settings** section: you will find the account ID below the "Basic Settings" heading.
 
@@ -32,11 +30,15 @@ In your Metabase, click on **Settings** and select "Admin" to bring up the **Adm
 
 - Once you've provided **Client ID** and **Client Secret** with valid scopes, a **Click here to get an auth code** link will appear over the **Auth Code** text box. Authorize the connection with your Google login credentials to see the Auth Code, then copy and paste the code into this box.
 
-- **Automatically run queries when doing simple filtering and summarizing:** When this setting is enabled (which it is by default), Metabase automatically runs queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if you find performance is slow. This setting doesn’t affect drill-throughs or SQL queries.
+### Advanced settings
 
-- **This is a large database, so let me choose when Metabase syncs and scans:** When this setting is disabled (which it is by default), Metabase regularly checks the database to update its internal metadata. If you have a large database, we you can turn this on and control when and how often the field value scans happen.
+- **Rerun queries for simple explorations**: When this setting is enabled (which it is by default), Metabase automatically runs queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if you find performance is slow. This setting doesn’t affect drill-throughs or SQL queries.
 
-Please see the [database sync and analysis documentation][sync-docs] for more details about the two toggle settings.
+- **Choose when syncs and scans happen**: When this setting is disabled (which it is by default), Metabase regularly checks the database to update its internal metadata. If you have a large database, we you can turn this on and control when and how often the field value scans happen.
+
+- **Periodically refingerprint tables**: This setting — disabled by default — enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
+
+Please see the [database sync and analysis documentation][sync-docs] for more details about these toggle settings.
 
 ## Save your database configuration
 
