@@ -1,5 +1,6 @@
 import React from "react";
 import { Box } from "grid-styled";
+import _ from "underscore";
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
@@ -676,6 +677,96 @@ export default function StaticVizPage() {
                     ["2020-10-22", -10],
                     ["2020-10-23", -5],
                   ],
+                },
+              ],
+            }}
+          />
+        </Box>
+
+        <Box py={3}>
+          <Subhead>Ordinal chart with 48 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(48).map(n => [`bar ${n + 1}`, n + 1]),
+                },
+              ],
+            }}
+          />
+        </Box>
+
+        <Box py={3}>
+          <Subhead>Ordinal chart with 200 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
+                },
+              ],
+            }}
+          />
+        </Box>
+
+        <Box py={3}>
+          <Subhead>Ordinal chart with 20 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(20).map(n => [`bar ${n + 1}`, n + 1]),
                 },
               ],
             }}
