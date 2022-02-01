@@ -117,12 +117,12 @@
   support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name (deferred-tru "Use an SSH tunnel")
-    :placeholder  (deferred-tru "Enable this ssh tunnel?")
+    :placeholder  (deferred-tru "Enable this SSH tunnel?")
     :type         :boolean
     :default      false}
    {:name         "tunnel-host"
     :display-name (deferred-tru "SSH tunnel host")
-    :helper-text  (deferred-tru "The hostname that you use to connect to connect to SSH tunnels.")
+    :helper-text  (deferred-tru "The hostname that you use to connect to SSH tunnels.")
     :placeholder  "hostname"
     :required     true
     :visible-if   {"tunnel-enabled" true}}
@@ -154,7 +154,7 @@
    {:name         "tunnel-private-key"
     :display-name (deferred-tru "SSH private key to connect to the tunnel")
     :type         :string
-    :placeholder  (deferred-tru "Paste the contents of an ssh private key here")
+    :placeholder  (deferred-tru "Paste the contents of an SSH private key here")
     :required     true
     :visible-if   {"tunnel-auth-option" "ssh-key"}}
    {:name         "tunnel-private-key-passphrase"
@@ -186,7 +186,7 @@
   {:name         "let-user-control-scheduling"
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
-   :description  (deferred-tru "Syncing is a lightweight process that checks for updates to this database’s schema..")
+   :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
    :visible-if   {"advanced-options" true}})
 
 (def metadata-sync-schedule
@@ -194,7 +194,9 @@
   `let-user-control-scheduling` is enabled."
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
-   :description  (deferred-tru "In most cases, you should be fine leaving this set to sync hourly.")
+   :description  (str (deferred-tru "This is a lightweight process that checks for updates to this database’s schema.")
+                      " "
+                      (deferred-tru "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
