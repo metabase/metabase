@@ -339,7 +339,7 @@
    (keyword "timestamp without timezone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
-  [driver column]
+  [_driver column]
   (if (contains? *enum-types* column)
     :type/PostgresEnum
     (default-base-types column)))
@@ -449,7 +449,7 @@
 ;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
 ;; BigDecimal if so; otherwise, proceeding as normal
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/DOUBLE]
-  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
     (fn []
       (some-> (.getString rs i) u/parse-currency))

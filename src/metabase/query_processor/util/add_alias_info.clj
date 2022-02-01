@@ -257,8 +257,8 @@
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [{:keys [source-table], :as inner-query}
-   [_ _id-or-name {:keys [join-alias]}, :as field-clause]
+  [{:keys [_source-table], :as _inner-query}
+   [_ _id-or-name {:keys [join-alias]}, :as _field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
@@ -269,8 +269,8 @@
 (defn- field-desired-alias
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [inner-query
-   [_ _id-or-name {:keys [join-alias]} :as field-clause]
+  [_inner-query
+   [_ _id-or-name {:keys [join-alias]} :as _field-clause]
    {:keys [field-name alias-from-join alias-from-source-query]}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
@@ -292,7 +292,7 @@
               ::position      position}))))
 
 (defmethod clause-alias-info :aggregation
-  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index opts :as ag-ref-clause]]
+  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
   (let [position (clause->position inner-query ag-ref-clause)]
     ;; an aggregation is ALWAYS returned, so it HAS to have a `position`. If it does not, the aggregation reference
     ;; is busted.
@@ -318,7 +318,7 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as ag-clause] ag-index]
+  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
   (let [position     (clause->position inner-query [:aggregation ag-index])
         unique-alias (unique-alias-fn position original-ag-name)]
     [:aggregation-options wrapped-ag-clause (assoc opts

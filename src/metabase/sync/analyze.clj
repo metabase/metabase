@@ -68,7 +68,7 @@
 
 (s/defn ^:private update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [database :- i/DatabaseInstance
+  [_database :- i/DatabaseInstance
    tables :- [i/TableInstance]]
   ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (update-last-analyzed! tables))

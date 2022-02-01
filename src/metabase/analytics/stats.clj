@@ -98,7 +98,7 @@
   (cond
     (config/config-str :rds-hostname)        :elastic-beanstalk
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
-    :default                                 :unknown))
+    :else                                    :unknown))
 
 (defn- instance-settings
   "Figure out global info about this instance"

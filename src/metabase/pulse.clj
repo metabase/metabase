@@ -63,7 +63,7 @@
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards"
-  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as options}]
+  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
         dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
@@ -250,7 +250,7 @@
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
-  [{:keys [alert_condition] :as pulse} results]
+  [pulse results]
   (if (:skip_if_empty pulse)
     (not (are-all-cards-empty? results))
     true))
@@ -388,7 +388,7 @@
    Example:
        (send-pulse! pulse)                       Send to all Channels
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards dashboard_id], :as pulse} & {:keys [channel-ids]}]
+  [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
   (let [dashboard (Dashboard :id dashboard_id)
         pulse     (-> pulse
