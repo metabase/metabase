@@ -1,10 +1,4 @@
-import React, {
-  CSSProperties,
-  forwardRef,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
-} from "react";
+import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import { LinkRoot } from "./Link.styled";
 
@@ -19,18 +13,22 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   onlyActiveOnIndex?: boolean;
 }
 
-const Link = forwardRef(function Link(
-  { to, className, children, disabled, tooltip, ...props }: LinkProps,
-  ref: Ref<HTMLAnchorElement>,
-) {
+const Link = ({
+  to,
+  className,
+  children,
+  disabled,
+  tooltip,
+  ...props
+}: LinkProps): JSX.Element => {
   const link = (
-    <LinkRoot to={to} innerRef={ref as any} className={className} {...props}>
+    <LinkRoot to={to} className={className} {...props}>
       {children}
     </LinkRoot>
   );
 
   return tooltip ? <Tooltip tooltip={tooltip}>{link}</Tooltip> : link;
-});
+};
 
 export default Object.assign(Link, {
   Root: LinkRoot,
