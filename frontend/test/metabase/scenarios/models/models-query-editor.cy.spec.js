@@ -73,48 +73,38 @@ describe("scenarios > models query editor", () => {
   it("allows to edit native model query", () => {
     cy.createNativeQuestion(
       {
-        name: "Native DS",
+        name: "Native Model",
         dataset: true,
         native: {
-          query: "SELECT * FROM orders",
+          query: "SELECT * FROM orders limit 5",
         },
       },
       { visitQuestion: true },
     );
 
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("contain", "109.22");
+
     openDetailsSidebar();
     cy.findByText("Edit query definition").click();
 
-    cy.get(".ace_content").as("editor");
-    cy.get(".TableInteractive");
-    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
+    cy.url().should("include", "/query");
 
-    cy.get("@editor").type(
-      " LEFT JOIN products ON orders.PRODUCT_ID = products.ID",
-    );
+    cy.get(".ace_content").type("{backspace}2");
+
     runNativeQuery();
 
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("EAN");
-      cy.findByText("TOTAL");
-    });
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("not.contain", "109.22");
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");
 
-    cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
-    cy.url().should("not.include", "/query");
-
-    cy.findByText("Edit query definition").click();
-
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("EAN");
-      cy.findByText("TOTAL");
-    });
-
-    cy.button("Cancel").click();
-    cy.url().should("match", /\/model\/[1-9]\d*.*\d/);
-    cy.url().should("not.include", "/query");
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("not.contain", "109.22");
   });
 
   it("handles failing queries", () => {
