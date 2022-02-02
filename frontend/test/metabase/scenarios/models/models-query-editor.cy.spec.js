@@ -14,57 +14,60 @@ describe("scenarios > models query editor", () => {
     cy.signInAsAdmin();
   });
 
-  it("allows to edit GUI model query", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
+  describe("GUI models", () => {
+    beforeEach(() => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+    });
 
-    cy.visit("/model/1");
-    cy.wait("@dataset");
+    it("allows to edit GUI model query", () => {
+      cy.visit("/model/1");
+      cy.wait("@dataset");
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("contain", "109.22");
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
+      openDetailsSidebar();
+      cy.findByText("Edit query definition").click();
 
-    cy.findByText("Row limit").click();
-    cy.findByPlaceholderText("Enter a limit").type("2");
+      cy.findByText("Row limit").click();
+      cy.findByPlaceholderText("Enter a limit").type("2");
 
-    cy.get(".RunButton").click();
-    cy.wait("@dataset");
+      cy.get(".RunButton").click();
+      cy.wait("@dataset");
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("not.contain", "109.22");
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
 
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
 
-    cy.url()
-      .should("include", "/model/1")
-      .and("not.include", "/query");
+      cy.url()
+        .should("include", "/model/1")
+        .and("not.include", "/query");
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("not.contain", "109.22");
-  });
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+    });
 
-  it("locks display to table", () => {
-    cy.request("PUT", "/api/card/1", { dataset: true });
-    cy.visit("/model/1/query");
+    it("locks display to table", () => {
+      cy.visit("/model/1/query");
 
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
+      cy.findByTestId("action-buttons")
+        .findByText("Summarize")
+        .click();
 
-    selectFromDropdown("Count of rows");
+      selectFromDropdown("Count of rows");
 
-    cy.get(".RunButton").click();
-    cy.wait("@dataset");
+      cy.get(".RunButton").click();
+      cy.wait("@dataset");
 
-    // FE chooses the scalar visualization to display count of rows for regular questions
-    cy.get(".TableInteractive");
-    cy.get(".ScalarValue").should("not.exist");
+      // FE chooses the scalar visualization to display count of rows for regular questions
+      cy.get(".TableInteractive");
+      cy.get(".ScalarValue").should("not.exist");
+    });
   });
 
   it("allows to edit native model query", () => {
