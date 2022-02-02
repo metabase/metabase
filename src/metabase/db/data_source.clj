@@ -1,6 +1,7 @@
 (ns metabase.db.data-source
   (:require [clojure.set :as set]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.connection-pool :as pool]
             [metabase.db.spec :as db.spec]
@@ -48,29 +49,35 @@
    {:pre [(string? s)]}
    ;; normalize the protocol in case someone is trying to trip us up. Heroku is known for this and passes stuff in
    ;; like `postgres:...` to screw with us.
-   (let [s (cond-> s
-             (str/starts-with? s "postgres:")   (str/replace-first #"^postgres:" "postgresql:")
-             (not (str/starts-with? s "jdbc:")) (str/replace-first #"^" "jdbc:"))]
-     ;; Even tho they're invalid we need to handle strings like `postgres://user:password@host:port` for legacy reasons.
-     ;; (I think this is also how some places like Heroku ship them in order to make our lives hard) So strip those out
-     ;; with the absolute minimum of parsing we can get away with and then pass them in separately -- see #14678 and
-     ;; #20121
-     ;;
-     ;; NOTE: if password is URL-encoded this isn't going to work, since we're not URL-decoding it. I don't think that's
-     ;; a problem we really have to worry about, and at any rate we have never supported it. We did URL-decode things at
-     ;; one point, but that was only because [[clojure.java.jdbc]] tries to parse connection strings itself if you let it
-     ;; -- see #14836. We never let it see connection strings anymore, so that shouldn't be a problem. At any rate #20122
-     ;; would probably solve most people's problems if their password contains special characters.
-     (let [[s m] (if-let [[_ subprotocol user password more] (re-find #"^jdbc:((?:postgresql)|(?:mysql))://([^:@]+)(?::([^@:]+))?@(.+$)" s)]
-                   [(str "jdbc:" subprotocol "://" more)
-                    (merge {:user user}
-                           (when (seq password)
-                             {:password password}))]
-                   [s nil])
-           m (cond-> m
-               (seq username) (assoc :user username)
-               (seq password) (assoc :password password))]
-       (->DataSource s (some-> (not-empty m) pool/map->properties))))))
+   (let [s     (cond-> s
+                 (str/starts-with? s "postgres:")   (str/replace-first #"^postgres:" "postgresql:")
+                 (not (str/starts-with? s "jdbc:")) (str/replace-first #"^" "jdbc:"))
+         ;; Even tho they're invalid we need to handle strings like `postgres://user:password@host:port` for legacy
+         ;; reasons. (I think this is also how some places like Heroku ship them in order to make our lives hard) So
+         ;; strip those out with the absolute minimum of parsing we can get away with and then pass them in separately
+         ;; -- see #14678 and #20121
+         ;;
+         ;; NOTE: if password is URL-encoded this isn't going to work, since we're not URL-decoding it. I don't think
+         ;; that's a problem we really have to worry about, and at any rate we have never supported it. We did
+         ;; URL-decode things at one point, but that was only because [[clojure.java.jdbc]] tries to parse connection
+         ;; strings itself if you let it -- see #14836. We never let it see connection strings anymore, so that
+         ;; shouldn't be a problem. At any rate #20122 would probably solve most people's problems if their password
+         ;; contains special characters.
+         [s m] (if-let [[_ subprotocol user password more] (re-find #"^jdbc:((?:postgresql)|(?:mysql))://([^:@]+)(?::([^@:]+))?@(.+$)" s)]
+                 [(str "jdbc:" subprotocol "://" more)
+                  (merge {:user user}
+                         (when (seq password)
+                           {:password password}))]
+                 [s nil])
+         ;; these can't be i18n'ed because the app DB isn't set up yet
+         _     (when (and (:user m) (seq username))
+                 (log/error "Connection string contains a username, but MB_DB_USER is specified. MB_DB_USER will be used."))
+         _     (when (and (:password m) (seq password))
+                 (log/error "Connection string contains a password, but MB_DB_PASS is specified. MB_DB_PASS will be used."))
+         m     (cond-> m
+                 (seq username) (assoc :user username)
+                 (seq password) (assoc :password password))]
+     (->DataSource s (some-> (not-empty m) pool/map->properties)))))
 
 (defn broken-out-details->DataSource
   "Return a [[javax.sql.DataSource]] given a broken-out Metabase connection details."
