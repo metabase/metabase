@@ -30,7 +30,6 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -100,7 +99,7 @@
   [card-id :- su/IntGreaterThanZero]
   (let [card
         (or (db/select-one [Card :dataset_query :database_id :result_metadata :dataset]
-                           :id card-id)
+              :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
                             {:card-id card-id})))
 
@@ -124,13 +123,9 @@
             (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                             {:card card})))]
     ;; log the query at this point, it's useful for some purposes
-    ;;
-    ;; TODO - it would be nicer if we could just have some sort of debug function to store useful bits of context
-    ;; somewhere, then if the query fails we can dump it all out
-    (when-not i/*disable-qp-logging*
-      (log/info (trs "Fetched source query from Card {0}:" card-id)
-                "\n"
-                (u/pprint-to-str 'yellow source-query)))
+    (log/debug (trs "Fetched source query from Card {0}:" card-id)
+               "\n"
+               (u/pprint-to-str 'yellow source-query))
     (cond-> {:source-query    source-query
              :database        database-id
              :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}

@@ -28,7 +28,7 @@
                              "FROM table "
                              "WHERE \"public\".\"dots_in_names_objects.stuff\".\"dotted.name\" = ?")
                 :params ["ouija_board"]}
-               (qp/query->native
+               (qp/compile
                 {:database   (mt/id)
                  :type       :native
                  :native     {:query         "SELECT * FROM table WHERE {{x}}"

@@ -2,7 +2,6 @@
   "Middlware for handling cumulative count and cumulative sum aggregations."
   (:require [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [schema.core :as s]))
 
 ;;;; Pre-processing
@@ -26,7 +25,10 @@
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
-(defn- rewrite-cumulative-aggregations [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
+(defn rewrite-cumulative-aggregations
+  "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
+  information about the indecies of the replaced aggregations under the `::replaced-indecies` key."
+  [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
   (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
     query
     (let [query'            (replace-cumulative-ags query)
@@ -37,11 +39,6 @@
                                    (+ (count breakouts) i)))]
       (cond-> query'
         (seq replaced-indecies) (assoc ::replaced-indecies replaced-indecies)))))
-
-(def rewrite-cumulative-aggregations-middleware
-  "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
-  information about the indecies of the replaced aggregations under the `::replaced-indecies` key."
-  (m.43/wrap-43-pre-processing-middleware rewrite-cumulative-aggregations))
 
 
 ;;;; Post-processing
@@ -74,14 +71,11 @@
          (vreset! last-row row')
          (rf result row'))))))
 
-(defn- sum-cumulative-aggregation-columns
+(defn sum-cumulative-aggregation-columns
+  "Post-processing middleware. Sum the cumulative count aggregations that were rewritten
+  by [[rewrite-cumulative-aggregations]] in Clojure-land."
   [{::keys [replaced-indecies]} rff]
   (if (seq replaced-indecies)
     (fn sum-cumulative-aggregation-columns-rff* [metadata]
       (cumulative-ags-xform replaced-indecies (rff metadata)))
     rff))
-
-(def sum-cumulative-aggregation-columns-middleware
-  "Post-processing middleware. Sum the cumulative count aggregations that were rewritten
-  by [[rewrite-cumulative-aggregations]] in Clojure-land."
-  (m.43/wrap-43-post-processing-middleware sum-cumulative-aggregation-columns))

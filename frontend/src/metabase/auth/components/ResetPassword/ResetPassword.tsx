@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import AuthLayout from "../../containers/AuthLayout";
 import { ResetPasswordData } from "../../types";
 import {

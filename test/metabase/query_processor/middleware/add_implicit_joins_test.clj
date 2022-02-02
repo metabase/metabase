@@ -50,7 +50,7 @@
   (driver/with-driver (tx/driver)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (mt/id))
-      (:pre (mt/test-qp-middleware add-implicit-joins/add-implicit-joins query)))))
+      (add-implicit-joins/add-implicit-joins query))))
 
 (deftest basic-test
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"

@@ -38,41 +38,19 @@
   signature:
 
     (qp query rff context)"
-  [middleware]
-  (reduce
-   (fn [qp middleware]
-     (when (var? middleware)
-       (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
-     (if (some? middleware)
-       (middleware qp)
-       qp))
-   pivot
-   middleware))
+  ([middleware]
+   (combine-middleware middleware pivot))
 
-(defn quit
-  "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
-  Similar in concept to using `reduced` to stip reduction early.
-
-    (context/raisef (qp.reducible/quit :my-result) context)"
-  [result]
-  (log/trace "Quitting query processing early.")
-  (ex-info "Quit early!" {::quit-result result}))
-
-(defn quit-result
-  "If `e` is an Exception created by `quit`, get the result; otherwise, return `nil`,"
-  [e]
-  (::quit-result (ex-data e)))
-
-(defn- quittable-out-chan
-  "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a [[quit-result]] automatically."
-  [out-chan]
-  (let [out-chan* (a/promise-chan (map (fn [result]
-                                         (or (quit-result result)
-                                             result)))
-                                  (fn [e]
-                                    (a/>!! out-chan e)))]
-    (async.u/promise-pipe out-chan out-chan*)
-    out-chan*))
+  ([middleware pivot-fn]
+   (reduce
+    (fn [qp middleware]
+      (when (var? middleware)
+        (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
+      (if (some? middleware)
+        (middleware qp)
+        qp))
+    pivot-fn
+    middleware)))
 
 (def ^:dynamic *run-on-separate-thread?*
   "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with [[async-qp]]), this is
@@ -109,7 +87,7 @@
          (if *run-on-separate-thread?*
            (future (thunk))
            (thunk)))
-       (quittable-out-chan (context/out-chan context))))))
+       (context/out-chan context)))))
 
 (defn- wait-for-async-result [out-chan]
   {:pre [(async.u/promise-chan? out-chan)]}
@@ -167,12 +145,12 @@
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of
   `additional-rfs`, then combines them into a final result with `combine`.
 
-  (fn my-xform [rf]
-    (combine-additional-reducing-fns
-     rf
-     [((take 100) conj)]
-     (fn combine [result first-100-values]
-       (rf (assoc result :first-100 first-100-values)))))
+    (fn my-xform [rf]
+      (combine-additional-reducing-fns
+       rf
+       [((take 100) conj)]
+       (fn combine [result first-100-values]
+         (rf (assoc result :first-100 first-100-values)))))
 
   This is useful for post-processing steps that need to reduce the result rows to provide some metadata that can be
   added to the final result.
@@ -188,7 +166,7 @@
   reducing function is reduced, rather than when the accumulators of *all* reducing functions are reduced. In other
   words, the `reduced` behavior will be exactly the same way as if you used `primary-rf` on its own.
 
-  3. `combine` is like `post-complete`, but called with separate args, one for each reducing function.
+  3. `combine` is like [[redux.core/post-complete]], but called with separate args, one for each reducing function.
 
   4. The completing arity of the primary reducing function is not applied automatically, so be sure to apply it
   yourself in the appropriate place in the body of your `combine` function."

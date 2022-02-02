@@ -41,23 +41,21 @@
   For native queries, viz settings passed from the frontend are used, without modification.
 
   Processed viz settings are added to the metadata under the key :viz-settings."
-  [qp]
-  (fn [{{:keys [process-viz-settings?]} :middleware, :as query} rff context]
-    (if process-viz-settings?
-      (let [card-viz-settings           (viz-settings query)
-            column-viz-settings         (::mb.viz/column-settings card-viz-settings)
-            fields                      (or (-> query :query :fields)
-                                            (-> query :query :source-query :fields))
-            field-ids                   (filter int? (map second fields))
-            updated-column-viz-settings (if (= (:type query) :query)
-                                          (update-card-viz-settings column-viz-settings field-ids)
-                                          column-viz-settings)
-            global-settings             (m/map-vals mb.viz/db->norm-column-settings-entries
-                                                    (public-settings/custom-formatting))
-            updated-card-viz-settings   (-> card-viz-settings
-                                            (assoc ::mb.viz/column-settings updated-column-viz-settings)
-                                            (assoc ::mb.viz/global-column-settings global-settings))
-            query'                      (dissoc query :viz-settings)
-            rff'                        (fn [metadata] (rff (assoc metadata :viz-settings updated-card-viz-settings)))]
-        (qp query' rff' context))
-      (qp query rff context))))
+  [{{:keys [process-viz-settings?]} :middleware, :as query} rff]
+  (if process-viz-settings?
+    (let [card-viz-settings           (viz-settings query)
+          column-viz-settings         (::mb.viz/column-settings card-viz-settings)
+          fields                      (or (-> query :query :fields)
+                                          (-> query :query :source-query :fields))
+          field-ids                   (filter int? (map second fields))
+          updated-column-viz-settings (if (= (:type query) :query)
+                                        (update-card-viz-settings column-viz-settings field-ids)
+                                        column-viz-settings)
+          global-settings             (m/map-vals mb.viz/db->norm-column-settings-entries
+                                                  (public-settings/custom-formatting))
+          updated-card-viz-settings   (-> card-viz-settings
+                                          (assoc ::mb.viz/column-settings updated-column-viz-settings)
+                                          (assoc ::mb.viz/global-column-settings global-settings))]
+      (fn update-viz-settings-rff* [metadata]
+        (rff (assoc metadata :viz-settings updated-card-viz-settings))))
+    rff))

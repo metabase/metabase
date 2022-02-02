@@ -17,7 +17,6 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -319,17 +318,14 @@
           (assoc ::original-metadata (expected-cols original-query))
           (update-in [::qp.perms/perms :gtaps] (fn [perms] (into (set perms) (gtaps->perms-set (vals table-id->gtap)))))))))
 
-(defn- apply-sandboxing
+(defn apply-sandboxing
+  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
+  restrict the rows returned, based on presence of segmented permission GTAPs."
   [query]
   (or (when-let [table-id->gtap (when *current-user-id*
                                   (query->table-id->gtap query))]
         (gtapped-query query table-id->gtap))
       query))
-
-(def apply-sandboxing-middleware
-  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
-  restrict the rows returned, based on presence of segmented permission GTAPs."
-  (m.43/wrap-43-pre-processing-middleware apply-sandboxing))
 
 
 ;;;; Post-processing
@@ -346,13 +342,10 @@
                  (get col-name->expected-col (:name col))))))]
     (update metadata :cols merge-cols)))
 
-(defn- merge-sandboxing-metadata
+(defn merge-sandboxing-metadata
+  "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
   [{::keys [original-metadata]} rff]
   (if original-metadata
     (fn merge-sandboxing-metadata-rff* [metadata]
       (rff (merge-metadata original-metadata metadata)))
     rff))
-
-(def merge-sandboxing-metadata-middleware
-  "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
-  (m.43/wrap-43-post-processing-middleware merge-sandboxing-metadata))

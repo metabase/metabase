@@ -13,7 +13,7 @@
              [:field 1 {:temporal-unit :month}]))))))
 
 (defn- auto-bucket [query]
-  (:pre (mt/test-qp-middleware auto-bucket-datetimes/auto-bucket-datetimes query)))
+  (auto-bucket-datetimes/auto-bucket-datetimes query))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (mt/id), :type :query, :query mbql-query})

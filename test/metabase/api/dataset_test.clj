@@ -273,7 +273,7 @@
                      (mt/user-http-request :rasta :post "dataset"
                                            (mt/mbql-query venues {:limit 1}))))))))
 
-(deftest query->native-test
+(deftest compile-test
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
       (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "

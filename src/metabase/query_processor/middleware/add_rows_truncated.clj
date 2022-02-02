@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.add-rows-truncated
   "Adds `:rows_truncated` to the query results if the results were truncated because of the query's constraints."
   (:require [metabase.query-processor.interface :as i]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.limit :as limit]))
 
 (defn- results-limit
@@ -33,12 +32,10 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- add-rows-truncated [query rff]
-  (fn add-rows-truncated-rff* [metadata]
-    (add-rows-truncated-xform (results-limit query) (rff metadata))))
-
-(def add-rows-truncated-middleware
+(defn add-rows-truncated
   "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
   results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
   a CSV are unaffected.)"
-  (m.43/wrap-43-post-processing-middleware add-rows-truncated))
+  [query rff]
+  (fn add-rows-truncated-rff* [metadata]
+    (add-rows-truncated-xform (results-limit query) (rff metadata))))

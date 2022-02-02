@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
