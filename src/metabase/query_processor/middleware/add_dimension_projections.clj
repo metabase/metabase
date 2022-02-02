@@ -28,7 +28,6 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -131,7 +130,11 @@
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
-(defn- add-remapped-columns [{:keys [disable-remaps?], query-type :type, :as query}]
+(defn add-remapped-columns
+  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
+  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
+  can do appropriate results transformations in post-processing."
+  [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
   (if (or disable-remaps?
           (= query-type :native))
     query
@@ -139,12 +142,6 @@
       (cond-> query
         ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
         (seq remappings) (assoc ::external-remaps (mapv (partial into {}) remappings))))))
-
-(def add-remapped-columns-middleware
-  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
-  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
-  can do appropriate results transformations in post-processing."
-  (m.43/wrap-43-pre-processing-middleware add-remapped-columns))
 
 
 ;;;; Post-processing
@@ -210,7 +207,7 @@
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
   with the values returned from the database for the given `col`."
-  [{:keys [base_type] :as col} values]
+  [{:keys [base_type]} values]
   (let [transform (condp #(isa? %2 %1) base_type
                     :type/Decimal    bigdec
                     :type/Float      double
@@ -310,15 +307,13 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results [{::keys [external-remaps], :keys [disable-remaps?]} rff]
+(defn remap-results
+  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
+  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
       (let [internal-cols-info (internal-columns-info (:cols metadata))
             metadata           (add-remapped-cols metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
-
-(def remap-results-middleware
-  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
-  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
-  (m.43/wrap-43-post-processing-middleware remap-results))

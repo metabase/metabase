@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
 

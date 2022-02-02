@@ -11,7 +11,7 @@ import * as Urls from "metabase/lib/urls";
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 

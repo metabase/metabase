@@ -9,7 +9,6 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -55,10 +54,10 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (let [{collection-id :collection_id, :as card} (or (db/select-one [Card :collection_id] :id card-id)
-                                                     (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                                                     {:type    error-type/invalid-query
-                                                                      :card-id card-id})))]
+  (let [card (or (db/select-one [Card :collection_id] :id card-id)
+                 (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                 {:type    error-type/invalid-query
+                                  :card-id card-id})))]
     (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
     (when-not (mi/can-read? card)
       (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
@@ -108,14 +107,12 @@
     (check-query-permissions* query)
     (qp query rff context)))
 
-(defn- remove-permissions-key [query]
-  (dissoc query ::perms))
-
-(def remove-permissions-key-middleware
+(defn remove-permissions-key
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
-  (m.43/wrap-43-pre-processing-middleware #'remove-permissions-key))
+  [query]
+  (dissoc query ::perms))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -124,9 +121,10 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
-  before converting the MBQL query to native.)"
-  [{database-id :database, :as query}]
+  [[metabase.query-processor/compile]] and
+  the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
+  allowed to see the native query before converting the MBQL query to native.)"
+  [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
    (let [required-perms (perms/adhoc-native-query-path database-id)]

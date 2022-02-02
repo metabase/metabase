@@ -191,7 +191,7 @@ instructions.
     clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 
     # Run the namespace checker
-    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 
     # Run clj-kondo
     clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn

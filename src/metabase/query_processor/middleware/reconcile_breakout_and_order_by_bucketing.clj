@@ -38,7 +38,7 @@
             [schema.core :as s]))
 
 (s/defn ^:private reconcile-bucketing :- mbql.s/Query
-  [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
+  [{{breakouts :breakout} :query, :as query}]
   ;; Look for bucketed fields in the `breakout` clause and build a map of unbucketed reference -> bucketed reference,
   ;; like:
   ;;
@@ -68,8 +68,15 @@
         ;; now remove any duplicate order-by clauses we may have introduced, as those are illegal in MBQL 2000
         (update-in [:query :order-by] (comp vec distinct)))))
 
-(defn- reconcile-bucketing-if-needed
-  "Check if there's a chance we need to rewrite anything. If not, return query as is."
+(defn reconcile-breakout-and-order-by-bucketing
+  "Replace any unbucketed `:field` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
+  clause with corresponding bucketed clauses used for the same Field in the `breakout` clause.
+
+   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
+            :order-by [[:asc [:field 1 nil]]]}}
+   ->
+   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
+            :order-by [[:asc [:field 1 {:temporal-unit :day}]]]}}"
   [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
   (if (or
        ;; if there's no breakouts bucketed by a datetime-field or binning-strategy...
@@ -85,16 +92,3 @@
     query
     ;; otherwise, time to bucket
     (reconcile-bucketing query)))
-
-(defn reconcile-breakout-and-order-by-bucketing
-  "Replace any unbucketed `:field` clauses (anything without `:temporal-unit` or `:bucketing` options) in the `order-by`
-  clause with corresponding bucketed clauses used for the same Field in the `breakout` clause.
-
-   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
-            :order-by [[:asc [:field 1 nil]]]}}
-   ->
-   {:query {:breakout [[:field 1 {:temporal-unit :day}]]
-            :order-by [[:asc [:field 1 {:temporal-unit :day}]]]}}"
-  [qp]
-  (fn [query rff context]
-    (qp (reconcile-bucketing-if-needed query) rff context)))

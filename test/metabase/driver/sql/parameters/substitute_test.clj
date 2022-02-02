@@ -522,7 +522,7 @@
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
-  (let [sql (:query (qp/query->native (mt/mbql-query checkins)))]
+  (let [sql (:query (qp/compile (mt/mbql-query checkins)))]
     (second (re-find #"(?m)FROM\s+([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now

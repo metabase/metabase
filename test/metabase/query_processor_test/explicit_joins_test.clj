@@ -462,7 +462,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
       (mt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/native-query (qp/query->native (mt/mbql-query venues))))]
+                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]

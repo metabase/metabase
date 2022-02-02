@@ -189,7 +189,7 @@
     (reduce
      (partial merge-with merge)
      {}
-     (for [{:keys [t1 f1 t2 f2] :as m} rows]
+     (for [{:keys [t1 f1 t2 f2]} rows]
        (merge
         {t1 {t2 [{:lhs {:table t1, :field f1}, :rhs {:table t2, :field f2}}]}}
         (let [reverse-join {:lhs {:table t2, :field f2}, :rhs {:table t1, :field f1}}]

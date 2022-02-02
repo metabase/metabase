@@ -88,7 +88,7 @@
               driver-col-metadata))))))
 
 (defmethod column-info :native
-  [_query {:keys [cols rows] :as results}]
+  [_query {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
   (annotate-native-cols cols))
 
@@ -288,7 +288,7 @@
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
+  [ag-clause :- mbql.s/Aggregation]
   (when-not driver/*driver*
     (throw (Exception. (tru "*driver* is unbound."))))
   (mbql.u/match-one ag-clause
@@ -371,7 +371,7 @@
     (:display_name (col-info-for-field-clause inner-query ag-clause))
 
     _
-    (aggregation-name ag-clause {:recursive-name-fn (partial aggregation-arg-display-name inner-query)})))
+    (aggregation-name ag-clause)))
 
 (defn- ag->name-info [inner-query ag]
   {:name         (aggregation-name ag)
@@ -540,7 +540,7 @@
       cols)))
 
 (defmethod column-info :query
-  [{inner-query :query, :as query} results]
+  [{inner-query :query} results]
   (u/prog1 (mbql-cols inner-query results)
     (check-correct-number-of-columns-returned <> results)))
 
@@ -643,24 +643,20 @@
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [qp]
-  (fn [{query-type :type, :as query
-        {:keys [:metadata/dataset-metadata]} :info} rff context]
-    (qp
-     query
-     (fn [metadata]
-       (if (= query-type :query)
-         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-                (seq dataset-metadata)
-                (update :cols qputil/combine-metadata dataset-metadata)))
-         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
-         ;; queries...
-         (let [metadata (cond-> (update metadata :cols annotate-native-cols)
-                          ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                          (seq dataset-metadata)
-                          (update :cols qputil/combine-metadata dataset-metadata)
-                          ;; but we want those column refs removed since they have type info which we don't know yet
-                          :always
-                          (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
-           (add-column-info-xform query metadata (rff metadata)))))
-     context)))
+  [{query-type :type, :as query
+    {:keys [:metadata/dataset-metadata]} :info} rff]
+  (fn add-column-info-rff* [metadata]
+    (if (= query-type :query)
+      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+             (seq dataset-metadata)
+             (update :cols qputil/combine-metadata dataset-metadata)))
+      ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+      ;; queries...
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+                       ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+                       (seq dataset-metadata)
+                       (update :cols qputil/combine-metadata dataset-metadata)
+                       ;; but we want those column refs removed since they have type info which we don't know yet
+                       :always
+                       (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (add-column-info-xform query metadata (rff metadata))))))

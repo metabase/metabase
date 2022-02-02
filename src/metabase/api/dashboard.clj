@@ -744,9 +744,9 @@
               :export-format export-format
               :parameters    (json/parse-string parameters keyword)
               :constraints   nil
-              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to specify
-              ;; this all over the codebase any time we want to do a query with an export format. Maybe this should be the
-              ;; default if `export-format` isn't `:api`?
+              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
+              ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
+              ;; should be the default if `export-format` isn't `:api`?
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true

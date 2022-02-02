@@ -74,7 +74,7 @@
                                                         #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException
-  [e]
+  [_e]
   (log/info (trs "Request canceled before finishing."))
   {:status-code 204, :body nil, :headers (mw.security/security-headers)})
 
@@ -82,7 +82,7 @@
   "Middleware that catches API Exceptions and returns them in our normal-style format rather than the Jetty 500
   Stacktrace page, which is not so useful for our frontend."
   [handler]
-  (fn [request respond raise]
+  (fn [request respond _raise]
     (handler
      request
      respond

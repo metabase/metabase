@@ -1,16 +1,11 @@
 name: Backend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.clj*'
-    - '**.edn'
-    - '**.java'
-    - '**/metabase-plugin.yaml'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 
@@ -73,5 +68,5 @@ jobs:
     - name: Compile Java & AOT Sources
       run: |
         source ./bin/prep.sh && prep_deps
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
       name: Check ns forms

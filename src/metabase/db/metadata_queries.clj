@@ -19,9 +19,10 @@
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-         {:type     :query
-          :database db-id
-          :query    mbql-query}))
+         {:type       :query
+          :database   db-id
+          :query      mbql-query
+          :middleware {:disable-remaps? true}}))
       :data
       :rows))
 
@@ -71,7 +72,7 @@
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
 
-  ([field, max-results :- su/IntGreaterThanZero]
+  ([field max-results :- su/IntGreaterThanZero]
    (mapv first (field-query field {:breakout [[:field (u/the-id field) nil]]
                                    :limit    max-results}))))
 
