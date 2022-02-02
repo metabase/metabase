@@ -202,7 +202,6 @@
   "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
   and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
   [query]
-  (println "(u/pprint-to-str 'yellow query):" (u/pprint-to-str 'yellow query)) ; NOCOMMIT
   (let [query (walk/postwalk
                (fn [form]
                  (if (and (map? form)
@@ -211,7 +210,6 @@
                    (add-fk-remaps-one-level form)
                    form))
                query)]
-    (println "(u/pprint-to-str 'green query):" (u/pprint-to-str 'green query)) ; NOCOMMIT
     {:query (m/dissoc-in query [:query ::remaps]), :remaps (get-in query [:query ::remaps])}))
 
 (defn- add-remapped-columns [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]

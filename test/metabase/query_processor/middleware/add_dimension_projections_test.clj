@@ -450,31 +450,31 @@
   (testing "Remappings should work inside joins (#15578)"
     (mt/dataset sample-dataset
       (mt/with-column-remappings [orders.product_id products.title]
-        (is (query= (mt/mbql-query products
-                      {:joins  [{:source-query {:source-table $$orders}
-                                 :alias        "Q1"
-                                 :fields       [&Q1.orders.id
-                                                &Q1.orders.product_id
-                                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->title]
-                                 :condition    [:= $id &Q1.orders.product_id]
-                                 :strategy     :left-join}
-                                {:source-table $$products
-                                 :alias        "PRODUCTS__via__PRODUCT_ID"
-                                 :condition    [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.products.id]
-                                 :strategy     :left-join
-                                 :fk-field-id  %orders.product_id}]
-                       :fields [&Q1.orders.id
-                                &Q1.orders.product_id
-                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->products.title]
-                       :limit  2})
-                    (:query
-                     (#'add-dim-projections/add-fk-remaps
-                      (mt/mbql-query products
-                        {:joins  [{:strategy     :left-join
-                                   :source-query {:source-table $$orders}
-                                   :alias        "Q1"
-                                   :condition    [:= $id &Q1.orders.product_id]
-                                   :fields       [&Q1.orders.id
-                                                  &Q1.orders.product_id]}]
-                         :fields [&Q1.orders.id &Q1.orders.product_id]
-                         :limit  2})))))))))
+        (is (partial (mt/mbql-query products
+                       {:joins  [{:source-query {:source-table $$orders}
+                                  :alias        "Q1"
+                                  :fields       [&Q1.orders.id
+                                                 &Q1.orders.product_id
+                                                 &PRODUCTS__via__PRODUCT_ID.orders.product_id->title]
+                                  :condition    [:= $id &Q1.orders.product_id]
+                                  :strategy     :left-join}
+                                 {:source-table $$products
+                                  :alias        "PRODUCTS__via__PRODUCT_ID"
+                                  :condition    [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                  :strategy     :left-join
+                                  :fk-field-id  %orders.product_id}]
+                        :fields [&Q1.orders.id
+                                 &Q1.orders.product_id
+                                 &PRODUCTS__via__PRODUCT_ID.orders.product_id->products.title]
+                        :limit  2})
+                     (:query
+                      (#'add-dim-projections/add-fk-remaps
+                       (mt/mbql-query products
+                         {:joins  [{:strategy     :left-join
+                                    :source-query {:source-table $$orders}
+                                    :alias        "Q1"
+                                    :condition    [:= $id &Q1.orders.product_id]
+                                    :fields       [&Q1.orders.id
+                                                   &Q1.orders.product_id]}]
+                          :fields [&Q1.orders.id &Q1.orders.product_id]
+                          :limit  2})))))))))

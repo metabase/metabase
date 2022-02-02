@@ -267,93 +267,29 @@
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (mt/with-column-remappings [orders.product_id products.title]
             (let [query (mt/mbql-query products
-                          {:joins    [{:source-query {:source-table $$orders}
-                                       :alias        "Q1"
-                                       :condition    [:= $id &Q1.orders.product_id]
-                                       :fields       :all}]
-                           :order-by [[:asc $id]
-                                      [:asc &Q1.orders.id]]
-                           :limit    2})]
+                          {:joins    [{:source-query {:source-table $$orders
+                                                      :breakout     [$orders.product_id]
+                                                      :aggregation  [[:sum $orders.quantity]]}
+                                       :alias        "Orders"
+                                       :condition    [:= $id &Orders.orders.product_id]
+                                       :fields       [&Orders.title
+                                                      &Orders.*sum/Integer]}]
+                           :fields   [$title $category]
+                           :order-by [[:asc $id]]
+                           :limit    3})]
               (mt/with-native-query-testing-context query
                 (let [results (qp/process-query query)]
                   (when (= driver/*driver* :h2)
-                    (testing "Metadata - :name"
-                      (is (= ["ID"         ; 00 PRODUCTS.ID
-                              "EAN"        ; 01 PRODUCTS.EAN
-                              "TITLE"      ; 02 PRODUCTS.TITLE
-                              "CATEGORY"   ; 03 PRODUCTS.CATEGORY
-                              "VENDOR"     ; 04 PRODUCTS.VENDOR
-                              "PRICE"      ; 05 PRODUCTS.PRICE
-                              "RATING"     ; 06 PRODUCTS.RATING
-                              "CREATED_AT" ; 07 PRODUCTS.CREATED_AT
-                              ;; TODO -- I'm not 100% sure why the actual *REAL* names of the columns don't come back
-                              ;; anywhere in the QP results metadata *at all* but these are the columns they correspond to
-                              "ID_2"         ; 08 Q1__ID
-                              "USER_ID"      ; 09 Q1__USER_ID
-                              "PRODUCT_ID"   ; 10 Q1__PRODUCT_ID
-                              "SUBTOTAL"     ; 11 Q1__SUBTOTAL
-                              "TAX"          ; 12 Q1__TAX
-                              "TOTAL"        ; 13 Q1__TOTAL
-                              "DISCOUNT"     ; 14 Q1__DISCOUNT
-                              "CREATED_AT_2" ; 15 Q1__CREATED_AT_2
-                              "QUANTITY"     ; 16 Q1__QUANTITY
-                              ;; TODO -- I think we're doing an extra join against Products to get Title. We really only
-                              ;; need to do one. This is more titles than we need. At least the query works. Oh well :shrug:
-                              "TITLE_2"      ; 17 PRODUCTS__via__PRODUCT_ID__TITLE
-                              "TITLE_3"      ; 18 Q1__PRODUCTS__via__PRODUCT_ID__TITLE
-                              ]
-                             (map :name (mt/cols results)))))
-                    (testing "Metadata - display name"
-                      (is (= ["ID"
-                              "Ean"
-                              "Product ID"
-                              "Category"
-                              "Vendor"
-                              "Price"
-                              "Rating"
-                              "Created At"
-                              "Q1 → ID"
-                              "Q1 → User ID"
-                              "Q1 → Product ID"
-                              "Q1 → Subtotal"
-                              "Q1 → Tax"
-                              "Q1 → Total"
-                              "Q1 → Discount"
-                              "Q1 → Created At"
-                              "Q1 → Quantity"
-                              "Product ID" ; I think these display names are intentional because the remapping is happening.
-                              "Product ID"]
-                             (map :display_name (mt/cols results)))))
-                    ;; these results are clearly a LITTLE broken but I couldn't figure out how to get it working 100% so
-                    ;; this will have to do for now until I revisit it.
-                    (is (= {"TITLE"      {:remapped_from "PRODUCT_ID"}
-                            "PRODUCT_ID" {:remapped_to "TITLE_3"}
-                            "TITLE_2"    {:remapped_from "PRODUCT_ID"}
-                            "TITLE_3"    {:remapped_from "PRODUCT_ID"}}
-                           (into {}
-                                 (comp (map (fn [col]
-                                              (when-let [remaps (not-empty (select-keys col [:remapped_to :remapped_from]))]
-                                                [(:name col) remaps])))
-                                       (filter some?))
-                                 (mt/cols results)))))
-                  (is (= [[ ;; PRODUCTS
-                           1 "1018947080336" "Rustic Paper Wallet" "Gizmo" "Swaniawski, Casper and Hilll"
-                           29.46 4.6 "2017-07-19T19:44:56.582Z"
-                           ;; Q1
-                           448 61 1 29.46 1.4 30.86 nil "2016-12-25T22:19:38.656Z" 2
-                           ;; Remaps
-                           "Rustic Paper Wallet" "Rustic Paper Wallet"]
-                          [ ;; PRODUCTS
-                           1 "1018947080336" "Rustic Paper Wallet" "Gizmo" "Swaniawski, Casper and Hilll"
-                           29.46 4.6 "2017-07-19T19:44:56.582Z"
-                           ;; Q1
-                           493 65 1 29.46 1.18 30.64 nil "2017-02-04T10:16:00.936Z" 1
-                           ;; Remaps
-                           "Rustic Paper Wallet" "Rustic Paper Wallet"]]
-                         (mt/formatted-rows [int str str str str
-                                             2.0 2.0 str
-                                             int int int 2.0 2.0 2.0 identity str int
-                                             str str]
+                    (testing "Metadata"
+                      (is (= [["TITLE"    "Title"]
+                              ["CATEGORY" "Category"]
+                              ["TITLE_2"  "Orders → Title"]
+                              ["sum"      "Orders → Sum"]]
+                             (map (juxt :name :display_name) (mt/cols results))))))
+                  (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
+                          ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
+                          ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
+                         (mt/formatted-rows [str str str int]
                            results))))))))))))
 
 (deftest inception-style-nested-query-with-joins-test
