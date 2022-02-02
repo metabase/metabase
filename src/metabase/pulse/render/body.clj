@@ -330,7 +330,7 @@
   4. Must explicitly have yAxisPosition in all the series
 
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
-  [x-col y-col labels {::mb.viz/keys [column-settings] :as _viz-settings}]
+  [x-col y-col labels {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [default-format {:number_style "decimal"
                         :decimals 0
                         :currency "USD"
@@ -348,12 +348,27 @@
         default-x-type (if (isa? (:effective_type x-col) :type/Temporal)
                          "timeseries"
                          "ordinal")]
-    {:colors (public-settings/application-colors)
-     :x      {:type (or (:graph.x_axis.scale _viz-settings) default-x-type)
-              :format x-format}
-     :y      {:type (or (:graph.y_axis.scale _viz-settings) "linear")
-              :format y-format }
-     :labels labels}))
+    {:colors   (public-settings/application-colors)
+     :stacking (if (:stackable.stack_type viz-settings) "stack" "none")
+     :x        {:type (or (:graph.x_axis.scale viz-settings) default-x-type)
+                :format x-format}
+     :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
+                :format y-format }
+     :labels   labels}))
+
+(defn- set-default-stacked
+  "Default stack type is stacked for area chart with more than one metric.
+   So, if :stackable.stack_type is not specified, it's stacked.
+   However, if key is explicitly set in :stackable.stack_type and is nil, that indicates not stacked."
+  [viz-settings card]
+  (let [stacked     (if (contains? viz-settings :stackable.stack_type)
+                      (= (:stackable.stack_type viz-settings) "stacked")
+                      (and
+                        (= (:display card) :area)
+                        (> (count (:graph.metrics viz-settings)) 1)))]
+    (if stacked
+      (assoc viz-settings :stackable.stack_type "stacked")
+      viz-settings)))
 
 (defn- x-and-y-axis-label-info
   "Generate the X and Y axis labels passed in as the `labels` argument
@@ -470,11 +485,14 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
-(def default-y-pos
+(defn default-y-pos
   "Default positions of the y-axes of multiple and combo graphs.
   You kind of hope there's only two but here's for the eventuality"
-  (conj (repeat "right")
-        "left"))
+  [viz-settings]
+  (if (:stackable.stack_type viz-settings)
+    (repeat "left")
+    (conj (repeat "right")
+          "left")))
 
 (def default-combo-chart-types
   "Default chart type seq of combo graphs (not multiple graphs)."
@@ -498,6 +516,7 @@
   (let [multi-res     (pu/execute-multi-card card dashcard)
         ;; multi-res gets the other results from the set of multis.
         ;; we shove cards and data here all together below for uniformity's sake
+        viz-settings  (set-default-stacked viz-settings card)
         cards         (cons card (map :card multi-res))
         multi-data    (cons data (map #(get-in % [:result :data]) multi-res))
         rowfns        (mapv common/graphing-column-row-fns cards multi-data)
@@ -514,7 +533,7 @@
         colors        (take (count multi-data) colors)
         types         (map :display cards)
         settings      (->ts-viz x-col y-col labels viz-settings)
-        y-pos         (take (count names) default-y-pos)
+        y-pos         (take (count names) (default-y-pos viz-settings))
         series        (join-series names colors types row-seqs y-pos)
         image-bundle  (image-bundle/make-image-bundle
                         render-type
@@ -547,7 +566,7 @@
                             (nth default-combo-chart-types idx))
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
-                            (nth default-y-pos idx))]
+                            (nth (default-y-pos viz-settings) idx))]
     {:name          card-name
      :color         card-color
      :type          card-type
@@ -574,7 +593,7 @@
                                    chart-type
                                    (nth default-combo-chart-types idx))
             y-axis-pos         (or (series-setting viz-settings group-key :axis)
-                                   (nth default-y-pos idx))]
+                                   (nth (default-y-pos viz-settings) idx))]
         {:name          card-name
          :color         card-color
          :type          card-type
@@ -591,6 +610,7 @@
         x-rows           (filter some? (map x-axis-rowfn rows))
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)
+        viz-settings     (set-default-stacked viz-settings card)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         enforced-type    (if (= chart-type :combo)
