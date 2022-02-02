@@ -95,12 +95,10 @@
   "True if `coll` is either empty or distinct."
   [coll]
   (if (seq coll)
-    ;; TODO -- we should actually be a little stricter here and disallow things like the same `:field` that only
-    ;; differ by namespaced keys or things like that
     (apply distinct? coll)
     true))
 
 (defn distinct
   "Add an additional constraint to `schema` (presumably an array) that requires all elements to be distinct."
   [schema]
-  (s/constrained schema #'empty-or-distinct? "distinct"))
+  (s/constrained schema empty-or-distinct? "distinct"))
