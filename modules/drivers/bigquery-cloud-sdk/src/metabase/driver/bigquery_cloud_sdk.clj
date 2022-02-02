@@ -197,14 +197,17 @@
             identity)) ; otherwise, return value unchanged
         fields))
 
-(defn- FieldValueList->fingerprint-structure [parser-fns ^FieldValueList values]
+(defn- FieldValueList->fingerprint-structure
+  "For the given `values` (of type [[FieldValueList]]), parse each value using the respective parser function from
+  `parser-fns` (expected to have been built by [[fields->parser-fns]])."
+  [parser-fns ^FieldValueList values]
   (map-indexed (fn [^Integer idx ^FieldValue fv]
                  (let [parser-fn (nth parser-fns idx)
                        v  (.getValue fv)]
                       (if (string? v)
                         (parser-fn v)
                         (str v))))
-               values))
+               (seq values)))
 
 ;; Override the table-rows-sample multimethod for :bigquery-cloud-sdk, to use a different mechanism for sampling
 ;; table rows (the list operations, rather than a regular query), purely as a cost control measure.  For certain types
