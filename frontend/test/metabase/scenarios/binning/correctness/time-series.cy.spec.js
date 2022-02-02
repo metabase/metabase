@@ -137,6 +137,7 @@ describe("scenarios > binning > correctness > time series", () => {
         }).should("have.text", selected);
 
         cy.findByText("Done").click();
+        cy.wait("@dataset");
         cy.findByTestId("sidebar-right").should("not.be.visible");
 
         getTitle(titleRegex);
@@ -168,11 +169,11 @@ function getVisualization(binningType) {
 }
 
 function assertOnXYAxisLabels() {
-  cy.get(".y-axis-label")
+  cy.get(".y-axis-label", { timeout: 10000 })
     .should("be.visible")
     .invoke("text")
     .should("eq", "Count");
-  cy.get(".x-axis-label")
+  cy.get(".x-axis-label", { timeout: 10000 })
     .should("be.visible")
     .invoke("text")
     .should("eq", "Created At");
