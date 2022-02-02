@@ -1,6 +1,6 @@
 import { restore } from "__support__/e2e/cypress";
 
-describe.skip("issue 20042", () => {
+describe("issue 20042", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/card/1/query").as("query");
 
