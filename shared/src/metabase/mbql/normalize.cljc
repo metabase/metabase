@@ -187,11 +187,11 @@
     (normalize-tokens ag-clause :ignore-path)))
 
 (defn- normalize-expressions-tokens
-  "For expressions, we don't want to normalize the name of the expression; keep that as is, but make it a keyword;
+  "For expressions, we don't want to normalize the name of the expression; keep that as is, and make it a string;
    normalize the definitions as normal."
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
-             [(keyword expression-name)
+             [(mbql.u/qualified-name expression-name)
               (normalize-tokens definition :ignore-path)])))
 
 (defn- normalize-order-by-tokens

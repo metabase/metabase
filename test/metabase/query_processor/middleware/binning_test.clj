@@ -113,13 +113,11 @@
             :type     :query
             :database (mt/id)}
            (mt/with-everything-store
-             (:pre
-              (mt/test-qp-middleware
-               binning/update-binning-strategy
-               {:query    {:source-table (mt/id :checkins)
-                           :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}
-                :type     :query
-                :database (mt/id)})))))
+             (binning/update-binning-strategy
+              {:query    {:source-table (mt/id :checkins)
+                          :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}
+               :type     :query
+               :database (mt/id)}))))
 
     (testing "should work recursively on nested queries"
       (is (= {:query    {:source-query
@@ -132,14 +130,12 @@
               :type     :query
               :database (mt/id)}
              (mt/with-everything-store
-               (:pre
-                (mt/test-qp-middleware
-                 binning/update-binning-strategy
-                 {:query    {:source-query
-                             {:source-table (mt/id :checkins)
-                              :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}}
-                  :type     :query
-                  :database (mt/id)}))))))))
+               (binning/update-binning-strategy
+                {:query    {:source-query
+                            {:source-table (mt/id :checkins)
+                             :breakout     [[:field (u/the-id field) {:binning {:strategy :default}}]]}}
+                 :type     :query
+                 :database (mt/id)})))))))
 
 (deftest binning-nested-questions-test
   (mt/with-temp Card [{card-id :id} {:dataset_query {:database (mt/id)

@@ -10,7 +10,7 @@ import { entities as entityDefs } from "metabase/redux/entities";
 
 import Button from "metabase/core/components/Button";
 import Confirm from "metabase/components/Confirm";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import EntityListLoader from "metabase/entities/containers/EntityListLoader";
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";

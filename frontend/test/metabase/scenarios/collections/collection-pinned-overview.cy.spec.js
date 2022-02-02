@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 import { turnIntoModel } from "../models/helpers/e2e-models-helpers";
 
 const DASHBOARD_ITEM_NAME = "Orders in a dashboard";
@@ -96,7 +96,9 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should be able to unpin a pinned item", () => {
-      cy.findByText("Unpin this item").click();
+      popover().within(() => {
+        cy.findByText("Unpin").click();
+      });
 
       // verify that the item is no longer in the pinned section
       cy.wait("@pinnedItemsGET");
@@ -104,21 +106,27 @@ describe("scenarios > collection pinned items overview", () => {
     });
 
     it("should be able to move a pinned item", () => {
-      cy.findByText("Move this item").click();
+      popover().within(() => {
+        cy.findByText("Move").click();
+      });
 
       // verify that the move modal is showing
       cy.findByText(`Move "${DASHBOARD_ITEM_NAME}"?`);
     });
 
-    it("should be able to move a pinned item", () => {
-      cy.findByText("Duplicate this item").click();
+    it("should be able to duplicate a pinned item", () => {
+      popover().within(() => {
+        cy.findByText("Duplicate").click();
+      });
 
       // verify that the duplicate modal is showing
       cy.findByText(`Duplicate "${DASHBOARD_ITEM_NAME}"`);
     });
 
     it("should be able to archive a pinned item", () => {
-      cy.findByText("Archive this item").click();
+      popover().within(() => {
+        cy.findByText("Archive").click();
+      });
 
       // verify that the item is no longer on the page
       cy.wait("@pinnedItemsGET");

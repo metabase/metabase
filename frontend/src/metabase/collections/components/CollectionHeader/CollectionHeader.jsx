@@ -6,7 +6,7 @@ import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import { isPersonalCollection } from "metabase/collections/utils";
 import Icon, { IconWrapper } from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 

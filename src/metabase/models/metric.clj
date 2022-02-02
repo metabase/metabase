@@ -18,7 +18,7 @@
 (models/defmodel Metric :metric)
 
 (defn- pre-delete [{:keys [id]}]
-  (db/delete! 'Dependency :model "Metric", :model_id id))
+  (db/delete! Dependency :model "Metric", :model_id id))
 
 (defn- pre-update [{:keys [creator_id id], :as updates}]
   (u/prog1 updates

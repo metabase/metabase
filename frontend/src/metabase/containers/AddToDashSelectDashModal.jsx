@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import DashboardPicker from "metabase/containers/DashboardPicker";

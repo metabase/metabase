@@ -1,14 +1,11 @@
 name: YAML
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.yml'
-    - '**.yaml'
-    - 'package.json'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 

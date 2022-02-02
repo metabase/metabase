@@ -5,51 +5,50 @@
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]))
+            [metabase.test :as mt]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
-    (:pre (mt/test-qp-middleware pre-alias-aggregations/pre-alias-aggregations query))))
+    (pre-alias-aggregations/pre-alias-aggregations query)))
 
 (deftest pre-alias-aggregations-test
-  (is (= (data/mbql-query checkins
+  (is (= (mt/mbql-query checkins
            {:source-table $$checkins
             :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"} ]
                            [:aggregation-options [:sum $venue_id] {:name "sum_2"} ]]})
          (pre-alias
-          (data/mbql-query checkins
+          (mt/mbql-query checkins
             {:source-table $$checkins
              :aggregation  [[:sum $user_id] [:sum $venue_id]]})))))
 
 (deftest named-aggregations-test
   (testing "if one or more aggregations are already named, do things still work correctly?"
-    (is (= (data/mbql-query checkins
+    (is (= (mt/mbql-query checkins
              {:source-table $$checkins
               :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
                              [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]})
            (pre-alias
-            (data/mbql-query checkins
+            (mt/mbql-query checkins
               {:source-table $$checkins
                :aggregation  [[:sum $user_id]
                               [:aggregation-options [:sum $venue_id] {:name "sum"}]]}))))))
 
 (deftest source-queries-test
   (testing "do aggregations inside source queries get pre-aliased?")
-  (is (= (data/mbql-query checkins
+  (is (= (mt/mbql-query checkins
            {:source-query {:source-table $$checkins
                            :aggregation  [[:aggregation-options [:sum $user_id]  {:name "sum"}]
                                           [:aggregation-options [:sum $venue_id] {:name "sum_2"}]]}
             :aggregation  [[:aggregation-options [:count] {:name "count"}]]})
          (pre-alias
-          (data/mbql-query checkins
+          (mt/mbql-query checkins
             {:source-query {:source-table $$checkins
                             :aggregation  [[:sum $user_id] [:sum $venue_id]]}
              :aggregation  [[:count]]})))))
 
 (deftest source-queries-inside-joins-test
   (testing "do aggregatons inside of source queries inside joins get pre-aliased?"
-    (is (= (data/mbql-query checkins
+    (is (= (mt/mbql-query checkins
              {:source-table $$venues
               :aggregation  [[:aggregation-options [:count] {:name "count"}]]
               :joins        [{:source-query {:source-table $$checkins
@@ -59,7 +58,7 @@
                               :alias        "checkins"
                               :condition    [:= &checkins.venue_id $venues.id]}]})
            (pre-alias
-            (data/mbql-query checkins
+            (mt/mbql-query checkins
               {:source-table $$venues
                :aggregation  [[:count]]
                :joins        [{:source-query {:source-table $$checkins

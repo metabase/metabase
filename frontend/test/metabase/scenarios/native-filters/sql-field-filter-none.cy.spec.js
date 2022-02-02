@@ -32,7 +32,7 @@ describe("scenarios > filters > sql filters > field filter > None", () => {
 
   it("should disallow the running of the query and the saving of the question", () => {
     cy.get(".RunButton").should("be.disabled");
-    cy.findByText("Save").should("have.class", "disabled");
+    cy.findByText("Save").should("have.attr", "aria-disabled", "true");
   });
 
   it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {

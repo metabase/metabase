@@ -109,7 +109,7 @@
         (throw (Exception. (tru "No appropriate image writer found!"))))
       (.flush output-stream)
       (.toByteArray output-stream)
-      (catch Throwable e
+      (catch Throwable _e
         (byte-array 0)) ; return empty byte array if we fail for some reason
       (finally
         (u/ignore-exceptions

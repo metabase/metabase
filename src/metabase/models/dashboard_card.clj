@@ -129,7 +129,7 @@
 (s/defn update-dashboard-card!
   "Update an existing DashboardCard` including all DashboardCardSeries.
    Returns the updated DashboardCard or throws an Exception."
-  [{:keys [id series parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
+  [{:keys [id parameter_mappings visualization_settings] :as dashboard-card} :- DashboardCardUpdates]
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
      ;; update the dashcard itself (positional attributes)
@@ -168,7 +168,7 @@
   "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
    DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
   [dashboard-card :- NewDashboardCard]
-  (let [{:keys [dashboard_id card_id creator_id parameter_mappings visualization_settings sizeX sizeY row col series]
+  (let [{:keys [dashboard_id card_id parameter_mappings visualization_settings sizeX sizeY row col series]
          :or   {sizeX 2, sizeY 2, series []}} dashboard-card]
     (db/transaction
      (let [dashboard-card (db/insert! DashboardCard

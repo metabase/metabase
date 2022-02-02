@@ -2,11 +2,15 @@ import React from "react";
 import { XYChart } from "../XYChart";
 import { ChartSettings, ChartStyle, Series } from "../XYChart/types";
 import { Colors } from "./types";
-import { adjustSettings } from "./utils/settings";
+import {
+  adjustSettings,
+  calculateChartSize,
+  getXValuesCount,
+} from "./utils/settings";
 
 const defaultColors = {
   brand: "#509ee3",
-  brandLight: "#DDECFA",
+  brandLight: "#ddecfa",
   textLight: "#b8bbc3",
   textMedium: "#949aab",
 };
@@ -45,15 +49,23 @@ const LineAreaBarChart = ({
     goalColor: palette.textMedium,
   };
 
-  const adjustedSettings = adjustSettings(settings, series);
+  const minTickSize = chartStyle.axes.ticks.fontSize * 1.5;
+  const xValuesCount = getXValuesCount(series);
+  const chartSize = calculateChartSize(settings, xValuesCount, minTickSize);
+  const adjustedSettings = adjustSettings(
+    settings,
+    xValuesCount,
+    minTickSize,
+    chartSize,
+  );
 
   return (
     <XYChart
       series={series}
       settings={adjustedSettings}
       style={chartStyle}
-      width={540}
-      height={300}
+      width={chartSize.width}
+      height={chartSize.height}
     />
   );
 };

@@ -10,6 +10,10 @@
 
   * [[metabase.db.data-migrations]] - Clojure-land data migration definitions and functions for running them
 
+  * [[metabase.db.data-source]] - Implementations of [[javax.sql.DataSource]] for raw connection strings and
+    broken-out db details. See [[metabase.db.env/broken-out-details]] for more details about what 'broken-out details'
+    means.
+
   * [[metabase.db.env]] - functions for getting application database connection information from environment variables
 
   * [[metabase.db.jdbc-protocols]] - implementations of [[clojure.java.jdbc]] protocols for the Metabase application
@@ -37,7 +41,6 @@
 (p/import-vars
  [mdb.connection
   db-type
-  jdbc-spec
   quoting-style])
 
 (defonce ^:private db-setup-finished?
@@ -56,9 +59,9 @@
     (locking db-setup-finished?
       (when-not @db-setup-finished?
         (let [db-type       (mdb.connection/db-type)
-              jdbc-spec     (mdb.connection/jdbc-spec)
+              data-source   (mdb.connection/data-source)
               auto-migrate? (config/config-bool :mb-db-automigrate)]
-          (mdb.setup/setup-db! db-type jdbc-spec auto-migrate?)
-          (mdb.connection-pool-setup/create-connection-pool! db-type jdbc-spec))
+          (mdb.setup/setup-db! db-type data-source auto-migrate?)
+          (mdb.connection-pool-setup/create-connection-pool! db-type data-source))
         (reset! db-setup-finished? true))))
   :done)

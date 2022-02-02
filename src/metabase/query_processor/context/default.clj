@@ -42,7 +42,7 @@
        (vswap! rows conj row)
        result))))
 
-(defn- default-reducedf [metadata reduced-result context]
+(defn- default-reducedf [_metadata reduced-result context]
   (context/resultf reduced-result context))
 
 (defn default-reducef
@@ -92,11 +92,6 @@
                        :type   error-type/timed-out})
                     context)))
 
-(defn- identity1
-  "Util fn. Takes 2 args and returns the first arg as-is."
-  [x _]
-  x)
-
 (defn default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
@@ -107,8 +102,6 @@
    :executef      driver/execute-reducible-query
    :reducef       default-reducef
    :reducedf      default-reducedf
-   :preprocessedf identity1
-   :nativef       identity1
    :timeoutf      default-timeoutf
    :resultf       default-resultf
    :canceled-chan (a/promise-chan)

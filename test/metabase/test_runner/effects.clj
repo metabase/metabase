@@ -84,22 +84,31 @@
                        [k (remove-keys-not-in-expected (get expected k) v)])))
           actual)
 
-    (and (sequential? expected) (sequential? actual))
-    (into
-     [(remove-keys-not-in-expected (first expected) (first actual))]
-     (when (next expected)
-       (remove-keys-not-in-expected (next expected) (next actual))))
+    (and (sequential? expected)
+         (sequential? actual))
+    (cond
+      (empty? expected) []
+      (empty? actual)   []
+      :else             (into
+                         [(remove-keys-not-in-expected (first expected) (first actual))]
+                         (when (next expected)
+                           (remove-keys-not-in-expected (next expected) (next actual)))))
 
     :else
     actual))
 
+(defn- partial=-diff [expected actual]
+  (let [actual'                           (remove-keys-not-in-expected expected actual)
+        [only-in-actual only-in-expected] (data/diff actual' expected)]
+    {:only-in-actual   only-in-actual
+     :only-in-expected only-in-expected
+     :pass?            (if (coll? only-in-expected)
+                          (empty? only-in-expected)
+                          (nil? only-in-expected))}))
+
 (defn partial=-report
   [message expected actual]
-  (let [actual'                           (remove-keys-not-in-expected expected actual)
-        [only-in-actual only-in-expected] (data/diff actual' expected)
-        pass?                             (if (coll? only-in-expected)
-                                            (empty? only-in-expected)
-                                            (nil? only-in-expected))]
+  (let [{:keys [only-in-actual only-in-expected pass?]} (partial=-diff expected actual)]
     {:type     (if pass? :pass :fail)
      :message  message
      :expected expected

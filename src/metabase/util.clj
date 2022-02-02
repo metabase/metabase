@@ -271,7 +271,7 @@
   the output.
 
     (format-color :red \"%d cans\" 2)"
-  {:arglists '(^String [color x] ^String [color format-string & args]), :style/indent 2}
+  {:arglists '(^String [color x] ^String [color format-string & args])}
   (^String [color x]
    (colorize color x))
 
@@ -891,7 +891,7 @@
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
-  ([pred]
+  ([_pred]
    nil)
   ([pred x & more]
    `(let [pred# ~pred

@@ -3,7 +3,7 @@
             [metabase.mbql.schema :as mbql.s]
             [schema.core :as s]))
 
-(t/deftest field-clause-test
+(t/deftest ^:parallel field-clause-test
   (t/testing "Make sure our schema validates `:field` clauses correctly"
     (t/are [clause expected] (= expected
                                 (not (s/check mbql.s/field clause)))
@@ -27,7 +27,7 @@
       [:field 1 {:binning {:strategy :default}}]                              true
       [:field 1 {:binning {:strategy :fake}}]                                 false)))
 
-(t/deftest validate-template-tag-names-test
+(t/deftest ^:parallel validate-template-tag-names-test
   (t/testing "template tags with mismatched keys/`:names` in definition should be disallowed\n"
     (let [correct-query {:database 1
                          :type     :native

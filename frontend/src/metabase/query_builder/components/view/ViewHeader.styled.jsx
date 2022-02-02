@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";

@@ -119,6 +119,12 @@
   [host]
   (<= 2 (-> host frequencies (get \. 0))))
 
+(defn- auth-db-or-default
+  "Returns the auth-db to use for a connection, for the given `auth-db` parameter.  If `auth-db` is a non-blank string,
+  it will be returned.  Otherwise, the default value (\"admin\") will be returned."
+  [auth-db]
+  (if (str/blank? auth-db) "admin" auth-db))
+
 (defn- srv-connection-info
   "Connection info for Mongo using DNS SRV.  Requires FQDN for `host` in the format
    'subdomain. ... .domain.top-level-domain'.  Only a single host is supported, but a
@@ -130,10 +136,8 @@
     (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
                     {:host host}))
     (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options, :ssl-cert ssl-cert)
-          authdb (if (seq authdb)
-                   authdb
-                   "admin")
-          conn-str (srv-conn-str user pass host dbname authdb)]
+          authdb    (auth-db-or-default authdb)
+          conn-str  (srv-conn-str user pass host dbname authdb)]
       {:type :srv
        :uri  (MongoClientURI. conn-str conn-opts)})))
 
@@ -144,7 +148,7 @@
   [{:keys [host port user authdb pass dbname ssl additional-options ssl-cert], :as details}]
   (let [server-address                   (mg/server-address host port)
         credentials                      (when user
-                                           (mcred/create user authdb pass))
+                                           (mcred/create user (auth-db-or-default authdb) pass))
         ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options,
                                                                      :ssl-cert ssl-cert)]
     {:type           :normal

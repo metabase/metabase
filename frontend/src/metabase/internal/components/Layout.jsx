@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import fitViewport from "metabase/hoc/FitViewPort";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import LogoIcon from "metabase/components/LogoIcon";
 
