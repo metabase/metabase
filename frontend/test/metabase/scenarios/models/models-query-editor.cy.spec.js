@@ -75,28 +75,17 @@ describe("scenarios > models query editor", () => {
     cy.visit("/model/1/query");
 
     cy.findByTestId("action-buttons")
-      .findByText("Join data")
-      .click();
-    selectFromDropdown("People");
-
-    cy.button("Save changes").click();
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
-
-    cy.findByTestId("action-buttons")
       .findByText("Summarize")
       .click();
-    selectFromDropdown("Count of rows");
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
 
-    cy.get(".RunButton")
-      .should("be.visible")
-      .click();
+    selectFromDropdown("Count of rows");
+
+    cy.get(".RunButton").click();
     cy.wait("@dataset");
 
-    cy.get(".LineAreaBarChart").should("not.exist");
+    // FE chooses the scalar visualization to display count of rows for regular questions
     cy.get(".TableInteractive");
+    cy.get(".ScalarValue").should("not.exist");
   });
 
   it("allows to edit native model query", () => {
