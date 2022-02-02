@@ -74,7 +74,7 @@
                                     :write
                                     :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
       (driver/supports? driver :nested-queries))))

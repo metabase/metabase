@@ -1,6 +1,7 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
@@ -166,7 +167,7 @@
                   ;; For instances that were started before this setting was added (in 0.41.3), use the creation
                   ;; timestamp of the first user. For all new instances, use the timestamp at which this setting
                   ;; is first read.
-                  (let [value (or (first-user-creation) (java-time/offset-date-time))]
+                  (let [value (or (first-user-creation) (t/offset-date-time))]
                     (setting/set-value-of-type! :timestamp :instance-creation value)
                     (track-event! ::new-instance-created)))
                 (setting/get-value-of-type :timestamp :instance-creation)))

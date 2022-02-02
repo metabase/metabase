@@ -7,7 +7,7 @@
             [metabase.test :as mt]))
 
 (defn- resolve-source-tables [query]
-  (:pre (mt/test-qp-middleware resolve-source-table/resolve-source-tables query)))
+  (resolve-source-table/resolve-source-tables query))
 
 (defn- do-with-store-contents [f]
   ;; force creation of test data DB so things don't get left in the cache before running tests below

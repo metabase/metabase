@@ -37,7 +37,7 @@
   "Returns the value of the given `secret` as a String.  `secret` can be a Secret model object, or a
   secret-map (i.e. return value from `db-details-prop->secret-map`)."
   {:added "0.42.0"}
-  ^String [{:keys [value] :as secret}]
+  ^String [{:keys [value] :as _secret}]
   (cond (string? value)
         value
         (bytes? value)
@@ -76,7 +76,7 @@
                                (tru "File path for {0}" (-> (get secret-props connection-property-name)
                                                           :display-name)))
 
-                             true
+                             :else
                              (tru "Path"))]
           (throw (ex-info (tru "{0} points to non-existent file: {1}" error-source secret-val)
                    {:file-path secret-val

@@ -52,6 +52,8 @@
    data-source :- javax.sql.DataSource
    direction   :- s/Keyword]
   (with-open [conn (.getConnection data-source)]
+    ;; TODO: this try has no catch. We need to make sure the catches are at the right level and possibly remove this
+    ;; outer try?
     (try
       (.setAutoCommit conn false)
       ;; Set up liquibase and let it do its thing

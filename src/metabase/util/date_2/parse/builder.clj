@@ -121,7 +121,7 @@
 
 (defn fraction
   "Define a section for a fractional value, e.g. milliseconds or nanoseconds."
-  [temporal-field-name min-val-width max-val-width & {:keys [decimal-point?]}]
+  [temporal-field-name _min-val-width _max-val-width & {:keys [decimal-point?]}]
   (fn [^DateTimeFormatterBuilder builder]
     (.appendFraction builder (temporal-field temporal-field-name) 0 9 (boolean decimal-point?))))
 

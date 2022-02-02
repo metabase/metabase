@@ -149,6 +149,8 @@ describe("scenarios > models query editor", () => {
   });
 
   it("handles failing queries", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
     cy.createNativeQuestion(
       {
         name: "Erroring Model",
@@ -164,14 +166,16 @@ describe("scenarios > models query editor", () => {
     openDetailsSidebar();
 
     cy.findByText("Customize metadata").click();
-    cy.findByText(/Syntax error in SQL/);
+
+    cy.wait("@cardQuery");
+    cy.findByText(/Syntax error in SQL/).should("be.visible");
 
     cy.findByText("Query").click();
-    cy.findByText(/Syntax error in SQL/);
 
-    // Using `text-input` here, which is the textarea HTML element instead of the `ace_content` (div)
-    cy.get(".ace_text-input").type("1");
+    cy.wait("@cardQuery");
+    cy.findByText(/Syntax error in SQL/).should("be.visible");
 
+    cy.get(".ace_content").type("1");
     runNativeQuery();
 
     cy.get(".cellData").contains(1);

@@ -4,7 +4,6 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :as perms]
-            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             schema.utils)
@@ -25,7 +24,7 @@
    :stacktrace (u/filtered-stacktrace e)})
 
 (defmethod format-exception InterruptedException
-  [^InterruptedException e]
+  [^InterruptedException _e]
   {:status :interrupted})
 
 ;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
@@ -147,28 +146,19 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
-    (let [extra-info (atom nil)]
-      (letfn [(preprocessedf* [query context]
-                (swap! extra-info assoc :preprocessed query)
-                (preprocessedf query context))
-              (nativef* [query context]
-                (swap! extra-info assoc :native query)
-                (nativef query context))
-              (raisef* [e context]
-               ;; if the exception is the special quit-result exception, forward this to our parent `raisef` exception
-               ;; handler, which has logic for handling that case
-                (if (qp.reducible/quit-result e)
-                  (raisef e context)
-                  ;; otherwise format the Exception and return it
-                  (let [formatted-exception (format-exception* query e @extra-info)]
-                    (log/error (str (trs "Error processing query: {0}" (:error format-exception))
-                                    "\n" (u/pprint-to-str formatted-exception)))
-                    (context/resultf formatted-exception context))))]
+  (fn [query rff context]
+    (let [extra-info (atom
+                      {:native       (u/ignore-exceptions
+                                       ((resolve 'metabase.query-processor/compile) query))
+                       :preprocessed (u/ignore-exceptions
+                                       ((resolve 'metabase.query-processor/preprocess) query))})]
+      (letfn [(raisef* [e context]
+                ;; format the Exception and return it
+                (let [formatted-exception (format-exception* query e @extra-info)]
+                  (log/error (str (trs "Error processing query: {0}" (:error format-exception))
+                                  "\n" (u/pprint-to-str formatted-exception)))
+                  (context/resultf formatted-exception context)))]
         (try
-          (qp query rff (assoc context
-                                  :preprocessedf preprocessedf*
-                                  :nativef nativef*
-                                  :raisef raisef*))
+          (qp query rff (assoc context :raisef raisef*))
           (catch Throwable e
             (raisef* e context)))))))

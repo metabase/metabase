@@ -5,13 +5,12 @@
 
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; calling one variations of
   `process-userland-query` (see documentation below)."
-  (:require [clojure.tools.logging :as log]
-            [metabase.config :as config]
+  (:refer-clojure :exclude [compile])
+  (:require [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
@@ -42,6 +41,7 @@
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
+            [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses :as prevent-infinite-recursive-preprocesses]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
             [metabase.query-processor.middleware.resolve-database-and-driver :as resolve-database-and-driver]
@@ -77,58 +77,62 @@
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
 
-    (f query) -> query
-
-  in 43+."
-  [#'check-features/check-features
-   #'limit/add-default-limit-middleware
-   #'optimize-temporal-filters/optimize-temporal-filters
-   #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'auto-parse-filter-values/auto-parse-filter-values
-   #'wrap-value-literals/wrap-value-literals
-   #'pre-alias-ags/pre-alias-aggregations
-   #'cumulative-ags/rewrite-cumulative-aggregations-middleware
-   ;; yes, this is called a second time, because we need to handle any joins that got added
-   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
-   #'fix-bad-refs/fix-bad-references-middleware
-   #'resolve-joined-fields/resolve-joined-fields
-   #'resolve-joins/resolve-joins
-   #'add-implicit-joins/add-implicit-joins
-   #'add-default-temporal-unit/add-default-temporal-unit
-   #'desugar/desugar
-   #'binning/update-binning-strategy
-   #'resolve-fields/resolve-fields
-   #'add-dim/add-remapped-columns-middleware
-   #'implicit-clauses/add-implicit-clauses
-   (resolve 'ee.sandbox.rows/apply-sandboxing-middleware)
-   #'upgrade-field-literals/upgrade-field-literals
-   #'add-source-metadata/add-source-metadata-for-source-queries
-   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'bucket-datetime/auto-bucket-datetimes
-   #'resolve-source-table/resolve-source-tables
-   #'parameters/substitute-parameters
-   #'resolve-referenced/resolve-referenced-card-resources
-   #'expand-macros/expand-macros
+    (f query) -> query"
+  ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
+  [#'perms/remove-permissions-key
    #'validate/validate-query
-   #'perms/remove-permissions-key-middleware])
-;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
+   #'expand-macros/expand-macros
+   #'resolve-referenced/resolve-referenced-card-resources
+   #'parameters/substitute-parameters
+   #'resolve-source-table/resolve-source-tables
+   #'bucket-datetime/auto-bucket-datetimes
+   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
+   #'add-source-metadata/add-source-metadata-for-source-queries
+   #'upgrade-field-literals/upgrade-field-literals
+   (resolve 'ee.sandbox.rows/apply-sandboxing)
+   #'implicit-clauses/add-implicit-clauses
+   #'add-dim/add-remapped-columns
+   #'resolve-fields/resolve-fields
+   #'binning/update-binning-strategy
+   #'desugar/desugar
+   #'add-default-temporal-unit/add-default-temporal-unit
+   #'add-implicit-joins/add-implicit-joins
+   #'resolve-joins/resolve-joins
+   #'resolve-joined-fields/resolve-joined-fields
+   #'fix-bad-refs/fix-bad-references
+   (resolve 'ee.sandbox.rows/apply-sandboxing)
+   #'cumulative-ags/rewrite-cumulative-aggregations
+   #'pre-alias-ags/pre-alias-aggregations
+   #'wrap-value-literals/wrap-value-literals
+   #'auto-parse-filter-values/auto-parse-filter-values
+   #'validate-temporal-bucketing/validate-temporal-bucketing
+   #'optimize-temporal-filters/optimize-temporal-filters
+   #'limit/add-default-limit
+   #'check-features/check-features])
+
+(defn- preprocess*
+  "All [[pre-processing-middleware]] combined into a single function. This still needs to be ran in the context
+  of [[around-middleware]]. If you want to preprocess a query in isolation use [[preprocess]] below which combines
+  this with the [[around-middleware]]."
+  [query]
+  (reduce
+   (fn [query middleware]
+     (u/prog1 (cond-> query
+                middleware middleware)
+       (assert (map? <>) (format "%s did not return a valid query" (pr-str middleware)))))
+   query
+   pre-processing-middleware))
 
 (def ^:private compile-middleware
   "Middleware for query compilation. Happens after pre-processing. Has the form
 
-    (f query) -> query
-
-  in 43+."
+    (f (f query rff context)) -> (f query rff context)"
   [#'mbql-to-native/mbql->native])
 
 (def ^:private execution-middleware
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
-    (f qp) -> qp
-
-  Where `qp` has the form
-
-    (f query rff context)"
+    (f (f query rff context)) -> (f query rff context)"
   ;; TODO -- limit SEEMS like it should be post-processing but it actually has to happen only if we don't return cached
   ;; results. Otherwise things break. There's probably some way to fix this. e.g. maybe it doesn't do anything if the
   ;; query has the `:cached?` key.
@@ -182,14 +186,17 @@
 
 (def default-middleware
   "The default set of middleware applied to queries ran via [[process-query]]."
-  (into
-   []
-   (comp cat (keep identity))
-   [execution-middleware       ;   → → execute → → ↓
-    compile-middleware         ;   ↑ compile       ↓
-    post-processing-middleware ;   ↑               ↓ post-process
-    pre-processing-middleware  ;   ↑ pre-process   ↓
-    around-middleware]))       ;   ↑ query         ↓ results
+  (letfn [(combined-preprocess [qp]
+            (fn combined-preprocess* [query rff context]
+              (qp (preprocess* query) rff context)))]
+    (into
+     []
+     (comp cat (keep identity))
+     [execution-middleware        ; → → execute → → ↓
+      compile-middleware          ; ↑ compile       ↓
+      post-processing-middleware  ; ↑               ↓ post-process
+      [combined-preprocess]       ; ↑ pre-process   ↓
+      around-middleware])))       ; ↑ query         ↓ results
 
 
 ;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
@@ -220,29 +227,21 @@
          query
          args))
 
-(def ^:private ^:dynamic *preprocessing-level* 1)
-
-(def ^:private ^:const max-preprocessing-level 20)
-
-(defn- preprocess-query [query context]
-  (binding [*preprocessing-level* (inc *preprocessing-level*)]
-    ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
-    (log/tracef "*preprocessing-level*: %d" *preprocessing-level*)
-    (when (>= *preprocessing-level* max-preprocessing-level)
-      (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
-                                max-preprocessing-level))
-               {:type error-type/qp})))
-    (process-query-sync query context)))
-
-(defn query->preprocessed
-  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
-  Especially helpful for debugging or testing driver QP implementations."
+(defn preprocess
+  "Return the fully preprocessed form for `query`, the way it would look immediately
+  before [[mbql-to-native/mbql->native]] is called."
   [query]
-  ;; Make sure the caching middleware doesn't try to return any cached results. That will totally break things
-  (preprocess-query (assoc-in query [:middleware :ignore-cached-results?] true)
-                    {:preprocessedf
-                     (fn [query context]
-                       (context/raisef (qp.reducible/quit query) context))}))
+  (let [qp (qp.reducible/combine-middleware
+            (conj (vec around-middleware)
+                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
+            (fn [query _rff _context]
+              (preprocess* query)))]
+    (qp query nil nil)))
+
+(defn ^:deprecated query->preprocessed
+  "DEPRECATED: Use [[preprocess]] instead."
+  [query]
+  (preprocess query))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
@@ -255,19 +254,27 @@
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store
-    (let [preprocessed (query->preprocessed query)]
+    (let [preprocessed (preprocess query)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
         (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 
-(defn query->native
+(defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form). Like `preprocess`, this function will throw an Exception if preprocessing was not successful."
   [query]
-  (preprocess-query query {:nativef
-                           (fn [query context]
-                             (context/raisef (qp.reducible/quit query) context))}))
+  (let [qp (qp.reducible/combine-middleware
+            (conj (vec around-middleware)
+                  prevent-infinite-recursive-preprocesses/prevent-infinite-recursive-preprocesses)
+            (fn [query _rff _context]
+              (mbql-to-native/query->native-form (preprocess* query))))]
+    (qp query nil nil)))
 
-(defn query->native-with-spliced-params
+(defn ^:deprecated query->native
+  "DEPRECATED: Use [[compile]] instead."
+  [query]
+  (compile query))
+
+(defn compile-and-splice-parameters
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
   (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
@@ -275,8 +282,13 @@
   [query]
   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
   ;; ID is the virtual DB identifier
-  (let [driver (driver.u/database->driver (:database (query->preprocessed query)))]
-    (driver/splice-parameters-into-native-query driver (query->native query))))
+  (let [driver (driver.u/database->driver (:database (preprocess query)))]
+    (driver/splice-parameters-into-native-query driver (compile query))))
+
+(defn ^:deprecated query->native-with-spliced-params
+  "DEPRECATED: use [[compile-and-splice-parameters]] instead."
+  [query]
+  (compile-and-splice-parameters query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

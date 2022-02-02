@@ -4,7 +4,7 @@
             [clj-time.format :as time]
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
-           [org.apache.logging.log4j.core Appender Filter Layout LogEvent LoggerContext]
+           [org.apache.logging.log4j.core Appender LogEvent LoggerContext]
            org.apache.logging.log4j.core.config.LoggerConfig
            org.apache.logging.log4j.LogManager))
 
@@ -43,7 +43,6 @@
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
     (let [^LoggerContext ctx                           (LogManager/getContext true)
-          root-logger                                  (LogManager/getRootLogger)
           config                                       (.getConfiguration ctx)
           appender                                     (metabase-appender)
           ^org.apache.logging.log4j.Level level        nil

@@ -5,7 +5,6 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -35,15 +34,14 @@
       0
       (if (empty? source-query)
         clause
-        (do
-          (recur field source-query clause)))
+        (recur field source-query clause))
 
       ;; if there are multiple candidates, try ignoring the implicit ones
       ;; presence of `:fk-field-id` indicates that the join was implicit, as the result of an `fk->` form
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [id name]} (qp.store/table table-id)]
+          (let [{:keys [_id name]} (qp.store/table table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
@@ -101,13 +99,11 @@
       true
       add-join-alias-to-fields-if-needed*)))
 
-(defn- resolve-joined-fields* [query]
+(defn resolve-joined-fields
+  "Add `:join-alias` info to `:field` clauses where needed."
+  [query]
   (let [query' (add-join-alias-to-fields-if-needed query)]
     (when-not (= query query')
       (let [[before after] (data/diff query query')]
         (log/tracef "Inferred :field :join-alias info: %s -> %s" (u/pprint-to-str 'yellow before) (u/pprint-to-str 'cyan after))))
     query'))
-
-(def resolve-joined-fields
-  "Add `:join-alias` info to `:field` clauses where needed."
-  (m.43/wrap-43-pre-processing-middleware resolve-joined-fields*))
