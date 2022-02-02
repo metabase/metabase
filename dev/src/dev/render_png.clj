@@ -114,7 +114,8 @@
                         "</body></html>"))
         html (h/html (str/replace html #"\{\{chart\}\}" chart-html))]
     (with-open [os (java.io.ByteArrayOutputStream.)]
-      (let [image-bytes (do (#'png/render-to-png! html os 1000)
+      (let [image-bytes (do (-> (#'png/render-to-png html 1000)
+                                (#'png/write-image! "png" os))
                             (.toByteArray os))]
         (open-png-bytes image-bytes)))))
 
