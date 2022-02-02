@@ -5,11 +5,10 @@ If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent
 Here's an overview of the steps for setting up Slack:
 
 1. [Create your Slack App](#create-your-slack-app)
-2. [Give Slack your app manifest](#the-app-manifest)
-3. [Install your app to your workspace](#install-your-app-to-your-workspace)
-4. [Get the Bot User OAuth Token](#the-bot-user-oauth-token)
-5. [Create a dedicated Metabase channel in your Slack](#create-a-dedicated-metabase-channel-in-your-slack)
-6. [Save your changes](#save-your-changes-in-metabase)
+2. [Install your app to your workspace](#install-your-app-to-your-workspace)
+3. [Get the Bot User OAuth Token](#the-bot-user-oauth-token)
+4. [Create a dedicated Metabase channel in your Slack](#create-a-dedicated-metabase-channel-in-your-slack)
+5. [Save your changes](#save-your-changes-in-metabase)
 
 ## Create your Slack App
 
@@ -19,11 +18,48 @@ From any Metabase page, go to **Admin settings** > **Settings** > **Slack**.
 
 Click on **Open Slack Apps**. Metabase will open a new browser tab and send you over to the Slack website to create the Slack app.
 
-On the Slack website, click **Create an App**. Select **From an app manifest** and and select the Slack workspace you want Metabase to post to (you're not going to be developing an app, this is just telling Slack what workspace you want Metabase to post to).
+On the Slack website, click **Create an App**. 
 
-## The app manifest
+### Pick a workspace to develop your app
 
-To get the app manifest, head back to Metabase and the Slack settings page, copy the manifest, and return to the Slack app creation page on the Slack website to paste in the manifest (the manifest is in YAML format). The manifest will take care of settings for your app and help speed things along. Once you've pasted the manifest, click the **Next** button. Then hit **Create** to set up your Slack app.
+Select the workspace you want to create your app.
+
+### The app manifest
+
+When you click on **Open Slack App**, Metabase will pass along the app manifest, which Slack will use to set up your app.
+
+You may get a warning that says:
+
+**This app is created from a 3rd party manifest** Always verify URLs and permissions below.
+
+This warning is expected (Metabase is the third party here). You can click on **Configure** to see the app manifest Metabase sent along in the URL. Here is the manifest in YAML format:
+
+```
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: Metabase
+  description: Bringing the power of Metabase to your Slack #channels!
+  background_color: "#509EE3"
+features:
+  bot_user:
+    display_name: Metabase
+oauth_config:
+  scopes:
+    bot:
+      - users:read
+      - channels:read
+      - channels:join
+      - files:write
+      - chat:write
+      - chat:write.customize
+      - chat:write.public
+```
+
+The manifest just take cares of some settings for your app and helps speed things along.
+
+Click the **Next** button. Then hit **Create** to set up your Slack app.
 
 ## Install your app to your workspace
 

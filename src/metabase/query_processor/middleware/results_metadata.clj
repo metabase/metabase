@@ -4,11 +4,11 @@
    as a checksum in the API response."
   (:require [clojure.tools.logging :as log]
             [metabase.driver :as driver]
+            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.sync.analyze.query-results :as analyze.results]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -67,16 +67,15 @@
        (rf (cond-> result
              (map? result)
              (update :data             assoc
-                     :results_metadata {:columns  metadata}
+                     :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
-(defn record-and-return-metadata!
+(defn- record-and-return-metadata!*
+  [{{:keys [skip-results-metadata?]} :middleware, :as query} rff]
+  (let [record! (partial record-metadata! query)]
+    (fn record-and-return-metadata!-rff* [metadata]
+      (insights-xform metadata record! (rff metadata)))))
+
+(def record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
-  [qp]
-  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} rff context]
-    (if skip-results-metadata?
-      (qp query rff context)
-      (let [record! (partial record-metadata! query)
-            rff' (fn [metadata]
-                   (insights-xform metadata record! (rff metadata)))]
-        (qp query rff' context)))))
+  (m.43/wrap-43-post-processing-middleware record-and-return-metadata!*))

@@ -250,7 +250,7 @@
 
 (s/defn ^:private adjust-inclusive-range-if-needed :- (s/maybe TemporalRange)
   "Make an inclusive date range exclusive as needed."
-  [{:keys [inclusive-start? inclusive-end?]}, {:keys [start end], :as m} :- (s/maybe TemporalRange)]
+  [{:keys [inclusive-start? inclusive-end?]}, {:keys [start end]} :- (s/maybe TemporalRange)]
   (merge
    (when start
      {:start (if inclusive-start?

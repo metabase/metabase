@@ -105,7 +105,7 @@
                   is     (ReaderInputStream. reader)]
         (respond (-> (rr/response is)
                      (rr/content-type "application/json"))))
-      (catch Throwable e
+      (catch Throwable _e
         (raise (ex-info (tru "GeoJSON URL failed to load") {:status-code 400}))))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" key) {:status-code 400}))))
 

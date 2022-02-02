@@ -15,8 +15,7 @@
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+            [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -438,7 +437,7 @@
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
   {:arglists '([driver feature database]), :added "0.41.0"}
-  (fn [driver feature database]
+  (fn [driver feature _database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
@@ -491,13 +490,14 @@
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  `metabase.mbql.schema/Query`; this function should return a native query that conforms to that schema.
+  [[metabase.mbql.schema/Query]]; this function should return a native query that conforms to that schema.
 
-  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an
-  appropriate message and include that in an appropriate place; alternatively a driver might directly include the
-  query's `:info` dictionary if the underlying language is JSON-based.
+  If the underlying query language supports remarks or comments, the driver should
+  use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
+  appropriate place; alternatively a driver might directly include the query's `:info` dictionary if the underlying
+  language is JSON-based.
 
-  The result of this function will be passed directly into calls to `execute-reducible-query`.
+  The result of this function will be passed directly into calls to [[execute-reducible-query]].
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 

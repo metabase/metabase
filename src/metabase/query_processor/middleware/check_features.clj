@@ -28,15 +28,11 @@
      (let [{:keys [strategy]} join]
        (assert-driver-supports strategy)))))
 
-(defn- check-features* [{query-type :type, :as query}]
+(defn check-features
+  "Middleware that checks that drivers support the `:features` required to use certain clauses, like `:stddev`."
+  [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (u/prog1 query
       (doseq [required-feature (query->required-features query)]
         (assert-driver-supports required-feature)))))
-
-(defn check-features
-  "Middleware that checks that drivers support the `:features` required to use certain clauses, like `:stddev`."
-  [qp]
-  (fn [query rff context]
-    (qp (check-features* query) rff context)))
