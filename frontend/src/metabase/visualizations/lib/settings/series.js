@@ -169,6 +169,8 @@ export function seriesSetting({
             }
           }
         }
+        console.log(JSON.stringify(keys));
+        console.log(JSON.stringify(assignments));
 
         return getColorsForValues(keys, assignments);
       },

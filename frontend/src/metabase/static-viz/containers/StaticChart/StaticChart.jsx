@@ -13,6 +13,8 @@ import Funnel from "../../components/FunnelChart";
 import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
 
+// import { getColorsForValues } from "metabase/lib/colors";
+
 const propTypes = {
   type: PropTypes.oneOf([
     "categorical/area",
@@ -32,6 +34,10 @@ const propTypes = {
 };
 
 const StaticChart = ({ type, options }) => {
+  // getColorsForValues(keys, assns)
+  // keys looks like ["LONGITUDE","LATITUDE"]
+  // assns looks like {"LONGITUDE":"#F9D45C"}
+  // const useless = getColorsForValues(["Bob"], {"Bob": "#CCCCCC"});
   switch (type) {
     case "categorical/area":
       return <CategoricalAreaChart {...options} />;
