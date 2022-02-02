@@ -383,33 +383,6 @@
                 (is (= max-rows (count rows)))
                 (is (= (/ max-rows page-size) @num-page-callbacks))))))))))
 
-(deftest driver-switch-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (testing "A Database can be seamlessly changed from the :bigquery driver to :bigquery-cloud-sdk driver"
-      (mt/with-temp Database [temp-db {:engine  :bigquery
-                                       ;; same db-details for new driver as old, so we can luckily just reuse them
-                                       :details (assoc (:details (mt/db))
-                                                  :dataset-id (get-in (mt/db) [:details :dataset-filters-patterns]))}]
-        (mt/with-db temp-db
-          (sync/sync-database! temp-db {:scan :schema})
-          (mt/with-temp Card [temp-card {:database_id   (mt/id)
-                                         :dataset_query (mt/mbql-query :venues {:fields [$name]
-                                                                                :filter [:= $id 21]})}]
-            (let [check-card-query-res (fn [card]
-                                         (is (= [["PizzaHacker"]]
-                                                (mt/formatted-rows [str]
-                                                  (data/run-mbql-query* (:dataset_query card))))))]
-              (check-card-query-res temp-card)
-              (let [db-id          (u/the-id temp-db)
-                    updates        (assoc temp-db :engine :bigquery-cloud-sdk)]
-                (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates)
-                (mt/with-db (Database db-id)
-                  ;; having only changed the driver old->new, the existing card query should produce the same results
-                  (check-card-query-res temp-card)
-                  (is (= (bigquery-project-id)
-                         (get-in (Database db-id)
-                                 [:details :project-id-from-credentials]))))))))))))
-
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
