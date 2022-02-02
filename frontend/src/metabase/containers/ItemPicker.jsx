@@ -5,7 +5,7 @@ import cx from "classnames";
 
 import { t } from "ttag";
 import _ from "underscore";
-import { Flex, Box } from "grid-styled";
+import { Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -20,6 +20,7 @@ import EntityListLoader, {
 } from "metabase/entities/containers/EntityListLoader";
 
 import Collections from "metabase/entities/collections";
+import { ItemContent, ItemRoot } from "./ItemPicker.styled";
 
 const getCollectionIconColor = () => color("text-light");
 
@@ -152,7 +153,7 @@ export default class ItemPicker extends React.Component {
 
     return (
       <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
-        <Box style={style} className={cx(className, "scroll-y")}>
+        <div style={style} className={cx(className, "scroll-y")}>
           {searchMode ? (
             <Box
               pb={1}
@@ -281,7 +282,7 @@ export default class ItemPicker extends React.Component {
               </EntityListLoader>
             )}
           </Box>
-        </Box>
+        </div>
       </LoadingAndErrorWrapper>
     );
   }
@@ -300,7 +301,7 @@ const Item = ({
 }) => {
   const iconProps = _.isObject(icon) ? icon : { name: icon };
   return (
-    <Box
+    <ItemRoot
       mt={1}
       p={1}
       onClick={
@@ -317,7 +318,7 @@ const Item = ({
       })}
       data-testid="item-picker-item"
     >
-      <Flex align="center">
+      <ItemContent>
         <Icon size={22} {...iconProps} color={selected ? "white" : color} />
         <h4 className="mx1">{name}</h4>
         {hasChildren && (
@@ -335,7 +336,7 @@ const Item = ({
             }}
           />
         )}
-      </Flex>
-    </Box>
+      </ItemContent>
+    </ItemRoot>
   );
 };
