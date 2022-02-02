@@ -274,7 +274,7 @@
 
 ;;; Linters
 
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:namespace-checker
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
   :namespace-checker
   {:exec-fn   metabase.linters.namespace-checker/check-namespace-decls
    :exec-args {:prefix-rewriting false}}
