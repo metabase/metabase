@@ -980,7 +980,10 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         .setSettings(dashcard.card.visualization_settings)
         .lockDisplay();
     } else {
-      question = question.setCard(dashcard.card).setDashboardId(dashboard.id);
+      question = question.setCard(dashcard.card).setDashboardProps({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+      });
     }
 
     const parametersMappedToCard = getParametersMappedToDashcard(
