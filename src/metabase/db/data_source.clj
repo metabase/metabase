@@ -38,15 +38,30 @@
 
 (defn raw-connection-string->DataSource
   "Return a [[javax.sql.DataSource]] given a raw JDBC connection string."
-  ^javax.sql.DataSource [connection-string]
-  {:pre [(string? connection-string)]}
-  (->DataSource
-   ;; normalize the protocol in case someone is trying to trip us up. Heroku is known for this and passes stuff in like
-   ;; `postgres:...` to screw with us.
-   (cond-> connection-string
-     (str/starts-with? connection-string "postgres:")   (str/replace-first #"^postgres:" "postgresql:")
-     (not (str/starts-with? connection-string "jdbc:")) (str/replace-first #"^" "jdbc:"))
-   nil))
+  ^javax.sql.DataSource [s]
+  {:pre [(string? s)]}
+  ;; normalize the protocol in case someone is trying to trip us up. Heroku is known for this and passes stuff in
+  ;; like `postgres:...` to screw with us.
+  (let [s (cond-> s
+            (str/starts-with? s "postgres:")   (str/replace-first #"^postgres:" "postgresql:")
+            (not (str/starts-with? s "jdbc:")) (str/replace-first #"^" "jdbc:"))]
+    ;; Even tho they're invalid we need to handle strings like `postgres://user:password@host:port` for legacy reasons.
+    ;; (I think this is also how some places like Heroku ship them in order to make our lives hard) So strip those out
+    ;; with the absolute minimum of parsing we can get away with and then pass them in separately -- see #14678 and
+    ;; #20121
+    ;;
+    ;; NOTE: if password is URL-encoded this isn't going to work, since we're not URL-decoding it. I don't think that's
+    ;; a problem we really have to worry about, and at any rate we have never supported it. We did URL-decode things at
+    ;; one point, but that was only because [[clojure.java.jdbc]] tries to parse connection strings itself if you let it
+    ;; -- see #14836. We never let it see connection strings anymore, so that shouldn't be a problem. At any rate #20122
+    ;; would probably solve most people's problems if their password contains special characters.
+    (if-let [[_ subprotocol user password more] (re-find #"^jdbc:((?:postgresql)|(?:mysql))://([^:@]+)(?::([^@:]+))?@(.+$)" s)]
+      (->DataSource (str "jdbc:" subprotocol "://" more)
+                    (pool/map->properties
+                     (merge {:user user}
+                            (when (seq password)
+                              {:password password}))))
+      (->DataSource s nil))))
 
 (defn broken-out-details->DataSource
   "Return a [[javax.sql.DataSource]] given a broken-out Metabase connection details."

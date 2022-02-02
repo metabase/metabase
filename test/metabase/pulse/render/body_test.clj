@@ -477,6 +477,9 @@
 (defn- render-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-card nil results))
 
+(defn- render-stack-area-graph [results]
+  (body/render :area :inline pacific-tz render.tu/test-stack-card nil results))
+
 (defn- render-multiseries-area-graph [results]
   (body/render :area :inline pacific-tz render.tu/test-combo-card nil results))
 
@@ -485,6 +488,10 @@
     (is (has-inline-image?
           (render-area-graph {:cols default-columns
                               :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Render a stacked area graph"
+    (is (has-inline-image?
+          (render-stack-area-graph {:cols default-columns
+                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
   (testing "Check to make sure we allow nil values for the y-axis"
     (is (has-inline-image?
           (render-area-graph {:cols default-columns

@@ -135,7 +135,7 @@
   "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
   include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
   can do appropriate results transformations in post-processing."
-  [{:keys [disable-remaps?], query-type :type, :as query}]
+  [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
   (if (or disable-remaps?
           (= query-type :native))
     query
@@ -308,7 +308,7 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results [{::keys [external-remaps], :keys [disable-remaps?]} rff]
+(defn- remap-results [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
