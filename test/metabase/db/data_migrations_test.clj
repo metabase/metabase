@@ -4,7 +4,6 @@
   (:require [cheshire.core :as json]
             [clojure.set :as set]
             [clojure.test :refer :all]
-            [medley.core :as m]
             [metabase.db.data-migrations :as migrations]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -469,8 +468,8 @@
 (deftest remove-bigquery-driver-test
   (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
     (mt/with-temp Database [db {:name "Legacy BigQuery driver DB"
-                                :engine :bigquery
+                                :engine "bigquery"
                                 :details {:service-account-json "{\"fake_key\": 14}"}}]
        (#'migrations/remove-bigquery-driver)
-       (is (= (assoc (:details db) :engine :bigquery-cloud-sdk)
-              (db/select-one-field :details Database (u/the-id db)))))))
+       (is (= (assoc (:details db) :engine "bigquery-cloud-sdk")
+              (db/select-one-field :details Database :id (u/the-id db)))))))

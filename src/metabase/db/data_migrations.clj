@@ -370,7 +370,7 @@
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (defmigration ^{:author "jeff303" :added "0.43.0"} remove-bigquery-driver
-  (doseq [{:keys [:details] :as bigquery-db} (db/select Database :engine :bigquery)]
+  (doseq [{:keys [:details] :as bigquery-db} (db/select Database :engine "bigquery")]
     (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
       (log/errorf (str "Database ID %d used the :bigquery driver with OAuth style authentication scheme, which cannot"
                        " be automatically migrated to :bigquery-cloud-sdk; leaving authentication options nil in the"
