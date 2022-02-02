@@ -15,14 +15,18 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
 
 const Link = ({
   to,
-  className,
   children,
   disabled,
   tooltip,
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
-    <LinkRoot to={to} className={className} {...props}>
+    <LinkRoot
+      {...props}
+      to={to}
+      tabIndex={disabled ? -1 : undefined}
+      aria-disabled={disabled}
+    >
       {children}
     </LinkRoot>
   );
