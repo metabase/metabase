@@ -1,18 +1,11 @@
 name: Frontend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - 'frontend/**'
-    - 'shared/**'
-    - 'enterprise/frontend/**'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '**/.eslintrc'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 
