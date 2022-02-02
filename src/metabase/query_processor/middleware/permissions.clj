@@ -9,7 +9,6 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -108,14 +107,12 @@
     (check-query-permissions* query)
     (qp query rff context)))
 
-(defn- remove-permissions-key [query]
-  (dissoc query ::perms))
-
-(def remove-permissions-key-middleware
+(defn remove-permissions-key
   "Pre-processing middleware. Removes the `::perms` key from the query. This is where we store important permissions
   information like perms coming from sandboxing (GTAPs). This is programatically added by middleware when appropriate,
   but we definitely don't want users passing it in themselves. So remove it if it's present."
-  (m.43/wrap-43-pre-processing-middleware #'remove-permissions-key))
+  [query]
+  (dissoc query ::perms))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -124,8 +121,9 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
-  before converting the MBQL query to native.)"
+  [[metabase.query-processor/compile]] and
+  the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
+  allowed to see the native query before converting the MBQL query to native.)"
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)

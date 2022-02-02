@@ -8,8 +8,7 @@
 
 (defn- upgrade-field-literals [query]
   (mt/with-everything-store
-    (-> (mt/test-qp-middleware upgrade-field-literals/upgrade-field-literals query)
-        :pre)))
+    (upgrade-field-literals/upgrade-field-literals query)))
 
 (deftest dont-replace-aggregations-test
   (testing "Don't replace field-literals forms with aggregation references"
@@ -100,9 +99,7 @@
                        :breakout     [[:field %products.created_at {:source-field  %product_id
                                                                     :temporal-unit :month}]]
                        :limit        1})
-                    ;; This query is actually broken -- see
-                    ;; https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 -- but since we're nice
-                    ;; we'll try to fix it anyway.
+                    ;; This query is actually broken -- see #19757 -- but since we're nice we'll try to fix it anyway.
                     (-> (mt/mbql-query orders
                           {:source-query {:source-table $$orders
                                           :aggregation  [[:count]]
@@ -110,6 +107,6 @@
                            :aggregation  [[:sum *count/Integer]]
                            :breakout     [[:field "created_at" {:base-type :type/DateTimeWithLocalTZ}]]
                            :limit        1})
-                        add-source-metadata/add-source-metadata-for-source-queries*
+                        add-source-metadata/add-source-metadata-for-source-queries
                         upgrade-field-literals
                         (m/dissoc-in [:query :source-metadata]))))))))

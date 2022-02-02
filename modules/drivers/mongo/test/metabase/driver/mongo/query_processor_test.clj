@@ -48,7 +48,7 @@
                                 {"$project" {"_id" false, "count" true}}]
                   :collection  "attempts"
                   :mbql?       true}
-                 (qp/query->native
+                 (qp/compile
                   (mt/mbql-query attempts
                     {:aggregation [[:count]]
                      :filter      [:time-interval $datetime :last :month]})))))))))
@@ -69,7 +69,7 @@
                                   {"$project" {"_id" false, "count" true}}]
                     :collection  "attempts"
                     :mbql?       true}
-                   (qp/query->native
+                   (qp/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
                        :filter      [:time-interval $datetime :last :month]}))))
@@ -164,7 +164,7 @@
                {"$limit" 5}],
               :collection  "venues"
               :mbql?       true}
-             (qp/query->native
+             (qp/compile
               (mt/mbql-query venues
                 {:aggregation [[:distinct $name]
                                [:distinct $price]]
@@ -179,7 +179,7 @@
       (is (= {"bob" "$latitude", "cobb" "$name"}
              (extract-projections
                ["bob" "cobb"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:fields      [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:field $latitude nil]
@@ -190,7 +190,7 @@
               "bob" {"$abs" "$latitude"}}
              (extract-projections
                ["bob" "cobb"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:abs $latitude]
@@ -200,7 +200,7 @@
       (is (= {"bob" {"$add" ["$price" 300]}}
              (extract-projections
                ["bob"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:+ $price 300]}
@@ -209,7 +209,7 @@
       (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
              (extract-projections
                ["bob"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
@@ -219,7 +219,7 @@
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
              (extract-projections
                ["bob" "cobb"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:filters     [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob  [:abs $latitude]
@@ -229,7 +229,7 @@
       (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
              (extract-projections
                ["bob"]
-               (qp/query->native
+               (qp/compile
                  (mt/mbql-query venues
                                 {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
                                  :limit       5}))))))
@@ -242,7 +242,7 @@
                       {"$sort" {"_id" 1}}
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}
                       {"$sort" {"asdf" 1}}]}
-             (qp/query->native
+             (qp/compile
                (mt/mbql-query venues
                               {:expressions {:asdf ["field" $price nil]},
                                :aggregation [["count"]],
@@ -268,7 +268,7 @@
                   {"$sort" {"date~~~day" 1}}
                   {"$limit" 1048575}]
                  (:query
-                  (qp/query->native
+                  (qp/compile
                    (mt/mbql-query checkins
                      {:filter   [:time-interval $date -4 :month]
                       :breakout [[:datetime-field $date :day]]}))))))))))

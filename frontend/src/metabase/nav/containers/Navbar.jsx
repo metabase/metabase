@@ -13,7 +13,7 @@ import { color, darken } from "metabase/lib/colors";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 

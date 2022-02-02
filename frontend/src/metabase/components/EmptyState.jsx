@@ -4,7 +4,7 @@ import { Box, Flex } from "grid-styled";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Text from "metabase/components/type/Text";
 
 // Don't break existing empty states

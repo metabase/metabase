@@ -6,7 +6,6 @@ import cx from "classnames";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
-import { Flex } from "grid-styled";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
@@ -19,6 +18,7 @@ import { formatHourAMPM, formatDay, formatFrame } from "metabase/lib/time";
 import { getActivePulseParameters } from "metabase/lib/pulse";
 
 import { getParameters } from "metabase/dashboard/selectors";
+import { SidebarActions } from "./PulsesListSidebar.styled";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -41,7 +41,7 @@ function _PulsesListSidebar({
       <div className="px4 pt3 flex justify-between align-center">
         <Subhead>{t`Subscriptions`}</Subhead>
 
-        <Flex align="center">
+        <SidebarActions>
           <Tooltip tooltip={t`Set up a new schedule`}>
             <Icon
               name="add"
@@ -58,7 +58,7 @@ function _PulsesListSidebar({
               onClick={onCancel}
             />
           </Tooltip>
-        </Flex>
+        </SidebarActions>
       </div>
       <div className="my2 mx4">
         {pulses.map(pulse => {

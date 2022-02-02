@@ -9,7 +9,7 @@
 
 (defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
   (mt/with-everything-store
-    (#'resolve-joins/resolve-joins* query)))
+    (resolve-joins/resolve-joins query)))
 
 (deftest no-op-test
   (testing "Does the middleware function if the query has no joins?"

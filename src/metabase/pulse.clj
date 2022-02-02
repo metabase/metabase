@@ -166,7 +166,8 @@
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
-  "Width of the rendered png of html to be sent to slack."
+  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
+  many columns) is truncated."
   1200)
 
 (defn create-and-upload-slack-attachments!

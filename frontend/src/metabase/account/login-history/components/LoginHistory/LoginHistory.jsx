@@ -1,16 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import _ from "underscore";
 import moment from "moment";
 import Card from "metabase/components/Card";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
+import {
+  LoginGroup,
+  LoginItemContent,
+  LoginItemInfo,
+} from "./LoginHistory.styled";
 
 const LoginHistoryItem = item => (
   <Card py={1} px="20px" my={2}>
-    <Flex align="center">
-      <Box>
+    <LoginItemContent>
+      <div>
         <Label mb="0">
           {item.location} -{" "}
           <span className="text-medium">{item.ip_address}</span>
@@ -18,24 +22,24 @@ const LoginHistoryItem = item => (
         <Text color="medium" mt="-2px">
           {item.device_description}
         </Text>
-      </Box>
-      <Flex ml="auto">
+      </div>
+      <LoginItemInfo>
         {item.active && (
           <Label pr={2} className="text-data">
             Active
           </Label>
         )}
         <Label>{item.time}</Label>
-      </Flex>
-    </Flex>
+      </LoginItemInfo>
+    </LoginItemContent>
   </Card>
 );
 
 const LoginHistoryGroup = (items, date) => (
-  <Box py={2}>
+  <LoginGroup>
     <Label>{date}</Label>
-    <Box>{items.map(LoginHistoryItem)}</Box>
-  </Box>
+    <div>{items.map(LoginHistoryItem)}</div>
+  </LoginGroup>
 );
 
 const formatItems = items =>
@@ -53,7 +57,7 @@ function LoginHistoryList({ loginHistory }) {
   const items = formatItems(loginHistory);
   const groups = _.groupBy(items, item => item.date);
 
-  return <Box>{_.map(groups, LoginHistoryGroup)}</Box>;
+  return <div>{_.map(groups, LoginHistoryGroup)}</div>;
 }
 
 export default LoginHistoryList;
