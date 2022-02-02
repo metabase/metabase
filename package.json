@@ -316,7 +316,7 @@
       "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
       "prettier --write"
     ],
-    "+(enterprise|frontend)/**/*.{ts,tsx}": "tsc-files --noEmit"
+    "+(enterprise|frontend)/**/*.{ts,tsx}": "tsc-files --noEmit frontend/src/types/global.d.ts frontend/src/types/color-harmony.d.ts frontend/src/types/styled-system.d.ts"
   },
   "browserslist": [
     "defaults"

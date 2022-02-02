@@ -326,7 +326,7 @@
 (s/defn add-order-by-clause :- mbql.s/MBQLQuery
   "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
   already being used in another order-by clause, this function does nothing."
-  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as field], :as order-by-clause] :- mbql.s/OrderBy]
+  [inner-query :- mbql.s/MBQLQuery, [_ [_ id-or-name :as _field], :as order-by-clause] :- mbql.s/OrderBy]
   (let [existing-fields (set (for [[_ [_ id-or-name]] (:order-by inner-query)]
                                id-or-name))]
     (if (existing-fields id-or-name)
@@ -552,7 +552,7 @@
   "Make the names of a sequence of named aggregations unique by adding suffixes such as `_2`."
   [named-aggregations :- [NamedAggregation]]
   (let [unique-names (uniquify-names
-                      (for [[_ wrapped-ag {ag-name :name}] named-aggregations]
+                      (for [[_ _wrapped-ag {ag-name :name}] named-aggregations]
                         ag-name))]
     (map
      (fn [[_ wrapped-ag options] unique-name]

@@ -55,7 +55,7 @@ function archiveQuestion(questionName) {
   cy.findByText("Browse all items").click();
   openEllipsisMenuFor(questionName);
   popover()
-    .findByText("Archive this item")
+    .findByText("Archive")
     .click();
 }
 

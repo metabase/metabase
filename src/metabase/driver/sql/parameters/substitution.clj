@@ -84,11 +84,11 @@
 
 ;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (s/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
-  [driver date]
+  [_driver date]
   (make-stmt-subs "?" [date]))
 
 (s/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
-  [driver t]
+  [_driver t]
   (make-stmt-subs "?" [t]))
 
 
@@ -140,11 +140,11 @@
   (create-replacement-snippet driver this))
 
 (defmethod ->replacement-snippet-info [:sql UUID]
-  [driver this]
+  [_driver this]
   {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
 
 (defmethod ->replacement-snippet-info [:sql CommaSeparatedNumbers]
-  [driver {:keys [numbers]}]
+  [_driver {:keys [numbers]}]
   {:replacement-snippet (str/join ", " numbers)})
 
 (defmethod ->replacement-snippet-info [:sql MultipleValues]
@@ -225,7 +225,7 @@
      :prepared-statement-args args}))
 
 (s/defn ^:private field->clause :- mbql.s/field
-  [driver {table-id :table_id, base-type :base_type, field-id :id, :as field} param-type]
+  [_driver {table-id :table_id, field-id :id, :as field} param-type]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the

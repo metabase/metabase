@@ -3,13 +3,8 @@ name: Docs
 on:
   push:
     branches:
-      - '**'
-    paths:
-    - 'docs/**'
-    - './bin/verify-docs-links'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
   pull_request:
 
 jobs:

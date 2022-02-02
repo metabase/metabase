@@ -170,7 +170,7 @@ export default class Navbar extends Component {
                       icon: `insight`,
                       link: Urls.newQuestion({
                         mode: "notebook",
-                        creationType: "complex_question",
+                        creationType: "custom_question",
                       }),
                       event: `NavBar;New Question Click;`,
                     },
