@@ -88,7 +88,7 @@
               driver-col-metadata))))))
 
 (defmethod column-info :native
-  [_query {:keys [cols rows] :as results}]
+  [_query {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
   (annotate-native-cols cols))
 
@@ -300,7 +300,7 @@
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
+  [ag-clause :- mbql.s/Aggregation]
   (when-not driver/*driver*
     (throw (Exception. (tru "*driver* is unbound."))))
   (mbql.u/match-one ag-clause
@@ -383,7 +383,7 @@
     (:display_name (col-info-for-field-clause inner-query ag-clause))
 
     _
-    (aggregation-name ag-clause {:recursive-name-fn (partial aggregation-arg-display-name inner-query)})))
+    (aggregation-name ag-clause)))
 
 (defn- ag->name-info [inner-query ag]
   {:name         (aggregation-name ag)
@@ -552,7 +552,7 @@
       cols)))
 
 (defmethod column-info :query
-  [{inner-query :query, :as query} results]
+  [{inner-query :query} results]
   (u/prog1 (mbql-cols inner-query results)
     (check-correct-number-of-columns-returned <> results)))
 

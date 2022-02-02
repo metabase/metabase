@@ -98,7 +98,7 @@ export default class NewQueryOptions extends Component {
                 width={180}
                 to={Urls.newQuestion({
                   mode: "notebook",
-                  creationType: "complex_question",
+                  creationType: "custom_question",
                 })}
                 data-metabase-event={`New Question; Custom Question Start`}
               />

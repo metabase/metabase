@@ -29,6 +29,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -50,8 +51,7 @@
          :field_name                su/NonBlankString   ; Name of the Field being remapped
          :human_readable_field_name su/NonBlankString)) ; Name of the FK field to remap values to
 
-
-;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
+;;;; Pre-processing
 
 (s/defn ^:private fields->field-id->remapping-dimension :- (s/maybe {su/IntGreaterThanZero ExternalRemappingDimensionInitialInfo})
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
@@ -208,8 +208,23 @@
       ;; otherwise return query as-is
       {:remaps source-query-remaps, :query query})))
 
+(defn- add-remapped-columns [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
+  (if (or disable-remaps?
+          (= query-type :native))
+    query
+    (let [{:keys [remaps query]} (add-fk-remaps query)]
+      (cond-> query
+        ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
+        (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
 
-;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
+(def add-remapped-columns-middleware
+  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
+  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
+  can do appropriate results transformations in post-processing."
+  (m.43/wrap-43-pre-processing-middleware add-remapped-columns))
+
+
+;;;; Post-processing
 
 (def ^:private InternalDimensionInfo
   {;; index of original column
@@ -340,6 +355,7 @@
 
 ;;;; Transform to add additional cols to results
 
+
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
    :id            nil
@@ -447,20 +463,15 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results-rff [remapping-dimensions rff]
-  (fn [metadata]
-    (let [internal-cols-info (internal-columns-info (:cols metadata))
-          metadata           (add-remapped-cols metadata remapping-dimensions internal-cols-info)]
-      (remap-results-xform internal-cols-info (rff metadata)))))
+(defn- remap-results [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
+  (if disable-remaps?
+    rff
+    (fn remap-results-rff* [metadata]
+      (let [internal-cols-info (internal-columns-info (:cols metadata))
+            metadata           (add-remapped-cols metadata external-remaps internal-cols-info)]
+        (remap-results-xform internal-cols-info (rff metadata))))))
 
-(defn add-remapping
-  "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
-  `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
-  `remap-results` to munge the results after query execution."
-  [qp]
-  (fn [{query-type :type, :as query, {:keys [disable-remaps?], :or {disable-remaps? false}} :middleware} rff context]
-    (if (or (= query-type :native)
-            disable-remaps?)
-      (qp query rff context)
-      (let [{:keys [query remaps]} (add-fk-remaps query)]
-        (qp query (remap-results-rff remaps rff) context)))))
+(def remap-results-middleware
+  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
+  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
+  (m.43/wrap-43-post-processing-middleware remap-results))

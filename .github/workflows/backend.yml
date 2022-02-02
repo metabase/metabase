@@ -1,16 +1,11 @@
 name: Backend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.clj*'
-    - '**.edn'
-    - '**.java'
-    - '**/metabase-plugin.yaml'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 

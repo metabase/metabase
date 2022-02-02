@@ -874,16 +874,23 @@
   "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
   \"internal\" remappings:
 
-    ;; FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+  FK 'external' remapping -- pass a column to remap to (either as a symbol, or an integer ID):
+
     (with-column-remappings [reviews.product_id products.title]
       ...)
 
-    ;; human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n`
-    ;; values starting with 1 (for common cases where the column is an FK ID column)
+  Symbols are normally converted to [[metabase.test/id]] forms e.g.
+
+    reviews.product_id -> (mt/id :reviews :product_id)
+
+  human-readable-values 'internal' remappings: pass a vector or map of values. Vector just sets the first `n` values
+  starting with 1 (for common cases where the column is an FK ID column)
+
     (with-column-remappings [venues.category_id [\"My Cat 1\" \"My Cat 2\"]]
       ...)
 
-    ;; equivalent to:
+  equivalent to:
+
     (with-column-remappings [venues.category_id {1 \"My Cat 1\", 2 \"My Cat 2\"}]
       ...)
 

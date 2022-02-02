@@ -12,6 +12,7 @@ export type PinDropTargetProps = {
 export type PinDropTargetRenderArgs = PinDropTargetProps & {
   hovered: boolean;
   highlighted: boolean;
+  empty?: boolean;
 };
 
 export const StyledPinDropTarget = styled(PinDropTarget)<PinDropTargetProps>`
@@ -39,4 +40,6 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   border-left: ${props =>
     `4px solid ${props.hovered ? color("brand") : color("bg-medium")}`};
   display: ${props => !(props.hovered || props.highlighted) && "none"};
+  min-height: 2rem;
+  transform: ${props => props.empty && "translateY(-1rem)"};
 `;

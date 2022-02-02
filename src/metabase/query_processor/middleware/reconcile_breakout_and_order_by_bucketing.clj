@@ -38,7 +38,7 @@
             [schema.core :as s]))
 
 (s/defn ^:private reconcile-bucketing :- mbql.s/Query
-  [{{breakouts :breakout, order-bys :order-by} :query, :as query}]
+  [{{breakouts :breakout} :query, :as query}]
   ;; Look for bucketed fields in the `breakout` clause and build a map of unbucketed reference -> bucketed reference,
   ;; like:
   ;;

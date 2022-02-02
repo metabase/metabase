@@ -33,7 +33,7 @@
                       {::inclusion-patterns inclusion-patterns
                        ::exclusion-patterns exclusion-patterns}))
 
-      true
+      :else
       (let [inclusion? exclusion-blank?
             pattern    (schema-pattern->re-pattern (if inclusion? inclusion-patterns exclusion-patterns))]
         (fn [s]
@@ -55,7 +55,7 @@
   "Given a `prop-nm` (which is expected to be a connection property of type `:schema-filters`), and a `database`
   instance, return a vector containing [inclusion-patterns exclusion-patterns]."
   {:added "0.42.0"}
-  [prop-nm {db-details :details :as database}]
+  [prop-nm {db-details :details :as _database}]
   (let [schema-filter-type     (get db-details (keyword (str prop-nm "-type")))
         schema-filter-patterns (get db-details (keyword (str prop-nm "-patterns")))
         exclusion-type?        (= "exclusion" schema-filter-type)]

@@ -272,7 +272,7 @@
                               :parameters        []
                               :related           (update-related (:related dashboard) left right)}
                              (add-title-row left right))))
-                      ([[dashboard row]] dashboard)
+                      ([[dashboard _row]] dashboard)
                       ([[dashboard row] card]
                        [(comparison-row dashboard row left right card)
                         (+ row (:height card))]))))))

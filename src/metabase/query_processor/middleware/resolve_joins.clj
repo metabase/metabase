@@ -135,7 +135,7 @@
                                                 [fields join-fields]))))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
-  [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
+  [query :- mbql.s/MBQLQuery]
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references-and-deduplicate))
       merge-joins-fields))

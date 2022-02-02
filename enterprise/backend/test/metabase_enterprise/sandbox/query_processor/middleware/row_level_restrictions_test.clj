@@ -148,6 +148,7 @@
                             {:source-query {:source-table $$users
                                             :joins        [{:source-table $$categories}]}}]})))))
 
+;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
   (mbql.u/replace m
     (_ :guard (every-pred map? :source-metadata))
@@ -155,8 +156,7 @@
 
 (defn- apply-row-level-permissions [query]
   (-> (mt/with-everything-store
-        (mt/test-qp-middleware row-level-restrictions/apply-row-level-permissions (normalize/normalize query)))
-      :pre
+        (#'row-level-restrictions/apply-sandboxing (normalize/normalize query)))
       remove-metadata))
 
 (deftest middleware-test
@@ -196,7 +196,16 @@
                                           :alias     "v"
                                           :strategy  :left-join
                                           :condition [:= $venue_id &v.venues.id]}]
-                          :aggregation  [[:count]]}})
+                          :aggregation  [[:count]]}
+
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                                                               :semantic_type :type/Quantity
+                                                               :name          "count"
+                                                               :display_name  "Count"
+                                                               :source        :aggregation
+                                                               :field_ref     [:aggregation 0]}]
+                  ::qp.perms/perms                           {:gtaps #{(perms/table-query-path (mt/id :checkins))
+                                                                       (perms/table-query-path (mt/id :venues))}}})
                (apply-row-level-permissions
                 (mt/mbql-query checkins
                   {:aggregation [[:count]]
@@ -215,7 +224,15 @@
                              :source-query {:native (str "SELECT * FROM \"PUBLIC\".\"VENUES\" "
                                                          "WHERE \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" = 50 "
                                                          "ORDER BY \"PUBLIC\".\"VENUES\".\"ID\"")
-                                            :params []}}})
+                                            :params []}}
+
+                  ::row-level-restrictions/original-metadata [{:base_type     :type/BigInteger
+                                                               :semantic_type :type/Quantity
+                                                               :name          "count"
+                                                               :display_name  "Count"
+                                                               :source        :aggregation
+                                                               :field_ref     [:aggregation 0]}]
+                  ::qp.perms/perms                           {:gtaps #{(perms/adhoc-native-query-path (mt/id))}}})
                (apply-row-level-permissions
                 (mt/mbql-query venues
                   {:aggregation [[:count]]}))))))))

@@ -102,7 +102,7 @@ describe("scenarios > question > filter", () => {
     });
   });
 
-  it.skip("should filter based on remapped values (metabase#13235)", () => {
+  it("should filter based on remapped values (metabase#13235)", () => {
     // set "Filtering on this field" = "A list of all values"
     cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
       has_field_values: "list",

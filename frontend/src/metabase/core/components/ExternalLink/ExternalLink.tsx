@@ -1,5 +1,6 @@
 import React, { AnchorHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
 import { getUrlTarget } from "metabase/lib/dom";
+import { LinkRoot } from "./ExternalLink.styled";
 
 interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string;
@@ -13,8 +14,8 @@ const ExternalLink = forwardRef(function ExternalLink(
   ref: Ref<HTMLAnchorElement>,
 ) {
   return (
-    <a
-      ref={ref}
+    <LinkRoot
+      innerRef={ref as any}
       href={href}
       className={className || "link"}
       target={target}
@@ -25,7 +26,7 @@ const ExternalLink = forwardRef(function ExternalLink(
       {...props}
     >
       {children}
-    </a>
+    </LinkRoot>
   );
 });
 

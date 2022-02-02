@@ -96,7 +96,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-honeysql-form :sql
-  [driver]
+  [_driver]
   :%now)
 
 ;; TODO - rename this to `temporal-bucket` or something that better describes what it actually does
@@ -144,7 +144,7 @@
   ([driver day-of-week offset]
    (adjust-day-of-week driver day-of-week offset hx/mod))
 
-  ([driver
+  ([_driver
     day-of-week
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
@@ -234,14 +234,10 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as clause]]
-  (when-not (get-in *inner-query* [:expressions (keyword expression-name)])
-    (throw (ex-info (tru "No expression named {0} at this level of the query" (pr-str expression-name))
-                    {:type       qp.error-type/invalid-query
-                     :expression clause
-                     :query      *inner-query*})))
-  (->honeysql driver (if (= source-table ::add/source)
-                       (apply hx/identifier :field source-query-alias source-alias)
-                       (mbql.u/expression-with-name *inner-query* expression-name))))
+  (let [expression-definition (mbql.u/expression-with-name *inner-query* expression-name)]
+    (->honeysql driver (if (= source-table ::add/source)
+                         (apply hx/identifier :field source-query-alias source-alias)
+                         expression-definition))))
 
 (defn semantic-type->unix-timestamp-unit
   "Translates coercion types like `:Coercion/UNIXSeconds->DateTime` to the corresponding unit of time to use in
@@ -295,7 +291,7 @@
 (defn apply-binning
   "Apply `:binning` options from a `:field` clause; return a new HoneySQL form that bins `honeysql-form`
   appropriately."
-  [{{:keys [bin-width min-value max-value]} :binning} honeysql-form]
+  [{{:keys [bin-width min-value _max-value]} :binning} honeysql-form]
   ;;
   ;; Equation is | (value - min) |
   ;;             | ------------- | * bin-width + min-value
@@ -348,17 +344,19 @@
           allow-casting?       (and field
                                     (not outer-select))
           database-type        (or database-type
-                                   (:database_type field))]
-      (let [identifier (->honeysql driver (apply hx/identifier :field (concat source-table-aliases [source-alias])))]
-        (u/prog1
-          (cond->> identifier
-            allow-casting?           (cast-field-if-needed driver field)
-            database-type            (#(hx/with-database-type-info % database-type))
-            (:temporal-unit options) (apply-temporal-bucketing driver options)
-            (:binning options)       (apply-binning options))
-          (log/trace (binding [*print-meta* true]
-                       (format "Compiled field clause\n%s\n=>\n%s"
-                               (u/pprint-to-str field-clause) (u/pprint-to-str <>)))))))
+                                   (:database_type field))
+          identifier           (->honeysql driver
+                                           (apply hx/identifier :field
+                                                  (concat source-table-aliases [source-alias])))]
+      (u/prog1
+       (cond->> identifier
+         allow-casting?           (cast-field-if-needed driver field)
+         database-type            (#(hx/with-database-type-info % database-type))
+         (:temporal-unit options) (apply-temporal-bucketing driver options)
+         (:binning options)       (apply-binning options))
+       (log/trace (binding [*print-meta* true]
+                    (format "Compiled field clause\n%s\n=>\n%s"
+                            (u/pprint-to-str field-clause) (u/pprint-to-str <>))))))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling :field clause: {0}" (ex-message e))
                       {:clause field-clause}
@@ -607,7 +605,7 @@
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (->> breakout-fields
                                         (remove (set fields-fields))
@@ -753,7 +751,7 @@
    (s/one (s/pred sequential?) "join condition")])
 
 (s/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], join-alias :alias, refs :qp/refs, :as join} :- mbql.s/Join]
+  [driver {:keys [condition], join-alias :alias, :as join} :- mbql.s/Join]
   [[(join-source driver join)
     (->honeysql driver (hx/identifier :table-alias join-alias))]
    (->honeysql driver condition)])
@@ -931,7 +929,7 @@
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
-  [driver {database :database, :as outer-query}]
+  [driver outer-query]
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))

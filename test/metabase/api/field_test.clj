@@ -196,6 +196,7 @@
         ;; clear out existing human_readable_values in case they're set
         (when-let [id (field-values-id :venues :price)]
           (db/update! FieldValues id :human_readable_values nil))
+        (db/update! Field (mt/id :venues :price) :has_field_values "list")
         ;; now update the values via the API
         (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
                (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
@@ -206,7 +207,16 @@
 
     (testing "Sensitive fields do not have field values and should return empty"
       (is (= {:values [], :field_id (mt/id :users :password)}
-             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))))
+             (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :users :password))))))
+
+    (testing "External remapping"
+      (mt/with-column-remappings [venues.category_id categories.name]
+        (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:has_field_values "list"}
+          (is (partial= {:field_id (mt/id :venues :category_id)
+                         :values   [[1 "African"]
+                                    [2 "American"]
+                                    [3 "Artisan"]]}
+                 (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :category_id))))))))))
 
 (def ^:private list-field {:name "Field Test", :base_type :type/Integer, :has_field_values "list"})
 
@@ -656,3 +666,28 @@
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"
                                       nil))))))
+
+(deftest field-values-remapped-fields-test
+  (testing "GET /api/field/:id/values"
+    (testing "Should return tuples of [original remapped] for a remapped Field (#13235)"
+      (mt/dataset sample-dataset
+        (mt/with-temp-copy-of-db
+          ;; create a human-readable-values remapping. Do this via the API because the crazy things may or may not be
+          ;; happening
+          (is (partial= {:field_id                (mt/id :orders :product_id)
+                         :human_readable_field_id (mt/id :products :title)
+                         :type                    "external"}
+                        (mt/user-http-request :crowberto :post 200
+                                              (format "field/%d/dimension" (mt/id :orders :product_id))
+                                              {:human_readable_field_id (mt/id :products :title)
+                                               :name                    "Product ID"
+                                               :type                    :external})))
+          ;; trigger a field values rescan (this API endpoint is synchronous)
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 (format "field/%d/rescan_values" (mt/id :orders :product_id)))))
+          ;; mark the Field as has_field_values = list
+          (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
+            (is (partial= {:values [[1 "Rustic Paper Wallet"]
+                                    [2 "Small Marble Shoes"]
+                                    [3 "Synergistic Granite Chair"]]}
+                          (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))

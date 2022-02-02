@@ -66,7 +66,7 @@
 (defn- maybe-send-login-from-new-device-email
   "If set to send emails on first login from new devices, that is the case, and its not the users first login, send an
   email from a separate thread."
-  [{user-id :user_id, device-id :device_id, :as login-history}]
+  [login-history]
   (when (and (send-email-on-first-login-from-new-device)
              (first-login-on-this-device? login-history)
              (not (first-login-ever? login-history)))
@@ -82,7 +82,7 @@
   (maybe-send-login-from-new-device-email login-history)
   login-history)
 
-(defn- pre-update [login-history]
+(defn- pre-update [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
 
 (extend (class LoginHistory)

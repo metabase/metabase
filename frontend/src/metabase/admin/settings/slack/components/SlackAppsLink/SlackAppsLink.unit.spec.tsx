@@ -1,10 +1,10 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import SlackAppsButton from "./SlackAppsButton";
+import SlackAppsLink from "./SlackAppsLink";
 
-describe("SlackAppsButton", () => {
+describe("SlackAppsLink", () => {
   it("renders correctly", () => {
-    render(<SlackAppsButton />);
+    render(<SlackAppsLink />);
 
     expect(screen.getByText("Open Slack Apps")).toBeInTheDocument();
   });
