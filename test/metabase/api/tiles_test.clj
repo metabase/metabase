@@ -26,7 +26,7 @@
                                          (mt/id :venues :longitude))
                  :query (json/generate-string venues-query)))))
     (testing "Works on native queries"
-      (let [native-query {:query (:query (qp/query->native venues-query))
+      (let [native-query {:query (:query (qp/compile venues-query))
                           :template-tags {}}]
         (is (png? (mt/user-http-request
                    :rasta :get 200 (format "tiles/1/1/1/%s/%s"

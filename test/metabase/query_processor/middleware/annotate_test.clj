@@ -13,7 +13,7 @@
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
     (driver/with-driver :h2
-      (-> (mt/test-qp-middleware annotate/add-column-info query metadata []) :metadata :data))))
+      ((annotate/add-column-info query identity) metadata))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |

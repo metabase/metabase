@@ -182,7 +182,7 @@
 
 ;; Make sure the optimization logic is actually applied in the resulting native query!
 (defn- filter->sql [filter-clause]
-  (let [result (qp/query->native
+  (let [result (qp/compile
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      filter-clause}))]
@@ -309,7 +309,7 @@
                   " \"PUBLIC\".\"ATTEMPTS\".\"DATETIME\""
                   " < parsedatetime(formatdatetime(now(), 'yyyyMM'), 'yyyyMM'))")
              (:query
-              (qp/query->native
+              (qp/compile
                (mt/mbql-query attempts
                  {:aggregation [[:count]]
                   :filter      [:time-interval $datetime :last :month]}))))))))

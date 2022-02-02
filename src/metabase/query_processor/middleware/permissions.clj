@@ -121,8 +121,9 @@
 
 (defn current-user-has-adhoc-native-query-perms?
   "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
-  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
-  before converting the MBQL query to native.)"
+  [[metabase.query-processor/compile]] and
+  the [[metabase.query-processor.middleware.catch-exceptions/catch-exceptions]] middleware to check the user should be
+  allowed to see the native query before converting the MBQL query to native.)"
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)

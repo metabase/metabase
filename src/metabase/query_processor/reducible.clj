@@ -145,12 +145,12 @@
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of
   `additional-rfs`, then combines them into a final result with `combine`.
 
-  (fn my-xform [rf]
-    (combine-additional-reducing-fns
-     rf
-     [((take 100) conj)]
-     (fn combine [result first-100-values]
-       (rf (assoc result :first-100 first-100-values)))))
+    (fn my-xform [rf]
+      (combine-additional-reducing-fns
+       rf
+       [((take 100) conj)]
+       (fn combine [result first-100-values]
+         (rf (assoc result :first-100 first-100-values)))))
 
   This is useful for post-processing steps that need to reduce the result rows to provide some metadata that can be
   added to the final result.
@@ -166,7 +166,7 @@
   reducing function is reduced, rather than when the accumulators of *all* reducing functions are reduced. In other
   words, the `reduced` behavior will be exactly the same way as if you used `primary-rf` on its own.
 
-  3. `combine` is like `post-complete`, but called with separate args, one for each reducing function.
+  3. `combine` is like [[redux.core/post-complete]], but called with separate args, one for each reducing function.
 
   4. The completing arity of the primary reducing function is not applied automatically, so be sure to apply it
   yourself in the appropriate place in the body of your `combine` function."
