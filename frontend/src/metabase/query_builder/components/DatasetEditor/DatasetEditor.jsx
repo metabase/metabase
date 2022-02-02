@@ -47,6 +47,7 @@ const propTypes = {
   metadata: PropTypes.object,
   result: PropTypes.object,
   height: PropTypes.number,
+  isDirty: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
@@ -165,6 +166,7 @@ function DatasetEditor(props) {
     result,
     metadata,
     height,
+    isDirty,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
@@ -370,8 +372,8 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName;
-  }, [dataset, fields]);
+    return !hasFieldWithoutDisplayName && isDirty;
+  }, [dataset, fields, isDirty]);
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
