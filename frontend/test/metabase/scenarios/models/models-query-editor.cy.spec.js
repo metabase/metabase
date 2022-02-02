@@ -70,80 +70,82 @@ describe("scenarios > models query editor", () => {
     });
   });
 
-  it("allows to edit native model query", () => {
-    cy.createNativeQuestion(
-      {
-        name: "Native Model",
-        dataset: true,
-        native: {
-          query: "SELECT * FROM orders limit 5",
+  describe("native models", () => {
+    it("allows to edit native model query", () => {
+      cy.createNativeQuestion(
+        {
+          name: "Native Model",
+          dataset: true,
+          native: {
+            query: "SELECT * FROM orders limit 5",
+          },
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("contain", "109.22");
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
 
-    openDetailsSidebar();
-    cy.findByText("Edit query definition").click();
+      openDetailsSidebar();
+      cy.findByText("Edit query definition").click();
 
-    cy.url().should("include", "/query");
+      cy.url().should("include", "/query");
 
-    cy.get(".ace_content").type("{backspace}2");
+      cy.get(".ace_content").type("{backspace}2");
 
-    runNativeQuery();
+      runNativeQuery();
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("not.contain", "109.22");
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
 
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
 
-    cy.get(".cellData")
-      .should("contain", "37.65")
-      .and("not.contain", "109.22");
-  });
+      cy.get(".cellData")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+    });
 
-  it("handles failing queries", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    it("handles failing queries", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    cy.createNativeQuestion(
-      {
-        name: "Erroring Model",
-        dataset: true,
-        native: {
-          // Let's use API to type the most of the query, but stil make it invalid
-          query: "SELECT ",
+      cy.createNativeQuestion(
+        {
+          name: "Erroring Model",
+          dataset: true,
+          native: {
+            // Let's use API to type the most of the query, but stil make it invalid
+            query: "SELECT ",
+          },
         },
-      },
-      { visitQuestion: true },
-    );
+        { visitQuestion: true },
+      );
 
-    openDetailsSidebar();
+      openDetailsSidebar();
 
-    cy.findByText("Customize metadata").click();
+      cy.findByText("Customize metadata").click();
 
-    cy.wait("@cardQuery");
-    cy.findByText(/Syntax error in SQL/).should("be.visible");
+      cy.wait("@cardQuery");
+      cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-    cy.findByText("Query").click();
+      cy.findByText("Query").click();
 
-    cy.wait("@cardQuery");
-    cy.findByText(/Syntax error in SQL/).should("be.visible");
+      cy.wait("@cardQuery");
+      cy.findByText(/Syntax error in SQL/).should("be.visible");
 
-    cy.get(".ace_content").type("1");
-    runNativeQuery();
+      cy.get(".ace_content").type("1");
+      runNativeQuery();
 
-    cy.get(".cellData").contains(1);
-    cy.findByText(/Syntax error in SQL/).should("not.exist");
+      cy.get(".cellData").contains(1);
+      cy.findByText(/Syntax error in SQL/).should("not.exist");
 
-    cy.button("Save changes").click();
-    cy.wait("@updateCard");
+      cy.button("Save changes").click();
+      cy.wait("@updateCard");
 
-    cy.get(".cellData").contains(1);
-    cy.findByText(/Syntax error in SQL/).should("not.exist");
+      cy.get(".cellData").contains(1);
+      cy.findByText(/Syntax error in SQL/).should("not.exist");
+    });
   });
 });
