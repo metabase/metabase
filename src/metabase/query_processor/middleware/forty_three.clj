@@ -14,9 +14,12 @@
 
     (f qp) -> (f query rff context)"
   [f]
-  (fn wrap-43-pre-processing-middleware-qp* [qp]
-    (fn wrap-43-pre-processing-middleware-fn* [query rff context]
-      (qp (f query) rff context))))
+  (when f
+    (fn wrap-43-pre-processing-middleware-qp* [qp]
+      (fn wrap-43-pre-processing-middleware-fn* [query rff context]
+        (let [query' (f query)]
+          (assert (map? query') (format "%s did not return a valid query" (pr-str f)))
+          (qp query' rff context))))))
 
 (defn wrap-43-post-processing-middleware
   "Temporary helper to wrap a 43+ style post-processing middleware function so it can be used as a <=42 style around
@@ -31,6 +34,7 @@
 
     (f qp) -> (f query rff context)"
   [f]
-  (fn wrap-43-post-processing-middleware-qp* [qp]
-    (fn wrap-43-post-processing-middleware-fn* [query rff context]
-      (qp query (f query rff) context))))
+  (when f
+    (fn wrap-43-post-processing-middleware-qp* [qp]
+      (fn wrap-43-post-processing-middleware-fn* [query rff context]
+        (qp query (f query rff) context)))))

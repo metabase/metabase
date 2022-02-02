@@ -131,7 +131,11 @@
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
-(defn- add-remapped-columns [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
+(defn add-remapped-columns
+  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
+  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
+  can do appropriate results transformations in post-processing."
+  [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
   (if (or disable-remaps?
           (= query-type :native))
     query
@@ -139,12 +143,6 @@
       (cond-> query
         ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
         (seq remappings) (assoc ::external-remaps (mapv (partial into {}) remappings))))))
-
-(def add-remapped-columns-middleware
-  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
-  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
-  can do appropriate results transformations in post-processing."
-  (m.43/wrap-43-pre-processing-middleware add-remapped-columns))
 
 
 ;;;; Post-processing

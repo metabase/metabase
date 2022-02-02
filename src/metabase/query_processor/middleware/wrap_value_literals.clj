@@ -144,18 +144,13 @@
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
     (wrap-value-literals-in-mbql inner-query)))
 
-(defn- wrap-value-literals*
-  [{query-type :type, :as query}]
-  (if-not (= query-type :query)
-    query
-    (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query nil))))
-
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
-  [qp]
-  (fn [query rff context]
-    (qp (wrap-value-literals* query) rff context)))
+  [{query-type :type, :as query}]
+  (if-not (= query-type :query)
+    query
+    (mbql.s/validate-query
+     (update query :query wrap-value-literals-in-mbql-query nil))))
