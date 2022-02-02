@@ -76,13 +76,6 @@
   {:pre [(fn? reducedf*)]}
   (reducedf* metadata reduced-rows context))
 
-(defn nativef
-  "Called when query is convert to native."
-  {:arglists '([query context]), :deprecated "0.43.0"}
-  [query {nativef* :nativef, :as context}]
-  {:pre [(fn? nativef*)]}
-  (nativef* query context))
-
 (defn timeoutf
   "Call this function when a query times out."
   {:arglists '([context])}
