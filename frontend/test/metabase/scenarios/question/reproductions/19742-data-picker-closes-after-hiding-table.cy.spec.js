@@ -6,6 +6,8 @@ describe("issue 19742", () => {
     cy.signInAsAdmin();
   });
 
+  // In order to reproduce the issue, it's important to only use in-app links
+  // and don't refresh the app state (like by doing cy.visit)
   it("shouldn't auto-close the data selector after a table was hidden", () => {
     cy.visit("/");
     cy.findByText("New").click();
