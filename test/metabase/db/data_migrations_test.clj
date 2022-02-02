@@ -9,7 +9,6 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
             [metabase.models.pulse :refer [Pulse]]
