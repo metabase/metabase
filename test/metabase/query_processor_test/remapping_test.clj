@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
+            [metabase.driver :as driver]
             [metabase.models.card :refer [Card]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
@@ -8,8 +9,7 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test :as mt]
-            [toucan.db :as db]
-            [metabase.driver :as driver]))
+            [toucan.db :as db]))
 
 (deftest basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
