@@ -298,7 +298,6 @@
                                (mt/run-mbql-query checkins
                                  {:aggregation [[:count]]
                                   :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
-
 (deftest max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
@@ -311,6 +310,9 @@
                                                ;; settings map instead (which is where DB-local settings go), via the
                                                ;; driver/normalize-db-details implementation for :sqlserver
                                                (assoc :rowcount-override 0))}]
+        ;; TODO FIXME -- This query probably shouldn't be returning ANY rows given that we're setting the LIMIT to zero.
+        ;; For now I've had to keep a bug where it always returns at least one row regardless of the limit. See comments
+        ;; in [[metabase.query-processor.middleware.limit/limit-xform]].
         (mt/with-db db
           (is (= 3000 (-> {:query (str "DECLARE @DATA AS TABLE(\n"
                                        "    IDX INT IDENTITY(1,1),\n"
