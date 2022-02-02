@@ -974,8 +974,11 @@ export class UnconnectedDataSelector extends Component {
   };
 
   handleClose = () => {
+    const { onClose } = this.props;
     this.setState({ searchText: "" });
-    this.props?.onClose();
+    if (typeof onProps === "function") {
+      onClose();
+    }
   };
 
   getSearchInputPlaceholder = () => {

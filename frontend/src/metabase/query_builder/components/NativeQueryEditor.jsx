@@ -465,7 +465,9 @@ export default class NativeQueryEditor extends Component {
           {...resizableBoxProps}
           onResizeStop={(e, data) => {
             this.props.handleResize();
-            resizableBoxProps?.onResizeStop(e, data);
+            if (typeof resizableBoxProps?.onResizeStop === "function") {
+              resizableBoxProps.onResizeStop(e, data);
+            }
             this._editor.resize();
           }}
         >
