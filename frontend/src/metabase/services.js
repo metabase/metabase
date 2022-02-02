@@ -168,9 +168,11 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
-  dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQuery: GET(
+    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
   dashboardCardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/card/:cardId",
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
