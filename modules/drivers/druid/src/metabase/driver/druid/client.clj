@@ -66,9 +66,9 @@
     (try
       (POST (details->url details-with-tunnel "/druid/v2"),
         :body           query
-        :auth-enabled  (details :auth-enabled)
-        :auth-token    (details :auth-token)
-        :auth-username (details :auth-username))
+        :auth-enabled  (:auth-enabled  details)
+        :auth-token    (:auth-token    details)
+        :auth-username (:auth-username details))
       ;; don't need to do anything fancy if the query was killed
       (catch InterruptedException e
         (throw e))
@@ -89,9 +89,9 @@
       (try
         (log/debug (trs "Canceling Druid query with ID {0}" query-id))
         (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id))
-          :auth-enabled  (details :auth-enabled)
-          :auth-token    (details :auth-token)
-          :auth-username (details :auth-username))
+          :auth-enabled  (:auth-enabled  details)
+          :auth-token    (:auth-token    details)
+          :auth-username (:auth-username details))
         (catch Exception cancel-e
           (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id)))))))
 
