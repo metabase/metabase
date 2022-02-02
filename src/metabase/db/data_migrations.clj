@@ -369,19 +369,6 @@
                                  [:like
                                   :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
-(defmigration ^{:author "jeff303" :added "0.43.0"} remove-bigquery-driver
-  (doseq [{:keys [:details] :as bigquery-db} (db/select Database :engine "bigquery")]
-    (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
-      (log/errorf (str "Database ID %d used the :bigquery driver with OAuth style authentication scheme, which cannot"
-                       " be automatically migrated to :bigquery-cloud-sdk; leaving authentication options nil in the"
-                       " db details, which must be corrected by an admin (by setting a service-account-json), so that"
-                       " sync and query can work again")
-                  (u/the-id bigquery-db)))
-    (let [migrated-details (-> (assoc details :engine :bigquery-cloud-sdk) ; switch to new driver
-                               ;; remove all OAuth related keys
-                               (dissoc :auth-code :client-id :client-secret :access-token :refresh-token))]
-      (db/update! Database (u/the-id bigquery-db) :details migrated-details))))
-
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
 ;; !!    Please seriously consider whether any new migrations you write here could be written as Liquibase ones     !!

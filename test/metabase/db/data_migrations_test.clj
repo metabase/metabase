@@ -464,12 +464,3 @@
           (testing "And it is idempotent"
             (#'migrations/migrate-click-through)
             (is (= expected-settings (get-settings!)))))))))
-
-(deftest remove-bigquery-driver-test
-  (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
-    (mt/with-temp Database [db {:name "Legacy BigQuery driver DB"
-                                :engine "bigquery"
-                                :details {:service-account-json "{\"fake_key\": 14}"}}]
-       (#'migrations/remove-bigquery-driver)
-       (is (= (assoc (:details db) :engine "bigquery-cloud-sdk")
-              (db/select-one-field :details Database :id (u/the-id db)))))))

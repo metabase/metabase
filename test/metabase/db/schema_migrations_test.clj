@@ -289,3 +289,12 @@
                           col-nm
                           exp-type
                           (get tbl-cols col-nm))))))))))
+
+(deftest remove-bigquery-driver-test
+  (testing "Migrate legacy BigQuery driver to new (:bigquery-cloud-sdk) driver (#20141)"
+    (impl/test-migrations ["v43.00-001"] [migrate!]
+      (mt/with-temp Database [db {:name    "Legacy BigQuery driver DB"
+                                  :engine  :bigquery
+                                  :details {:service-account-json "{\"fake_key\": 14}"}}]
+        (migrate!)
+        (is (= :bigquery-cloud-sdk (db/select-one-field :engine Database :id (u/the-id db))))))))
