@@ -25,15 +25,7 @@ export interface FileInputProps extends FileInputAttributes {
 }
 
 const FileInput = forwardRef(function FileInput(
-  {
-    className,
-    name,
-    autoFocus,
-    onChange,
-    onFocus,
-    onBlur,
-    ...props
-  }: FileInputProps,
+  { name, autoFocus, onChange, onFocus, onBlur, ...props }: FileInputProps,
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
   const [hasValue, setHasValue] = useState(false);
@@ -41,14 +33,14 @@ const FileInput = forwardRef(function FileInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const { files } = event.target;
-      setHasValue(files != null && files.length > 0);
+      setHasValue(files != null && files?.length > 0);
       onChange && onChange(event);
     },
     [onChange],
   );
 
   return (
-    <InputRoot innerRef={ref as any} className={className} {...props}>
+    <InputRoot innerRef={ref as any} {...props}>
       <InputField
         type="file"
         name={name}

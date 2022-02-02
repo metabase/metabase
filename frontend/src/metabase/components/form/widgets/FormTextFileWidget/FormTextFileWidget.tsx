@@ -37,7 +37,7 @@ const getFieldValue = (
   treatBeforePosting?: TreatBeforePosting,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    if (!files || !files?.length) {
+    if (!files?.length) {
       resolve("");
       return;
     }
