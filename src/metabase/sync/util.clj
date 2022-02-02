@@ -378,7 +378,7 @@
 (s/defn run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
-   {:keys [step-name sync-fn log-summary-fn] :as step} :- StepDefinition]
+   {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
         results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
                                                              step-name
@@ -401,7 +401,7 @@
   this function unless the logging level is at debug (or higher)."
   [operation :- s/Str
    database :- i/DatabaseInstance
-   {:keys [start-time end-time steps log-summary-fn]} :- SyncOperationMetadata]
+   {:keys [start-time end-time steps]} :- SyncOperationMetadata]
   (str
    (apply format
           (str "\n#################################################################\n"

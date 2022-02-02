@@ -26,9 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Prepare Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: 14.x
+          cache: 'yarn'
       - name: Prepare JDK 8
         uses: actions/setup-java@v2
         with:
@@ -44,11 +45,6 @@ jobs:
           echo "yarn `yarn --version`"
           java -version
 
-      - name: Get yarn cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
       - name: Get node_modules cache
         uses: actions/cache@v2
         with:
@@ -83,9 +79,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Prepare Node.js
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: 14.x
+          cache: 'yarn'
       - name: Prepare JDK 8
         uses: actions/setup-java@v2
         with:
@@ -100,11 +97,6 @@ jobs:
           echo "Node.js `node --version`"
           echo "yarn `yarn --version`"
           java -version
-      - name: Get yarn cache
-        uses: actions/cache@v2
-        with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
       - name: Get node_modules cache
         uses: actions/cache@v2
         with:

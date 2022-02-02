@@ -14,8 +14,6 @@ import {
   FilterInput,
 } from "./ListField.styled";
 
-const SEARCH_THRESHOLD = 10;
-
 const Checkbox = _Checkbox as any;
 const EmptyState = _EmptyState as any;
 
@@ -30,6 +28,14 @@ interface ListFieldProps {
   isDashboardFilter?: boolean;
 }
 
+function createOptionsFromValuesWithoutOptions(
+  values: string[],
+  options: Option[],
+): Option {
+  const optionsMap = _.indexBy(options, "0");
+  return values.filter(value => !optionsMap[value]).map(value => [value]);
+}
+
 export const ListField = ({
   onChange,
   value,
@@ -39,18 +45,26 @@ export const ListField = ({
   isDashboardFilter,
 }: ListFieldProps) => {
   const [selectedValues, setSelectedValues] = useState(new Set(value));
+  const [addedOptions, setAddedOptions] = useState<Option>(() =>
+    createOptionsFromValuesWithoutOptions(value, options),
+  );
+
+  const augmentedOptions = useMemo(() => {
+    return [...options, ...addedOptions];
+  }, [addedOptions, options]);
+
   const sortedOptions = useMemo(() => {
     if (selectedValues.size === 0) {
-      return options;
+      return augmentedOptions;
     }
 
-    const [selected, unselected] = _.partition(options, option =>
+    const [selected, unselected] = _.partition(augmentedOptions, option =>
       selectedValues.has(option[0]),
     );
 
     return [...selected, ...unselected];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options.length]);
+  }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
@@ -62,13 +76,16 @@ export const ListField = ({
       return sortedOptions;
     }
 
-    return options.filter(option =>
+    return augmentedOptions.filter(option =>
       option[0]
         .toString()
         .toLowerCase()
         .startsWith(trimmedFilter),
     );
-  }, [options, debouncedFilter, sortedOptions]);
+  }, [augmentedOptions, debouncedFilter, sortedOptions]);
+
+  const shouldShowEmptyState =
+    augmentedOptions.length > 0 && filteredOptions.length === 0;
 
   const handleToggleOption = (option: any) => {
     const newSelectedValues = selectedValues.has(option)
@@ -79,24 +96,28 @@ export const ListField = ({
     onChange?.(newSelectedValues);
   };
 
-  const shouldShowFilter = options.length > SEARCH_THRESHOLD;
-  const shouldShowEmptyState =
-    options.length > 0 && filteredOptions.length === 0;
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (
+      event.key === "Enter" &&
+      !_.find(augmentedOptions, option => option[0] === filter)
+    ) {
+      setAddedOptions([...addedOptions, [filter]]);
+    }
+  };
 
   return (
     <>
-      {shouldShowFilter && (
-        <FilterInput
-          isDashboardFilter={isDashboardFilter}
-          padding={isDashboardFilter ? "md" : "sm"}
-          borderRadius={isDashboardFilter ? "md" : "sm"}
-          colorScheme={isDashboardFilter ? "transparent" : "admin"}
-          placeholder={placeholder}
-          value={filter}
-          onChange={setFilter}
-          hasClearButton
-        />
-      )}
+      <FilterInput
+        isDashboardFilter={isDashboardFilter}
+        padding={isDashboardFilter ? "md" : "sm"}
+        borderRadius={isDashboardFilter ? "md" : "sm"}
+        colorScheme={isDashboardFilter ? "transparent" : "admin"}
+        placeholder={placeholder}
+        value={filter}
+        onChange={setFilter}
+        onKeyDown={handleKeyDown}
+        hasClearButton
+      />
 
       {shouldShowEmptyState && (
         <EmptyStateContainer>

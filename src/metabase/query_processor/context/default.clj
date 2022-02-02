@@ -42,13 +42,13 @@
        (vswap! rows conj row)
        result))))
 
-(defn- default-reducedf [metadata reduced-result context]
+(defn- default-reducedf [_metadata reduced-result context]
   (context/resultf reduced-result context))
 
 (defn default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
   function inside the custom impl instead of attempting to duplicate the logic. See
-  `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
+  [[metabase.query-processor.reducible-test/write-rows-to-file-test]] for an example of a custom implementation."
   [rff context metadata reducible-rows]
   {:pre [(fn? rff)]}
   ;; TODO -- how to pass updated metadata to reducedf?
@@ -92,11 +92,6 @@
                        :type   error-type/timed-out})
                     context)))
 
-(defn- identity1
-  "Util fn. Takes 2 args and returns the first arg as-is."
-  [x _]
-  x)
-
 (defn default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
@@ -107,8 +102,6 @@
    :executef      driver/execute-reducible-query
    :reducef       default-reducef
    :reducedf      default-reducedf
-   :preprocessedf identity1
-   :nativef       identity1
    :timeoutf      default-timeoutf
    :resultf       default-resultf
    :canceled-chan (a/promise-chan)

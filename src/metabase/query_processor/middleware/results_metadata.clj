@@ -9,7 +9,6 @@
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -20,8 +19,8 @@
 ;;    metadata as part of the query context so we can compare for changes
 ;;
 ;; 2. Consider whether the actual save operation should be async as with
-;;    `metabase.query-processor.middleware.process-userland-query`
-(defn- record-metadata! [{{:keys [card-id nested?]} :info} metadata]
+;;    [[metabase.query-processor.middleware.process-userland-query]]
+(defn- record-metadata! [{{:keys [card-id]} :info, {:keys [source-card-id]} :query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
@@ -29,7 +28,7 @@
                driver/*driver*
                (driver/supports? driver/*driver* :nested-queries)
                card-id
-               (not nested?))
+               (not source-card-id))
       (db/update! 'Card card-id :result_metadata metadata))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
@@ -67,16 +66,14 @@
        (rf (cond-> result
              (map? result)
              (update :data             assoc
-                     :results_metadata {:columns  metadata}
+                     :results_metadata {:columns metadata}
                      :insights         insights)))))))
 
 (defn record-and-return-metadata!
-  "Middleware that records metadata about the columns returned when running the query."
-  [qp]
-  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} rff context]
-    (if skip-results-metadata?
-      (qp query rff context)
-      (let [record! (partial record-metadata! query)
-            rff' (fn [metadata]
-                   (insights-xform metadata record! (rff metadata)))]
-        (qp query rff' context)))))
+  "Post-processing middleware that records metadata about the columns returned when running the query."
+  [{{:keys [skip-results-metadata?]} :middleware, :as query} rff]
+  (if skip-results-metadata?
+    rff
+    (let [record! (partial record-metadata! query)]
+      (fn record-and-return-metadata!-rff* [metadata]
+        (insights-xform metadata record! (rff metadata))))))

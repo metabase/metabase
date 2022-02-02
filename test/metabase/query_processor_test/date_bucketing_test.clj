@@ -1090,7 +1090,7 @@
                 "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), now()) AS date)"
                 ")")
            (:query
-            (qp/query->native
+            (qp/compile
              (mt/mbql-query checkins
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
@@ -1109,7 +1109,7 @@
                   "LIMIT 1048575")
              (sql.qp-test-util/pretty-sql
               (:query
-               (qp/query->native
+               (qp/compile
                 (mt/mbql-query checkins
                   {:filter   [:time-interval $date -4 :month]
                    :breakout [[:datetime-field $date :day]]})))))))))

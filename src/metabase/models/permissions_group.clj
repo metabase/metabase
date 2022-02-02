@@ -34,7 +34,7 @@
                    (log/info (u/format-color 'green (trs "Created magic permissions group ''{0}'' (ID = {1})"
                                                          group-name (:id <>))))))))]
     (fn []
-      (f (mdb.connection/db-type) (mdb.connection/jdbc-spec)))))
+      (f (mdb.connection/db-type) (mdb.connection/data-source)))))
 
 (def ^{:const true
        :doc   "The name of the \"All Users\" magic group."

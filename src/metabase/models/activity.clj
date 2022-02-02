@@ -36,7 +36,7 @@
 
 ;; For every other activity topic we'll look at the read/write perms for the object the activty is about (e.g. a Card
 ;; or Dashboard). For all other activity feed items with no model everyone can read/write
-(defmethod can-? :default [perms-check-fn {model :model, model-id :model_id, :as activity}]
+(defmethod can-? :default [perms-check-fn {model :model, model-id :model_id}]
   (if-let [object (when-let [entity (model->entity model)]
                     (entity model-id))]
     (perms-check-fn object)

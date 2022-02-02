@@ -1,19 +1,13 @@
 import React, { ComponentType, ReactNode, useState } from "react";
 import { jt, t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
 import SlackBadge from "../SlackBadge";
-import SlackAppsButton from "../SlackAppsButton";
-import { useCopyTooltip } from "../../hooks/use-copy-tooltip";
+import SlackAppsLink from "../SlackAppsLink";
 import {
   HeaderMessage,
   HeaderRoot,
   HeaderTitle,
   SectionBody,
-  SectionCode,
-  SectionCodeButton,
-  SectionCodeContent,
   SectionHeader,
-  SectionLink,
   SectionMessage,
   SectionRoot,
   SectionTitle,
@@ -37,8 +31,7 @@ const SlackSetup = ({
   return (
     <SetupRoot>
       <SetupHeader isBot={isBot} isValid={isValid} />
-      <CreateAppSection />
-      <CopyManifestSection manifest={manifest} />
+      <CreateAppSection manifest={manifest} />
       <ActivateAppSection Form={Form} />
     </SetupRoot>
   );
@@ -94,54 +87,20 @@ const SetupSection = ({ title, children }: SetupSectionProps): JSX.Element => {
   );
 };
 
-const CreateAppSection = (): JSX.Element => {
-  return (
-    <SetupSection title={t`1. Create your Slack App`}>
-      <SectionMessage>
-        {t`To create your Metabase integration on Slack you’ll need to set up some things.`}{" "}
-        {jt`First, go to ${(
-          <SectionLink
-            key="message"
-            href="https://api.slack.com/apps"
-          >{t`Slack Apps`}</SectionLink>
-        )}, hit “${(
-          <strong key="app">{t`Create New App`}</strong>
-        )}” and pick “${(
-          <strong key="manifest">{t`From an app manifest.`}</strong>
-        )}”`}
-      </SectionMessage>
-      <SlackAppsButton />
-    </SetupSection>
-  );
-};
-
-export interface CopyManifestSectionProps {
+interface CreateAppSectionProps {
   manifest?: string;
 }
 
-const CopyManifestSection = ({
-  manifest,
-}: CopyManifestSectionProps): JSX.Element => {
-  const { element, handleClick } = useCopyTooltip(manifest);
-
+const CreateAppSection = ({ manifest }: CreateAppSectionProps): JSX.Element => {
   return (
-    <SetupSection title={t`2. Copy the Metabase manifest`}>
+    <SetupSection title={t`1. Create your Slack App`}>
       <SectionMessage>
-        {jt`Select your workspace and then copy our ${(
-          <strong key="manifest">{t`Slack Manifest`}</strong>
-        )} below and paste it in to create the app. In the following screen, click “${(
+        {t`Click the button below to begin creating your Slack App using the Metabase configuration.`}{" "}
+        {jt`Once created, click “${(
           <strong key="install">{t`Install to workspace`}</strong>
-        )}” and authorize it.`}
+        )}” to authorize it.`}
       </SectionMessage>
-      <SectionCode>
-        <SectionCodeContent>{manifest}</SectionCodeContent>
-        <SectionCodeButton small onClick={handleClick}>
-          {t`Copy`}
-        </SectionCodeButton>
-        {element && (
-          <Tooltip tooltip={t`Copied!`} reference={element} isOpen={true} />
-        )}
-      </SectionCode>
+      <SlackAppsLink manifest={manifest} />
     </SetupSection>
   );
 };
@@ -153,7 +112,7 @@ interface ActivateAppSectionProps {
 const ActivateAppSection = ({ Form }: ActivateAppSectionProps): JSX.Element => {
   return (
     <SetupSection
-      title={t`3. Activate the OAuth Token and create a new slack channel`}
+      title={t`2. Activate the OAuth Token and create a new slack channel`}
     >
       <SectionMessage>
         {jt`Click on "${(

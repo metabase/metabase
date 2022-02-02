@@ -10,7 +10,7 @@ import Card from "metabase/components/Card";
 import EntityItem from "metabase/components/EntityItem";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";

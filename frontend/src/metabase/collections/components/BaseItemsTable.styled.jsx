@@ -5,7 +5,7 @@ import { breakpointMaxMedium } from "metabase/styled-components/theme/media-quer
 
 import EntityItem from "metabase/components/EntityItem";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;

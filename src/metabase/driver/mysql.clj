@@ -348,7 +348,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (dbspec/mysql details)
+       (-> (dbspec/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 

@@ -72,8 +72,8 @@
                 (pr-str sql-args))
     (try
       (execute-select-probe-query driver conn sql-args)
-      (do (log/trace "SELECT privileges confirmed")
-          true)
+      (log/trace "SELECT privileges confirmed")
+      true
       (catch Throwable _
         (log/trace "No SELECT privileges")
         false))))
@@ -134,7 +134,7 @@
         (int? db-or-id-or-spec)
         (Database db-or-id-or-spec)
 
-        true
+        :else
         nil))
 
 (defn describe-database

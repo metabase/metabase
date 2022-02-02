@@ -144,25 +144,6 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should give everyone view permissions", () => {});
-
-    it("should show filters by list for Category without a search box", () => {
-      cy.visit("/question/4");
-
-      cy.findAllByText("CATEGORY")
-        .first()
-        .click();
-      popover().within(() => {
-        cy.findByText("Doohickey");
-        cy.findByText("Gizmo");
-        cy.findByText("Gadget");
-        cy.findByText("Widget");
-
-        cy.findByPlaceholderText("Search the list").should("not.exist");
-        cy.findByPlaceholderText("Search by Category").should("not.exist");
-      });
-    });
-
     it("should show filters by search for Vendor", () => {
       cy.visit("/question/4");
 

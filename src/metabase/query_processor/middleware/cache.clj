@@ -8,8 +8,8 @@
   For all other queries, caching is skipped.
 
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
-  `MB_QP_CACHE_BACKEND`. Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about
-  how the cache backends themselves."
+  `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
+  about how the cache backends themselves."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [java-time :as t]
@@ -106,6 +106,7 @@
        (a/>!! in-chan row)
        (vreset! has-rows? true)
        (rf acc row)))))
+
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 

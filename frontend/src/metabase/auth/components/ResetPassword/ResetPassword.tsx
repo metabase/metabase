@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import Settings from "metabase/lib/settings";
 import Users from "metabase/entities/users";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import AuthLayout from "../../containers/AuthLayout";
 import { ResetPasswordData } from "../../types";
 import {
@@ -117,7 +117,7 @@ const ResetPasswordSuccess = (): JSX.Element => {
         <InfoIcon name="check" />
       </InfoIconContainer>
       <InfoTitle>{t`All done!`}</InfoTitle>
-      <InfoMessage>{t`Awesome, you've successfully updated your password.`}</InfoMessage>
+      <InfoMessage>{t`You've updated your password.`}</InfoMessage>
       <Link
         className="Button Button--primary"
         to={"/"}

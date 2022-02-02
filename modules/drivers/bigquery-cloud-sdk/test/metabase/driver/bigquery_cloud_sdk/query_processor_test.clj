@@ -813,11 +813,11 @@
                 :table-name "orders"
                 :query      (str "SELECT APPROX_QUANTILES(`v3_sample_dataset.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
                                  " FROM `v3_sample_dataset.orders` LIMIT 10")}
-              (qp/query->native (mt/mbql-query orders
-                                  {:aggregation [[:aggregation-options
-                                                  [:percentile $orders.quantity 0.5]
-                                                  {:name "CE", :display-name "CE"}]]
-                                   :limit       10}))))))))
+               (qp/compile (mt/mbql-query orders
+                             {:aggregation [[:aggregation-options
+                                             [:percentile $orders.quantity 0.5]
+                                             {:name "CE", :display-name "CE"}]]
+                              :limit       10}))))))))
 
 
 (deftest no-qualify-breakout-field-name-with-subquery-test

@@ -57,11 +57,10 @@ export const getQueryResults = createSelector(
     }
 
     const [result] = queryResults;
-    const { cols, results_metadata } = result.data;
-
-    if (!results_metadata) {
+    if (result.error || !result?.data?.results_metadata) {
       return queryResults;
     }
+    const { cols, results_metadata } = result.data;
 
     function applyMetadataDiff(column) {
       const columnDiff = metadataDiff[column.field_ref];
@@ -230,10 +229,16 @@ export const getQuestion = createSelector(
       return question.lockDisplay();
     }
 
-    // When opening a dataset, we swap it's `dataset_query`
-    // with clean query using the dataset as a source table,
+    // When opening a model, we swap it's `dataset_query`
+    // with clean query using the model as a source table,
     // to enable "simple mode" like features
-    return question.isDataset() ? question.composeDataset() : question;
+    // This has to be skipped for users without data permissions
+    // as it would be blocked by the backend as an ad-hoc query
+    // see https://github.com/metabase/metabase/issues/20042
+    const hasDataPermission = !!question.database();
+    return question.isDataset() && hasDataPermission
+      ? question.composeDataset()
+      : question;
   },
 );
 

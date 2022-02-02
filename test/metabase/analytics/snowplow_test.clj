@@ -79,6 +79,13 @@
                      :token-features (public-settings/token-features)}}
              (:context (first @*snowplow-collector*)))))))
 
+(deftest ip-address-override-test
+  (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"
+    (with-fake-snowplow-collector
+      (snowplow/track-event! ::snowplow/dashboard-created 1 {:dashboard-id 1})
+      (is (partial= {:uid "1", :ip "127.0.0.1"}
+                    (:subject (first @*snowplow-collector*)))))))
+
 (deftest track-event-test
   (with-fake-snowplow-collector
     (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,

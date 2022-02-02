@@ -35,7 +35,7 @@
 
 (defn default-revert-to-revision!
   "Default implementation of `revert-to-revision!` which simply does an update using the values from `serialized-instance`."
-  [entity id user-id serialized-instance]
+  [entity id _user-id serialized-instance]
   (db/update! entity id, serialized-instance))
 
 (defn default-diff-map

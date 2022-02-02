@@ -131,7 +131,7 @@
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
-  [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
+  [query :- mbql.s/MBQLQuery]
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references-and-deduplicate))
       merge-joins-fields))
@@ -161,12 +161,8 @@
     source-query
     (update :source-query resolve-joins-in-mbql-query-all-levels)))
 
-(defn- resolve-joins* [{inner-query :query, :as outer-query}]
-  (cond-> outer-query
-    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))
-
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
-  [qp]
-  (fn [query rff context]
-    (qp (resolve-joins* query) rff context)))
+  [{inner-query :query, :as outer-query}]
+  (cond-> outer-query
+    inner-query (update :query resolve-joins-in-mbql-query-all-levels)))

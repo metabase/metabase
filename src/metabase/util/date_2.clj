@@ -515,13 +515,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Mainly for REPL usage. Have various temporal types print as a `java-time` function call you can use
-(doseq [[klass f-symb] {Instant        't/instant
-                        LocalDate      't/local-date
-                        LocalDateTime  't/local-date-time
-                        LocalTime      't/local-time
-                        OffsetDateTime 't/offset-date-time
-                        OffsetTime     't/offset-time
-                        ZonedDateTime  't/zoned-date-time}]
+(doseq [[klass _f-symb] {Instant        't/instant
+                         LocalDate      't/local-date
+                         LocalDateTime  't/local-date-time
+                         LocalTime      't/local-time
+                         OffsetDateTime 't/offset-date-time
+                         OffsetTime     't/offset-time
+                         ZonedDateTime  't/zoned-date-time}]
   (defmethod print-method klass
     [t writer]
     ((get-method print-dup klass) t writer))

@@ -35,8 +35,7 @@ export const EngineCardRoot = styled.li<EngineCardRootProps>`
   border-radius: 0.375rem;
   background-color: ${color("white")};
   cursor: pointer;
-  outline: ${props =>
-    props.isActive ? `2px solid ${color("brand-light")}` : ""};
+  outline: ${props => (props.isActive ? `2px solid ${color("focus")}` : "")};
 
   &:hover {
     border-color: ${color("brand")};
@@ -83,42 +82,12 @@ export const EngineEmptyText = styled.div`
   text-align: center;
 `;
 
-export const EngineButtonRoot = styled.button`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: ${color("white")};
-  width: 100%;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid ${color("brand")};
-  background-color: ${color("brand")};
-  transition: all 200ms linear;
-  transition-property: color, background-color;
-  cursor: pointer;
+export const EngineButtonRoot = styled(Button)`
+  padding: 0.8125rem 0.75rem;
 
-  &:hover {
-    color: ${color("white")};
-    background-color: ${lighten("brand", 0.12)};
+  ${Button.Content} {
+    justify-content: space-between;
   }
-
-  &:focus {
-    outline: 2px solid ${color("brand-light")};
-  }
-
-  &:focus:not(:focus-visible) {
-    outline: none;
-  }
-`;
-
-export const EngineButtonTitle = styled.span`
-  flex: 0 1 auto;
-  font-size: 1rem;
-  font-weight: bold;
-`;
-
-export const EngineButtonIcon = styled(Icon)`
-  cursor: pointer;
 `;
 
 export const EngineToggleRoot = styled(Button)`

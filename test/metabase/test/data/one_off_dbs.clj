@@ -22,7 +22,7 @@
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
     (tt/with-temp Database [db {:engine :h2, :details details}]
       (data/with-db db
-        (jdbc/with-db-connection [conn (db.spec/h2 details)]
+        (jdbc/with-db-connection [conn (db.spec/spec :h2 details)]
           (binding [*conn* conn]
             (f)))))))
 

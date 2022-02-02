@@ -43,8 +43,7 @@
    (s/optional-key :field_name)                su/NonBlankString       ; Name of the Field being remapped
    (s/optional-key :human_readable_field_name) su/NonBlankString})     ; Name of the FK field to remap values to
 
-
-;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
+;;;; Pre-processing
 
 (s/defn ^:private fields->field-id->remapping-dimension :- (s/maybe {su/IntGreaterThanZero ExternalRemappingDimension})
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
@@ -131,8 +130,21 @@
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
+(defn add-remapped-columns
+  "Pre-processing middleware. For columns that have remappings to other columns (FK remaps), rewrite the query to
+  include the extra column. Add `::external-remaps` information about which columns were remapped so [[remap-results]]
+  can do appropriate results transformations in post-processing."
+  [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
+  (if (or disable-remaps?
+          (= query-type :native))
+    query
+    (let [[remappings query] (add-fk-remaps query)]
+      (cond-> query
+        ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
+        (seq remappings) (assoc ::external-remaps (mapv (partial into {}) remappings))))))
 
-;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
+
+;;;; Post-processing
 
 (s/defn ^:private add-remapping-info :- [su/Map]
   "Add `:display_name`, `:remapped_to`, and `:remapped_from` keys to columns for the results, needed by the frontend.
@@ -167,15 +179,15 @@
          {:remapped_to remapped-to-name})
        ;; if the pre-processing remapping Dimension info contains an entry where this Field's ID is `:field_id`, add
        ;; an entry noting the name of the Field it gets remapped to
-       (when-let [{remapped-to-id :human_readable_field_id
+       (when-let [{remapped-to-id   :human_readable_field_id
                    remapped-to-name :human_readable_field_name}
                   (id->remapped-to-dimension (or id column-name))]
          {:remapped_to (:name (get-first-key column-id->column remapped-to-id remapped-to-name))})
        ;; if the pre-processing remapping Dimension info contains an entry where this Field's ID is
        ;; `:human_readable_field_id`, add an entry noting the name of the Field it gets remapped from, and use the
        ;; `:display_name` of the Dimension
-       (when-let [{dimension-name :name
-                   remapped-from-id :field_id
+       (when-let [{dimension-name     :name
+                   remapped-from-id   :field_id
                    remapped-from-name :field_name} (id->remapped-from-dimension (or id column-name))]
          {:display_name  dimension-name
           :remapped_from (:name (get-first-key column-id->column remapped-from-id remapped-from-name))})))))
@@ -195,7 +207,7 @@
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
   with the values returned from the database for the given `col`."
-  [{:keys [base_type] :as col} values]
+  [{:keys [base_type]} values]
   (let [transform (condp #(isa? %2 %1) base_type
                     :type/Decimal    bigdec
                     :type/Float      double
@@ -295,20 +307,13 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results-rff [remapping-dimensions rff]
-  (fn [metadata]
-    (let [internal-cols-info (internal-columns-info (:cols metadata))
-          metadata           (add-remapped-cols metadata remapping-dimensions internal-cols-info)]
-      (remap-results-xform internal-cols-info (rff metadata)))))
-
-(defn add-remapping
-  "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
-  `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
-  `remap-results` to munge the results after query execution."
-  [qp]
-  (fn [{query-type :type, :as query, {:keys [disable-remaps?], :or {disable-remaps? false}} :middleware} rff context]
-    (if (or (= query-type :native)
-            disable-remaps?)
-      (qp query rff context)
-      (let [[remapping-dimensions query'] (add-fk-remaps query)]
-        (qp query' (remap-results-rff remapping-dimensions rff) context)))))
+(defn remap-results
+  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
+  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
+  (if disable-remaps?
+    rff
+    (fn remap-results-rff* [metadata]
+      (let [internal-cols-info (internal-columns-info (:cols metadata))
+            metadata           (add-remapped-cols metadata external-remaps internal-cols-info)]
+        (remap-results-xform internal-cols-info (rff metadata))))))
