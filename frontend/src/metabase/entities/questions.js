@@ -28,6 +28,9 @@ const Questions = createEntity({
   },
 
   objectActions: {
+    // permanently deleting a card is deprecated
+    delete: null,
+
     setArchived: ({ id, model }, archived, opts) =>
       Questions.actions.update(
         { id },
