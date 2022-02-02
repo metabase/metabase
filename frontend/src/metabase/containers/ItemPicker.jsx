@@ -5,7 +5,6 @@ import cx from "classnames";
 
 import { t } from "ttag";
 import _ from "underscore";
-import { Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -20,7 +19,12 @@ import EntityListLoader, {
 } from "metabase/entities/containers/EntityListLoader";
 
 import Collections from "metabase/entities/collections";
-import { ItemContent, ItemRoot } from "./ItemPicker.styled";
+import {
+  ItemContent,
+  ItemPickerHeader,
+  ItemPickerList,
+  ItemRoot,
+} from "./ItemPicker.styled";
 
 const getCollectionIconColor = () => color("text-light");
 
@@ -155,9 +159,7 @@ export default class ItemPicker extends React.Component {
       <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
         <div style={style} className={cx(className, "scroll-y")}>
           {searchMode ? (
-            <Box
-              pb={1}
-              mb={2}
+            <ItemPickerHeader
               className="border-bottom flex align-center"
               data-testid="item-picker-header"
             >
@@ -179,11 +181,9 @@ export default class ItemPicker extends React.Component {
                   this.setState({ searchMode: null, searchString: null })
                 }
               />
-            </Box>
+            </ItemPickerHeader>
           ) : (
-            <Box
-              pb={1}
-              mb={2}
+            <ItemPickerHeader
               className="border-bottom flex align-center"
               data-testid="item-picker-header"
             >
@@ -195,9 +195,9 @@ export default class ItemPicker extends React.Component {
                   onClick={() => this.setState({ searchMode: true })}
                 />
               )}
-            </Box>
+            </ItemPickerHeader>
           )}
-          <Box className="scroll-y" data-testid="item-picker-list">
+          <ItemPickerList data-testid="item-picker-list">
             {!searchString
               ? allCollections.map(collection => {
                   const hasChildren =
@@ -281,7 +281,7 @@ export default class ItemPicker extends React.Component {
                 )}
               </EntityListLoader>
             )}
-          </Box>
+          </ItemPickerList>
         </div>
       </LoadingAndErrorWrapper>
     );
