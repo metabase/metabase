@@ -232,7 +232,13 @@ export const getQuestion = createSelector(
     // When opening a model, we swap it's `dataset_query`
     // with clean query using the model as a source table,
     // to enable "simple mode" like features
-    return question.isDataset() ? question.composeDataset() : question;
+    // This has to be skipped for users without data permissions
+    // as it would be blocked by the backend as an ad-hoc query
+    // see https://github.com/metabase/metabase/issues/20042
+    const hasDataPermission = !!question.database();
+    return question.isDataset() && hasDataPermission
+      ? question.composeDataset()
+      : question;
   },
 );
 
