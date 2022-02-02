@@ -57,11 +57,10 @@ export const getQueryResults = createSelector(
     }
 
     const [result] = queryResults;
-    const { cols, results_metadata } = result.data;
-
-    if (!results_metadata) {
+    if (result.error || !result?.data?.results_metadata) {
       return queryResults;
     }
+    const { cols, results_metadata } = result.data;
 
     function applyMetadataDiff(column) {
       const columnDiff = metadataDiff[column.field_ref];
