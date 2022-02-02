@@ -1433,7 +1433,7 @@ const TablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.map(table => ({
+        items: tables.filter(Boolean).map(table => ({
           name: table.displayName(),
           table: table,
           database: selectedDatabase,
