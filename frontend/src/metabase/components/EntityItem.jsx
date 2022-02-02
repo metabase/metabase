@@ -152,17 +152,6 @@ function EntityItemMenu({
   );
 }
 
-const ENTITY_ITEM_SPACING = {
-  list: {
-    px: 2,
-    py: 2,
-  },
-  small: {
-    px: 2,
-    py: 1,
-  },
-};
-
 const EntityItem = ({
   analyticsContext,
   name,
@@ -182,15 +171,14 @@ const EntityItem = ({
   loading,
   disabled,
 }) => {
-  const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
   return (
     <EntityItemWrapper
-      {...spacing}
       className={cx("hover-parent hover--visibility", {
         "bg-light-hover": variant === "list",
       })}
+      variant={variant}
       disabled={disabled}
     >
       <EntityIconCheckBox

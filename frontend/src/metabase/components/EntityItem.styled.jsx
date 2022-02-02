@@ -1,5 +1,4 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
 
 import { color, darken } from "metabase/lib/colors";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
@@ -20,6 +19,17 @@ function getForeground(model, disabled) {
     : color("brand");
 }
 
+const getItemPadding = variant => {
+  switch (variant) {
+    case "list":
+      return "1rem";
+    case "small":
+      return "0.5rem 1rem";
+    default:
+      return "1rem 0";
+  }
+};
+
 export const EntityIconWrapper = styled(IconButtonWrapper)`
   background-color: transparent;
   padding: 12px;
@@ -31,8 +41,10 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
       : getForeground(props.disabled)};
 `;
 
-export const EntityItemWrapper = styled(Flex)`
+export const EntityItemWrapper = styled.div`
+  display: flex;
   align-items: center;
+  padding: ${props => getItemPadding(props.variant)}
   color: ${props =>
     props.disabled ? color("text-medium") : color("text-dark")};
 
@@ -48,7 +60,9 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
   color: ${color("brand")};
 `;
 
-export const EntityMenuContainer = styled(Flex)`
+export const EntityMenuContainer = styled.div`
+  display: flex;
+  align-items: center;
   color: ${color("text-medium")};
 `;
 
