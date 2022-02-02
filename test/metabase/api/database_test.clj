@@ -1198,3 +1198,19 @@
                                              :get
                                              200
                                              "database/db-ids-with-deprecated-drivers"))))))))
+
+(deftest secret-file-paths-returned-by-api-test
+  (mt/with-driver :secret-test-driver
+    (testing "File path values for secrets are returned as plaintext in the API (#20030)"
+      (mt/with-temp Database [database {:engine  :secret-test-driver
+                                        :name    "Test secret DB with password path"
+                                        :details {:host           "localhost"
+                                                  :password-path "/path/to/password.txt"}}]
+        (is (= {:password-source "file-path"
+                :password-value  "/path/to/password.txt"}
+               (as-> (u/the-id database) d
+                     (format "database/%d" d)
+                     (mt/user-http-request :crowberto :get 200 d)
+                     (:details d)
+                     (select-keys d [:password-source :password-value]))))))))
+

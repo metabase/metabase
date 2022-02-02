@@ -20,6 +20,7 @@
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
@@ -276,6 +277,7 @@
   {include (s/maybe (s/enum "tables" "tables.fields"))}
   (-> (api/read-check Database id)
       add-expanded-schedules
+      secret/admin-expand-db-details-secret-values
       (get-database-hydrate-include include)))
 
 
