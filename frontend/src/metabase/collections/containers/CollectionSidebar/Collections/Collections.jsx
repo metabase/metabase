@@ -1,7 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 import CollectionsList from "./CollectionsList/CollectionsList";
-import { Box } from "grid-styled";
 
 import {
   nonPersonalOrArchivedCollection,
@@ -50,7 +49,7 @@ export default function Collections({
         currentCollection={collectionId}
       />
 
-      <Box>
+      <div>
         <CollectionsList
           handleToggleMobileSidebar={handleToggleMobileSidebar}
           openCollections={openCollections}
@@ -60,7 +59,7 @@ export default function Collections({
           filter={filterPersonalCollections}
           currentCollection={collectionId}
         />
-      </Box>
+      </div>
     </Container>
   );
 }
