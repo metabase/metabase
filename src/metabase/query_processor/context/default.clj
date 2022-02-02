@@ -92,7 +92,7 @@
                        :type   error-type/timed-out})
                     context)))
 
-(defn- identity1
+(defn- ^:deprecated identity1
   "Util fn. Takes 2 args and returns the first arg as-is."
   [x _]
   x)
@@ -107,7 +107,6 @@
    :executef      driver/execute-reducible-query
    :reducef       default-reducef
    :reducedf      default-reducedf
-   :preprocessedf identity1
    :nativef       identity1
    :timeoutf      default-timeoutf
    :resultf       default-resultf

@@ -38,18 +38,21 @@
   signature:
 
     (qp query rff context)"
-  [middleware]
-  (reduce
-   (fn [qp middleware]
-     (when (var? middleware)
-       (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
-     (if (some? middleware)
-       (middleware qp)
-       qp))
-   pivot
-   middleware))
+  ([middleware]
+   (combine-middleware middleware pivot))
 
-(defn quit
+  ([middleware pivot-fn]
+   (reduce
+    (fn [qp middleware]
+      (when (var? middleware)
+        (assert (not (:private (meta middleware))) (format "%s is private" (pr-str middleware))))
+      (if (some? middleware)
+        (middleware qp)
+        qp))
+    pivot-fn
+    middleware)))
+
+(defn ^:deprecated quit
   "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
   Similar in concept to using `reduced` to stip reduction early.
 
@@ -58,12 +61,12 @@
   (log/trace "Quitting query processing early.")
   (ex-info "Quit early!" {::quit-result result}))
 
-(defn quit-result
+(defn ^:deprecated quit-result
   "If `e` is an Exception created by `quit`, get the result; otherwise, return `nil`,"
   [e]
   (::quit-result (ex-data e)))
 
-(defn- quittable-out-chan
+(defn- ^:deprecated quittable-out-chan
   "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a [[quit-result]] automatically."
   [out-chan]
   (let [out-chan* (a/promise-chan (map (fn [result]
