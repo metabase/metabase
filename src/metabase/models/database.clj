@@ -1,7 +1,6 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
-            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]

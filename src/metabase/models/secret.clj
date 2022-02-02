@@ -5,13 +5,13 @@
             [java-time :as t]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
+            [metabase.driver.util :as driver.u]
             [metabase.models.interface :as i]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]
-            [toucan.models :as models]
-            [metabase.driver.util :as driver.u])
+            [toucan.models :as models])
   (:import java.io.File
            java.nio.charset.StandardCharsets))
 
