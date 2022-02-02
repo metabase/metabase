@@ -181,22 +181,30 @@
   "Decimal and floating point types for fingerprinting purposes (to be parsed via BigDecimal)"
   #{"NUMERIC" "DECIMAL" "BIGNUMERIC" "BIGDEIMAL" "FLOAT" "FLOAT64"})
 
-(defn- FieldValueList->fingerprint-structure [fields ^FieldValueList values]
-  (map-indexed (fn [idx ^FieldValue fv]
-                 (let [{database-type :database_type} (nth fields idx)
-                       v                              (.getValue fv)]
+(defn- fields->parser-fns
+  "For the given `fields` (instances of the [[models/Field]]), return a sequence of parser functions that will parse
+  a String value from the [[FieldValue]] BigQuery API.  These are returned in the same order as the given `fields`
+  (values from a [[FieldValueList]], which came from a `list` BigQuery operation, must be parsed in the same order)."
+  [fields]
+  (mapv (fn [{database-type :database_type}]
+          (condp contains? (some-> database-type str/upper-case)
+            #{"TIMESTAMP"} (fn [^String v]
+                             (bq-ts-str->instant v)) ; convert from timestamp string to Instant
+            int-fingerprint-types (fn [^String v]
+                                    (java.math.BigInteger. v)) ; convert to BigInteger
+            dec-fingerprint-types (fn [^String v]
+                                    (java.math.BigDecimal. v)) ; convert to BigDecimal
+            identity)) ; otherwise, return value unchanged
+        fields))
+
+(defn- FieldValueList->fingerprint-structure [parser-fns ^FieldValueList values]
+  (map-indexed (fn [^Integer idx ^FieldValue fv]
+                 (let [parser-fn (nth parser-fns idx)
+                       v  (.getValue fv)]
                       (if (string? v)
-                        (condp contains? (some-> database-type str/upper-case)
-                          #{"TIMESTAMP"} (bq-ts-str->instant v)
-                          int-fingerprint-types (java.math.BigInteger. ^String v)
-                          dec-fingerprint-types (java.math.BigDecimal. ^String v)
-                          v)
-                        v)))
-               ;; the list operation will return *all* field values for each row, in the database field order
-               ;; so, map over the requested fields and fetch only those values at each respective :database_position
-               (map (fn [{^Integer database-pos :database_position}]
-                      (.get values database-pos))
-                    fields)))
+                        (parser-fn v)
+                        (str v))))
+               values))
 
 ;; Override the table-rows-sample multimethod for :bigquery-cloud-sdk, to use a different mechanism for sampling
 ;; table rows (the list operations, rather than a regular query), purely as a cost control measure.  For certain types
@@ -217,9 +225,10 @@
                       table-name)
           ((get-method @#'sync.f/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (let [^TableResult rows (.list bq-tbl (u/varargs BigQuery$TableDataListOption))
-            num-rows          metadata-queries/max-sample-rows]
+            num-rows          metadata-queries/max-sample-rows
+            parser-fns        (fields->parser-fns fields)]
         (transduce (comp (take num-rows)
-                         (map (partial FieldValueList->fingerprint-structure fields)))
+                         (map (partial FieldValueList->fingerprint-structure parser-fns)))
                    (rff nil) ; nil param is for JDBC ResultSet metadata, which doesn't apply here
                    (seq (.iterateAll rows)))))))
 
