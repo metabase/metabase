@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
@@ -17,6 +16,7 @@ import Collection, {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
+import { CardContent, ListHeader, ListRoot } from "./UserCollectionList.styled";
 
 function mapStateToProps(state) {
   return {
@@ -25,19 +25,19 @@ function mapStateToProps(state) {
 }
 
 const UserCollectionList = ({ collectionsById }) => (
-  <Box px={4}>
-    <Box py={2}>
+  <ListRoot>
+    <ListHeader>
       <BrowserCrumbs
         crumbs={[
           { title: ROOT_COLLECTION.name, to: Urls.collection({ id: "root" }) },
           { title: PERSONAL_COLLECTIONS.name },
         ]}
       />
-    </Box>
+    </ListHeader>
     <User.ListLoader>
       {({ list }) => {
         return (
-          <Box>
+          <div>
             <Grid>
               {// map through all users that have logged in at least once
               // which gives them a personal collection ID
@@ -51,7 +51,7 @@ const UserCollectionList = ({ collectionsById }) => (
                         )}
                       >
                         <Card p={2} hoverable>
-                          <Flex align="center">
+                          <CardContent>
                             <Icon
                               name="person"
                               mr={1}
@@ -59,18 +59,18 @@ const UserCollectionList = ({ collectionsById }) => (
                               size={18}
                             />
                             <h3>{user.common_name}</h3>
-                          </Flex>
+                          </CardContent>
                         </Card>
                       </Link>
                     </GridItem>
                   ),
               )}
             </Grid>
-          </Box>
+          </div>
         );
       }}
     </User.ListLoader>
-  </Box>
+  </ListRoot>
 );
 
 export default Collection.loadList()(
