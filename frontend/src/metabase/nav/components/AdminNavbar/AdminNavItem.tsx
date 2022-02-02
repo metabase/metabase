@@ -1,6 +1,6 @@
 import React from "react";
 import cx from "classnames";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { AdminNavLink } from "./AdminNavItem.styled";
 
 interface AdminNavItem {

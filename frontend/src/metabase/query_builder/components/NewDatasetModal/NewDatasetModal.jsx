@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 
 import {

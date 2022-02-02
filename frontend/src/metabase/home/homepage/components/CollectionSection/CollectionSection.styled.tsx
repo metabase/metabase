@@ -1,7 +1,7 @@
-import { Link } from "react-router";
 import styled from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Link from "metabase/core/components/Link";
 
 export const CollectionContent = styled.div`
   padding: 1rem;

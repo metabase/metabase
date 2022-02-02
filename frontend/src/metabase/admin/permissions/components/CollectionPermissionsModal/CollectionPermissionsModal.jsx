@@ -13,7 +13,7 @@ import { isPersonalCollectionChild } from "metabase/collections/utils";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Groups from "metabase/entities/groups";
 
 import { PermissionsTable } from "../PermissionsTable";

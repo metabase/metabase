@@ -15,7 +15,7 @@ import Button from "metabase/core/components/Button";
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
 import Filter from "metabase/query_builder/components/Filter";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
 import { Dashboard } from "metabase/dashboard/containers/Dashboard";
