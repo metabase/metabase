@@ -60,3 +60,10 @@ export const PinButton = forwardRefToInnerRef(styled(Button)`
     color: ${color("brand")};
   }
 `);
+
+export const EntityItemActions = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: 0.5rem;
+`;

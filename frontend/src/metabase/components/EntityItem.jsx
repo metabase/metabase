@@ -2,7 +2,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
@@ -14,6 +13,7 @@ import { isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
+  EntityItemActions,
   EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
@@ -207,12 +207,12 @@ const EntityItem = ({
         }}
       />
 
-      <Box className="overflow-hidden">
+      <div className="overflow-hidden">
         <EntityItemName name={name} />
-        <Box>{extraInfo && extraInfo}</Box>
-      </Box>
+        <div>{extraInfo && extraInfo}</div>
+      </div>
 
-      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
+      <EntityItemActions onClick={e => e.preventDefault()}>
         {buttons}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
@@ -224,7 +224,7 @@ const EntityItem = ({
           className="ml1"
           analyticsContext={analyticsContext}
         />
-      </Flex>
+      </EntityItemActions>
     </EntityItemWrapper>
   );
 };
