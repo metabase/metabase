@@ -19,7 +19,6 @@ const ArchivedItem = ({
   color = c("text-light"),
   isAdmin = false,
   onUnarchive,
-  onDelete,
 
   selected,
   onToggleSelected,
@@ -36,7 +35,7 @@ const ArchivedItem = ({
       />
     </IconWrapper>
     {name}
-    {isAdmin && (onUnarchive || onDelete) && (
+    {isAdmin && onUnarchive && (
       <span className="ml-auto mr2">
         {onUnarchive && (
           <Tooltip tooltip={t`Unarchive this ${type}`}>
@@ -44,15 +43,6 @@ const ArchivedItem = ({
               onClick={onUnarchive}
               className="cursor-pointer text-brand-hover hover-child ml4"
               name="unarchive"
-            />
-          </Tooltip>
-        )}
-        {onDelete && (
-          <Tooltip tooltip={t`Delete this ${type}`}>
-            <Icon
-              onClick={onDelete}
-              className="cursor-pointer text-brand-hover hover-child ml4"
-              name="trash"
             />
           </Tooltip>
         )}
