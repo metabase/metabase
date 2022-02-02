@@ -1,8 +1,4 @@
-import {
-  restore,
-  getNotebookStep,
-  runNativeQuery,
-} from "__support__/e2e/cypress";
+import { restore, runNativeQuery } from "__support__/e2e/cypress";
 
 import {
   selectFromDropdown,
@@ -20,54 +16,37 @@ describe("scenarios > models query editor", () => {
 
   it("allows to edit GUI model query", () => {
     cy.request("PUT", "/api/card/1", { dataset: true });
+
     cy.visit("/model/1");
+    cy.wait("@dataset");
+
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("contain", "109.22");
 
     openDetailsSidebar();
     cy.findByText("Edit query definition").click();
 
-    getNotebookStep("data").findByText("Orders");
-    cy.get(".TableInteractive");
-    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
+    cy.findByText("Row limit").click();
+    cy.findByPlaceholderText("Enter a limit").type("2");
 
-    cy.findByTestId("action-buttons")
-      .findByText("Summarize")
-      .click();
-    selectFromDropdown("Count of rows");
-    cy.findByText("Pick a column to group by").click();
-    selectFromDropdown("Created At");
+    cy.get(".RunButton").click();
+    cy.wait("@dataset");
 
-    cy.get(".RunButton")
-      .should("be.visible")
-      .click();
-
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
-    });
-    cy.get(".TableInteractive-headerCellData").should("have.length", 2);
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("not.contain", "109.22");
 
     cy.button("Save changes").click();
     cy.wait("@updateCard");
 
-    cy.url().should("include", "/model/1");
-    cy.url().should("not.include", "/query");
+    cy.url()
+      .should("include", "/model/1")
+      .and("not.include", "/query");
 
-    cy.visit("/model/1/query");
-    getNotebookStep("summarize").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
-    });
-    cy.get(".TableInteractive").within(() => {
-      cy.findByText("Created At: Month");
-      cy.findByText("Count");
-    });
-
-    cy.button("Cancel").click();
-    cy.url().should("include", "/model/1");
-    cy.url().should("not.include", "/query");
-
-    cy.go("back");
-    cy.url().should("match", /\/model\/[1-9]\d*.*\/query/);
+    cy.get(".cellData")
+      .should("contain", "37.65")
+      .and("not.contain", "109.22");
   });
 
   it("locks display to table", () => {
