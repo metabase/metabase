@@ -11,13 +11,11 @@ import {
 
 describe("scenarios > models query editor", () => {
   beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
-
-  beforeEach(() => {
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("POST", "/api/dataset").as("dataset");
+
+    restore();
+    cy.signInAsAdmin();
   });
 
   it("allows to edit GUI model query", () => {
