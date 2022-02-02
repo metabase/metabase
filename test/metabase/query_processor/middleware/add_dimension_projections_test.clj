@@ -445,3 +445,36 @@
                                       {:display_name "Sender ID [external remap]", :name "NAME", :remapped_from "SENDER_ID"}
                                       {:display_name "Receiver ID [external remap]", :name "NAME_2", :remapped_from "RECEIVER_ID"}]}
                               (#'add-dim-projections/add-remapped-cols metadata remap-info nil)))))))))))
+
+(deftest add-remappings-inside-joins-test
+  (testing "Remappings should work inside joins (#15578)"
+    (mt/dataset sample-dataset
+      (mt/with-column-remappings [orders.product_id products.title]
+        (is (query= (mt/mbql-query products
+                      {:joins  [{:source-query {:source-table $$orders}
+                                 :alias        "Q1"
+                                 :fields       [&Q1.orders.id
+                                                &Q1.orders.product_id
+                                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->title]
+                                 :condition    [:= $id &Q1.orders.product_id]
+                                 :strategy     :left-join}
+                                {:source-table $$products
+                                 :alias        "PRODUCTS__via__PRODUCT_ID"
+                                 :condition    [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.products.id]
+                                 :strategy     :left-join
+                                 :fk-field-id  %orders.product_id}]
+                       :fields [&Q1.orders.id
+                                &Q1.orders.product_id
+                                &PRODUCTS__via__PRODUCT_ID.orders.product_id->products.title]
+                       :limit  2})
+                    (:query
+                     (#'add-dim-projections/add-fk-remaps
+                      (mt/mbql-query products
+                        {:joins  [{:strategy     :left-join
+                                   :source-query {:source-table $$orders}
+                                   :alias        "Q1"
+                                   :condition    [:= $id &Q1.orders.product_id]
+                                   :fields       [&Q1.orders.id
+                                                  &Q1.orders.product_id]}]
+                         :fields [&Q1.orders.id &Q1.orders.product_id]
+                         :limit  2})))))))))

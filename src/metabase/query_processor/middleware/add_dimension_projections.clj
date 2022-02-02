@@ -35,7 +35,9 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+            [toucan.hydrate :refer [hydrate]]
+            [clojure.walk :as walk]
+            [medley.core :as m]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -167,30 +169,18 @@
   {:remaps (s/maybe (su/distinct [ExternalRemappingDimension]))
    :query  mbql.s/Query})
 
-(declare add-fk-remaps)
-
-(s/defn ^:private source-query-remaps :- QueryAndRemaps
-  [{{:keys [source-query]} :query, :as query}]
-  (if (and source-query (not (:native source-query)))
-    ;; Only do lifting if source is MBQL query
-    (let [{source-query-remaps :remaps, source-query :query} (add-fk-remaps (assoc query :query source-query))]
-      {:remaps source-query-remaps
-       :query  (assoc-in query [:query :source-query] (:query source-query))})
-    {:remaps nil, :query query}))
-
-(s/defn ^:private add-fk-remaps :- QueryAndRemaps
-  "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
-  and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
-  [{{:keys [fields order-by breakout]} :query, :as query} :- mbql.s/Query]
-  (let [{source-query-remaps :remaps, query :query} (source-query-remaps query)]
+(defn- add-fk-remaps-one-level
+  [{:keys [fields order-by breakout], {source-query-remaps ::remaps} :source-query, :as query}]
+  (let [query (m/dissoc-in query [:source-query ::remaps])]
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
       (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
             existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
-            ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so we don't
-            ;; add new entries even if the existing Field has some extra info e.g. extra unknown namespaced keys.
+            ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so
+            ;; we don't add new entries even if the existing Field has some extra info e.g. extra unknown namespaced
+            ;; keys.
             existing-normalized-fields-set (into #{} (map mbql.u/remove-namespaced-options) existing-fields)
             new-fields                     (into
                                             existing-fields
@@ -200,13 +190,29 @@
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
             new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)]
         ;; return the Dimensions we are using and the query
-        {:remaps (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])
-         :query  (cond-> query
-                   (seq fields)   (assoc-in [:query :fields] new-fields)
-                   (seq order-by) (assoc-in [:query :order-by] new-order-by)
-                   (seq breakout) (assoc-in [:query :breakout] new-breakout))})
+        (cond-> query
+          (seq fields)   (assoc :fields new-fields)
+          (seq order-by) (assoc :order-by new-order-by)
+          (seq breakout) (assoc :breakout new-breakout)
+          true           (assoc ::remaps (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)]))))
       ;; otherwise return query as-is
-      {:remaps source-query-remaps, :query query})))
+      (assoc query ::remaps source-query-remaps))))
+
+(s/defn ^:private add-fk-remaps :- QueryAndRemaps
+  "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
+  and `breakout` clauses as needed. Returns a pair like `[external-remapping-dimensions updated-query]`."
+  [query]
+  (println "(u/pprint-to-str 'yellow query):" (u/pprint-to-str 'yellow query)) ; NOCOMMIT
+  (let [query (walk/postwalk
+               (fn [form]
+                 (if (and (map? form)
+                          ((some-fn :source-table :source-query) form)
+                          (not (:condition form)))
+                   (add-fk-remaps-one-level form)
+                   form))
+               query)]
+    (println "(u/pprint-to-str 'green query):" (u/pprint-to-str 'green query)) ; NOCOMMIT
+    {:query (m/dissoc-in query [:query ::remaps]), :remaps (get-in query [:query ::remaps])}))
 
 (defn- add-remapped-columns [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
   (if (or disable-remaps?
