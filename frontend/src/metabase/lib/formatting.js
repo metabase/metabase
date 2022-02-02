@@ -9,7 +9,7 @@ import { msgid, ngettext } from "ttag";
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import {
   isCoordinate,

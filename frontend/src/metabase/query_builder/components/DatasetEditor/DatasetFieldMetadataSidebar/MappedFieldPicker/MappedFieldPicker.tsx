@@ -8,7 +8,7 @@ import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/componen
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
 
-import { StyledSelectButton } from "./MappedFieldPicker.styled";
+import SelectButton from "metabase/core/components/SelectButton";
 
 type CollapsedPickerProps = {
   isTriggeredComponentOpen: boolean;
@@ -69,28 +69,20 @@ function MappedFieldPicker({
     [onChange],
   );
 
-  const renderTriggerElement = useCallback(
-    ({ open }: CollapsedPickerProps) => {
-      const label = fieldObject
-        ? fieldObject.displayName({ includeTable: true })
-        : t`None`;
-      return (
-        <StyledSelectButton
-          hasValue={!!fieldObject}
-          tabIndex={tabIndex}
-          onKeyUp={e => {
-            if (e.key === "Enter") {
-              open();
-            }
-          }}
-          ref={selectButtonRef}
-        >
-          {label}
-        </StyledSelectButton>
-      );
-    },
-    [fieldObject, tabIndex],
-  );
+  const renderTriggerElement = useCallback(() => {
+    const label = fieldObject
+      ? fieldObject.displayName({ includeTable: true })
+      : t`None`;
+    return (
+      <SelectButton
+        hasValue={!!fieldObject}
+        tabIndex={tabIndex}
+        ref={selectButtonRef}
+      >
+        {label}
+      </SelectButton>
+    );
+  }, [fieldObject, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)

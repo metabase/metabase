@@ -24,8 +24,8 @@
   (boolean (setting/get :google-auth-client-id)))
 
 (defn- ldap-configured? []
-  (do (classloader/require 'metabase.integrations.ldap)
-      ((resolve 'metabase.integrations.ldap/ldap-configured?))))
+  (classloader/require 'metabase.integrations.ldap)
+  ((resolve 'metabase.integrations.ldap/ldap-configured?)))
 
 (defn- ee-sso-configured? []
   (u/ignore-exceptions
@@ -181,7 +181,7 @@
   :visibility :public)
 
 (defsetting enable-nested-queries
-  (deferred-tru "Allow using a saved question as the source for other queries?")
+  (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type    :boolean
   :default true
   :visibility :authenticated)

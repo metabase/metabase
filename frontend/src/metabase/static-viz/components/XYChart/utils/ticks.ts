@@ -47,6 +47,10 @@ export const getXTickWidthLimit = (
   actualMaxWidth: number,
   bandwidth?: number,
 ) => {
+  if (settings.tick_display === "hide") {
+    return 0;
+  }
+
   if (settings.type !== "ordinal" || !bandwidth) {
     return Infinity;
   }
@@ -61,6 +65,14 @@ export const getXTicksDimensions = (
   settings: ChartSettings["x"],
   fontSize: number,
 ) => {
+  if (settings.tick_display === "hide") {
+    return {
+      width: 0,
+      height: 0,
+      maxTextWidth: 0,
+    };
+  }
+
   const maxTextWidth = series
     .flatMap(s => s.data)
     .map(datum => {
@@ -99,10 +111,10 @@ export const getXTickProps = (
 
   const textBaseline = Math.floor(tickFontSize / 2);
   const transform = shouldRotate
-    ? `rotate(45, ${props.x} ${props.y}) translate(-${textBaseline} 0)`
+    ? `rotate(-45, ${props.x} ${props.y}) translate(${textBaseline}, 0)`
     : undefined;
 
-  const textAnchor = shouldRotate ? "start" : "middle";
+  const textAnchor = shouldRotate ? "end" : "middle";
 
   return { ...props, transform, children: value, textAnchor };
 };

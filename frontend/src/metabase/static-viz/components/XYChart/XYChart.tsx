@@ -9,6 +9,7 @@ import {
   Series,
   ChartSettings,
   ChartStyle,
+  HydratedSeries,
 } from "metabase/static-viz/components/XYChart/types";
 import { LineSeries } from "metabase/static-viz/components/XYChart/shapes/LineSeries";
 import { BarSeries } from "metabase/static-viz/components/XYChart/shapes/BarSeries";
@@ -31,6 +32,7 @@ import {
   calculateYDomains,
   sortSeries,
   getLegendColumns,
+  calculateStackedItems,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
 
@@ -45,11 +47,16 @@ export interface XYChartProps {
 export const XYChart = ({
   width,
   height,
-  series,
+  series: originalSeries,
   settings,
   style,
 }: XYChartProps) => {
-  series = sortSeries(series, settings.x.type);
+  let series: HydratedSeries[] = sortSeries(originalSeries, settings.x.type);
+
+  if (settings.stacking === "stack") {
+    series = calculateStackedItems(series);
+  }
+
   const yDomains = calculateYDomains(series, settings.goal?.value);
   const yTickWidths = getYTickWidths(
     settings.y.format,
@@ -70,6 +77,7 @@ export const XYChart = ({
     yTickWidths.left,
     yTickWidths.right,
     xTicksDimensions.height,
+    xTicksDimensions.width,
     settings.labels,
     style.axes.ticks.fontSize,
     !!settings.goal,
@@ -122,6 +130,8 @@ export const XYChart = ({
   };
 
   const areXTicksRotated = settings.x.tick_display === "rotate-45";
+  const areXTicksHidden = settings.x.tick_display === "hide";
+  const xLabelOffset = areXTicksHidden ? -style.axes.ticks.fontSize : undefined;
 
   return (
     <svg width={width} height={height + legendHeight}>
@@ -148,6 +158,7 @@ export const XYChart = ({
           yScaleLeft={yScaleLeft}
           yScaleRight={yScaleRight}
           xAccessor={xScale.lineAccessor}
+          areStacked={settings.stacking === "stack"}
         />
         <LineSeries
           series={lines}
@@ -208,22 +219,26 @@ export const XYChart = ({
         top={yMin}
         left={xMin}
         numTicks={xTicksCount}
+        labelOffset={xLabelOffset}
         stroke={style.axes.color}
         tickStroke={style.axes.color}
+        hideTicks={settings.x.tick_display === "hide"}
         labelProps={labelProps}
         tickFormat={value =>
           formatXTick(value.valueOf(), settings.x.type, settings.x.format)
         }
-        tickComponent={props => (
-          <Text
-            {...getXTickProps(
-              props,
-              style.axes.ticks.fontSize,
-              xTickWidthLimit,
-              areXTicksRotated,
-            )}
-          />
-        )}
+        tickComponent={props =>
+          areXTicksHidden ? null : (
+            <Text
+              {...getXTickProps(
+                props,
+                style.axes.ticks.fontSize,
+                xTickWidthLimit,
+                areXTicksRotated,
+              )}
+            />
+          )
+        }
         tickLabelProps={() => tickProps}
       />
 

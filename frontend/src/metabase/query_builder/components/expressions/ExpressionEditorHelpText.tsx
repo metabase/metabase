@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import colors from "metabase/lib/colors";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 

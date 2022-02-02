@@ -21,7 +21,8 @@ import { color } from "metabase/lib/colors";
 
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import { canonicalCollectionId } from "metabase/entities/collections";
+import { canonicalCollectionId } from "metabase/collections/utils";
+
 import Search from "metabase/entities/search";
 
 const ICON_SIZE = 16;

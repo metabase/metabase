@@ -1,5 +1,6 @@
 import styled, { css, keyframes } from "styled-components";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
+import SelectButton from "metabase/core/components/SelectButton";
 import { color } from "metabase/lib/colors";
 
 const slideInOutAnimation = keyframes`
@@ -23,17 +24,17 @@ export const AnimatableContent = styled.div`
 const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
-  ${Radio.BaseItem} {
+  ${Radio.RadioGroup} {
     color: ${color("text-dark")};
   }
 
-  .AdminSelect {
+  ${SelectButton.Root} {
     color: ${color("text-dark")};
     transition: border 0.3s;
     outline: none;
   }
 
-  .AdminSelect:focus {
+  ${SelectButton.Root}:focus {
     border-color: ${color("brand")};
   }
 `;

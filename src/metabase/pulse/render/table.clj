@@ -42,7 +42,7 @@
   ([color positive? width-in-pixels]
    (render-bar-component color positive? width-in-pixels 0))
 
-  ([color positive? width-in-pixels offset]
+  ([color positive? width-in-pixels _offset]
    [:div
     {:style (style/style
              (merge
@@ -125,7 +125,7 @@
   background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
   display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
   create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names [header & rows :as contents]]
+  ([color-selector column-names contents]
    (render-table color-selector 0 column-names contents))
 
   ([color-selector normalized-zero column-names [header & rows]]

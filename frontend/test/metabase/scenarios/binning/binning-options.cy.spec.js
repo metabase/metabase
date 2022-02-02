@@ -101,6 +101,7 @@ const LONGITUDE_BUCKETS = [
 
 describe("scenarios > binning > binning options", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsAdmin();
   });
@@ -181,13 +182,16 @@ describe("scenarios > binning > binning options", () => {
   context("via time series footer", () => {
     it("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
+
+      cy.wait("@dataset");
+
       cy.findByText("Created At").click();
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");
 
       // Check all binning options from the footer
-      cy.get(".AdminSelect-content")
+      cy.findAllByTestId("select-button-content")
         .contains("Month")
         .click();
       getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });

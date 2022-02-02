@@ -9,7 +9,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 
 import {
   field_visibility_types,
@@ -362,7 +362,6 @@ function DatasetFieldMetadataSidebar({
                     options={TAB_OPTIONS}
                     onChange={setTab}
                     variant="underlined"
-                    py={1}
                   />
                 </FormTabsContainer>
               )}

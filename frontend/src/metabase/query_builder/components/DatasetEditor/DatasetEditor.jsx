@@ -78,6 +78,7 @@ function getSidebar(
   props,
   {
     datasetEditorTab,
+    isQueryError,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -95,6 +96,9 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    if (isQueryError) {
+      return null;
+    }
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       // The field metadata sidebar will appear with an animation once a query completes
@@ -169,9 +173,27 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
-  const fields = useMemo(() => result?.data?.results_metadata?.columns ?? [], [
-    result,
+  const orderedColumns = useMemo(() => dataset.setting("table.columns"), [
+    dataset,
   ]);
+
+  const fields = useMemo(() => {
+    // Columns in results_metadata contain all the necessary metadata
+    // orderedColumns contain properly sorted columns, but they only contain field names and refs.
+    // Normally, columns in results_metadata are ordered too,
+    // but they only get updated after running a query (which is not triggered after reordering columns).
+    // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
+    const columns = result?.data?.results_metadata?.columns;
+    if (!Array.isArray(columns)) {
+      return [];
+    }
+    if (!Array.isArray(orderedColumns)) {
+      return columns;
+    }
+    return orderedColumns.map(col =>
+      columns.find(c => compareFields(c.field_ref, col.fieldRef)),
+    );
+  }, [orderedColumns, result]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -213,7 +235,7 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults && !result.error) {
       focusFirstField();
     }
   }, [result, focusedFieldRef, focusFirstField]);
@@ -307,10 +329,7 @@ function DatasetEditor(props) {
 
   const renderSelectableTableColumnHeader = useCallback(
     (element, column, columnIndex) => {
-      const isSelected = compareFields(
-        column?.field_ref,
-        focusedField?.field_ref,
-      );
+      const isSelected = columnIndex === focusedFieldIndex;
       return (
         <TableHeaderColumnName
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
@@ -325,7 +344,7 @@ function DatasetEditor(props) {
         </TableHeaderColumnName>
       );
     },
-    [focusedField, focusedFieldIndex, handleColumnSelect],
+    [focusedFieldIndex, handleColumnSelect],
   );
 
   const renderTableHeaderWrapper = useMemo(
@@ -346,6 +365,7 @@ function DatasetEditor(props) {
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
+    isQueryError: result?.error,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -410,7 +430,7 @@ function DatasetEditor(props) {
               />
             </DebouncedFrame>
             <TabHintToastContainer
-              isVisible={isEditingMetadata && isTabHintVisible}
+              isVisible={isEditingMetadata && isTabHintVisible && !result.error}
             >
               <TabHintToast onClose={hideTabHint} />
             </TabHintToastContainer>

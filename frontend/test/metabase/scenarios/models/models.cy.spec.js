@@ -494,7 +494,7 @@ describe("scenarios > models", () => {
       "{leftarrow}{leftarrow}{backspace}{backspace}#",
     );
     cy.findByTestId("tag-editor-sidebar").within(() => {
-      cy.get(".AdminSelect").click();
+      cy.findByTestId("select-button").click();
     });
     selectFromDropdown("Orders");
     cy.findByText("Save").click();

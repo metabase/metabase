@@ -82,7 +82,7 @@
                        id))
         (db/delete! Secret :id secret-id)))))
 
-(defn- pre-delete [{id :id, driver :engine, details :details :as database}]
+(defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
                 :where       [:or

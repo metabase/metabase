@@ -111,7 +111,7 @@
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
-  (dbspec/h2 (tx/dbdef->connection-details driver context dbdef)))
+  (dbspec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
 (defmethod load-data/load-data! :h2
   [& args]

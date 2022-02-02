@@ -6,7 +6,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.util.i18n :refer [tru]]))
 
-(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [field value], :as v}]
+(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [_field value], :as v}]
   (if (and (= i/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]

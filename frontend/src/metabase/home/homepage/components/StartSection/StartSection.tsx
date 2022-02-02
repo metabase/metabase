@@ -1,7 +1,7 @@
 import React from "react";
 import { jt, t } from "ttag";
 import Ellipsified from "metabase/components/Ellipsified";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import Settings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";

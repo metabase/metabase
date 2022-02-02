@@ -3,13 +3,8 @@ name: Docs
 on:
   push:
     branches:
-      - '**'
-    paths:
-    - 'docs/**'
-    - './bin/verify-docs-links'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
   pull_request:
 
 jobs:
@@ -20,14 +15,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Prepare Node.js
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v2
       with:
         node-version: 14.x
-    - name: Get yarn cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/yarn
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        cache: 'yarn'
     - name: Get node_modules cache
       uses: actions/cache@v2
       with:

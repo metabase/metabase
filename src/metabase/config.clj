@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [environ.core :as environ]
+            [environ.core :as env]
             [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword
            java.util.UUID))
@@ -58,7 +58,7 @@
    3.  hard coded `app-defaults`"
   [k]
   (let [k       (keyword k)
-        env-val (k environ/env)]
+        env-val (k env/env)]
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
@@ -148,5 +148,5 @@
 (defn mb-user-defaults
   "Default user details provided as a JSON string at launch time for first-user setup flow."
   []
-  (when-let [user-json (environ/env :mb-user-defaults)]
+  (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))

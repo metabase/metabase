@@ -117,7 +117,7 @@ const ResetPasswordSuccess = (): JSX.Element => {
         <InfoIcon name="check" />
       </InfoIconContainer>
       <InfoTitle>{t`All done!`}</InfoTitle>
-      <InfoMessage>{t`Awesome, you've successfully updated your password.`}</InfoMessage>
+      <InfoMessage>{t`You've updated your password.`}</InfoMessage>
       <Link
         className="Button Button--primary"
         to={"/"}

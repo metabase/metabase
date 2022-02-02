@@ -6,7 +6,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
@@ -116,7 +117,9 @@ export default class TableInteractive extends Component {
 
     const isDataChange =
       data && nextData && !_.isEqual(data.cols, nextData.cols);
-    const isDatasetStatusChange = card.dataset !== nextCard.dataset;
+    const isDatasetStatusChange =
+      isAdHocModelQuestionCard(nextCard, card) ||
+      isAdHocModelQuestionCard(card, nextCard);
 
     if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();

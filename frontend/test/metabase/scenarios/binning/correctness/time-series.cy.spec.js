@@ -169,9 +169,11 @@ function getVisualization(binningType) {
 
 function assertOnXYAxisLabels() {
   cy.get(".y-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Count");
   cy.get(".x-axis-label")
+    .should("be.visible")
     .invoke("text")
     .should("eq", "Created At");
 }
@@ -189,11 +191,11 @@ function assertOnXAxisTicks(values) {
 }
 
 function assertOnTimeSeriesFooter(regex) {
-  cy.get(".AdminSelect-content")
+  cy.findAllByTestId("select-button-content")
     .first()
     .invoke("text")
     .should("eq", "All Time");
-  cy.get(".AdminSelect-content")
+  cy.findAllByTestId("select-button-content")
     .last()
     .invoke("text")
     .should("match", regex);

@@ -19,7 +19,7 @@
                               identity))
         encrypt-str-fn    (make-encrypt-fn encrypt/maybe-encrypt)
         encrypt-bytes-fn  (make-encrypt-fn encrypt/maybe-encrypt-bytes)]
-    (jdbc/with-db-transaction [t-conn (mdb.conn/jdbc-spec)]
+    (jdbc/with-db-transaction [t-conn {:datasource (mdb.conn/data-source)}]
       (doseq [[id details] (db/select-id->field :details Database)]
         (when (encrypt/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))

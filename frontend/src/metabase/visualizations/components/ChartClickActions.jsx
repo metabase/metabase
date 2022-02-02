@@ -169,6 +169,8 @@ export default class ChartClickActions extends Component {
       .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
       .value();
 
+    const hasOnlyOneSection = sections.length === 1;
+
     return (
       <Popover
         target={clicked.element}
@@ -199,7 +201,9 @@ export default class ChartClickActions extends Component {
                     ml1:
                       SECTIONS[key].icon === "bolt" ||
                       SECTIONS[key].icon === "sum" ||
-                      SECTIONS[key].icon === "breakout",
+                      SECTIONS[key].icon === "breakout" ||
+                      (SECTIONS[key].icon === "funnel_outline" &&
+                        !hasOnlyOneSection),
                   },
                 )}
               >
@@ -215,7 +219,13 @@ export default class ChartClickActions extends Component {
                   </p>
                 )}
                 {SECTIONS[key].icon === "funnel_outline" && (
-                  <p className="mt0 text-dark text-small">
+                  <p
+                    className={cx(
+                      "text-small",
+                      hasOnlyOneSection ? "mt0" : "mt2",
+                      hasOnlyOneSection ? "text-dark" : "text-medium",
+                    )}
+                  >
                     {t`Filter by this value`}
                   </p>
                 )}

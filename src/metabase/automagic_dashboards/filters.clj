@@ -110,7 +110,7 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [base_type semantic_type] :as field}]
+  [{:keys [semantic_type] :as field}]
   (cond
     (temporal? field)                   "date/all-options"
     (isa? semantic_type :type/State)    "location/state"

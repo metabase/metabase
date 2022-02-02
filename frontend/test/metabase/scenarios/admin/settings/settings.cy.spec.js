@@ -124,7 +124,7 @@ describe("scenarios > admin > settings", () => {
     cy.contains("Site URL")
       .parent()
       .parent()
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
     popover()
       .contains("https://")
@@ -151,7 +151,7 @@ describe("scenarios > admin > settings", () => {
     cy.contains("Site URL")
       .parent()
       .parent()
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
     popover()
       .contains("https://")
@@ -197,7 +197,7 @@ describe("scenarios > admin > settings", () => {
 
     cy.contains("Date style")
       .closest("li")
-      .find(".AdminSelect")
+      .find("[data-testid='select-button']")
       .first()
       .click();
     cy.findByText("2018/1/7").click({ force: true });
@@ -215,7 +215,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
       .closest("li")
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");

@@ -101,13 +101,8 @@ export const PLUGIN_CACHING = {
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
-  DataPermissionsHelp: null,
   addDatabasePermissionOptions: (permissions, _value) => permissions,
   addSchemaPermissionOptions: (permissions, _value) => permissions,
   addTablePermissionOptions: (permissions, _value) => permissions,
   isBlockPermission: _value => false,
-};
-
-export const PLUGIN_LICENSE_PAGE = {
-  LicenseAndBillingSettings: PluginPlaceholder,
 };

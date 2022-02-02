@@ -138,7 +138,7 @@
     (name k)
     (str k)))
 
-(defn- expand-secret-conn-prop [{prop-name :name, visible-if :visible-if, :as conn-prop}]
+(defn- expand-secret-conn-prop [{prop-name :name, :as conn-prop}]
   (case (->str (:secret-kind conn-prop))
     "password"    [(-> conn-prop
                        (assoc :type "password")
@@ -156,7 +156,7 @@
   "Invokes the getter function on a info type connection property and adds it to the connection property map as its
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
-  [{prop-name :name, getter :getter, placeholder :placeholder, :as conn-prop}]
+  [{ getter :getter, placeholder :placeholder, :as conn-prop}]
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
@@ -194,9 +194,16 @@
       :description (trs "Comma separated names of {0} that <strong>should NOT</strong> appear in Metabase" (str/lower-case disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
       :helper-text (trs "You can use patterns like <strong>auth*</strong> to match multiple {0}" (str/lower-case disp-name))
-      :required true}
-      ]))
+      :required true}]))
 
+
+(defn find-schema-filters-prop
+  "Finds the first property of type `:schema-filters` for the given `driver` connection properties. Returns `nil`
+  if the driver has no property of that type."
+  [driver]
+  (first (filter (fn [conn-prop]
+                   (= :schema-filters (keyword (:type conn-prop))))
+           (driver/connection-properties driver))))
 
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
@@ -275,7 +282,7 @@
                                            (assoc acc (keyword (:name prop)) prop))
                                    {}
                                    (connection-props-server->client driver (vals secret-names->props)))]
-      (reduce-kv (fn [acc prop-name prop]
+      (reduce-kv (fn [acc prop-name _prop]
                    (let [subprop    (fn [suffix]
                                       (keyword (str prop-name suffix)))
                          path-kw    (subprop "-path")
