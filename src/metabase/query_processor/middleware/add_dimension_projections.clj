@@ -25,6 +25,8 @@
   `name` is `:remapped_from` `:category_id`."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
+            [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
@@ -35,9 +37,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
-            [clojure.walk :as walk]
-            [medley.core :as m]))
+            [toucan.hydrate :refer [hydrate]]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -188,15 +188,17 @@
                                                   (remove (comp existing-normalized-fields-set mbql.u/remove-namespaced-options)))
                                             infos)
             new-breakout                   (add-fk-remaps-rewrite-breakout original->remapped breakout)
-            new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)]
+            new-order-by                   (add-fk-remaps-rewrite-order-by original->remapped order-by)
+            remaps                         (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)])]
         ;; return the Dimensions we are using and the query
         (cond-> query
           (seq fields)   (assoc :fields new-fields)
           (seq order-by) (assoc :order-by new-order-by)
           (seq breakout) (assoc :breakout new-breakout)
-          true           (assoc ::remaps (into [] (comp cat (distinct)) [source-query-remaps (map :dimension infos)]))))
+          (seq remaps)   (assoc ::remaps remaps)))
       ;; otherwise return query as-is
-      (assoc query ::remaps source-query-remaps))))
+      (cond-> query
+        (seq source-query-remaps) (assoc ::remaps source-query-remaps)))))
 
 (s/defn ^:private add-fk-remaps :- QueryAndRemaps
   "Add any Fields needed for `:external` remappings to the `:fields` clau se of the query, and update `:order-by`
