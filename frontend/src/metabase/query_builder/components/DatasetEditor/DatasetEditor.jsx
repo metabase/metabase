@@ -166,7 +166,7 @@ function DatasetEditor(props) {
     result,
     metadata,
     height,
-    isDirty,
+    isDirty: isModelQueryDirty,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
@@ -372,8 +372,8 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName && isDirty;
-  }, [dataset, fields, isDirty]);
+    return !hasFieldWithoutDisplayName && isModelQueryDirty;
+  }, [dataset, fields, isModelQueryDirty]);
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
