@@ -891,7 +891,7 @@
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."
-  ([pred]
+  ([_pred]
    nil)
   ([pred x & more]
    `(let [pred# ~pred

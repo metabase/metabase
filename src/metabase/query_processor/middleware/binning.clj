@@ -187,7 +187,7 @@
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
-  [{:keys [source-metadata], :as inner-query}
+  [{:keys [source-metadata], :as _inner-query}
    field-id->filters                          :- FieldID->Filters
    [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
   (let [metadata                                   (matching-metadata id-or-name source-metadata)
@@ -198,11 +198,11 @@
                                                                     (get binning (:strategy binning))
                                                                     metadata
                                                                     min-value max-value)
-        resolved-options                           (merge min-max resolved-options)]
-    ;; Bail out and use unmodifed version if we can't converge on a nice version.
-    (let [new-options (or (nicer-breakout new-strategy resolved-options)
-                          resolved-options)]
-      [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)])))
+        resolved-options                           (merge min-max resolved-options)
+        ;; Bail out and use unmodifed version if we can't converge on a nice version.
+        new-options (or (nicer-breakout new-strategy resolved-options)
+                        resolved-options)]
+    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
 
 (defn update-binning-strategy-in-inner-query
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
@@ -215,7 +215,7 @@
         (catch Throwable e
           (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
-(defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
+(defn- update-binning-strategy* [{query-type :type, :as query}]
   (if (= query-type :native)
     query
     (update query :query update-binning-strategy-in-inner-query)))

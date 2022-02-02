@@ -131,7 +131,7 @@
       ;; otherwise return query as-is
       [source-query-remappings query])))
 
-(defn- add-remapped-columns [{:keys [disable-remaps?], query-type :type, :as query}]
+(defn- add-remapped-columns [{{:keys [disable-remaps?]} :middleware, query-type :type, :as query}]
   (if (or disable-remaps?
           (= query-type :native))
     query
@@ -210,7 +210,7 @@
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
   with the values returned from the database for the given `col`."
-  [{:keys [base_type] :as col} values]
+  [{:keys [base_type]} values]
   (let [transform (condp #(isa? %2 %1) base_type
                     :type/Decimal    bigdec
                     :type/Float      double
@@ -310,7 +310,7 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results [{::keys [external-remaps], :keys [disable-remaps?]} rff]
+(defn- remap-results [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]

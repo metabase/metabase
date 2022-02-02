@@ -38,7 +38,7 @@
   [in-chan out-chan ^ByteArrayOutputStream bos ^DataOutputStream os]
   (a/go
     (let [timeout-chan (a/timeout serialization-timeout-ms)
-          [val port]   (a/alts! [out-chan timeout-chan])]
+          [_val port]   (a/alts! [out-chan timeout-chan])]
       (when (= port timeout-chan)
         (a/>! out-chan (ex-info (tru "Serialization timed out after {0}." (u/format-milliseconds serialization-timeout-ms))
                                 {}))))
@@ -124,7 +124,7 @@
   [^InputStream is]
   (try
     (nippy/thaw-from-in! is)
-    (catch EOFException e
+    (catch EOFException _e
       ::eof)))
 
 (defn- reducible-rows
