@@ -229,8 +229,8 @@ export const getQuestion = createSelector(
       return question.lockDisplay();
     }
 
-    // When opening a dataset, we swap it's `dataset_query`
-    // with clean query using the dataset as a source table,
+    // When opening a model, we swap it's `dataset_query`
+    // with clean query using the model as a source table,
     // to enable "simple mode" like features
     return question.isDataset() ? question.composeDataset() : question;
   },
