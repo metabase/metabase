@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -15,7 +14,11 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 import { QuestionList } from "./QuestionList";
 
-import { BreadcrumbsWrapper, SearchInput } from "./QuestionPicker.styled";
+import {
+  BreadcrumbsWrapper,
+  QuestionPickerRoot,
+  SearchInput,
+} from "./QuestionPicker.styled";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { SelectList } from "metabase/components/select-list";
 
@@ -65,7 +68,7 @@ function QuestionPicker({
   const collections = (collection && collection.children) || [];
 
   return (
-    <Box p={2}>
+    <QuestionPickerRoot>
       <SearchInput
         autoFocus
         hasClearButton
@@ -113,7 +116,7 @@ function QuestionPicker({
         collectionId={currentCollectionId}
         onSelect={onSelect}
       />
-    </Box>
+    </QuestionPickerRoot>
   );
 }
 
