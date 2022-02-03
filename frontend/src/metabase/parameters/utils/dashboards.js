@@ -186,11 +186,15 @@ export function getParametersMappedToDashcard(dashboard, dashcard) {
 
 export function hasMatchingParameters({
   dashboard,
+  dashcardId,
   cardId,
   parameters,
   metadata,
 }) {
-  const dashcard = _.findWhere(dashboard.ordered_cards, { card_id: cardId });
+  const dashcard = _.findWhere(dashboard.ordered_cards, {
+    id: dashcardId,
+    card_id: cardId,
+  });
   if (!dashcard) {
     return false;
   }
