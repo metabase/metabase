@@ -66,7 +66,7 @@
 (def ^:private follow-up-emails-trigger-key "metabase.task.follow-up-emails.trigger")
 
 (defmethod task/init! ::SendFollowUpEmails [_]
-  (let [job     (jobs/build
+  (let [job    (jobs/build
                  (jobs/of-type FollowUpEmail)
                  (jobs/with-identity (jobs/key follow-up-emails-job-key)))
         trigger (triggers/build
