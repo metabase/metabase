@@ -28,6 +28,7 @@ export const StepContent = styled.div`
 `;
 
 export const StepHeader = styled(StepContent)<StepHeaderProps>`
+  display: flex;
   color: ${props => props.color};
   font-weight: bold;
   margin-bottom: 0.5rem;
