@@ -144,20 +144,20 @@
   (let [id-or-name' (int-or-string id-or-name)]
     [:field id-or-name' (when (string? id-or-name') {:base-type :type/Float})]))
 
-(defn query->tiles-query
+(defn- query->tiles-query
   "Transform a card's query into a query finding coordinates in a particular region.
 
   - transform native queries into nested mbql queries from that native query
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query {:keys [zoom x y lat-field-ref lon-field-ref]}]
+  [query {:keys [zoom x y lat-field lon-field]}]
   (-> query
       native->source-query
       (update :query query-with-inside-filter
-              lat-field-ref lon-field-ref
+              lat-field lon-field
               x y zoom)
-      (assoc-in [:query :fields] [lat-field-ref lon-field-ref])
+      (assoc-in [:query :fields] [lat-field lon-field])
       (assoc-in [:query :limit] tile-coordinate-limit)
       (assoc :async? false)))
 
@@ -187,8 +187,8 @@
         (normalize/normalize (json/parse-string query keyword))
 
         updated-query (query->tiles-query query {:zoom zoom :x x :y y
-                                                 :lat-field-ref lat-field-ref
-                                                 :lon-field-ref lon-field-ref})
+                                                 :lat-field lat-field-ref
+                                                 :lon-field lon-field-ref})
 
         {:keys [status], {:keys [rows cols]} :data, :as result}
         (qp/process-query-and-save-execution! updated-query
@@ -209,7 +209,7 @@
     (if (= status :completed)
       {:status  200
        :headers {"Content-Type" "image/png"}
-       :body    (ByteArrayInputStream. (tile->byte-array (create-tile zoom points)))}
+       :body    (tile->byte-array (create-tile zoom points))}
       (throw (ex-info (tru "Query failed")
                       ;; `result` might be a `core.async` channel or something we're not expecting
                       (assoc (when (map? result) result) :status-code 400))))))
