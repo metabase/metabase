@@ -253,10 +253,13 @@ const VizTableToggle = ({
   const vizIcon = getIconForVisualizationType(question.display());
   return (
     <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
-      <ToggleIcon active={isShowingRawTable}>
+      <ToggleIcon active={isShowingRawTable} aria-label={t`Switch to data`}>
         <Icon name="table2" />
       </ToggleIcon>
-      <ToggleIcon active={!isShowingRawTable}>
+      <ToggleIcon
+        active={!isShowingRawTable}
+        aria-label={t`Switch to visualization`}
+      >
         <Icon name={vizIcon} />
       </ToggleIcon>
     </Well>
