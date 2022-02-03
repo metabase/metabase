@@ -10,11 +10,7 @@ import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 import { isDateTimeField } from "metabase/lib/query/field_ref";
 
-import {
-  NotebookCell,
-  NotebookCellItem,
-  NotebookCellAdd,
-} from "../NotebookCell";
+import { NotebookCellItem, NotebookCellAdd } from "../NotebookCell";
 import {
   FieldsPickerIcon,
   FieldPickerContentContainer,
@@ -39,6 +35,7 @@ import {
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
+  JoinClauseCell,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -211,7 +208,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   return (
     <JoinClauseRoot>
-      <NotebookCell color={color} flex={1} alignSelf="start">
+      <JoinClauseCell color={color}>
         <NotebookCellItem color={color}>
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
@@ -226,19 +223,17 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
-      </NotebookCell>
+      </JoinClauseCell>
 
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabelContainer>
             <JoinWhereConditionLabel />
           </JoinWhereConditionLabelContainer>
-          <NotebookCell
+          <JoinClauseCell
             color={color}
-            flex={1}
-            flexDirection="column"
-            align="start"
             padding={hasAtLeastOneDimensionSelected && "8px"}
+            vertical
           >
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
@@ -320,7 +315,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                 </JoinDimensionControlsContainer>
               );
             })}
-          </NotebookCell>
+          </JoinClauseCell>
         </React.Fragment>
       )}
 

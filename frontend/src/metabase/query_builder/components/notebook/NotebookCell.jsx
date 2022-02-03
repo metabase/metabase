@@ -8,13 +8,14 @@ import Icon from "metabase/components/Icon";
 
 import { alpha } from "metabase/lib/colors";
 
-export const NotebookCell = styled(Flex).attrs({
-  align: "center",
-  flexWrap: "wrap",
-})`
+export const NotebookCell = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   border-radius: 8px;
   background-color: ${props => alpha(props.color, 0.1)};
   padding: ${props => props.padding || "14px"};
+  color: ${props => props.color};
 `;
 
 NotebookCell.displayName = "NotebookCell";
