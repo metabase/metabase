@@ -722,9 +722,13 @@ describe("collection permissions", () => {
               });
 
               it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
+
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
+                cy.wait("@cardQuery");
+
                 cy.findByTestId("revision-history-button").click();
                 cy.findByText("Revert").click();
 
@@ -737,9 +741,13 @@ describe("collection permissions", () => {
               });
 
               it("should be able to revert the question via the action button found in the saved question timeline", () => {
+                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
+
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
+                cy.wait("@cardQuery");
+
                 cy.findByTestId("saved-question-header-button").click();
                 cy.findByText("History").click();
                 cy.findByText("Revert").click();
