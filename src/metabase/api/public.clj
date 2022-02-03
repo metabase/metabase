@@ -188,11 +188,18 @@
 ;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
 ;; [[run-query-for-card-with-id-async]]
 (defn public-dashcard-results-async
-  "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
-  `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
+  "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
+  `dashcard-id`. `card-id`, `dashboard-id`, and `dashcard-id` are all required; other parameters are optional:
+
+  * `parameters`    - MBQL query parameters, either already parsed or as a serialized JSON string
+  * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
+  * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
+
+  Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
   [& {:keys [export-format parameters qp-runner]
-      :or   {qp-runner qp/process-query-and-save-execution!}
+      :or   {qp-runner     qp/process-query-and-save-execution!
+             export-format :api}
       :as   options}]
   (let [options (merge
                  {:context     :public-dashboard
@@ -200,10 +207,12 @@
                  options
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
+                  :export-format export-format
                   :qp-runner     qp-runner
                   :run           (run-query-for-card-with-id-async-run-fn qp-runner export-format)})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
-    ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check anyway
+    ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
+    ;; anyway
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
