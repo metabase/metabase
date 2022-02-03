@@ -8,12 +8,12 @@ import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/componen
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
 
-import SelectButton from "metabase/core/components/SelectButton";
+import { StyledSelectButton } from "./MappedFieldPicker.styled";
 
 type MappedFieldPickerOwnProps = {
   field: {
     value: number | null;
-    onChange: (fieldId: number) => void;
+    onChange: (fieldId: number | null) => void;
   };
   formField: {
     databaseId: number;
@@ -68,15 +68,16 @@ function MappedFieldPicker({
       ? fieldObject.displayName({ includeTable: true })
       : t`None`;
     return (
-      <SelectButton
+      <StyledSelectButton
         hasValue={!!fieldObject}
         tabIndex={tabIndex}
         ref={selectButtonRef}
+        onClear={() => onChange(null)}
       >
         {label}
-      </SelectButton>
+      </StyledSelectButton>
     );
-  }, [fieldObject, tabIndex]);
+  }, [fieldObject, onChange, tabIndex]);
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
   // During the initial load, fieldObject might have `table_id` set to `card__$ID` (retrieved from metadata)
