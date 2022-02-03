@@ -4,7 +4,6 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import styled from "styled-components";
-import { Flex } from "grid-styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
@@ -224,7 +223,10 @@ const VizSettingsButton = ({ ...props }) => (
   </ViewButton>
 );
 
-const Well = styled(Flex)`
+const Well = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
   border-radius: 99px;
   background-color: ${color("bg-medium")};
   &:hover {
@@ -233,23 +235,14 @@ const Well = styled(Flex)`
   transition: background 300ms linear;
 `;
 
-Well.defaultProps = {
-  px: "6px",
-  py: "4px",
-  align: "center",
-};
-
-const ToggleIcon = styled(Flex)`
+const ToggleIcon = styled.div`
+  display: flex;
+  padding: 4px 8px;
   cursor: pointer;
   background-color: ${props => (props.active ? color("brand") : "transparent")};
   color: ${props => (props.active ? "white" : "inherit")};
   border-radius: 99px;
 `;
-
-ToggleIcon.defaultProps = {
-  p: "4px",
-  px: "8px",
-};
 
 const VizTableToggle = ({
   className,
