@@ -228,7 +228,10 @@
       :hard-line-break
       "\n"
 
-      (:heading)
+      :horizontal-line
+      "\n───────────────────\n"
+
+      :heading
       (str "*" joined-content "*\n")
 
       :bold
