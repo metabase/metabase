@@ -47,13 +47,13 @@
                           metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
                           metabase.test/mbql-query          hooks.metabase.test.data/$ids
                           metabase.test.data/run-mbql-query hooks.metabase.test.data/$ids
-                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids}
-           :macroexpand {metabase.api.common/defendpoint*   metabase.api.common/defendpoint*
-                         metabase.api.common/defendpoint    metabase.api.common/defendpoint
-                         metabase.api.common/defendpoint-async metabase.api.common/defendpoint
+                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
+                          metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
+                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint}
+           :macroexpand {metabase.query-processor.streaming/streaming-response
                          metabase.query-processor.streaming/streaming-response
-                         metabase.query-processor.streaming/streaming-response
-
                          toucan.models/defmodel toucan.models/defmodel
-                         }}
+                         clojurewerkz.quartzite.jobs/build macros.quartz/build-job
+                         clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
+                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule}}
  :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}

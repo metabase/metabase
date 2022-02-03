@@ -177,7 +177,9 @@
     jonase/eastwood                                       {:mvn/version "0.9.6"}
     lein-check-namespace-decls/lein-check-namespace-decls {:mvn/version "1.0.4"} ; misnomer since this works on Clojure CLI now too
     pjstadig/humane-test-output                           {:mvn/version "0.11.0"}
-    reifyhealth/specmonstah                               {:mvn/version "2.0.0"}
+    reifyhealth/specmonstah                               {:mvn/version "2.0.0"
+                                                           :exclusions  [org.clojure/clojure
+                                                                         org.clojure/clojurescript]}
     ring/ring-mock                                        {:mvn/version "0.4.0"}
     talltale/talltale                                     {:mvn/version "0.5.4"}}
 
