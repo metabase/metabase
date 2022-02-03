@@ -10,12 +10,6 @@ import Fields from "metabase/entities/fields";
 
 import SelectButton from "metabase/core/components/SelectButton";
 
-type CollapsedPickerProps = {
-  isTriggeredComponentOpen: boolean;
-  open: () => void;
-  close: () => void;
-};
-
 type MappedFieldPickerOwnProps = {
   field: {
     value: number | null;
