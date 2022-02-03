@@ -97,7 +97,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               cy.server();
               cy.route(
                 "POST",
-                `/api/dashboard/${DASHBOARD_ID}/card/${CARD_ID}/query`,
+                `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${CARD_ID}/query`,
               ).as("cardQuery");
 
               // Add previously created question to the new dashboard
@@ -194,7 +194,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             cy.server();
             cy.route(
               "POST",
-              `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+              `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
             ).as("cardQuery");
             cy.route("POST", `/api/dataset`).as("dataset");
 
