@@ -18,8 +18,8 @@ import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { SearchHeader, SearchRoot } from "./SearchApp.styled";
 
-const PAGE_PADDING = [1, 2, 4];
 const PAGE_SIZE = 50;
 
 const SEARCH_FILTERS = [
@@ -90,13 +90,13 @@ export default function SearchApp({ location }) {
   }
 
   return (
-    <Box mx={PAGE_PADDING}>
+    <SearchRoot>
       {location.query.q && (
-        <Flex align="center" py={[2, 3]}>
+        <SearchHeader>
           <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
-        </Flex>
+        </SearchHeader>
       )}
-      <Box>
+      <div>
         <Search.ListLoader query={query} wrapped>
           {({ list, metadata }) => {
             if (list.length === 0) {
@@ -178,8 +178,8 @@ export default function SearchApp({ location }) {
             );
           }}
         </Search.ListLoader>
-      </Box>
-    </Box>
+      </div>
+    </SearchRoot>
   );
 }
 
