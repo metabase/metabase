@@ -205,7 +205,6 @@
         lon-idx (find-fn lon-key)
         points  (for [row rows]
                   [(nth row lat-idx) (nth row lon-idx)])]
-    ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     (if (= status :completed)
       {:status  200
        :headers {"Content-Type" "image/png"}
