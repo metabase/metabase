@@ -256,9 +256,10 @@ export const updateUrl = createThunkAction(
 
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
       dirty =
         !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+        (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
     }
 
     // prevent clobbering of hash when there are fake parameters on the question
@@ -1236,7 +1237,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+      const isAdHocModel =
+        question.isDataset() &&
+        isAdHocModelQuestion(question, originalQuestion);
+
+      dispatch(
+        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
+      );
     }
 
     if (getIsPreviewing(getState())) {

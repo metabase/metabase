@@ -8,7 +8,6 @@ import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import { Box } from "grid-styled";
 import { Grid, GridItem } from "metabase/components/Grid";
 
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
@@ -20,6 +19,7 @@ import {
   getHasDataAccess,
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
+import { QueryOptionsRoot } from "./NewQueryOptions.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -32,8 +32,6 @@ const mapDispatchToProps = {
   prefetchDatabases: () => Database.actions.fetchList(),
   push,
 };
-
-const PAGE_PADDING = [1, 4];
 
 @fitViewport
 @connect(mapStateToProps, mapDispatchToProps)
@@ -75,7 +73,7 @@ export default class NewQueryOptions extends Component {
     const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
 
     return (
-      <Box my="auto" mx={PAGE_PADDING}>
+      <QueryOptionsRoot>
         <Grid className="justifyCenter">
           {hasDataAccess && (
             <GridItem width={ITEM_WIDTHS}>
@@ -120,7 +118,7 @@ export default class NewQueryOptions extends Component {
             </GridItem>
           )}
         </Grid>
-      </Box>
+      </QueryOptionsRoot>
     );
   }
 }

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import { Box, Flex } from "grid-styled";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
@@ -29,6 +28,7 @@ import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 
 import cx from "classnames";
+import { PulseHeader, PulseHeaderContent } from "./PulseEdit.styled";
 
 @Collections.load({
   id: (state, { pulse, initialCollectionId }) =>
@@ -174,20 +174,13 @@ export default class PulseEdit extends Component {
           </ModalWithTrigger>
         </div>
         <div className="PulseEdit-content pt2 pb4">
-          <Flex
-            bg={color("bg-medium")}
-            p={2}
-            my={3}
-            align="top"
-            style={{ borderRadius: 8 }}
-            className="hover-parent hover--visibility"
-          >
+          <PulseHeader className="hover-parent hover--visibility">
             <Icon name="warning" color={color("warning")} size={24} mr={1} />
-            <Box ml={1}>
+            <PulseHeaderContent>
               <Subhead>{t`Pulses are being phased out`}</Subhead>
               <Text>{jt`You can now set up ${link} instead. We'll remove Pulses in a future release, and help you migrate any that you still have.`}</Text>
-            </Box>
-          </Flex>
+            </PulseHeaderContent>
+          </PulseHeader>
 
           <PulseEditName {...this.props} setPulse={this.setPulse} />
           <PulseEditCollection {...this.props} setPulse={this.setPulse} />
