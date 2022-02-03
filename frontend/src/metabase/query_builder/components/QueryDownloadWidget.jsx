@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
 
 import { t } from "ttag";
 import { parse as urlParse } from "url";
@@ -16,6 +15,12 @@ import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import cx from "classnames";
+import {
+  WidgetFormat,
+  WidgetHeader,
+  WidgetMessage,
+  WidgetRoot,
+} from "./QueryDownloadWidget.styled";
 
 const EXPORT_FORMATS = Urls.exportFormats;
 
@@ -40,22 +45,21 @@ const QueryDownloadWidget = ({
     triggerClasses={cx(className, "text-brand-hover")}
     triggerClassesClose={classNameClose}
   >
-    <Box
-      p={2}
-      width={result.data && result.data.rows_truncated != null ? 300 : 260}
+    <WidgetRoot
+      isExpanded={result.data && result.data.rows_truncated != null ? 300 : 260}
     >
-      <Box p={1}>
+      <WidgetHeader>
         <h4>{t`Download full results`}</h4>
-      </Box>
+      </WidgetHeader>
       {result.data != null && result.data.rows_truncated != null && (
-        <Box px={1}>
+        <WidgetMessage>
           <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
           <p>{t`The maximum download size is 1 million rows.`}</p>
-        </Box>
+        </WidgetMessage>
       )}
-      <Box>
+      <div>
         {EXPORT_FORMATS.map(type => (
-          <Box key={type} width={"100%"}>
+          <WidgetFormat key={type}>
             {dashcardId && token ? (
               <DashboardEmbedQueryButton
                 key={type}
@@ -89,10 +93,10 @@ const QueryDownloadWidget = ({
                 visualizationSettings={visualizationSettings}
               />
             ) : null}
-          </Box>
+          </WidgetFormat>
         ))}
-      </Box>
-    </Box>
+      </div>
+    </WidgetRoot>
   </PopoverWithTrigger>
 );
 
