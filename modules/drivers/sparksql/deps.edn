@@ -5,7 +5,7 @@
  ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
  :deps
  {org.apache.hadoop/hadoop-common
-  {:mvn/version "3.1.1"
+  {:mvn/version "3.3.1"
    :exclusions  [com.fasterxml.jackson.core/jackson-core
                  com.google.guava/guava
                  commons-logging/commons-logging
@@ -35,11 +35,11 @@
 
  :aliases
  {:aot
-  {:deps       {io.github.clojure/tools.build {:git/tag "v0.7.4" :git/sha "ac442da"}}
+  {:deps       {io.github.clojure/tools.build {:git/tag "v0.7.5" :git/sha "2526f58"}}
    :ns-default build}
 
   ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
   :compilation-basis
-  {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.1.1"}
+  {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.3.1"}
                   org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}
                   org.clojure/clojure             {:mvn/version "1.10.3"}}}}}
