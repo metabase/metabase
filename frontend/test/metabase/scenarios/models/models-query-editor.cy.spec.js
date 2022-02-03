@@ -46,6 +46,7 @@ describe("scenarios > models query editor", () => {
       cy.url()
         .should("include", "/model/1")
         .and("not.include", "/query");
+      cy.location("hash").should("eq", "");
 
       cy.get(".cellData")
         .should("contain", "37.65")
