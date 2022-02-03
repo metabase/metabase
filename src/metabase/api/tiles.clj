@@ -14,7 +14,7 @@
             [schema.core :as s])
   (:import java.awt.Color
            java.awt.image.BufferedImage
-           [java.io ByteArrayInputStream ByteArrayOutputStream]
+           java.io.ByteArrayOutputStream
            javax.imageio.ImageIO))
 
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
