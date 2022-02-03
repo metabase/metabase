@@ -8,7 +8,7 @@
             [toucan.db :as db]))
 
 (def ^:private ^String sample-database-name     "Sample Database")
-(def ^:private ^String sample-database-filename "sample-dataset.db.mv.db")
+(def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
 (defn- db-details []
   (let [resource (io/resource sample-database-filename)]
