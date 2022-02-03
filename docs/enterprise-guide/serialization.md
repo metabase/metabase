@@ -43,7 +43,7 @@ To create a dump of a Metabase instance, use the following command in your termi
 
 `java -jar metabase.jar dump [dump_name] --user [example@example.com]`
 
-The optional `--user` flag is used to specify a default administrator account for cases when this dump is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the data dump. If this flag isn't specified, Metabase will assume that the instance into which you're loading already has an admin user (but the load will fail if there isn't an admin user). If you don't specify a user
+The optional `--user` flag is used to specify a default administrator account for cases when this dump is loaded into a blank Metabase instance. This user will also be marked as the creator of all artifacts that are copied over to the instance. This user's personal collection and its contents will also be included in the data dump. If this flag isn't specified, Metabase will assume that the instance into which you're loading already has an admin user (but the load will fail if there isn't an admin user).
 
 ### Loading a dump
 
@@ -57,6 +57,9 @@ The `--on-error` flag allows you to specify whether the load process should keep
 
 Both of these flags are optional.
 
+### Current limitations
+
+- The serialization feature is not able to identify a card in the destination if the visualization settings in the source have changed
 
 ---
 
