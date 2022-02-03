@@ -272,13 +272,16 @@
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-  belonging to this database, or the Tables and Fields, respectively."
+  belonging to this database, or the Tables and Fields, respectively.  If the requestor is an admin, then certain
+  inferred secret values will also be included in the returned details (see
+  [[metabase.models.secret/admin-expand-db-details-inferred-secret-values]] for full details)."
   [id include]
   {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (-> (api/read-check Database id)
-      add-expanded-schedules
-      secret/admin-expand-db-details-secret-values
-      (get-database-hydrate-include include)))
+  (cond-> (-> (api/read-check Database id)
+              add-expanded-schedules
+              (get-database-hydrate-include include))
+    (api/*is-superuser?*) ; for admins, expand inferred secret values in db-details
+    secret/admin-expand-db-details-inferred-secret-values))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
