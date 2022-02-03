@@ -181,33 +181,37 @@
   "Decimal and floating point types for fingerprinting purposes (to be parsed via BigDecimal)"
   #{"NUMERIC" "DECIMAL" "BIGNUMERIC" "BIGDEIMAL" "FLOAT" "FLOAT64"})
 
-(defn- fields->parser-fns
-  "For the given `fields` (instances of the [[models/Field]]), return a sequence of parser functions that will parse
-  a String value from the [[FieldValue]] BigQuery API.  These are returned in the same order as the given `fields`
-  (values from a [[FieldValueList]], which came from a `list` BigQuery operation, must be parsed in the same order)."
+(defn- fields->indexed-parser-fns
+  "For the given `fields` (instances of the [[models/Field]]), return an ordered map (by key) of parser functions that
+  will parse a String value from the [[FieldValue]] BigQuery API.  The keys of the map are the database position of the
+  respective fields (and thus, the respective position of the values within a [[FieldValueList]] as returned by the
+  BigQuery SDK list operation)."
   [fields]
-  (mapv (fn [{database-type :database_type}]
-          (condp contains? (some-> database-type str/upper-case)
-            #{"TIMESTAMP"} (fn [^String v]
-                             (bq-ts-str->instant v)) ; convert from timestamp string to Instant
-            int-fingerprint-types (fn [^String v]
-                                    (java.math.BigInteger. v)) ; convert to BigInteger
-            dec-fingerprint-types (fn [^String v]
-                                    (java.math.BigDecimal. v)) ; convert to BigDecimal
-            identity)) ; otherwise, return value unchanged
-        fields))
+  (reduce (fn [acc {database-type :database_type, idx :database_position}]
+            (assoc acc idx (condp contains? (some-> database-type str/upper-case)
+                             #{"TIMESTAMP"} (fn [^String v]
+                                              (bq-ts-str->instant v)) ; convert from timestamp string to Instant
+                             int-fingerprint-types (fn [^String v]
+                                                     (java.math.BigInteger. v)) ; convert to BigInteger
+                             dec-fingerprint-types (fn [^String v]
+                                                     (java.math.BigDecimal. v)) ; convert to BigDecimal
+                             identity))) ; otherwise, return value unchanged
+          (sorted-map)
+          fields))
 
 (defn- FieldValueList->fingerprint-structure
   "For the given `values` (of type [[FieldValueList]]), parse each value using the respective parser function from
-  `parser-fns` (expected to have been built by [[fields->parser-fns]])."
-  [parser-fns ^FieldValueList values]
-  (map-indexed (fn [^Integer idx ^FieldValue fv]
-                 (let [parser-fn (nth parser-fns idx)
-                       v  (.getValue fv)]
-                      (if (string? v)
-                        (parser-fn v)
-                        (str v))))
-               (seq values)))
+  `indexed-parser-fns` (expected to have been returned by [[fields->indexed-parser-fns->parser-fns]])."
+  [indexed-parser-fns ^FieldValueList values]
+  (reduce-kv (fn [acc ^Integer idx parser-fn]
+               (let [^FieldValue fv (.get values idx)
+                     v              (.getValue fv)
+                     parsed         (if (string? v)
+                                      (parser-fn v)
+                                      (str v))]
+                 (conj acc parsed)))
+             []
+             indexed-parser-fns))
 
 ;; Override the table-rows-sample multimethod for :bigquery-cloud-sdk, to use a different mechanism for sampling
 ;; table rows (the list operations, rather than a regular query), purely as a cost control measure.  For certain types
@@ -227,11 +231,11 @@
                       dataset-id
                       table-name)
           ((get-method @#'sync.f/table-rows-sample :sql-jdbc) driver table fields rff opts))
-      (let [^TableResult rows (.list bq-tbl (u/varargs BigQuery$TableDataListOption))
-            num-rows          metadata-queries/max-sample-rows
-            parser-fns        (fields->parser-fns fields)]
+      (let [^TableResult rows  (.list bq-tbl (u/varargs BigQuery$TableDataListOption))
+            num-rows           metadata-queries/max-sample-rows
+            indexed-parser-fns (fields->indexed-parser-fns fields)]
         (transduce (comp (take num-rows)
-                         (map (partial FieldValueList->fingerprint-structure parser-fns)))
+                         (map (partial FieldValueList->fingerprint-structure indexed-parser-fns)))
                    (rff nil) ; nil param is for JDBC ResultSet metadata, which doesn't apply here
                    (seq (.iterateAll rows)))))))
 
