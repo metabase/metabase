@@ -11,11 +11,13 @@
         symbol)))
 
 (defn defendpoint [{:keys [node]}]
-  (let [[method route ?doc ?argvec & body] (rest (:children node))]
+  (let [[method route & body] (rest (:children node))]
     {:node
-     (api/list-node (list* (api/token-node 'clojure.core/defn)
-                           (route-fn-name (api/sexpr method) (api/sexpr route))
-                           ?doc ?argvec
-                           (api/token-node (symbol (str "compojure.core")
-                                                   (str method)))
-                           body))}))
+     (api/list-node [(api/token-node 'do)
+                     ;; register usage of compojure core var
+                     (api/token-node (symbol (str "compojure.core")
+                                             (str method)))
+                     ;; define function with route-fn-name
+                     (api/list-node (list* (api/token-node 'clojure.core/defn)
+                                           (route-fn-name (api/sexpr method) (api/sexpr route))
+                                           body))])}))
