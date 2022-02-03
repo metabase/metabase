@@ -1,6 +1,6 @@
 (ns metabase.task.task-history-cleanup-test
-  (:require [clojure.test :refer :all]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
+            [clojure.test :refer :all]
             [java-time :as t]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.models.task-history-test :as tht]
