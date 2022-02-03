@@ -167,7 +167,7 @@
                             query))
 
   ([driver query]
-   (qp/query->native query)))
+   (qp/compile query)))
 
 (def ^{:arglists '([query] [driver query])} query->sql
   "Compile an MBQL query to 'pretty' SQL (i.e., remove quote marks and `public.` qualifiers)."

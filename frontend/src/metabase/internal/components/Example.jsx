@@ -4,7 +4,6 @@ import { Box } from "grid-styled";
 import reactElementToJSXString from "react-element-to-jsx-string";
 
 import CopyButton from "metabase/components/CopyButton";
-import { Absolute } from "metabase/components/Position";
 import Label from "metabase/components/type/Label";
 import Card from "metabase/components/Card";
 
@@ -18,12 +17,12 @@ const Example = ({ children }) => {
           {children}
         </Box>
         <Box p={2} className="relative">
-          <Absolute top={16} right={16}>
+          <div style={{ position: "absolute", top: "16px", right: "16px" }}>
             <CopyButton
               className="ml1 text-brand-hover cursor-pointer"
               value={code}
             />
-          </Absolute>
+          </div>
           <pre className="overflow-auto">
             <code>{code}</code>
           </pre>

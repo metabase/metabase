@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]))
@@ -99,11 +100,9 @@
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
-  (:result (mt/test-qp-middleware
-            add-dim-projections/remap-results-middleware
-            query
-            metadata
-            rows)))
+  (let [rff (add-dim-projections/remap-results query context.default/default-rff)
+        rf  (rff metadata)]
+    (transduce identity rf rows)))
 
 (deftest remap-human-readable-values-test
   (testing "remapping columns with `human_readable_values`"

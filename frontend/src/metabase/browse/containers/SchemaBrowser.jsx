@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 import { t } from "ttag";
 
 import Schema from "metabase/entities/schemas";
@@ -19,13 +18,14 @@ import { color } from "metabase/lib/colors";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
+import { CardActions, CardContent } from "./SchemaBrowser.styled";
 
 function SchemaBrowser(props) {
   const { schemas, params } = props;
   const { slug } = params;
   const dbId = Urls.extractEntityId(slug);
   return (
-    <Box>
+    <div>
       {schemas.length === 1 ? (
         <TableBrowser
           {...props}
@@ -35,7 +35,7 @@ function SchemaBrowser(props) {
           showSchemaInHeader={false}
         />
       ) : (
-        <Box>
+        <div>
           <BrowseHeader
             crumbs={[
               { title: t`Our data`, to: "browse" },
@@ -56,29 +56,29 @@ function SchemaBrowser(props) {
                     className="overflow-hidden"
                   >
                     <Card hoverable px={1}>
-                      <Flex align="center">
+                      <CardContent>
                         <EntityItem
                           name={schema.name}
                           iconName="folder"
                           iconColor={color("accent2")}
                           item={schema}
                         />
-                        <Box ml="auto">
+                        <CardActions>
                           <Icon name="reference" />
                           <Tooltip tooltip={t`X-ray this schema`}>
                             <Icon name="bolt" mx={1} />
                           </Tooltip>
-                        </Box>
-                      </Flex>
+                        </CardActions>
+                      </CardContent>
                     </Card>
                   </Link>
                 </GridItem>
               ))}
             </Grid>
           )}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 

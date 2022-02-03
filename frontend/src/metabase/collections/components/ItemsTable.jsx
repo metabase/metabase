@@ -1,11 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Flex } from "grid-styled";
 
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 
 import BaseItemsTable from "./BaseItemsTable";
+import { ItemsTableRoot } from "./ItemsTable.styled";
 
 Item.propTypes = {
   item: PropTypes.object.isRequired,
@@ -34,9 +34,9 @@ function ItemsTable(props) {
 
   if (items.length === 0) {
     return (
-      <Flex className="relative" align="center" justify="center" p={4} m={2}>
+      <ItemsTableRoot>
         <PinDropZone variant="unpin" />
-      </Flex>
+      </ItemsTableRoot>
     );
   }
 

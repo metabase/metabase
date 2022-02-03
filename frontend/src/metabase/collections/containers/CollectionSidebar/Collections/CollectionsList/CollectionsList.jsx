@@ -1,7 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
-
 import * as Urls from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
@@ -81,7 +79,7 @@ function Collection({
   const action = isOpen ? onClose : onOpen;
 
   return (
-    <Box>
+    <div>
       <CollectionDropTarget collection={collection}>
         {({ highlighted, hovered }) => {
           const url = Urls.collection(collection);
@@ -133,7 +131,7 @@ function Collection({
           />
         </ChildrenContainer>
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -148,7 +146,7 @@ function CollectionsList({
   const filteredCollections = collections.filter(filter);
 
   return (
-    <Box>
+    <div>
       {filteredCollections.map(collection => (
         <Collection
           collection={collection}
@@ -160,7 +158,7 @@ function CollectionsList({
           {...otherProps}
         />
       ))}
-    </Box>
+    </div>
   );
 }
 
