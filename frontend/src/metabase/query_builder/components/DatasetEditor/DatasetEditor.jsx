@@ -10,11 +10,11 @@ import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
+import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { getDatasetEditorTab } from "metabase/query_builder/selectors";
@@ -198,8 +198,18 @@ function DatasetEditor(props) {
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
+  const initialEditorHeight = useMemo(() => {
+    if (dataset.isStructured()) {
+      return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
+    }
+    return calcInitialEditorHeight({
+      query: dataset.query(),
+      viewHeight: height,
+    });
+  }, [dataset, height]);
+
   const [editorHeight, setEditorHeight] = useState(
-    isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
+    isEditingQuery ? initialEditorHeight : 0,
   );
 
   const [focusedFieldRef, setFocusedFieldRef] = useState();
@@ -276,9 +286,9 @@ function DatasetEditor(props) {
   const onChangeEditorTab = useCallback(
     tab => {
       setDatasetEditorTab(tab);
-      setEditorHeight(tab === "query" ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0);
+      setEditorHeight(tab === "query" ? initialEditorHeight : 0);
     },
-    [setDatasetEditorTab],
+    [initialEditorHeight, setDatasetEditorTab],
   );
 
   const handleCancel = useCallback(() => {
