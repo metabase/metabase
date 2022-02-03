@@ -172,6 +172,8 @@ export default class Select extends Component {
   };
 
   handleClose = () => {
+    // Focusing in the next tick prevents it is from reopening
+    // when closed by selecting an item with Enter
     setTimeout(() => {
       this.selectButtonRef.current?.focus();
     }, 0);
