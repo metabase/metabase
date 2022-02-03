@@ -375,6 +375,13 @@ export const getResultsMetadata = createSelector(
   result => result && result.data && result.data.results_metadata,
 );
 
+export const isResultsMetadataDirty = createSelector(
+  [getMetadataDiff],
+  metadataDiff => {
+    return Object.keys(metadataDiff).length > 0;
+  },
+);
+
 /**
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */

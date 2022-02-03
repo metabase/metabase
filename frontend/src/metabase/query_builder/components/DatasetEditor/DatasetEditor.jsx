@@ -17,7 +17,10 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
-import { getDatasetEditorTab } from "metabase/query_builder/selectors";
+import {
+  getDatasetEditorTab,
+  isResultsMetadataDirty,
+} from "metabase/query_builder/selectors";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -45,6 +48,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  isMetadataDirty: PropTypes.object,
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
@@ -70,6 +74,7 @@ const TABLE_HEADER_HEIGHT = 45;
 function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
   };
 }
 
@@ -165,6 +170,7 @@ function DatasetEditor(props) {
     datasetEditorTab,
     result,
     metadata,
+    isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
     setQueryBuilderMode,
@@ -372,8 +378,10 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName && isModelQueryDirty;
-  }, [dataset, fields, isModelQueryDirty]);
+    return (
+      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
+    );
+  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
