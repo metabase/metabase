@@ -320,15 +320,15 @@ export default class AccordionList extends Component {
 
       const isSection = cursor.sectionIndex != null && cursor.itemIndex == null;
 
-      if (isSection && this.canToggleSections()) {
-        this.toggleSection(cursor.sectionIndex);
+      if (!isSection) {
+        const { sections } = this.props;
+        const item = sections[cursor.sectionIndex].items[cursor.itemIndex];
+
+        this.props.onChange(item);
         return;
       }
-      const { sections } = this.props;
 
-      const item = sections[cursor.sectionIndex].items[cursor.itemIndex];
-
-      this.props.onChange(item);
+      this.toggleSection(cursor.sectionIndex);
     }
   };
 
@@ -547,6 +547,7 @@ export default class AccordionList extends Component {
               sectionIsExpanded={this.isSectionExpanded}
               canToggleSections={this.canToggleSections()}
               toggleSection={this.toggleSection}
+              hasCursor={this.isRowSelected(rows[index])}
             />
           ))}
         </AccordionListRoot>
