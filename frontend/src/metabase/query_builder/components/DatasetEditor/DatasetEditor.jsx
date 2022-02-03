@@ -48,7 +48,7 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
-  isMetadataDirty: PropTypes.object,
+  isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
