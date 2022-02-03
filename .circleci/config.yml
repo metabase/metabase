@@ -1035,10 +1035,6 @@ workflows:
     jobs:
       - checkout
 
-      - check-migrations:
-          requires:
-            - checkout
-
       - be-deps:
           requires:
             - checkout
