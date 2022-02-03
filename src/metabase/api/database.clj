@@ -280,7 +280,8 @@
   (cond-> (-> (api/read-check Database id)
               add-expanded-schedules
               (get-database-hydrate-include include))
-    (api/*is-superuser?*) ; for admins, expand inferred secret values in db-details
+
+    api/*is-superuser?* ; for admins, expand inferred secret values in db-details
     secret/admin-expand-db-details-inferred-secret-values))
 
 
