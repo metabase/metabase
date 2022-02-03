@@ -25,7 +25,7 @@ const filter2 = {
 const card1 = getCardProperties({ id: 1, col: 0 });
 const card2 = getCardProperties({ id: 2, col: 9 });
 
-describe.skip("issue 19494", () => {
+describe("issue 19494", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

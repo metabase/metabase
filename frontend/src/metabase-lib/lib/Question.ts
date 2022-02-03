@@ -860,8 +860,18 @@ export default class Question {
     );
   }
 
-  setDashboardId(dashboardId: number): Question {
-    return this.setCard(assoc(this.card(), "dashboardId", dashboardId));
+  setDashboardProps({
+    dashboardId,
+    dashcardId,
+  }:
+    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: undefined; dashcardId: undefined }): Question {
+    const card = chain(this.card())
+      .assoc("dashboardId", dashboardId)
+      .assoc("dashcardId", dashcardId)
+      .value();
+
+    return this.setCard(card);
   }
 
   description(): string | null | undefined {
@@ -1062,10 +1072,12 @@ export default class Question {
 
     if (canUseCardApiEndpoint) {
       const dashboardId = this._card.dashboardId;
+      const dashcardId = this._card.dashcardId;
 
       const queryParams = {
         cardId: this.id(),
         dashboardId,
+        dashcardId,
         ignore_cache: ignoreCache,
         parameters,
       };
@@ -1181,7 +1193,10 @@ export default class Question {
         q &&
         new Question(q.card(), this.metadata())
           .setParameters([])
-          .setDashboardId(undefined)
+          .setDashboardProps({
+            dashboardId: undefined,
+            dashcardId: undefined,
+          })
       );
     });
     return a.isDirtyComparedTo(b);
@@ -1222,6 +1237,7 @@ export default class Question {
 
       ...(creationType ? { creationType } : {}),
       dashboardId: this._card.dashboardId,
+      dashcardId: this._card.dashcardId,
     };
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }

@@ -30,7 +30,7 @@
            :dashboardcard_id [:in dashcard-ids])))))
 
 (defn- resolve-param-for-card
-  [card-id param-id->param {param-id :id, :as request-param}]
+  [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
   (when-not param-id
     (throw (ex-info (tru "Unable to resolve invalid query parameter: parameter is missing :id")
                     {:type              qp.error-type/invalid-parameter
@@ -46,7 +46,8 @@
                                                                                                              (into #{} (map #(dissoc % :dashcard)) mappings)))))
     ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
     (when-let [matching-mapping (or (some (fn [mapping]
-                                            (when (= (:card_id mapping) card-id)
+                                            (when (and (= (:card_id mapping) card-id)
+                                                       (= (get-in mapping [:dashcard :id]) dashcard-id))
                                               mapping))
                                           (:mappings matching-param))
                                     (log/tracef "Parameter has no mapping for Card %d; skipping" card-id))]
@@ -98,6 +99,7 @@
   mappings."
   [dashboard-id   :- su/IntGreaterThanZero
    card-id        :- su/IntGreaterThanZero
+   dashcard-id    :- su/IntGreaterThanZero
    request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
@@ -114,7 +116,7 @@
                 (u/pprint-to-str request-param-id->param)
                 (u/pprint-to-str merged-parameters))
     (u/prog1
-      (into [] (comp (map (partial resolve-param-for-card card-id dashboard-param-id->param))
+      (into [] (comp (map (partial resolve-param-for-card card-id dashcard-id dashboard-param-id->param))
                      (filter some?))
             merged-parameters)
       (log/tracef "Resolved =>\n%s" (u/pprint-to-str <>)))))
@@ -126,15 +128,15 @@
   met before returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/run-query-for-card-async]] for more information about the various parameters."
-  {:arglists '([& {:keys [dashboard-id card-id export-format parameters ignore_cache constraints parameters middleware]}])}
-  [& {:keys [dashboard-id card-id parameters export-format]
+  {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters ignore_cache constraints parameters middleware]}])}
+  [& {:keys [dashboard-id card-id dashcard-id parameters export-format]
       :or   {export-format :api}
       :as   options}]
   ;; make sure we can read this Dashboard. Card will get read-checked later on inside
   ;; [[qp.card/run-query-for-card-async]]
   (api/read-check Dashboard dashboard-id)
   (check-card-is-in-dashboard card-id dashboard-id)
-  (let [resolved-params (resolve-params-for-query dashboard-id card-id parameters)
+  (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
                           :constraints  constraints/default-query-constraints
