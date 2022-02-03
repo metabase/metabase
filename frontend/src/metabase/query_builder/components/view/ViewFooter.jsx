@@ -10,7 +10,6 @@ import Icon from "metabase/components/Icon";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
-import ViewSection from "./ViewSection";
 import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -30,6 +29,7 @@ import {
 
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
+import { ViewFooterRoot } from "./ViewFooter.styled";
 
 import {
   getVisualizationRaw,
@@ -70,7 +70,7 @@ const ViewFooter = ({
   }
 
   return (
-    <ViewSection className={cx(className, "text-medium border-top")} py={1}>
+    <ViewFooterRoot className={cx(className, "text-medium border-top")}>
       <ButtonBar
         className="flex-full"
         left={[
@@ -185,7 +185,7 @@ const ViewFooter = ({
           ),
         ]}
       />
-    </ViewSection>
+    </ViewFooterRoot>
   );
 };
 
