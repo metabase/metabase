@@ -4,8 +4,6 @@ import PropTypes from "prop-types";
 import { jt, t } from "ttag";
 import Link from "metabase/core/components/Link";
 
-import { Box, Flex } from "grid-styled";
-
 import Search from "metabase/entities/search";
 
 import Card from "metabase/components/Card";
@@ -18,7 +16,14 @@ import Icon from "metabase/components/Icon";
 import NoResults from "assets/img/no_results.svg";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { SearchHeader, SearchRoot } from "./SearchApp.styled";
+import {
+  SearchBody,
+  SearchControls,
+  SearchEmptyState,
+  SearchHeader,
+  SearchMain,
+  SearchRoot,
+} from "./SearchApp.styled";
 
 const PAGE_SIZE = 50;
 
@@ -101,7 +106,7 @@ export default function SearchApp({ location }) {
           {({ list, metadata }) => {
             if (list.length === 0) {
               return (
-                <Box width={2 / 3}>
+                <SearchEmptyState>
                   <Card>
                     <EmptyState
                       title={t`Didn't find anything`}
@@ -109,7 +114,7 @@ export default function SearchApp({ location }) {
                       illustrationElement={<img src={NoResults} />}
                     />
                   </Card>
-                </Box>
+                </SearchEmptyState>
               );
             }
 
@@ -120,8 +125,8 @@ export default function SearchApp({ location }) {
             );
 
             return (
-              <Flex align="top">
-                <Box width={2 / 3}>
+              <SearchBody>
+                <SearchMain>
                   <React.Fragment>
                     <SearchResultSection items={list} />
                     <div className="flex justify-end my2">
@@ -136,8 +141,8 @@ export default function SearchApp({ location }) {
                       />
                     </div>
                   </React.Fragment>
-                </Box>
-                <Box ml={[1, 2]} pt={2} px={2}>
+                </SearchMain>
+                <SearchControls>
                   {filters.length > 0 ? (
                     <Link
                       className="flex align-center"
@@ -173,8 +178,8 @@ export default function SearchApp({ location }) {
                       </Link>
                     );
                   })}
-                </Box>
-              </Flex>
+                </SearchControls>
+              </SearchBody>
             );
           }}
         </Search.ListLoader>

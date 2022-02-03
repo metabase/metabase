@@ -24,3 +24,25 @@ export const SearchHeader = styled.div`
     padding: 2rem 0;
   }
 `;
+
+export const SearchEmptyState = styled.div`
+  width: 66.66%;
+`;
+
+export const SearchBody = styled.div`
+  display: flex;
+  align-items: start;
+`;
+
+export const SearchMain = styled.div`
+  width: 66.66%;
+`;
+
+export const SearchControls = styled.div`
+  padding: 1rem 1rem 0 1rem;
+  margin-left: 0.5rem;
+
+  ${breakpointMinSmall} {
+    margin-left: 1rem;
+  }
+`;
