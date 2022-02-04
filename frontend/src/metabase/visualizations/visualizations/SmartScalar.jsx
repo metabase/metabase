@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
@@ -183,12 +182,12 @@ export default class Smart extends React.Component {
             }
           />
         )}
-        <Box className="SmartWrapper">
+        <div className="SmartWrapper">
           {lastChange == null || previousValue == null ? (
-            <Box
+            <div
               className="text-centered text-bold mt1"
-              color={color("text-medium")}
-            >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+              style={{ color: color("text-medium") }}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</div>
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
@@ -209,7 +208,7 @@ export default class Smart extends React.Component {
               </PreviousValueVariation>
             </PreviousValueContainer>
           )}
-        </Box>
+        </div>
       </ScalarWrapper>
     );
   }

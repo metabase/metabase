@@ -290,6 +290,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
   - [POST /api/card/:card-id/public_link](#post-apicardcard-idpublic_link)
   - [POST /api/card/:card-id/query](#post-apicardcard-idquery)
   - [POST /api/card/:card-id/query/:export-format](#post-apicardcard-idqueryexport-format)
+  - [POST /api/card/:id/copy](#post-apicardidcopy)
   - [POST /api/card/collections](#post-apicardcollections)
   - [POST /api/card/pivot/:card-id/query](#post-apicardpivotcard-idquery)
   - [POST /api/card/related](#post-apicardrelated)
@@ -434,6 +435,14 @@ Run the query associated with a Card, and return its results as a file in the sp
 *  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+### `POST /api/card/:id/copy`
+
+Copy a `Card`, with the new name 'Copy of _name_'.
+
+##### PARAMS:
+
+*  **`id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 ### `POST /api/card/collections`
 
@@ -716,14 +725,14 @@ You must be a superuser to do this.
   - [GET /api/dashboard/params/valid-filter-fields](#get-apidashboardparamsvalid-filter-fields)
   - [GET /api/dashboard/public](#get-apidashboardpublic)
   - [POST /api/dashboard/](#post-apidashboard)
-  - [POST /api/dashboard/:dashboard-id/card/:card-id/query](#post-apidashboarddashboard-idcardcard-idquery)
-  - [POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format](#post-apidashboarddashboard-idcardcard-idqueryexport-format)
-  - [POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query](#post-apidashboarddashboard-idcardpivotcard-idquery)
+  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idquery)
+  - [POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format](#post-apidashboarddashboard-iddashcarddashcard-idcardcard-idqueryexport-format)
   - [POST /api/dashboard/:dashboard-id/public_link](#post-apidashboarddashboard-idpublic_link)
   - [POST /api/dashboard/:from-dashboard-id/copy](#post-apidashboardfrom-dashboard-idcopy)
   - [POST /api/dashboard/:id/cards](#post-apidashboardidcards)
   - [POST /api/dashboard/:id/favorite](#post-apidashboardidfavorite)
   - [POST /api/dashboard/:id/revert](#post-apidashboardidrevert)
+  - [POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query](#post-apidashboardpivotdashboard-iddashcarddashcard-idcardcard-idquery)
   - [POST /api/dashboard/save](#post-apidashboardsave)
   - [POST /api/dashboard/save/collection/:parent-collection-id](#post-apidashboardsavecollectionparent-collection-id)
   - [PUT /api/dashboard/:id](#put-apidashboardid)
@@ -901,7 +910,7 @@ Create a new Dashboard.
 
 *  **`dashboard`** 
 
-### `POST /api/dashboard/:dashboard-id/card/:card-id/query`
+### `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
 Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it.
 
@@ -909,11 +918,13 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`dashboard-id`** 
 
+*  **`dashcard-id`** 
+
 *  **`card-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
-### `POST /api/dashboard/:dashboard-id/card/:card-id/query/:export-format`
+### `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format`
 
 Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
@@ -925,6 +936,8 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`dashboard-id`** 
 
+*  **`dashcard-id`** 
+
 *  **`card-id`** 
 
 *  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
@@ -932,18 +945,6 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
 *  **`request-parameters`** 
-
-### `POST /api/dashboard/:dashboard-id/card/pivot/:card-id/query`
-
-Pivot table version of `POST /api/dashboard/:dashboard-id/card/:card-id`.
-
-##### PARAMS:
-
-*  **`dashboard-id`** 
-
-*  **`card-id`** 
-
-*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
 ### `POST /api/dashboard/:dashboard-id/public_link`
 
@@ -1008,6 +1009,20 @@ Revert a Dashboard to a prior `Revision`.
 *  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
+
+### `POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
+
+Run a pivot table query for a specific DashCard.
+
+##### PARAMS:
+
+*  **`dashboard-id`** 
+
+*  **`dashcard-id`** 
+
+*  **`card-id`** 
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
 ### `POST /api/dashboard/save`
 
@@ -2404,7 +2419,7 @@ Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
   - [GET /api/public/card/:uuid/query](#get-apipubliccarduuidquery)
   - [GET /api/public/card/:uuid/query/:export-format](#get-apipubliccarduuidqueryexport-format)
   - [GET /api/public/dashboard/:uuid](#get-apipublicdashboarduuid)
-  - [GET /api/public/dashboard/:uuid/card/:card-id](#get-apipublicdashboarduuidcardcard-id)
+  - [GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id](#get-apipublicdashboarduuiddashcarddashcard-idcardcard-id)
   - [GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id](#get-apipublicdashboarduuidfieldfield-idremappingremapped-id)
   - [GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id](#get-apipublicdashboarduuidfieldfield-idsearchsearch-field-id)
   - [GET /api/public/dashboard/:uuid/field/:field-id/values](#get-apipublicdashboarduuidfieldfield-idvalues)
@@ -2412,7 +2427,7 @@ Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
   - [GET /api/public/dashboard/:uuid/params/:param-key/values](#get-apipublicdashboarduuidparamsparam-keyvalues)
   - [GET /api/public/oembed](#get-apipublicoembed)
   - [GET /api/public/pivot/card/:uuid/query](#get-apipublicpivotcarduuidquery)
-  - [GET /api/public/pivot/dashboard/:uuid/card/:card-id](#get-apipublicpivotdashboarduuidcardcard-id)
+  - [GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id](#get-apipublicpivotdashboarduuiddashcarddashcard-idcardcard-id)
 
 ### `GET /api/public/card/:uuid`
 
@@ -2496,7 +2511,7 @@ Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public
 
 *  **`uuid`** 
 
-### `GET /api/public/dashboard/:uuid/card/:card-id`
+### `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled.
@@ -2506,6 +2521,8 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`uuid`** 
 
 *  **`card-id`** 
+
+*  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -2601,7 +2618,7 @@ Fetch a publicly-accessible Card an return query results as well as `:card` info
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `GET /api/public/pivot/dashboard/:uuid/card/:card-id`
+### `GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled.
@@ -2611,6 +2628,8 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`uuid`** 
 
 *  **`card-id`** 
+
+*  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 

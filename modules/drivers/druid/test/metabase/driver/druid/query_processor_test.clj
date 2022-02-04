@@ -90,7 +90,7 @@
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
-        (qp/query->native query)))))
+        (qp/compile query)))))
 
 (defmacro ^:private query->native [query]
   `(do-query->native
@@ -588,7 +588,7 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (letfn [(compiled [query]
-                (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
+                (-> (qp/compile query) :query (select-keys [:filter :queryType])))]
         (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
                                  "We should be able to filter by Metrics (#11823)"     :count}
                 :let            [field-clause [:field (mt/id :checkins field) nil]

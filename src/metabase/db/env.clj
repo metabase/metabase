@@ -4,18 +4,21 @@
   enviornment variables e.g. `MB_DB_TYPE`, `MB_DB_HOST`, etc. `MB_DB_CONNECTION_URI` is used preferentially if both
   are specified.
 
-  There are two ways we specify JDBC connection information in Metabase code:
+  There are three ways you can specify application JDBC connection information for Metabase:
 
-  1. As a 'connection details' map that is meant to be UI-friendly; this is the actual map we save when creating a
-     `Database` object and the one you can go edit from the admin page. For application DB code, this representation is
-     only used in this namespace.
+  1. As broken-out connection details -- see [[env]] for a list of env vars. This is basically the same
+    format the actual `:details` map we save when creating a [[metabase.models.Database]] object. We convert this to
+    a [[clojure.java.jdbc]] spec map using [[metabase.db.spec/spec]] and then to create a [[javax.sql.DataSource]] from
+    it. See [[mdb.data-source/broken-out-details->DataSource]].
 
-  2. As a `clojure.java.jdbc` connection spec map. This is used internally by lower-level JDBC stuff. We have to
-     convert the connections details maps to JDBC specs at some point; Metabase driver code normally handles this.
+  2. As a JDBC connection string specified by `MB_DB_CONNECTION_URI`. This is used to create
+     a [[javax.sql.DataSource]]. See [[mdb.data-source/raw-connection-string->DataSource]].
 
-  There are functions for fetching both types of connection details below.
+  3. As a JDBC connection string (`MB_DB_CONNECTION_URI`) with username (`MB_DB_USER`) and/or password (`MB_DB_PASS`)
+     passed separately. Support for this was added in Metabase 0.43.0 -- see #20122.
 
-  Normally you should use the equivalent functions in `metabase.db.connection` which can be overridden rather than
+  This namespace exposes the vars [[db-type]] and [[data-source]] based on the aforementioned environment variables.
+  Normally you should use the equivalent functions in [[metabase.db.connection]] which can be overridden rather than
   using this namespace directly."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
@@ -23,6 +26,24 @@
             [metabase.config :as config]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.util :as u]))
+
+;;;; [[env->db-type]]
+
+(defn- raw-connection-string->type [s]
+  (when (seq s)
+    (when-let [[_protocol subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" s)]
+      (condp = subprotocol
+        "postgresql" :postgres
+        (keyword subprotocol)))))
+
+(defn- env->db-type
+  [{:keys [mb-db-connection-uri mb-db-type]}]
+  {:post [(#{:postgres :mysql :h2} %)]}
+  (or (some-> mb-db-connection-uri raw-connection-string->type)
+      mb-db-type))
+
+
+;;;; [[env->DataSource]]
 
 (defn- get-db-file
   "Takes a filename and converts it to H2-compatible filename."
@@ -38,47 +59,52 @@
          (.getAbsolutePath (io/file db-file-name))
          options)))
 
-(def db-file
-  "Path to our H2 DB file from env var or app config."
+(defn- env->db-file
+  [{:keys [mb-db-in-memory mb-db-file]}]
   ;; see https://h2database.com/html/features.html for explanation of options
-  (if (config/config-bool :mb-db-in-memory)
+  (if mb-db-in-memory
     ;; In-memory (i.e. test) DB
     ;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
     "mem:metabase;DB_CLOSE_DELAY=-1"
     ;; File-based DB
-    (let [db-file-name (config/config-str :mb-db-file)]
-      (get-db-file db-file-name))))
+    (get-db-file mb-db-file)))
 
-(def ^:private raw-connection-string
-  (config/config-str :mb-db-connection-uri))
+(defn- broken-out-details
+  "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
+  SQL driver functions on the Metabase DB itself)."
+  [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user], :as env-vars}]
+  (if (= db-type :h2)
+    {:db (env->db-file env-vars)}
+    {:host     mb-db-host
+     :port     mb-db-port
+     :db       mb-db-dbname
+     :user     mb-db-user
+     :password mb-db-pass}))
 
-(defn- raw-connection-string->type [s]
-  (when (seq s)
-    (when-let [[_protocol subprotocol] (re-find #"^(?:jdbc:)?([^:]+):" s)]
-      (condp = subprotocol
-        "postgresql" :postgres
-        (keyword subprotocol)))))
+(defn- env->DataSource
+  [db-type {:keys [mb-db-connection-uri mb-db-user mb-db-pass], :as env-vars}]
+  (if mb-db-connection-uri
+    (mdb.data-source/raw-connection-string->DataSource mb-db-connection-uri mb-db-user mb-db-pass)
+    (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
 
-(def ^:private raw-connection-string-type
-  (raw-connection-string->type raw-connection-string))
 
-;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
-;; know about that to make their lives a little easier. See #8908 for more details.
-(when (and (= raw-connection-string-type :postgres)
-           (str/includes? raw-connection-string "ssl=true")
-           (not (str/includes? raw-connection-string "sslmode=require")))
-  ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log this
-  ;; and thus the site locale is unavailable.
-  (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
-                           "You may need to add `?sslmode=require` to your application DB connection string."
-                           "If Metabase fails to launch, please add it and try again."
-                           "See https://github.com/metabase/metabase/issues/8908 for more details."])))
+;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using enviornment variables.
+
+(def ^:private env
+  {:mb-db-type           (config/config-kw :mb-db-type)
+   :mb-db-in-memory      (config/config-bool :mb-db-in-memory)
+   :mb-db-file           (config/config-str :mb-db-file)
+   :mb-db-connection-uri (config/config-str :mb-db-connection-uri)
+   :mb-db-host           (config/config-str :mb-db-host)
+   :mb-db-port           (config/config-int :mb-db-port)
+   :mb-db-dbname         (config/config-str :mb-db-dbname)
+   :mb-db-user           (config/config-str :mb-db-user)
+   :mb-db-pass           (config/config-str :mb-db-pass)})
 
 (def db-type
   "Keyword type name of the application DB details specified by environment variables. Matches corresponding driver
   name e.g. `:h2`, `:mysql`, or `:postgres`."
-  (or raw-connection-string-type
-      (config/config-kw :mb-db-type)))
+  (env->db-type env))
 
 (when (= db-type :h2)
   (log/warn
@@ -93,19 +119,24 @@
       "If you decide to continue to use H2, please be sure to back up the database file regularly."
       "For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"]))))
 
-(def ^:private broken-out-details
-  "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
-  SQL driver functions on the Metabase DB itself)."
-  (if (= db-type :h2)
-    {:db db-file}
-    {:host     (config/config-str :mb-db-host)
-     :port     (config/config-int :mb-db-port)
-     :db       (config/config-str :mb-db-dbname)
-     :user     (config/config-str :mb-db-user)
-     :password (config/config-str :mb-db-pass)}))
+(defn db-file
+  "Path to our H2 DB file from env var or app config."
+  []
+  (env->db-file env))
+
+;; If someone is using Postgres and specifies `ssl=true` they might need to specify `sslmode=require`. Let's let them
+;; know about that to make their lives a little easier. See #8908 for more details.
+(when-let [raw-connection-string (not-empty (:mb-db-connection-uri env))]
+  (when (and (= db-type :postgres)
+             (str/includes? raw-connection-string "ssl=true")
+             (not (str/includes? raw-connection-string "sslmode=require")))
+    ;; Unfortunately this can't be i18n'ed because the application DB hasn't been initialized yet at the time we log
+    ;; this and thus the site locale is unavailable.
+    (log/warn (str/join " " ["Warning: Postgres connection string with `ssl=true` detected."
+                             "You may need to add `?sslmode=require` to your application DB connection string."
+                             "If Metabase fails to launch, please add it and try again."
+                             "See https://github.com/metabase/metabase/issues/8908 for more details."]))))
 
 (def ^javax.sql.DataSource data-source
   "A [[javax.sql.DataSource]] ultimately derived from the environment variables."
-  (if raw-connection-string
-    (mdb.data-source/raw-connection-string->DataSource raw-connection-string)
-    (mdb.data-source/broken-out-details->DataSource db-type broken-out-details)))
+  (env->DataSource db-type env))

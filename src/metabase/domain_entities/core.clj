@@ -56,7 +56,7 @@
     [:field name {:base-type base_type}]))
 
 (defn- has-attribute?
-  [entity {:keys [field domain_entity has_many]}]
+  [entity {:keys [field _domain_entity _has_many]}]
   (cond
     field (some (fn [col]
                   (when (or (isa? (field-type col) field)
@@ -84,7 +84,7 @@
           (resolve-dimension-clauses bindings source entity))))
 
 (defn- instantiate-domain-entity
-  [table {:keys [name description required_attributes optional_attributes metrics segments breakout_dimensions type]}]
+  [table {:keys [name description metrics segments breakout_dimensions type]}]
   (let [dimensions (into {} (for [field (:fields table)]
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table

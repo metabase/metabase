@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 import { t } from "ttag";
 
 import Database from "metabase/entities/databases";
@@ -11,7 +10,7 @@ import * as Urls from "metabase/lib/urls";
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
@@ -19,7 +18,7 @@ import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
 
 function DatabaseBrowser({ databases }) {
   return (
-    <Box>
+    <div>
       <BrowseHeader crumbs={[{ title: t`Our data` }]} />
 
       <Grid>
@@ -44,7 +43,7 @@ function DatabaseBrowser({ databases }) {
           </GridItem>
         ))}
       </Grid>
-    </Box>
+    </div>
   );
 }
 

@@ -149,4 +149,4 @@
                       "FROM ATTEMPTS "
                       "GROUP BY ATTEMPTS.DATE "
                       "ORDER BY ATTEMPTS.DATE ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))

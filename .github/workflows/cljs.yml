@@ -3,12 +3,8 @@ name: CLJS
 on:
   push:
     branches:
-      - '**'
-    paths:
-    - 'shared/src/'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
   pull_request:
 
 jobs:
@@ -18,23 +14,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/deps.edn') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - name: Run Cljs tests for shared/ code
       run: yarn run test-cljs

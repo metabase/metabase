@@ -9,18 +9,10 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Flex } from "grid-styled";
+import { ScalarRoot } from "./ScalarValue.styled";
 
 export const ScalarWrapper = ({ children }) => (
-  <Flex
-    align="center"
-    justify="center"
-    flexDirection="column"
-    className="full-height full flex-wrap relative"
-    flex={1}
-  >
-    {children}
-  </Flex>
+  <ScalarRoot>{children}</ScalarRoot>
 );
 
 const ScalarValue = ({ value, isFullscreen, isDashboard }) => (

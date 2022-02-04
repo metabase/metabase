@@ -11,12 +11,12 @@ executors:
   builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
 
   tester:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:circleci-java-8-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
@@ -607,25 +607,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  check-migrations:
-    executor:
-      builder
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .MIGRATIONS-CHECKSUM
-          find-args: resources/migrations -type f -name '*.yaml'
-      - create-checksum-file:
-          filename: .MIGRATIONS-LINTER-CHECKSUMS
-          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
-      - run-on-change:
-          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
-          steps:
-            - run:
-                name: Verify Liquibase Migrations
-                command: ./bin/lint-migrations-file.sh
-                no_output_timeout: 15m
-
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
@@ -1053,10 +1034,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - check-migrations:
-          requires:
-            - checkout
 
       - be-deps:
           requires:

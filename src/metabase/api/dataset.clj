@@ -60,8 +60,7 @@
                          (db/select-one [Card :result_metadata :dataset] :id source-card-id))
         info           (cond-> {:executed-by api/*current-user-id*
                                 :context     context
-                                :card-id     source-card-id
-                                :nested?     (boolean source-card-id)}
+                                :card-id     source-card-id}
                          (:dataset source-card)
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
@@ -151,7 +150,7 @@
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
   (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-  (qp/query->native-with-spliced-params query))
+  (qp/compile-and-splice-parameters query))
 
 (api/defendpoint ^:streaming POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"

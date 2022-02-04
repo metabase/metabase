@@ -1,18 +1,11 @@
 name: Frontend
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - 'frontend/**'
-    - 'shared/**'
-    - 'enterprise/frontend/**'
-    - '**/package.json'
-    - '**/yarn.lock'
-    - '**/.eslintrc'
-    - '.github/workflows/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 
@@ -21,17 +14,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run lint-prettier
       name: Run Prettier formatting linter
 
@@ -40,22 +24,8 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run lint-eslint
       name: Run ESLint linter
 
@@ -64,17 +34,8 @@ jobs:
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn type-check
       name: Check types
 
@@ -83,22 +44,8 @@ jobs:
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run test-unit --coverage --silent
       name: Run frontend unit tests
     - name: Upload coverage to codecov.io
@@ -112,22 +59,8 @@ jobs:
     timeout-minutes: 14
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
     - run: yarn run test-timezones
       name: Run frontend timezones tests
 
@@ -138,17 +71,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Prepare Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: 14.x
-          cache: 'yarn'
-      - name: Get node_modules cache
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-      - run: yarn install --frozen-lockfile --prefer-offline
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
       - name: Publish to Chromatic
         uses: chromaui/action@v1
         env:

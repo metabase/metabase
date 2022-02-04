@@ -3,7 +3,6 @@
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.query-processor.util :as qputil]))
 
 ;;;; Pre-processing
@@ -27,38 +26,32 @@
       (mbql.u/query->max-rows-limit query)
       i/absolute-max-results))
 
-(defn- add-default-limit [query]
-  (add-limit (determine-query-max-rows query) query))
-
-(def add-default-limit-middleware
+(defn add-default-limit
   "Pre-processing middleware. Add default `:limit` to MBQL queries without any aggregations."
-  (m.43/wrap-43-pre-processing-middleware add-default-limit))
+  [query]
+  (add-limit (determine-query-max-rows query) query))
 
 
 ;;;; Post-processing
 
 (defn- limit-xform [max-rows rf]
   {:pre [(fn? rf)]}
-  (let [row-count (volatile! 0)]
-    (fn
-      ([]
-       (rf))
+  ;; TODO FIXME: This is sort of a hack, but our old version of this code used to always take the first row no matter
+  ;; what and [[metabase.driver.sqlserver-test/max-results-bare-rows-test]] was written expecting that behavior. I
+  ;; haven't quite worked around how to fix that test yet. When that happens we can change this to
+  ;;
+  ;;    ((take max-rows) rf)
+  ;;
+  ;; Background: SQL Server treats a limit of `0` as meaning "unbounded". SQL Server can override
+  ;; [[constraints/max-results-bare-rows]] with a Database-local Setting to fix #9940, where queries with aggregations
+  ;; and expressions could return the wrong results because of limits being applied to subselects. Realistically the
+  ;; overriden limit of `0` should probably only apply to the MBQL query and not to the number of rows we take. But we'd
+  ;; have to break [[determine-query-max-rows]] into two separate things in order to do that. :shrug:
+  ((take (if-not (pos? max-rows) 1 max-rows)) rf))
 
-      ([result]
-       (rf result))
-
-      ([result row]
-       (let [result'       (rf result row)
-             new-row-count (vswap! row-count inc)]
-         (if (>= new-row-count max-rows)
-           (ensure-reduced result')
-           result'))))))
-
-(defn- limit-result-rows [query rff]
+(defn limit-result-rows
+  "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
+  [query rff]
   (let [max-rows (determine-query-max-rows query)]
     (fn limit-result-rows-rff* [metadata]
       (limit-xform max-rows (rff metadata)))))
-
-(def limit-result-rows-middleware
-  "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
-  (m.43/wrap-43-post-processing-middleware limit-result-rows))

@@ -88,7 +88,7 @@
 (defn graphing-column-row-fns
   "Return a pair of `[get-x-axis get-y-axis]` functions that can be used to get the x-axis and y-axis values in a row,
   or columns, respectively."
-  [card {:keys [cols] :as data}]
+  [card data]
   [(or (ui-logic/x-axis-rowfn card data)
        first)
    (or (ui-logic/y-axis-rowfn card data)

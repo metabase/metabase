@@ -26,7 +26,7 @@ Cypress.Commands.add(
  * @param {object} questionDetails
  * @param {string} [questionDetails.name="test question"]
  * @param {string} questionDetails.description
- * @param {boolean} questionDetails.dataset
+ * @param {boolean} questionDetails.dataset - Is this a Model or no? (model = dataset)
  * @param {object} questionDetails.native
  * @param {object} questionDetails.query
  * @param {number} [questionDetails.database=1]
@@ -73,16 +73,15 @@ function question(
     }
 
     if (loadMetadata || visitQuestion) {
-      if (dataset) {
-        cy.intercept("POST", `/api/dataset`).as("cardQuery");
-      } else {
-        cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
-      }
+      dataset
+        ? cy.intercept("POST", `/api/dataset`).as("dataset")
+        : cy.intercept("POST", `/api/card/${body.id}/query`).as("cardQuery");
+
       const url = dataset ? `/model/${body.id}` : `/question/${body.id}`;
       cy.visit(url);
 
       // Wait for `result_metadata` to load
-      cy.wait("@cardQuery");
+      dataset ? cy.wait("@dataset") : cy.wait("@cardQuery");
     }
   });
 }

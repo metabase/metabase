@@ -60,7 +60,7 @@
         (catch Throwable e
           (log/error e (trs "Error writing error to output stream") obj))))))
 
-(defn- do-f* [f ^OutputStream os finished-chan canceled-chan]
+(defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
     (f os canceled-chan)
     (catch EofException _
@@ -178,7 +178,7 @@
 
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map request]}
-   f {:keys [content-type status headers], :as options} finished-chan]
+   f {:keys [content-type status headers], :as _options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
       (.setStatus response (or status 202))
@@ -209,7 +209,7 @@
     (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
-  (respond [this context]
+  (respond [_this context]
     (respond context f options donechan))
 
   ;; sync responses only (in some cases?)

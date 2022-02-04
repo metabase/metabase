@@ -45,7 +45,7 @@
                   \newline
                   "We will attempt to fix this, but it may lead to incorrect queries."
                   \newline
-                  "See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more information."
+                  "See #19757 for more information."
                   \newline
                   (str "Clause:       " (pr-str field-clause))
                   \newline
@@ -91,7 +91,10 @@
                       &match)
           &match))))
 
-(defn- upgrade-field-literals-all-levels [query]
+(defn upgrade-field-literals
+  "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
+  the resulting query doesn't end up being broken."
+  [query]
   (-> (walk/postwalk
        (fn [form]
          ;; find maps that have `source-query` and `source-metadata`, but whose source query is an MBQL source query
@@ -102,16 +105,9 @@
                   ;; we probably shouldn't upgrade things at all if we have a source MBQL query whose source is a native
                   ;; query at ANY level, since `[:field <name>]` might mean `source.<name>` or it might mean
                   ;; `some_join.<name>`. But we'll probably break more things than we fix if turn off this middleware in
-                  ;; that case. See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more info
+                  ;; that case. See #19757 for more info
                   (not (get-in form [:source-query :native])))
            (upgrade-field-literals-one-level form)
            form))
-       (resolve-fields/resolve-fields* query))
-      resolve-fields/resolve-fields*))
-
-(defn upgrade-field-literals
-  "Look for usage of `:field` (name) forms where `field` (ID) would have been the correct thing to use, and fix it, so
-  the resulting query doesn't end up being broken."
-  [qp]
-  (fn [query rff context]
-    (qp (upgrade-field-literals-all-levels query) rff context)))
+       (resolve-fields/resolve-fields query))
+      resolve-fields/resolve-fields))

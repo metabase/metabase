@@ -1,18 +1,11 @@
 name: i18n
 
 on:
-  pull_request:
   push:
     branches:
-      - '**'
-    paths:
-    - '**.clj*'
-    - '**.js'
-    - '**.jsx'
-    - '**.ts'
-    - '**.tsx'
-    - '.github/workflows/**'
-    - 'bin/**'
+      - 'master'
+      - 'release-**'
+  pull_request:
 
 jobs:
 
@@ -21,31 +14,13 @@ jobs:
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v2
-    - name: Prepare Node.js
-      uses: actions/setup-node@v2
+    - name: Prepare front-end environment
+      uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
       with:
-        node-version: 14.x
-        cache: 'yarn'
-    - name: Get node_modules cache
-      uses: actions/cache@v2
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
-    - run: yarn install --frozen-lockfile --prefer-offline
-
+        m2-cache-key: 'i18n'
     - run: sudo apt install gettext
-
-    - name: Install Clojure CLI
-      run: |
-        curl -O https://download.clojure.org/install/linux-install-1.10.3.933.sh &&
-        sudo bash ./linux-install-1.10.3.933.sh
-    - name: Get M2 cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.m2
-          ~/.gitlibs
-        key: ${{ runner.os }}-i18n-${{ hashFiles('**/deps.edn') }}
 
     - run: ./bin/i18n/update-translation-template
       name: Check i18n tags/make sure template can be built

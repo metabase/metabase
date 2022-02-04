@@ -331,7 +331,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))
 
     (testing "trunc-with-format should not cast a field if it is already a DATETIME"
       (is (= ["SELECT str_to_date(date_format(CAST(field AS datetime), '%Y'), '%Y')"]
