@@ -143,8 +143,10 @@
           :else ; no details populated; do nothing
           database)))
 
-(def ^:dynamic *allow-sample-update?*
-  "We want to disallow  (#16382)"
+(def ^:dynamic ^Boolean *allow-sample-update?*
+  "We want to disallow edits to a sample `database`'s `engine` and `details` fields, because that causes problems when
+  restarting the application (#16382), but you can temporarily enable that e.g.
+  in [[metabase.sample-data/update-sample-database-if-needed!]]."
   false)
 
 (defn- pre-update
