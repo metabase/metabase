@@ -69,6 +69,7 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
 };
@@ -93,7 +94,18 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
+      next: (
+        { queryBuilderMode: currentQBMode, ...state },
+        { payload: { queryBuilderMode: nextQBMode, ...payload } },
+      ) => ({
+        ...state,
+        ...payload,
+        queryBuilderMode: nextQBMode || currentQBMode,
+        previousQueryBuilderMode:
+          nextQBMode && currentQBMode !== nextQBMode
+            ? currentQBMode
+            : state.previousQueryBuilderMode,
+      }),
     },
 
     [RESET_UI_CONTROLS]: {
