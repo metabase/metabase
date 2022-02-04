@@ -93,6 +93,7 @@ function EntityItemMenu({
 }) {
   const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
+  const showUnpinnedAction = onPin && !isPinned;
 
   const actions = useMemo(
     () =>
@@ -138,7 +139,7 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {showPinnedAction && (
+      {showUnpinnedAction && (
         <Tooltip tooltip={t`Pin this`}>
           <PinButton icon="pin" onClick={onPin} />
         </Tooltip>
