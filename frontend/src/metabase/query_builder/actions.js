@@ -54,6 +54,7 @@ import {
   getIsPreviewing,
   getTableForeignKeys,
   getQueryBuilderMode,
+  getPreviousQueryBuilderMode,
   getDatasetEditorTab,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
@@ -783,17 +784,23 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+  const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
   const queryBuilderMode = getQueryBuilderMode(getState());
   const datasetEditorTab = getDatasetEditorTab(getState());
   const isEditingDatasetMetadata =
     queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+  const wasJustEditingModel =
+    previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
   const changedSettings = Object.keys(settings);
   const isColumnWidthResetEvent =
     changedSettings.length === 1 &&
     changedSettings.includes("table.column_widths") &&
     settings["table.column_widths"] === undefined;
 
-  if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
+  if (
+    (isEditingDatasetMetadata || wasJustEditingModel) &&
+    isColumnWidthResetEvent
+  ) {
     return;
   }
 
