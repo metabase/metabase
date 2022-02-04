@@ -34,6 +34,12 @@ export const DashboardLoadingAndErrorWrapper = styled(
     `}
 `;
 
+DashboardLoadingAndErrorWrapper.defaultProps = {
+  className: ({ isFullscreen, isNightMode }) =>
+    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
+      "Dashboard--night"}`,
+};
+
 export const DashboardStyled = styled.div`
   display: flex;
   flex-direction: column;
