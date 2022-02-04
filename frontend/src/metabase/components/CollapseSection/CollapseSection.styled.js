@@ -1,3 +1,4 @@
+import React from "react";
 import styled, { css } from "styled-components";
 import Icon from "metabase/components/Icon";
 
@@ -28,16 +29,12 @@ const ICON_VARIANTS = {
   },
 };
 
-export const ToggleIcon = styled(Icon)`
+export const ToggleIcon = styled(({ isExpanded, variant, ...props }) => {
+  const { collapsed, expanded } = ICON_VARIANTS[variant];
+  const name = isExpanded ? expanded : collapsed;
+  return <Icon name={name} size={12} {...props} />;
+})`
   ${props => css`
     margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
   `};
 `;
-
-ToggleIcon.defaultProps = {
-  name: ({ isExpanded, variant }) => {
-    const { collapsed, expanded } = ICON_VARIANTS[variant];
-    return isExpanded ? expanded : collapsed;
-  },
-  size: 12,
-};

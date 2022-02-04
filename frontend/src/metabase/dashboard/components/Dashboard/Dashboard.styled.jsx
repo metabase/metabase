@@ -1,3 +1,4 @@
+import React from "react";
 import styled, { css } from "styled-components";
 
 import { color } from "metabase/lib/colors";
@@ -9,7 +10,15 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
-export const DashboardLoadingAndErrorWrapper = styled(LoadingAndErrorWrapper)`
+export const DashboardLoadingAndErrorWrapper = styled(
+  ({ isFullscreen, isNightMode, ...props }) => (
+    <LoadingAndErrorWrapper
+      className={`Dashboard ${isFullscreen &&
+        "Dashboard--fullscreen"} ${isNightMode && "Dashboard--night"}`}
+      {...props}
+    />
+  ),
+)`
   flex: 1 0 auto;
 
   // prevents header from scrolling so we can have a fixed sidebar
@@ -19,12 +28,6 @@ export const DashboardLoadingAndErrorWrapper = styled(LoadingAndErrorWrapper)`
       height: 100%;
     `}
 `;
-
-DashboardLoadingAndErrorWrapper.defaultProps = {
-  className: ({ isFullscreen, isNightMode }) =>
-    `Dashboard ${isFullscreen && "Dashboard--fullscreen"} ${isNightMode &&
-      "Dashboard--night"}`,
-};
 
 export const DashboardStyled = styled.div`
   display: flex;
