@@ -56,7 +56,7 @@ export const ToggleMobileSidebarIcon = styled(Icon)`
   // for icon to land on
   // same position as burger icon
   // when sidebar is hidden in mobile
-  margin: -4px ${space(2)} 0 30px};
+  margin: -4px ${space(2)} 0 30px;
 
   ${breakpointMinSmall} {
     cursor: pointer;
