@@ -4,10 +4,10 @@ import React from "react";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import { PageHeader, SectionRoot } from "./ModalsPage.styled";
+import { PageHeader, PageSection } from "./ModalsPage.styled";
 
 const Section = ({ children }) => (
-  <SectionRoot className="bordered shadowed rounded">{children}</SectionRoot>
+  <PageSection className="bordered shadowed rounded">{children}</PageSection>
 );
 
 const ModalsPage = () => (
