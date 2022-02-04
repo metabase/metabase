@@ -1,21 +1,20 @@
 # Working with Oracle in Metabase
 
-Starting in v0.20.0, Metabase provides a driver for connecting to Oracle databases. Under the hood, Metabase uses Oracle's JDBC driver; due to licensing restrictions, we can't
-include it as part of Metabase. Luckily, downloading it yourself and making it available to Metabase is straightforward and only takes a few minutes.
+Under the hood, Metabase uses Oracle's JDBC driver, but due to licensing restrictions, we can't include Oracle's driver as part of Metabase, so you'll need to download the driver and make it available to Metabase.
 
 ## Downloading the Oracle JDBC Driver JAR
 
-You can download the JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
-Head to this page, accept the license agreement, and download `ojdbc8.jar`:
+You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 
-![Oracle JDBC Download](../images/oracle_jdbc_download.png)
+The minimum driver version should be 19c, regardless of which Java version or Oracle version you have.
 
-Before downloading this JAR you may need to sign up for a free account with Oracle. We have had success with the latest version at the time of this writing, 19.3 (even with older Oracle 12c databases), but any version _should_ work.
+We recommend using the `ojdbc11.jar` JAR.
 
-## Adding the Oracle JDBC Driver JAR to the Metabase Plugins Directory
+## Adding the Oracle JDBC Driver JAR to the Metabase plugins directory
 
-Metabase will automatically make the Oracle driver available if it finds the Oracle JDBC driver JAR in the Metabase plugins directory when it starts up.
-All you need to do is create the directory, move the JAR you just downloaded into it, and restart Metabase.
+In your Metabase directory (the directory where you keep and run your metabase.jar), create a directory called `plugins` (if it doesn't already exist.
+
+Move the JAR you just downloaded (`ojbc11.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up. 
 
 ## Connecting with SSL
 
@@ -29,24 +28,15 @@ configure a truststore file that includes the server's root CA, so that the JVM 
 certificate chain. Refer to the
 [Oracle documentation](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html) on using `keytool` to manage key and truststore files, importing certificates, etc.
 
-Once you have a truststore file ready, add the following JVM options for Metabase:
-
-```
--Djavax.net.ssl.trustStore=/path/to/truststore.jks
--Djavax.net.ssl.trustStoreType=JKS \
--Djavax.net.ssl.trustStorePassword=<trustStorePassword>
-```
-
-With this done, the SSL connection to Oracle will authenticate the server.
-
 For more information on setting up a truststore for AWS RDS Oracle instances, see the
-[instructions provided by Amazon](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.Options.SSL.html#Appendix.Oracle.Options.SSL.JDBC). Note that if you require connecting to other databases using SSL, instead of creating a new truststore, as shown in those examples, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
+[instructions provided by Amazon](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.Oracle.Options.SSL.html#Appendix.Oracle.Options.SSL.JDBC).
+
+If you need to connect to other databases using SSL, instead of creating a new truststore, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
 
 ### Client authentication with a keystore
 
 To configure the server (the Oracle server) to authenticate the identity of the client (Metabase), you need to
-configure a keystore file that includes the client's private key. The steps are almost identical to those
-above, except that you will import the client's private key into the keystore rather than a root CA into a truststore file.
+configure a keystore file that includes the client's private key. You'll import the client's private key into the keystore (rather than a root CA into a truststore file). Add the following JVM options for Metabase:
 
 ```
 -Djavax.net.ssl.keyStore=/path/to/keystore.jks
