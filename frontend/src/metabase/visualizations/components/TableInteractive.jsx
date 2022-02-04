@@ -156,8 +156,11 @@ export default class TableInteractive extends Component {
     );
   }
 
-  componentDidUpdate() {
-    if (!this.state.contentWidths) {
+  componentDidUpdate(prevProps) {
+    if (
+      !this.state.contentWidths ||
+      prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
+    ) {
       this._measure();
     } else if (this.props.onContentWidthChange) {
       const total = this.state.columnWidths.reduce((sum, width) => sum + width);
