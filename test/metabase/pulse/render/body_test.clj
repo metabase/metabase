@@ -83,6 +83,19 @@
                                 :semantic_type    nil
                                 :visibility_type :retired})
 
+(deftest ->ts-viz-test
+  (testing "blank defaults"
+    (is (= {:colors {},
+            :stacking "none",
+            :x
+            {:type "ordinal",
+             :format {:number_style "decimal", :decimals 0, :currency "USD", :currency_style "symbol"}},
+            :y
+            {:type "linear",
+             :format {:number_style "decimal", :decimals 0, :currency "USD", :currency_style "symbol"}},
+            :labels {}}
+         (#'body/->ts-viz detail-col sensitive-col {} {:column-settings "stuff"})))))
+
 ;; Testing the format of headers
 (deftest header-result
   (is (= default-header-result
