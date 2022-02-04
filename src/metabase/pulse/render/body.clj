@@ -611,7 +611,6 @@
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)
         viz-settings     (set-default-stacked viz-settings card)
-        printo           (println viz-settings)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         enforced-type    (if (= chart-type :combo)
