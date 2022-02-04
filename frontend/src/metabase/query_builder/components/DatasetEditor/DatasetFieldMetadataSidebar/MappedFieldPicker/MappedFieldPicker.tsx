@@ -19,7 +19,7 @@ type CollapsedPickerProps = {
 type MappedFieldPickerOwnProps = {
   field: {
     value: number | null;
-    onChange: (fieldId: number) => void;
+    onChange: (fieldId: number | null) => void;
   };
   formField: {
     databaseId: number;
@@ -84,12 +84,13 @@ function MappedFieldPicker({
             }
           }}
           ref={selectButtonRef}
+          onClear={() => onChange(null)}
         >
           {label}
         </StyledSelectButton>
       );
     },
-    [fieldObject, tabIndex],
+    [fieldObject, onChange, tabIndex],
   );
 
   // DataSelector doesn't handle selectedTableId change prop nicely.
