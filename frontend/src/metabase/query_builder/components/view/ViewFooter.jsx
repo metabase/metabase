@@ -3,7 +3,7 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";

@@ -10,6 +10,8 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
+    "@emotion/react": "^11.7.1",
+    "@emotion/styled": "^11.6.0",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
@@ -114,6 +116,7 @@
     "@babel/preset-typescript": "^7.15.0",
     "@cypress/skip-test": "^2.6.0",
     "@cypress/webpack-preprocessor": "^5.9.1",
+    "@emotion/babel-plugin": "^11.7.2",
     "@percy/cli": "^1.0.0-beta.48",
     "@percy/cypress": "^3.0.0",
     "@storybook/addon-actions": "^6.3.12",

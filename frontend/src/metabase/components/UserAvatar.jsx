@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, height, width } from "styled-system";
 
 import { color as brandColor } from "metabase/lib/colors";

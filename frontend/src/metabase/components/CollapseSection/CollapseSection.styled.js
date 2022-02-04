@@ -1,5 +1,7 @@
 import React from "react";
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
+
 import Icon from "metabase/components/Icon";
 
 export const HeaderContainer = styled.div`

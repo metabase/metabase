@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import Icon from "metabase/components/Icon";
 import TextInput from "metabase/components/TextInput";

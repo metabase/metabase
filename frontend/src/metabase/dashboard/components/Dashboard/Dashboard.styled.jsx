@@ -1,6 +1,7 @@
 import React from "react";
-import styled, { css } from "styled-components";
 import cx from "classnames";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";

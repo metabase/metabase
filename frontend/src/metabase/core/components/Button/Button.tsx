@@ -1,6 +1,6 @@
 import cx from "classnames";
 import React, { ButtonHTMLAttributes, forwardRef, ReactNode, Ref } from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";

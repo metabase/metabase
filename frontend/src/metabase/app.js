@@ -31,7 +31,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "styled-components";
+import { ThemeProvider } from "@emotion/react";
 
 import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";

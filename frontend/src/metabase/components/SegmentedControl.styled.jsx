@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import { color, darken } from "metabase/lib/colors";

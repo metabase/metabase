@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Radio from "metabase/core/components/Radio";
 
 const StyledRadio = styled(Radio)`
