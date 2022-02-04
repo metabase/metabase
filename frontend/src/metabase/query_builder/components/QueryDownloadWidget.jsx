@@ -45,9 +45,7 @@ const QueryDownloadWidget = ({
     triggerClasses={cx(className, "text-brand-hover")}
     triggerClassesClose={classNameClose}
   >
-    <WidgetRoot
-      isExpanded={result.data && result.data.rows_truncated != null ? 300 : 260}
-    >
+    <WidgetRoot isExpanded={result.data && result.data.rows_truncated != null}>
       <WidgetHeader>
         <h4>{t`Download full results`}</h4>
       </WidgetHeader>
