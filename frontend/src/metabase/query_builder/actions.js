@@ -1335,7 +1335,11 @@ export const queryCompleted = (question, queryResults) => {
         .switchTableScalar(data);
     }
 
-    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
+    dispatch.action(QUERY_COMPLETED, {
+      card: question.card(),
+      queryResults,
+      overwriteMetadata: getQueryBuilderMode(getState()) === "dataset",
+    });
   };
 };
 

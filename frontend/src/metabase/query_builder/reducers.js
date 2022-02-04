@@ -281,13 +281,17 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card, queryResults } }) => {
+      next: (
+        state,
+        { payload: { card, queryResults, overwriteMetadata = false } },
+      ) => {
         const [{ data }] = queryResults;
         return {
           ...state,
           display: card.display,
-          result_metadata:
-            data?.results_metadata?.columns ?? card.result_metadata,
+          result_metadata: overwriteMetadata
+            ? data?.results_metadata?.columns ?? card.result_metadata
+            : card.result_metadata,
           visualization_settings: card.visualization_settings,
         };
       },
