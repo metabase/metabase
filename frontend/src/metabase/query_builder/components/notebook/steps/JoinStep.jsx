@@ -35,7 +35,8 @@ import {
   RemoveDimensionIcon,
   RemoveJoinIcon,
   Row,
-  JoinClauseCell,
+  PrimaryJoinCell,
+  SecondaryJoinCell,
 } from "./JoinStep.styled";
 
 const stepShape = {
@@ -208,7 +209,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
 
   return (
     <JoinClauseRoot>
-      <JoinClauseCell color={color}>
+      <PrimaryJoinCell color={color}>
         <NotebookCellItem color={color}>
           {lhsTable?.displayName() || t`Previous results`}
         </NotebookCellItem>
@@ -223,17 +224,16 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
           updateQuery={updateQuery}
           onSourceTableSet={onSourceTableSet}
         />
-      </JoinClauseCell>
+      </PrimaryJoinCell>
 
       {joinedTable && (
         <React.Fragment>
           <JoinWhereConditionLabelContainer>
             <JoinWhereConditionLabel />
           </JoinWhereConditionLabelContainer>
-          <JoinClauseCell
+          <SecondaryJoinCell
             color={color}
             padding={hasAtLeastOneDimensionSelected && "8px"}
-            vertical
           >
             {displayConditions.map((condition, index) => {
               const isFirst = index === 0;
@@ -315,7 +315,7 @@ function JoinClause({ color, join, updateQuery, showRemove }) {
                 </JoinDimensionControlsContainer>
               );
             })}
-          </JoinClauseCell>
+          </SecondaryJoinCell>
         </React.Fragment>
       )}
 

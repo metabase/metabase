@@ -130,8 +130,13 @@ export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
   }
 `;
 
-export const JoinClauseCell = styled(NotebookCell)`
+export const PrimaryJoinCell = styled(NotebookCell)`
   flex: 1;
   align-self: start;
-  flex-direction: ${props => (props.vertical ? "column" : "row")};
+`;
+
+export const SecondaryJoinCell = styled(NotebookCell)`
+  flex: 1;
+  flex-direction: column;
+  align-items: start;
 `;
