@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import { NotebookCell } from "../NotebookCell";
 
 export const Row = styled.div`
@@ -11,10 +10,10 @@ export const Row = styled.div`
   align-items: center;
 `;
 
-export const JoinStepRoot = forwardRefToInnerRef(styled.div`
+export const JoinStepRoot = styled.div`
   display: flex;
   align-items: center;
-`);
+`;
 
 export const JoinClausesContainer = styled.div`
   display: flex;

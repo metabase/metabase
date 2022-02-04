@@ -7,7 +7,6 @@ import Tooltip from "metabase/components/Tooltip";
 import { loadIcon } from "metabase/icon_paths";
 import { color as c } from "metabase/lib/colors";
 import { stripLayoutProps } from "metabase/lib/utils";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 const MISSING_ICON_NAME = "unknown";
 
@@ -61,19 +60,19 @@ export const iconPropTypes = {
 };
 
 export type IconProps = PropTypes.InferProps<typeof iconPropTypes> & {
-  innerRef?: () => void;
+  forwardedRef?: any;
 };
 
 class BaseIcon extends Component<IconProps> {
   static propTypes = iconPropTypes;
 
   render() {
-    const { name, className, innerRef, ...rest } = this.props;
+    const { name, className, forwardedRef, ...rest } = this.props;
 
     const icon = loadIcon(name) || loadIcon(MISSING_ICON_NAME);
     if (!icon) {
       console.warn(`Icon "${name}" does not exist.`);
-      return <span ref={innerRef} />;
+      return <span ref={ref} />;
     }
 
     const props = {
@@ -102,7 +101,7 @@ class BaseIcon extends Component<IconProps> {
       const { _role, ...rest } = props;
       return (
         <img
-          ref={innerRef}
+          ref={forwardedRef}
           src={icon.img}
           srcSet={`
           ${icon.img}    1x,
@@ -116,30 +115,32 @@ class BaseIcon extends Component<IconProps> {
         <svg
           {...props}
           dangerouslySetInnerHTML={{ __html: icon.svg }}
-          ref={innerRef}
+          ref={forwardedRef}
         />
       );
     } else if (icon.path) {
       return (
-        <svg {...props} ref={innerRef}>
+        <svg {...props} ref={forwardedRef}>
           <path d={icon.path} />
         </svg>
       );
     } else {
       console.warn(`Icon "${name}" must have an img, svg, or path`);
-      return <span ref={innerRef} />;
+      return <span ref={forwardedRef} />;
     }
   }
 }
 
-const BaseIconWithRef = forwardRefToInnerRef<IconProps>(BaseIcon);
+const BaseIconWithRef = forwardRef<IconProps>((props, ref) => (
+  <BaseIcon {...props} forwardedRef={ref} />
+));
 
-const StyledIcon = forwardRefToInnerRef<IconProps>(styled(BaseIconWithRef)`
+const StyledIcon = styled(BaseIconWithRef)`
   ${space}
   ${color}
   ${hover}
   flex-shrink: 0
-`);
+`;
 
 const Icon = forwardRef(function Icon(
   { tooltip, ...props }: IconProps,
@@ -150,7 +151,7 @@ const Icon = forwardRef(function Icon(
       <StyledIcon {...props} />
     </Tooltip>
   ) : (
-    <StyledIcon ref={ref} {...props} />
+    <StyledIcon ref={ref as any} {...props} />
   );
 });
 

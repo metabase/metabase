@@ -23,7 +23,7 @@ type TextInputProps = {
   autoFocus?: boolean;
   padding?: Size;
   borderRadius?: Size;
-  innerRef?: any;
+  ref?: any;
   invalid?: boolean;
 } & Omit<React.HTMLProps<HTMLInputElement>, "onChange">;
 
@@ -39,9 +39,8 @@ function TextInput({
   autoFocus = false,
   padding = "md",
   borderRadius = "md",
-  innerRef,
-  ref,
   invalid,
+  ref,
   ...rest
 }: TextInputProps) {
   const handleClearClick = () => {
@@ -54,7 +53,7 @@ function TextInput({
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
-        innerRef={innerRef}
+        ref={ref}
         colorScheme={colorScheme}
         autoFocus={autoFocus}
         hasClearButton={hasClearButton}
@@ -80,6 +79,6 @@ function TextInput({
 
 export default forwardRef<HTMLInputElement, TextInputProps>(
   function TextInputForwardRef(props, ref) {
-    return <TextInput {...props} innerRef={ref} />;
+    return <TextInput {...props} ref={ref} />;
   },
 );

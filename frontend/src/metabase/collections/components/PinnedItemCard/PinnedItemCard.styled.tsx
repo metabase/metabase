@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
@@ -35,12 +34,12 @@ export const Title = styled.div`
   overflow: hidden;
 `;
 
-export const Description = forwardRefToInnerRef(styled.div`
+export const Description = styled.div`
   color: ${color("text-medium")};
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-`);
+`;
 
 export const Body = styled.div`
   padding: 1rem 1.5rem;

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import { space } from "metabase/styled-components/theme";
 import { color, lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
@@ -29,7 +28,7 @@ export const Header = styled.h4`
   margin-bottom: ${space(1)};
 `;
 
-export const TargetButton = forwardRefToInnerRef(styled.div`
+export const TargetButton = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -68,7 +67,7 @@ export const TargetButton = forwardRefToInnerRef(styled.div`
       background-color: ${color("bg-light")};
       color: ${color("text-medium")};
     `}
-`);
+`;
 
 TargetButton.defaultProps = {
   tabIndex: 0,

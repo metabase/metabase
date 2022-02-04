@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import { ButtonContent, ButtonRoot } from "./Button.styled";
 
 const BUTTON_VARIANTS = [
@@ -79,7 +78,7 @@ const BaseButton = forwardRef(function BaseButton(
       className={cx("Button", className, variantClasses, {
         p1: !children,
       })}
-      innerRef={ref as any}
+      ref={ref}
     >
       <ButtonContent iconVertical={iconVertical}>
         {icon && (
@@ -108,10 +107,10 @@ const BaseButton = forwardRef(function BaseButton(
   );
 });
 
-const Button = forwardRefToInnerRef(styled(BaseButton)`
+const Button = styled(BaseButton)`
   ${color};
   ${space};
-`);
+`;
 
 Button.displayName = "Button";
 

@@ -7,7 +7,6 @@ import {
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
 import { GridItem } from "metabase/components/Grid";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export const TableGridItem = styled(GridItem)`
   width: 100%;
@@ -35,7 +34,7 @@ export const TableActionLink = styled(Link)`
   }
 `;
 
-export const TableCard = forwardRefToInnerRef(styled(Card)`
+export const TableCard = styled(Card)`
   padding-left: ${space(1)};
   padding-right: ${space(1)};
 
@@ -46,4 +45,4 @@ export const TableCard = forwardRefToInnerRef(styled(Card)`
   &:hover ${TableActionLink} {
     visibility: visible;
   }
-`);
+`;

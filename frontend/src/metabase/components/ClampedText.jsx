@@ -37,7 +37,7 @@ function ClampedText({ className, text, visibleLines }) {
   return (
     <div className={cx("clamped-text", className)}>
       <ClampedDiv
-        innerRef={clampedDiv}
+        ref={clampedDiv}
         visibleLines={isClamped ? visibleLines : undefined}
       >
         <div className="clamped-text--text" ref={innerDiv}>

@@ -1,8 +1,6 @@
 import React from "react";
 import styled from "@emotion/styled";
 
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
-
 import TippyPopover from "./TippyPopover";
 
 export const component = TippyPopover;
@@ -15,24 +13,24 @@ const Base = styled.div`
   justify-content: center;
 `;
 
-const PopoverBody = forwardRefToInnerRef(styled(Base)`
+const PopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
-`);
+`;
 
-const LazyPopoverBody = forwardRefToInnerRef(styled(Base)`
+const LazyPopoverBody = styled(Base)`
   border: none;
   height: 200px;
   width: 200px;
   transition: opacity 1s;
   opacity: ${props => props.opacity};
-`);
+`;
 
-const PopoverTarget = forwardRefToInnerRef(styled(Base)`
+const PopoverTarget = styled(Base)`
   height: 100px;
   width: 100px;
-`);
+`;
 
 const content = <PopoverBody>popover body</PopoverBody>;
 const target = <PopoverTarget>popover target</PopoverTarget>;

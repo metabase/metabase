@@ -1,9 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
-
-export const AddAggregationButtonRoot = forwardRefToInnerRef(styled.button`
+export const AddAggregationButtonRoot = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -20,4 +18,4 @@ export const AddAggregationButtonRoot = forwardRefToInnerRef(styled.button`
   &:hover {
     background-color: ${color("bg-medium")};
   }
-`);
+`;

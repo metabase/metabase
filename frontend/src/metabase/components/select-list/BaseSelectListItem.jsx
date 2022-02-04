@@ -30,7 +30,7 @@ export function BaseSelectListItem({
   const Root = as;
   return (
     <Root
-      innerRef={isSelected ? ref : null}
+      ref={isSelected ? ref : undefined}
       isSelected={isSelected}
       role="menuitem"
       tabIndex={0}

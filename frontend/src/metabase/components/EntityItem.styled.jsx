@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { color, darken } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -66,14 +65,14 @@ export const EntityMenuContainer = styled.div`
   color: ${color("text-medium")};
 `;
 
-export const PinButton = forwardRefToInnerRef(styled(Button)`
+export const PinButton = styled(Button)`
   color: ${color("text-medium")};
   border: none;
 
   &:hover {
     color: ${color("brand")};
   }
-`);
+`;
 
 export const EntityItemActions = styled.div`
   display: flex;

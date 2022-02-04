@@ -34,7 +34,7 @@ const Input = forwardRef(function Input(
 
 const InputHelpContent = forwardRef(function InputHelpContent(props, ref: any) {
   return (
-    <InputIconContainer innerRef={ref}>
+    <InputIconContainer ref={ref}>
       <Icon name="info" />
     </InputIconContainer>
   );

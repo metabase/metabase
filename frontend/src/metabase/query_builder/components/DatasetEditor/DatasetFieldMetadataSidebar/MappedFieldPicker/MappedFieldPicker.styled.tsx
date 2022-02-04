@@ -1,9 +1,8 @@
 import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
 import SelectButton from "metabase/core/components/SelectButton";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
-export const StyledSelectButton = forwardRefToInnerRef(styled(SelectButton)`
+export const StyledSelectButton = styled(SelectButton)`
   ${props =>
     props.hasValue &&
     css`
@@ -15,4 +14,4 @@ export const StyledSelectButton = forwardRefToInnerRef(styled(SelectButton)`
         color: ${color("text-white")};
       }
     `};
-`);
+`;
