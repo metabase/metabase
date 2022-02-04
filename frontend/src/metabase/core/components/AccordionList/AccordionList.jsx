@@ -132,7 +132,12 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
-      this.containerRef?.current?.focus();
+      const hasFocusedChildren = this.containerRef?.current.contains(
+        document.activeElement,
+      );
+      if (!hasFocusedChildren) {
+        this.containerRef?.current?.focus();
+      }
 
       const index = this._initialSelectedRowIndex;
 
