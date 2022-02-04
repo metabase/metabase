@@ -56,10 +56,6 @@ The `--on-error` flag allows you to specify whether the load process should keep
 
 Both of these flags are optional.
 
-### Current limitations
-
-- The serialization feature is not able to identify a dashboard card in the destination if the visualization settings in the source dashboard have changed
-
 ---
 
 To learn more, check out [Serialization: preloading dashboards in a new Metabase instance](https://www.metabase.com/blog/serialization/index.html).
