@@ -610,12 +610,13 @@ export class FieldDimension extends Dimension {
           [lookupField]: this.fieldIdOrName(),
         })
       : null;
+    const shouldMergeMetadata = question?.isDataset();
 
     if (this.isIntegerFieldId()) {
       const field = this._metadata?.field(this.fieldIdOrName());
 
       if (field) {
-        if (!fieldMetadata) {
+        if (!fieldMetadata || !shouldMergeMetadata) {
           return field;
         }
         const fieldObject = merge(
@@ -644,7 +645,7 @@ export class FieldDimension extends Dimension {
         });
 
         if (field) {
-          if (!fieldMetadata) {
+          if (!fieldMetadata || !shouldMergeMetadata) {
             return field;
           }
           const fieldObject = merge(
