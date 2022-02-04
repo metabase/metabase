@@ -54,7 +54,7 @@ export const Tab = styled.label<{ selected: boolean }>`
   ${props => (props.selected ? activeTabCSS : inactiveTabCSS)};
 `;
 
-export const RadioInput = styled.input.attrs({ type: "radio" })`
+export const RadioInput = styled.input`
   cursor: inherit;
   position: absolute;
   opacity: 0;
@@ -66,3 +66,5 @@ export const RadioInput = styled.input.attrs({ type: "radio" })`
   padding: 0;
   z-index: 1;
 `;
+
+RadioInput.defaultProps = { type: "radio" };

@@ -10,9 +10,7 @@ import Button from "metabase/core/components/Button";
 
 const { color: verifiedIconColor } = getStatusIcon(MODERATION_STATUS.verified);
 
-export const VerifyButton = styled(Button).attrs({
-  iconSize: 20,
-})`
+export const VerifyButton = styled(Button)`
   color: ${color(verifiedIconColor)};
   border: none;
   padding: 8px;
@@ -24,3 +22,7 @@ export const VerifyButton = styled(Button).attrs({
   position: relative;
   right: 8px;
 `;
+
+VerifyButton.defaultProps = {
+  iconSize: 20,
+};

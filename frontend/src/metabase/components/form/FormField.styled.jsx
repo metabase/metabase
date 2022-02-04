@@ -9,7 +9,7 @@ export const FieldRow = styled.div`
   margin-bottom: 0.5em;
 `;
 
-export const Label = styled.label.attrs({ className: "Form-label" })`
+export const Label = styled.label`
   margin-bottom: 0;
   ${props =>
     props.horizontal &&
@@ -18,7 +18,9 @@ export const Label = styled.label.attrs({ className: "Form-label" })`
     `}
 `;
 
-export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`
+Label.defaultProps = { className: "Form-label" };
+
+export const InfoIcon = styled(Icon)`
   margin-left: 8px;
   color: ${color("bg-dark")};
 
@@ -26,6 +28,8 @@ export const InfoIcon = styled(Icon).attrs({ name: "info", size: 12 })`
     color: ${color("brand")};
   }
 `;
+
+InfoIcon.defaultProps = { name: "info", size: 12 };
 
 export const FieldContainer = styled.div`
   margin-right: ${props => (props.horizontal ? "1rem" : "")};

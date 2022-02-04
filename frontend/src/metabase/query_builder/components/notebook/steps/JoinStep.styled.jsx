@@ -31,12 +31,14 @@ export const JoinClauseRoot = styled.div`
   margin-bottom: ${props => (props.isLast ? 0 : "2px")};
 `;
 
-export const JoinStrategyIcon = styled(Icon).attrs({ size: 32 })`
+export const JoinStrategyIcon = styled(Icon)`
   color: ${color("brand")};
   margin-right: 6px;
   margin-left: 2px;
   margin-top: 6px;
 `;
+
+JoinStrategyIcon.defaultProps = { size: 32 };
 
 export const JoinTypeSelectRoot = styled.div`
   margin: ${space(1)} ${space(1)} 0 ${space(1)};
@@ -63,10 +65,12 @@ export const JoinTypeOptionRoot = styled.div`
   }
 `;
 
-export const JoinTypeIcon = styled(Icon).attrs({ size: 24 })`
+export const JoinTypeIcon = styled(Icon)`
   margin-right: ${space(1)};
   color: ${props => (props.isSelected ? color("text-white") : color("brand"))};
 `;
+
+JoinTypeIcon.defaultProps = { size: 24 };
 
 export const JoinDimensionControlsContainer = styled.div`
   display: flex;
@@ -88,11 +92,13 @@ export const JoinWhereConditionLabelContainer = styled.div`
   height: 60px;
 `;
 
-export const JoinWhereConditionLabel = styled.span.attrs({ children: "on" })`
+export const JoinWhereConditionLabel = styled.span`
   color: ${color("brand")};
   font-weight: bold;
   margin: 0 ${space(2)};
 `;
+
+JoinWhereConditionLabel.defaultProps = { children: "on" };
 
 export const JoinConditionLabel = styled.span`
   font-size: 20;
@@ -114,14 +120,16 @@ export const DimensionSourceName = styled.div`
   opacity: 0.65;
 `;
 
-export const RemoveDimensionIcon = styled(Icon).attrs({ name: "close" })`
+export const RemoveDimensionIcon = styled(Icon)`
   cursor: pointer;
   color: ${color("text-white")};
   opacity: 0.65;
   margin-left: 12px;
 `;
 
-export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
+RemoveDimensionIcon.defaultProps = { name: "close" };
+
+export const RemoveJoinIcon = styled(Icon)`
   cursor: pointer;
   color: ${color("text-light")};
 
@@ -129,6 +137,8 @@ export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
     color: ${color("text-medium")};
   }
 `;
+
+RemoveJoinIcon.defaultProps = { name: "close", size: 18 };
 
 export const PrimaryJoinCell = styled(NotebookCell)`
   flex: 1;

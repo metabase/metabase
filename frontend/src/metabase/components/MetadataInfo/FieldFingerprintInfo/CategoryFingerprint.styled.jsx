@@ -25,15 +25,17 @@ export const NoWrap = styled.div`
   line-height: 1.3em;
 `;
 
-export const LoadingSpinner = styled(_LoadingSpinner).attrs({
-  size: 18,
-})`
+export const LoadingSpinner = styled(_LoadingSpinner)`
   display: flex;
   flex-grow: 1;
   align-self: center;
   justify-content: center;
   color: ${color("brand")};
 `;
+
+LoadingSpinner.defaultProps = {
+  size: 18,
+};
 
 export const RelativeContainer = styled.div`
   position: relative;

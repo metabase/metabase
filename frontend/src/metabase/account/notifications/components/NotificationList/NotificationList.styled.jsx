@@ -15,9 +15,11 @@ export const NotificationLabel = styled(Label)`
   margin: 0;
 `;
 
-export const NotificationButton = styled(TextButton).attrs({
+export const NotificationButton = styled(TextButton)``;
+
+NotificationButton.defaultProps = {
   size: "small",
-})``;
+};
 
 export const NotificationSection = styled.div`
   display: flex;

@@ -18,7 +18,7 @@ export const CheckboxContainer = styled.li`
   padding: 0 0.5rem;
 `;
 
-export const WarningIcon = styled(Icon).attrs({ size: 20, name: "warning" })`
+export const WarningIcon = styled(Icon)`
   padding: 0 0.5rem;
   display: flex;
   margin-left: auto;
@@ -30,3 +30,5 @@ export const WarningIcon = styled(Icon).attrs({ size: 20, name: "warning" })`
     color: ${color("text-medium")};
   }
 `;
+
+WarningIcon.defaultProps = { size: 20, name: "warning" };
