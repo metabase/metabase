@@ -1335,7 +1335,14 @@ export const queryCompleted = (question, queryResults) => {
         .switchTableScalar(data);
     }
 
-    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
+    const card = question.card();
+    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
+    const resultsMetadata = data?.results_metadata?.columns;
+    if (isEditingModel && Array.isArray(resultsMetadata)) {
+      card.result_metadata = resultsMetadata;
+    }
+
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 
