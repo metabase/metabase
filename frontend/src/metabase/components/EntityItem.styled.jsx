@@ -44,7 +44,7 @@ export const EntityIconWrapper = styled(IconButtonWrapper)`
 export const EntityItemWrapper = styled.div`
   display: flex;
   align-items: center;
-  padding: ${props => getItemPadding(props.variant)}
+  padding: ${props => getItemPadding(props.variant)};
   color: ${props =>
     props.disabled ? color("text-medium") : color("text-dark")};
 
