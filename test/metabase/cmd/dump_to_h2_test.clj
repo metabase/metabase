@@ -13,6 +13,7 @@
             [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Setting]]
+            [metabase.models.database :as database]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -79,7 +80,8 @@
               (load-from-h2/load-from-h2! h2-fixture-db-file)
               (eu/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                 (db/insert! Setting {:key "my-site-admin", :value "baz"})
-                (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
+                (binding [database/*allow-sample-update?* true]
+                  (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"}))
                 (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                 (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                 (dump-to-h2/dump-to-h2! h2-file-default-enc))

@@ -6,7 +6,7 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database]]
-            [metabase.models.database :as mdb]
+            [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.models.user :as user]
@@ -62,7 +62,7 @@
   (let [encode-decode (fn [obj] (decode (encode obj)))
         project-id    "random-project-id" ; the actual value here doesn't seem to matter
         ;; this is trimmed for the parts we care about in the test
-        pg-db         (mdb/map->DatabaseInstance
+        pg-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testpg"
                         :details     {:additional-options            nil
@@ -80,7 +80,7 @@
                                       :tunnel-user                   "a-tunnel-user"
                                       :tunnel-private-key-passphrase "Password1234"}
                         :id          3})
-        bq-db         (mdb/map->DatabaseInstance
+        bq-db         (database/map->DatabaseInstance
                        {:description nil
                         :name        "testbq"
                         :details     {:use-service-account  nil
@@ -159,9 +159,9 @@
            (driver.u/sensitive-fields :test-sensitive-driver))))
   (testing "get-sensitive-fields-for-db returns default fields for null or empty database map"
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db nil)))
+           (database/sensitive-fields-for-db nil)))
     (is (= driver.u/default-sensitive-fields
-           (mdb/sensitive-fields-for-db {})))))
+           (database/sensitive-fields-for-db {})))))
 
 (deftest secret-db-details-integration-test
   (testing "manipulating secret values in db-details works correctly"
@@ -227,6 +227,7 @@
                (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
                (is (= {:status-code      400,
                        :existing-engine  :my-engine,
+                       :is-sample?       true
                        :new-engine       nil,
                        :existing-details nil,
                        :new-details      {:host "new-host", :password-value "my-password-123"}}
@@ -237,13 +238,18 @@
                (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
                (is (= {:status-code      400,
                        :existing-engine  :my-engine,
+                       :is-sample?       true
                        :new-details      nil,
                        :existing-details nil,
                        :new-engine       :engine-X}
                       (ex-data e))))))
       (testing " updating other attributes of a sample database is allowed"
         (db/update! Database id :name "Big Joe's Data Rows")
-        (is (= "Big Joe's Data Rows" (db/select-one-field :name Database :id id)))))))
+        (is (= "Big Joe's Data Rows" (db/select-one-field :name Database :id id))))
+      (testing " updating the engine of a sample database is allowed when mdb/*allow-sample-update?* is true"
+        (binding [database/*allow-sample-update?* true]
+          (db/update! Database id :engine :engine-x)
+          (is (= :engine-x (db/select-one-field :engine Database :id id))))))))
 
 (driver/register! ::test, :abstract? true)
 
