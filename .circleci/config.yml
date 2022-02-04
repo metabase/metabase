@@ -1238,6 +1238,7 @@ workflows:
 
       - test-driver:
           name: be-tests-sparksql-ee
+          resource_class: large
           requires:
             - be-tests-java-8-ee
           e: sparksql
