@@ -242,8 +242,8 @@
                        :new-engine       :engine-X}
                       (ex-data e))))))
       (testing " updating other attributes of a sample database is allowed"
-        (db/update! Database id :name "Big Joe'S Data Rows")
-        (is (= "Big Joe'S Data Rows" (db/select-one-field :name Database :id id)))))))
+        (db/update! Database id :name "Big Joe's Data Rows")
+        (is (= "Big Joe's Data Rows" (db/select-one-field :name Database :id id)))))))
 
 (driver/register! ::test, :abstract? true)
 
