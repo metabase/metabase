@@ -6,7 +6,21 @@ In addition to specifying the host, port, database name and user credentials for
 
 ### SSL Mode
 
-PostgreSQL databases support different levels of security with their connections, with different levels of overhead. See the PostgreSQL docs for a table about the different [SSL Modes][ssl-modes], and select the option that works for you.
+PostgreSQL databases support different levels of security with their connections, with different levels of overhead.
+
+SSL Mode options include:
+
+- allow
+- prefer
+- require
+- verify-ca
+- verify-full
+
+See the PostgreSQL docs for a table about the different [SSL Modes][ssl-modes], and select the option that works for you.
+
+### SSL root certificate (PEM)
+
+If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded filed path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 ### Authenticate client certificate
 
