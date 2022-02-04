@@ -190,9 +190,6 @@ const EntityItem = ({
         selected={selected}
         disabled={disabled}
         onToggleSelected={onToggleSelected}
-        style={{
-          marginRight: "16px",
-        }}
       />
 
       <div className="overflow-hidden">
