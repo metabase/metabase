@@ -485,6 +485,13 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
+            it("should not show pins or a helper text (metabase#20043)", () => {
+              cy.visit("/collection/root");
+
+              cy.findByText("Orders in a dashboard");
+              cy.icon("pin").should("not.exist");
+            });
+
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
