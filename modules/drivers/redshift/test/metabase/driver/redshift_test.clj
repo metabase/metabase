@@ -91,8 +91,10 @@
 ;; create external schema spectrum
 ;; from data catalog
 ;; database 'spectrumdb'
-;; iam_role ''
+;; iam_role '<role>'
 ;; create external database if not exists;
+;;
+;; -- <role> comes from the IAM Role for `RedshiftSpectrumRole` (copy the full ARN)
 ;;
 ;; create external table spectrum.extsales(
 ;; salesid integer,

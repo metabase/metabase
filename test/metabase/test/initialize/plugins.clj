@@ -1,19 +1,24 @@
 (ns metabase.test.initialize.plugins
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
             [metabase.plugins :as plugins]
             [metabase.plugins.initialize :as plugins.init]
             [metabase.test.data.env.impl :as tx.env.impl]
+            [metabase.test.data.interface :as tx]
             [metabase.util :as u]
             [yaml.core :as yaml]))
 
 (defn- driver-plugin-manifest [driver]
-  (let [nm    (name driver)
-        paths (mapv
-                #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
-                ;; look for driver definition in both the regular modules directory, as well as in a top-level
-                ;; test_modules directory, specifically designed for test driver definitions
-                ["modules" "test_modules"])]
+  (let [nm                   (name driver)
+        custom-manifest-path (tx/db-test-env-var driver :plugin-manifest-path)
+        paths                (cond-> (mapv
+                                       #(format "%s/drivers/%s/resources/metabase-plugin.yaml" % nm)
+                                       ;; look for driver definition in both the regular modules directory, as well as in a top-level
+                                       ;; test_modules directory, specifically designed for test driver definitions
+                                       ["modules" "test_modules"])
+                               (not (str/blank? custom-manifest-path))
+                               (conj custom-manifest-path))]
     (first (filter some?
                    (for [path paths
                          :let [manifest (io/file path)]

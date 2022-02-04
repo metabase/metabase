@@ -13,24 +13,27 @@
     (not (:circleci env/env))))
 
 (defn read-line-with-prompt
-  "Prompt for and read a value from stdin. Accepts two options: `:default`, which is the default value to use if the
-  user does not enter something else; and `:validator`, a one-arg function that should return an error message if the
-  value is invalid, or `nil` if it is valid."
-  [prompt & {:keys [default validator]}]
+  "Prompt for and read a value from stdin. Accepts three options: `:default`, which is the default value to use if the
+  user does not enter something else, `:validator`, a one-arg function that should return an error message if the
+  value is invalid, or `nil` if it is valid, and `:allow-nil?`, which is a boolean indicating whether nil values
+  should be accepted if the user types nothing (defaults to false)."
+  [prompt & {:keys [default validator allow-nil?]}]
   (if-not (interactive?)
     (or default
-        (throw (ex-info "Cannot prompt for a value when script is ran non-interactively; specify a :default value.")))
+        (throw (ex-info "Cannot prompt for a value when script is ran non-interactively; specify a :default value."
+                        {})))
     (loop []
       (print (str prompt " "))
       (when default
         (printf "(default %s) " (pr-str default)))
       (flush)
-      (let [line (or (not-empty (str/trim (read-line)))
+      (let [l*   (read-line)
+            line (or (not-empty l*)
                      default)]
         (newline)
         (flush)
         (cond
-          (empty? line)
+          (and (not allow-nil?) (empty? line))
           (recur)
 
           validator
@@ -42,7 +45,9 @@
               line))
 
           :else
-          line)))))
+          (if (empty? line)
+            nil
+            line))))))
 
 (defn letter-options-prompt
   "Prompt user to enter a letter from amongst `letters`; prompt will repeat until a valid option is chosen. Returns
