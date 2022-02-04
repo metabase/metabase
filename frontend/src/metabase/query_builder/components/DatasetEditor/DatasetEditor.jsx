@@ -297,7 +297,7 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    await onSave(dataset.card());
+    await onSave(dataset.card(), { rerunQuery: true });
     setQueryBuilderMode("view");
   }, [dataset, onSave, setQueryBuilderMode]);
 
