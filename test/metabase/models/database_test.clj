@@ -224,7 +224,7 @@
       (testing " updating the details of a sample database is not allowed"
         (try (db/update! Database id :details (assoc details :host "new-host"))
              (catch Exception e
-               (is (= "One may not update the engine or details of a sample database." (.getMessage e)))
+               (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
                (is (= {:status-code      400,
                        :existing-engine  :my-engine,
                        :new-engine       nil,
@@ -234,7 +234,7 @@
       (testing " updating the engine of a sample database is not allowed"
         (try (db/update! Database id :engine :engine-X)
              (catch Exception e
-               (is (= "One may not update the engine or details of a sample database." (.getMessage e)))
+               (is (= "The engine or details on a sample database cannot be changed." (.getMessage e)))
                (is (= {:status-code      400,
                        :existing-engine  :my-engine,
                        :new-details      nil,

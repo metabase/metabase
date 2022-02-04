@@ -39,5 +39,7 @@
   "Update the path to the sample database DB if it exists in case the JAR has moved."
   []
   (when-let [db (Database :is_sample true)]
-    (db/update! Database (:id db)
-      :details (db-details))))
+    (let [intended (db-details)]
+      (when (not= (:details (Database :is_sample true)) intended)
+        (binding [metabase.models.database/*allow-sample-update?* true]
+          (db/update! Database (:id db) :details intended))))))
