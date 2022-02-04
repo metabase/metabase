@@ -3,7 +3,7 @@ import React from "react";
 import { t, msgid, ngettext } from "ttag";
 import _ from "underscore";
 
-import { Grid, GridItem } from "metabase/components/Grid";
+import { Grid } from "metabase/components/Grid";
 import BulkActionBar from "metabase/components/BulkActionBar";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
@@ -17,7 +17,9 @@ import {
   ActionBarContent,
   ActionBarText,
   ActionControlsRoot,
-  GridItemContent,
+  ActionGridItem,
+  ActionGridItemContent,
+  ActionGridPlaceholder,
 } from "./BulkActions.styled";
 
 const BulkActionControls = ({ onArchive, onMove }) => (
@@ -71,9 +73,9 @@ function BulkActions(props) {
                    to the main content above to ensure the bulk checkbox lines up */}
       <ActionBarContent>
         <Grid>
-          <GridItem width={[1, 1 / 3]} />
-          <GridItem width={[1, 2 / 3]} px={[1, 2]}>
-            <GridItemContent>
+          <ActionGridPlaceholder />
+          <ActionGridItem>
+            <ActionGridItemContent>
               <SelectionControls {...props} />
               <BulkActionControls
                 onArchive={
@@ -92,8 +94,8 @@ function BulkActions(props) {
                   selected.length,
                 )}
               </ActionBarText>
-            </GridItemContent>
-          </GridItem>
+            </ActionGridItemContent>
+          </ActionGridItem>
         </Grid>
       </ActionBarContent>
       {!_.isEmpty(selectedItems) && selectedAction === "copy" && (

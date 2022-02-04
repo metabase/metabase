@@ -18,9 +18,27 @@ export const ActionControlsRoot = styled.div`
   margin-left: 0.5rem;
 `;
 
-export const GridItemContent = styled.div`
+export const ActionGridItem = styled.div`
+  width: 100%;
+  padding: 0 0.5rem;
+
+  ${breakpointMinSmall} {
+    width: 66.66%;
+    padding: 0 1rem;
+  }
+`;
+
+export const ActionGridItemContent = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 0 1rem;
+`;
+
+export const ActionGridPlaceholder = styled.div`
+  width: 100%;
+
+  ${breakpointMinSmall} {
+    width: 33.33%;
+  }
 `;
