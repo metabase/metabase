@@ -237,7 +237,7 @@ export default class AccordionList extends Component {
   };
 
   handleChangeSearchText = searchText => {
-    this.setState({ searchText });
+    this.setState({ searchText, cursor: null });
   };
 
   searchPredicate = (item, searchPropMember) => {
@@ -278,15 +278,25 @@ export default class AccordionList extends Component {
     return null;
   };
 
+  getInitialCursor = () => {
+    const { cursor, searchText } = this.state;
+
+    return (
+      cursor ??
+      (searchText.length === 0 ? this.getFirstSelectedItemCursor() : null)
+    );
+  };
+
   handleKeyDown = event => {
     if (event.key === "ArrowUp") {
       event.preventDefault();
 
       const prevCursor = getPrevCursor(
-        this.state.cursor ?? this.getFirstSelectedItemCursor(),
+        this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
         !this.props.alwaysExpanded,
+        this.searchFilter,
       );
 
       return this.setState({
@@ -299,10 +309,11 @@ export default class AccordionList extends Component {
       event.preventDefault();
 
       const nextCursor = getNextCursor(
-        this.state.cursor ?? this.getFirstSelectedItemCursor(),
+        this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
         !this.props.alwaysExpanded,
+        this.searchFilter,
       );
 
       return this.setState({
@@ -332,11 +343,28 @@ export default class AccordionList extends Component {
     }
   };
 
+  searchFilter = item => {
+    const { searchProp } = this.props;
+    const { searchText } = this.state;
+
+    if (!searchText || searchText.length === 0) {
+      return true;
+    }
+
+    if (typeof searchProp === "string") {
+      return this.searchPredicate(item, searchProp);
+    } else if (Array.isArray(searchProp)) {
+      const searchResults = searchProp.map(member =>
+        this.searchPredicate(item, member),
+      );
+      return searchResults.reduce((acc, curr) => acc || curr);
+    }
+  };
+
   @memoize
   getRowsCached = (
-    searchText,
+    searchFilter,
     searchable,
-    searchProp,
     sections,
     alwaysTogglable,
     alwaysExpanded,
@@ -350,20 +378,6 @@ export default class AccordionList extends Component {
     const sectionIsSearchable = sectionIndex =>
       searchable &&
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
-
-    let searchFilter = () => true;
-    if (searchText) {
-      searchFilter = item => {
-        if (typeof searchProp === "string") {
-          return this.searchPredicate(item, searchProp);
-        } else if (Array.isArray(searchProp)) {
-          const searchResults = searchProp.map(member =>
-            this.searchPredicate(item, member),
-          );
-          return searchResults.reduce((acc, curr) => acc || curr);
-        }
-      };
-    }
 
     // if any section is searchable just enable a global search
     let globalSearch = false;
@@ -462,7 +476,6 @@ export default class AccordionList extends Component {
   getRows() {
     const {
       searchable,
-      searchProp,
       sections,
       alwaysTogglable,
       alwaysExpanded,
@@ -471,14 +484,11 @@ export default class AccordionList extends Component {
       hideEmptySectionsInSearch,
     } = this.props;
 
-    const { searchText } = this.state;
-
     const openSection = this.getOpenSection();
 
     return this.getRowsCached(
-      searchText,
+      this.searchFilter,
       searchable,
-      searchProp,
       sections,
       alwaysTogglable,
       alwaysExpanded,
@@ -515,7 +525,7 @@ export default class AccordionList extends Component {
 
   render() {
     const { id, style, className, sections } = this.props;
-    const { cursor } = this.state;
+    const { cursor, scrollToAlignment } = this.state;
 
     const rows = this.getRows();
 
@@ -596,6 +606,7 @@ export default class AccordionList extends Component {
           // the CellMeasurerCache to calculate the height
           overscanRowCount={100}
           scrollToIndex={scrollToIndex}
+          scrollToAlignment={scrollToAlignment}
           rowRenderer={({ key, index, parent, style }) => {
             return (
               <CellMeasurer

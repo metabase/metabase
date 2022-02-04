@@ -8,84 +8,12 @@ type Section = {
 };
 
 type IsSectionExpandedFn = (sectionIndex: number) => boolean;
+type ItemFilterPredicate = (item: any) => boolean;
 
-const getFirstItemCursor = (sections: Section[], canSelectSection: boolean) => {
-  const shouldSelectItem = !canSelectSection && sections[0].items.length > 0;
-  const itemIndex = shouldSelectItem ? 0 : null;
-
-  return {
-    sectionIndex: 0,
-    itemIndex,
-  };
-};
-
-const isFirstOfCurrentSection = (cursor: Cursor, canSelectSection: boolean) => {
+const areSameCursors = (left: Cursor, right: Cursor) => {
   return (
-    (cursor.itemIndex === 0 && !canSelectSection) || cursor.itemIndex == null
-  );
-};
-
-const isLastOfCurrentSection = (
-  cursor: Cursor,
-  section: Section,
-  canSelectSection: boolean,
-  isExpanded: boolean,
-) => {
-  if (canSelectSection && !isExpanded) {
-    return true;
-  }
-
-  return isExpanded && cursor.itemIndex === section.items.length - 1;
-};
-
-const getSectionFirstCursor = (
-  sectionIndex: number,
-  canSelectSection: boolean,
-) => {
-  return {
-    sectionIndex,
-    itemIndex: canSelectSection ? null : 0,
-  };
-};
-
-const getSectionLastCursor = (
-  sectionIndex: number,
-  sections: Section[],
-  isSectionExpanded: IsSectionExpandedFn,
-) => {
-  if (!isSectionExpanded(sectionIndex)) {
-    return {
-      sectionIndex,
-      itemIndex: null,
-    };
-  }
-
-  const itemsLength = sections[sectionIndex].items.length;
-
-  return {
-    sectionIndex,
-    itemIndex: itemsLength > 0 ? itemsLength - 1 : null,
-  };
-};
-
-const isLastItemSelected = (
-  cursor: Cursor,
-  sections: Section[],
-  isSectionExpanded: IsSectionExpandedFn,
-) => {
-  const lastSectionIndex = sections.length - 1;
-  const isExpanded = isSectionExpanded(lastSectionIndex);
-
-  const isLastCollapsedSectionSelected =
-    cursor.sectionIndex === lastSectionIndex && !isExpanded;
-
-  const isLastItemOfLastExpandedSectionSelected =
-    cursor.sectionIndex === lastSectionIndex &&
-    isExpanded &&
-    sections[lastSectionIndex].items.length - 1 === cursor.itemIndex;
-
-  return (
-    isLastCollapsedSectionSelected || isLastItemOfLastExpandedSectionSelected
+    left.itemIndex === right.itemIndex &&
+    left.sectionIndex === right.sectionIndex
   );
 };
 
@@ -94,35 +22,70 @@ export const getNextCursor = (
   sections: Section[],
   isSectionExpanded: IsSectionExpandedFn,
   canSelectSection: boolean,
+  filterFn: ItemFilterPredicate,
+  skipInitial: boolean = true,
 ): Cursor => {
   if (!cursor) {
-    return getFirstItemCursor(sections, canSelectSection);
-  }
-
-  if (isLastItemSelected(cursor, sections, isSectionExpanded)) {
-    return cursor;
-  }
-  const { sectionIndex, itemIndex } = cursor;
-
-  if (
-    isLastOfCurrentSection(
-      cursor,
-      sections[sectionIndex],
+    return getNextCursor(
+      { sectionIndex: 0, itemIndex: null },
+      sections,
+      isSectionExpanded,
       canSelectSection,
-      isSectionExpanded(sectionIndex),
-    )
-  ) {
-    const nextSectionIndex = sectionIndex + 1;
-
-    return sections[nextSectionIndex] != null
-      ? getSectionFirstCursor(nextSectionIndex, canSelectSection)
-      : cursor;
+      filterFn,
+      false,
+    );
   }
 
-  return {
-    sectionIndex,
-    itemIndex: itemIndex != null ? itemIndex + 1 : 0,
-  };
+  for (
+    let sectionIndex = cursor.sectionIndex;
+    sectionIndex < sections.length;
+    sectionIndex++
+  ) {
+    const section = sections[sectionIndex];
+
+    const sectionCursor = {
+      sectionIndex,
+      itemIndex: null,
+    };
+
+    const skipSectionItem =
+      cursor.sectionIndex === sectionIndex && cursor.itemIndex != null;
+
+    if (
+      !skipSectionItem &&
+      (!skipInitial || !areSameCursors(cursor, sectionCursor)) &&
+      canSelectSection
+    ) {
+      return sectionCursor;
+    }
+
+    if (!isSectionExpanded(sectionIndex)) {
+      continue;
+    }
+
+    for (
+      let itemIndex =
+        sectionIndex === cursor.sectionIndex ? cursor.itemIndex ?? 0 : 0;
+      itemIndex < section.items.length;
+      itemIndex++
+    ) {
+      const item = section.items[itemIndex];
+      const itemCursor = {
+        sectionIndex,
+        itemIndex,
+      };
+
+      if (skipInitial && areSameCursors(cursor, itemCursor)) {
+        continue;
+      }
+
+      if (filterFn(item)) {
+        return itemCursor;
+      }
+    }
+  }
+
+  return cursor;
 };
 
 export const getPrevCursor = (
@@ -130,23 +93,72 @@ export const getPrevCursor = (
   sections: Section[],
   isSectionExpanded: IsSectionExpandedFn,
   canSelectSection: boolean,
-) => {
+  filterFn: ItemFilterPredicate,
+): Cursor => {
   if (!cursor) {
-    return getFirstItemCursor(sections, canSelectSection);
+    return getNextCursor(
+      { sectionIndex: 0, itemIndex: null },
+      sections,
+      isSectionExpanded,
+      canSelectSection,
+      filterFn,
+      false,
+    );
   }
 
-  const { sectionIndex, itemIndex } = cursor;
+  for (
+    let sectionIndex = cursor.sectionIndex;
+    sectionIndex >= 0;
+    sectionIndex--
+  ) {
+    const section = sections[sectionIndex];
 
-  if (isFirstOfCurrentSection(cursor, canSelectSection)) {
-    const prevSectionIndex = sectionIndex - 1;
+    const skipItems =
+      (cursor.sectionIndex === sectionIndex && cursor.itemIndex == null) ||
+      !isSectionExpanded(sectionIndex);
 
-    return prevSectionIndex >= 0
-      ? getSectionLastCursor(prevSectionIndex, sections, isSectionExpanded)
-      : getFirstItemCursor(sections, canSelectSection);
+    if (!skipItems) {
+      for (
+        let itemIndex =
+          sectionIndex === cursor.sectionIndex
+            ? cursor.itemIndex ?? 0
+            : section.items.length - 1;
+        itemIndex >= 0;
+        itemIndex--
+      ) {
+        const item = section.items[itemIndex];
+        const itemCursor = {
+          sectionIndex,
+          itemIndex,
+        };
+
+        if (areSameCursors(cursor, itemCursor)) {
+          continue;
+        }
+
+        if (filterFn(item)) {
+          return itemCursor;
+        }
+      }
+    }
+
+    const sectionCursor = {
+      sectionIndex,
+      itemIndex: null,
+    };
+
+    if (areSameCursors(cursor, sectionCursor)) {
+      continue;
+    }
+
+    if (canSelectSection) {
+      return sectionCursor;
+    }
+
+    if (!isSectionExpanded(sectionIndex)) {
+      continue;
+    }
   }
 
-  return {
-    sectionIndex,
-    itemIndex: itemIndex === 0 || itemIndex == null ? null : itemIndex - 1,
-  };
+  return cursor;
 };
