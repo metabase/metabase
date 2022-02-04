@@ -1,18 +1,14 @@
 :root {
-  --title-color: var(--color-text-medium);
+  --title-color: var(--color-text-dark);
   --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
-  --blue-color: var(--color-brand);
 }
 
 :local(.list) {
-  max-width: var(--md-width);
   composes: ml-auto mr-auto from "style";
-  padding-bottom: 40px;
 }
 
 :local(.list-wrapper) {
-  max-width: var(--md-width);
   composes: ml-auto mr-auto from "style";
 }
 
@@ -29,10 +25,10 @@
 }
 
 :local(.headerBody) {
-  composes: flex flex-full pb2 border-bottom from "style";
+  composes: flex flex-full border-bottom from "style";
   align-items: center;
   height: 100%;
-  border-color: var(--color-border);
+  border-color: var(--color-brand);
 }
 
 :local(.headerLink) {
@@ -56,40 +52,30 @@
 }
 
 :local(.itemBody) {
-  composes: border-top from "style";
   composes: flex-full from "style";
-  max-width: 550px;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  border-color: var(--color-border);
+  max-width: 100%;
 }
 
 :local(.itemTitle) {
-  composes: text-bold inline-block from "style";
+  composes: text-bold from "style";
   max-width: 100%;
   overflow: hidden;
-  color: var(--title-color);
-  font-size: 18px;
 }
 
 :local(.itemName) {
-  composes: mr1 from "style";
-  composes: inline-block from "style";
+  composes: text-brand-hover mr1 from "style";
   max-width: 100%;
   overflow: hidden;
-}
-
-:local(.itemName):hover {
-  color: var(--blue-color);
 }
 
 :local(.itemSubtitle) {
   color: var(--subtitle-color);
+  max-width: 600px;
   font-size: 14px;
 }
 
 :local(.itemSubtitleLight) {
-  color: var(--subtitle-color);
+  composes: text-light from "style";
   font-size: 14px;
 }
 
@@ -101,12 +87,15 @@
   composes: flex flex-row align-center from "style";
 }
 :local(.leftIcons) {
-  composes: flex-no-shrink flex layout-centered mr2 from "style";
+  composes: flex-no-shrink flex align-self-start mr2 from "style";
   composes: icons;
-  width: 48px;
 }
 :local(.rightIcons) {
   composes: icons;
+}
+:local(.itemIcons) {
+  composes: leftIcons;
+  padding-top: 4px;
 }
 
 :local(.extraIcons) {
@@ -134,8 +123,7 @@
   visibility: visible;
 }
 :local(.icon):hover {
-  color: var(--blue-color);
-  transition: color 0.3s linear;
+  color: var(--color-brand);
 }
 
 /* ITEM CHECKBOX */
@@ -150,7 +138,7 @@
   display: inline;
 }
 :local(.item.selected) :local(.itemCheckbox) {
-  color: var(--blue-color);
+  color: var(--color-brand);
 }
 
 /* ITEM ICON */
@@ -177,23 +165,6 @@
 :local(.archiveIcon) {
   composes: icon;
   composes: mx1 from "style";
-}
-
-/* TAG */
-:local(.open) :local(.tagIcon) {
-  visibility: visible;
-  color: var(--blue-color);
-}
-
-/* FAVORITE */
-:local(.item.favorite) :local(.favoriteIcon) {
-  visibility: visible;
-  color: var(--blue-color);
-}
-
-/* ARCHIVE */
-:local(.item.archived) :local(.archiveIcon) {
-  color: var(--blue-color);
 }
 
 :local(.trigger) {

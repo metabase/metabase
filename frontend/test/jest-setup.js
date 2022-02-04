@@ -1,5 +1,6 @@
 import "raf/polyfill";
 import "jest-localstorage-mock";
+import "__support__/mocks";
 
 // NOTE: this is needed because sometimes asynchronous code tries to access
 // window.location or similar jsdom properties after the tests have ended and
@@ -8,3 +9,15 @@ import "jest-localstorage-mock";
 process.on("uncaughtException", err =>
   console.error("WARNING: UNCAUGHT EXCEPTION", err),
 );
+
+if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
+  global.console = {
+    ...console.log,
+    log: jest.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    trace: jest.fn(),
+  };
+}

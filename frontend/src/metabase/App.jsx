@@ -1,11 +1,14 @@
-/* @flow weak */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
-import Navbar from "metabase/nav/containers/Navbar.jsx";
+import Navbar from "metabase/nav/containers/Navbar";
+
+import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
+import StatusListing from "metabase/status/containers/StatusListing";
+import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import {
   Archived,
@@ -22,7 +25,7 @@ const mapStateToProps = (state, props) => ({
 const getErrorComponent = ({ status, data, context }) => {
   if (status === 403) {
     return <Unauthorized />;
-  } else if (status === 404) {
+  } else if (status === 404 || data?.error_code === "not-found") {
     return <NotFound />;
   } else if (
     data &&
@@ -41,31 +44,47 @@ const getErrorComponent = ({ status, data, context }) => {
   }
 };
 
+const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
+
 @connect(mapStateToProps)
 export default class App extends Component {
   state = {
-    hasError: false,
+    errorInfo: undefined,
   };
 
-  componentDidCatch(error, info) {
-    console.error("Error caught in <App>", error, info);
-    this.setState({ hasError: true });
+  constructor(props) {
+    super(props);
+    initializeIframeResizer();
   }
 
-  render() {
-    const { children, currentUser, location, errorPage } = this.props;
+  componentDidCatch(error, errorInfo) {
+    this.setState({ errorInfo });
+  }
 
-    if (this.state.hasError) {
-      return <div>😢</div>;
+  hasNavbar = () => {
+    const {
+      currentUser,
+      location: { pathname },
+    } = this.props;
+    if (!currentUser || IFRAMED) {
+      return false;
     }
+    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
+  };
+
+  render() {
+    const { children, location, errorPage } = this.props;
+    const { errorInfo } = this.state;
 
     return (
       <ScrollToTop>
         <div className="relative">
-          {currentUser && <Navbar location={location} />}
+          {this.hasNavbar() && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
+          <StatusListing />
         </div>
+        <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     );
   }

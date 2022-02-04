@@ -1,4 +1,4 @@
-import LeafletMap from "./LeafletMap.jsx";
+import LeafletMap from "./LeafletMap";
 
 import L from "leaflet";
 import "leaflet.heat";

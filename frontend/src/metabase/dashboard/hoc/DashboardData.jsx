@@ -1,5 +1,4 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -15,10 +14,7 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 
-import * as dashboardActions from "metabase/dashboard/dashboard";
-
-import type { Dashboard } from "metabase/meta/types/Dashboard";
-import type { Parameter } from "metabase/meta/types/Parameter";
+import * as dashboardActions from "metabase/dashboard/actions";
 
 import _ from "underscore";
 
@@ -39,34 +35,12 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-type Props = {
-  location?: { query: { [key: string]: string } },
-  dashboardId: string,
-
-  dashboard?: Dashboard,
-  parameters: Parameter[],
-  parameterValues: { [key: string]: string },
-
-  initialize: () => void,
-  isFullscreen: boolean,
-  isNightMode: boolean,
-  fetchDashboard: (
-    dashId: string,
-    query?: { [key: string]: string },
-  ) => Promise<void>,
-  fetchDashboardCardData: (options: {
-    reload: boolean,
-    clear: boolean,
-  }) => Promise<void>,
-  setParameterValue: (id: string, value: string) => void,
-  setErrorPage: (error: { status: number }) => void,
-};
-
-export default (ComposedComponent: ReactClass<any>) =>
-  connect(mapStateToProps, mapDispatchToProps)(
+export default ComposedComponent =>
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class DashboardContainer extends Component {
-      props: Props;
-
       async load(props) {
         const {
           initialize,
@@ -87,11 +61,15 @@ export default (ComposedComponent: ReactClass<any>) =>
         }
       }
 
-      componentWillMount() {
+      UNSAFE_componentWillMount() {
         this.load(this.props);
       }
 
-      componentWillReceiveProps(nextProps: Props) {
+      componentWillUnmount() {
+        this.props.cancelFetchDashboardCardData();
+      }
+
+      UNSAFE_componentWillReceiveProps(nextProps) {
         if (nextProps.dashboardId !== this.props.dashboardId) {
           this.load(nextProps);
         } else if (
@@ -102,7 +80,16 @@ export default (ComposedComponent: ReactClass<any>) =>
       }
 
       render() {
-        return <ComposedComponent {...this.props} />;
+        const { navigateToNewCardFromDashboard, ...props } = this.props;
+        return (
+          <ComposedComponent
+            {...props}
+            // if noLink is provided, don't include navigateToNewCardFromDashboard
+            navigateToNewCardFromDashboard={
+              this.props.noLink ? null : navigateToNewCardFromDashboard
+            }
+          />
+        );
       }
     },
   );

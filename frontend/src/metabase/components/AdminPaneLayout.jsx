@@ -1,6 +1,8 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 
-import cx from "classnames";
+import Button from "metabase/core/components/Button";
+import Link from "metabase/core/components/Link";
 
 const AdminPaneTitle = ({
   title,
@@ -8,20 +10,27 @@ const AdminPaneTitle = ({
   buttonText,
   buttonAction,
   buttonDisabled,
+  buttonLink,
+  headingContent,
 }) => (
   <section className="clearfix px2">
-    {buttonText && buttonAction ? (
-      <button
-        className={cx("Button float-right", {
-          "Button--primary": !buttonDisabled,
-        })}
+    {buttonText && buttonLink && (
+      <Link to={buttonLink} className="inline-block float-right">
+        <Button primary>{buttonText}</Button>
+      </Link>
+    )}
+    {buttonText && buttonAction && (
+      <Button
+        className="float-right"
+        primary={!buttonDisabled}
         disabled={buttonDisabled}
         onClick={buttonAction}
       >
         {buttonText}
-      </button>
-    ) : null}
-    <h2 className="PageTitle">{title}</h2>
+      </Button>
+    )}
+    {headingContent && <React.Fragment>{headingContent}</React.Fragment>}
+    {title && <h2 className="PageTitle">{title}</h2>}
     {description && <p className="text-measure">{description}</p>}
   </section>
 );
@@ -33,6 +42,8 @@ const AdminPaneLayout = ({
   buttonAction,
   buttonDisabled,
   children,
+  buttonLink,
+  headingContent,
 }) => (
   <div className="wrapper">
     <AdminPaneTitle
@@ -41,6 +52,8 @@ const AdminPaneLayout = ({
       buttonText={buttonText}
       buttonAction={buttonAction}
       buttonDisabled={buttonDisabled}
+      buttonLink={buttonLink}
+      headingContent={headingContent}
     />
     {children}
   </div>

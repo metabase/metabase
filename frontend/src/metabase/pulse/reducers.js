@@ -6,6 +6,7 @@ import {
   SAVE_EDITING_PULSE,
   FETCH_PULSE_FORM_INPUT,
   FETCH_PULSE_CARD_PREVIEW,
+  FETCH_PULSE_LIST_BY_DASHBOARD_ID,
 } from "./actions";
 
 export const editingPulse = handleActions(
@@ -31,4 +32,13 @@ export const cardPreviews = handleActions(
     },
   },
   {},
+);
+
+export const pulseList = handleActions(
+  {
+    [FETCH_PULSE_LIST_BY_DASHBOARD_ID]: {
+      next: (state, { payload }) => payload,
+    },
+  },
+  [],
 );

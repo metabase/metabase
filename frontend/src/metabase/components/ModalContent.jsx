@@ -1,13 +1,15 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 export default class ModalContent extends Component {
   static propTypes = {
     id: PropTypes.string,
     title: PropTypes.string,
-    onClose: PropTypes.func.isRequired,
+    centeredTitle: PropTypes.bool,
+    onClose: PropTypes.func,
     // takes over the entire screen
     fullPageModal: PropTypes.bool,
     // standard modal
@@ -18,9 +20,18 @@ export default class ModalContent extends Component {
     formModal: true,
   };
 
+  static childContextTypes = {
+    isModal: PropTypes.bool,
+  };
+
+  getChildContext() {
+    return { isModal: true };
+  }
+
   render() {
     const {
       title,
+      centeredTitle,
       footer,
       onClose,
       children,
@@ -33,7 +44,7 @@ export default class ModalContent extends Component {
       <div
         id={this.props.id}
         className={cx(
-          "ModalContent NewForm flex-full flex flex-column relative",
+          "ModalContent flex-full flex flex-column relative",
           className,
           { "full-height": fullPageModal && !formModal },
           // add bottom padding if this is a standard "form modal" with no footer
@@ -42,14 +53,18 @@ export default class ModalContent extends Component {
       >
         {onClose && (
           <Icon
-            className="text-light text-medium-hover cursor-pointer absolute m2 p2 top right"
+            className="text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right"
             name="close"
             size={fullPageModal ? 24 : 16}
             onClick={onClose}
           />
         )}
         {title && (
-          <ModalHeader fullPageModal={fullPageModal} formModal={formModal}>
+          <ModalHeader
+            fullPageModal={fullPageModal}
+            centeredTitle={centeredTitle}
+            formModal={formModal}
+          >
             {title}
           </ModalHeader>
         )}
@@ -68,12 +83,12 @@ export default class ModalContent extends Component {
 
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
-export const ModalHeader = ({ children, fullPageModal, formModal }) => (
+export const ModalHeader = ({ children, fullPageModal, centeredTitle }) => (
   <div className={cx("ModalHeader flex-no-shrink px4 py4 full")}>
     <h2
       className={cx(
         "text-bold",
-        { "text-centered": fullPageModal },
+        { "text-centered": fullPageModal || centeredTitle },
         { mr4: !fullPageModal },
       )}
     >

@@ -1,0 +1,42 @@
+info:
+  name: Metabase BigQuery Cloud SDK Driver
+  version: 1.0.0-SNAPSHOT-1.131.1
+  description: Allows Metabase to connect to Google BigQuery databases using the Google Cloud SDK.
+driver:
+  name: bigquery-cloud-sdk
+  display-name: BigQuery
+  lazy-load: true
+  parent:
+    - sql
+  connection-properties:
+    - name: project-id
+      display-name: Project ID (override)
+      helper-text: Project ID to be used for authentication. You can omit this field if you are only querying datasets owned by your organization.
+      required: false
+      placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
+    - name: service-account-json
+      display-name: Service account JSON file
+      helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.
+      required: true
+      type: textFile
+    - name: dataset-filters
+      type: schema-filters
+      display-name: Datasets
+    - cloud-ip-address-info
+    - advanced-options-start
+    - name: use-jvm-timezone
+      display-name: Use JVM Time Zone
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: include-user-id-and-hash
+      display-name: Include User ID and query hash in queries
+      default: true
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - default-advanced-options
+init:
+  - step: load-namespace
+    namespace: metabase.driver.bigquery-cloud-sdk

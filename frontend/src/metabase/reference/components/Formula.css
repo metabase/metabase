@@ -1,12 +1,6 @@
-:root {
-  --icon-width: calc(48px + 1rem);
-}
-
 :local(.formula) {
-  composes: bordered rounded my2 from "style";
+  composes: bordered rounded from "style";
   background-color: var(--color-bg-light);
-  margin-left: var(--icon-width);
-  max-width: 550px;
   cursor: pointer;
 }
 

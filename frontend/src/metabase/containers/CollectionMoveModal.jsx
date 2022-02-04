@@ -1,14 +1,13 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import { Flex, Box } from "grid-styled";
-import Subhead from "metabase/components/Subhead";
-import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
+import ModalContent from "metabase/components/ModalContent";
 
 import CollectionPicker from "metabase/containers/CollectionPicker";
+import { ButtonContainer } from "./CollectionMoveModal.styled";
 
 class CollectionMoveModal extends React.Component {
   constructor(props) {
@@ -41,22 +40,14 @@ class CollectionMoveModal extends React.Component {
     const { selectedCollectionId } = this.state;
 
     return (
-      <Box p={3}>
-        <Flex align="center" mb={2}>
-          <Subhead>{this.props.title}</Subhead>
-          <Icon
-            name="close"
-            className="ml-auto"
-            onClick={() => this.props.onClose()}
-          />
-        </Flex>
+      <ModalContent title={this.props.title} onClose={this.props.onClose}>
         <CollectionPicker
           value={selectedCollectionId}
           onChange={selectedCollectionId =>
             this.setState({ selectedCollectionId })
           }
         />
-        <Flex mt={2}>
+        <ButtonContainer>
           <Button
             primary
             className="ml-auto"
@@ -77,8 +68,8 @@ class CollectionMoveModal extends React.Component {
           >
             {t`Move`}
           </Button>
-        </Flex>
-      </Box>
+        </ButtonContainer>
+      </ModalContent>
     );
   }
 }

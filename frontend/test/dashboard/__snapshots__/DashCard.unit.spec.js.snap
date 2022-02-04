@@ -1,8 +1,0 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
-
-exports[`DashCard should render with no special classNames 1`] = `
-<div
-  className="Card bordered rounded flex flex-column hover-parent hover--visibility"
-  style={null}
-/>
-`;

@@ -8,12 +8,14 @@ const Code = ({ children, block }) => {
   } else if (typeof children === "string" && children.split(/\n/g).length > 1) {
     return (
       <span>
-        {children.split(/\n/g).map((line, index) => [
-          <span className="text-code" style={{ lineHeight: "1.8em" }}>
-            {line}
-          </span>,
-          <br />,
-        ])}
+        {children.split(/\n/g).map((line, index) => (
+          <React.Fragment key={index}>
+            <span className="text-code" style={{ lineHeight: "1.8em" }}>
+              {line}
+            </span>
+            <br />
+          </React.Fragment>
+        ))}
       </span>
     );
   } else {

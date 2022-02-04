@@ -1,21 +1,18 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import d3 from "d3";
 import cx from "classnames";
 
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
-
-import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 const MAX_WIDTH = 500;
 const PADDING_BOTTOM = 10;
@@ -25,16 +22,16 @@ const INNER_RADIUS_RATIO = 3.7 / 5;
 const INNER_RADIUS = OUTER_RADIUS * INNER_RADIUS_RATIO;
 
 // arrow shape, currently an equilateral triangle
-const ARROW_HEIGHT = (OUTER_RADIUS - INNER_RADIUS) * 2.5 / 4; // 2/3 of segment thickness
-const ARROW_BASE = ARROW_HEIGHT / Math.tan(64 / 180 * Math.PI);
+const ARROW_HEIGHT = ((OUTER_RADIUS - INNER_RADIUS) * 2.5) / 4; // 2/3 of segment thickness
+const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-const BACKGROUND_ARC_COLOR = colors["bg-medium"];
-const SEGMENT_LABEL_COLOR = colors["text-dark"];
-const CENTER_LABEL_COLOR = colors["text-dark"];
-const ARROW_FILL_COLOR = colors["text-medium"];
-const ARROW_STROKE_COLOR = "white";
+const getBackgroundArcColor = () => color("bg-medium");
+const getSegmentLabelColor = () => color("text-dark");
+const getCenterLabelColor = () => color("text-dark");
+const getArrowFillColor = () => color("text-medium");
+const getArrowStrokeColor = () => "white";
 
 // in ems, but within the scaled 100px SVG element
 const FONT_SIZE_SEGMENT_LABEL = 0.25;
@@ -49,14 +46,12 @@ const LABEL_OFFSET_PERCENT = 1.025;
 // total degrees of the arc (180 = semicircle, etc)
 const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 
-const radians = degrees => degrees * Math.PI / 180;
-const degrees = radians => radians * 180 / Math.PI;
+const radians = degrees => (degrees * Math.PI) / 180;
+const degrees = radians => (radians * 180) / Math.PI;
 
 const segmentIsValid = s => !isNaN(s.min) && !isNaN(s.max);
 
 export default class Gauge extends Component {
-  props: VisualizationProps;
-
   static uiName = t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
@@ -67,7 +62,11 @@ export default class Gauge extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!isNumeric(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
@@ -77,11 +76,18 @@ export default class Gauge extends Component {
     mounted: false,
   };
 
-  _label: ?HTMLElement;
+  _label;
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
@@ -105,12 +111,12 @@ export default class Gauge extends Component {
       getDefault(series) {
         let value = 100;
         try {
-          value = series[0].data.rows[0][0];
+          value = series[0].data.rows[0][0] || 0;
         } catch (e) {}
         return [
-          { min: 0, max: value / 2, color: colors["error"], label: "" },
-          { min: value / 2, max: value, color: colors["warning"], label: "" },
-          { min: value, max: value * 2, color: colors["success"], label: "" },
+          { min: 0, max: value / 2, color: color("error"), label: "" },
+          { min: value / 2, max: value, color: color("warning"), label: "" },
+          { min: value, max: value * 2, color: color("success"), label: "" },
         ];
       },
       widget: ChartSettingGaugeSegments,
@@ -154,7 +160,11 @@ export default class Gauge extends Component {
 
   render() {
     const {
-      series: [{ data: { rows, cols } }],
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
       settings,
       className,
       isSettings,
@@ -170,13 +180,13 @@ export default class Gauge extends Component {
     const svgAspectRatio = viewBoxHeight / viewBoxWidth;
     const containerAspectRadio = height / width;
 
-    let svgWidth, svgHeight;
+    let svgWidth;
     if (containerAspectRadio < svgAspectRatio) {
       svgWidth = Math.min(MAX_WIDTH, height / svgAspectRatio);
     } else {
       svgWidth = Math.min(MAX_WIDTH, width);
     }
-    svgHeight = svgWidth * svgAspectRatio;
+    const svgHeight = svgWidth * svgAspectRatio;
 
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
@@ -188,12 +198,12 @@ export default class Gauge extends Component {
       .linear()
       .domain(range) // NOTE: confusing, but the "range" is the domain for the arc scale
       .range([
-        ARC_DEGREES / 180 * -Math.PI / 2,
-        ARC_DEGREES / 180 * Math.PI / 2,
+        ((ARC_DEGREES / 180) * -Math.PI) / 2,
+        ((ARC_DEGREES / 180) * Math.PI) / 2,
       ])
       .clamp(true);
 
-    const value = rows[0][0];
+    const value = rows[0][0] || 0;
     const column = cols[0];
 
     const valuePosition = (value, distance) => {
@@ -238,15 +248,14 @@ export default class Gauge extends Component {
             viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
           >
             <g
-              transform={`translate(${viewBoxWidth *
-                expandWidthFactor /
+              transform={`translate(${(viewBoxWidth * expandWidthFactor) /
                 2},50)`}
             >
               {/* BACKGROUND ARC */}
               <GaugeArc
                 start={angle(range[0])}
                 end={angle(range[1])}
-                fill={BACKGROUND_ARC_COLOR}
+                fill={getBackgroundArcColor()}
               />
               {/* SEGMENT ARCS */}
               {segments.map((segment, index) => (
@@ -259,6 +268,7 @@ export default class Gauge extends Component {
                   column={column}
                   settings={settings}
                   onHoverChange={!showLabels ? this.props.onHoverChange : null}
+                  testId={"gauge-arc-" + index}
                 />
               ))}
               {/* NEEDLE */}
@@ -270,6 +280,7 @@ export default class Gauge extends Component {
               {showLabels &&
                 numberLabels.map((value, index) => (
                   <GaugeSegmentLabel
+                    key={index}
                     position={valuePosition(
                       value,
                       OUTER_RADIUS * LABEL_OFFSET_PERCENT,
@@ -281,14 +292,14 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <HideIfOverlowingSVG>
+                  <HideIfOverlowingSVG key={index}>
                     <GaugeSegmentLabel
                       position={valuePosition(
                         value,
                         OUTER_RADIUS * LABEL_OFFSET_PERCENT,
                       )}
                       style={{
-                        fill: SEGMENT_LABEL_COLOR,
+                        fill: getSegmentLabelColor(),
                       }}
                     >
                       {label}
@@ -302,7 +313,7 @@ export default class Gauge extends Component {
                 x={0}
                 y={0}
                 style={{
-                  fill: CENTER_LABEL_COLOR,
+                  fill: getCenterLabelColor(),
                   fontSize: "1em",
                   fontWeight: "bold",
                   textAnchor: "middle",
@@ -327,6 +338,7 @@ const GaugeArc = ({
   onHoverChange,
   settings,
   column,
+  testId,
 }) => {
   const arc = d3.svg
     .arc()
@@ -339,6 +351,7 @@ const GaugeArc = ({
         endAngle: end,
       })}
       fill={fill}
+      data-testid={testId}
       onMouseMove={e => {
         if (onHoverChange) {
           const options =
@@ -374,9 +387,9 @@ const GaugeNeedle = ({ angle, isAnimated = true }) => (
       angle,
     )}, 0, ${INNER_RADIUS})`}
     style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
-    stroke={ARROW_STROKE_COLOR}
+    stroke={getArrowStrokeColor()}
     strokeWidth={ARROW_STROKE_THICKNESS}
-    fill={ARROW_FILL_COLOR}
+    fill={getArrowFillColor()}
   />
 );
 
@@ -385,7 +398,7 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: colors["text-medium"],
+      fill: color("text-medium"),
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit

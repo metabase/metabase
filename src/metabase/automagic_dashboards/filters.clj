@@ -1,88 +1,72 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.models.field :as field :refer [Field]]
-            [metabase.mbql.normalize :as normalize]
-            [metabase.query-processor.util :as qp.util]
+  (:require [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.mbql.util :as mbql.u]))
+            [toucan.db :as db]))
 
-(def ^:private FieldReference
-  [(s/one (s/constrained su/KeywordOrString
-                         (comp #{:field-id :fk-> :field-literal} qp.util/normalize-token))
-          "head")
-   (s/cond-pre s/Int su/KeywordOrString (s/recursive #'FieldReference))])
-
-(def ^:private ^{:arglists '([form])} field-reference?
+(def ^{:arglists '([form])} field-reference?
   "Is given form an MBQL field reference?"
-  (complement (s/checker FieldReference)))
+  (complement (s/checker mbql.s/field)))
 
-(defmulti
-  ^{:doc "Extract field ID from a given field reference form."
-    :arglists '([op & args])}
-  field-reference->id (comp qp.util/normalize-token first))
+(s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
+  "Extract field ID from a given field reference form."
+  [clause]
+  (mbql.u/match-one clause [:field id _] id))
 
-(defmethod field-reference->id :field-id
-  [[_ id]]
-  (if (sequential? id)
-    (field-reference->id id)
-    id))
-
-(defmethod field-reference->id :fk->
-  [[_ _ id]]
-  (if (sequential? id)
-    (field-reference->id id)
-    id))
-
-(defmethod field-reference->id :field-literal
-  [[_ name _]]
-  name)
-
-(defn collect-field-references
-  "Collect all field references (`[:field-id]`, `[:fk->]` or `[:field-literal]` forms) from a given
-   form."
+(s/defn collect-field-references :- [mbql.s/field]
+  "Collect all `:field` references from a given form."
   [form]
-  (->> form
-       (tree-seq (every-pred (some-fn sequential? map?)
-                             (complement field-reference?))
-                 identity)
-       (filter field-reference?)))
+  (mbql.u/match form :field &match))
 
-(def ^{:arglists '([field])} periodic-datetime?
-  "Is `field` a periodic datetime (eg. day of month)?"
-  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
-          :month-of-year :quarter-of-year}
-        :unit))
-
-(defn datetime?
-  "Is `field` a datetime?"
-  [field]
-  (and (not (periodic-datetime? field))
-       (or (isa? (:base_type field) :type/DateTime)
-           (field/unix-timestamp? field))))
+(defn- temporal?
+  "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
+  [{base-type :base_type, effective-type :effective_type, unit :unit}]
+  ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
+  (and (not ((disj u.date/extract-units :year) unit))
+       (isa? (or effective-type base-type) :type/Temporal)))
 
 (defn- interestingness
-  [{:keys [base_type special_type fingerprint] :as field}]
+  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [fingerprint]}]
   (cond-> 0
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
-    ((descendants :type/Category) special_type)         inc
-    (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
-    (isa? special_type :type/CreationTimestamp)         inc
-    (#{:type/State :type/Country} special_type)         inc))
+    ((descendants :type/Category) semantic-type)        inc
+    (isa? (or effective-type base-type) :type/Temporal) inc
+    ((descendants :type/Temporal) semantic-type)        inc
+    (isa? semantic-type :type/CreationTimestamp)        inc
+    (#{:type/State :type/Country} semantic-type)        inc))
 
+(defn- interleave-all
+  [& colls]
+  (lazy-seq
+   (when (seq colls)
+     (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
+
+(defn- sort-by-interestingness
+  [fields]
+  (->> fields
+       (map #(assoc % :interestingness (interestingness %)))
+       (sort-by interestingness >)
+       (partition-by :interestingness)
+       (mapcat (fn [fields]
+                 (->> fields
+                      (group-by (juxt :base_type :semantic_type))
+                      vals
+                      (apply interleave-all))))))
 
 (defn interesting-fields
   "Pick out interesting fields and sort them by interestingness."
   [fields]
   (->> fields
-       (filter (fn [{:keys [special_type] :as field}]
-                 (or (datetime? field)
-                     (isa? special_type :type/Category))))
-       (sort-by interestingness >)))
+       (filter (fn [{:keys [semantic_type] :as field}]
+                 (or (temporal? field)
+                     (isa? semantic_type :type/Category))))
+       sort-by-interestingness))
 
 (defn- candidates-for-filtering
   [fieldset cards]
@@ -102,9 +86,9 @@
          (keep (fn [[_ [fk & fks]]]
                  ;; Bail out if there is more than one FK from the same table
                  (when (empty? fks)
-                   [(:table_id fk) [:fk-> (u/get-id fk) (u/get-id field)]])))
-         (into {(:table_id field) [:field-id (u/get-id field)]}))
-    (constantly [:field-literal (:name field) (:base_type field)])))
+                   [(:table_id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
+         (into {(:table_id field) [:field (u/the-id field) nil]}))
+    (constantly [:field (:name field) {:base-type (:base_type field)}])))
 
 (defn- filter-for-card
   [card field]
@@ -126,12 +110,12 @@
 
 (defn- filter-type
   "Return filter type for a given field."
-  [{:keys [base_type special_type] :as field}]
+  [{:keys [semantic_type] :as field}]
   (cond
-    (datetime? field)                  "date/all-options"
-    (isa? special_type :type/State)    "location/state"
-    (isa? special_type :type/Country)  "location/country"
-    (isa? special_type :type/Category) "category"))
+    (temporal? field)                   "date/all-options"
+    (isa? semantic_type :type/State)    "location/state"
+    (isa? semantic_type :type/Country)  "location/country"
+    (isa? semantic_type :type/Category) "category"))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
@@ -159,7 +143,7 @@
                   field/with-targets)]
      (->> dimensions
           remove-unqualified
-          (sort-by interestingness >)
+          sort-by-interestingness
           (take max-filters)
           (reduce
            (fn [dashboard candidate]
@@ -183,13 +167,13 @@
   "Returns a sequence of filter subclauses making up `filter-clause` by flattening `:and` compound filters.
 
     (flatten-filter-clause [:and
-                            [:= [:field-id 1] 2]
+                            [:= [:field 1 nil] 2]
                             [:and
-                             [:= [:field-id 3] 4]
-                             [:= [:field-id 5] 6]]])
-    ;; -> ([:= [:field-id 1] 2]
-           [:= [:field-id 3] 4]
-           [:= [:field-id 5] 6])"
+                             [:= [:field 3 nil] 4]
+                             [:= [:field 5 nil] 6]]])
+    ;; -> ([:= [:field 1 nil] 2]
+           [:= [:field 3 nil] 4]
+           [:= [:field 5 nil] 6])"
   [[clause-name, :as filter-clause]]
   (when (seq filter-clause)
     (if (= clause-name :and)

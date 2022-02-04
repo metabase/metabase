@@ -1,0 +1,32 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "New user invite",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "invite",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "invite_sent"
+      ],
+      "maxLength": 1024
+    },
+    "invited_user_id": {
+      "description": "User ID of the user who was invited",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": [
+    "event",
+    "invited_user_id"
+  ],
+  "additionalProperties": true
+}

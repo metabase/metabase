@@ -1,55 +1,38 @@
-/* @flow weak */
-
-import React, { Component } from "react";
+/* eslint-disable react/prop-types */
+import React from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon.jsx";
-import TagEditorParam from "./TagEditorParam.jsx";
-import TagEditorHelp from "./TagEditorHelp.jsx";
-import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+
+import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
+
+import TagEditorParam from "./TagEditorParam";
+import CardTagEditor from "./CardTagEditor";
+import TagEditorHelp from "./TagEditorHelp";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
+
+import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { TableId } from "metabase/meta/types/Table";
-import type { Database } from "metabase/meta/types/Database";
-import type { TemplateTag } from "metabase/meta/types/Query";
-import type { Field as FieldObject } from "metabase/meta/types/Field";
 
-type Props = {
-  query: NativeQuery,
-
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
-  updateTemplateTag: (tag: TemplateTag) => void,
-
-  databaseFields: FieldObject[],
-  databases: Database[],
-  sampleDatasetId: TableId,
-
-  onClose: () => void,
-};
-type State = {
-  section: "help" | "settings",
-};
-
-export default class TagEditorSidebar extends Component {
-  props: Props;
-  state: State = {
+export default class TagEditorSidebar extends React.Component {
+  state = {
     section: "settings",
   };
 
   static propTypes = {
     card: PropTypes.object.isRequired,
     onClose: PropTypes.func.isRequired,
-    updateTemplateTag: PropTypes.func.isRequired,
     databaseFields: PropTypes.array,
+    sampleDatabaseId: PropTypes.number,
     setDatasetQuery: PropTypes.func.isRequired,
-    sampleDatasetId: PropTypes.number,
+    setTemplateTag: PropTypes.func.isRequired,
+    setParameterValue: PropTypes.func.isRequired,
   };
 
   setSection(section) {
     this.setState({ section: section });
-    MetabaseAnalytics.trackEvent(
+    MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Template Tag Editor Section Change",
       section,
@@ -60,15 +43,18 @@ export default class TagEditorSidebar extends Component {
     const {
       databases,
       databaseFields,
-      sampleDatasetId,
+      sampleDatabaseId,
       setDatasetQuery,
       query,
-      updateTemplateTag,
+      setTemplateTag,
+      setParameterValue,
       onClose,
     } = this.props;
-    const tags = query.templateTags();
-    const databaseId = query.datasetQuery().database;
-    const database = databases.find(db => db.id === databaseId);
+    // The tag editor sidebar excludes snippets since they have a separate sidebar.
+    const tags = query.templateTagsWithoutSnippets();
+    const database = query.database();
+    const parameters = query.question().parameters();
+    const parametersById = _.indexBy(parameters, "id");
 
     let section;
     if (tags.length === 0) {
@@ -78,27 +64,18 @@ export default class TagEditorSidebar extends Component {
     }
 
     return (
-      <div className="DataReference-container p3 full-height scroll-y">
-        <div className="DataReference-header flex align-center mb2">
-          <h2 className="text-default">{t`Variables`}</h2>
-          <a
-            className="flex-align-right text-default text-brand-hover no-decoration"
-            onClick={() => onClose()}
-          >
-            <Icon name="close" size={18} />
-          </a>
-        </div>
-        <div className="DataReference-content">
-          <div className="Button-group Button-group--brand text-uppercase mb2">
+      <SidebarContent title={t`Variables`} onClose={onClose}>
+        <div data-testid="tag-editor-sidebar">
+          <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "settings",
                 disabled: tags.length === 0,
               })}
               onClick={() => this.setSection("settings")}
             >{t`Settings`}</a>
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "help",
               })}
               onClick={() => this.setSection("help")}
@@ -107,47 +84,70 @@ export default class TagEditorSidebar extends Component {
           {section === "settings" ? (
             <SettingsPane
               tags={tags}
-              onUpdate={updateTemplateTag}
+              parametersById={parametersById}
               databaseFields={databaseFields}
               database={database}
               databases={databases}
+              query={query}
+              setDatasetQuery={setDatasetQuery}
+              setTemplateTag={setTemplateTag}
+              setParameterValue={setParameterValue}
             />
           ) : (
             <TagEditorHelp
-              sampleDatasetId={sampleDatasetId}
+              database={database}
+              sampleDatabaseId={sampleDatabaseId}
               setDatasetQuery={setDatasetQuery}
+              switchToSettings={() => this.setSection("settings")}
             />
           )}
         </div>
-      </div>
+      </SidebarContent>
     );
   }
 }
 
 const SettingsPane = ({
   tags,
-  onUpdate,
+  parametersById,
   databaseFields,
   database,
   databases,
+  query,
+  setDatasetQuery,
+  setTemplateTag,
+  setParameterValue,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        <TagEditorParam
-          tag={tag}
-          onUpdate={onUpdate}
-          databaseFields={databaseFields}
-          database={database}
-          databases={databases}
-        />
+        {tag.type === "card" ? (
+          <CardTagEditor
+            query={query}
+            setDatasetQuery={setDatasetQuery}
+            tag={tag}
+          />
+        ) : (
+          <TagEditorParam
+            tag={tag}
+            parameter={parametersById[tag.id]}
+            databaseFields={databaseFields}
+            database={database}
+            databases={databases}
+            setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
+          />
+        )}
       </div>
     ))}
   </div>
 );
 
 SettingsPane.propTypes = {
-  tags: PropTypes.object.isRequired,
-  onUpdate: PropTypes.func.isRequired,
+  tags: PropTypes.array.isRequired,
+  query: NativeQuery,
   databaseFields: PropTypes.array,
+  setDatasetQuery: PropTypes.func.isRequired,
+  setTemplateTag: PropTypes.func.isRequired,
+  setParameterValue: PropTypes.func.isRequired,
 };

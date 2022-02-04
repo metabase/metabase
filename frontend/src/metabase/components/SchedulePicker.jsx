@@ -2,15 +2,21 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Select from "metabase/components/Select.jsx";
+import { SegmentedControl } from "metabase/components/SegmentedControl";
+import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, n => ({
   name: (n === 0 ? 12 : n) + ":00",
+  value: n,
+}));
+
+export const MINUTE_OPTIONS = _.times(60, n => ({
+  name: n.toString(),
   value: n,
 }));
 
@@ -35,6 +41,13 @@ export const MONTH_DAY_OPTIONS = [
   { name: t`15th (Midpoint)`, value: "mid" },
 ];
 
+const optionNameTranslations = {
+  hourly: t`Hourly`,
+  daily: t`Daily`,
+  weekly: t`Weekly`,
+  monthly: t`Monthly`,
+};
+
 /**
  * Picker for selecting a hourly/daily/weekly/monthly schedule.
  *
@@ -54,9 +67,12 @@ export default class SchedulePicker extends Component {
     // text prepended to "12:00 PM PST, your Metabase timezone"
     textBeforeSendTime: PropTypes.string,
     onScheduleChange: PropTypes.func.isRequired,
+    minutesOnHourPicker: PropTypes.bool,
   };
 
-  onPropertyChange(name, value) {
+  DEFAULT_DAY = "mon";
+
+  handleChangeProperty(name, value) {
     let newSchedule = {
       ...this.props.schedule,
       [name]: value,
@@ -70,6 +86,7 @@ export default class SchedulePicker extends Component {
           schedule_day: null,
           schedule_frame: null,
           schedule_hour: null,
+          schedule_minute: 0,
         };
       }
 
@@ -94,7 +111,7 @@ export default class SchedulePicker extends Component {
       if (value === "weekly") {
         newSchedule = {
           ...newSchedule,
-          schedule_day: "mon",
+          schedule_day: this.DEFAULT_DAY,
           schedule_frame: null,
         };
       }
@@ -104,13 +121,19 @@ export default class SchedulePicker extends Component {
         newSchedule = {
           ...newSchedule,
           schedule_frame: "first",
-          schedule_day: "mon",
+          schedule_day: this.DEFAULT_DAY,
         };
       }
     } else if (name === "schedule_frame") {
       // when the monthly schedule frame is the 15th, clear out the schedule_day
       if (value === "mid") {
         newSchedule = { ...newSchedule, schedule_day: null };
+      } else {
+        // first or last, needs a day of the week
+        newSchedule = {
+          ...newSchedule,
+          schedule_day: newSchedule.schedule_day || this.DEFAULT_DAY,
+        };
       }
     }
 
@@ -119,93 +142,117 @@ export default class SchedulePicker extends Component {
   }
 
   renderMonthlyPicker() {
-    let { schedule } = this.props;
+    const { schedule } = this.props;
 
-    let DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
+    const DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
     DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
     return (
-      <span className="mt1">
-        <span className="h4 text-bold mx1">on the</span>
+      <div className="flex align-center mt1">
+        <span
+          className="text-bold"
+          style={{ minWidth: "48px" }}
+        >{t`on the`}</span>
         <Select
-          value={_.find(
-            MONTH_DAY_OPTIONS,
-            o => o.value === schedule.schedule_frame,
-          )}
+          value={schedule.schedule_frame}
+          onChange={({ target: { value } }) =>
+            this.handleChangeProperty("schedule_frame", value)
+          }
           options={MONTH_DAY_OPTIONS}
-          optionNameFn={o => o.name}
-          className="h4 text-bold bg-white"
-          optionValueFn={o => o.value}
-          onChange={o => this.onPropertyChange("schedule_frame", o)}
         />
         {schedule.schedule_frame !== "mid" && (
-          <span className="mt1 mx1">
+          <span className="mx1">
             <Select
-              value={_.find(
-                DAY_OPTIONS,
-                o => o.value === schedule.schedule_day,
-              )}
+              value={schedule.schedule_day}
+              onChange={({ target: { value } }) =>
+                this.handleChangeProperty("schedule_day", value)
+              }
               options={DAY_OPTIONS}
-              optionNameFn={o => o.name}
-              optionValueFn={o => o.value}
-              className="h4 text-bold bg-white"
-              onChange={o => this.onPropertyChange("schedule_day", o)}
             />
           </span>
         )}
-      </span>
+      </div>
     );
   }
 
   renderDayPicker() {
-    let { schedule } = this.props;
+    const { schedule } = this.props;
 
     return (
-      <span className="mt1">
-        <span className="h4 text-bold mx1">on</span>
+      <span className="flex align-center">
+        <span className="text-bold mx1">{t`on`}</span>
         <Select
-          value={_.find(
-            DAY_OF_WEEK_OPTIONS,
-            o => o.value === schedule.schedule_day,
-          )}
+          value={schedule.schedule_day}
+          onChange={({ target: { value } }) =>
+            this.handleChangeProperty("schedule_day", value)
+          }
           options={DAY_OF_WEEK_OPTIONS}
-          optionNameFn={o => o.name}
-          optionValueFn={o => o.value}
-          className="h4 text-bold bg-white"
-          onChange={o => this.onPropertyChange("schedule_day", o)}
         />
       </span>
     );
   }
 
-  renderHourPicker() {
-    let { schedule, textBeforeSendTime } = this.props;
-
-    let hourOfDay = isNaN(schedule.schedule_hour) ? 8 : schedule.schedule_hour;
-    let hour = hourOfDay % 12;
-    let amPm = hourOfDay >= 12 ? 1 : 0;
-    let timezone = Settings.get("timezone_short");
+  renderMinutePicker() {
+    const { schedule } = this.props;
+    const minuteOfHour = isNaN(schedule.schedule_minute)
+      ? 0
+      : schedule.schedule_minute;
     return (
       <div className="mt1">
-        <span className="h4 text-bold mr1">at</span>
-        <Select
-          className="mr1 h4 text-bold bg-white"
-          value={_.find(HOUR_OPTIONS, o => o.value === hour)}
-          options={HOUR_OPTIONS}
-          optionNameFn={o => o.name}
-          optionValueFn={o => o.value}
-          onChange={o => this.onPropertyChange("schedule_hour", o + amPm * 12)}
-        />
-        <Select
-          value={_.find(AM_PM_OPTIONS, o => o.value === amPm)}
-          options={AM_PM_OPTIONS}
-          optionNameFn={o => o.name}
-          optionValueFn={o => o.value}
-          onChange={o => this.onPropertyChange("schedule_hour", hour + o * 12)}
-          className="h4 text-bold bg-white"
-        />
+        <div className="flex align-center">
+          <span
+            className="text-bold"
+            style={{ minWidth: "48px" }}
+          >{t`at`}</span>
+          <Select
+            className="mr1"
+            value={minuteOfHour}
+            options={MINUTE_OPTIONS}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_minute", value)
+            }
+          />
+          <span className="text-bold">{t`minutes past the hour`}</span>
+        </div>
+      </div>
+    );
+  }
+
+  renderHourPicker() {
+    const { schedule, textBeforeSendTime } = this.props;
+
+    const hourOfDay = isNaN(schedule.schedule_hour)
+      ? 8
+      : schedule.schedule_hour;
+    const hour = hourOfDay % 12;
+    const amPm = hourOfDay >= 12 ? 1 : 0;
+    const timezone = Settings.get("report-timezone-short");
+    return (
+      <div className="mt1">
+        <div className="flex align-center">
+          <span
+            className="text-bold"
+            style={{ minWidth: "48px" }}
+          >{t`at`}</span>
+          <Select
+            className="mr1"
+            value={hour}
+            options={HOUR_OPTIONS}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_hour", value + amPm * 12)
+            }
+          />
+          <SegmentedControl
+            value={amPm}
+            onChange={value =>
+              this.handleChangeProperty("schedule_hour", hour + value * 12)
+            }
+            options={AM_PM_OPTIONS}
+            fullWidth
+          />
+        </div>
         {textBeforeSendTime && (
-          <div className="mt2 h4 text-bold text-medium border-top pt2">
+          <div className="mt1 text-medium pt2">
             {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
             {amPm ? "PM" : "AM"} {timezone}, {t`your Metabase timezone`}.
           </div>
@@ -215,23 +262,31 @@ export default class SchedulePicker extends Component {
   }
 
   render() {
-    let { schedule, scheduleOptions, textBeforeInterval } = this.props;
+    const { schedule, scheduleOptions, textBeforeInterval } = this.props;
 
     const scheduleType = schedule.schedule_type;
 
     return (
-      <div className="mt1">
-        <span className="h4 text-bold mr1">{textBeforeInterval}</span>
-        <Select
-          className="h4 text-bold bg-white"
-          value={scheduleType}
-          options={scheduleOptions}
-          optionNameFn={o => capitalize(o)}
-          optionValueFn={o => o}
-          onChange={o => this.onPropertyChange("schedule_type", o)}
-        />
+      <div className="mt3">
+        <div className="flex align-center">
+          <span className="text-bold" style={{ minWidth: "48px" }}>
+            {textBeforeInterval}
+          </span>
+          <Select
+            value={scheduleType}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_type", value)
+            }
+            options={scheduleOptions}
+            optionNameFn={o => optionNameTranslations[o] || capitalize(o)}
+            optionValueFn={o => o}
+          />
+          {scheduleType === "weekly" && this.renderDayPicker()}
+        </div>
+        {scheduleType === "hourly" &&
+          this.props.minutesOnHourPicker &&
+          this.renderMinutePicker()}
         {scheduleType === "monthly" && this.renderMonthlyPicker()}
-        {scheduleType === "weekly" && this.renderDayPicker()}
         {(scheduleType === "daily" ||
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&

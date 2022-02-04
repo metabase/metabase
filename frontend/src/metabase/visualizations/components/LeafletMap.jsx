@@ -1,5 +1,5 @@
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import ReactDOM from "react-dom";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -11,12 +11,19 @@ import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateLatLonFilter } from "metabase/qb/lib/actions";
+import Question from "metabase-lib/lib/Question";
+import { updateLatLonFilter } from "metabase/modes/lib/actions";
 
 export default class LeafletMap extends Component {
+  constructor(props) {
+    super(props);
+
+    this.mapRef = React.createRef();
+  }
+
   componentDidMount() {
     try {
-      const element = ReactDOM.findDOMNode(this.refs.map);
+      const element = this.mapRef.current;
 
       const map = (this.map = L.map(element, {
         scrollWheelZoom: false,
@@ -46,11 +53,14 @@ export default class LeafletMap extends Component {
 
       map.setView([0, 0], 8);
 
-      const mapTileUrl = MetabaseSettings.get("map_tile_server_url");
-      const mapTileAttribution =
-        mapTileUrl.indexOf("openstreetmap.org") >= 0
-          ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-          : null;
+      const mapTileUrl = MetabaseSettings.get("map-tile-server-url");
+      let mapTileHostname = "";
+      try {
+        mapTileHostname = new URL(mapTileUrl).host;
+      } catch (e) {}
+      const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
+        ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+        : null;
 
       L.tileLayer(mapTileUrl, { attribution: mapTileAttribution }).addTo(map);
 
@@ -90,10 +100,16 @@ export default class LeafletMap extends Component {
       } else {
         // compute ideal lat and lon zoom separately and use the lesser zoom to ensure the bounds are visible
         const latZoom = this.map.getBoundsZoom(
-          L.latLngBounds([[bounds.getSouth(), 0], [bounds.getNorth(), 0]]),
+          L.latLngBounds([
+            [bounds.getSouth(), 0],
+            [bounds.getNorth(), 0],
+          ]),
         );
         const lonZoom = this.map.getBoundsZoom(
-          L.latLngBounds([[0, bounds.getWest()], [0, bounds.getEast()]]),
+          L.latLngBounds([
+            [0, bounds.getWest()],
+            [0, bounds.getEast()],
+          ]),
         );
         const zoom = Math.min(latZoom, lonZoom);
         // NOTE: unclear why calling `fitBounds` twice is sometimes required to get it to work
@@ -124,9 +140,14 @@ export default class LeafletMap extends Component {
     const bounds = e.layer.getBounds();
 
     const {
-      series: [{ card, data: { cols } }],
+      series: [
+        {
+          card,
+          data: { cols },
+        },
+      ],
       settings,
-      setCardAndRun,
+      onChangeCardAndRun,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -136,20 +157,36 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    setCardAndRun(
-      updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds),
-    );
+    const question = new Question(card);
+    if (question.isStructured()) {
+      const nextCard = updateLatLonFilter(
+        question.query(),
+        latitudeColumn,
+        longitudeColumn,
+        bounds,
+      )
+        .question()
+        .card();
+      onChangeCardAndRun({ nextCard });
+    }
 
     this.props.onFiltering(false);
   };
 
   render() {
     const { className } = this.props;
-    return <div className={className} ref="map" />;
+    return <div className={className} ref={this.mapRef} />;
   }
 
   _getLatLonIndexes() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return {
       latitudeIndex: _.findIndex(
         cols,
@@ -163,7 +200,13 @@ export default class LeafletMap extends Component {
   }
 
   _getLatLonColumns() {
-    const { series: [{ data: { cols } }] } = this.props;
+    const {
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
     return {
       latitudeColumn: cols[latitudeIndex],
@@ -172,7 +215,14 @@ export default class LeafletMap extends Component {
   }
 
   _getMetricColumn() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
 }

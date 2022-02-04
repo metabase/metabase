@@ -1,57 +1,33 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React, { useRef, useEffect } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
+import Icon from "metabase/components/Icon";
+import TextInput from "metabase/components/TextInput";
 
-export default class ListSearchField extends Component {
-  static propTypes = {
-    onChange: PropTypes.func.isRequired,
-    placeholder: PropTypes.string,
-    searchText: PropTypes.string,
-    autoFocus: PropTypes.bool,
-  };
+export default function ListSearchField({ autoFocus, ...props }) {
+  const inputRef = useRef();
 
-  static defaultProps = {
-    className: "bordered rounded text-light flex flex-full align-center",
-    inputClassName: "p1 h4 input--borderless text-default flex-full",
-    placeholder: t`Find...`,
-    searchText: "",
-    autoFocus: false,
-  };
-
-  componentDidMount() {
-    if (this.props.autoFocus) {
-      // Call focus() with a small delay because instant input focus causes an abrupt scroll to top of page
-      // when ListSearchField is used inside a popover. It seems that it takes a while for Tether library
-      // to correctly position the popover.
-      setTimeout(() => this._input && this._input.focus(), 50);
+  useEffect(() => {
+    // this component is used within virtualized lists
+    // rerendering an input with autoFocus causes the list to be scrolled to the top
+    // so we override an autoFocus prop here to prevent any scrolling
+    if (inputRef.current && autoFocus) {
+      inputRef.current.focus({
+        preventScroll: true,
+      });
     }
-  }
 
-  render() {
-    const {
-      className,
-      inputClassName,
-      onChange,
-      placeholder,
-      searchText,
-    } = this.props;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return (
-      <div className={className}>
-        <span className="px1">
-          <Icon name="search" size={16} />
-        </span>
-        <input
-          className={inputClassName}
-          type="text"
-          placeholder={placeholder}
-          value={searchText}
-          onChange={e => onChange(e.target.value)}
-          ref={input => (this._input = input)}
-        />
-      </div>
-    );
-  }
+  return (
+    <TextInput
+      ref={inputRef}
+      {...props}
+      padding="sm"
+      borderRadius="md"
+      icon={<Icon name="search" size={16} />}
+    />
+  );
 }
+
+ListSearchField.propTypes = TextInput.propTypes;

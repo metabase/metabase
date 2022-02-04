@@ -1,41 +1,20 @@
-/* @flow */
-
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import cx from "classnames";
 
-import NumericInput from "metabase/components/NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput";
 import DateUnitSelector from "../DateUnitSelector";
 
-import type {
-  TimeIntervalFilter,
-  RelativeDatetimeUnit,
-} from "metabase/meta/types/Query";
+import { assoc } from "icepick";
 
-export const DATE_PERIODS: RelativeDatetimeUnit[] = [
-  "day",
-  "week",
-  "month",
-  "year",
-];
+export const DATE_PERIODS = ["day", "week", "month", "quarter", "year"];
 
-const TIME_PERIODS: RelativeDatetimeUnit[] = ["minute", "hour"];
+const TIME_PERIODS = ["minute", "hour"];
 
-const ALL_PERIODS = DATE_PERIODS.concat(TIME_PERIODS);
-
-type Props = {
-  filter: TimeIntervalFilter,
-  onFilterChange: (filter: TimeIntervalFilter) => void,
-  formatter: (value: any) => any,
-  hideTimeSelectors?: boolean,
-};
-
-type State = {
-  showUnits: boolean,
-};
+// define ALL_PERIODS in increasing order of duration
+const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS);
 
 export default class RelativeDatePicker extends Component {
-  props: Props;
-  state: State;
-
   state = {
     showUnits: false,
   };
@@ -45,13 +24,11 @@ export default class RelativeDatePicker extends Component {
   };
 
   render() {
-    const {
-      filter: [op, field, intervals, unit],
-      onFilterChange,
-      formatter,
-    } = this.props;
+    const { filter, onFilterChange, formatter, className } = this.props;
+    const intervals = filter[2];
+    const unit = filter[3];
     return (
-      <div className="flex-full mb2 flex align-center">
+      <div className={cx(className, "flex align-center")}>
         <NumericInput
           className="mr2 input border-purple text-right"
           style={{
@@ -65,17 +42,15 @@ export default class RelativeDatePicker extends Component {
           value={
             typeof intervals === "number" ? Math.abs(intervals) : intervals
           }
-          onChange={value =>
-            onFilterChange([op, field, formatter(value), unit])
-          }
+          onChange={value => onFilterChange(assoc(filter, 2, formatter(value)))}
           placeholder="30"
         />
-        <div className="flex-full mr2">
+        <div className="flex-full">
           <DateUnitSelector
             open={this.state.showUnits}
             value={unit}
             onChange={value => {
-              onFilterChange([op, field, intervals, value]);
+              onFilterChange(assoc(filter, 3, value));
               this.setState({ showUnits: false });
             }}
             togglePicker={() =>
@@ -83,7 +58,7 @@ export default class RelativeDatePicker extends Component {
             }
             intervals={intervals}
             formatter={formatter}
-            periods={this.props.hideTimeSelectors ? DATE_PERIODS : ALL_PERIODS}
+            periods={ALL_PERIODS}
           />
         </div>
       </div>

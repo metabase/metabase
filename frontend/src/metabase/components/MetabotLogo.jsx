@@ -1,5 +1,9 @@
-import React from "react";
+import React, { forwardRef } from "react";
 
-const MetabotLogo = () => <img src="app/assets/img/metabot.svg" />;
+const MetabotLogo = forwardRef(function MetabotLogo(props, ref) {
+  return (
+    <img ref={ref} className="brand-hue" src="app/assets/img/metabot.svg" />
+  );
+});
 
 export default MetabotLogo;

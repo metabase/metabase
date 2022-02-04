@@ -1,16 +1,8 @@
 :local(.queryButton) {
-  composes: flex align-center no-decoration py1 from "style";
+  composes: flex align-center no-decoration text-brand py1 from "style";
 }
 
 :local(.queryButtonText) {
-  composes: flex-full mx2 text-default from "style";
+  composes: flex-full ml2 from "style";
   max-width: 100%;
-}
-
-:local(.queryButtonCircle) {
-  composes: flex align-center justify-center text-brand from "style";
-  border: 1px solid currentColor;
-  border-radius: 99px;
-  width: 1.25rem;
-  height: 1.25rem;
 }

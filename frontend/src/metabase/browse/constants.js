@@ -1,0 +1,3 @@
+export const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
+export const ANALYTICS_CONTEXT = "Data Browse";
+export const RELOAD_INTERVAL = 2000;

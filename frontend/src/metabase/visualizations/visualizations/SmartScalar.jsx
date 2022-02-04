@@ -1,10 +1,12 @@
+/* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
-import { t, jt } from "c-3po";
+import { Box } from "grid-styled";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
+import { isDate } from "metabase/lib/schema_metadata";
 import { formatNumber, formatValue } from "metabase/lib/formatting";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
@@ -18,8 +20,15 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 
+import {
+  PreviousValueContainer,
+  PreviousValueSeparator,
+  PreviousValueVariation,
+  Variation,
+} from "./SmartScalar.styled";
+
 export default class Smart extends React.Component {
-  static uiName = "Smart Number";
+  static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
@@ -27,18 +36,29 @@ export default class Smart extends React.Component {
 
   static noHeader = true;
 
-  _scalar: ?HTMLElement;
-
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
+        // try and find a selected field setting
+        cols.find(col => col.name === settings["scalar.field"]) ||
+          // fall back to the second column
+          cols[1] ||
+          // but if there's only one column use that
+          cols[0],
       ],
     }),
     "scalar.switch_positive_negative": {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
     },
+    click_behavior: {},
   };
 
   static isSensible({ insights }) {
@@ -46,7 +66,14 @@ export default class Smart extends React.Component {
   }
 
   // Smart scalars need to have a breakout
-  static checkRenderable([{ data: { insights } }], settings) {
+  static checkRenderable(
+    [
+      {
+        data: { insights },
+      },
+    ],
+    settings,
+  ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
         t`Group by a time field to see how this has changed over time`,
@@ -60,25 +87,23 @@ export default class Smart extends React.Component {
       onChangeCardAndRun,
       onVisualizationClick,
       isDashboard,
-      isFullscreen,
       settings,
       visualizationIsClickable,
-      series: [{ card, data: { rows, cols } }],
+      series: [
+        {
+          card,
+          data: { rows, cols },
+        },
+      ],
       rawSeries,
     } = this.props;
 
-    const metricIndex = 1;
-    const dimensionIndex = 0;
+    const metricIndex = cols.findIndex(col => !isDate(col));
+    const dimensionIndex = cols.findIndex(col => isDate(col));
 
     const lastRow = rows[rows.length - 1];
     const value = lastRow && lastRow[metricIndex];
     const column = cols[metricIndex];
-    const dimensionColumn = cols[dimensionIndex];
-
-    let granularity =
-      dimensionColumn && dimensionColumn.unit
-        ? formatBucketing(dimensionColumn.unit).toLowerCase()
-        : null;
 
     const insights =
       rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
@@ -87,33 +112,27 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const change = formatNumber(insight["last-change"] * 100);
-    const isNegative = (change && Math.sign(change) < 0) || false;
+    const granularity = formatBucketing(insight["unit"]).toLowerCase();
 
-    let color = isNegative ? colors["error"] : colors["success"];
+    const lastChange = insight["last-change"];
+    const previousValue = insight["previous-value"];
+
+    const isNegative = lastChange < 0;
+    const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    if (isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["success"];
-    } else if (!isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["error"];
-    }
+    const changeColor = (isSwapped
+    ? !isNegative
+    : isNegative)
+      ? color("error")
+      : color("success");
 
     const changeDisplay = (
-      <span style={{ fontWeight: 900 }}>{Math.abs(change)}%</span>
-    );
-    const separator = (
-      <span
-        style={{
-          color: colors["text-light"],
-          fontSize: "0.7rem",
-          marginLeft: 4,
-          marginRight: 4,
-        }}
-      >
-        •
+      <span style={{ fontWeight: 900 }}>
+        {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
       </span>
     );
+    const separator = <PreviousValueSeparator>•</PreviousValueSeparator>;
     const granularityDisplay = (
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
@@ -127,6 +146,11 @@ export default class Smart extends React.Component {
           column: cols[dimensionIndex],
         },
       ],
+      data: rows[rows.length - 1].map((value, index) => ({
+        value,
+        col: cols[index],
+      })),
+      settings,
     };
 
     const isClickable = visualizationIsClickable(clicked);
@@ -160,25 +184,31 @@ export default class Smart extends React.Component {
           />
         )}
         <Box className="SmartWrapper">
-          <Flex align="center" mt={1} flexWrap="wrap">
-            <Flex align="center" color={color}>
-              <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
-              {changeDisplay}
-            </Flex>
-            <h4
-              id="SmartScalar-PreviousValue"
-              className="flex align-center hide lg-show"
-              style={{
-                color: colors["text-medium"],
-              }}
-            >
-              {!isFullscreen &&
-                jt`${separator} was ${formatValue(
-                  insight["previous-value"],
+          {lastChange == null || previousValue == null ? (
+            <Box
+              className="text-centered text-bold mt1"
+              color={color("text-medium")}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+          ) : lastChange === 0 ? (
+            t`No change from last ${granularity}`
+          ) : (
+            <PreviousValueContainer>
+              <Variation color={changeColor}>
+                <Icon
+                  size={13}
+                  pr={1}
+                  name={isNegative ? "arrow_down" : "arrow_up"}
+                />
+                {changeDisplay}
+              </Variation>
+              <PreviousValueVariation id="SmartScalar-PreviousValue">
+                {jt`${separator} was ${formatValue(
+                  previousValue,
                   settings.column(column),
                 )} ${granularityDisplay}`}
-            </h4>
-          </Flex>
+              </PreviousValueVariation>
+            </PreviousValueContainer>
+          )}
         </Box>
       </ScalarWrapper>
     );

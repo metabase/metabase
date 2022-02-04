@@ -4,7 +4,7 @@
   --lg-width: 1140px;
   --xl-width: 1540px;
 }
-
+/* When converting to styled components, use FullWidthContainer */
 .wrapper,
 :local(.wrapper) {
   width: 100%;
@@ -146,4 +146,9 @@
   left: 0;
   right: 0;
   bottom: 0;
+}
+
+/* force a stacking context for adding z-index to children */
+.stacking-context {
+  transform: scale(1);
 }

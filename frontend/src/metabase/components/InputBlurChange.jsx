@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
 import _ from "underscore";
+import { Input } from "./InputBlurChange.styled";
 
 /**
  * A small wrapper around <input>, primarily should be used for the
@@ -27,7 +27,7 @@ export default class InputBlurChange extends Component {
     type: "text",
   };
 
-  componentWillReceiveProps(newProps) {
+  UNSAFE_componentWillReceiveProps(newProps) {
     this.setState({ value: newProps.value });
   }
 
@@ -48,7 +48,7 @@ export default class InputBlurChange extends Component {
   }
 
   render() {
-    let props = _.omit(
+    const props = _.omit(
       this.props,
       "onBlurChange",
       "value",
@@ -56,7 +56,7 @@ export default class InputBlurChange extends Component {
       "onChange",
     );
     return (
-      <input
+      <Input
         {...props}
         value={this.state.value}
         onBlur={this.onBlur}

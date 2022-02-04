@@ -1,8 +1,10 @@
+/* eslint-disable react/prop-types */
+/* eslint-disable react/no-string-refs */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
-import LegendItem from "./LegendItem.jsx";
+import LegendItem from "./LegendItem";
 
 import cx from "classnames";
 
@@ -10,14 +12,11 @@ export default class LegendHorizontal extends Component {
   render() {
     const { className, titles, colors, hovered, onHoverChange } = this.props;
     return (
-      <ol
-        ref="container"
-        className={cx(className, styles.Legend, styles.horizontal)}
-      >
+      <ol className={cx(className, styles.Legend, styles.horizontal)}>
         {titles.map((title, index) => (
           <li key={index}>
             <LegendItem
-              ref={"legendItem" + index}
+              ref={this["legendItem" + index]}
               title={title}
               color={colors[index % colors.length]}
               isMuted={
