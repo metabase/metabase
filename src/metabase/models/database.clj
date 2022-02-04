@@ -165,8 +165,7 @@
                                                          :cache_field_values_schedule
                                                          :engine
                                                          :name
-                                                         :is_sample]
-                                           :id (u/the-id database))]
+                                                         :is_sample] :id (u/the-id database))]
     (if (and is-sample?
              (not *allow-sample-update?*)
              (or (and new-engine (not= new-engine existing-engine))
@@ -178,10 +177,11 @@
                        :existing-details existing-details
                        :new-engine new-engine
                        :new-details new-details}))
-      (u/prog1 (dissoc (handle-secrets-changes database) ::allow-sample-change?)
+      (u/prog1 (handle-secrets-changes database)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
         (when (or new-metadata-schedule new-fieldvalues-schedule)
+          ;; if one of the schedules wasn't passed continue using the old one
           (let [new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
                 new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
             (when (and (or new-metadata-schedule new-fieldvalues-schedule)
