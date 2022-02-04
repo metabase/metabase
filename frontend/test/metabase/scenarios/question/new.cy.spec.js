@@ -29,7 +29,7 @@ describe("scenarios > question > new", () => {
         name: "Sample" + i,
         details: {
           db:
-            "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+            "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
         },
         auto_run_queries: false,
         is_full_sync: false,

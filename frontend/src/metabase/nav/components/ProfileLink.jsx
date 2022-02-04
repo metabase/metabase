@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -85,7 +84,7 @@ export default class ProfileLink extends Component {
     // don't show trademark if application name is whitelabeled
     const showTrademark = t`Metabase` === "Metabase";
     return (
-      <Box>
+      <div>
         <EntityMenu
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
@@ -139,7 +138,7 @@ export default class ProfileLink extends Component {
             )}
           </Modal>
         ) : null}
-      </Box>
+      </div>
     );
   }
 }

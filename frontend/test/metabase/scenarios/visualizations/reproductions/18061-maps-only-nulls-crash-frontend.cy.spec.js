@@ -73,7 +73,7 @@ describe("issue 18061", () => {
         cy.intercept("POST", `/api/card/${card_id}/query`).as("cardQuery");
         cy.intercept(
           "POST",
-          `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+          `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
         ).as("dashCardQuery");
         cy.intercept("GET", `/api/card/${card_id}`).as("getCard");
 

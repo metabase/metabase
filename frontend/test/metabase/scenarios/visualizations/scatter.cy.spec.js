@@ -92,8 +92,8 @@ function triggerPopoverForBubble(index = 13) {
   // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
   // See: https://github.com/metabase/metabase/pull/15235
   cy.get("[class*=ViewFooter]").within(() => {
-    cy.icon("table2").click(); // Switch to the tabular view...
-    cy.icon("bubble").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
+    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+    cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
   cy.get(".bubble")

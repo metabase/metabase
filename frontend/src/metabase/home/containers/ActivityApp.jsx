@@ -13,8 +13,13 @@ import NextStep from "../components/NextStep";
 
 import * as activityActions from "../actions";
 import { getActivity, getRecentViews, getUser } from "../selectors";
-
-import { Box, Flex } from "grid-styled";
+import {
+  ActivityBody,
+  ActivityHeader,
+  ActivityMain,
+  ActivityRoot,
+  ActivitySidebar,
+} from "./ActivityApp.styled";
 
 const mapStateToProps = (state, props) => ({
   activity: getActivity(state),
@@ -46,22 +51,22 @@ export default class ActivityApp extends Component {
 
   render() {
     return (
-      <Box mx={4}>
-        <Box py={3}>
+      <ActivityRoot>
+        <ActivityHeader>
           <Subhead>{t`Activity`}</Subhead>
-        </Box>
-        <Flex>
-          <Box width={2 / 3}>
+        </ActivityHeader>
+        <ActivityBody>
+          <ActivityMain>
             <Card px={1}>
               <Activity {...this.props} />
             </Card>
-          </Box>
-          <Box width={1 / 3}>
+          </ActivityMain>
+          <ActivitySidebar>
             <NextStep />
             <RecentViews {...this.props} />
-          </Box>
-        </Flex>
-      </Box>
+          </ActivitySidebar>
+        </ActivityBody>
+      </ActivityRoot>
     );
   }
 }

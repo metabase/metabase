@@ -470,7 +470,7 @@ function DefaultParametersSection({
           name="info"
           className="text-medium ml1"
           size={12}
-          tooltip={t`You can customize filter values for each subscription with the Enterprise edition.`}
+          tooltip={t`You can customize filter values for each subscription with paid plans.`}
         />
       </Heading>
       <div className="pt1 text-small text-normal text-medium">{t`If a dashboard filter has a default value, it’ll be applied when your subscription is sent.`}</div>

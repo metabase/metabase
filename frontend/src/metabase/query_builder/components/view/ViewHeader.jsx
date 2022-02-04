@@ -32,7 +32,6 @@ import QuestionFilters, {
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import NativeQueryButton from "./NativeQueryButton";
-import ViewSection from "./ViewSection";
 import {
   AdHocViewHeading,
   DatasetHeaderButtonContainer,
@@ -41,6 +40,7 @@ import {
   ViewHeaderMainLeftContentContainer,
   ViewHeaderLeftSubHeading,
   ViewHeaderContainer,
+  ViewSubHeaderRoot,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -544,14 +544,14 @@ export class ViewSubHeader extends React.Component {
     }
 
     return left.length > 0 || middle.length > 0 || right.length > 0 ? (
-      <ViewSection pt={1}>
+      <ViewSubHeaderRoot>
         <ButtonBar
           className="flex-full"
           left={left}
           center={middle}
           right={right}
         />
-      </ViewSection>
+      </ViewSubHeaderRoot>
     ) : null;
   }
 }
