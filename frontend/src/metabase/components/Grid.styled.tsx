@@ -6,3 +6,8 @@ export const GridRoot = styled.div`
   margin-left: -0.5rem;
   margin-right: -0.5rem;
 `;
+
+export const GridItemRoot = styled.div`
+  width: 25%;
+  padding: 0.5rem;
+`;

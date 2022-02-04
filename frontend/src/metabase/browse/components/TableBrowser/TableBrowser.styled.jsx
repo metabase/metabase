@@ -6,9 +6,10 @@ import {
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
+import { GridItem } from "metabase/components/Grid";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
-export const TableGridItem = styled.div`
+export const TableGridItem = styled(GridItem)`
   width: 100%;
 
   ${breakpointMinSmall} {

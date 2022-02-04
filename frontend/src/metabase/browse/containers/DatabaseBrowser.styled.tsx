@@ -3,8 +3,9 @@ import {
   breakpointMinMedium,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { GridItem } from "metabase/components/Grid";
 
-export const DatabaseGridItem = styled.div`
+export const DatabaseGridItem = styled(GridItem)`
   width: 100%;
 
   ${breakpointMinSmall} {

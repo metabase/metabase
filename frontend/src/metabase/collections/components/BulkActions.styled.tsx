@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
+import { GridItem } from "metabase/components/Grid";
 
 export const ActionBarContent = styled.div`
   padding: 0.5rem 1rem;
@@ -18,13 +19,15 @@ export const ActionControlsRoot = styled.div`
   margin-left: 0.5rem;
 `;
 
-export const ActionGridItem = styled.div`
+export const ActionGridItem = styled(GridItem)`
   width: 100%;
-  padding: 0 0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 
   ${breakpointMinSmall} {
     width: 66.66%;
-    padding: 0 1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 `;
 

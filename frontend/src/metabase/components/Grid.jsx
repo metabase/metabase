@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { GridRoot } from "./Grid.styled";
+import { GridItemRoot, GridRoot } from "./Grid.styled";
 
-export const Grid = ({ children }) => <GridRoot>{children}</GridRoot>;
+export const Grid = props => <GridRoot {...props} />;
+
+export const GridItem = props => <GridItemRoot {...props} />;
