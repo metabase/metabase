@@ -238,7 +238,10 @@ export default class TableInteractive extends Component {
           }
         });
 
-        ReactDOM.unmountComponentAtNode(this._div);
+        // Doing this on next tick makes sure it actually gets removed on initial measure
+        setTimeout(() => {
+          ReactDOM.unmountComponentAtNode(this._div);
+        }, 0);
 
         delete this.columnNeedsResize;
 
