@@ -617,7 +617,6 @@ export class FieldDimension extends Dimension {
 
     // Field result metadata can be overwritten for models,
     // so we need to merge regular field object with the model overwrites
-    // const shouldMergeFieldResultMetadata = question?.isDataset();
     const shouldMergeFieldResultMetadata = question?.isDataset();
 
     if (this.isIntegerFieldId()) {
