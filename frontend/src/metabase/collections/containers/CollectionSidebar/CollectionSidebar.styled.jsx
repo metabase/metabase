@@ -49,10 +49,7 @@ export const Sidebar = styled.aside`
   }
 `;
 
-export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  name: "close",
-  size: 20,
-})`
+export const ToggleMobileSidebarIcon = styled(Icon)`
   color: ${color("brand")};
   // margin sizes hard-coded
   // for icon to land on
@@ -65,3 +62,8 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
     display: none;
   }
 `;
+
+ToggleMobileSidebarIcon.defaultProps = {
+  name: "close",
+  size: 20,
+};

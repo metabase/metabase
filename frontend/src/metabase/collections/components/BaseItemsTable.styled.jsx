@@ -10,7 +10,7 @@ import Link from "metabase/core/components/Link";
 const LAST_EDITED_BY_INDEX = 3;
 const LAST_EDITED_AT_INDEX = 4;
 
-export const Table = styled.table.attrs({ className: "ContentTable" })`
+export const Table = styled.table`
   table-layout: fixed;
   border-collapse: unset;
 
@@ -25,6 +25,8 @@ export const Table = styled.table.attrs({ className: "ContentTable" })`
     }
   }
 `;
+
+Table.defaultProps = { className: "ContentTable" };
 
 export const ColumnHeader = styled.th`
   font-weight: bold;
@@ -50,11 +52,13 @@ export const ItemLink = styled(Link)`
   }
 `;
 
-export const SortingIcon = styled(Icon).attrs({
-  size: 8,
-})`
+export const SortingIcon = styled(Icon)`
   margin-left: 4px;
 `;
+
+SortingIcon.defaultProps = {
+  size: 8,
+};
 
 export const SortingControlContainer = styled.div`
   display: flex;

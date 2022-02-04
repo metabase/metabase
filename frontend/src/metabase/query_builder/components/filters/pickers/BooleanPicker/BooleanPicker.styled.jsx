@@ -8,20 +8,19 @@ import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 
-export const FilterRadio = styled(Radio).attrs({
-  colorScheme: "accent7",
-})`
+export const FilterRadio = styled(Radio)`
   font-weight: 700;
 `;
+
+FilterRadio.defaultProps = {
+  colorScheme: "accent7",
+};
 
 export const Container = styled.div`
   margin: 15px 20px 70px 20px;
 `;
 
-const ToggleButton = styled(Button).attrs({
-  iconRight: "chevrondown",
-  iconSize: 12,
-})`
+const ToggleButton = styled(Button)`
   margin-left: ${space(0)};
   color: ${color("text-medium")};
   border: none;
@@ -35,6 +34,11 @@ const ToggleButton = styled(Button).attrs({
     margin-top: 2px;
   }
 `;
+
+ToggleButton.defaultProps = {
+  iconRight: "chevrondown",
+  iconSize: 12,
+};
 
 Toggle.propTypes = {
   onClick: PropTypes.func.isRequired,

@@ -119,11 +119,10 @@ export function NotebookCellItem({
 NotebookCellItem.displayName = "NotebookCellItem";
 NotebookCell.CONTAINER_PADDING = CONTAINER_PADDING;
 
-export const NotebookCellAdd = styled(NotebookCellItem).attrs({
-  inactive: ({ initialAddText }) => initialAddText,
-  // eslint-disable-next-line react/display-name
-  children: ({ initialAddText }) =>
-    initialAddText || <Icon name="add" className="text-white" />,
-})``;
+export const NotebookCellAdd = ({ initialAddText, ...props }) => (
+  <NotebookCellItem {...props} inactive={initialAddText}>
+    {initialAddText || <Icon name="add" className="text-white" />}
+  </NotebookCellItem>
+);
 
 NotebookCellAdd.displayName = "NotebookCellAdd";

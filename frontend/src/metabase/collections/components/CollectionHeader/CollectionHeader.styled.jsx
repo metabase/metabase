@@ -25,10 +25,7 @@ export const MenuContainer = styled.div`
   align-self: start;
 `;
 
-export const ToggleMobileSidebarIcon = styled(Icon).attrs({
-  name: "burger",
-  size: 20,
-})`
+export const ToggleMobileSidebarIcon = styled(Icon)`
   cursor: pointer;
   margin: ${space(0)} ${space(2)} 0 ${space(1)};
 
@@ -37,9 +34,12 @@ export const ToggleMobileSidebarIcon = styled(Icon).attrs({
   }
 `;
 
-export const DescriptionTooltipIcon = styled(Icon).attrs({
-  name: "info",
-})`
+ToggleMobileSidebarIcon.defaultProps = {
+  name: "burger",
+  size: 20,
+};
+
+export const DescriptionTooltipIcon = styled(Icon)`
   color: ${color("bg-dark")};
   margin-left: ${space(1)};
   margin-right: ${space(1)};
@@ -49,6 +49,10 @@ export const DescriptionTooltipIcon = styled(Icon).attrs({
     color: ${color("brand")};
   }
 `;
+
+DescriptionTooltipIcon.defaultProps = {
+  name: "info",
+};
 
 export const DescriptionHeading = styled.div`
   font-size: 1rem;

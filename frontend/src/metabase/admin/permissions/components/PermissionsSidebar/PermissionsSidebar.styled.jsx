@@ -29,10 +29,12 @@ export const EntityGroupsDivider = styled.hr`
   border-top: 1px solid ${color("border")};
 `;
 
-export const BackIcon = styled(Icon).attrs({ name: "arrow_left" })`
+export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
   color: ${color("text-light")};
 `;
+
+BackIcon.defaultProps = { name: "arrow_left" };
 
 export const BackButton = styled.button`
   display: flex;

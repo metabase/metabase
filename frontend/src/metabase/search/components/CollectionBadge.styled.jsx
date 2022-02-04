@@ -19,8 +19,10 @@ export const CollectionLink = styled(Link)`
   }
 `;
 
-export const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon).attrs({
-  size: 13,
-})`
+export const AuthorityLevelIcon = styled(CollectionAuthorityLevelIcon)`
   padding-right: 2px;
 `;
+
+AuthorityLevelIcon.defaultProps = {
+  size: 13,
+};
