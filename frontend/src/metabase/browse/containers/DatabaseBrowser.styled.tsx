@@ -5,7 +5,7 @@ import {
 } from "metabase/styled-components/theme";
 import { GridItem } from "metabase/components/Grid";
 
-export const SchemaGridItem = styled(GridItem)`
+export const DatabaseGridItem = styled(GridItem)`
   width: 100%;
 
   ${breakpointMinSmall} {
@@ -15,13 +15,4 @@ export const SchemaGridItem = styled(GridItem)`
   ${breakpointMinMedium} {
     width: 33.33%;
   }
-`;
-
-export const SchemaCardContent = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-export const SchemaCardActions = styled.div`
-  margin-left: auto;
 `;

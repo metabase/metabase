@@ -8,13 +8,14 @@ import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import Card from "metabase/components/Card";
-import { Grid, GridItem } from "metabase/components/Grid";
+import { Grid } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
-import { ANALYTICS_CONTEXT, ITEM_WIDTHS } from "metabase/browse/constants";
+import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import { DatabaseGridItem } from "./DatabaseBrowser.styled";
 
 function DatabaseBrowser({ databases }) {
   return (
@@ -23,7 +24,7 @@ function DatabaseBrowser({ databases }) {
 
       <Grid>
         {databases.map(database => (
-          <GridItem width={ITEM_WIDTHS} key={database.id}>
+          <DatabaseGridItem key={database.id}>
             <Link
               to={Urls.browseDatabase(database)}
               data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
@@ -40,7 +41,7 @@ function DatabaseBrowser({ databases }) {
                 <h3 className="text-wrap">{database.name}</h3>
               </Card>
             </Link>
-          </GridItem>
+          </DatabaseGridItem>
         ))}
       </Grid>
     </div>
