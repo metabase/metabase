@@ -59,7 +59,7 @@ Both of these flags are optional.
 
 ### Current limitations
 
-- The serialization feature is not able to identify a card in the destination if the visualization settings in the source have changed
+- The serialization feature is not able to identify a dashboard card in the destination if the visualization settings in the source dashboard have changed
 
 ---
 
