@@ -138,7 +138,7 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {!isPinned && (
+      {showPinnedAction && (
         <Tooltip tooltip={t`Pin this`}>
           <PinButton icon="pin" onClick={onPin} />
         </Tooltip>
