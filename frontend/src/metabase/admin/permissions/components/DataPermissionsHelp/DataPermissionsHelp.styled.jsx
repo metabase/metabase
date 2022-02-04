@@ -32,11 +32,13 @@ export const DataPermissionsHelpRoot = styled.div`
   }
 `;
 
-export const PermissionIcon = styled(Icon).attrs({ size: 16 })`
+export const PermissionIcon = styled(Icon)`
   padding-right: 0.375rem;
   vertical-align: text-bottom;
   color: ${props => color(props.color)};
 `;
+
+PermissionIcon.defaultProps = { size: 16 };
 
 export const DataPermissionsHelpContent = styled.div`
   padding: 1rem 2rem;

@@ -19,11 +19,13 @@ export const Description = styled.p`
   margin-bottom: 24px;
 `;
 
-export const ButtonLink = styled(ExternalLink).attrs({
-  className: "Button Button--primary",
-})`
+export const ButtonLink = styled(ExternalLink)`
   text-align: center;
 `;
+
+ButtonLink.defaultProps = {
+  className: "Button Button--primary",
+};
 
 export const CenteredRow = styled.div`
   display: flex;

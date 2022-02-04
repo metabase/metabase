@@ -30,8 +30,10 @@ function userInitials(user) {
   return user ? initial(user.first_name) + initial(user.last_name) : null;
 }
 
-const UserAvatar = styled(Avatar).attrs({
+const UserAvatar = styled(Avatar)``;
+
+UserAvatar.defaultProps = {
   children: ({ user }) => userInitials(user) || "?",
-})``;
+};
 
 export default UserAvatar;

@@ -1,14 +1,16 @@
 import styled, { css } from "styled-components";
 import Icon from "metabase/components/Icon";
 
-export const HeaderContainer = styled.div.attrs({
-  role: "button",
-  tabIndex: "0",
-})`
+export const HeaderContainer = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
 `;
+
+HeaderContainer.defaultProps = {
+  role: "button",
+  tabIndex: "0",
+};
 
 export const Header = styled.span`
   display: flex;
@@ -26,14 +28,16 @@ const ICON_VARIANTS = {
   },
 };
 
-export const ToggleIcon = styled(Icon).attrs({
+export const ToggleIcon = styled(Icon)`
+  ${props => css`
+    margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
+  `};
+`;
+
+ToggleIcon.defaultProps = {
   name: ({ isExpanded, variant }) => {
     const { collapsed, expanded } = ICON_VARIANTS[variant];
     return isExpanded ? expanded : collapsed;
   },
   size: 12,
-})`
-  ${props => css`
-    margin-${props.position === "left" ? "right" : "left"}: 0.5rem;
-  `};
-`;
+};
