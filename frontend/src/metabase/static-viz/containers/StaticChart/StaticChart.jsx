@@ -13,7 +13,9 @@ import Funnel from "../../components/FunnelChart";
 import TimeSeriesWaterfallChart from "../../components/TimeSeriesWaterfallChart";
 import LineAreaBarChart from "../../components/LineAreaBarChart";
 
-// import { getColorsForValues } from "metabase/lib/colors";
+import { assoc } from "icepick";
+
+import { getColorsForValues } from "metabase/lib/colors";
 
 const propTypes = {
   type: PropTypes.oneOf([
@@ -33,36 +35,54 @@ const propTypes = {
   options: PropTypes.object.isRequired,
 };
 
+const colorOptions = options => {
+  const series = options["series"] || [];
+  const colors = series.map(elem => elem["color"]);
+  const names = series.map(elem => elem["name"]);
+  // coerce to the {seriesName: color} format for object
+  const colorObj = names.reduce(
+    (obj, k, i) => ({ ...obj, [k]: colors[i] }),
+    {},
+  );
+  // filter out null values
+  const assignedColorObj = Object.entries(colorObj).reduce(
+    (a, [key, val]) => (val ? ((a[key] = val), a) : a),
+    {},
+  );
+  const filledColorObj = getColorsForValues(names, assignedColorObj);
+  const newSeries = series.map(elem =>
+    assoc(elem, "color", filledColorObj[elem["name"]]),
+  );
+  return assoc(options, "series", newSeries);
+};
+
 const StaticChart = ({ type, options }) => {
-  // getColorsForValues(keys, assns)
-  // keys looks like ["LONGITUDE","LATITUDE"]
-  // assns looks like {"LONGITUDE":"#F9D45C"}
-  // const useless = getColorsForValues(["Bob"], {"Bob": "#CCCCCC"});
+  const coloredOptions = colorOptions(options);
   switch (type) {
     case "categorical/area":
-      return <CategoricalAreaChart {...options} />;
+      return <CategoricalAreaChart {...coloredOptions} />;
     case "categorical/bar":
-      return <CategoricalBarChart {...options} />;
+      return <CategoricalBarChart {...coloredOptions} />;
     case "categorical/donut":
-      return <CategoricalDonutChart {...options} />;
+      return <CategoricalDonutChart {...coloredOptions} />;
     case "categorical/line":
-      return <CategoricalLineChart {...options} />;
+      return <CategoricalLineChart {...coloredOptions} />;
     case "categorical/waterfall":
-      return <CategoricalWaterfallChart {...options} />;
+      return <CategoricalWaterfallChart {...coloredOptions} />;
     case "timeseries/area":
-      return <TimeSeriesAreaChart {...options} />;
+      return <TimeSeriesAreaChart {...coloredOptions} />;
     case "timeseries/bar":
-      return <TimeSeriesBarChart {...options} />;
+      return <TimeSeriesBarChart {...coloredOptions} />;
     case "timeseries/line":
-      return <TimeSeriesLineChart {...options} />;
+      return <TimeSeriesLineChart {...coloredOptions} />;
     case "timeseries/waterfall":
-      return <TimeSeriesWaterfallChart {...options} />;
+      return <TimeSeriesWaterfallChart {...coloredOptions} />;
     case "progress":
-      return <ProgressBar {...options} />;
+      return <ProgressBar {...coloredOptions} />;
     case "combo-chart":
-      return <LineAreaBarChart {...options} />;
+      return <LineAreaBarChart {...coloredOptions} />;
     case "funnel":
-      return <Funnel {...options} />;
+      return <Funnel {...coloredOptions} />;
   }
 };
 
