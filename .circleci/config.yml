@@ -607,25 +607,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  check-migrations:
-    executor:
-      builder
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .MIGRATIONS-CHECKSUM
-          find-args: resources/migrations -type f -name '*.yaml'
-      - create-checksum-file:
-          filename: .MIGRATIONS-LINTER-CHECKSUMS
-          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
-      - run-on-change:
-          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
-          steps:
-            - run:
-                name: Verify Liquibase Migrations
-                command: ./bin/lint-migrations-file.sh
-                no_output_timeout: 15m
-
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
@@ -1053,10 +1034,6 @@ workflows:
   build:
     jobs:
       - checkout
-
-      - check-migrations:
-          requires:
-            - checkout
 
       - be-deps:
           requires:
