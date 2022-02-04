@@ -548,7 +548,7 @@
                                 :width   :100%})
            :src   (:image-src image-bundle)}]]}))
 
-(defn- series-setting [viz-settings inner-key outer-key]
+(defn- series-setting [viz-settings outer-key inner-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
 
 (defn- single-x-axis-combo-series
@@ -560,7 +560,7 @@
           card-name     (or (series-setting viz-settings y-col-key :name)
                             (:display_name y-col))
           card-color    (or (series-setting viz-settings y-col-key :color)
-                            (nth colors idx))
+                            nil)
           card-type     (or (series-setting viz-settings y-col-key :display)
                             chart-type
                             (nth default-combo-chart-types idx))
@@ -588,7 +588,7 @@
             card-name          (or (series-setting viz-settings group-key :name)
                                    group-key)
             card-color         (or (series-setting viz-settings group-key :color)
-                                   (nth colors idx))
+                                   nil)
             card-type          (or (series-setting viz-settings group-key :display)
                                    chart-type
                                    (nth default-combo-chart-types idx))
@@ -611,6 +611,7 @@
         y-rows           (filter some? (map y-axis-rowfn rows))
         joined-rows      (map vector x-rows y-rows)
         viz-settings     (set-default-stacked viz-settings card)
+        printo           (println viz-settings)
         [x-cols y-cols]  ((juxt x-axis-rowfn y-axis-rowfn) (vec cols))
 
         enforced-type    (if (= chart-type :combo)
