@@ -47,12 +47,14 @@ const propTypes = {
   metadata: PropTypes.object,
   result: PropTypes.object,
   height: PropTypes.number,
+  isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
+  runQuestionQuery: PropTypes.func.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -165,13 +167,26 @@ function DatasetEditor(props) {
     result,
     metadata,
     height,
+    isRunning,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
+    runQuestionQuery,
   } = props;
+
+  // It's important to reload the query to refresh metadata when coming from the model page
+  // On the model page, results metadata has a shape assuming you're building a nested question
+  // E.g. expression field refs are field literals ["field", "my_formula", ...] instead of ["expression", "my_formula"]
+  // Doing a reload will ensure the editor uses the correct metadata
+  useEffect(() => {
+    if (!isRunning) {
+      runQuestionQuery();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const orderedColumns = useMemo(() => dataset.setting("table.columns"), [
     dataset,
@@ -190,9 +205,9 @@ function DatasetEditor(props) {
     if (!Array.isArray(orderedColumns)) {
       return columns;
     }
-    return orderedColumns.map(col =>
-      columns.find(c => compareFields(c.field_ref, col.fieldRef)),
-    );
+    return orderedColumns
+      .map(col => columns.find(c => compareFields(c.field_ref, col.fieldRef)))
+      .filter(Boolean);
   }, [orderedColumns, result]);
 
   const isEditingQuery = datasetEditorTab === "query";
