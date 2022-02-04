@@ -1,5 +1,6 @@
 import React from "react";
 import styled, { css } from "styled-components";
+import cx from "classnames";
 
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
@@ -11,13 +12,17 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
-  ({ isFullscreen, isNightMode, ...props }) => (
-    <LoadingAndErrorWrapper
-      className={`Dashboard ${isFullscreen &&
-        "Dashboard--fullscreen"} ${isNightMode && "Dashboard--night"}`}
-      {...props}
-    />
-  ),
+  ({ isFullscreen, isNightMode, className, ...props }) => {
+    return (
+      <LoadingAndErrorWrapper
+        className={cx(className, "Dashboard", {
+          "Dashboard--fullscreen": isFullscreen,
+          "Dashboard--night": isNightMode,
+        })}
+        {...props}
+      />
+    );
+  },
 )`
   flex: 1 0 auto;
 
