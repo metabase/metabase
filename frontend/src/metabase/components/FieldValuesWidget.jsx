@@ -19,7 +19,7 @@ import { stripId } from "metabase/lib/formatting";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
 import { getDashboardParameterValuesCache } from "metabase/dashboard/selectors";
 
-import Fields from "metabase/entities/fields";
+// import Fields from "metabase/entities/fields";
 
 const MAX_SEARCH_RESULTS = 100;
 
@@ -42,10 +42,10 @@ function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
   return {
     dashboardParameterValuesCache: getDashboardParameterValuesCache(state),
-    fields: fields.map(
-      field =>
-        Fields.selectors.getObject(state, { entityId: field.id }) || field,
-    ),
+    // fields: fields.map(
+    //   field =>
+    //     Fields.selectors.getObject(state, { entityId: field.id }) || field,
+    // ),
   };
 }
 
