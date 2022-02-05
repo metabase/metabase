@@ -63,7 +63,9 @@ export const AccordionListCell = ({
               "text-brand": sectionIsExpanded(sectionIndex),
             },
           )}
-          onClick={canToggleSections && (() => toggleSection(sectionIndex))}
+          onClick={
+            canToggleSections ? () => toggleSection(sectionIndex) : undefined
+          }
         >
           {icon && (
             <span className="List-section-icon mr1 flex align-center">
@@ -127,12 +129,12 @@ export const AccordionListCell = ({
           getItemClassName(item, itemIndex),
         )}
       >
-        <a
+        <span
           className={cx(
             "p1 flex-auto flex align-center",
             isClickable ? "cursor-pointer" : "cursor-default",
           )}
-          onClick={isClickable ? () => onChange(item) : null}
+          onClick={isClickable ? () => onChange(item) : undefined}
         >
           {icon && (
             <span className="List-item-icon text-default flex align-center">
@@ -147,7 +149,7 @@ export const AccordionListCell = ({
               </p>
             )}
           </div>
-        </a>
+        </span>
         {renderItemExtra(item, itemIndex, isSelected)}
         {showItemArrows && (
           <div className="List-item-arrow flex align-center px1">
