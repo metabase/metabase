@@ -346,6 +346,12 @@ export default class AccordionList extends Component {
 
       this.toggleSection(cursor.sectionIndex);
     }
+
+    const searchRow = this.getRows().findIndex(row => row.type === "search");
+
+    if (searchRow >= 0) {
+      this._list.scrollToRow(searchRow);
+    }
   };
 
   searchFilter = item => {
@@ -528,6 +534,12 @@ export default class AccordionList extends Component {
     return this.props.alwaysExpanded || openSection === sectionIndex;
   };
 
+  // Because of virtualization, focused search input can be removed which does not trigger blur event.
+  // We need to restore focus on the component root container to make keyboard navigation working
+  handleSearchRemoval = () => {
+    this.containerRef?.current?.focus();
+  };
+
   render() {
     const { id, style, className, sections } = this.props;
     const { cursor, scrollToAlignment } = this.state;
@@ -536,6 +548,8 @@ export default class AccordionList extends Component {
 
     const scrollToIndex =
       cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
+
+    const searchRowIndex = rows.findIndex(row => row.type === "search");
 
     if (this.props.maxHeight === Infinity) {
       return (
@@ -642,6 +656,10 @@ export default class AccordionList extends Component {
           onRowsRendered={({ startIndex, stopIndex }) => {
             this._startIndex = startIndex;
             this._stopIndex = stopIndex;
+
+            if (searchRowIndex < startIndex || searchRowIndex > stopIndex) {
+              this.handleSearchRemoval();
+            }
           }}
         />
       </AccordionListRoot>
