@@ -3,7 +3,6 @@
             [clojure.tools.deps.alpha :as deps]
             [clojure.tools.deps.alpha.util.dir :as deps.dir]
             [metabuild-common.core :as u]
-            [metabase.test.data.interface :as tx]
             [yaml.core :as yaml])
   (:import [java.util.zip ZipEntry ZipFile]))
 
