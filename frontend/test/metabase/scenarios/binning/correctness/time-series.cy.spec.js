@@ -27,7 +27,10 @@ describe("scenarios > binning > correctness > time series", () => {
 
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
-    cy.findByText("Summarize").click();
+    cy.findByTestId("qb-header-action-panel")
+      .contains("Summarize")
+      .click();
+
     openPopoverFromDefaultBucketSize("Created At", "by month");
   });
 
