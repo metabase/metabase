@@ -734,7 +734,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter").click();
     popover()
       .findByText("State")
-      .click();
+      .click({ force: true });
     cy.findByText("AL").click();
     cy.button("Add filter").isVisibleInPopover();
   });

@@ -128,7 +128,7 @@ describe("scenarios > admin > settings", () => {
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("Redirect to HTTPS")
@@ -155,7 +155,7 @@ describe("scenarios > admin > settings", () => {
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");

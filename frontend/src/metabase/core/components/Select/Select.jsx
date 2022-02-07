@@ -232,6 +232,7 @@ export default class Select extends Component {
         pinInitialAttachment
       >
         <AccordionList
+          hasInitialFocus
           sections={sections}
           className="MB-Select text-brand"
           alwaysExpanded

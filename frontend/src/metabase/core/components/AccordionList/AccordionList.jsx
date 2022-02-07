@@ -93,6 +93,7 @@ export default class AccordionList extends Component {
     searchPlaceholder: PropTypes.string,
     searchInputProps: PropTypes.object,
     hideEmptySectionsInSearch: PropTypes.bool,
+    hasInitialFocus: PropTypes.bool,
 
     itemTestId: PropTypes.string,
   };
@@ -122,6 +123,7 @@ export default class AccordionList extends Component {
     renderItemExtra: item => null,
     renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
     getItemClassName: item => item.className,
+    hasInitialFocus: true,
   };
 
   componentDidMount() {
@@ -135,7 +137,7 @@ export default class AccordionList extends Component {
       const hasFocusedChildren = this.containerRef?.current?.contains(
         document.activeElement,
       );
-      if (!hasFocusedChildren) {
+      if (!hasFocusedChildren && this.props.hasInitialFocus) {
         this.containerRef?.current?.focus();
       }
 

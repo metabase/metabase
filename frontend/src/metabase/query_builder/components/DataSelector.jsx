@@ -876,6 +876,7 @@ export class UnconnectedDataSelector extends Component {
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
       hasFiltering: true,
+      hasInitialFocus: !this.showTableSearch(),
     };
 
     switch (this.state.activeStep) {
@@ -1037,7 +1038,6 @@ export class UnconnectedDataSelector extends Component {
     const isPickerOpen =
       isSavedQuestionPickerShown ||
       selectedDataBucketId === DATA_BUCKET.DATASETS;
-
     return (
       <PopoverWithTrigger
         id="DataPopover"
@@ -1219,6 +1219,7 @@ const DatabasePicker = ({
   onChangeDatabase,
   hasNextStep,
   onBack,
+  hasInitialFocus,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -1243,6 +1244,7 @@ const DatabasePicker = ({
       id="DatabasePicker"
       key="databasePicker"
       className="text-brand"
+      hasInitialFocus={hasInitialFocus}
       sections={sections}
       onChange={item => onChangeDatabase(item.database)}
       onChangeSection={(_section, sectionIndex) => {
@@ -1269,6 +1271,7 @@ const SchemaPicker = ({
   onChangeSchema,
   hasNextStep,
   hasFiltering,
+  hasInitialFocus,
 }) => {
   const sections = [
     {
@@ -1284,6 +1287,7 @@ const SchemaPicker = ({
         id="SchemaPicker"
         key="schemaPicker"
         className="text-brand"
+        hasInitialFocus={hasInitialFocus}
         sections={sections}
         searchable={hasFiltering}
         onChange={item => onChangeSchema(item.schema)}
@@ -1305,6 +1309,7 @@ const DatabaseSchemaPicker = ({
   isLoading,
   hasBackButton,
   onBack,
+  hasInitialFocus,
 }) => {
   if (databases.length === 0) {
     return <DataSelectorLoading />;
@@ -1355,6 +1360,7 @@ const DatabaseSchemaPicker = ({
       id="DatabaseSchemaPicker"
       key="databaseSchemaPicker"
       className="text-brand"
+      hasInitialFocus={hasInitialFocus}
       sections={sections}
       onChange={item => onChangeSchema(item.schema)}
       onChangeSection={(_section, sectionIndex) => {
@@ -1400,6 +1406,7 @@ const TablePicker = ({
   isLoading,
   hasFiltering,
   minTablesToShowSearch = 10,
+  hasInitialFocus,
 }) => {
   // In case DataSelector props get reseted
   if (!selectedDatabase) {
@@ -1450,6 +1457,7 @@ const TablePicker = ({
           id="TablePicker"
           key="tablePicker"
           className="text-brand"
+          hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
@@ -1510,6 +1518,7 @@ class FieldPicker extends Component {
       onChangeField,
       onBack,
       hasFiltering,
+      hasInitialFocus,
     } = this.props;
 
     const header = (
@@ -1546,6 +1555,7 @@ class FieldPicker extends Component {
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
+          hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
           width={"100%"}
