@@ -436,7 +436,6 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should display an error message for native queries", () => {
-    // native queries should use the normal dataset endpoint even when set to pivot
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",

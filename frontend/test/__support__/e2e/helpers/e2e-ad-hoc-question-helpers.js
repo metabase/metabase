@@ -7,15 +7,7 @@ export function adhocQuestionHash(question) {
 }
 
 export function visitQuestionAdhoc(question, { callback } = {}) {
-  const {
-    display,
-    dataset_query: { type },
-  } = question;
-
-  const isPivotEndpoint = display === "pivot" && type === "query";
-
-  const url = isPivotEndpoint ? "/api/dataset/pivot" : "/api/dataset";
-  const alias = isPivotEndpoint ? "pivotDataset" : "dataset";
+  const [url, alias] = getInterceptDetails(question);
 
   cy.intercept(url).as(alias);
 
@@ -24,4 +16,19 @@ export function visitQuestionAdhoc(question, { callback } = {}) {
   cy.wait("@" + alias).then(xhr => {
     callback && callback(xhr);
   });
+}
+
+function getInterceptDetails(question) {
+  const {
+    display,
+    dataset_query: { type },
+  } = question;
+
+  // native queries should use the normal dataset endpoint even when set to pivot
+  const isPivotEndpoint = display === "pivot" && type === "query";
+
+  const url = isPivotEndpoint ? "/api/dataset/pivot" : "/api/dataset";
+  const alias = isPivotEndpoint ? "pivotDataset" : "dataset";
+
+  return [url, alias];
 }
