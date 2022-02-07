@@ -64,6 +64,9 @@ jobs:
         edition: [oss]
         folder:
           - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
+          - "dashboard-filters-sql"
           - "downloads"
           - "moderation"
           - "native"
