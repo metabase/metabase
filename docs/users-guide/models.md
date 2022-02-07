@@ -8,7 +8,7 @@ Models:
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
 
-For a deep dive on why models, with examples, check out our [Learn article on models][learn-models].
+For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
 
 ## How to use models
 
