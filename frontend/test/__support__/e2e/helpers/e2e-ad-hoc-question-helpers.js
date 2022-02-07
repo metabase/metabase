@@ -6,7 +6,7 @@ export function adhocQuestionHash(question) {
   return btoa(unescape(encodeURIComponent(JSON.stringify(question))));
 }
 
-export function visitQuestionAdhoc(question) {
+export function visitQuestionAdhoc(question, { callback } = {}) {
   const {
     display,
     dataset_query: { type },
@@ -21,5 +21,7 @@ export function visitQuestionAdhoc(question) {
 
   cy.visit("/question#" + adhocQuestionHash(question));
 
-  cy.wait("@" + alias);
+  cy.wait("@" + alias).then(xhr => {
+    callback && callback(xhr);
+  });
 }
