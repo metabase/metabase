@@ -13,7 +13,7 @@ import QuestionParameterTargetWidget from "../containers/QuestionParameterTarget
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";

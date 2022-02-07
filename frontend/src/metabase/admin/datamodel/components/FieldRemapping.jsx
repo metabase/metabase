@@ -6,7 +6,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import SelectButton from "metabase/core/components/SelectButton";
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";

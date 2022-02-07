@@ -156,3 +156,7 @@ textarea {
 .no-outline * {
   outline: none;
 }
+
+.outline-none {
+  outline: none;
+}
