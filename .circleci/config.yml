@@ -766,45 +766,6 @@ jobs:
                 path: /home/circleci/metabase/metabase/target/junit
             - steps: << parameters.after-steps >>
 
-  test-build-scripts:
-    executor: builder
-    steps:
-      - attach-workspace
-      - run-on-change:
-          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
-          steps:
-            - restore-be-deps-cache
-            - run:
-                name: Run metabuild-common build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-drivers build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run i18n script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-mb build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run release script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run Liquibase migrations linter tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
-                no_output_timeout: 15m
-
 
 ########################################################################################################################
 #                                                       FRONTEND                                                       #
@@ -1333,10 +1294,6 @@ workflows:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
-
-      - test-build-scripts:
-          requires:
-            - be-deps
 
       - build-uberjar-drivers:
           name: build-uberjar-drivers-<< matrix.edition >>
