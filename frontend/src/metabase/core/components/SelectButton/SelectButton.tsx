@@ -1,4 +1,9 @@
-import React, { ButtonHTMLAttributes, forwardRef } from "react";
+import React, {
+  ButtonHTMLAttributes,
+  forwardRef,
+  useCallback,
+  useMemo,
+} from "react";
 
 import {
   SelectButtonRoot,
@@ -14,6 +19,7 @@ interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   hasValue?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  onClear?: () => void;
 }
 
 const SelectButton = forwardRef(function SelectButton(
@@ -25,10 +31,29 @@ const SelectButton = forwardRef(function SelectButton(
     hasValue = true,
     disabled,
     fullWidth = true,
+    onClear,
     ...rest
   }: SelectButtonProps,
   ref,
 ) {
+  const handleClear = useCallback(
+    event => {
+      if (onClear) {
+        // Required not to trigger the usual SelectButton's onClick handler
+        event.stopPropagation();
+        onClear();
+      }
+    },
+    [onClear],
+  );
+
+  const rightIcon = useMemo(() => {
+    if (hasValue && onClear) {
+      return "close";
+    }
+    return "chevrondown";
+  }, [hasValue, onClear]);
+
   return (
     <SelectButtonRoot
       type="button"
@@ -45,7 +70,11 @@ const SelectButton = forwardRef(function SelectButton(
       <SelectButtonContent data-testid="select-button-content">
         {children}
       </SelectButtonContent>
-      <SelectButtonIcon name="chevrondown" size={12} />
+      <SelectButtonIcon
+        name={rightIcon}
+        size={12}
+        onClick={onClear ? handleClear : undefined}
+      />
     </SelectButtonRoot>
   );
 });
