@@ -27,7 +27,7 @@ Although connection details differ database to database, in general you'll need 
 - [MongoDB (version 3.6 or higher)](databases/mongodb.md) <!-- MongoDB supported version is from https://www.mongodb.com/support-policy -->
 - [MySQL (version 5.7 or higher, as well as MariaDB version 10.2 or higher)](databases/mysql.md)
 - [Oracle](databases/oracle.md)
-- [PostgreSQL](postgresql.md)
+- [PostgreSQL](databases/postgresql.md)
 - Presto
 - Redshift (Amazon Web Services)
 - [Snowflake](databases/snowflake.md)

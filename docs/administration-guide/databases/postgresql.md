@@ -58,5 +58,5 @@ This is a lightweight process that checks for updates to this database’s schem
 
 This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
 
-[ssl-modes]: https://www.postgresql.org/docs/current/libpq-ssl.html
+[ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../administration-guide/ssh-tunnel-for-database-connections.html
