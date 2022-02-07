@@ -15,10 +15,10 @@ const CollectionDropTarget = DropTarget(
       if (collection.can_write === false) {
         return false;
       }
-      const droppingToSameDashboard =
+      const droppingToSameCollection =
         canonicalCollectionId(item.collection_id) ===
         canonicalCollectionId(collection.id);
-      return item.model !== "collection" && !droppingToSameDashboard;
+      return item.model !== "collection" && !droppingToSameCollection;
     },
   },
   (connect, monitor) => ({
