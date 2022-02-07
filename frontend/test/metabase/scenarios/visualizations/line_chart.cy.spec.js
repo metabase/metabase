@@ -19,18 +19,14 @@ describe("scenarios > visualizations > line chart", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
   });
 
   it("should be able to change y axis position (metabase#13487)", () => {
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: testQuery,
       display: "line",
     });
 
-    cy.wait("@dataset");
     cy.findByText("Settings").click();
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
