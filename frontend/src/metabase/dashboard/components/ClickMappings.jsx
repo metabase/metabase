@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { getIn, assocIn, dissocIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 
 import Question from "metabase-lib/lib/Question";
 import MetabaseSettings from "metabase/lib/settings";

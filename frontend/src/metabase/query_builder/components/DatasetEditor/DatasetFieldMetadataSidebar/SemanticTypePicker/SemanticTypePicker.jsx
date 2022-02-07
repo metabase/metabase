@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Select from "metabase/components/Select";
+import Select from "metabase/core/components/Select";
 import SelectButon from "metabase/core/components/SelectButton";
 
 import { FieldTypeIcon } from "./SemanticTypePicker.styled";

@@ -93,6 +93,7 @@ function EntityItemMenu({
 }) {
   const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
+  const showUnpinnedAction = onPin && !isPinned;
 
   const actions = useMemo(
     () =>
@@ -138,7 +139,7 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {!isPinned && (
+      {showUnpinnedAction && (
         <Tooltip tooltip={t`Pin this`}>
           <PinButton icon="pin" onClick={onPin} />
         </Tooltip>
@@ -190,9 +191,6 @@ const EntityItem = ({
         selected={selected}
         disabled={disabled}
         onToggleSelected={onToggleSelected}
-        style={{
-          marginRight: "16px",
-        }}
       />
 
       <div className="overflow-hidden">

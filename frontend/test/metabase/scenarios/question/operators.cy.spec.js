@@ -134,7 +134,7 @@ describe("operators in questions", () => {
       cy.findByText("Add filters to narrow your answer").click();
 
       popover().within(() => {
-        cy.findByText("State").click();
+        cy.findByText("State").click({ force: true });
         cy.findByText("Is").click();
       });
 

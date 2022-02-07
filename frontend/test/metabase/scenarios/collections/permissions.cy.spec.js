@@ -489,7 +489,7 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
-            it.skip("should not show pins or a helper text (metabase#20043)", () => {
+            it("should not show pins or a helper text (metabase#20043)", () => {
               cy.visit("/collection/root");
 
               cy.findByText("Orders in a dashboard");

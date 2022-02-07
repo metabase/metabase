@@ -178,6 +178,7 @@ executors:
     docker:
       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: metabase/spark:2.1.1
+    resource_class: large
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
@@ -607,25 +608,6 @@ jobs:
           paths:
             - metabase/metabase
 
-  check-migrations:
-    executor:
-      builder
-    steps:
-      - attach-workspace
-      - create-checksum-file:
-          filename: .MIGRATIONS-CHECKSUM
-          find-args: resources/migrations -type f -name '*.yaml'
-      - create-checksum-file:
-          filename: .MIGRATIONS-LINTER-CHECKSUMS
-          find-args: bin/lint-migrations-file -type f -name '*.clj' -or -name 'deps.edn'
-      - run-on-change:
-          checksum: '{{ checksum ".MIGRATIONS-CHECKSUM" }}-{{ checksum ".MIGRATIONS-LINTER-CHECKSUMS" }}'
-          steps:
-            - run:
-                name: Verify Liquibase Migrations
-                command: ./bin/lint-migrations-file.sh
-                no_output_timeout: 15m
-
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
@@ -774,45 +756,6 @@ jobs:
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/junit
             - steps: << parameters.after-steps >>
-
-  test-build-scripts:
-    executor: builder
-    steps:
-      - attach-workspace
-      - run-on-change:
-          checksum: '{{ checksum ".BACKEND-CHECKSUMS" }}'
-          steps:
-            - restore-be-deps-cache
-            - run:
-                name: Run metabuild-common build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/common && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-drivers build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-drivers && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run i18n script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/i18n && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run build-mb build script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/build-mb && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run release script tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/release && clojure -M:test
-                no_output_timeout: 15m
-            - run:
-                name: Run Liquibase migrations linter tests
-                command: |
-                  cd /home/circleci/metabase/metabase/bin/lint-migrations-file && clojure -M:test
-                no_output_timeout: 15m
 
 
 ########################################################################################################################
@@ -1054,10 +997,6 @@ workflows:
     jobs:
       - checkout
 
-      - check-migrations:
-          requires:
-            - checkout
-
       - be-deps:
           requires:
             - checkout
@@ -1279,10 +1218,6 @@ workflows:
                 source: VERTICA_JDBC_JAR
                 dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
-
-      - test-build-scripts:
-          requires:
-            - be-deps
 
       - build-uberjar-drivers:
           name: build-uberjar-drivers-<< matrix.edition >>

@@ -32,7 +32,7 @@ export default function ButtonBar({
     <ButtonBarRoot {...props}>
       <ButtonBarLeft center={center}>{left}</ButtonBarLeft>
       {center && <ButtonBarCenter>{center}</ButtonBarCenter>}
-      <ButtonBarRight>{right}</ButtonBarRight>
+      <ButtonBarRight center={center}>{right}</ButtonBarRight>
     </ButtonBarRoot>
   );
 }
