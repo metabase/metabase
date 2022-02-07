@@ -31,7 +31,6 @@ function appendTo() {
 
 const hideOnEscPlugin = {
   name: "hideOnEsc",
-  defaultValue: true,
   fn({ hide }: TippyInstance) {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
