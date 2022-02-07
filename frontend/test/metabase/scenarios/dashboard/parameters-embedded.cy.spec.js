@@ -269,7 +269,6 @@ const createQuestion = () =>
     visualization_settings: {},
     collection_id: null,
     result_metadata: null,
-    metadata_checksum: null,
   });
 
 const createDashboard = () =>
