@@ -14,7 +14,7 @@ We recommend using the `ojdbc8.jar` JAR.
 
 In your Metabase directory (the directory where you keep and run your metabase.jar), create a directory called `plugins` (if it doesn't already exist.
 
-Move the JAR you just downloaded (`ojbc11.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up. 
+Move the JAR you just downloaded (`ojdbc8.jar`) into the plugins directory, and restart Metabase. Metabase will automatically make the Oracle driver available when it starts back up. 
 
 ## Connecting with SSL
 
