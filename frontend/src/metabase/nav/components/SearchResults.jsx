@@ -1,12 +1,12 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Box } from "grid-styled";
 import { t } from "ttag";
 
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
 import SearchResult from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
+import { EmptyStateContainer } from "./SearchResults.styled";
 
 const propTypes = {
   searchText: PropTypes.string,
@@ -32,9 +32,9 @@ export const SearchResults = ({ searchText }) => {
                 </li>
               ))
             ) : (
-              <Box mt={4} mb={3}>
+              <EmptyStateContainer>
                 <EmptyState message={t`Didn't find anything`} icon="search" />
-              </Box>
+              </EmptyStateContainer>
             )}
           </ul>
         );

@@ -333,6 +333,10 @@
   background-color: color-mod(var(--color-bg-white) alpha(-86%));
 }
 
+.Dashboard--night .text-card-markdown code {
+  background-color: color-mod(var(--color-bg-white) alpha(-86%));
+}
+
 .Dashboard--night text.value-label-outline {
   stroke: var(--night-mode-card);
 }

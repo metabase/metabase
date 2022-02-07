@@ -489,6 +489,13 @@ describe("collection permissions", () => {
               cy.signIn(user);
             });
 
+            it("should not show pins or a helper text (metabase#20043)", () => {
+              cy.visit("/collection/root");
+
+              cy.findByText("Orders in a dashboard");
+              cy.icon("pin").should("not.exist");
+            });
+
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
@@ -715,9 +722,13 @@ describe("collection permissions", () => {
               });
 
               it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
+                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
+
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
+                cy.wait("@cardQuery");
+
                 cy.findByTestId("revision-history-button").click();
                 cy.findByText("Revert").click();
 
@@ -730,9 +741,13 @@ describe("collection permissions", () => {
               });
 
               it("should be able to revert the question via the action button found in the saved question timeline", () => {
+                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
+
                 cy.skipOn(user === "nodata");
 
                 cy.visit("/question/1");
+                cy.wait("@cardQuery");
+
                 cy.findByTestId("saved-question-header-button").click();
                 cy.findByText("History").click();
                 cy.findByText("Revert").click();

@@ -29,6 +29,7 @@ describe("scenarios > models query editor", () => {
 
       openDetailsSidebar();
       cy.findByText("Edit query definition").click();
+      cy.button("Save changes").should("be.disabled");
 
       cy.findByText("Row limit").click();
       cy.findByPlaceholderText("Enter a limit").type("2");
@@ -46,6 +47,7 @@ describe("scenarios > models query editor", () => {
       cy.url()
         .should("include", "/model/1")
         .and("not.include", "/query");
+      cy.location("hash").should("eq", "");
 
       cy.get(".cellData")
         .should("contain", "37.65")
@@ -91,6 +93,7 @@ describe("scenarios > models query editor", () => {
       cy.findByText("Edit query definition").click();
 
       cy.url().should("include", "/query");
+      cy.button("Save changes").should("be.disabled");
 
       cy.get(".ace_content").type("{backspace}2");
 

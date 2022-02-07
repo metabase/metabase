@@ -38,6 +38,7 @@
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
                      :card-id       card-id
+                     :dashcard-id   (u/the-id dashcard)
                      :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                      :export-format :api
                      :parameters    parameters

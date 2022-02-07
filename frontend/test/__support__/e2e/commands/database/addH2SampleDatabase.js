@@ -7,7 +7,7 @@ Cypress.Commands.add(
       name,
       details: {
         db:
-          "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+          "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
       },
       auto_run_queries,
       is_full_sync,

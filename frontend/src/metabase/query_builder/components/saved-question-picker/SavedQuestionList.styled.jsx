@@ -17,3 +17,7 @@ export const SavedQuestionListItem = styled(SelectList.Item)`
     justify-self: start;
   }
 `;
+
+export const SavedQuestionListEmptyState = styled.div`
+  margin: 7.5rem 0;
+`;

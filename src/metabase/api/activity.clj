@@ -94,9 +94,10 @@
               (db/select
                (case model
                  "card"      [Card      :id :name :collection_id :description :display
-                                        :dataset_query :dataset]
-                 "dashboard" [Dashboard :id :name :collection_id :description]
-                 "table"     [Table     :id :name :db_id :display_name :initial_sync_status])
+                                        :dataset_query :dataset :archived]
+                 "dashboard" [Dashboard :id :name :collection_id :description :archived]
+                 "table"     [Table     :id :name :db_id :display_name :initial_sync_status
+                                        :visibility_type])
                {:where [:in :id ids]})))
           (by-id [models] (m/index-by :id models))]
     (into {} (map (fn [[model models]]
@@ -107,7 +108,8 @@
           (group-by :model views))))
 
 (defendpoint GET "/recent_views"
-  "Get the list of 10 things the current user has been viewing most recently."
+  "Get the list of 5 things the current user has been viewing most recently. Query takes 8 and limits to 5 so that if it
+  finds anything archived, deleted, etc it can hopefully still get 5."
   []
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
@@ -119,12 +121,17 @@
                                      [:= :user_id *current-user-id*]
                                      [:in :model #{"card" "dashboard" "table"}]]
                           :order-by [[:max_ts :desc]]
-                          :limit    5})
+                          :limit    8})
         model->id->items (models-for-views views)]
-    (for [{:keys [model model_id] :as view-log} views
-          :let [model-object (get-in model->id->items [model model_id])]
-          :when (and model-object (mi/can-read? model-object))]
-      (cond-> (assoc view-log :model_object (dissoc model-object :dataset_query))
-        (:dataset model-object) (assoc :model "dataset")))))
+    (->> (for [{:keys [model model_id] :as view-log} views
+               :let [model-object (get-in model->id->items [model model_id])]
+               :when (and model-object
+                          (mi/can-read? model-object)
+                          ;; hidden tables, archived cards/dashboards
+                          (not (or (:archived model-object)
+                                   (= (:visibility_type model-object) :hidden))))]
+           (cond-> (assoc view-log :model_object (dissoc model-object :dataset_query))
+             (:dataset model-object) (assoc :model "dataset")))
+         (take 5))))
 
 (define-routes)
