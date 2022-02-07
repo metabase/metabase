@@ -447,6 +447,7 @@ describe("meta/Dashboard", () => {
       const dashboard = {
         ordered_cards: [
           {
+            id: 1,
             card_id: 123,
             parameter_mappings: [
               {
@@ -460,7 +461,18 @@ describe("meta/Dashboard", () => {
       expect(
         hasMatchingParameters({
           dashboard,
+          dashcardId: 1,
           cardId: 456,
+          parameters: [],
+          metadata,
+        }),
+      ).toBe(false);
+
+      expect(
+        hasMatchingParameters({
+          dashboard,
+          dashcardId: 2,
+          cardId: 123,
           parameters: [],
           metadata,
         }),
@@ -471,6 +483,7 @@ describe("meta/Dashboard", () => {
       const dashboard = {
         ordered_cards: [
           {
+            id: 1,
             card_id: 123,
             parameter_mappings: [
               {
@@ -479,6 +492,7 @@ describe("meta/Dashboard", () => {
             ],
           },
           {
+            id: 2,
             card_id: 456,
             parameter_mappings: [
               {
@@ -492,6 +506,7 @@ describe("meta/Dashboard", () => {
       expect(
         hasMatchingParameters({
           dashboard,
+          dashcardId: 1,
           cardId: 123,
           parameters: [
             {
@@ -510,6 +525,7 @@ describe("meta/Dashboard", () => {
       const dashboard = {
         ordered_cards: [
           {
+            id: 1,
             card_id: 123,
             parameter_mappings: [
               {
@@ -526,6 +542,7 @@ describe("meta/Dashboard", () => {
       expect(
         hasMatchingParameters({
           dashboard,
+          dashcardId: 1,
           cardId: 123,
           parameters: [
             {

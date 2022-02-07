@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Box } from "grid-styled";
 
 import { PermissionsTable } from "../PermissionsTable";
 import Subhead from "metabase/components/type/Subhead";
@@ -13,6 +12,11 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
+import {
+  EditorEmptyStateContainer,
+  EditorFilterContainer,
+  EditorHeaderContainer,
+} from "./PermissionsEditorContent.styled";
 
 export const permissionEditorContentPropTypes = {
   title: PropTypes.string.isRequired,
@@ -56,7 +60,7 @@ export function PermissionsEditorContent({
 
   return (
     <>
-      <Box px="3rem">
+      <EditorHeaderContainer>
         <Subhead>
           {title}{" "}
           {breadcrumbs && (
@@ -69,7 +73,7 @@ export function PermissionsEditorContent({
 
         {description && <Text>{description}</Text>}
 
-        <Box mt={2} mb={1} width="280px">
+        <EditorFilterContainer>
           <TextInput
             hasClearButton
             colorScheme="admin"
@@ -80,8 +84,8 @@ export function PermissionsEditorContent({
             borderRadius="md"
             icon={<Icon name="search" size={16} />}
           />
-        </Box>
-      </Box>
+        </EditorFilterContainer>
+      </EditorHeaderContainer>
 
       <PermissionsTable
         horizontalPadding="lg"
@@ -91,9 +95,9 @@ export function PermissionsEditorContent({
         onChange={onChange}
         onAction={onAction}
         emptyState={
-          <Box mt="120px">
+          <EditorEmptyStateContainer>
             <EmptyState message={t`Nothing here`} icon="all" />
-          </Box>
+          </EditorEmptyStateContainer>
         }
       />
     </>

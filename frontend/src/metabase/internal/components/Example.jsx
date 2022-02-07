@@ -1,22 +1,20 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box } from "grid-styled";
 import reactElementToJSXString from "react-element-to-jsx-string";
 
 import CopyButton from "metabase/components/CopyButton";
 import Label from "metabase/components/type/Label";
 import Card from "metabase/components/Card";
+import { ExampleContent, ExampleFooter, ExampleRoot } from "./Example.styled";
 
 const Example = ({ children }) => {
   const code = reactElementToJSXString(children);
   return (
-    <Box my={3} width={"100%"}>
+    <ExampleRoot>
       <Label color="medium">Example</Label>
       <Card>
-        <Box p={2} className="border-bottom">
-          {children}
-        </Box>
-        <Box p={2} className="relative">
+        <ExampleContent>{children}</ExampleContent>
+        <ExampleFooter>
           <div style={{ position: "absolute", top: "16px", right: "16px" }}>
             <CopyButton
               className="ml1 text-brand-hover cursor-pointer"
@@ -26,9 +24,9 @@ const Example = ({ children }) => {
           <pre className="overflow-auto">
             <code>{code}</code>
           </pre>
-        </Box>
+        </ExampleFooter>
       </Card>
-    </Box>
+    </ExampleRoot>
   );
 };
 

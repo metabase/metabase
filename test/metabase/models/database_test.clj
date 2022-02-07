@@ -169,13 +169,14 @@
       (binding [api/*current-user-id* (mt/user->id :crowberto)]
         (let [secret-ids  (atom #{}) ; keep track of all secret IDs created with the temp database
               check-db-fn (fn [{:keys [details] :as database} exp-secret]
-                            (is (not (contains? details :password-value)) "password-value was removed from details")
+                            (when (not= :file-path (:source exp-secret))
+                              (is (not (contains? details :password-value))
+                                  "password-value was removed from details when not a file-path"))
                             (is (some? (:password-created-at details)) "password-created-at was populated in details")
                             (is (= (mt/user->id :crowberto) (:password-creator-id details))
                                 "password-creator-id was populated in details")
-                            (is (= (if-let [src (:source exp-secret)]
-                                     (name src)
-                                     nil) (:password-source details))
+                            (is (= (some-> (:source exp-secret) name)
+                                   (:password-source details))
                                 "password-source matches the value from the secret")
                             (is (contains? details :password-id) "password-id was added to details")
                             (let [secret-id                                  (:password-id details)

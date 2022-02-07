@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import styled from "styled-components";
 
 export const ButtonBarRoot = styled.div`
@@ -6,7 +7,7 @@ export const ButtonBarRoot = styled.div`
 `;
 
 export interface ButtonBarLeftProps {
-  center?: boolean;
+  center?: ReactNode;
 }
 
 export const ButtonBarLeft = styled.div<ButtonBarLeftProps>`
@@ -23,7 +24,7 @@ export const ButtonBarCenter = styled.div`
 `;
 
 export interface ButtonBarRightProps {
-  center?: boolean;
+  center?: ReactNode;
 }
 
 export const ButtonBarRight = styled.div<ButtonBarRightProps>`

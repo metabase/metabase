@@ -1,15 +1,15 @@
 import React from "react";
-import { Box } from "grid-styled";
 import _ from "underscore";
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
+import { PageRoot, PageSection } from "./StaticVizPage.styled";
 
 export default function StaticVizPage() {
   return (
-    <Box py={4}>
-      <Box className="wrapper wrapper--trim">
+    <PageRoot>
+      <div className="wrapper wrapper--trim">
         <Heading>Static Visualisations</Heading>
         <Text>
           These visualizations are used in dashboard subscriptions. They have no
@@ -19,7 +19,7 @@ export default function StaticVizPage() {
           see updates.
         </Text>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Line chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/line"
@@ -39,8 +39,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Area chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/area"
@@ -68,8 +68,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Bar chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/bar"
@@ -102,9 +102,9 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Line chart with categorical data</Subhead>
           <StaticChart
             type="categorical/line"
@@ -133,8 +133,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Area chart with categorical data</Subhead>
           <StaticChart
             type="categorical/area"
@@ -163,8 +163,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Bar chart with categorical data</Subhead>
           <StaticChart
             type="categorical/bar"
@@ -193,8 +193,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Donut chart with categorical data</Subhead>
           <StaticChart
             type="categorical/donut"
@@ -213,8 +213,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Progress bar</Subhead>
           <StaticChart
             type="progress"
@@ -288,8 +288,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box>
+        </PageSection>
+        <PageSection>
           <Subhead>Waterfall chart with timeseries data and no total</Subhead>
           <StaticChart
             type="timeseries/waterfall"
@@ -315,8 +315,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Waterfall chart with categorical data and total</Subhead>
           <StaticChart
             type="categorical/waterfall"
@@ -346,8 +346,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Line/Area/Bar chart with multiple series</Subhead>
           <StaticChart
             type="combo-chart"
@@ -441,9 +441,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>
             Line/Area/Bar chart with negative values, different X ranges, and
             right Y-axis
@@ -525,9 +525,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>
             Combo chart with ordinal X-axis and more than 10 ticks
           </Subhead>
@@ -595,9 +595,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Stacked area chart</Subhead>
           <StaticChart
             type="combo-chart"
@@ -681,9 +681,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Ordinal chart with 48 items</Subhead>
           <StaticChart
             type="combo-chart"
@@ -711,9 +711,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Ordinal chart with 200 items</Subhead>
           <StaticChart
             type="combo-chart"
@@ -741,9 +741,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Ordinal chart with 20 items</Subhead>
           <StaticChart
             type="combo-chart"
@@ -771,9 +771,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Funnel</Subhead>
           <StaticChart
             type="funnel"
@@ -798,8 +798,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-      </Box>
-    </Box>
+        </PageSection>
+      </div>
+    </PageRoot>
   );
 }
