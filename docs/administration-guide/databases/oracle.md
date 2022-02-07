@@ -6,9 +6,9 @@ Under the hood, Metabase uses Oracle's JDBC driver, but due to licensing restric
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 
-The minimum driver version should be 19c, regardless of which Java version or Oracle version you have.
+The minimum driver version should be 19c, regardless of which Java version or Oracle Database version you have.
 
-We recommend using the `ojdbc11.jar` JAR.
+We recommend using the `ojdbc8.jar` JAR.
 
 ## Adding the Oracle JDBC Driver JAR to the Metabase plugins directory
 

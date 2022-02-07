@@ -20,17 +20,17 @@ See the PostgreSQL docs for a table about the different [SSL Modes][ssl-modes], 
 
 ### SSL root certificate (PEM)
 
-If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded filed path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+If you set the SSL Mode to either "verify-ca" or "verify-full", you'll need to specify a root certificate (PEM). You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 ### Authenticate client certificate
 
 #### SSL Client Certificate (PEM)
 
-You have the option of using a **Local file path** or an **Uploaded filed path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 #### SSL Client KEY (PKCS-8/DER or PKCS-12)
 
-Again, you have the option of using a **Local file path** or an **Uploaded filed path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+Again, you have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 You'll also need to input your **SSL Client Key Password**.
 
