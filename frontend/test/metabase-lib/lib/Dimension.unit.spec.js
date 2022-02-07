@@ -1,3 +1,4 @@
+import _ from "underscore";
 import Dimension, {
   FieldDimension,
   TemplateTagDimension,
@@ -353,10 +354,9 @@ describe("Dimension", () => {
           );
 
           const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
 
-          expect(field.getPlainObject()).toEqual(
-            OVERWRITTEN_USER_ID_FIELD_METADATA,
-          );
+          expect(fieldInfo).toEqual(OVERWRITTEN_USER_ID_FIELD_METADATA);
         });
 
         it("should not merge regular question's field results metadata with field info", () => {
@@ -367,8 +367,9 @@ describe("Dimension", () => {
           );
 
           const field = dimension.field();
+          const fieldInfo = _.omit(field.getPlainObject(), "metadata", "query");
 
-          expect(field.getPlainObject()).toEqual(ORDERS_USER_ID_FIELD);
+          expect(fieldInfo).toEqual(ORDERS_USER_ID_FIELD);
         });
       });
     });
