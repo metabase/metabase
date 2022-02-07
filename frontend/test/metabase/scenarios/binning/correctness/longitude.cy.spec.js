@@ -1,27 +1,6 @@
 import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
 
-const LONGITUDE_OPTIONS = {
-  "Auto bin": {
-    selected: "Auto binned",
-    representativeValues: ["170° W", "100° W", "60° W"],
-  },
-  "Bin every 0.1 degrees": {
-    selected: "0.1°",
-    representativeValues: null,
-  },
-  "Bin every 1 degree": {
-    selected: "1°",
-    representativeValues: ["167° W", "164° W", "67° W"],
-  },
-  "Bin every 10 degrees": {
-    selected: "10°",
-    representativeValues: ["170° W", "100° W", "60° W"],
-  },
-  "Bin every 20 degrees": {
-    selected: "20°",
-    representativeValues: ["180° W", "160° W", "100° W", "80° W", "60° W"],
-  },
-};
+import { LONGITUDE_OPTIONS } from "./constants";
 
 describe("scenarios > binning > correctness > longitude", () => {
   beforeEach(() => {
