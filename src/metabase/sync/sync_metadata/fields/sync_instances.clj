@@ -112,7 +112,6 @@
        (sync-util/with-error-handling (trs "Error checking if Fields {0} need to be created or reactivated"
                                            (pr-str (map :name db-field-chunk)))
          (let [known-field?        (comp known-fields common/canonical-name)
-               fields-to-update    (filter known-field? db-field-chunk)
                new-fields          (remove known-field? db-field-chunk)
                new-field-instances (create-or-reactivate-fields! table new-fields parent-id)]
            ;; save any updates to `our-metadata`

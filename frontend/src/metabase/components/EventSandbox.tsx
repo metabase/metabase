@@ -1,23 +1,24 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 
-function stop<E extends React.SyntheticEvent>(event: E) {
-  event.stopPropagation();
-}
-
-const mouseEventBlockers = {
-  onMouseDown: stop,
-  onMouseEnter: stop,
-  onMouseLeave: stop,
-  onMouseMove: stop,
-  onMouseOver: stop,
-  onMouseOut: stop,
-  onMouseUp: stop,
+type Options = {
+  preventDefault?: boolean;
 };
+
+function _stop<E extends React.SyntheticEvent>(
+  event: E,
+  { preventDefault }: Options,
+) {
+  event.stopPropagation();
+  if (preventDefault) {
+    event.preventDefault();
+  }
+}
 
 type EventSandboxProps = {
   children: React.ReactNode;
   enableMouseEvents?: boolean;
   disabled?: boolean;
+  preventDefault?: boolean;
 };
 
 // Prevent DOM events from bubbling through the React component tree
@@ -27,10 +28,28 @@ function EventSandbox({
   children,
   disabled,
   enableMouseEvents = false,
+  preventDefault = false,
 }: EventSandboxProps) {
+  const stop = useCallback(
+    (event: React.SyntheticEvent) => {
+      _stop(event, { preventDefault });
+    },
+    [preventDefault],
+  );
+
   const extraProps = useMemo(() => {
+    const mouseEventBlockers = {
+      onMouseDown: stop,
+      onMouseEnter: stop,
+      onMouseLeave: stop,
+      onMouseMove: stop,
+      onMouseOver: stop,
+      onMouseOut: stop,
+      onMouseUp: stop,
+    };
+
     return enableMouseEvents ? {} : mouseEventBlockers;
-  }, [enableMouseEvents]);
+  }, [stop, enableMouseEvents]);
 
   return disabled === true ? (
     <React.Fragment>{children}</React.Fragment>

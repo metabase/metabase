@@ -4,9 +4,9 @@ import {
   visitQuestionAdhoc,
   openNativeEditor,
 } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > visualizations > maps", () => {
   beforeEach(() => {
@@ -99,6 +99,7 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
+    cy.intercept("/app/assets/geojson").as("geojson");
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -116,7 +117,10 @@ describe("scenarios > visualizations > maps", () => {
       },
     });
 
+    cy.wait("@geojson");
+
     cy.get(".CardVisualization svg path")
+      .should("be.visible")
       .eq(22)
       .as("texas");
 

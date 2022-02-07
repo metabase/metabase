@@ -1,7 +1,7 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 
-import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import FieldFingerprintInfo from "./FieldFingerprintInfo";
@@ -119,6 +119,46 @@ describe("FieldFingerprintInfo", () => {
       });
 
       it("should render max", () => {
+        expect(screen.getByText("5")).toBeVisible();
+      });
+    });
+
+    describe("with empty type/Number fingerprint", () => {
+      beforeEach(() => {
+        numberField.fingerprint = {
+          type: {
+            "type/Number": {},
+          },
+        };
+
+        setup(numberField);
+      });
+
+      it("should render nothing", () => {
+        expect(container.firstChild).toBeNull();
+      });
+    });
+
+    describe("with missing type/Number property", () => {
+      beforeEach(() => {
+        numberField.fingerprint = {
+          type: {
+            "type/Number": {
+              min: 1,
+              max: 5,
+            },
+          },
+        };
+
+        setup(numberField);
+      });
+
+      it("should not render anything for the avg", () => {
+        expect(screen.queryByText("Average")).toBeNull();
+      });
+
+      it("should still render min and max", () => {
+        expect(screen.getByText("1")).toBeVisible();
         expect(screen.getByText("5")).toBeVisible();
       });
     });

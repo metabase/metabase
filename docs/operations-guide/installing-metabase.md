@@ -2,6 +2,8 @@
 
 Below we provide links to detailed instructions on how to install and run Metabase in a variety of common configurations. If you're not sure which way is right for you, check out [How to run Metabase in production](/blog/how-to-run-metabase-in-production/index.html).
 
+If you're looking to instructions on running a development branch of Metabase, our [developer's guide](../developers-guide/running-dev-branch.md) can help.
+
 ## Different ways to install and run Metabase
 
 Metabase is built and packaged as a Java jar file and can be run anywhere that Java is available.

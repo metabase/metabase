@@ -7,7 +7,7 @@ describe("issue 18148", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.addH2SampleDataset({
+    cy.addH2SampleDatabase({
       name: dbName,
     });
 
@@ -16,7 +16,7 @@ describe("issue 18148", () => {
 
   it("should not offer to save the question before it is actually possible to save it (metabase#18148)", () => {
     cy.findByText("Select a database");
-    cy.findByText("Save").should("have.class", "disabled");
+    cy.findByText("Save").should("have.attr", "aria-disabled", "true");
 
     cy.findByText(dbName).click();
 

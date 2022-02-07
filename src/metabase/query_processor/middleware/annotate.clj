@@ -12,6 +12,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
@@ -87,7 +88,7 @@
               driver-col-metadata))))))
 
 (defmethod column-info :native
-  [_query {:keys [cols rows] :as results}]
+  [_query {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
   (annotate-native-cols cols))
 
@@ -287,7 +288,7 @@
   or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
+  [ag-clause :- mbql.s/Aggregation]
   (when-not driver/*driver*
     (throw (Exception. (tru "*driver* is unbound."))))
   (mbql.u/match-one ag-clause
@@ -295,6 +296,7 @@
     (:name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
@@ -336,6 +338,7 @@
     (:display-name options)
 
     [:aggregation-options ag _]
+    #_:clj-kondo/ignore
     (recur ag)
 
     [(operator :guard #{:+ :- :/ :*}) & args]
@@ -368,7 +371,7 @@
     (:display_name (col-info-for-field-clause inner-query ag-clause))
 
     _
-    (aggregation-name ag-clause {:recursive-name-fn (partial aggregation-arg-display-name inner-query)})))
+    (aggregation-name ag-clause)))
 
 (defn- ag->name-info [inner-query ag]
   {:name         (aggregation-name ag)
@@ -474,24 +477,7 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(def ^:private preserved-keys
-  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
-  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display_name :semantic_type :fk_target_field_id :settings])
 
-(defn- combine-metadata
-  "Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
-  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a particular run from the query, and `from-db` should be the metadata from the database we wish to
-  ensure survives."
-  [computed from-db]
-  (let [by-key (u/key-by (comp u/field-ref->key :field_ref) from-db)]
-    (for [{:keys [field_ref] :as col} computed]
-      (if-let [existing (get by-key (u/field-ref->key field_ref))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
 
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
@@ -523,7 +509,7 @@
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field preserved-keys))))
+                                            (select-keys source-metadata-for-field qputil/preserved-keys))))
         col))))
 
 (declare mbql-cols)
@@ -533,7 +519,7 @@
   (let [columns       (if native-source-query
                         (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
                         (mbql-cols source-query results))]
-    (combine-metadata columns source-metadata)))
+    (qputil/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -554,7 +540,7 @@
       cols)))
 
 (defmethod column-info :query
-  [{inner-query :query, :as query} results]
+  [{inner-query :query} results]
   (u/prog1 (mbql-cols inner-query results)
     (check-correct-number-of-columns-returned <> results)))
 
@@ -657,24 +643,20 @@
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [qp]
-  (fn [{query-type :type, :as query
-        {:keys [:metadata/dataset-metadata]} :info} rff context]
-    (qp
-     query
-     (fn [metadata]
-       (if (= query-type :query)
-         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-                (seq dataset-metadata)
-                (update :cols combine-metadata dataset-metadata)))
-         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
-         ;; queries...
-         (let [metadata (cond-> (update metadata :cols annotate-native-cols)
-                          ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                          (seq dataset-metadata)
-                          (update :cols combine-metadata dataset-metadata)
-                          ;; but we want those column refs removed since they have type info which we don't know yet
-                          :always
-                          (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
-           (add-column-info-xform query metadata (rff metadata)))))
-     context)))
+  [{query-type :type, :as query
+    {:keys [:metadata/dataset-metadata]} :info} rff]
+  (fn add-column-info-rff* [metadata]
+    (if (= query-type :query)
+      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+             (seq dataset-metadata)
+             (update :cols qputil/combine-metadata dataset-metadata)))
+      ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+      ;; queries...
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+                       ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+                       (seq dataset-metadata)
+                       (update :cols qputil/combine-metadata dataset-metadata)
+                       ;; but we want those column refs removed since they have type info which we don't know yet
+                       :always
+                       (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (add-column-info-xform query metadata (rff metadata))))))

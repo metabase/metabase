@@ -10,10 +10,7 @@
   ([query] (update-viz-settings query true))
   ([query remove-global?]
    (mt/with-everything-store
-     (cond-> (-> (mt/test-qp-middleware viz-settings/update-viz-settings query)
-                 :metadata
-                 :data
-                 :viz-settings)
+     (cond-> (:viz-settings ((viz-settings/update-viz-settings query identity) {}))
        remove-global?
        (dissoc ::mb.viz/global-column-settings)))))
 

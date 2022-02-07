@@ -24,13 +24,16 @@
 
 (defmethod task/init! ::SendAnonymousUsageStats
   [_]
-  (let [job     (jobs/build
-                 (jobs/of-type SendAnonymousUsageStats)
-                 (jobs/with-identity (jobs/key job-key)))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                   ;; run twice a day
-                   (cron/cron-schedule "0 15 7 * * ? *")))]
+  (let [job      (jobs/build
+                  (jobs/of-type SendAnonymousUsageStats)
+                  (jobs/with-identity (jobs/key job-key)))
+        ;; run at a random hour/minute
+        schedule (cron/cron-schedule
+                  (format "0 %d %d * * ? *"
+                          (rand-int 60)
+                          (rand-int 24)))
+        trigger  (triggers/build
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule schedule))]
     (task/schedule-task! job trigger)))

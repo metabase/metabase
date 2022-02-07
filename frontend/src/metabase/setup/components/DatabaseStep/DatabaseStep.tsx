@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
@@ -12,7 +12,7 @@ import {
   StepActions,
   StepDescription,
   StepFormGroup,
-  StepLink,
+  StepButton,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 import { DatabaseInfo, InviteInfo, UserInfo } from "../../types";
@@ -48,10 +48,6 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
-  useEffect(() => {
-    engine && onEngineChange(engine);
-  }, [engine, onEngineChange]);
-
   const handleCancel = () => {
     onStepCancel(engine);
   };
@@ -75,15 +71,18 @@ const DatabaseStep = ({
     >
       <StepDescription>
         <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Dataset.`}</div>
+        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
       </StepDescription>
       <DatabaseForm
         database={database}
         engine={engine}
         onSubmit={onDatabaseSubmit}
+        onEngineChange={onEngineChange}
       />
       <StepActions>
-        <StepLink onClick={handleCancel}>{t`I'll add my data later`}</StepLink>
+        <StepButton onClick={handleCancel}>
+          {t`I'll add my data later`}
+        </StepButton>
       </StepActions>
       {isEmailConfigured && (
         <SetupSection
@@ -101,12 +100,14 @@ interface DatabaseFormProps {
   database?: DatabaseInfo;
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
+  onEngineChange: (engine: string) => void;
 }
 
 const DatabaseForm = ({
   database,
   engine,
   onSubmit,
+  onEngineChange,
 }: DatabaseFormProps): JSX.Element => {
   const handleSubmit = async (database: DatabaseInfo) => {
     try {
@@ -114,6 +115,10 @@ const DatabaseForm = ({
     } catch (error) {
       throw getSubmitError(error);
     }
+  };
+
+  const handleEngineChange = (value?: string) => {
+    value && onEngineChange(value);
   };
 
   return (
@@ -132,7 +137,7 @@ const DatabaseForm = ({
         onChangeField,
       }: FormProps) => (
         <Form>
-          <FormField name="engine" />
+          <FormField name="engine" onChange={handleEngineChange} />
           <DriverWarning
             engine={values.engine}
             hasBorder={true}

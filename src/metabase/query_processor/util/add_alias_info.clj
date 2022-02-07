@@ -50,7 +50,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.util.i18n :refer [trs tru]]))
 
 (defn prefix-field-alias
   "Generate a field alias by applying `prefix` to `field-alias`. This is used for automatically-generated aliases for
@@ -100,7 +100,7 @@
     [:field id-or-name opts]
     ;; this doesn't use [[mbql.u/update-field-options]] because this gets called a lot and the overhead actually adds up
     ;; a bit
-    [:field id-or-name (remove-namespaced-options (dissoc opts :source-fields))]
+    [:field id-or-name (remove-namespaced-options (dissoc opts :source-field))]
 
     ;; for `:expression` and `:aggregation` references, remove the options map if they are empty.
     [:expression expression-name opts]
@@ -168,13 +168,18 @@
 (defn- field-source-table-alias
   "Determine the appropriate `::source-table` alias for a `field-clause`."
   {:arglists '([inner-query field-clause])}
-  [{:keys [source-table], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
+  [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
       join-is-this-level?                      join-alias
       (and table-id (= table-id source-table)) table-id
-      :else                                    ::source)))
+      source-query                             ::source
+      :else
+      (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
+                      {:type   qp.error-type/invalid-query
+                       :clause field-clause
+                       :query  inner-query})))))
 
 (defn- exports [query]
   (into #{} (mbql.u/match (dissoc query :source-query :source-metadata :joins)
@@ -186,19 +191,34 @@
             join))
         joins))
 
+(defn- matching-field-in-source-query* [source-query field-clause & {:keys [normalize-fn]
+                                                                     :or   {normalize-fn normalize-clause}}]
+  (let [normalized (normalize-fn field-clause)
+        exports    (filter (partial mbql.u/is-clause? :field)
+                           (exports source-query))]
+    ;; first look for an EXACT match in the `exports`
+    (or (some (fn [a-clause]
+                (when (= (normalize-fn a-clause) normalized)
+                  a-clause))
+              exports)
+        ;; if there is no EXACT match, attempt a 'fuzzy' match by disregarding the `:temporal-unit` and `:binning`
+        (let [fuzzify          (fn [clause] (mbql.u/update-field-options clause dissoc :temporal-unit :binning))
+              fuzzy-normalized (fuzzify normalized)]
+          (some (fn [a-clause]
+                  (when (= (fuzzify (normalize-fn a-clause)) fuzzy-normalized)
+                    a-clause))
+                exports)))))
+
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
   from that source query."
   [inner-query [_ _ {:keys [join-alias]} :as field-clause]]
   (when join-alias
     (when-let [matching-join-source-query (:source-query (join-with-alias inner-query join-alias))]
-      (let [normalized (mbql.u/update-field-options (normalize-clause field-clause) dissoc :join-alias)]
-        (some (fn [a-clause]
-                (when (and (mbql.u/is-clause? :field a-clause)
-                           (= (mbql.u/update-field-options (normalize-clause a-clause) dissoc :join-alias)
-                              normalized))
-                  a-clause))
-              (exports matching-join-source-query))))))
+      (matching-field-in-source-query*
+       matching-join-source-query
+       field-clause
+       :normalize-fn #(mbql.u/update-field-options (normalize-clause %) dissoc :join-alias)))))
 
 (defn- field-alias-in-join-at-this-level
   "If `field-clause` is the result of a join at this level, return the `::desired-alias` from that join (where the Field is
@@ -208,15 +228,10 @@
     desired-alias))
 
 (defn- matching-field-in-source-query
-  [{:keys [source-query], :as inner-query} [_ _ {:keys [join-alias]}, :as field-clause]]
-  (when (= (field-source-table-alias inner-query field-clause) ::source)
-    (let [normalized (normalize-clause field-clause)]
-      (some (fn [a-clause]
-              (when (and (mbql.u/is-clause? :field a-clause)
-                         (= (normalize-clause a-clause)
-                            normalized))
-                a-clause))
-            (exports source-query)))))
+  [{:keys [source-query], :as inner-query} field-clause]
+  (when (and source-query
+             (= (field-source-table-alias inner-query field-clause) ::source))
+    (matching-field-in-source-query* source-query field-clause)))
 
 (defn- field-alias-in-source-query
   [inner-query field-clause]
@@ -242,8 +257,8 @@
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [{:keys [source-table], :as inner-query}
-   [_ _id-or-name {:keys [join-alias]}, :as field-clause]
+  [{:keys [_source-table], :as _inner-query}
+   [_ _id-or-name {:keys [join-alias]}, :as _field-clause]
    {:keys [field-name join-is-this-level? alias-from-join alias-from-source-query]}]
   (cond
     (and join-alias (not join-is-this-level?)) (prefix-field-alias join-alias field-name)
@@ -254,8 +269,8 @@
 (defn- field-desired-alias
   "Determine the appropriate `::desired-alias` for a `field-clause`."
   {:arglists '([inner-query field-clause expensive-field-info])}
-  [inner-query
-   [_ _id-or-name {:keys [join-alias]} :as field-clause]
+  [_inner-query
+   [_ _id-or-name {:keys [join-alias]} :as _field-clause]
    {:keys [field-name alias-from-join alias-from-source-query]}]
   (cond
     join-alias              (prefix-field-alias join-alias (or alias-from-join field-name))
@@ -277,7 +292,7 @@
               ::position      position}))))
 
 (defmethod clause-alias-info :aggregation
-  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index opts :as ag-ref-clause]]
+  [{aggregations :aggregation, :as inner-query} unique-alias-fn [_ index _opts :as ag-ref-clause]]
   (let [position (clause->position inner-query ag-ref-clause)]
     ;; an aggregation is ALWAYS returned, so it HAS to have a `position`. If it does not, the aggregation reference
     ;; is busted.
@@ -303,7 +318,7 @@
      ::position      position}))
 
 (defn- add-info-to-aggregation-definition
-  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as ag-clause] ag-index]
+  [inner-query unique-alias-fn [_ wrapped-ag-clause {original-ag-name :name, :as opts}, :as _ag-clause] ag-index]
   (let [position     (clause->position inner-query [:aggregation ag-index])
         unique-alias (unique-alias-fn position original-ag-name)]
     [:aggregation-options wrapped-ag-clause (assoc opts

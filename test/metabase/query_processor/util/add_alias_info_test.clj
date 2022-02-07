@@ -160,13 +160,13 @@
   (mt/dataset sample-dataset
     (is (query= (mt/mbql-query products
                   {:source-table $$products
-                   :expressions  {:CATEGORY [:concat
-                                             [:field %category
-                                              {::add/source-table  $$products
-                                               ::add/source-alias  "CATEGORY"
-                                               ::add/desired-alias "CATEGORY"
-                                               ::add/position      0}]
-                                             "2"]}
+                   :expressions  {"CATEGORY" [:concat
+                                              [:field %category
+                                               {::add/source-table  $$products
+                                                ::add/source-alias  "CATEGORY"
+                                                ::add/desired-alias "CATEGORY"
+                                                ::add/position      0}]
+                                              "2"]}
                    :fields       [[:field %category {::add/source-table  $$products
                                                      ::add/source-alias  "CATEGORY"
                                                      ::add/desired-alias "CATEGORY"
@@ -176,7 +176,7 @@
                    :limit        1})
                 (add-alias-info
                  (mt/mbql-query products
-                   {:expressions {:CATEGORY [:concat [:field %category nil] "2"]}
+                   {:expressions {"CATEGORY" [:concat [:field %category nil] "2"]}
                     :fields      [[:field %category nil]
                                   [:expression "CATEGORY"]]
                     :limit       1}))))))
@@ -258,8 +258,8 @@
                    [:expression "price_divided_by_big_price"] 2})
                 (#'add/selected-clauses
                  (mt/$ids venues
-                   {:expressions {:big_price                  [:+ $price 2]
-                                  :price_divided_by_big_price [:/ $price [:expression "big_price"]]}
+                   {:expressions {"big_price"                  [:+ $price 2]
+                                  "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
                     :fields      [$price
                                   [:expression "big_price"]
                                   [:expression "price_divided_by_big_price"]]
@@ -279,8 +279,8 @@
                                                   {::add/position      2
                                                    ::add/desired-alias "price_divided_by_big_price"}]]
                   {:source-table $$venues
-                   :expressions  {:big_price                  [:+ price 2]
-                                  :price_divided_by_big_price [:/ price big-price]}
+                   :expressions  {"big_price"                  [:+ price 2]
+                                  "price_divided_by_big_price" [:/ price big-price]}
                    :fields       [price
                                   big-price
                                   price-divided-by-big-price]
@@ -288,8 +288,8 @@
               (:query
                (add-alias-info
                 (mt/mbql-query venues
-                  {:expressions {:big_price                  [:+ $price 2]
-                                 :price_divided_by_big_price [:/ $price [:expression "big_price"]]}
+                  {:expressions {"big_price"                  [:+ $price 2]
+                                 "price_divided_by_big_price" [:/ $price [:expression "big_price"]]}
                    :fields      [$price
                                  [:expression "big_price"]
                                  [:expression "price_divided_by_big_price"]]
@@ -328,37 +328,35 @@
                                :alias        "Q2"
                                :strategy     :left-join
                                :condition    [:=
-                                              [:field %products.category {::add/source-table ::add/source
-                                                                          ::add/source-alias "CATEGORY"}]
                                               [:field %products.category {:join-alias         "Q2"
                                                                           ::add/source-table  "Q2"
                                                                           ::add/source-alias  "P2__CATEGORY"
                                                                           ::add/desired-alias "Q2__P2__CATEGORY"
-                                                                          ::add/position      1}]]}]
-                     :fields [[:field "count" {:base-type          :type/BigInteger
-                                               ::add/source-table  ::add/source
-                                               ::add/source-alias  "count"
-                                               ::add/desired-alias "count"
-                                               ::add/position      0}]
-                              [:field %products.category {:join-alias         "Q2"
+                                                                          ::add/position      0}]
+                                              [:value 1 {:base_type         :type/Text
+                                                         :coercion_strategy nil
+                                                         :database_type     "VARCHAR"
+                                                         :effective_type    :type/Text
+                                                         :name              "CATEGORY"
+                                                         :semantic_type     :type/Category}]]}]
+                     :fields [[:field %products.category {:join-alias         "Q2"
                                                           ::add/source-table  "Q2"
                                                           ::add/source-alias  "P2__CATEGORY"
                                                           ::add/desired-alias "Q2__P2__CATEGORY"
-                                                          ::add/position      1}]
+                                                          ::add/position      0}]
                               [:field "avg" {:base-type          :type/Integer
                                              :join-alias         "Q2"
                                              ::add/source-table  "Q2"
                                              ::add/source-alias  "avg"
                                              ::add/desired-alias "Q2__avg"
-                                             ::add/position      2}]]
+                                             ::add/position      1}]]
                      :limit  2})
                   (add-alias-info
                    (mt/mbql-query orders
-                     {:fields [[:field "count" {:base-type :type/BigInteger}]
-                               &Q2.products.category
+                     {:fields [&Q2.products.category
                                [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]
                       :joins  [{:strategy     :left-join
-                                :condition    [:= $products.category &Q2.products.category]
+                                :condition    [:= &Q2.products.category 1]
                                 :alias        "Q2"
                                 :source-query {:source-table $$reviews
                                                :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
@@ -386,7 +384,7 @@
                                                                      ::add/desired-alias "COOL.PRICE"
                                                                      ::add/position      0}]]
                                            {:source-table $$venues
-                                            :expressions  {:double_price [:* price 2]}
+                                            :expressions  {"double_price" [:* price 2]}
                                             :fields       [price
                                                            [:expression "double_price" {::add/desired-alias "COOL.double_price"
                                                                                         ::add/position      1}]]
@@ -409,7 +407,7 @@
                              :order-by    [[:asc double-price]]})))
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues
-                                          :expressions  {:double_price [:* $price 2]}
+                                          :expressions  {"double_price" [:* $price 2]}
                                           :fields       [$price
                                                          [:expression "double_price"]]
                                           :limit        1}
@@ -473,7 +471,7 @@
 
 (deftest uniquify-aggregation-names-text
   (is (query= (mt/mbql-query checkins
-                {:expressions {:count [:+ 1 1]}
+                {:expressions {"count" [:+ 1 1]}
                  :breakout    [[:expression "count" {::add/desired-alias "count"
                                                      ::add/position      0}]]
                  :aggregation [[:aggregation-options [:count] {:name               "count_2"
@@ -488,3 +486,25 @@
                   :breakout    [[:expression "count"]]
                   :aggregation [[:count]]
                   :limit       1})))))
+
+(deftest fuzzy-field-info-test
+  (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
+    (mt/dataset sample-dataset
+      (mt/with-everything-store
+        (is (= {:field-name              "CREATED_AT"
+                :join-is-this-level?     "Q2"
+                :alias-from-join         "Products__CREATED_AT"
+                :alias-from-source-query nil}
+               (#'add/expensive-field-info
+                (mt/$ids nil
+                  {:source-table $$reviews
+                   :joins        [{:source-query {:source-table $$reviews
+                                                  :breakout     [[:field %products.created_at
+                                                                  {::add/desired-alias "Products__CREATED_AT"
+                                                                   ::add/position      0
+                                                                   ::add/source-alias  "CREATED_AT"
+                                                                   ::add/source-table  "Products"
+                                                                   :join-alias         "Products"
+                                                                   :temporal-unit      :month}]]}
+                                   :alias        "Q2"}]})
+                [:field (mt/id :products :created_at) {:join-alias "Q2"}])))))))

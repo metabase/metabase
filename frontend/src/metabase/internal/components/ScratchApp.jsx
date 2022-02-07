@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import CheckBox from "metabase/components/CheckBox";
+import CheckBox from "metabase/core/components/CheckBox";
 import cx from "classnames";
 
 import AceEditor from "metabase/components/TextEditor";

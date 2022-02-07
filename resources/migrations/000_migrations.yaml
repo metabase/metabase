@@ -9889,6 +9889,15 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: "Serialized JSON containing Database-local Settings for this Database"
 
+  - changeSet:
+      id: v42.00-071
+      author: noahmoss
+      comment: >-
+        Added 0.42.0 - migrates the Sample Dataset to the name "Sample Database"
+      changes:
+        - sql:
+            sql: UPDATE metabase_database SET name='Sample Database' WHERE is_sample=true
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -1,6 +1,7 @@
 (ns metabase.server.middleware.json
   "Middleware related to parsing JSON requests and generating JSON responses."
   (:require [cheshire.core :as json]
+            cheshire.factory
             [cheshire.generate :as json.generate]
             [metabase.util.date-2 :as u.date]
             [ring.middleware.json :as ring.json]

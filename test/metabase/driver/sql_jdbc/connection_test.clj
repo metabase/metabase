@@ -39,7 +39,7 @@
       (let [destroyed?         (atom false)
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
             connection-details {:db "mem:connection_test"}
-            spec               (db.spec/h2 connection-details)]
+            spec               (db.spec/spec :h2 connection-details)]
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]

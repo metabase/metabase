@@ -69,7 +69,8 @@ export type SettingName =
   | "ga-code"
   | "ga-enabled"
   | "google-auth-client-id"
-  | "has-sample-dataset?"
+  | "has-sample-database?"
+  | "has-user-setup"
   | "hide-embed-branding?"
   | "is-hosted?"
   | "ldap-configured?"
@@ -156,10 +157,6 @@ class Settings {
     return this.get("is-hosted?");
   }
 
-  isStoreManaged(): boolean {
-    return this.get("metabase-store-managed");
-  }
-
   cloudGatewayIps(): string[] {
     return this.get("cloud-gateway-ips") || [];
   }
@@ -168,8 +165,8 @@ class Settings {
     return this.get("google-auth-client-id") != null;
   }
 
-  hasSetupToken() {
-    return this.get("setup-token") != null;
+  hasUserSetup() {
+    return this.get("has-user-setup");
   }
 
   hideEmbedBranding() {

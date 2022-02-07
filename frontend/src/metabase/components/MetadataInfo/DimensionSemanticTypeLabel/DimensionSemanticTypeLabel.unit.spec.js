@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
 import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
 import Dimension from "metabase-lib/lib/Dimension";
 

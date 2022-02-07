@@ -75,15 +75,6 @@
    (apply s/enum datetime-bucketing-units)
    "datetime-bucketing-unit"))
 
-;; TODO -- rename to `TemporalUnit`
-(def ^{:deprecated "0.39.0"} DatetimeFieldUnit
-  "Schema for all valid datetime bucketing units. DEPRECATED -- use `DateUnit`, `TimeUnit`, or
-  `DateTimeUnit` instead."
-  (s/named
-   (apply s/enum #{:default :minute :minute-of-hour :hour :hour-of-day :day :day-of-week :day-of-month :day-of-year
-                   :week :week-of-year :month :month-of-year :quarter :quarter-of-year :year})
-   "datetime-unit"))
-
 (def ^:private RelativeDatetimeUnit
   (s/named
    (apply s/enum #{:default :minute :hour :day :week :month :quarter :year})
@@ -783,6 +774,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
@@ -1170,8 +1162,7 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (helpers/non-empty [Aggregation])
     (s/optional-key :breakout)     (helpers/non-empty [Field])
-    ;; TODO - expressions keys should be strings; fix this when we get a chance (#14647)
-    (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
+    (s/optional-key :expressions)  {helpers/NonBlankString FieldOrExpressionDef}
     (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        helpers/IntGreaterThanOrEqualToZero
@@ -1511,16 +1502,14 @@
    (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :nested?)      (s/maybe s/Bool)
-
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe #?(:clj (Class/forName "[B")
-                                              :cljs s/Any))})
+   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+                                            :cljs s/Any))})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

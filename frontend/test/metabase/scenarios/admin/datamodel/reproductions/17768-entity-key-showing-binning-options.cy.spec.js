@@ -1,7 +1,7 @@
 import { restore, openReviewsTable, popover } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { REVIEWS } = SAMPLE_DATASET;
+const { REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 17768", () => {
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe("issue 17768", () => {
       has_field_values: "list",
     });
 
-    // Sync "Sample Dataset" schema
+    // Sync "Sample Database" schema
     cy.request("POST", `/api/database/1/sync_schema`);
 
     waitForSyncToFinish();

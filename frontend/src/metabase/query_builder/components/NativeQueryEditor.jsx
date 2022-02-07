@@ -31,16 +31,14 @@ import NativeQueryEditorSidebar from "./NativeQueryEditor/NativeQueryEditorSideb
 import VisibilityToggler from "./NativeQueryEditor/VisibilityToggler";
 import RightClickPopover from "./NativeQueryEditor/RightClickPopover";
 import DataSourceSelectors from "./NativeQueryEditor/DataSourceSelectors";
+import { SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./NativeQueryEditor/constants";
+import {
+  calcInitialEditorHeight,
+  getEditorLineHeight,
+  getMaxAutoSizeLines,
+} from "./NativeQueryEditor/utils";
 
 import "./NativeQueryEditor.css";
-
-const SCROLL_MARGIN = 8;
-const LINE_HEIGHT = 16;
-
-const MIN_HEIGHT_LINES = 13;
-
-const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
-const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 @ExplicitSize()
 @Snippets.loadList({ loadingAndErrorWrapper: false })
@@ -51,16 +49,9 @@ export default class NativeQueryEditor extends Component {
   constructor(props) {
     super(props);
 
-    const lines = Math.max(
-      Math.min(
-        this.maxAutoSizeLines(),
-        props.query?.lineCount() || this.maxAutoSizeLines(),
-      ),
-      MIN_HEIGHT_LINES,
-    );
-
+    const { query, viewHeight } = props;
     this.state = {
-      initialHeight: getEditorLineHeight(lines),
+      initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
     };
 
@@ -70,16 +61,6 @@ export default class NativeQueryEditor extends Component {
 
     this.editor = React.createRef();
     this.resizeBox = React.createRef();
-  }
-
-  maxAutoSizeLines() {
-    // This determines the max height that the editor *automatically* takes.
-    // - On load, long queries will be capped at this length
-    // - When loading an empty query, this is the height
-    // - When the editor grows during typing this is the max height
-    const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
-    const pixelHeight = this.props.viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
-    return Math.ceil(getLinesForHeight(pixelHeight));
   }
 
   static defaultProps = {
@@ -342,10 +323,10 @@ export default class NativeQueryEditor extends Component {
     const doc = this._editor.getSession().getDocument();
     const element = this.resizeBox.current;
     // set the newHeight based on the line count, but ensure it's within
-    // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
+    // [MIN_HEIGHT_LINES, getMaxAutoSizeLines()]
     const newHeight = getEditorLineHeight(
       Math.max(
-        Math.min(doc.getLength(), this.maxAutoSizeLines()),
+        Math.min(doc.getLength(), getMaxAutoSizeLines()),
         MIN_HEIGHT_LINES,
       ),
     );
@@ -465,7 +446,9 @@ export default class NativeQueryEditor extends Component {
           {...resizableBoxProps}
           onResizeStop={(e, data) => {
             this.props.handleResize();
-            resizableBoxProps?.onResizeStop(e, data);
+            if (typeof resizableBoxProps?.onResizeStop === "function") {
+              resizableBoxProps.onResizeStop(e, data);
+            }
             this._editor.resize();
           }}
         >

@@ -9,13 +9,11 @@ import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
 
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import { TableCellContent, TableCellSpinner } from "./DatabaseListApp.styled";
 
 import Database from "metabase/entities/databases";
@@ -23,12 +21,12 @@ import Database from "metabase/entities/databases";
 import {
   getDeletes,
   getDeletionError,
-  getIsAddingSampleDataset,
-  getAddSampleDatasetError,
+  getIsAddingSampleDatabase,
+  getAddSampleDatabaseError,
 } from "../selectors";
 import {
   deleteDatabase,
-  addSampleDataset,
+  addSampleDatabase,
   closeSyncingModal,
 } from "../database";
 
@@ -39,9 +37,9 @@ const getReloadInterval = (state, props, databases = []) => {
 };
 
 const mapStateToProps = (state, props) => ({
-  hasSampleDataset: Database.selectors.getHasSampleDataset(state),
-  isAddingSampleDataset: getIsAddingSampleDataset(state),
-  addSampleDatasetError: getAddSampleDatasetError(state),
+  hasSampleDatabase: Database.selectors.getHasSampleDatabase(state),
+  isAddingSampleDatabase: getIsAddingSampleDatabase(state),
+  addSampleDatabaseError: getAddSampleDatabaseError(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -55,7 +53,7 @@ const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
-  addSampleDataset: addSampleDataset,
+  addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
 };
 
@@ -88,7 +86,7 @@ export default class DatabaseList extends Component {
 
   static propTypes = {
     databases: PropTypes.array,
-    hasSampleDataset: PropTypes.bool,
+    hasSampleDatabase: PropTypes.bool,
     engines: PropTypes.object,
     deletes: PropTypes.array,
     deletionError: PropTypes.object,
@@ -100,15 +98,15 @@ export default class DatabaseList extends Component {
   render() {
     const {
       databases,
-      hasSampleDataset,
-      isAddingSampleDataset,
-      addSampleDatasetError,
+      hasSampleDatabase,
+      isAddingSampleDatabase,
+      addSampleDatabaseError,
       engines,
       deletionError,
     } = this.props;
     const { isSyncingModalOpened } = this.state;
 
-    const error = deletionError || addSampleDatasetError;
+    const error = deletionError || addSampleDatabaseError;
 
     return (
       <div className="wrapper">
@@ -130,7 +128,6 @@ export default class DatabaseList extends Component {
               <tr>
                 <th>{t`Name`}</th>
                 <th>{t`Engine`}</th>
-                <th />
               </tr>
             </thead>
             <tbody>
@@ -162,29 +159,6 @@ export default class DatabaseList extends Component {
                             ? engines[database.engine]["driver-name"]
                             : database.engine}
                         </td>
-                        {isDeleting ? (
-                          <td className="text-right">{t`Deleting...`}</td>
-                        ) : (
-                          <td className="Table-actions">
-                            <ModalWithTrigger
-                              ref={this["deleteDatabaseModal_" + database.id]}
-                              triggerClasses="Button Button--danger"
-                              triggerElement={t`Delete`}
-                            >
-                              <DeleteDatabaseModal
-                                database={database}
-                                onClose={() =>
-                                  this[
-                                    "deleteDatabaseModal_" + database.id
-                                  ].current.close()
-                                }
-                                onDelete={() =>
-                                  this.props.deleteDatabase(database.id)
-                                }
-                              />
-                            </ModalWithTrigger>
-                          </td>
-                        )}
                       </tr>
                     );
                   }),
@@ -199,23 +173,23 @@ export default class DatabaseList extends Component {
               )}
             </tbody>
           </table>
-          {!hasSampleDataset ? (
+          {!hasSampleDatabase ? (
             <div className="pt4">
               <span
                 className={cx("p2 text-italic", {
                   "border-top": databases && databases.length > 0,
                 })}
               >
-                {isAddingSampleDataset ? (
+                {isAddingSampleDatabase ? (
                   <span className="text-light no-decoration">
-                    {t`Restoring the sample dataset...`}
+                    {t`Restoring the sample database...`}
                   </span>
                 ) : (
                   <a
                     className="text-light text-brand-hover no-decoration"
-                    onClick={() => this.props.addSampleDataset()}
+                    onClick={() => this.props.addSampleDatabase()}
                   >
-                    {t`Bring the sample dataset back`}
+                    {t`Bring the sample database back`}
                   </a>
                 )}
               </span>

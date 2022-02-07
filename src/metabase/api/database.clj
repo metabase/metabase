@@ -20,6 +20,7 @@
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
@@ -74,7 +75,7 @@
                                     :write
                                     :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
       (driver/supports? driver :nested-queries))))
@@ -271,12 +272,17 @@
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-  belonging to this database, or the Tables and Fields, respectively."
+  belonging to this database, or the Tables and Fields, respectively.  If the requestor is an admin, then certain
+  inferred secret values will also be included in the returned details (see
+  [[metabase.models.secret/admin-expand-db-details-inferred-secret-values]] for full details)."
   [id include]
   {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (-> (api/read-check Database id)
-      add-expanded-schedules
-      (get-database-hydrate-include include)))
+  (cond-> (-> (api/read-check Database id)
+              add-expanded-schedules
+              (get-database-hydrate-include include))
+
+    api/*is-superuser?* ; for admins, expand inferred secret values in db-details
+    secret/admin-expand-db-details-inferred-secret-values))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
@@ -532,13 +538,13 @@
     {:valid (not (false? (:valid details-or-error)))}))
 
 
-;;; --------------------------------------- POST /api/database/sample_dataset ----------------------------------------
+;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
-(api/defendpoint POST "/sample_dataset"
-  "Add the sample dataset as a new `Database`."
+(api/defendpoint POST "/sample_database"
+  "Add the sample database as a new `Database`."
   []
   (api/check-superuser)
-  (sample-data/add-sample-dataset!)
+  (sample-data/add-sample-database!)
   (Database :is_sample true))
 
 

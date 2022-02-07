@@ -15,8 +15,7 @@
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+            [toucan.db :as db]))
 
 (declare notify-database-updated)
 
@@ -401,14 +400,14 @@
     ;; Does the driver support percentile calculations (including median)
     :percentile-aggregations})
 
-(defmulti ^:deprecated supports?
+(defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
   [[driver-features]].)
 
     (supports? :postgres :set-timezone) ; -> true
 
   deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature])}
+  {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -437,8 +436,8 @@
   whether a feature is supported for this particular database.
 
     (database-supports? :mongo :set-timezone mongo-db) ; -> true"
-  {:arglists '([driver feature database])}
-  (fn [driver feature database]
+  {:arglists '([driver feature database]), :added "0.41.0"}
+  (fn [driver feature _database]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
@@ -491,13 +490,14 @@
 
 (defmulti mbql->native
   "Transpile an MBQL query into the appropriate native query form. `query` will match the schema for an MBQL query in
-  `metabase.mbql.schema/Query`; this function should return a native query that conforms to that schema.
+  [[metabase.mbql.schema/Query]]; this function should return a native query that conforms to that schema.
 
-  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an
-  appropriate message and include that in an appropriate place; alternatively a driver might directly include the
-  query's `:info` dictionary if the underlying language is JSON-based.
+  If the underlying query language supports remarks or comments, the driver should
+  use [[metabase.query-processor.util/query->remark]] to generate an appropriate message and include that in an
+  appropriate place; alternatively a driver might directly include the query's `:info` dictionary if the underlying
+  language is JSON-based.
 
-  The result of this function will be passed directly into calls to `execute-reducible-query`.
+  The result of this function will be passed directly into calls to [[execute-reducible-query]].
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
@@ -568,7 +568,7 @@
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
 
-  This method is currently only used by the H2 driver to load the Sample Dataset, so it is not neccesary for any other
+  This method is currently only used by the H2 driver to load the Sample Database, so it is not neccesary for any other
   drivers to implement it at this time."
   {:arglists '([driver database table])}
   dispatch-on-initialized-driver

@@ -28,6 +28,7 @@ import {
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { isSameField, isLocalField } from "metabase/lib/query/field_ref";
+import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
 
@@ -62,7 +63,7 @@ import {
   getQueryResults,
   isBasedOnExistingQuestion,
 } from "./selectors";
-import { trackNewQuestionSaved } from "./tracking";
+import { trackNewQuestionSaved } from "./analytics";
 
 import { MetabaseApi, CardApi, UserApi, DashboardApi } from "metabase/services";
 
@@ -85,7 +86,6 @@ import {
   getQueryBuilderModeFromLocation,
   getPathNameFromQueryBuilderMode,
   getNextTemplateTagVisibilityState,
-  isAdHocDatasetQuestion,
 } from "./utils";
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -112,6 +112,9 @@ export const setQueryBuilderMode = (
   }
   if (queryBuilderMode === "notebook") {
     dispatch(cancelQuery());
+  }
+  if (queryBuilderMode === "dataset") {
+    dispatch(runQuestionQuery());
   }
 };
 
@@ -253,9 +256,10 @@ export const updateUrl = createThunkAction(
 
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
       dirty =
         !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+        (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
     }
 
     // prevent clobbering of hash when there are fake parameters on the question
@@ -337,13 +341,22 @@ export const resetQB = createAction(RESET_QB);
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
+  dashcardId,
   cardId,
   parameters,
   metadata,
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
-    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+    if (
+      !hasMatchingParameters({
+        dashboard,
+        dashcardId,
+        cardId,
+        parameters,
+        metadata,
+      })
+    ) {
       dispatch(setErrorPage({ status: 403 }));
     }
   } catch (error) {
@@ -417,10 +430,11 @@ export const initializeQB = (location, params, queryParams) => {
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard && deserializedCard.parameters) {
             const metadata = getMetadata(getState());
-            const { dashboardId, parameters } = deserializedCard;
+            const { dashboardId, dashcardId, parameters } = deserializedCard;
             verifyMatchingDashcardAndParameters({
               dispatch,
               dashboardId,
+              dashcardId,
               cardId,
               parameters,
               metadata,
@@ -428,6 +442,7 @@ export const initializeQB = (location, params, queryParams) => {
 
             card.parameters = parameters;
             card.dashboardId = dashboardId;
+            card.dashcardId = dashcardId;
           }
         } else if (card.original_card_id) {
           const deserializedCard = card;
@@ -443,10 +458,11 @@ export const initializeQB = (location, params, queryParams) => {
               })
             ) {
               const metadata = getMetadata(getState());
-              const { dashboardId, parameters } = deserializedCard;
+              const { dashboardId, dashcardId, parameters } = deserializedCard;
               verifyMatchingDashcardAndParameters({
                 dispatch,
                 dashboardId,
+                dashcardId,
                 cardId: card.id,
                 parameters,
                 metadata,
@@ -454,6 +470,7 @@ export const initializeQB = (location, params, queryParams) => {
 
               card.parameters = parameters;
               card.dashboardId = dashboardId;
+              card.dashcardId = dashcardId;
             }
           }
         }
@@ -991,6 +1008,7 @@ export const updateQuestion = (
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
         newQuestion = newQuestion.setDataset(false);
+        dispatch(onCloseQuestionDetails());
       }
     }
 
@@ -1180,7 +1198,7 @@ export const apiUpdateQuestion = (question, { rerunQuery = false } = {}) => {
       // (it's necessary for datasets to behave like tables opened in simple mode)
       // When doing updates like changing name, description, etc., we need to omit the dataset_query in the request body
       .reduxUpdate(dispatch, {
-        excludeDatasetQuery: isAdHocDatasetQuestion(question, originalQuestion),
+        excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
       });
 
     // reload the question alerts for the current question
@@ -1226,22 +1244,19 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-    // This ensures we still run the underlying query instead of a nested one if there are not extra clauses
-    // Otherwise, when turning a dataset into a saved question, some things can go wrong
-    // (like "join-aliases" will appear in field refs and some QB parts will behave as if we're running a completely different question)
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (isAdHocDatasetQuestion(question, originalQuestion)) {
-      question = originalQuestion;
-    }
-
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.card().id == null
       : true;
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+      const isAdHocModel =
+        question.isDataset() &&
+        isAdHocModelQuestion(question, originalQuestion);
+
+      dispatch(
+        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
+      );
     }
 
     if (getIsPreviewing(getState())) {

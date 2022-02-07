@@ -14,9 +14,9 @@ Problems, their causes, how to detect them, and how to fix them.
 
 ### Authentication
 
-- [LDAP][ldap].
-- [SAML][sam].
 - [People can't log in to Metabase][login].
+- [LDAP][ldap].
+- [SAML][saml].
 
 ### Permissions
 

@@ -4,11 +4,24 @@ describe("scenarios > auth > search", () => {
   beforeEach(restore);
 
   describe("universal search", () => {
-    it("should work for admin", () => {
+    it("should work for admin (metabase#20018)", () => {
       cy.signInAsAdmin();
+
       cy.visit("/");
-      cy.findByPlaceholderText("Search…").type("product{enter}");
-      cy.findByText("Products");
+      cy.findByPlaceholderText("Search…")
+        .as("searchBox")
+        .type("product")
+        .blur();
+
+      cy.findByTestId("search-results-list").within(() => {
+        getProductsSearchResults();
+      });
+
+      cy.get("@searchBox").type("{enter}");
+
+      cy.findByTestId("search-result-item").within(() => {
+        getProductsSearchResults();
+      });
     });
 
     it("should work for user with permissions (metabase#12332)", () => {
@@ -26,3 +39,11 @@ describe("scenarios > auth > search", () => {
     });
   });
 });
+
+function getProductsSearchResults() {
+  cy.findByText("Products");
+  // This part about the description reproduces metabase#20018
+  cy.findByText(
+    "Includes a catalog of all the products ever sold by the famed Sample Company.",
+  );
+}

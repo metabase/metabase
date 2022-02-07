@@ -73,7 +73,7 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
-    getHasSampleDataset: state =>
+    getHasSampleDatabase: state =>
       _.any(Databases.selectors.getList(state), db => db.is_sample),
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue

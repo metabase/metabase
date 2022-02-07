@@ -37,9 +37,12 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
+(defn- ->timestamp [honeysql-form]
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
+
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form)
+  (hx/+ (->timestamp hsql-form)
         (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres
@@ -180,8 +183,8 @@
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
                                (hsql/call :convert_from expr (hx/literal "UTF8"))))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
-(defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :extract    unit              (->timestamp expr)))
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
@@ -336,7 +339,7 @@
    (keyword "timestamp without timezone") :type/DateTime})
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
-  [driver column]
+  [_driver column]
   (if (contains? *enum-types* column)
     :type/PostgresEnum
     (default-base-types column)))
@@ -362,22 +365,23 @@
                           (secret/db-details-prop->secret-map db-details "ssl-client-cert"))
         ssl-key-pw      (when (:ssl-use-client-auth db-details)
                           (secret/db-details-prop->secret-map db-details "ssl-key-password"))
-        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))]
+        all-subprops    (apply concat (map :subprops [ssl-root-cert ssl-client-key ssl-client-cert ssl-key-pw]))
+        has-value?      (comp some? :value)]
     (cond-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
       (nil? (:ssl-mode db-details))
       (assoc :sslmode "require")
 
-      ssl-root-cert
+      (has-value? ssl-root-cert)
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
-      ssl-client-key
+      (has-value? ssl-client-key)
       (assoc :sslkey (secret/value->file! ssl-client-key :postgres))
 
-      ssl-client-cert
+      (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))
 
-      ssl-key-pw
+      (has-value? ssl-key-pw)
       (assoc :sslpassword (secret/value->string ssl-key-pw))
 
       true
@@ -393,12 +397,12 @@
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
   [_ {ssl? :ssl, :as details-map}]
   (let [props (-> details-map
-                (update :port (fn [port]
-                                (if (string? port)
-                                  (Integer/parseInt port)
-                                  port)))
-                ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-                (dissoc :ssl))
+                  (update :port (fn [port]
+                                  (if (string? port)
+                                    (Integer/parseInt port)
+                                    port)))
+                  ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+                  (dissoc :ssl))
         props (if ssl?
                 (let [ssl-prms (ssl-params details-map)]
                   ;; if the user happened to specify any of the SSL options directly, allow those to take
@@ -408,10 +412,10 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
-        props (-> props
-                (set/rename-keys {:dbname :db})
-                db.spec/postgres
-                (sql-jdbc.common/handle-additional-options details-map))]
+        props (as-> props it
+                (set/rename-keys it {:dbname :db})
+                (db.spec/spec :postgres it)
+                (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
@@ -445,7 +449,7 @@
 ;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
 ;; BigDecimal if so; otherwise, proceeding as normal
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/DOUBLE]
-  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
     (fn []
       (some-> (.getString rs i) u/parse-currency))

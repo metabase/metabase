@@ -8,8 +8,8 @@
             [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
             [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
-            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class name below
+            [metabase.driver.sync :as driver.s]
+            [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
             [metabase.query-processor.context :as context]
             [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.store :as qp.store]
@@ -20,11 +20,11 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
+  (:import clojure.lang.PersistentList
+           [com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableListOption
                                       BigQuery$TableOption BigQueryException BigQueryOptions Dataset DatasetId Field
                                       Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table TableId
-                                      TableResult]
-           java.util.Collections))
+                                      TableResult]))
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
@@ -33,17 +33,20 @@
 ;;; |                                                     Client                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private bigquery-scope
-  "The scope to use for executing BigQuery requests; see:
+(def ^:private ^PersistentList bigquery-scopes
+  "The scopes to use for executing BigQuery requests; see:
   `https://cloud.google.com/bigquery/docs/samples/bigquery-auth-drive-scope`.
-  Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly."
-  "https://www.googleapis.com/auth/bigquery")
+  Unclear if this can be sourced from the `com.google.cloud.bigquery` package directly.  We use the standard bigquery
+  scope, as well as the drive scope (allowing for configured Drive external tables to be queried, as per
+  `https://cloud.google.com/bigquery/external-data-drive`)."
+  '("https://www.googleapis.com/auth/bigquery"
+    "https://www.googleapis.com/auth/drive"))
 
 (defn- ^BigQuery database->client
   [database]
   (let [creds   (bigquery.common/database-details->service-account-credential (:details database))
         bq-bldr (doto (BigQueryOptions/newBuilder)
-                  (.setCredentials (.createScoped creds (Collections/singletonList bigquery-scope))))]
+                  (.setCredentials (.createScoped creds bigquery-scopes)))]
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -64,9 +67,9 @@
           exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
       (apply concat (for [^Dataset dataset (.iterateAll datasets)
                           :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                          :when (describe-database/include-schema? (.getDataset dataset-id)
-                                                                   inclusion-patterns
-                                                                   exclusion-patterns)]
+                          :when (driver.s/include-schema? inclusion-patterns
+                                                          exclusion-patterns
+                                                          (.getDataset dataset-id))]
                       (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                           .iterateAll
                           .iterator

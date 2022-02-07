@@ -8,7 +8,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
-(deftest add-period-test
+(deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
          (u/add-period "This sentence needs a period")))
   (is (= "This sentence doesn't need a period!"
@@ -18,7 +18,7 @@
   (is (= "   "
          (u/add-period "   "))))
 
-(deftest decolorize-test
+(deftest ^:parallel decolorize-test
   (is (= "[31mmessage[0m"
          (u/colorize 'red "message")))
   (is (= "message"
@@ -28,7 +28,7 @@
   (is (= nil
          (u/decolorize nil))))
 
-(deftest host-up?-test
+(deftest ^:parallel host-up?-test
   (testing "host-up?"
     (mt/are+ [s expected] (= expected
                              (u/host-up? s))
@@ -38,7 +38,7 @@
     (is (= false
            (u/host-port-up? "nosuchhost" 8005)))))
 
-(deftest url?-test
+(deftest ^:parallel url?-test
   (mt/are+ [s expected] (= expected
                         (u/url? s))
     "http://google.com"                                                                      true
@@ -73,7 +73,7 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
-(deftest state?-test
+(deftest ^:parallel state?-test
   (mt/are+ [s expected] (= expected
                         (u/state? s))
     "louisiana"      true
@@ -86,7 +86,7 @@
     3                false
     (Object.)        false))
 
-(deftest qualified-name-test
+(deftest ^:parallel qualified-name-test
   (mt/are+ [k expected] (= expected
                         (u/qualified-name k))
     :keyword                          "keyword"
@@ -103,19 +103,19 @@
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
 
-(deftest rpartial-test
+(deftest ^:parallel rpartial-test
   (is (= 3
          ((u/rpartial - 5) 8)))
   (is (= -7
          ((u/rpartial - 5 10) 8))))
 
-(deftest key-by-test
+(deftest ^:parallel key-by-test
   (is (= {1 {:id 1, :name "Rasta"}
           2 {:id 2, :name "Lucky"}}
          (u/key-by :id [{:id 1, :name "Rasta"}
                         {:id 2, :name "Lucky"}]))))
 
-(deftest remove-diacritical-marks-test
+(deftest ^:parallel remove-diacritical-marks-test
   (doseq [[s expected] {"üuuü" "uuuu"
                         "åéîü" "aeiu"
                         "åçñx" "acnx"
@@ -125,7 +125,7 @@
       (is (= expected
              (u/remove-diacritical-marks s))))))
 
-(deftest slugify-test
+(deftest ^:parallel slugify-test
   (doseq [[group s->expected]
           {nil
            {"ToucanFest 2017"               "toucanfest_2017"
@@ -144,7 +144,7 @@
           (is (= expected
                  (u/slugify s))))))))
 
-(deftest full-exception-chain-test
+(deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"
     (is (= nil
            (u/full-exception-chain nil)))
@@ -163,7 +163,7 @@
       (is (= [{:a 1} {:b 2} {:c 3}]
              (map ex-data (u/full-exception-chain e)))))))
 
-(deftest select-nested-keys-test
+(deftest ^:parallel select-nested-keys-test
   (mt/are+ [m keyseq expected] (= expected
                                   (u/select-nested-keys m keyseq))
     {:a 100, :b {:c 200, :d 300}}              [:a [:b :d] :c]   {:a 100, :b {:d 300}}
@@ -179,7 +179,7 @@
     {:a 100, :b {:c 200, :d 300}}              []                {}
     {}                                         [:c]              {}))
 
-(deftest base64-string?-test
+(deftest ^:parallel base64-string?-test
   (mt/are+ [s expected]    (= expected
                         (u/base64-string? s))
     "ABc="         true
@@ -199,7 +199,7 @@
     ;; padding has to go at the end
     "==QQ"         false))
 
-(deftest select-keys-test
+(deftest ^:parallel select-keys-test
   (testing "select-non-nil-keys"
     (is (= {:a 100}
            (u/select-non-nil-keys {:a 100, :b nil} #{:a :b :c}))))
@@ -209,7 +209,7 @@
              :present #{:a :b :c}
              :non-nil #{:d :e :f})))))
 
-(deftest order-of-magnitude-test
+(deftest ^:parallel order-of-magnitude-test
   (mt/are+ [n expected] (= expected
                         (u/order-of-magnitude n))
     0.01  -2
@@ -221,7 +221,7 @@
     0     0
     -1444 3))
 
-(deftest index-of-test
+(deftest ^:parallel index-of-test
   (are [input expected] (= expected
                            (u/index-of pos? input))
     [-1 0 2 3]   2
@@ -229,11 +229,11 @@
     nil          nil
     []           nil))
 
-(deftest snake-key-test
+(deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
          (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
-(deftest one-or-many-test
+(deftest ^:parallel one-or-many-test
   (mt/are+ [input expected] (= expected
                             (u/one-or-many input))
     nil   nil
@@ -241,7 +241,7 @@
     42    [42]
     [42]  [42]))
 
-(deftest topological-sort-test
+(deftest ^:parallel topological-sort-test
   (mt/are+ [input expected] (= expected
                             (u/topological-sort identity input))
     {:b []
@@ -264,7 +264,7 @@
     (is (= "ID"
            (u/upper-case-en "id")))))
 
-(deftest parse-currency-test
+(deftest ^:parallel parse-currency-test
   (mt/are+ [s expected] (= expected
                         (u/parse-currency s))
     nil             nil
@@ -285,7 +285,7 @@
     "$.05"          0.05M
     "0.05"          0.05M))
 
-(deftest or-with-test
+(deftest ^:parallel or-with-test
   (testing "empty case"
     (is (= nil (u/or-with identity))))
   (testing "short-circuiting"
@@ -300,7 +300,7 @@
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
 
-(deftest ip-address?-test
+(deftest ^:parallel ip-address?-test
   (mt/are+ [x expected] (= expected
                            (u/ip-address? x))
     "8.8.8.8"              true
@@ -317,7 +317,7 @@
     100                    false))
 
 ;; this would be such a good spot for test.check
-(deftest sorted-take-test
+(deftest ^:parallel sorted-take-test
   (testing "It ensures there are never more than `size` items in the priority queue"
     (let [limit 5
           rf    (u/sorted-take limit compare)]
@@ -348,7 +348,7 @@
          (transduce (map identity)
                     (u/sorted-take size kompare)
                     coll)))))
-(deftest email->domain-test
+(deftest ^:parallel email->domain-test
   (are [domain email] (is (= domain
                              (u/email->domain email))
                           (format "Domain of email address '%s'" email))
@@ -357,7 +357,7 @@
     "metabase.co.uk" "cam@metabase.co.uk"
     "metabase.com"   "cam.saul+1@metabase.com"))
 
-(deftest email-in-domain-test
+(deftest ^:parallel email-in-domain-test
   (are [in-domain? email domain] (is (= in-domain?
                                         (u/email-in-domain? email domain))
                                      (format "Is email '%s' in domain '%s'?" email domain))

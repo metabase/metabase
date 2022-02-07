@@ -139,10 +139,14 @@ export const DashboardApi = {
   createPublicLink: POST("/api/dashboard/:id/public_link"),
   deletePublicLink: DELETE("/api/dashboard/:id/public_link"),
 
-  cardQuery: POST("/api/dashboard/:dashboardId/card/:cardId/query"),
-  cardQueryPivot: POST("/api/dashboard/:dashboardId/card/pivot/:cardId/query"),
+  cardQuery: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
+  cardQueryPivot: POST(
+    "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
+  ),
   exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/card/:cardId/query/:exportFormat",
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 
@@ -164,9 +168,11 @@ export const PublicApi = {
   cardQuery: GET("/api/public/card/:uuid/query"),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
   dashboard: GET("/api/public/dashboard/:uuid"),
-  dashboardCardQuery: GET("/api/public/dashboard/:uuid/card/:cardId"),
+  dashboardCardQuery: GET(
+    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+  ),
   dashboardCardQueryPivot: GET(
-    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/card/:cardId",
+    PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
 };
 
@@ -210,7 +216,7 @@ export const MetabaseApi = {
   db_list: GET("/api/database", res => res["data"]),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
-  db_add_sample_dataset: POST("/api/database/sample_dataset"),
+  db_add_sample_database: POST("/api/database/sample_database"),
   db_get: GET("/api/database/:dbId"),
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),

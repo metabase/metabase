@@ -737,7 +737,7 @@
                                     Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
                         :from      [v3_test_data.checkins]
                         :left-join [v3_test_data.Organização Organização__via__venue_id
-                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id ]
+                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id]
                         :limit     [1]}
                       query))))))))
 
@@ -813,11 +813,11 @@
                 :table-name "orders"
                 :query      (str "SELECT APPROX_QUANTILES(`v3_sample_dataset.orders`.`quantity`, 10)[OFFSET(5)] AS `CE`"
                                  " FROM `v3_sample_dataset.orders` LIMIT 10")}
-              (qp/query->native (mt/mbql-query orders
-                                  {:aggregation [[:aggregation-options
-                                                  [:percentile $orders.quantity 0.5]
-                                                  {:name "CE", :display-name "CE"}]]
-                                   :limit       10}))))))))
+               (qp/compile (mt/mbql-query orders
+                             {:aggregation [[:aggregation-options
+                                             [:percentile $orders.quantity 0.5]
+                                             {:name "CE", :display-name "CE"}]]
+                              :limit       10}))))))))
 
 
 (deftest no-qualify-breakout-field-name-with-subquery-test

@@ -50,7 +50,7 @@
                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
               :cols (mapv (partial qp.test/native-query-col :venues) [:id :longitude :category_id :price :name :latitude])}
              (mt/format-rows-by [int 4.0 int int str 4.0]
-               (let [{source-query :query} (qp/query->native
+               (let [{source-query :query} (qp/compile
                                             (mt/mbql-query venues
                                               {:fields [$id $longitude $category_id $price $name $latitude]}))]
                  (qp.test/rows-and-cols
@@ -192,7 +192,7 @@
              (mt/rows
               (mt/format-rows-by [int int]
                 (mt/run-mbql-query venues
-                  {:source-query {:native (:query (qp/query->native (mt/mbql-query venues)))}
+                  {:source-query {:native (:query (qp/compile (mt/mbql-query venues)))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
 
@@ -274,7 +274,7 @@
                 :filter       [:= *id 1]}))))))
 
 (defn- honeysql->sql
-  "Convert `honeysql-form` to the format returned by `query->native`. Writing HoneySQL is a lot easier that writing
+  "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
   (let [[sql & params] (hsql/format honeysql-form :quoting :ansi)]
@@ -301,7 +301,7 @@
            :from   [[venues-source-honeysql :source]]
            :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
            :limit  10})
-         (qp/query->native
+         (qp/compile
            {:database (mt/id)
             :type     :query
             :query    {:source-query {:source-table (mt/id :venues)}
@@ -321,7 +321,7 @@
                     [:>= (hsql/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
                     [:< (hsql/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
            :limit  10})
-         (qp/query->native
+         (qp/compile
            (mt/mbql-query venues
              {:source-query {:source-table $$venues}
               :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
@@ -338,7 +338,7 @@
                          "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
                          ") \"source\"")
             :params nil}
-           (qp/query->native
+           (qp/compile
             (mt/mbql-query venues
               {:source-query {:source-table $$venues
                               :aggregation  [[:stddev $id]]
@@ -378,7 +378,7 @@
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
              :limit  10})
-           (qp/query->native
+           (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -396,7 +396,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:> :source.sender_id 3]
              :limit  10})
-           (qp/query->native
+           (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
                :limit        10
@@ -414,7 +414,7 @@
                                                                                            :type         "text"
                                                                                            :required     true
                                                                                            :default      "Widget"}}}}}]
-             (qp/query->native
+             (qp/compile
                {:database (mt/id)
                 :type     :query
                 :query    {:source-table (str "card__" (u/the-id card))}}))))))
@@ -1185,7 +1185,7 @@
           (testing "original query"
             (when (= driver/*driver* :h2)
               (is (= q1-native
-                     (qp/query->native q1))))
+                     (qp/compile q1))))
             (is (= [[543]]
                    (mt/formatted-rows [int] (qp/process-query q1)))))
           (testing "nested query"
@@ -1197,7 +1197,7 @@
                                                                "FROM (%s) \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
-                       (qp/query->native q2))))
+                       (qp/compile q2))))
               (is (= [[543]]
                      (mt/formatted-rows [int] (qp/process-query q2)))))))))))
 
@@ -1284,8 +1284,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
-      ;; See https://github.com/metabase/metabase/issues/16389#issuecomment-1013780973 for more details on why this query
-      ;; is broken
+      ;; See #19757 for more details on why this query is broken
       (mt/dataset sample-dataset
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (let [query (mt/mbql-query orders

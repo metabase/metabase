@@ -1,8 +1,8 @@
 // Imported from drillthroughs.e2e.spec.js
 import { restore } from "__support__/e2e/cypress";
-import { SAMPLE_DATASET } from "__support__/e2e/cypress_sample_dataset";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATASET;
+const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 // This question is part of our pre-defined data set used for testing
 const Q2 = {
@@ -97,7 +97,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               cy.server();
               cy.route(
                 "POST",
-                `/api/dashboard/${DASHBOARD_ID}/card/${CARD_ID}/query`,
+                `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${CARD_ID}/query`,
               ).as("cardQuery");
 
               // Add previously created question to the new dashboard
@@ -194,7 +194,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             cy.server();
             cy.route(
               "POST",
-              `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+              `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
             ).as("cardQuery");
             cy.route("POST", `/api/dataset`).as("dataset");
 

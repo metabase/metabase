@@ -15,14 +15,14 @@ function typeField(label, value) {
 function toggleFieldWithDisplayName(displayName) {
   cy.contains(displayName)
     .closest(".Form-field")
-    .find("a")
+    .find("input")
     .click();
 }
 
 function selectFieldOption(fieldName, option) {
   cy.contains(fieldName)
     .parents(".Form-field")
-    .find(".AdminSelect")
+    .findByTestId("select-button")
     .click();
   popover()
     .contains(option)
@@ -160,7 +160,7 @@ describe("scenarios > admin > databases > add", () => {
     cy.visit("/admin/databases/create");
     cy.contains("Database type")
       .closest(".Form-field")
-      .find(".AdminSelect")
+      .findByTestId("select-button")
       .click();
     popover().within(() => {
       cy.findByText("Oracle");
@@ -175,7 +175,7 @@ describe("scenarios > admin > databases > add", () => {
 
   it("should respect users' decision to manually sync large database (metabase#17450)", () => {
     const H2_CONNECTION_STRING =
-      "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest";
+      "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest";
 
     const databaseName = "Another H2";
 

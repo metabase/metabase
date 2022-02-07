@@ -2,8 +2,8 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
-import ExternalLink from "metabase/components/ExternalLink";
+import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";

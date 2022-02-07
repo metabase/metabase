@@ -297,5 +297,21 @@
         ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post "dataset" (assoc (mt/mbql-query venues {:limit 1})
-                                                                   :info {:card-id (u/the-id card)}))))))))
+               (mt/user-http-request :rasta :post 403 "dataset" (assoc (mt/mbql-query venues {:limit 1})
+                                                                       :info {:card-id (u/the-id card)}))))))))
+
+(deftest e2e-ignore-user-supplied-perms-test
+  (testing "You shouldn't be able to bypass security restrictions by passing in `::qp.perms/perms` in the query"
+    (binding [api/*current-user-id*              (mt/user->id :rasta)
+              api/*current-user-permissions-set* (atom #{})]
+      (letfn [(process-query []
+                (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                         ::qp.perms/perms {:gtaps #{(perms/table-query-path (mt/id :venues))}})))]
+        (testing "Make sure the middleware is actually preventing something by disabling it"
+          (with-redefs [qp.perms/remove-permissions-key identity]
+            (is (partial= {:status :completed}
+                          (process-query)))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (process-query)))))))

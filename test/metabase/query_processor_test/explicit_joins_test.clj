@@ -462,7 +462,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "we should be able to use a SQL question as a source query in a Join"
       (mt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
-                                                   (mt/native-query (qp/query->native (mt/mbql-query venues))))]
+                                                   (mt/native-query (qp/compile (mt/mbql-query venues))))]
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
@@ -579,8 +579,9 @@
                                               [:field "count" {:base-type :type/BigInteger}]]}
                          :limit        2})]
             (mt/with-native-query-testing-context query
-              (is (= [[4 89 0.46 41]]
-                     (mt/formatted-rows [int int 2.0 int]
+              ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
+              (is (= [[4 89 0.46 4 41]]
+                     (mt/formatted-rows [int int 2.0 int int]
                        (qp/process-query query)))))))))))
 
 (deftest join-against-saved-question-with-sort-test
@@ -630,3 +631,98 @@
               (is (= [[1 448] [1 493]]
                      (mt/formatted-rows [int int]
                        (qp/process-query query)))))))))))
+
+(deftest joining-nested-queries-with-same-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing (str "Should be able to join two nested queries with the same aggregation on a Field in their respective "
+                  "source queries (#18512)")
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query reviews
+                      {:source-query {:source-table $$reviews
+                                      :joins        [{:source-table $$products
+                                                      :alias        "Products"
+                                                      :condition    [:= $product_id &Products.products.id]
+                                                      :fields       :all}]
+                                      :breakout     [!month.&Products.products.created_at]
+                                      :aggregation  [[:distinct &Products.products.id]]
+                                      :filter       [:= &Products.products.category "Doohickey"]}
+                       :joins        [{:source-query {:source-table $$reviews
+                                                      :joins        [{:source-table $$products
+                                                                      :alias        "Products"
+                                                                      :condition    [:= $product_id &Products.products.id]
+                                                                      :fields       :all}]
+                                                      :breakout     [!month.&Products.products.created_at]
+                                                      :aggregation  [[:distinct &Products.products.id]]
+                                                      :filter       [:= &Products.products.category "Gizmo"]}
+                                       :alias        "Q2"
+                                       :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
+                                       :fields       :all}]
+                       :order-by     [[:asc !month.&Products.products.created_at]]
+                       :limit        3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-05-01T00:00:00Z" 3 nil nil]
+                    ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
+                    ["2016-08-01T00:00:00Z" 2 nil nil]]
+                   (mt/formatted-rows [str int str int]
+                     (qp/process-query query))))))))))
+
+(deftest join-against-same-table-as-source-query-source-table-test
+  (testing "Joining against the same table as the source table of the source query should work (#18502)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query people
+                      {:source-query {:source-table $$people
+                                      :breakout     [!month.created_at]
+                                      :aggregation  [[:count]]}
+                       :joins        [{:source-query {:source-table $$people
+                                                      :breakout     [!month.birth_date]
+                                                      :aggregation  [[:count]]}
+                                       :alias        "Q2"
+                                       :condition    [:= !month.created_at !month.&Q2.birth_date]
+                                       :fields       :all}]
+                       :order-by     [[:asc !month.created_at]]
+                       :limit        3})]
+          (mt/with-native-query-testing-context query
+            (is (= [["2016-04-01T00:00:00Z" 26 nil nil]
+                    ["2016-05-01T00:00:00Z" 77 nil nil]
+                    ["2016-06-01T00:00:00Z" 82 nil nil]]
+                   (mt/formatted-rows [str int str int]
+                     (qp/process-query query))))))))))
+
+(deftest join-against-multiple-saved-questions-with-same-column-test
+  (testing "Should be able to join multiple against saved questions on the same column (#15863)"
+    (mt/dataset sample-dataset
+      (let [q1         (mt/mbql-query products {:breakout [$category], :aggregation [[:count]]})
+            q2         (mt/mbql-query products {:breakout [$category], :aggregation [[:sum $price]]})
+            q3         (mt/mbql-query products {:breakout [$category], :aggregation [[:avg $rating]]})
+            metadata   (fn [query]
+                         {:post [(some? %)]}
+                         (-> query qp/process-query :data :results_metadata :columns))
+            query-card (fn [query]
+                         {:dataset_query query, :result_metadata (metadata query)})]
+        (mt/with-temp* [Card [{card-1-id :id} (query-card q1)]
+                        Card [{card-2-id :id} (query-card q2)]
+                        Card [{card-3-id :id} (query-card q3)]]
+          (let [query (mt/mbql-query products
+                        {:source-table (format "card__%d" card-1-id)
+                         :joins        [{:fields       :all
+                                         :source-table (format "card__%d" card-2-id)
+                                         :condition    [:=
+                                                        $category
+                                                        &Q2.category]
+                                         :alias        "Q2"}
+                                        {:fields       :all
+                                         :source-table (format "card__%d" card-3-id)
+                                         :condition    [:=
+                                                        $category
+                                                        &Q3.category]
+                                         :alias        "Q3"}]})]
+            (mt/with-native-query-testing-context query
+              (let [results (qp/process-query query)]
+                (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum" "Q3 → Category" "Q3 → Avg"]
+                       (map :display_name (get-in results [:data :results_metadata :columns]))))
+                (is (= [["Doohickey" 42 "Doohickey" 2185.89 "Doohickey" 3.73]
+                        ["Gadget"    53 "Gadget"    3019.2  "Gadget"    3.43]
+                        ["Gizmo"     51 "Gizmo"     2834.88 "Gizmo"     3.64]
+                        ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
+                       (mt/formatted-rows [str int str 2.0 str 2.0] results)))))))))))

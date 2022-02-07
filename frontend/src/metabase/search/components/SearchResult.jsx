@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Box, Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -19,6 +18,7 @@ import {
   ContextText,
   ContextContainer,
   ResultSpinner,
+  ResultLinkContent,
 } from "./SearchResult.styled";
 import { InfoText } from "./InfoText";
 
@@ -92,7 +92,7 @@ function Context({ context }) {
 export default function SearchResult({
   result,
   compact,
-  hasDescription,
+  hasDescription = true,
   onClick,
 }) {
   const active = isItemActive(result);
@@ -106,9 +106,9 @@ export default function SearchResult({
       onClick={onClick ? () => onClick(result) : undefined}
       data-testid="search-result-item"
     >
-      <Flex align="start">
+      <ResultLinkContent>
         <ItemIcon item={result} type={result.model} active={active} />
-        <Box>
+        <div>
           <TitleWrapper>
             <Title active={active} data-testid="search-result-item-name">
               {result.name}
@@ -125,9 +125,9 @@ export default function SearchResult({
             <Description>{result.description}</Description>
           )}
           <Score scores={result.scores} />
-        </Box>
+        </div>
         {loading && <ResultSpinner size={24} borderWidth={3} />}
-      </Flex>
+      </ResultLinkContent>
       {compact || <Context context={result.context} />}
     </ResultLink>
   );

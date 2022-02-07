@@ -4,7 +4,7 @@ import { formDomOnlyProps } from "metabase/lib/redux";
 import Input from "metabase/components/Input/Input";
 
 // Important: do NOT use this as an input of type="file"
-// For file inputs, See component FormTextFileWidget.jsx
+// For file inputs, See component FormTextFileWidget.tsx
 
 const propTypes = {
   type: PropTypes.string,

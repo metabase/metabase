@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_database_fixture";
 import PivotByDrill from "metabase/modes/components/drill/PivotByDrill";
 
 describe("PivotByDrill", () => {

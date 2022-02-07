@@ -477,3 +477,22 @@
               (doseq [table (map Table [(u/the-id table1) (u/the-id table2)])]
                 ;; and the existing tables should have been updated with that schema
                 (is (= "my-dataset" (:schema table)))))))))))
+
+(deftest query-drive-external-tables
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
+      ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on
+      ;; https://docs.google.com/spreadsheets/d/1ETIY759w8Xd8ZXcL-IullMxWjKdO-sKSIUOfG1KYh8U/edit?usp=sharing
+      ;; the service account to which our CI credentials are associated:
+      ;;   metabase-ci@metabase-bigquery-ci.iam.gserviceaccount.com
+      ;; was given View permission to this sheet (via the Drive UI), and was ALSO given BigQuery Data Viewer
+      ;; permission in the BigQuery UI under the project (`metabase-bigquery-ci`), dataset (`google_drive_dataset`),
+      ;; and table (`metabase_ci_bigquery_sheet`)
+      (is (= [[1 "foo" "bar"]
+              [2 "alice" "bob"]
+              [3 "x" "y"]]
+            (-> {:query
+                 "SELECT * FROM `metabase-bigquery-ci.google_drive_dataset.metabase_ci_bigquery_sheet` ORDER BY `id`"}
+                mt/native-query
+                qp/process-query
+                mt/rows))))))

@@ -3,8 +3,8 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import ExternalLink from "metabase/components/ExternalLink";
-import Link from "metabase/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";

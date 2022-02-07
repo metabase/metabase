@@ -311,7 +311,7 @@
       (let [join-vec    [{:source-table (mt/id :categories)
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
-                          :alias        "Dealios" }]
+                          :alias        "Dealios"}]
             q           (query/adhoc-query {:query {:source-table (mt/id :venues)
                                                     :joins join-vec
                                                     :aggregation [[:sum [:field (mt/id :categories :id) {:join-alias "Dealios"}]]]}

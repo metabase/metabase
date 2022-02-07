@@ -6,7 +6,7 @@ import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
 
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
@@ -116,7 +117,9 @@ export default class TableInteractive extends Component {
 
     const isDataChange =
       data && nextData && !_.isEqual(data.cols, nextData.cols);
-    const isDatasetStatusChange = card.dataset !== nextCard.dataset;
+    const isDatasetStatusChange =
+      isAdHocModelQuestionCard(nextCard, card) ||
+      isAdHocModelQuestionCard(card, nextCard);
 
     if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
@@ -153,8 +156,11 @@ export default class TableInteractive extends Component {
     );
   }
 
-  componentDidUpdate() {
-    if (!this.state.contentWidths) {
+  componentDidUpdate(prevProps) {
+    if (
+      !this.state.contentWidths ||
+      prevProps.renderTableHeaderWrapper !== this.props.renderTableHeaderWrapper
+    ) {
       this._measure();
     } else if (this.props.onContentWidthChange) {
       const total = this.state.columnWidths.reduce((sum, width) => sum + width);
@@ -232,7 +238,10 @@ export default class TableInteractive extends Component {
           }
         });
 
-        ReactDOM.unmountComponentAtNode(this._div);
+        // Doing this on next tick makes sure it actually gets removed on initial measure
+        setTimeout(() => {
+          ReactDOM.unmountComponentAtNode(this._div);
+        }, 0);
 
         delete this.columnNeedsResize;
 

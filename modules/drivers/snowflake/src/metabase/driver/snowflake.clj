@@ -17,6 +17,7 @@
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.driver.sync :as driver.s]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
@@ -239,14 +240,19 @@
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (u/the-id database))
-      (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)
-            sql  (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)]
+      (let [spec            (sql-jdbc.conn/db->pooled-connection-spec database)
+            sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
+            schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
+            [inclusion-patterns exclusion-patterns] schema-patterns]
         (log/tracef "[Snowflake] %s" sql)
         (with-open [conn (jdbc/get-connection spec)]
           {:tables (into
                     #{}
                     (comp (filter (fn [{schema :schema_name, table-name :name}]
                                     (and (not (contains? excluded-schemas schema))
+                                         (driver.s/include-schema? inclusion-patterns
+                                                                   exclusion-patterns
+                                                                   schema)
                                          (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
                           (map (fn [{schema :schema_name, table-name :name, remark :comment}]
                                  {:name        table-name

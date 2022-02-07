@@ -13,6 +13,6 @@ export function withDatabase(databaseId, f) {
   });
 }
 
-export function withSampleDataset(f) {
+export function withSampleDatabase(f) {
   return withDatabase(1, f);
 }

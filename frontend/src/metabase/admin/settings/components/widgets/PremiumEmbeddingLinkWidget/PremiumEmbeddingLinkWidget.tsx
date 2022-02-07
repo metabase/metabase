@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { PremiumEmbeddingLinkWidgetRoot } from "./PremiumEmbeddingLinkWidget.styled";
 
 export const PremiumEmbeddingLinkWidget = () => {

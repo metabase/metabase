@@ -663,7 +663,24 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))
+
+(deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+  (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
+    (mt/test-driver :postgres
+      (mt/dataset sample-dataset
+        (let [query (mt/mbql-query people
+                      {:fields [!month.birth_date
+                                !month.created_at
+                                !month.id]
+                       :limit  1})]
+          (is (sql= '{:select [date_trunc ("month" people.birth_date)             AS birth_date
+                               date_trunc ("month" people.created_at)             AS created_at
+                               ;; non-temporal types should still get casted.
+                               date_trunc ("month" CAST (people.id AS timestamp)) AS id]
+                      :from   [people]
+                      :limit  [1]}
+                    query)))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
@@ -675,3 +692,30 @@
                                "Skipping %s because %s env var is not set"
                                "postgres-ssl-connectivity-test"
                                "MB_POSTGRES_SSL_TEST_SSL")))))
+
+(def ^:private dummy-pem-contents
+  (str "-----BEGIN CERTIFICATE-----\n"
+       "-----END CERTIFICATE-----"))
+
+(deftest handle-nil-client-ssl-properties-test
+  (mt/test-driver :postgres
+    (testing "Setting only one of the client SSL params doesn't result in an NPE error (#19984)"
+      (mt/with-temp-file [dummy-root-cert   "dummy-root-cert.pem"
+                          dummy-client-cert "dummy-client-cert.pem"]
+        (spit dummy-root-cert dummy-pem-contents)
+        (spit dummy-client-cert dummy-pem-contents)
+        (let [db-details {:host "dummy-hostname"
+                          :dbname "test-db"
+                          :port 5432
+                          :user "dummy-login"
+                          :password "dummy-password"
+                          :ssl true
+                          :ssl-use-client-auth true
+                          :ssl-mode "verify-full"
+                          :ssl-root-cert-options "local"
+                          :ssl-root-cert-path dummy-root-cert
+                          :ssl-client-cert-options "local"
+                          :ssl-client-cert-value dummy-client-cert}]
+          ;; this will fail/throw an NPE if the fix for #19984 is not put in place (since the server code will
+          ;; attempt to "store" a non-existent :ssl-client-key-value to a temp file)
+          (is (map? (#'postgres/ssl-params db-details))))))))

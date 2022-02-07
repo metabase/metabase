@@ -4,10 +4,9 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
+import SearchResult from "metabase/search/components/SearchResult";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import Search from "metabase/entities/search";
-
-import { SearchResultWithInfoPopover } from "./SearchResultWithInfoPopover";
 
 const propTypes = {
   databaseId: PropTypes.string,
@@ -52,11 +51,14 @@ export function SearchResults({
           return (
             <ul>
               {list.map(item => (
-                <SearchResultWithInfoPopover
-                  key={`${item.id}_${item.model}`}
-                  item={item}
-                  onSelect={onSelect}
-                />
+                <li key={`${item.id}_${item.model}`}>
+                  <SearchResult
+                    result={item}
+                    onClick={onSelect}
+                    compact
+                    hasDescription={false}
+                  />
+                </li>
               ))}
             </ul>
           );

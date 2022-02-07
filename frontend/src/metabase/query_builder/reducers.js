@@ -224,11 +224,23 @@ export const uiControls = handleActions(
       isShowingQuestionDetailsSidebar: true,
       questionDetailsTimelineDrawerState: undefined,
     }),
-    [onCloseQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onCloseQuestionDetails]: (
+      state,
+      { payload: { closeOtherSidebars } = {} } = {},
+    ) => {
+      if (closeOtherSidebars) {
+        return {
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          questionDetailsTimelineDrawerState: undefined,
+        };
+      }
+      return {
+        ...state,
+        isShowingQuestionDetailsSidebar: false,
+        questionDetailsTimelineDrawerState: undefined,
+      };
+    },
     [onOpenQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -386,6 +398,7 @@ export const queryResults = handleActions(
 export const metadataDiff = handleActions(
   {
     [RESET_QB]: { next: () => ({}) },
+    [API_UPDATE_QUESTION]: { next: () => ({}) },
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
         const { field_ref, changes } = payload;

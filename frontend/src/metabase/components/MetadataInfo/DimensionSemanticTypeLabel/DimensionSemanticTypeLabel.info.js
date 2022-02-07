@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 
-import { PRODUCTS, metadata } from "__support__/sample_dataset_fixture";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";

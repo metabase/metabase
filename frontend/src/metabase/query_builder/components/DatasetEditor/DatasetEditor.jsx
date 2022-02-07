@@ -10,14 +10,17 @@ import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 import TagEditorSidebar from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import SnippetSidebar from "metabase/query_builder/components/template_tags/SnippetSidebar";
+import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
-import { getDatasetEditorTab } from "metabase/query_builder/selectors";
+import {
+  getDatasetEditorTab,
+  isResultsMetadataDirty,
+} from "metabase/query_builder/selectors";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -45,8 +48,10 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
+  isDirty: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
@@ -69,6 +74,7 @@ const TABLE_HEADER_HEIGHT = 45;
 function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
   };
 }
 
@@ -78,6 +84,7 @@ function getSidebar(
   props,
   {
     datasetEditorTab,
+    isQueryError,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -95,6 +102,9 @@ function getSidebar(
   } = props;
 
   if (datasetEditorTab === "metadata") {
+    if (isQueryError) {
+      return null;
+    }
     if (!focusedField) {
       // Returning a div, so the sidebar is visible while the data is loading.
       // The field metadata sidebar will appear with an animation once a query completes
@@ -145,7 +155,6 @@ const FIELDS = [
   "semantic_type",
   "fk_target_field_id",
   "visibility_type",
-  "has_field_values",
   "settings",
 ];
 
@@ -160,7 +169,9 @@ function DatasetEditor(props) {
     datasetEditorTab,
     result,
     metadata,
+    isMetadataDirty,
     height,
+    isDirty: isModelQueryDirty,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
@@ -169,15 +180,43 @@ function DatasetEditor(props) {
     handleResize,
   } = props;
 
-  const fields = useMemo(() => result?.data?.results_metadata?.columns ?? [], [
-    result,
+  const orderedColumns = useMemo(() => dataset.setting("table.columns"), [
+    dataset,
   ]);
+
+  const fields = useMemo(() => {
+    // Columns in results_metadata contain all the necessary metadata
+    // orderedColumns contain properly sorted columns, but they only contain field names and refs.
+    // Normally, columns in results_metadata are ordered too,
+    // but they only get updated after running a query (which is not triggered after reordering columns).
+    // This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
+    const columns = result?.data?.results_metadata?.columns;
+    if (!Array.isArray(columns)) {
+      return [];
+    }
+    if (!Array.isArray(orderedColumns)) {
+      return columns;
+    }
+    return orderedColumns.map(col =>
+      columns.find(c => compareFields(c.field_ref, col.fieldRef)),
+    );
+  }, [orderedColumns, result]);
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
 
+  const initialEditorHeight = useMemo(() => {
+    if (dataset.isStructured()) {
+      return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
+    }
+    return calcInitialEditorHeight({
+      query: dataset.query(),
+      viewHeight: height,
+    });
+  }, [dataset, height]);
+
   const [editorHeight, setEditorHeight] = useState(
-    isEditingQuery ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0,
+    isEditingQuery ? initialEditorHeight : 0,
   );
 
   const [focusedFieldRef, setFocusedFieldRef] = useState();
@@ -213,7 +252,7 @@ function DatasetEditor(props) {
     // Focused field has to be set once the query is completed and the result is rendered
     // Visualization render can remove the focus
     const hasQueryResults = !!result;
-    if (!focusedFieldRef && hasQueryResults) {
+    if (!focusedFieldRef && hasQueryResults && !result.error) {
       focusFirstField();
     }
   }, [result, focusedFieldRef, focusFirstField]);
@@ -254,9 +293,9 @@ function DatasetEditor(props) {
   const onChangeEditorTab = useCallback(
     tab => {
       setDatasetEditorTab(tab);
-      setEditorHeight(tab === "query" ? INITIAL_NOTEBOOK_EDITOR_HEIGHT : 0);
+      setEditorHeight(tab === "query" ? initialEditorHeight : 0);
     },
-    [setDatasetEditorTab],
+    [initialEditorHeight, setDatasetEditorTab],
   );
 
   const handleCancel = useCallback(() => {
@@ -307,10 +346,7 @@ function DatasetEditor(props) {
 
   const renderSelectableTableColumnHeader = useCallback(
     (element, column, columnIndex) => {
-      const isSelected = compareFields(
-        column?.field_ref,
-        focusedField?.field_ref,
-      );
+      const isSelected = columnIndex === focusedFieldIndex;
       return (
         <TableHeaderColumnName
           tabIndex={getColumnTabIndex(columnIndex, focusedFieldIndex)}
@@ -325,7 +361,7 @@ function DatasetEditor(props) {
         </TableHeaderColumnName>
       );
     },
-    [focusedField, focusedFieldIndex, handleColumnSelect],
+    [focusedFieldIndex, handleColumnSelect],
   );
 
   const renderTableHeaderWrapper = useMemo(
@@ -341,11 +377,14 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName;
-  }, [dataset, fields]);
+    return (
+      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
+    );
+  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,
+    isQueryError: result?.error,
     focusedField,
     focusedFieldIndex,
     focusFirstField,
@@ -410,7 +449,7 @@ function DatasetEditor(props) {
               />
             </DebouncedFrame>
             <TabHintToastContainer
-              isVisible={isEditingMetadata && isTabHintVisible}
+              isVisible={isEditingMetadata && isTabHintVisible && !result.error}
             >
               <TabHintToast onClose={hideTabHint} />
             </TabHintToastContainer>

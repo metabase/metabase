@@ -8,8 +8,7 @@ import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import { Box } from "grid-styled";
-import { Grid, GridItem } from "metabase/components/Grid";
+import { Grid } from "metabase/components/Grid";
 
 import NewQueryOption from "metabase/new_query/components/NewQueryOption";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
@@ -20,6 +19,10 @@ import {
   getHasDataAccess,
   getHasNativeWrite,
 } from "metabase/new_query/selectors";
+import {
+  QueryOptionsGridItem,
+  QueryOptionsRoot,
+} from "./NewQueryOptions.styled";
 
 import Database from "metabase/entities/databases";
 
@@ -32,8 +35,6 @@ const mapDispatchToProps = {
   prefetchDatabases: () => Database.actions.fetchList(),
   push,
 };
-
-const PAGE_PADDING = [1, 4];
 
 @fitViewport
 @connect(mapStateToProps, mapDispatchToProps)
@@ -71,14 +72,13 @@ export default class NewQueryOptions extends Component {
     {
       /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
     }
-    const NUM_ITEMS = (hasDataAccess ? 2 : 0) + (hasNativeWrite ? 1 : 0);
-    const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
+    const itemsCount = (hasDataAccess ? 2 : 0) + (hasNativeWrite ? 1 : 0);
 
     return (
-      <Box my="auto" mx={PAGE_PADDING}>
+      <QueryOptionsRoot>
         <Grid className="justifyCenter">
           {hasDataAccess && (
-            <GridItem width={ITEM_WIDTHS}>
+            <QueryOptionsGridItem itemsCount={itemsCount}>
               <NewQueryOption
                 image="app/img/simple_mode_illustration"
                 title={t`Simple question`}
@@ -87,10 +87,10 @@ export default class NewQueryOptions extends Component {
                 to={Urls.newQuestion({ creationType: "simple_question" })}
                 data-metabase-event={`New Question; Simple Question Start`}
               />
-            </GridItem>
+            </QueryOptionsGridItem>
           )}
           {hasDataAccess && (
-            <GridItem width={ITEM_WIDTHS}>
+            <QueryOptionsGridItem itemsCount={itemsCount}>
               <NewQueryOption
                 image="app/img/notebook_mode_illustration"
                 title={t`Custom question`}
@@ -98,14 +98,14 @@ export default class NewQueryOptions extends Component {
                 width={180}
                 to={Urls.newQuestion({
                   mode: "notebook",
-                  creationType: "complex_question",
+                  creationType: "custom_question",
                 })}
                 data-metabase-event={`New Question; Custom Question Start`}
               />
-            </GridItem>
+            </QueryOptionsGridItem>
           )}
           {hasNativeWrite && (
-            <GridItem width={ITEM_WIDTHS}>
+            <QueryOptionsGridItem itemsCount={itemsCount}>
               <NewQueryOption
                 image="app/img/sql_illustration"
                 title={t`Native query`}
@@ -117,10 +117,10 @@ export default class NewQueryOptions extends Component {
                 width={180}
                 data-metabase-event={`New Question; Native Query Start`}
               />
-            </GridItem>
+            </QueryOptionsGridItem>
           )}
         </Grid>
-      </Box>
+      </QueryOptionsRoot>
     );
   }
 }

@@ -1,10 +1,9 @@
 import React, { useState, useMemo, memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import Radio from "metabase/components/Radio";
+import Radio from "metabase/core/components/Radio";
 import TextInput from "metabase/components/TextInput";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
@@ -21,6 +20,11 @@ import {
   BackButton,
   BackIcon,
 } from "./PermissionsSidebar.styled";
+import {
+  SidebarContentEmptyState,
+  SidebarContentRadio,
+  SidebarContentTitle,
+} from "./PermissionsSidebarContent.styled";
 
 export const permissionSidebarContentPropTypes = {
   title: PropTypes.string,
@@ -79,15 +83,15 @@ export const PermissionsSidebarContent = memo(
               {title}
             </BackButton>
           ) : (
-            <Flex alignItems="center">
+            <SidebarContentTitle>
               {title && <Label px={1}>{title}</Label>}
-            </Flex>
+            </SidebarContentTitle>
           )}
           <Text color="text-dark" px={1}>
             {description}
           </Text>
           {entitySwitch && (
-            <Box mb={2}>
+            <SidebarContentRadio>
               <Radio
                 variant="bubble"
                 colorScheme="accent7"
@@ -95,7 +99,7 @@ export const PermissionsSidebarContent = memo(
                 value={entitySwitch.value}
                 onChange={onEntityChange}
               />
-            </Box>
+            </SidebarContentRadio>
           )}
           <TextInput
             hasClearButton
@@ -116,9 +120,9 @@ export const PermissionsSidebarContent = memo(
               selectedId={selectedId}
               onSelect={onSelect}
               emptyState={
-                <Box mt="100px">
+                <SidebarContentEmptyState>
                   <EmptyState message={t`Nothing here`} icon="all" />
-                </Box>
+                </SidebarContentEmptyState>
               }
             />
           )}

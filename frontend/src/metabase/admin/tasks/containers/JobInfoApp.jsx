@@ -3,20 +3,23 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { Box, Flex } from "grid-styled";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminHeader from "metabase/components/AdminHeader";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 import { fetchJobInfo } from "../jobInfo";
+import {
+  JobInfoHeader,
+  JobInfoRoot,
+  JobSchedulerInfo,
+} from "./JobInfoApp.styled";
 
 const renderSchedulerInfo = scheduler => {
   return (
     scheduler && (
-      <Flex align="center">
+      <JobSchedulerInfo>
         <pre>{scheduler.join("\n")}</pre>
-      </Flex>
+      </JobSchedulerInfo>
     )
   );
 };
@@ -78,17 +81,17 @@ export default class JobInfoApp extends React.Component {
 
     return (
       <LoadingAndErrorWrapper loading={!scheduler} error={error}>
-        <Box p={3}>
-          <Flex align="center">
+        <JobInfoRoot>
+          <JobInfoHeader>
             <AdminHeader title={t`Scheduler Info`} />
-          </Flex>
+          </JobInfoHeader>
           {renderSchedulerInfo(scheduler)}
           {renderJobsTable(jobs)}
           {
             // render 'children' so that the invididual task modals show up
             children
           }
-        </Box>
+        </JobInfoRoot>
       </LoadingAndErrorWrapper>
     );
   }

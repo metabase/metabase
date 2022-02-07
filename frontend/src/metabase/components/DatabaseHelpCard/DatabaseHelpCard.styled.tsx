@@ -1,7 +1,7 @@
 import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 const CardRootMixin = css`
   display: block;

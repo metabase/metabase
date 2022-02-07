@@ -1,14 +1,15 @@
 import React from "react";
-import { Box } from "grid-styled";
+import _ from "underscore";
 import Heading from "metabase/components/type/Heading";
 import Subhead from "metabase/components/type/Subhead";
 import Text from "metabase/components/type/Text";
 import StaticChart from "metabase/static-viz/containers/StaticChart";
+import { PageRoot, PageSection } from "./StaticVizPage.styled";
 
 export default function StaticVizPage() {
   return (
-    <Box py={4}>
-      <Box className="wrapper wrapper--trim">
+    <PageRoot>
+      <div className="wrapper wrapper--trim">
         <Heading>Static Visualisations</Heading>
         <Text>
           These visualizations are used in dashboard subscriptions. They have no
@@ -17,7 +18,8 @@ export default function StaticVizPage() {
           /static-viz/ and see the effects. You might need to hard refresh to
           see updates.
         </Text>
-        <Box py={3}>
+
+        <PageSection>
           <Subhead>Line chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/line"
@@ -37,8 +39,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Area chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/area"
@@ -66,8 +68,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Bar chart with timeseries data</Subhead>
           <StaticChart
             type="timeseries/bar"
@@ -100,9 +102,9 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>Line chart with categorical data</Subhead>
           <StaticChart
             type="categorical/line"
@@ -131,8 +133,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Area chart with categorical data</Subhead>
           <StaticChart
             type="categorical/area"
@@ -161,8 +163,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Bar chart with categorical data</Subhead>
           <StaticChart
             type="categorical/bar"
@@ -191,8 +193,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Donut chart with categorical data</Subhead>
           <StaticChart
             type="categorical/donut"
@@ -211,8 +213,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Progress bar</Subhead>
           <StaticChart
             type="progress"
@@ -286,8 +288,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box>
+        </PageSection>
+        <PageSection>
           <Subhead>Waterfall chart with timeseries data and no total</Subhead>
           <StaticChart
             type="timeseries/waterfall"
@@ -313,8 +315,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Waterfall chart with categorical data and total</Subhead>
           <StaticChart
             type="categorical/waterfall"
@@ -344,8 +346,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-        <Box py={3}>
+        </PageSection>
+        <PageSection>
           <Subhead>Line/Area/Bar chart with multiple series</Subhead>
           <StaticChart
             type="combo-chart"
@@ -439,9 +441,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>
             Line/Area/Bar chart with negative values, different X ranges, and
             right Y-axis
@@ -523,9 +525,9 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
           <Subhead>
             Combo chart with ordinal X-axis and more than 10 ticks
           </Subhead>
@@ -593,9 +595,185 @@ export default function StaticVizPage() {
               ],
             }}
           />
-        </Box>
+        </PageSection>
 
-        <Box py={3}>
+        <PageSection>
+          <Subhead>Stacked area chart</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                stacking: "stack",
+                x: {
+                  type: "timeseries",
+                },
+                y: {
+                  type: "linear",
+                  format: {
+                    number_style: "currency",
+                    currency: "USD",
+                    currency_style: "symbol",
+                    decimals: 2,
+                  },
+                },
+                labels: {
+                  left: "Sum",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "series 1",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", 10],
+                    ["2020-10-19", 20],
+                    ["2020-10-20", 30],
+                    ["2020-10-21", 40],
+                    ["2020-10-22", 45],
+                    ["2020-10-23", 55],
+                  ],
+                },
+                {
+                  name: "series 2",
+                  color: "#a989c5",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", 10],
+                    ["2020-10-19", 40],
+                    ["2020-10-20", 80],
+                    ["2020-10-21", 60],
+                    ["2020-10-22", 70],
+                    ["2020-10-23", 65],
+                  ],
+                },
+                {
+                  name: "series 3",
+                  color: "#ef8c8c",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", -40],
+                    ["2020-10-19", -20],
+                    ["2020-10-20", -10],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -45],
+                    ["2020-10-23", -55],
+                  ],
+                },
+                {
+                  name: "series 4",
+                  color: "#88bf4d",
+                  yAxisPosition: "left",
+                  type: "area",
+                  data: [
+                    ["2020-10-18", -40],
+                    ["2020-10-19", -50],
+                    ["2020-10-20", -60],
+                    ["2020-10-21", -20],
+                    ["2020-10-22", -10],
+                    ["2020-10-23", -5],
+                  ],
+                },
+              ],
+            }}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 48 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(48).map(n => [`bar ${n + 1}`, n + 1]),
+                },
+              ],
+            }}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 200 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(200).map(n => [`bar ${n + 1}`, n + 1]),
+                },
+              ],
+            }}
+          />
+        </PageSection>
+
+        <PageSection>
+          <Subhead>Ordinal chart with 20 items</Subhead>
+          <StaticChart
+            type="combo-chart"
+            options={{
+              settings: {
+                x: {
+                  type: "ordinal",
+                },
+                y: {
+                  type: "linear",
+                },
+                labels: {
+                  left: "Count",
+                  bottom: "Date",
+                },
+              },
+              series: [
+                {
+                  name: "bar series",
+                  color: "#509ee3",
+                  yAxisPosition: "left",
+                  type: "bar",
+                  data: _.range(20).map(n => [`bar ${n + 1}`, n + 1]),
+                },
+              ],
+            }}
+          />
+        </PageSection>
+
+        <PageSection>
           <Subhead>Funnel</Subhead>
           <StaticChart
             type="funnel"
@@ -620,8 +798,8 @@ export default function StaticVizPage() {
               },
             }}
           />
-        </Box>
-      </Box>
-    </Box>
+        </PageSection>
+      </div>
+    </PageRoot>
   );
 }

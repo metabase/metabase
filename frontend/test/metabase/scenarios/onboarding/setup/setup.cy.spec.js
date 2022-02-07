@@ -34,7 +34,7 @@ describe("scenarios > setup", () => {
       // ========
 
       cy.findByText("What's your preferred language?");
-      cy.findByTestId("language-option-en");
+      cy.findByLabelText("English");
       cy.findByText("Next").click();
 
       // ====
@@ -170,7 +170,7 @@ describe("scenarios > setup", () => {
     cy.findByTextEnsureVisible("Let's get started").click();
 
     cy.findByText("What's your preferred language?");
-    cy.findByTestId("language-option-en");
+    cy.findByLabelText("English");
     cy.findByText("Next").click();
 
     cy.findByLabelText("First name").should("have.value", "Testy");
@@ -194,29 +194,28 @@ describeWithSnowplow("scenarios > setup", () => {
   });
 
   it("should send snowplow events", () => {
-    // 1 - pageview
+    // 1 - new_instance_created
+    // 2 - pageview
     cy.visit(`/setup`);
 
-    // 2 - setup/step_seen
-    cy.findByText("Welcome to Metabase");
-    cy.findByTextEnsureVisible("Let's get started").click();
-
     // 3 - setup/step_seen
+    cy.findByText("Welcome to Metabase");
+    cy.button("Let's get started").click();
+
+    // 4 - setup/step_seen
     cy.findByText("What's your preferred language?");
 
-    // One backend event should be recorded (on new instance initialization)
     expectGoodSnowplowEvents(4);
   });
 
   it("should ignore snowplow failures and work as normal", () => {
+    // 1 - new_instance_created
     blockSnowplow();
     cy.visit(`/setup`);
 
     cy.findByText("Welcome to Metabase");
-    cy.findByTextEnsureVisible("Let's get started").click();
-    cy.findByText("What's your preferred language?");
+    cy.button("Let's get started").click();
 
-    // One backend event should be recorded (on new instance initialization)
     expectGoodSnowplowEvents(1);
   });
 });

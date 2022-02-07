@@ -12,14 +12,13 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase/lib/saved-questions";
 
+import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import ExternalLink from "metabase/components/ExternalLink";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getSchemaName } from "metabase/lib/schema";
@@ -39,6 +38,7 @@ import {
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getHasDataAccess } from "metabase/new_query/selectors";
 
 import {
   DataBucketList,
@@ -47,6 +47,7 @@ import {
   RawDataBackButton,
   CollectionDatasetSelectList,
   CollectionDatasetAllDataLink,
+  EmptyStateContainer,
 } from "./DataSelector.styled";
 import "./DataSelector.css";
 
@@ -209,6 +210,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
       entityQuery: { include: "tables" },
     }),
+    hasDataAccess: getHasDataAccess(state),
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
@@ -972,8 +974,11 @@ export class UnconnectedDataSelector extends Component {
   };
 
   handleClose = () => {
+    const { onClose } = this.props;
     this.setState({ searchText: "" });
-    this.props?.onClose();
+    if (typeof onProps === "function") {
+      onClose();
+    }
   };
 
   getSearchInputPlaceholder = () => {
@@ -1011,6 +1016,11 @@ export class UnconnectedDataSelector extends Component {
     }[selectedDataBucketId];
   };
 
+  hasDataAccess = () => {
+    const { hasDataAccess, databases } = this.props;
+    return hasDataAccess || databases?.length > 0;
+  };
+
   render() {
     const {
       searchText,
@@ -1019,6 +1029,7 @@ export class UnconnectedDataSelector extends Component {
       selectedTable,
     } = this.state;
     const { canChangeDatabase, selectedDatabaseId } = this.props;
+
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
 
     const isSearchActive = searchText.trim().length >= MIN_SEARCH_LENGTH;
@@ -1045,8 +1056,8 @@ export class UnconnectedDataSelector extends Component {
       >
         {this.isLoadingDatasets() ? (
           <LoadingAndErrorWrapper loading />
-        ) : (
-          <React.Fragment>
+        ) : this.hasDataAccess() ? (
+          <>
             {this.showTableSearch() && (
               <ListSearchField
                 hasClearButton
@@ -1082,7 +1093,14 @@ export class UnconnectedDataSelector extends Component {
               ) : (
                 this.renderActiveStep()
               ))}
-          </React.Fragment>
+          </>
+        ) : (
+          <EmptyStateContainer>
+            <EmptyState
+              message={t`To pick some data, you'll need to add some first`}
+              icon="database"
+            />
+          </EmptyStateContainer>
         )}
       </PopoverWithTrigger>
     );
@@ -1415,7 +1433,7 @@ const TablePicker = ({
     const sections = [
       {
         name: header,
-        items: tables.map(table => ({
+        items: tables.filter(Boolean).map(table => ({
           name: table.displayName(),
           table: table,
           database: selectedDatabase,
@@ -1447,25 +1465,13 @@ const TablePicker = ({
             item.table ? <Icon name="table2" size={18} /> : null
           }
           showItemArrows={hasNextStep}
-          renderItemWrapper={(itemContent, item) => {
-            if (item.table?.id != null) {
-              return (
-                <TableInfoPopover table={item.table}>
-                  {itemContent}
-                </TableInfoPopover>
-              );
-            }
-
-            return itemContent;
-          }}
         />
         {isSavedQuestionList && (
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <ExternalLink
               href={MetabaseSettings.docsUrl(
-                "users-guide/custom-questions",
-                "picking-your-starting-data",
+                "users-guide/referencing-saved-questions-in-queries",
               )}
               target="_blank"
               className="block link"
@@ -1495,15 +1501,6 @@ const TablePicker = ({
 };
 
 class FieldPicker extends Component {
-  renderItemWrapper = (itemContent, item) => {
-    const dimension = item.field?.dimension?.();
-    return (
-      <DimensionInfoPopover dimension={dimension}>
-        {itemContent}
-      </DimensionInfoPopover>
-    );
-  };
-
   render() {
     const {
       isLoading,
@@ -1565,7 +1562,6 @@ class FieldPicker extends Component {
               <Icon name={item.field.dimension().icon()} size={18} />
             ) : null
           }
-          renderItemWrapper={this.renderItemWrapper}
         />
       </div>
     );

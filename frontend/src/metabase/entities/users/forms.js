@@ -177,6 +177,7 @@ export default {
       {
         name: "email",
         placeholder: "youlooknicetoday@email.com",
+        autoFocus: true,
         validate: validate.required().email(),
       },
     ],

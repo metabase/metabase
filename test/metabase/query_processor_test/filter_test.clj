@@ -426,7 +426,7 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp/query->native-with-spliced-params query))))
+            (testing (format "\nquery = %s" (pr-str (:query (qp/compile-and-splice-parameters query))))
               ;; Mongo returns empty results if count is zero -- see #5419
               (is (= (if (and (= driver/*driver* :mongo)
                               (zero? expected-count))
