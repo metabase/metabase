@@ -84,4 +84,9 @@ export const examples = {
       {target}
     </TippyPopover>
   ),
+  "control mode using the 'visible' prop": (
+    <TippyPopover visible placement="left-end" content={content}>
+      {target}
+    </TippyPopover>
+  ),
 };
