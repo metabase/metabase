@@ -118,6 +118,7 @@ describe("scenarios > visualizations > line chart", () => {
         "graph.metrics": ["count", "sum", "avg"],
       },
     });
+
     cy.get(".Visualization .enable-dots")
       .last()
       .find(".dot")

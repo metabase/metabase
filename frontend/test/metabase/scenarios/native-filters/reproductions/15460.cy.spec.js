@@ -40,10 +40,7 @@ describe("issue 15460", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc(questionQuery);
-    cy.wait("@dataset");
   });
 
   it("should be possible to use field filter on a query with joins where tables have similar columns (metabase#15460)", () => {

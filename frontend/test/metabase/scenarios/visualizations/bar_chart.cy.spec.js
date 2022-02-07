@@ -37,7 +37,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)").should("not.exist");
     });
 
@@ -50,7 +49,6 @@ describe("scenarios > visualizations > bar chart", () => {
         }),
       );
 
-      cy.wait("@dataset");
       cy.findByText("(empty)");
     });
   });
