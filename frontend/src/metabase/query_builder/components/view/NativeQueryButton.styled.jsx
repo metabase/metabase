@@ -12,7 +12,7 @@ export const SqlIconButton = forwardRefToInnerRef(styled(Button).attrs({
   padding: ${space(1)};
   border: none;
   background-color: transparent;
-  color: ${color("text-medium")};
+  color: ${color("text-dark")};
   cursor: pointer;
 
   :hover {
