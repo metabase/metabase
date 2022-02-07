@@ -8,6 +8,8 @@ Models:
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
 
+For a deep dive on why models, with examples, check out our [Learn article on models][learn-models].
+
 ## How to use models
 
 You can use models to:
@@ -41,6 +43,10 @@ What people will see as the column's name.
 
 A place to write helpful context for the column.
 
+### Database column this maps to
+
+For models based on SQL queries, you can tell Metabase if the column has the same type as an existing database column.
+
 ### Column type
 
 You can set the [column type][column-type]. The default is "No special type". Be sure to set the Column type so people can interact with the results.
@@ -56,12 +62,6 @@ You can specify whether a column should appear in the table view, or just in a d
 
 - Text
 - Link (it's a URL people should be able to click on)
-
-### Filtering on this field
-
-- Search box
-- A list of all values (a dropdown)
-- Plain input box
 
 ### Editing the model's query
 
@@ -101,7 +101,12 @@ Just like with saved questions, you can click on the model name with the down ar
 
 Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
 
+## Further reading
+
+- [Models in Metabase][learn-models]
+
 [column-type]: ./field-types.md
 [cte]: https://www.metabase.com/learn/sql-questions/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/databases/dimensions-and-measures
 [question]: 04-asking-questions.md
+[learn-models]: /learn/getting-started/models
