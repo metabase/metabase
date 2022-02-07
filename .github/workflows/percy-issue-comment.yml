@@ -44,6 +44,7 @@ jobs:
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -77,6 +78,7 @@ jobs:
         with:
           ref: ${{ needs.pr_info.outputs.branch_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
