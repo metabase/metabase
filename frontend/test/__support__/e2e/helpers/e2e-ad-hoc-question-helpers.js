@@ -7,5 +7,8 @@ export function adhocQuestionHash(question) {
 }
 
 export function visitQuestionAdhoc(question) {
+  cy.intercept("POST", "/api/dataset").as("dataset");
+
   cy.visit("/question#" + adhocQuestionHash(question));
+  cy.wait("@dataset");
 }
