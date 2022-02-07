@@ -1,7 +1,6 @@
 (ns metabase.driver.testing.interactive
   "Tools for interactively testing drivers (especially third party)"
   (:require [clojure.string :as str]
-            [clojure.test :as test]
             [metabase.driver :as driver]
             [metabase.models :refer [Database]]
             [metabase.test :as mt]
@@ -15,19 +14,24 @@
   Remove if possible"
   "NIL")
 
-(defn- skip-property? [acc driver {prop-nm :name
-                                   display-nm :display-name
-                                   placeholder :placeholder
-                                   default-val :default
-                                   required? :required
-                                   spec-type :type
-                                   visible-if :visible-if
-                                   :as conn-prop}]
+(defn- skip-property?
+  "Controls whether the given `conn-prop` should be skipped during interactive connection property input, either because
+  it's not something the user would enter (ex: `:info` type), or because it's hidden (due to the `:visible-if` value for
+  a previously entered property value).
+
+  `acc` is the accumulated result so far, and `_driver` is the driver (in case there is any driver-specific logic needed
+  for this in the future)."
+  [acc _driver {spec-type :type
+                visible-if :visible-if
+                :as conn-prop}]
   (or (contains? #{:info} spec-type) ; don't prompt for certain types (ex: info)
       ; dependent property doesn't match
       (and (map? visible-if) (not= (select-keys acc (keys visible-if)) visible-if))))
 
-(defn prompt-for-driver-connection-properties [driver]
+(defn prompt-for-driver-connection-properties
+  "For the given `driver`, interactively prompt the user for values for each of its `connection-properties`, and return
+  the result in a map."
+  [driver]
   (reduce
     (fn [acc {prop-nm :name
               display-nm :display-name
@@ -70,31 +74,39 @@
     {}
     (driver/connection-properties driver)))
 
-(defn interactively-test-driver [driver]
+(defn interactively-test-driver
+  "For the given `driver`, prompt for input values for each of its connection details.  Once all are provided, store
+  the map of key/value pairs to the user namespace (in `details`), and also define two new functions, `test-connect!`
+  and `run-tests!`, to test a connection using the entered details, and to run tests (including core Metabase tests)
+  using those details, respectively."
+  [driver]
   (let [details  (prompt-for-driver-connection-properties driver)
         temp-env (reduce-kv (fn [acc k v]
                               (assoc acc (keyword (str "mb-" (name driver) "-test-" k)) v))
                    {}
                    details)]
-    (prn-str details)
-    (loop [[[k v] & more] temp-env
-           thunk*         #(mt/with-temp Database [db {:name (str "Test " (name driver) " DB"), :engine driver, :details details}]
-                             #_(def db-details details)
-                             (printf "To store these to a variable `details`, run:%n(def details %s)%n"
-                                     (pr-str details))
-                             (mt/with-db db
-                               (println "Trying to connect...")
-                               (let [conn-res (driver/can-connect? driver (:details db))]
-                                 (if (true? conn-res)
-                                   (do (println "Successfully connected; trying to run tests")
-                                       (mt/test-driver driver
-                                         ;; TODO: figure out how to get all tests added here
-                                         (test/run-all-tests)
-                                         (test-runner/run-tests {:multithread? true})))
-                                   (do
-                                     (println "Failed to connect!")
-                                     (when (instance? Exception conn-res)
-                                       (.printStackTrace ^Exception conn-res)))))))]
-      (if (empty? more)
-        (thunk*)
-        (recur more #(tu/do-with-temp-env-var-value k v thunk*))))))
+    (println "Storing to store db-details to `user/details`.")
+    (intern 'user 'details details)
+    (intern 'user 'test-connect! (fn []
+                                   (let [conn-res (driver/can-connect? driver details)]
+                                     (if (true? conn-res)
+                                       (println "Successfully connected")
+                                       (do
+                                         (println "Failed to connect!")
+                                         (when (instance? Exception conn-res)
+                                           (.printStackTrace ^Exception conn-res)))))))
+    (println "Run `(user/test-connect!) to test a connection using these details`.")
+    (intern 'user 'run-tests! (fn [& tests]
+                                (loop [[[k v] & more] temp-env
+                                       thunk*         #(mt/test-driver driver
+                                                         (mt/dataset test-data
+                                                           (test-runner/run-tests (cond-> {:prevent-exit? true
+                                                                                           :multithread? true}
+                                                                                    (some? tests)
+                                                                                    (assoc :only tests)))))]
+                                  (if (empty? more)
+                                    (thunk*)
+                                    (recur more #(tu/do-with-temp-env-var-value k v thunk*))))))
+    (println (str "Use `(user/run-tests!)` to execute tests against the connection details you entered."
+                  "  Pass an optional argument to only run certain tests.  Ex:\n"
+                  "  `(run-tests! 'metabase.query-processor-test.string-extracts-test)`"))))

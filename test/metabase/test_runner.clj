@@ -171,4 +171,5 @@
     (pprint/pprint summary)
     (printf "Ran %d tests in parallel, %d single-threaded.\n" (:parallel summary 0) (:single-threaded summary 0))
     (println (if fail? "Tests failed." "All tests passed."))
-    (System/exit (if fail? 1 0))))
+    (when-not (:prevent-exit? options)
+      (System/exit (if fail? 1 0)))))
