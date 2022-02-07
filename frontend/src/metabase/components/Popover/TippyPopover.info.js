@@ -54,6 +54,20 @@ function LazyContentExample() {
   return <LazyPopoverBody opacity={opacity}>popover content</LazyPopoverBody>;
 }
 
+function VisiblePropExample() {
+  const [visible, setVisible] = React.useState(true);
+  return (
+    <TippyPopover
+      visible={visible}
+      onHide={() => setVisible(false)}
+      placement="left-end"
+      content={content}
+    >
+      <div onClick={() => setVisible(true)}>{target}</div>
+    </TippyPopover>
+  );
+}
+
 export const examples = {
   "vertical placement": (
     <TippyPopover placement="top-start" content={content}>
@@ -84,9 +98,5 @@ export const examples = {
       {target}
     </TippyPopover>
   ),
-  "control mode using the 'visible' prop": (
-    <TippyPopover visible placement="left-end" content={content}>
-      {target}
-    </TippyPopover>
-  ),
+  "control mode + handling of Esc press": <VisiblePropExample />,
 };
