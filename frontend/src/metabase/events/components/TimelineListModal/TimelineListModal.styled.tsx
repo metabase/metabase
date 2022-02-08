@@ -19,7 +19,7 @@ export const CardRoot = styled(Link)`
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("bg-medium")};
+  color: ${color("text-light")};
   width: 1.375rem;
   height: 1.375rem;
   margin-right: 1.75rem;
