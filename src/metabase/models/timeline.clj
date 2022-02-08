@@ -8,7 +8,9 @@
 
 (u/strict-extend (class Timeline)
   models/IModel
-  models/IModelDefaults
+  (merge
+   models/IModelDefaults
+   {:properties (constantly {:timestamped? true})})
 
   i/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)
