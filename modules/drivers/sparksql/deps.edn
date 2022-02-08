@@ -1,5 +1,5 @@
 {:paths
- ["src" "resources" "target/classes"]
+ ["src" "resources"]
 
  ;; Exclusions below are all either things that are already part of metabase-core, or provide conflicting
  ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
