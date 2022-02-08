@@ -590,25 +590,35 @@ describe("collection permissions", () => {
 
             describe("managing dashboard from the dashboard's edit menu", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Edit dashboard details")
                   .should("not.exist");
               });
 
               it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Archive")
                   .should("not.exist");
               });
 
               it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
+                cy.intercept("GET", "/api/collection/root").as("collections");
                 const { first_name, last_name } = USERS[user];
                 cy.visit("/dashboard/1");
-                cy.icon("ellipsis").click();
+                cy.wait("@collections");
+                cy.icon("ellipsis")
+                  .should("be.visible")
+                  .click();
                 popover()
                   .findByText("Duplicate")
                   .click();
