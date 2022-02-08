@@ -6,8 +6,8 @@ import forms from "./event-timelines/forms";
 type UndoOpts = Record<string, unknown>;
 
 const EventTimelines = createEntity({
-  name: "timelines",
-  nameOne: "timeline",
+  name: "eventTimelines",
+  nameOne: "eventTimeline",
   path: "/api/event-timeline",
   forms,
 
