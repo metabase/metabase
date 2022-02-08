@@ -17,6 +17,7 @@ export const ModalTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.25rem;
   line-height: 1.5rem;
+  font-weight: bold;
 `;
 
 export const ModalCloseButton = styled(IconButtonWrapper)`
