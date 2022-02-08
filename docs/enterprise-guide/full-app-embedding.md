@@ -26,7 +26,9 @@ Once you do, you'll see a set of options:
   For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
   If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
 
-A note to IE11 users: only the first URL will be valid for IE11 due to limitations in the HTTP headers it supports. IE11 does not support the `Content-Security-Policy` header, but does support `X-Frame-Options`, which can only accept a single value.
+Notes:
+- IE11: only the first URL will be valid for IE11 due to limitations in the HTTP headers it supports. IE11 does not support the `Content-Security-Policy` header, but does support `X-Frame-Options`, which can only accept a single value.
+- Chrome: localStorage is disabled in Incognito mode, so you won't be able to test this feature in an incognito session with this browser. Please use Chrome in the normal mode or choose another browser to use for testing.
 
 ### Setting things up in your web app
 
