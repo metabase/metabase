@@ -1,11 +1,12 @@
 import React from "react";
-import { t } from "ttag";
-import ActionModal from "../ActionModal";
+import { msgid, ngettext, t } from "ttag";
 import { EventTimeline } from "metabase-types/api";
+import ActionModal from "../ActionModal";
 import {
   CardBody,
   CardDescription,
   CardIcon,
+  CardInfo,
   CardRoot,
   CardTitle,
   ModalBody,
@@ -36,6 +37,8 @@ interface TimelineCardProps {
 }
 
 const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
+  const events = timeline.events.length;
+
   return (
     <CardRoot to="">
       <CardIcon name={timeline.default_icon} />
@@ -43,6 +46,9 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
         <CardTitle>{timeline.name}</CardTitle>
         <CardDescription>{timeline.description}</CardDescription>
       </CardBody>
+      <CardInfo>
+        {ngettext(msgid`${events} event`, `${events} events`, events)}
+      </CardInfo>
     </CardRoot>
   );
 };

@@ -52,3 +52,10 @@ export const CardDescription = styled.span`
   display: block;
   color: ${color("text-dark")};
 `;
+
+export const CardInfo = styled.span`
+  display: block;
+  align-self: start;
+  color: ${color("text-dark")};
+  margin-left: 1.75rem;
+`;
