@@ -230,7 +230,7 @@ describe("scenarios > question > filter", () => {
   it("should be able to add date filter with calendar collapsed (metabase#14327)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByText("Filter").click();
-    cy.findByText("Created At").click();
+    cy.findByText("Created At").click({ force: true });
     cy.findByText("Previous").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
