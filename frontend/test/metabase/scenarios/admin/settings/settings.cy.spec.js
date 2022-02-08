@@ -173,7 +173,7 @@ describe("scenarios > admin > settings", () => {
 
     // check the new formatting in a question
     openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/).debug();
+    cy.contains(/^February 11, 2019, 21:40$/);
 
     // reset the formatting
     cy.visit("/admin/settings/localization");
