@@ -16,9 +16,9 @@ function RawMaybeLink({ to, ...props }) {
 
 RawMaybeLink.propTypes = propTypes;
 
-const hoverStyle = css`
+const hoverStyle = props => css`
   cursor: pointer;
-  color: ${props => color(props.activeColor)};
+  color: ${color(props.activeColor)};
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -29,7 +29,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   color: ${props => color(props.inactiveColor)};
 
   :hover {
-    ${props => (props.to || props.onClick) && hoverStyle}
+    ${props => (props.to || props.onClick) && hoverStyle(props)}
   }
 `;
 

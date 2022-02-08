@@ -93,7 +93,12 @@ export function NotebookCellItem({
     mainContentRoundedCorners.push("right");
   }
   return (
-    <NotebookCellItemContainer inactive={inactive} color={color} {...props}>
+    <NotebookCellItemContainer
+      inactive={inactive}
+      color={color}
+      {...props}
+      data-testid={props["data-testid"] ?? "notebook-cell-item"}
+    >
       <NotebookCellItemContentContainer
         inactive={inactive}
         color={color}

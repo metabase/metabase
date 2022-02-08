@@ -44,7 +44,6 @@ function DataStep({ color, query, updateQuery }) {
         }
         containerStyle={FIELDS_PICKER_STYLES.notebookItemContainer}
         rightContainerStyle={FIELDS_PICKER_STYLES.notebookRightItemContainer}
-        data-testid="data-step-cell"
       >
         <CollectionDatasetOrDataSourceSelector
           hasTableSearch

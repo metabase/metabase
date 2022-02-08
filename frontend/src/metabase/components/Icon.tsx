@@ -72,7 +72,7 @@ class BaseIcon extends Component<IconProps> {
     const icon = loadIcon(name) || loadIcon(MISSING_ICON_NAME);
     if (!icon) {
       console.warn(`Icon "${name}" does not exist.`);
-      return <span ref={ref} />;
+      return <span ref={forwardedRef} />;
     }
 
     const props = {
@@ -131,9 +131,11 @@ class BaseIcon extends Component<IconProps> {
   }
 }
 
-const BaseIconWithRef = forwardRef<IconProps>((props, ref) => (
-  <BaseIcon {...props} forwardedRef={ref} />
-));
+const BaseIconWithRef = forwardRef<HTMLElement, IconProps>(
+  function BaseIconWithRef(props, ref) {
+    return <BaseIcon {...props} forwardedRef={ref} />;
+  },
+);
 
 const StyledIcon = styled(BaseIconWithRef)`
   ${space}

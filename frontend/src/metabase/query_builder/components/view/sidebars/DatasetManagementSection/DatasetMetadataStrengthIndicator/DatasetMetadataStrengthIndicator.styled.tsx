@@ -17,7 +17,7 @@ export const PercentageLabel = styled.span`
   transition: all 0.4s;
 `;
 
-export const Root = styled.div<{ ref?: React.Ref<any> }>`
+export const Root = styled.div`
   display: flex;
   flex: 1;
   position: relative;

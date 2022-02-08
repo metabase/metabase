@@ -10,7 +10,7 @@ interface FilterInputProps {
   isDashboardFilter?: boolean;
 }
 
-export const FilterInput = styled<FilterInputProps>(TextInput as any)`
+export const FilterInput = styled(TextInput)<FilterInputProps>`
   margin-bottom: ${props => (props.isDashboardFilter ? "0" : "0.5rem")};
   border: ${props =>
     props.isDashboardFilter ? `1px solid ${color("border")}` : "none"};

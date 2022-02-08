@@ -68,7 +68,7 @@ export const InfoIconContainer = styled.div`
   margin-left: 0.5em;
 `;
 
-export const InfoIcon = styled<IconProps & VariantProp>(Icon)`
+export const InfoIcon = styled(Icon)<VariantProp>`
   ${props =>
     props.variant === "form-field" &&
     css`

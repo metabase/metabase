@@ -1,3 +1,5 @@
+/* eslint-disable react/prop-types */
+import React from "react";
 import styled from "@emotion/styled";
 import { color, height, width } from "styled-system";
 
@@ -30,10 +32,8 @@ function userInitials(user) {
   return user ? initial(user.first_name) + initial(user.last_name) : null;
 }
 
-const UserAvatar = styled(Avatar)``;
-
-UserAvatar.defaultProps = {
-  children: ({ user }) => userInitials(user) || "?",
-};
+const UserAvatar = ({ user, ...props }) => (
+  <Avatar {...props}>{userInitials(user) || "?"}</Avatar>
+);
 
 export default UserAvatar;
