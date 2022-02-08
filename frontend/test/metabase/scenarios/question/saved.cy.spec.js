@@ -12,11 +12,14 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should should correctly display 'Save' modal (metabase#13817)", () => {
-    openOrdersTable({ mode: "notebook" });
+    openOrdersTable();
+    cy.icon("notebook").click();
     cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
     cy.findByText("Pick a column to group by").click();
-    cy.findByText("Total").click();
+    popover()
+      .findByText("Total")
+      .click();
     // Save the question
     cy.findByText("Save").click();
     modal().within(() => {
@@ -27,7 +30,9 @@ describe("scenarios > question > saved", () => {
 
     // Add a filter in order to be able to save question again
     cy.findByText("Filter").click();
-    cy.findByText(/^Total$/).click();
+    popover()
+      .findByText(/^Total$/)
+      .click();
     cy.findByText("Equal to").click();
     cy.findByText("Greater than").click();
     cy.findByPlaceholderText("Enter a number").type("60");

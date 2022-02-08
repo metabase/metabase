@@ -12,12 +12,10 @@ describe("scenarios > visualizations > table", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.findByText("City").click();
 
@@ -51,7 +49,6 @@ describe("scenarios > visualizations > table", () => {
 
   it("should show field metadata in a popover when hovering over a table column header", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.icon("notebook").click();
     cy.findByTestId("fields-picker").click();
@@ -173,7 +170,6 @@ describe("scenarios > visualizations > table", () => {
 
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable();
-    cy.wait("@dataset");
 
     cy.findByText("Product ID").trigger("mouseenter");
 
@@ -198,7 +194,6 @@ describe("scenarios > visualizations > table", () => {
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
     openPeopleTable();
-    cy.wait("@dataset");
 
     cy.findByText("City").click();
     popover().within(() => {

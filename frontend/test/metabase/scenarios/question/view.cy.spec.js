@@ -16,10 +16,8 @@ describe("scenarios > question > view", () => {
 
   describe("summarize sidebar", () => {
     it("should summarize by category and show a bar chart", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
-      cy.wait("@dataset");
+
       cy.contains("Summarize").click();
       cy.contains("Category").click();
       cy.contains("Done").click();
