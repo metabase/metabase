@@ -22,9 +22,13 @@ export default class QuestionApp extends React.Component {
           questionHash={location.hash}
           questionId={params.questionId ? parseInt(params.questionId) : null}
         >
-          {({ rawSeries }) =>
+          {({ question, rawSeries }) =>
             rawSeries && (
-              <Visualization className="flex-full" rawSeries={rawSeries} />
+              <Visualization
+                className="flex-full"
+                rawSeries={rawSeries}
+                query={question.query()}
+              />
             )
           }
         </QuestionAndResultLoader>
