@@ -566,7 +566,7 @@
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries refingerprint cache_ttl]} :body}]
+                   auto_run_queries refingerprint cache_ttl force_sample]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
@@ -574,6 +574,7 @@
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
+   force_sample       (s/maybe s/Bool)
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
@@ -624,7 +625,10 @@
                                                        ;; scheduling. leave them as they are in the db
 
           ;; unlike the other fields, folks might want to nil out cache_ttl
-          (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
+          (api/check-500
+           ;; offer an escape hatch for force setting sample db (for e2e tests)
+           (binding [database/*allow-sample-update?* force_sample]
+             (db/update! Database id {:cache_ttl cache_ttl})))
 
           (let [db (Database id)]
             (events/publish-event! :database-update db)
