@@ -1,6 +1,7 @@
-(ns metabase.driver.testing.interactive
+(ns dev.driver.testing.interactive
   "Tools for interactively testing drivers (especially third party)"
   (:require [clojure.string :as str]
+            [metabase.db :as mdb]
             [metabase.driver :as driver]
             [metabase.models :refer [Database]]
             [metabase.test :as mt]
@@ -25,8 +26,8 @@
                 visible-if :visible-if
                 :as conn-prop}]
   (or (contains? #{:info} spec-type) ; don't prompt for certain types (ex: info)
-      ; dependent property doesn't match
-      (and (map? visible-if) (not= (select-keys acc (keys visible-if)) visible-if))))
+    ; dependent property doesn't match
+    (and (map? visible-if) (not= (select-keys acc (keys visible-if)) visible-if))))
 
 (defn prompt-for-driver-connection-properties
   "For the given `driver`, interactively prompt the user for values for each of its `connection-properties`, and return
@@ -39,7 +40,6 @@
               default-val :default
               required? :required
               spec-type :type
-              visible-if :visible-if
               :as conn-prop}]
       (if (skip-property? acc driver conn-prop)
         acc
@@ -80,6 +80,7 @@
   and `run-tests!`, to test a connection using the entered details, and to run tests (including core Metabase tests)
   using those details, respectively."
   [driver]
+  (mdb/setup-db!)
   (let [details  (prompt-for-driver-connection-properties driver)
         temp-env (reduce-kv (fn [acc k v]
                               (assoc acc (keyword (str "mb-" (name driver) "-test-" k)) v))
@@ -98,15 +99,17 @@
     (println "Run `(user/test-connect!) to test a connection using these details`.")
     (intern 'user 'run-tests! (fn [& tests]
                                 (loop [[[k v] & more] temp-env
-                                       thunk*         #(mt/test-driver driver
-                                                         (mt/dataset test-data
-                                                           (test-runner/run-tests (cond-> {:prevent-exit? true
-                                                                                           :multithread? true}
-                                                                                    (some? tests)
-                                                                                    (assoc :only tests)))))]
+                                       thunk*         #(do
+                                                         (mt/set-test-drivers! #{driver})
+                                                         (mt/test-driver driver
+                                                           (mt/dataset test-data
+                                                             (test-runner/run-tests (cond-> {:prevent-exit? true
+                                                                                             :multithread? true}
+                                                                                      (some? tests)
+                                                                                      (assoc :only tests))))))]
                                   (if (empty? more)
                                     (thunk*)
                                     (recur more #(tu/do-with-temp-env-var-value k v thunk*))))))
     (println (str "Use `(user/run-tests!)` to execute tests against the connection details you entered."
-                  "  Pass an optional argument to only run certain tests.  Ex:\n"
-                  "  `(run-tests! 'metabase.query-processor-test.string-extracts-test)`"))))
+               "  Pass an optional argument to only run certain tests.  Ex:\n"
+               "  `(run-tests! 'metabase.query-processor-test.string-extracts-test)`"))))
