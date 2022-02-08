@@ -6,33 +6,35 @@ import {
   ModalMenuButton,
   ModalRoot,
   ModalTitle,
-} from "./ActionModal.styled";
+} from "./MenuModal.styled";
 
-export interface ActionModalProps {
+export interface MenuModalProps {
   title?: ReactNode;
   menu?: ReactNode;
   children?: ReactNode;
   onClose?: () => void;
 }
 
-const ActionModal = ({
+const MenuModal = ({
   title,
   menu,
   children,
   onClose,
-}: ActionModalProps): JSX.Element => {
+}: MenuModalProps): JSX.Element => {
   return (
     <ModalRoot>
       <ModalHeader>
         <ModalTitle>{title}</ModalTitle>
         {menu && <ModalMenuButton>{menu}</ModalMenuButton>}
-        <ModalCloseButton onClick={onClose}>
-          <Icon name="close" />
-        </ModalCloseButton>
+        {onClose && (
+          <ModalCloseButton onClick={onClose}>
+            <Icon name="close" />
+          </ModalCloseButton>
+        )}
       </ModalHeader>
       {children}
     </ModalRoot>
   );
 };
 
-export default ActionModal;
+export default MenuModal;

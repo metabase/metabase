@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, EventTimeline } from "metabase-types/api";
-import ActionModal from "../ActionModal";
+import MenuModal from "../MenuModal";
 import {
   CardBody,
   CardDescription,
@@ -32,7 +32,7 @@ const TimelineListModal = ({
   const hasTimelines = timelines.length > 0;
 
   return (
-    <ActionModal
+    <MenuModal
       title={t`Events`}
       menu={hasTimelines && <TimelineMenu collection={collection} />}
       onClose={onClose}
@@ -42,7 +42,7 @@ const TimelineListModal = ({
       ) : (
         <TimelineEmptyState />
       )}
-    </ActionModal>
+    </MenuModal>
   );
 };
 
