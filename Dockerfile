@@ -23,9 +23,7 @@ FROM eclipse-temurin:11-jre-alpine as runner
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
-    apk upgrade && \
-    rm -rf /var/cache/apk/* && \
+RUN apk upgrade && apk add --update-cache --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
     mkdir -p /app/certs && \
     curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
     /opt/java/openjdk/bin/keytool -noprompt -import -trustcacerts -alias aws-rds -file /app/certs/rds-combined-ca-bundle.pem -keystore /etc/ssl/certs/java/cacerts -keypass changeit -storepass changeit && \
