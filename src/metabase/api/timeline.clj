@@ -40,9 +40,9 @@
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
-        :present #{description icon collection_id archived}
-        :non-nil #{name}))))
-
+        :present #{:description :icon :collection_id :archived}
+        :non-nil #{:name}))
+    (Timeline id)))
 
 
 ;; todo: icons
