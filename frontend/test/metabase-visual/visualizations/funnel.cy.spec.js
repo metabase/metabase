@@ -4,8 +4,6 @@ describe("visual tests > visualizations > funnel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("empty", () => {
@@ -27,8 +25,6 @@ describe("visual tests > visualizations > funnel", () => {
         "funnel.type": "funnel",
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
@@ -54,8 +50,6 @@ describe("visual tests > visualizations > funnel", () => {
         "funnel.type": "funnel",
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

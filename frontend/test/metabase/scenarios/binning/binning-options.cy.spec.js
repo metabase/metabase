@@ -289,7 +289,6 @@ function chooseInitialBinningOptionForExplicitJoin({
 } = {}) {
   visitQuestionAdhoc({ dataset_query: baseTableQuery });
 
-  cy.wait("@dataset");
   cy.findByTextEnsureVisible("Summarize").click();
 
   cy.findByTestId("sidebar-right").within(() => {
