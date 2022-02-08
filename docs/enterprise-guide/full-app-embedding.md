@@ -26,7 +26,7 @@ Once you do, you'll see a set of options:
   For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
   If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
 
-**Note:** Some browsers, like Chrome, has `localStorage` is disabled in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from the Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
+**Note:** Some browsers, like Chrome, has `localStorage` is disabled in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
 
 ### Setting things up in your web app
 
