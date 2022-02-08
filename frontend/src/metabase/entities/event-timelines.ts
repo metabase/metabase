@@ -8,7 +8,7 @@ type UndoOpts = Record<string, unknown>;
 const EventTimelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
-  path: "/api/timeline",
+  path: "/api/event-timeline",
   forms,
 
   objectActions: {
