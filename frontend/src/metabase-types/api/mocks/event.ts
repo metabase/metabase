@@ -1,4 +1,4 @@
-import { Event, EventTimeline } from "../Event";
+import { Event, EventTimeline } from "../event";
 import { createMockUser } from "./user";
 
 export const createMockEvent = ({

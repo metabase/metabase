@@ -1,5 +1,5 @@
-import { CollectionId } from "./Collection";
-import { User } from "./User";
+import { CollectionId } from "../types/Collection";
+import { User } from "./user";
 
 export interface Event {
   id: number;
