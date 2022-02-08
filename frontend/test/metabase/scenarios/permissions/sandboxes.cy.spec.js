@@ -141,7 +141,7 @@ describeWithToken("formatting > sandboxes", () => {
         cy.icon("notebook").click();
         cy.findByText("Filter").click();
         popover().within(() => {
-          cy.findByText("Total").click();
+          cy.findByText("Total").click({ force: true });
         });
         cy.findByText("Equal to").click();
         cy.findByText("Greater than").click();
