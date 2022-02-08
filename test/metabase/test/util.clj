@@ -21,7 +21,7 @@
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -41,7 +41,7 @@
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 

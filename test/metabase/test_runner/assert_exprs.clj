@@ -1,23 +1,10 @@
-(ns metabase.test-runner.effects
-  "A namespace for side-effecting test utilities to ensure we can always run subselections of tests. There should be no
-  macros in here. Those should go in the other test namespaces. This is to ensure that any helpers like `schema=` are
-  present since this defmethod isn't required in the namespaces where it is used.
-
-  Ex:
-  clojure -X:dev:test :only '\"test/metabase/pulse/render\"'
-
-  This would not have had the random namespace that requires these helpers and the run fails."
+(ns metabase.test-runner.assert-exprs
+  "Custom implementations of [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]).
+  `re=`, `schema=`, `query=`, `sql=`, and more."
   (:require [clojure.data :as data]
             [clojure.test :as t]
             [clojure.walk :as walk]
-            [metabase.util.date-2 :as date-2]
-            [metabase.util.i18n.impl :as i18n.impl]
             [schema.core :as s]))
-
-(comment
-  ;; these are necessary so data_readers.clj functions can function
-  date-2/keep-me
-  i18n.impl/keep-me)
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
