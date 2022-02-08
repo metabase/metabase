@@ -1,12 +1,12 @@
 import styled from "styled-components";
-import { Flex } from "grid-styled";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
 
 import Icon from "metabase/components/Icon";
 
-export const Container = styled(Flex)`
+export const Container = styled.div`
+  display: flex;
   justify-content: space-between;
   flex-direction: column;
   margin-bottom: ${space(3)};
@@ -19,7 +19,8 @@ export const Container = styled(Flex)`
   }
 `;
 
-export const MenuContainer = styled(Flex)`
+export const MenuContainer = styled.div`
+  display: flex;
   margin-top: ${space(1)};
   align-self: start;
 `;
@@ -54,4 +55,9 @@ export const DescriptionHeading = styled.div`
   line-height: 1.5rem;
   padding-top: 1.15rem;
   max-width: 400px;
+`;
+
+export const TitleContent = styled.div`
+  display: flex;
+  align-items: center;
 `;

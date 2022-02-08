@@ -64,22 +64,20 @@
                      " OR \"%schema%\".\"test_data_users\".\"id\" = 3)"
                      " LIMIT 2000")
                     "%schema%" redshift.test/session-schema-name)]
-     (mt/test-driver
-      :redshift
-      (is (= expected
-             (query->native
-              (assoc
-               (mt/mbql-query users {:limit 2000})
-               :parameters [{:type   "id"
-                             :target [:dimension [:field (mt/id :users :id) nil]]
-                             :value  ["1" "2" "3"]}]
-               :info {:executed-by 1000
-                      :card-id     1234
-                      :context     :ad-hoc
-                      :nested?     false
-                      :query-hash  (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
-          "if I run a Redshift query, does it get a remark added to it?")))))
+      (mt/test-driver :redshift
+        (is (= expected
+               (query->native
+                (assoc
+                 (mt/mbql-query users {:limit 2000})
+                 :parameters [{:type   "id"
+                               :target [:dimension [:field (mt/id :users :id) nil]]
+                               :value  ["1" "2" "3"]}]
+                 :info {:executed-by        1000
+                        :card-id            1234
+                        :context            :ad-hoc
+                        :query-hash         (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                         93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            "if I run a Redshift query, does it get a remark added to it?")))))
 
 ;; the extsales table is a Redshift Spectrum linked table, provided by AWS's sample data set for Redshift.
 ;; See https://docs.aws.amazon.com/redshift/latest/dg/c-getting-started-using-spectrum.html

@@ -28,7 +28,6 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.middleware.forty-three :as m.43]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -308,15 +307,13 @@
        (rf result (remap-fn row))))
     rf))
 
-(defn- remap-results [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
+(defn remap-results
+  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
+  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
+  [{::keys [external-remaps], {:keys [disable-remaps?]} :middleware} rff]
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
       (let [internal-cols-info (internal-columns-info (:cols metadata))
             metadata           (add-remapped-cols metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
-
-(def remap-results-middleware
-  "Post-processing middleware. Handles `::external-remaps` added by [[add-remapped-columns-middleware]]; transforms
-  results and adds additional metadata based on these remaps, as well as internal (human-readable values) remaps."
-  (m.43/wrap-43-post-processing-middleware remap-results))

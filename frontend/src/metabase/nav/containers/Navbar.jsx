@@ -6,14 +6,13 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import { t } from "ttag";
-import { Flex, Box } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
 import { color, darken } from "metabase/lib/colors";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
 
@@ -42,6 +41,14 @@ const mapStateToProps = (state, props) => ({
 });
 
 import { getDefaultSearchColor } from "metabase/nav/constants";
+import {
+  EntityMenuContainer,
+  LogoIconContainer,
+  LogoLinkContainer,
+  NavRoot,
+  SearchBarContainer,
+  SearchBarContent,
+} from "./Navbar.styled";
 
 const mapDispatchToProps = {
   onChangeLocation: push,
@@ -110,16 +117,12 @@ export default class Navbar extends Component {
     const { hasDataAccess, hasNativeWrite } = this.props;
 
     return (
-      <Flex
+      <NavRoot
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
         className="Nav relative bg-brand text-white z3 flex-no-shrink"
-        align="center"
-        style={{ backgroundColor: color("nav") }}
-        py={1}
-        pr={2}
       >
-        <Flex style={{ minWidth: 64 }} align="center" justify="center">
+        <LogoLinkContainer>
           <Link
             to="/"
             data-metabase-event={"Navbar;Logo"}
@@ -128,24 +131,20 @@ export default class Navbar extends Component {
             mx={1}
             hover={{ backgroundColor: getDefaultSearchColor() }}
           >
-            <Flex
-              style={{ minWidth: 32, height: 32 }}
-              align="center"
-              justify="center"
-            >
+            <LogoIconContainer>
               <LogoIcon dark height={32} />
-            </Flex>
+            </LogoIconContainer>
           </Link>
-        </Flex>
-        <Flex className="flex-full z1" pr={2} align="center">
-          <Box width={1} style={{ maxWidth: 500 }}>
+        </LogoLinkContainer>
+        <SearchBarContainer>
+          <SearchBarContent>
             <SearchBar
               location={this.props.location}
               onChangeLocation={this.props.onChangeLocation}
             />
-          </Box>
-        </Flex>
-        <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
+          </SearchBarContent>
+        </SearchBarContainer>
+        <EntityMenuContainer>
           <EntityMenu
             className="hide sm-show mr1"
             trigger={
@@ -220,9 +219,9 @@ export default class Navbar extends Component {
             </Link>
           )}
           <ProfileLink {...this.props} />
-        </Flex>
+        </EntityMenuContainer>
         {this.renderModal()}
-      </Flex>
+      </NavRoot>
     );
   }
 

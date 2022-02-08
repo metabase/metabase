@@ -223,7 +223,7 @@ function setup({ question, subHead = false, isObjectDetail = false } = {}) {
   return { onError };
 }
 
-jest.mock("metabase/components/Link", () => ({ to: href, ...props }) => (
+jest.mock("metabase/core/components/Link", () => ({ to: href, ...props }) => (
   <a href={href} {...props} />
 ));
 

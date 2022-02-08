@@ -6,7 +6,7 @@
 
 (def ^:private ^:const default-max-results-bare-rows 2000)
 
-;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to `default-max-results-bare-rows`)
+;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-max-results-bare-rows]])
 ;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
 ;; to reference the former constant value have to expect it could return nil instead
 (setting/defsetting max-results-bare-rows
@@ -45,7 +45,8 @@
 
 (defn add-default-userland-constraints
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
-  use with `process-query-and-save-with-max-results-constraints!`, which ultimately powers most QP API endpoints."
+  use with [[metabase.query-processor/process-query-and-save-with-max-results-constraints!]], which ultimately powers
+  most QP API endpoints."
   [qp]
   (fn [query rff context]
     (qp (add-default-userland-constraints* query) rff context)))

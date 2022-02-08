@@ -199,7 +199,7 @@
        (qp/process-query
          {:database db-id
           :type     :native
-          :native   (qp/query->native
+          :native   (qp/compile
                       {:database db-id
                        :type     :query
                        :query    {:source-table table-id

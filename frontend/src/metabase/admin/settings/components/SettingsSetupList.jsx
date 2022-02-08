@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { Flex } from "grid-styled";
 import { SetupApi } from "metabase/services";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
@@ -10,6 +9,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import Icon from "metabase/components/Icon";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MarginHostingCTA from "metabase/admin/settings/components/widgets/MarginHostingCTA";
+import { SetupListRoot } from "metabase/admin/settings/components/SettingsSetupList.styled";
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -106,7 +106,7 @@ export default class SettingsSetupList extends Component {
     }
 
     return (
-      <Flex justifyContent="space-between">
+      <SetupListRoot>
         <div className="px2">
           <h2>{t`Getting set up`}</h2>
           <p className="mt1">{t`A few things you can do to get the most out of Metabase.`}</p>
@@ -133,7 +133,7 @@ export default class SettingsSetupList extends Component {
         {!MetabaseSettings.isHosted() && !MetabaseSettings.isEnterprise() && (
           <MarginHostingCTA tagline={t`Have your server maintained for you.`} />
         )}
-      </Flex>
+      </SetupListRoot>
     );
   }
 }

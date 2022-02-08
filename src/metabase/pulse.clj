@@ -38,6 +38,7 @@
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
                      :card-id       card-id
+                     :dashcard-id   (u/the-id dashcard)
                      :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                      :export-format :api
                      :parameters    parameters
@@ -166,7 +167,8 @@
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
-  "Width of the rendered png of html to be sent to slack."
+  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
+  many columns) is truncated."
   1200)
 
 (defn create-and-upload-slack-attachments!

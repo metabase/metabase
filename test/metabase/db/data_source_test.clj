@@ -94,6 +94,26 @@
                   {"user" "cam"})
                  (mdb.data-source/raw-connection-string->DataSource (str subprotocol "://cam@localhost/metabase?password=1234")))))))))
 
+(deftest raw-connection-string-with-separate-username-and-password-test
+  (testing "Raw connection string should support separate username and/or password (#20122)"
+    (testing "username and password"
+      (is (= (->DataSource
+              "jdbc:postgresql://metabase"
+              {"user" "cam", "password" "1234"})
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" "1234"))))
+    (testing "username only"
+      (is (= (->DataSource
+              "jdbc:postgresql://metabase"
+              {"user" "cam"})
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" nil)
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "cam" ""))))
+    (testing "password only"
+      (is (= (->DataSource
+              "jdbc:postgresql://metabase"
+              {"password" "1234"})
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" nil "1234")
+             (mdb.data-source/raw-connection-string->DataSource "postgres://metabase" "" "1234"))))))
+
 (deftest equality-test
   (testing "Two DataSources with the same URL should be equal"
     (is (= (mdb.data-source/raw-connection-string->DataSource "ABCD")

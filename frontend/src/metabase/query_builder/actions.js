@@ -256,9 +256,10 @@ export const updateUrl = createThunkAction(
 
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
       dirty =
         !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+        (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
     }
 
     // prevent clobbering of hash when there are fake parameters on the question
@@ -340,13 +341,22 @@ export const resetQB = createAction(RESET_QB);
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
+  dashcardId,
   cardId,
   parameters,
   metadata,
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
-    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+    if (
+      !hasMatchingParameters({
+        dashboard,
+        dashcardId,
+        cardId,
+        parameters,
+        metadata,
+      })
+    ) {
       dispatch(setErrorPage({ status: 403 }));
     }
   } catch (error) {
@@ -420,10 +430,11 @@ export const initializeQB = (location, params, queryParams) => {
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard && deserializedCard.parameters) {
             const metadata = getMetadata(getState());
-            const { dashboardId, parameters } = deserializedCard;
+            const { dashboardId, dashcardId, parameters } = deserializedCard;
             verifyMatchingDashcardAndParameters({
               dispatch,
               dashboardId,
+              dashcardId,
               cardId,
               parameters,
               metadata,
@@ -431,6 +442,7 @@ export const initializeQB = (location, params, queryParams) => {
 
             card.parameters = parameters;
             card.dashboardId = dashboardId;
+            card.dashcardId = dashcardId;
           }
         } else if (card.original_card_id) {
           const deserializedCard = card;
@@ -446,10 +458,11 @@ export const initializeQB = (location, params, queryParams) => {
               })
             ) {
               const metadata = getMetadata(getState());
-              const { dashboardId, parameters } = deserializedCard;
+              const { dashboardId, dashcardId, parameters } = deserializedCard;
               verifyMatchingDashcardAndParameters({
                 dispatch,
                 dashboardId,
+                dashcardId,
                 cardId: card.id,
                 parameters,
                 metadata,
@@ -457,6 +470,7 @@ export const initializeQB = (location, params, queryParams) => {
 
               card.parameters = parameters;
               card.dashboardId = dashboardId;
+              card.dashcardId = dashcardId;
             }
           }
         }
@@ -1236,7 +1250,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+      const isAdHocModel =
+        question.isDataset() &&
+        isAdHocModelQuestion(question, originalQuestion);
+
+      dispatch(
+        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
+      );
     }
 
     if (getIsPreviewing(getState())) {

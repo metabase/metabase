@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
@@ -96,4 +96,8 @@ const getDefaultColor = () => color("brand");
 
 export const FilterHeaderContainer = styled.div`
   padding: ${space(2)} ${space(3)} ${space(1)} ${space(3)};
+`;
+
+export const ViewSubHeaderRoot = styled(ViewSection)`
+  padding-top: 0.5rem;
 `;

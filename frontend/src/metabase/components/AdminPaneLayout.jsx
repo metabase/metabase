@@ -2,7 +2,7 @@
 import React from "react";
 
 import Button from "metabase/core/components/Button";
-import Link from "metabase/components/Link";
+import Link from "metabase/core/components/Link";
 
 const AdminPaneTitle = ({
   title,

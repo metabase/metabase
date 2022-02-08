@@ -1,12 +1,10 @@
-/* eslint-disable react/prop-types */
-import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
+import { isFK, isPK } from "metabase/lib/schema_metadata";
 
 export default ({ question, clicked }) => {
   if (
-    !clicked ||
-    !clicked.column ||
-    clicked.value === undefined ||
+    !clicked?.column ||
+    clicked?.value === undefined ||
     !(isFK(clicked.column) || isPK(clicked.column))
   ) {
     return [];
@@ -21,10 +19,6 @@ export default ({ question, clicked }) => {
     field = field.target;
   }
 
-  if (!clicked) {
-    return [];
-  }
-
   return [
     {
       name: "object-detail",
@@ -34,7 +28,7 @@ export default ({ question, clicked }) => {
       icon: "document",
       default: true,
       question: () =>
-        field ? question.drillPK(field, clicked && clicked.value) : question,
+        field ? question.drillPK(field, clicked.value) : question,
     },
   ];
 };

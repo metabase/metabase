@@ -483,7 +483,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.server();
         cy.route(
           "POST",
-          `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION_ID}/query`,
+          `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION_ID}/query`,
         ).as("cardQuery");
 
         cy.visit(`/dashboard/${DASHBOARD_ID}`);
@@ -728,7 +728,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
           });
           cy.intercept(
             "POST",
-            `/api/dashboard/${DASHBOARD_ID}/card/${QUESTION2_ID}/query`,
+            `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${QUESTION2_ID}/query`,
           ).as("secondCardQuery");
 
           cy.visit(`/dashboard/${DASHBOARD_ID}`);

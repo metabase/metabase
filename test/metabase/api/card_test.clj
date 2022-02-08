@@ -447,7 +447,7 @@
         to-native      (fn [q]
                          {:database (:database q)
                           :type     :native
-                          :native   (mt/query->native q)})]
+                          :native   (mt/compile q)})]
     (testing "Updating query updates metadata"
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
@@ -1899,7 +1899,7 @@
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
-                            :native   (mt/query->native q)})]
+                            :native   (mt/compile q)})]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)

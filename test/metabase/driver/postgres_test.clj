@@ -663,7 +663,7 @@
                       "FROM attempts "
                       "GROUP BY attempts.date "
                       "ORDER BY attempts.date ASC")
-                 (some-> (qp/query->native query) :query pretty-sql))))))))
+                 (some-> (qp/compile query) :query pretty-sql))))))))
 
 (deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
