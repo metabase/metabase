@@ -31,9 +31,9 @@ export const getHasDataAccess = createSelector(
     // If there is only the saved questions DB, it doesn't mean a user has data access
     Object.values(databaseMap).some(db => !db.is_saved_questions),
 );
+
 export const getHasNativeWrite = createSelector(
   [getDatabases],
-  databases =>
-    databases &&
-    Object.values(databases).some(d => d.native_permissions === "write"),
+  (databaseMap = {}) =>
+    Object.values(databaseMap).some(d => d.native_permissions === "write"),
 );
