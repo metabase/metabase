@@ -3,8 +3,8 @@ FROM eclipse-temurin:11-jre-alpine
 ENV FC_LANG en-US LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add -U --update-cache --no-cache bash ttf-dejavu fontconfig curl java-cacerts && \
-    apk -U upgrade && \
+RUN apk add -U bash ttf-dejavu fontconfig curl java-cacerts && \
+    apk upgrade && \
     rm -rf /var/cache/apk/* && \
     mkdir -p /app/certs && \
     curl https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem -o /app/certs/rds-combined-ca-bundle.pem  && \
