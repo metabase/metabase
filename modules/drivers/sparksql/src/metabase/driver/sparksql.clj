@@ -5,8 +5,10 @@
             [honeysql.core :as hsql]
             [honeysql.helpers :as h]
             [medley.core :as m]
+            [metabase.connection-pool :as pool]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
+            [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -76,27 +78,19 @@
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
-(defn- sparksql
-  "Create a database specification for a Spark SQL database."
-  [{:keys [host port db jdbc-flags]
-    :or   {host "localhost", port 10000, db "", jdbc-flags ""}
-    :as   opts}]
-  (merge
-   {:classname   "metabase.driver.FixedHiveDriver"
-    :subprotocol "hive2"
-    :subname     (str "//" host ":" port "/" db jdbc-flags)}
-   (dissoc opts :host :port :jdbc-flags)))
-
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
-  [_ details]
-  (-> details
-      (update :port (fn [port]
-                      (if (string? port)
-                        (Integer/parseInt port)
-                        port)))
-      (set/rename-keys {:dbname :db})
-      sparksql
-      (sql-jdbc.common/handle-additional-options details)))
+  [_driver {:keys [host port db jdbc-flags dbname]
+            :or   {host "localhost", port 10000, db "", jdbc-flags ""}
+            :as   opts}]
+  (let [port        (cond-> port
+                      (string? port) Integer/parseInt)
+        db          (or dbname db)
+        url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
+        properties  (pool/map->properties (dissoc opts :host :port :jdbc-flags))
+        data-source (reify javax.sql.DataSource
+                      (getConnection [_this]
+                        (fixed-hive-connection/fixed-hive-connection url properties)))]
+    {:datasource data-source}))
 
 (defn- dash-to-underscore [s]
   (when s
@@ -104,7 +98,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql
-  [_ {:keys [details] :as database}]
+  [_ database]
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
@@ -121,7 +115,7 @@
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
-  [driver {:keys [details] :as database} {table-name :name, schema :schema, :as table}]
+  [driver database {table-name :name, schema :schema, :as table}]
   {:name   table-name
    :schema schema
    :fields

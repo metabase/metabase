@@ -26,20 +26,4 @@
                  org.codehaus.jackson/jackson-jaxrs
                  org.codehaus.jackson/jackson-xc
                  org.slf4j/slf4j-log4j12
-                 org.eclipse.jetty.aggregate/jetty-all]}}
-
- :deps/prep-lib
- {:ensure "target/classes"
-  :alias  :aot
-  :fn     aot}
-
- :aliases
- {:aot
-  {:deps       {io.github.clojure/tools.build {:git/tag "v0.7.5" :git/sha "2526f58"}}
-   :ns-default build}
-
-  ;; dependencies needed for AOT compilation. Same as deps above but without all the exclusions.
-  :compilation-basis
-  {:replace-deps {org.apache.hadoop/hadoop-common {:mvn/version "3.3.1"}
-                  org.apache.hive/hive-jdbc       {:mvn/version "1.2.2"}
-                  org.clojure/clojure             {:mvn/version "1.10.3"}}}}}
+                 org.eclipse.jetty.aggregate/jetty-all]}}}
