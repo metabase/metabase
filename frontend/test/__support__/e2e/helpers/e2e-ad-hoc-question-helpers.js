@@ -26,6 +26,49 @@ export function visitQuestionAdhoc(question, { callback, mode } = {}) {
   });
 }
 
+/**
+ * Open a table as an ad-hoc query in a simple or a notebook mode, and optionally limit the number of results.
+ *
+ * @param {{database:number, table: number, mode: (undefined|"notebook"), limit: number, callback: function}} config
+ */
+export function openTable({
+  database = 1,
+  table,
+  mode = null,
+  limit,
+  callback,
+} = {}) {
+  visitQuestionAdhoc(
+    {
+      dataset_query: {
+        database,
+        query: {
+          "source-table": table,
+          limit,
+        },
+        type: "query",
+      },
+    },
+    { mode, callback },
+  );
+}
+
+export function openProductsTable({ mode, limit, callback } = {}) {
+  return openTable({ table: 1, mode, limit, callback });
+}
+
+export function openOrdersTable({ mode, limit, callback } = {}) {
+  return openTable({ table: 2, mode, limit, callback });
+}
+
+export function openPeopleTable({ mode, limit, callback } = {}) {
+  return openTable({ table: 3, mode, limit, callback });
+}
+
+export function openReviewsTable({ mode, limit, callback } = {}) {
+  return openTable({ table: 4, mode, limit, callback });
+}
+
 function getInterceptDetails(question, mode) {
   // When visiting notebook mode directly, we don't render any results to the page.
   // Therefore, there is no `dataset` to wait for.
