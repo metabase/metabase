@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { Event } from "metabase-types/api/event";
+import { Event } from "metabase-types/api";
 import { createEntity, undo } from "metabase/lib/entities";
 
 type UndoOpts = Record<string, unknown>;
