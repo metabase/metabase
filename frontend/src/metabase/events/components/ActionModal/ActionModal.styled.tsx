@@ -9,7 +9,7 @@ export const ModalRoot = styled.div`
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2rem;
+  padding: 2rem 2rem 0;
 `;
 
 export const ModalTitle = styled.div`

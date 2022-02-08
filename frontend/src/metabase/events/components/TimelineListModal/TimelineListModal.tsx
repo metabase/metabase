@@ -9,8 +9,12 @@ import {
   CardInfo,
   CardRoot,
   CardTitle,
-  ModalBody,
+  EmptyStateBody,
+  EmptyStateRoot,
+  EmptyStateText,
+  ListRoot,
 } from "./TimelineListModal.styled";
+import Button from "metabase/core/components/Button";
 
 export interface TimelineListModalProps {
   timelines: EventTimeline[];
@@ -23,12 +27,26 @@ const TimelineListModal = ({
 }: TimelineListModalProps): JSX.Element => {
   return (
     <ActionModal title={t`Events`} onClose={onClose}>
-      <ModalBody>
-        {timelines.map(timeline => (
-          <TimelineCard key={timeline.id} timeline={timeline} />
-        ))}
-      </ModalBody>
+      {timelines.length ? (
+        <TimelineList timelines={timelines} />
+      ) : (
+        <TimelineEmptyState />
+      )}
     </ActionModal>
+  );
+};
+
+interface TimelineListProps {
+  timelines: EventTimeline[];
+}
+
+const TimelineList = ({ timelines }: TimelineListProps): JSX.Element => {
+  return (
+    <ListRoot>
+      {timelines.map(timeline => (
+        <TimelineCard key={timeline.id} timeline={timeline} />
+      ))}
+    </ListRoot>
   );
 };
 
@@ -50,6 +68,19 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
         {ngettext(msgid`${events} event`, `${events} events`, events)}
       </CardInfo>
     </CardRoot>
+  );
+};
+
+const TimelineEmptyState = (): JSX.Element => {
+  return (
+    <EmptyStateRoot>
+      <EmptyStateBody>
+        <EmptyStateText>
+          {t`Add events to Metabase to show important milestones, launches, or anything else, right alongside your data.`}
+        </EmptyStateText>
+        <Button primary>{t`Add an event`}</Button>
+      </EmptyStateBody>
+    </EmptyStateRoot>
   );
 };
 

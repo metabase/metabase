@@ -3,11 +3,11 @@ import Link from "metabase/core/components/Link";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
-export const ModalBody = styled.div`
+export const ListRoot = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  padding: 0 2rem 2rem;
+  padding: 2rem;
 `;
 
 export const CardRoot = styled(Link)`
@@ -47,4 +47,24 @@ export const CardInfo = styled.span`
   align-self: start;
   color: ${color("text-dark")};
   margin-left: 1.75rem;
+`;
+
+export const EmptyStateRoot = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+`;
+
+export const EmptyStateBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 22.5rem;
+`;
+
+export const EmptyStateText = styled.div`
+  color: ${color("text-dark")};
+  line-height: 1.5rem;
+  margin-bottom: 2rem;
 `;
