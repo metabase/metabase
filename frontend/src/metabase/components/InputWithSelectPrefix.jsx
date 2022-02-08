@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import Select, { Option } from "./Select";
+import Select, { Option } from "metabase/core/components/Select";
 import InputBlurChange from "./InputBlurChange";
 
 function splitValue({

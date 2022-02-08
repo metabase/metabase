@@ -9,7 +9,7 @@ import {
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
-import AccordionList from "metabase/components/AccordionList";
+import AccordionList from "metabase/core/components/AccordionList";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import Grabber from "metabase/components/Grabber";

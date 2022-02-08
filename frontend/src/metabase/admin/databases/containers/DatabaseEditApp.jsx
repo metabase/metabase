@@ -7,8 +7,6 @@ import { getValues } from "redux-form";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Box, Flex } from "grid-styled";
-
 import title from "metabase/hoc/Title";
 
 import Button from "metabase/core/components/Button";
@@ -35,7 +33,13 @@ import {
   selectEngine,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { HelpCard } from "./DatabaseEditApp.styled";
+import {
+  DatabaseEditContent,
+  DatabaseEditForm,
+  DatabaseEditHelp,
+  DatabaseEditMain,
+  DatabaseEditRoot,
+} from "./DatabaseEditApp.styled";
 
 const DATABASE_FORM_NAME = "database";
 
@@ -107,11 +111,11 @@ export default class DatabaseEditApp extends Component {
     ];
 
     return (
-      <Box px={[3, 4, 5]} mt={[1, 2, 3]}>
+      <DatabaseEditRoot>
         <Breadcrumbs className="py4" crumbs={crumbs} />
 
-        <Flex pb={2}>
-          <Box>
+        <DatabaseEditMain>
+          <div>
             <div className="pt0">
               <LoadingAndErrorWrapper
                 loading={!database}
@@ -137,8 +141,8 @@ export default class DatabaseEditApp extends Component {
                       onChangeField,
                     }) => {
                       return (
-                        <Flex>
-                          <Box width={620}>
+                        <DatabaseEditContent>
+                          <DatabaseEditForm>
                             <Form>
                               <FormField name="engine" />
                               <DriverWarning
@@ -159,20 +163,20 @@ export default class DatabaseEditApp extends Component {
                                 </FormSubmit>
                               </div>
                             </Form>
-                          </Box>
-                          <Box>
+                          </DatabaseEditForm>
+                          <div>
                             {addingNewDatabase && (
-                              <HelpCard engine={selectedEngine} />
+                              <DatabaseEditHelp engine={selectedEngine} />
                             )}
-                          </Box>
-                        </Flex>
+                          </div>
+                        </DatabaseEditContent>
                       );
                     }}
                   </Databases.Form>
                 )}
               </LoadingAndErrorWrapper>
             </div>
-          </Box>
+          </div>
 
           {editingExistingDatabase && (
             <Sidebar
@@ -183,8 +187,8 @@ export default class DatabaseEditApp extends Component {
               syncDatabaseSchema={syncDatabaseSchema}
             />
           )}
-        </Flex>
-      </Box>
+        </DatabaseEditMain>
+      </DatabaseEditRoot>
     );
   }
 }

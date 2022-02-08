@@ -1,8 +1,25 @@
 import styled from "styled-components";
-import { space } from "metabase/styled-components/theme";
+import {
+  breakpointMinMedium,
+  breakpointMinSmall,
+  space,
+} from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
+import { GridItem } from "metabase/components/Grid";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+
+export const TableGridItem = styled(GridItem)`
+  width: 100%;
+
+  ${breakpointMinSmall} {
+    width: 50%;
+  }
+
+  ${breakpointMinMedium} {
+    width: 33.33%;
+  }
+`;
 
 export const TableLink = styled(Link)`
   display: block;

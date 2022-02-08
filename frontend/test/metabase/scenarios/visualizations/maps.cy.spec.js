@@ -131,8 +131,6 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText("State:"); // column name key
     cy.findByText("Texas"); // feature name as value
 
-    cy.server();
-    cy.route("POST", `/api/dataset`).as("dataset");
     // open actions menu and drill within it
     cy.get("@texas").click();
     cy.findByText(/View these People/i).click();

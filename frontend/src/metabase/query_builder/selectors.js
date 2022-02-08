@@ -207,6 +207,11 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.previousQueryBuilderMode,
+);
+
 export const getDatasetEditorTab = createSelector(
   [getUiControls],
   uiControls => uiControls.datasetEditorTab,
@@ -373,6 +378,13 @@ export const getQuestionAlerts = createSelector(
 export const getResultsMetadata = createSelector(
   [getFirstQueryResult],
   result => result && result.data && result.data.results_metadata,
+);
+
+export const isResultsMetadataDirty = createSelector(
+  [getMetadataDiff],
+  metadataDiff => {
+    return Object.keys(metadataDiff).length > 0;
+  },
 );
 
 /**

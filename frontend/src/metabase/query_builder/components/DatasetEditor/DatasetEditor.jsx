@@ -17,7 +17,10 @@ import SnippetSidebar from "metabase/query_builder/components/template_tags/Snip
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
-import { getDatasetEditorTab } from "metabase/query_builder/selectors";
+import {
+  getDatasetEditorTab,
+  isResultsMetadataDirty,
+} from "metabase/query_builder/selectors";
 
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -45,14 +48,18 @@ const propTypes = {
   question: PropTypes.object.isRequired,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
+  isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
   height: PropTypes.number,
+  isDirty: PropTypes.bool.isRequired,
+  isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
   setFieldMetadata: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
   onCancelDatasetChanges: PropTypes.func.isRequired,
   handleResize: PropTypes.func.isRequired,
+  runQuestionQuery: PropTypes.func.isRequired,
 
   // Native editor sidebars
   isShowingTemplateTagsEditor: PropTypes.bool.isRequired,
@@ -69,6 +76,7 @@ const TABLE_HEADER_HEIGHT = 45;
 function mapStateToProps(state) {
   return {
     datasetEditorTab: getDatasetEditorTab(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
   };
 }
 
@@ -149,7 +157,6 @@ const FIELDS = [
   "semantic_type",
   "fk_target_field_id",
   "visibility_type",
-  "has_field_values",
   "settings",
 ];
 
@@ -164,14 +171,29 @@ function DatasetEditor(props) {
     datasetEditorTab,
     result,
     metadata,
+    isMetadataDirty,
     height,
+    isDirty: isModelQueryDirty,
+    isRunning,
     setQueryBuilderMode,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
     onSave,
     handleResize,
+    runQuestionQuery,
   } = props;
+
+  // It's important to reload the query to refresh metadata when coming from the model page
+  // On the model page, results metadata has a shape assuming you're building a nested question
+  // E.g. expression field refs are field literals ["field", "my_formula", ...] instead of ["expression", "my_formula"]
+  // Doing a reload will ensure the editor uses the correct metadata
+  useEffect(() => {
+    if (!isRunning) {
+      runQuestionQuery();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const orderedColumns = useMemo(() => dataset.setting("table.columns"), [
     dataset,
@@ -190,9 +212,9 @@ function DatasetEditor(props) {
     if (!Array.isArray(orderedColumns)) {
       return columns;
     }
-    return orderedColumns.map(col =>
-      columns.find(c => compareFields(c.field_ref, col.fieldRef)),
-    );
+    return orderedColumns
+      .map(col => columns.find(c => compareFields(c.field_ref, col.fieldRef)))
+      .filter(Boolean);
   }, [orderedColumns, result]);
 
   const isEditingQuery = datasetEditorTab === "query";
@@ -297,7 +319,7 @@ function DatasetEditor(props) {
   }, [setQueryBuilderMode, onCancelDatasetChanges]);
 
   const handleSave = useCallback(async () => {
-    await onSave(dataset.card());
+    await onSave(dataset.card(), { rerunQuery: true });
     setQueryBuilderMode("view");
   }, [dataset, onSave, setQueryBuilderMode]);
 
@@ -370,8 +392,10 @@ function DatasetEditor(props) {
       return false;
     }
     const hasFieldWithoutDisplayName = fields.some(f => !f.display_name);
-    return !hasFieldWithoutDisplayName;
-  }, [dataset, fields]);
+    return (
+      !hasFieldWithoutDisplayName && (isModelQueryDirty || isMetadataDirty)
+    );
+  }, [dataset, fields, isModelQueryDirty, isMetadataDirty]);
 
   const sidebar = getSidebar(props, {
     datasetEditorTab,

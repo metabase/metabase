@@ -12,7 +12,7 @@ import _ from "underscore";
 import moment from "moment";
 import { t } from "ttag";
 
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 import { addCSSRule } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 

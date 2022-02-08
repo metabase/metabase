@@ -1,7 +1,6 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
-            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
@@ -110,38 +109,30 @@
         ;; but for now, we should simply look for the value
         secret-map (secret/db-details-prop->secret-map details conn-prop-nm)
         value      (:value secret-map)
-        source     (:source secret-map)]                     ; set the :source due to the -path suffix (see above)
+        src        (:source secret-map)] ; set the :source due to the -path suffix (see above)]
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
-      (let [{:keys [id creator_id created_at]} (secret/upsert-secret-value!
-                                                 (id-kw details)
-                                                 new-name
-                                                 kind
-                                                 source
-                                                 value)]
-        ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id)
+      (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
+                                       (id-kw details)
+                                       new-name
+                                       kind
+                                       src
+                                       value)]
         (-> details
-          (dissoc value-kw (sub-prop "-path"))
-          (assoc id-kw id)
-          (assoc (sub-prop "-source") source) ; TODO: figure out why this is needed
-          (assoc (sub-prop "-creator-id") creator_id)
-          (assoc (sub-prop "-created-at") (t/format :iso-offset-date-time created_at)))))))
+            ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
+            ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
+            (dissoc value-kw (sub-prop "-path"))
+            (assoc id-kw id)
+            (secret/expand-inferred-secret-values conn-prop-nm conn-prop secret*))))))
 
 (defn- handle-secrets-changes [{:keys [details] :as database}]
-  (let [conn-props-fn (get-method driver/connection-properties (driver.u/database->driver database))]
-    (cond (nil? conn-props-fn)
-          database ; no connection-properties multimethod defined; can't check secret types so do nothing
-
-          details ; we have details populated in this Database instance, so handle them
-          (let [conn-props            (conn-props-fn (driver.u/database->driver database))
-                conn-secrets-by-name  (secret/conn-props->secret-props-by-name conn-props)
-                updated-details       (reduce-kv (partial handle-db-details-secret-prop! database)
-                                                 details
-                                                 conn-secrets-by-name)]
-           (assoc database :details updated-details))
-
-          :else ; no details populated; do nothing
-          database)))
+  (if (map? details)
+    (let [updated-details (secret/reduce-over-details-secret-values
+                            (driver.u/database->driver database)
+                            details
+                            (partial handle-db-details-secret-prop! database))]
+      (assoc database :details updated-details))
+    database))
 
 (def ^:dynamic ^Boolean *allow-sample-update?*
   "We want to disallow edits to a sample `database`'s `engine` and `details` fields, because that causes problems when
@@ -201,8 +192,8 @@
 
 (defn- pre-insert [database]
   (-> database
-   handle-secrets-changes
-   (assoc :initial_sync_status "incomplete")))
+      handle-secrets-changes
+      (assoc :initial_sync_status "incomplete")))
 
 (defn- perms-objects-set [database _]
   #{(perms/data-perms-path (u/the-id database))})

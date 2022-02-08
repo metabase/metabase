@@ -128,7 +128,7 @@ describe("scenarios > admin > settings", () => {
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("Redirect to HTTPS")
@@ -155,7 +155,7 @@ describe("scenarios > admin > settings", () => {
       .click();
     popover()
       .contains("https://")
-      .click();
+      .click({ force: true });
 
     cy.wait("@httpsCheck");
     cy.contains("It looks like HTTPS is not properly configured");
@@ -173,7 +173,7 @@ describe("scenarios > admin > settings", () => {
 
     // check the new formatting in a question
     openOrdersTable();
-    cy.contains(/^February 11, 2019, 21:40$/).debug();
+    cy.contains(/^February 11, 2019, 21:40$/);
 
     // reset the formatting
     cy.visit("/admin/settings/localization");

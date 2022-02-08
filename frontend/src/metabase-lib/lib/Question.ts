@@ -1000,11 +1000,9 @@ export default class Question {
 
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
-    const metadataChecksum = resultsMetadata && resultsMetadata.checksum;
     return this.setCard({
       ...this.card(),
       result_metadata: metadataColumns,
-      metadata_checksum: metadataChecksum,
     });
   }
 
