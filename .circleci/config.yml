@@ -1029,7 +1029,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              driver: ["bigquery", "bigquery-cloud-sdk", "googleanalytics", "sqlite"]
+              driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
             - be-tests-java-8-ee
@@ -1049,7 +1049,7 @@ workflows:
           name: be-google-related-drivers-classpath-test
           requires:
             - be-tests-java-8-ee
-          driver: googleanalytics,bigquery,bigquery-cloud-sdk
+          driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
                     metabase.driver.googleanalytics-test]"

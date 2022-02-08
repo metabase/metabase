@@ -356,7 +356,6 @@
   keys from the JDBC metadata, even though we enable the feature in the UI."
   []
   (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery)           (conj :bigquery)
     (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
     true                                       (disj :presto-jdbc)))
 
@@ -923,7 +922,7 @@
               (mt/with-column-remappings [orders.product_id products.title]
                 (testing "Sandboxed results should be the same as they would be if the sandbox was MBQL"
                   (letfn [(format-col [col]
-                            (dissoc col :field_ref :id :table_id :fk_field_id))
+                            (dissoc col :field_ref :id :table_id :fk_field_id :options))
                           (format-results [results]
                             (-> results
                                 (update-in [:data :cols] (partial map format-col))

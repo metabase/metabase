@@ -26,8 +26,6 @@ const questionDetails = {
 
 describe("issue 18729", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
   });
@@ -38,7 +36,6 @@ describe("issue 18729", () => {
       cy.skipOn(fileType === "xlsx");
 
       visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
 
       downloadAndAssert({ fileType }, assertion);
     });

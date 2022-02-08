@@ -78,9 +78,6 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should show the original custom expression filter field on subsequent click (metabase#14726)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -93,7 +90,6 @@ describe("scenarios > question > notebook", () => {
       display: "table",
     });
 
-    cy.wait("@dataset");
     cy.findByText("ID between 96 97").click();
     cy.findByText("Between").click();
     popover().within(() => {

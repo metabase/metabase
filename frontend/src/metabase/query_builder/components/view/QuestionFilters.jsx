@@ -157,7 +157,6 @@ export function QuestionFilterWidget({
   return (
     <HeaderButton
       large
-      secondary
       labelBreakpoint="sm"
       color={color("filter")}
       onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}

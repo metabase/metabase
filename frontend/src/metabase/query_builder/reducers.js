@@ -69,6 +69,7 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
+  previousQueryBuilderMode: false,
   snippetCollectionId: null,
   datasetEditorTab: "query", // "query" / "metadata"
 };
@@ -93,7 +94,18 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (state, { payload }) => ({ ...state, ...payload }),
+      next: (
+        { queryBuilderMode: currentQBMode, ...state },
+        { payload: { queryBuilderMode: nextQBMode, ...payload } },
+      ) => ({
+        ...state,
+        ...payload,
+        queryBuilderMode: nextQBMode || currentQBMode,
+        previousQueryBuilderMode:
+          nextQBMode && currentQBMode !== nextQBMode
+            ? currentQBMode
+            : state.previousQueryBuilderMode,
+      }),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -281,16 +293,12 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card, queryResults } }) => {
-        const [{ data }] = queryResults;
-        return {
-          ...state,
-          display: card.display,
-          result_metadata:
-            data?.results_metadata?.columns ?? card.result_metadata,
-          visualization_settings: card.visualization_settings,
-        };
-      },
+      next: (state, { payload: { card } }) => ({
+        ...state,
+        display: card.display,
+        result_metadata: card.result_metadata,
+        visualization_settings: card.visualization_settings,
+      }),
     },
 
     [CREATE_PUBLIC_LINK]: {

@@ -287,10 +287,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
-      cy.wait("@dataset");
+
       cy.url().should("include", "question#");
       // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
       cy.get(".QueryBuilder .Icon-notebook").click();

@@ -92,7 +92,8 @@
 
 (defn normalize-clause
   "Normalize a `:field`/`:expression`/`:aggregation` clause by removing extra info so it can serve as a key for
-  `:qp/refs`."
+  `:qp/refs`. This removes `:source-field` if it is present -- don't use the output of this for anything but internal
+  key/distinct comparison purposes."
   [clause]
   (mbql.u/match-one clause
     ;; optimization: don't need to rewrite a `:field` clause without any options

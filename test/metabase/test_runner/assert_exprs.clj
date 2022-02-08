@@ -1,23 +1,10 @@
-(ns metabase.test-runner.effects
-  "A namespace for side-effecting test utilities to ensure we can always run subselections of tests. There should be no
-  macros in here. Those should go in the other test namespaces. This is to ensure that any helpers like `schema=` are
-  present since this defmethod isn't required in the namespaces where it is used.
-
-  Ex:
-  clojure -X:dev:test :only '\"test/metabase/pulse/render\"'
-
-  This would not have had the random namespace that requires these helpers and the run fails.
-  "
+(ns metabase.test-runner.assert-exprs
+  "Custom implementations of [[clojure.test/is]] expressions (i.e., implementations of [[clojure.test/assert-expr]]).
+  `re=`, `schema=`, `query=`, `sql=`, and more."
   (:require [clojure.data :as data]
             [clojure.test :as t]
-            [metabase.util.date-2 :as date-2]
-            [metabase.util.i18n.impl :as i18n.impl]
+            [clojure.walk :as walk]
             [schema.core :as s]))
-
-(comment
-  ;; these are necessary so data_readers.clj functions can function
-  date-2/keep-me
-  i18n.impl/keep-me)
 
 (defmethod t/assert-expr 're= [msg [_ pattern actual]]
   `(let [pattern#  ~pattern
@@ -45,10 +32,22 @@
        :diffs    (when-not pass?#
                    [[actual# [(s/check schema# actual#) nil]]])})))
 
+(defn derecordize
+  "Convert all record types in `form` to plain maps, so tests won't fail."
+  [form]
+  (walk/postwalk
+   (fn [form]
+     (if (record? form)
+       (into {} form)
+       form))
+   form))
+
 (defn query=-report
   "Impl for [[t/assert-expr]] `query=`."
   [message expected actual]
-  (let [pass? (= expected actual)]
+  (let [expected (derecordize expected)
+        actual   (derecordize actual)
+        pass?    (= expected actual)]
     (merge
      {:type     (if pass? :pass :fail)
       :message  message
@@ -65,9 +64,10 @@
 ;; basically the same as normal `=` but will add comment forms to MBQL queries for Field clauses and source tables
 ;; telling you the name of the referenced Fields/Tables
 (defmethod t/assert-expr 'query=
-  [message [_ expected actual]]
-  `(t/do-report
-    (query=-report ~message ~expected ~actual)))
+  [message [_ expected & actuals]]
+  `(do ~@(for [actual actuals]
+           `(t/do-report
+             (query=-report ~message ~expected ~actual)))))
 
 ;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
 
@@ -108,7 +108,9 @@
 
 (defn partial=-report
   [message expected actual]
-  (let [{:keys [only-in-actual only-in-expected pass?]} (partial=-diff expected actual)]
+  (let [expected                                        (derecordize expected)
+        actual                                          (derecordize actual)
+        {:keys [only-in-actual only-in-expected pass?]} (partial=-diff expected actual)]
     {:type     (if pass? :pass :fail)
      :message  message
      :expected expected
@@ -116,9 +118,10 @@
      :diffs    [[actual [only-in-expected only-in-actual]]]}))
 
 (defmethod t/assert-expr 'partial=
-  [message [_ expected actual]]
-  `(t/do-report
-    (partial=-report ~message ~expected ~actual)))
+  [message [_ expected & actuals]]
+  `(do ~@(for [actual actuals]
+           `(t/do-report
+             (partial=-report ~message ~expected ~actual)))))
 
 (defn sql=-report
   [message expected query]
