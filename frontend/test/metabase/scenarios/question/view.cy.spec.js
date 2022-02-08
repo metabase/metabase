@@ -76,7 +76,7 @@ describe("scenarios > question > view", () => {
     it("should filter a table", () => {
       openOrdersTable();
       cy.contains("Filter").click();
-      cy.contains("Vendor").click();
+      cy.contains("Vendor").click({ force: true });
       cy.findByPlaceholderText("Search by Vendor")
         .clear()
         .type("A");
