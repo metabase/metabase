@@ -468,7 +468,7 @@ describe("smoketest > admin_setup", () => {
         .click();
       cy.findAllByText("Product ID")
         .last()
-        .click();
+        .click({ force: true });
       cy.get("input")
         .last()
         .type("Awesome Concrete");

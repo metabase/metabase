@@ -1,7 +1,7 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color, alpha } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 import Icon from "metabase/components/Icon";
 
 export const SubDimensionButton = styled.button`
@@ -51,7 +51,7 @@ export const DimensionListItemRemoveButton = styled.button`
   }
 `;
 
-export const _DimensionListItemAddButton = styled.button`
+export const DimensionListItemAddButton = styled.button`
   display: flex;
   align-items: center;
   align-self: stretch;
@@ -62,10 +62,6 @@ export const _DimensionListItemAddButton = styled.button`
   color: ${color("white")};
   cursor: pointer;
 `;
-
-export const DimensionListItemAddButton = forwardRefToInnerRef(
-  _DimensionListItemAddButton,
-);
 
 export const DimensionListItemIcon = styled(Icon)`
   color: ${color("text-medium")};
@@ -104,12 +100,12 @@ const unselectedStyle = css`
   &:hover {
     ${DimensionListItemIcon},
     ${DimensionListItemContent},
-    ${_DimensionListItemAddButton} {
+    ${DimensionListItemAddButton} {
       color: ${color("accent1")};
       background-color: ${color("bg-light")};
     }
 
-    ${_DimensionListItemAddButton}:hover {
+    ${DimensionListItemAddButton}:hover {
       background-color: ${color("bg-medium")};
     }
 
@@ -125,7 +121,7 @@ const unselectedStyle = css`
   }
 `;
 
-export const DimensionListItemRoot = forwardRefToInnerRef(styled.li`
+export const DimensionListItemRoot = styled.li`
   display: flex;
   align-items: stretch;
   cursor: pointer;
@@ -133,4 +129,4 @@ export const DimensionListItemRoot = forwardRefToInnerRef(styled.li`
   min-height: 34px;
 
   ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
-`);
+`;

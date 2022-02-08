@@ -1,6 +1,6 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color, darken } from "metabase/lib/colors";
-import { forwardRefToInnerRef } from "metabase/styled-components/utils";
 
 export interface InputProps {
   hasError?: boolean;
@@ -15,7 +15,7 @@ export const InputRoot = styled.div<InputProps>`
   width: ${props => (props.fullWidth ? "100%" : "")};
 `;
 
-export const InputField = forwardRefToInnerRef(styled.input<InputProps>`
+export const InputField = styled.input<InputProps>`
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
@@ -48,7 +48,7 @@ export const InputField = forwardRefToInnerRef(styled.input<InputProps>`
     css`
       width: 100%;
     `}
-`);
+`;
 
 export const InputIconContainer = styled.div`
   display: flex;

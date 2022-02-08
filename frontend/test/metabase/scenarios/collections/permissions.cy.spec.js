@@ -220,7 +220,7 @@ describe("collection permissions", () => {
                     cy.get(".Modal")
                       .findByText("Archive")
                       .click();
-                    cy.get("[class*=PageHeading]")
+                    cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Second collection");
                     sidebar().within(() => {
@@ -260,7 +260,7 @@ describe("collection permissions", () => {
                       // This is the equivalent of hitting the back button but it also shows that the same UI is present whenever we visit the collection by its id
                       cy.visit(`/collection/${THIRD_COLLECTION_ID}`);
                     });
-                    cy.get("[class*=PageHeading]")
+                    cy.findByTestId("collection-name-heading")
                       .as("title")
                       .contains("Third collection");
                     // Creating new sub-collection at this point shouldn't be possible
@@ -305,7 +305,7 @@ describe("collection permissions", () => {
                         "eq",
                         `/collection/${THIRD_COLLECTION_ID}-third-collection`,
                       );
-                      cy.get("[class*=PageHeading]")
+                      cy.findByTestId("collection-name-heading")
                         .as("title")
                         .contains("Third collection");
                     });

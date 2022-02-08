@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const PreviewRoot = styled.div`
   padding-top: 1rem;

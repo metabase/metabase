@@ -72,7 +72,7 @@ export const TreeNode = React.memo(
 
     return (
       <TreeNodeRoot
-        innerRef={ref}
+        ref={ref}
         role="menuitem"
         tabIndex={0}
         colorScheme={colorScheme}

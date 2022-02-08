@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { display, space, hover, color } from "styled-system";
 import { Link } from "react-router";
 import { color as colors } from "metabase/lib/colors";

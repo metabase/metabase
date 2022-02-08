@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 export const ListRoot = styled.ol`
   margin: 0.5rem 0;
