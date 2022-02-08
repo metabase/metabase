@@ -468,7 +468,7 @@
     (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
       t (->temporal-type t))))
 
-(defmethod driver/escape-alias :bigquery-cloud-sdk
+(defmethod driver/escape-alias :bigquery
   [driver s]
   ;; Convert field alias `s` to a valid BigQuery field identifier. From the dox: Fields must contain only letters,
   ;; numbers, and underscores, start with a letter or underscore, and be at most 128 characters long.
