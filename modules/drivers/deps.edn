@@ -1,6 +1,5 @@
 {:deps
- {metabase/bigquery           {:local/root "bigquery"}
-  metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
+ {metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
   metabase/druid              {:local/root "druid"}
   metabase/google             {:local/root "google"}
   metabase/googleanalytics    {:local/root "googleanalytics"}

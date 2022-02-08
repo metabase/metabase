@@ -346,8 +346,15 @@
       updated-db)))
 
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
-  [_ database]
-  (if-let [dataset-id (get-in database [:details :dataset-id])]
+  [_ {:keys [:details] :as database}]
+  (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
+    (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
+                     " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
+                     " be automatically migrated to the newer driver (since it *requires* service-account-json intead);"
+                     " this database must therefore be updated by an administrator (by adding a service-account-json)"
+                     " before sync and queries will work again")
+                (u/the-id database)))
+  (if-let [dataset-id (get details :dataset-id)]
     (if-not (str/blank? dataset-id)
       (convert-dataset-id-to-filters! database dataset-id))
     database))
