@@ -35,6 +35,7 @@ export const CardIcon = styled(Icon)`
 
 export const CardBody = styled.span`
   display: block;
+  flex: 1 1 auto;
 `;
 
 export const CardTitle = styled.span`
