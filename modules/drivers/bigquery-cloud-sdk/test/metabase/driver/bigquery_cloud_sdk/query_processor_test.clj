@@ -734,10 +734,10 @@
                        :limit  1})]
           (mt/with-temp-vals-in-db Table (mt/id :venues) {:name "Organização"}
             (is (sql= '{:select    [v3_test_data.checkins.id        AS id
-                                    Organização__via__venue_id.name AS Organizacao__via__venue_id__name_560a3449]
+                                    Organizacao__via__venue_id.name AS Organizacao__via__venue_id__name]
                         :from      [v3_test_data.checkins]
-                        :left-join [v3_test_data.Organização Organização__via__venue_id
-                                    ON v3_test_data.checkins.venue_id = Organização__via__venue_id.id]
+                        :left-join [v3_test_data.Organização Organizacao__via__venue_id
+                                    ON v3_test_data.checkins.venue_id = Organizacao__via__venue_id.id]
                         :limit     [1]}
                       query))))))))
 
