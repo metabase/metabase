@@ -9907,6 +9907,166 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
+  - changeSet:
+      id: v43.00-002
+      author: adam-james
+      comment: Added 0.43.0 - Timeline table for Events
+      changes:
+        - createTable:
+            tableName: timeline
+            remarks: Timeline table to organize events
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: Name of the timeline
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional description of the timeline
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: ID of the collection containing the timeline
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: collection(id)
+                    foreignKeyName: fk_timeline_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: Whether or not the timeline has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the timeline
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_timeline_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the timeline was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the timeline was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v43.00-003
+      author: adam-james
+      comment: Added 0.43.0 - Events table
+      changes:
+        - createTable:
+            tableName: events
+            remarks: Events table
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  remarks: ID of the timeline containing the event
+                  name: timeline_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: timeline(id)
+                    foreignKeyName: fk_events_timeline_id
+                    deleteCascade: true
+              - column:
+                  remarks: Name of the event
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Optional markdown description of the event
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: date
+                  type: date
+                  constraints:
+                    nullable: false
+                  remarks: The date on which the event occurred
+              - column:
+                  name: time
+                  type: time
+                  constraints:
+                    nullable: true
+                  remarks: The optional details of when on the date the event occurred
+              - column:
+                  name: timezone
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: true
+                  remarks: The optional timezone to display the event's datetime in
+              - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+                  remarks: the icon to use when displaying the event
+              - column:
+                  remarks: Whether or not the event has been archived
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who created the event
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_event_creator_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the event was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the event was modified
+                  name: modified_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
   #
   # The next few migrations replace metabase.db.data-migrations/add-users-to-default-permissions-groups from 0.20.0
   #
