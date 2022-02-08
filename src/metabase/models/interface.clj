@@ -209,9 +209,11 @@
 
 ;;; properties
 
-;; use now() for Postgres and H2. now() for MySQL/MariaDB only returns second resolution. So use now(6) which uses the
-;; max (nanosecond) resolution.
-(defn- now []
+(defn now
+  "Return a HoneySQL form for a SQL function call to get current moment in time. Currently this is `now()` for Postgres
+  and H2 and `now(6)` for MySQL/MariaDB (`now()` for MySQL only return second resolution; `now(6)` uses the
+  max (nanosecond) resolution)."
+  []
   (classloader/require 'metabase.driver.sql.query-processor)
   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) (mdb.connection/db-type)))
 

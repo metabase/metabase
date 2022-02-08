@@ -33,10 +33,13 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defn- random-schema-migrations-test-db-name []
+  (format "schema-migrations-test-db-%05d" (rand-int 100000)))
+
 (defmethod do-with-temp-empty-app-db* :default
   [driver f]
   (log/debugf "Creating empty %s app db..." driver)
-  (let [dbdef {:database-name     "schema-migrations-test-db"
+  (let [dbdef {:database-name     (random-schema-migrations-test-db-name)
                :table-definitions []}]
     (try
       (tx/create-db! driver dbdef)
@@ -52,7 +55,7 @@
   (log/debug "Creating empty H2 app db...")
   ;; we don't need to destroy this DB manually because it will just get shutdown immediately when the Connection closes
   ;; because we're not setting a `DB_CLOSE_DELAY`
-  (let [data-source (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:mem:schema-migrations-test-db")]
+  (let [data-source (mdb.data-source/raw-connection-string->DataSource (str "jdbc:h2:mem:" (random-schema-migrations-test-db-name)))]
     (f data-source)))
 
 (defn do-with-temp-empty-app-db

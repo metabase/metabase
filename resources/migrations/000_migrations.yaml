@@ -9898,6 +9898,14 @@ databaseChangeLog:
         - sql:
             sql: UPDATE metabase_database SET name='Sample Database' WHERE is_sample=true
 
+  - changeSet:
+      id: v43.00-001
+      author: jeff303
+      comment: >-
+        Added 0.43.0 - migrates any Database using the old bigquery driver to bigquery-cloud-sdk instead
+      changes:
+        - sql:
+            sql: UPDATE metabase_database SET engine = 'bigquery-cloud-sdk' WHERE engine = 'bigquery'
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
