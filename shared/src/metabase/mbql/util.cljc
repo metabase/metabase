@@ -624,23 +624,6 @@
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
 
-;; TODO -- This seems like it would be easily confused with
-;; [[metabase.driver.sql.query-processor/source-query-alias]]. Joins are REQUIRED to have aliases anyway
-(def ^:private default-join-alias "source")
-
-(s/defn deduplicate-join-aliases :- mbql.s/Joins
-  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
-  one."
-  [joins :- [mbql.s/Join]]
-  (let [joins          (for [join joins]
-                         (update join :alias #(or % default-join-alias)))
-        unique-aliases (uniquify-names (map :alias joins))]
-    (mapv
-     (fn [join alias]
-       (assoc join :alias alias))
-     joins
-     unique-aliases)))
-
 (defn- remove-empty [x]
   (cond
     (map? x)

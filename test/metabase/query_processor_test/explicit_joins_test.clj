@@ -9,7 +9,8 @@
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [medley.core :as m]))
 
 (deftest explict-join-with-default-options-test
   (testing "Can we specify an *explicit* JOIN using the default options?"
@@ -727,6 +728,36 @@
                         ["Gizmo"     51 "Gizmo"     2834.88 "Gizmo"     3.64]
                         ["Widget"    54 "Widget"    3109.31 "Widget"    3.15]]
                        (mt/formatted-rows [str int str 2.0 str 2.0] results)))))))))))
+
+(deftest double-quotes-in-join-alias-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection"
+      (let [expected-rows (mt/rows
+                           (mt/run-mbql-query venues
+                             {:joins [{:source-table $$categories
+                                       :alias        "Cat"
+                                       :condition    [:= $id $id]
+                                       :fields       [&Cat.categories.id]}]
+                              :limit 1}))]
+        (is (= 1
+               (count expected-rows)))
+        ;; these normally get ESCAPED by [[metabase.util.honeysql-extensions/identifier]] when they're compiled to SQL,
+        ;; but some fussy databases such as Oracle don't even allow escaped double quotes in identifiers. So make sure
+        ;; that we don't allow SQL injection AND things still work
+        (doseq [evil-join-alias ["users.id\" AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
+                                 "users.id\\\" AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
+                                 "users.id\\u0022 AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
+                                 "users.id` AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
+                                 "users.id\\` AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"]]
+          (let [evil-query (mt/mbql-query venues
+                             {:joins [{:source-table $$categories
+                                       :alias        evil-join-alias
+                                       :condition    [:= $id $id]
+                                       :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
+                              :limit 1})]
+            (mt/with-native-query-testing-context evil-query
+              (is (= expected-rows
+                     (mt/rows (qp/process-query evil-query)))))))))))
 
 (def ^:private charsets
   {:ascii   (into (vec (for [i (range 26)]
