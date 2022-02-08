@@ -28,7 +28,7 @@ Once you do, you'll see a set of options:
 
 Notes:
 - IE11: only the first URL will be valid for IE11 due to limitations in the HTTP headers it supports. IE11 does not support the `Content-Security-Policy` header, but does support `X-Frame-Options`, which can only accept a single value.
-- Chrome: localStorage is disabled in Incognito mode, so you won't be able to test this feature in an incognito session with this browser. Please use Chrome in the normal mode or choose another browser to use for testing.
+**Note:** Some browsers, like Chrome, has `localStorage` is disabled in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from the Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
 
 ### Setting things up in your web app
 
