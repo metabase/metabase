@@ -1,4 +1,5 @@
-import styled, { css } from "styled-components";
+import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import Icon from "metabase/components/Icon";
 
 import { color } from "metabase/lib/colors";

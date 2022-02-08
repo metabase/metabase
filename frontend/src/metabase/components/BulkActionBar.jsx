@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import { Motion, spring } from "react-motion";
 

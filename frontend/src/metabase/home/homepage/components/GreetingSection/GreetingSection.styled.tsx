@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import Subhead from "metabase/components/type/Subhead";
 
 export const GreetingTitle = styled(Subhead)`

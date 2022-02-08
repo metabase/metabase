@@ -55,7 +55,7 @@ const CheckBox = forwardRef(function Checkbox(
   ref: Ref<HTMLLabelElement>,
 ): JSX.Element {
   return (
-    <CheckBoxRoot innerRef={ref as any} {...props}>
+    <CheckBoxRoot ref={ref} {...props}>
       <CheckBoxInput
         type="checkbox"
         checked={checked}

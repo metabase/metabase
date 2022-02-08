@@ -32,7 +32,12 @@ function Title({ collection, handleToggleMobileSidebar }) {
           mr={1}
           size={24}
         />
-        <PageHeading className="text-wrap">{collection.name}</PageHeading>
+        <PageHeading
+          data-testid="collection-name-heading"
+          className="text-wrap"
+        >
+          {collection.name}
+        </PageHeading>
       </TitleContent>
       {collection.description && (
         <DescriptionHeading>{collection.description}</DescriptionHeading>

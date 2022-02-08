@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import Card from "metabase/components/Card";

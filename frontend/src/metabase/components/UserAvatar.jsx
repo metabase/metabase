@@ -1,4 +1,6 @@
-import styled from "styled-components";
+/* eslint-disable react/prop-types */
+import React from "react";
+import styled from "@emotion/styled";
 import { color, height, width } from "styled-system";
 
 import { color as brandColor } from "metabase/lib/colors";
@@ -30,10 +32,10 @@ function userInitials(user) {
   return user ? initial(user.first_name) + initial(user.last_name) : null;
 }
 
-const UserAvatar = styled(Avatar)``;
+const UserAvatar = ({ user, ...props }) => (
+  <Avatar {...props}>{userInitials(user) || "?"}</Avatar>
+);
 
-UserAvatar.defaultProps = {
-  children: ({ user }) => userInitials(user) || "?",
-};
+UserAvatar.displayName = "UserAvatar";
 
 export default UserAvatar;

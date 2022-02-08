@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import ActionButton from "metabase/components/ActionButton";
 import DefaultTimeline from "metabase/components/Timeline";

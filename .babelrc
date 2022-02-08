@@ -1,6 +1,6 @@
 {
   "plugins": [
-    "babel-plugin-styled-components",
+    "@emotion",
     "@babel/plugin-proposal-export-default-from",
     ["@babel/plugin-proposal-decorators", { "legacy": true }]
   ],
