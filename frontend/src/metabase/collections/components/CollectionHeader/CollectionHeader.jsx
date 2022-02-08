@@ -64,6 +64,21 @@ function PermissionsLink({
   ) : null;
 }
 
+function EventTimelinesLink({ collection }) {
+  const tooltip = t`Event timelines`;
+  const link = `${Urls.collection(collection)}/timelines`;
+
+  return (
+    <Tooltip tooltip={tooltip}>
+      <Link to={link}>
+        <IconWrapper>
+          <Icon name="calendar" size={20} />
+        </IconWrapper>
+      </Link>
+    </Tooltip>
+  );
+}
+
 function EditMenu({
   collection,
   hasWritePermission,
@@ -92,6 +107,7 @@ function Menu(props) {
       {hasWritePermission && <NewCollectionItemMenu {...props} />}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
+      <EventTimelinesLink {...props} />
     </MenuContainer>
   );
 }
