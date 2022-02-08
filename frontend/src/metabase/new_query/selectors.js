@@ -26,7 +26,10 @@ export const getPlainNativeQuery = state => {
 
 export const getHasDataAccess = createSelector(
   [getDatabases],
-  databases => databases && Object.values(databases).length > 0,
+  (databaseMap = {}) =>
+    // This ensures there is at least one real (not saved questions) DB available
+    // If there is only the saved questions DB, it doesn't mean a user has data access
+    Object.values(databaseMap).some(db => !db.is_saved_questions),
 );
 export const getHasNativeWrite = createSelector(
   [getDatabases],
