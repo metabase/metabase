@@ -507,7 +507,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 }
 ```
 
-### atomic / utility CSS (still used)
+### atomic / utility CSS (discouraged)
 
 ```css
 .text-brand {
@@ -540,7 +540,7 @@ import style from "./Foo.css";
 const Foo = () => <div className={style.primary} />;
 ```
 
-### [Styled Components](https://styled-components.com/)
+### [Emotion](https://emotion.sh/)
 
 ```javascript
 import styled from "@emotion/styled";
@@ -552,7 +552,7 @@ const FooWrapper = styled.div`
 const Bar = ({ color }) => <Foo color={color} />;
 ```
 
-### Styled Components + [styled-system](https://styled-system.com/)
+### Emotion + [styled-system](https://styled-system.com/)
 
 e.x.
 
