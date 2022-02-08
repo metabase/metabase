@@ -58,7 +58,7 @@
   [prefix field-alias]
   (str prefix "__" field-alias))
 
-(defn make-unique-alias-fn
+(defn- make-unique-alias-fn
   "Creates a function with the signature
 
     (unique-alias position original-alias)
