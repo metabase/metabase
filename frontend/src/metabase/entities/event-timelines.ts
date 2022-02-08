@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { EventTimeline } from "metabase-types/api/event";
+import { EventTimeline } from "metabase-types/api";
 import { createEntity, undo } from "metabase/lib/entities";
+import forms from "./event-timelines/forms";
 
 type UndoOpts = Record<string, unknown>;
 
@@ -8,6 +9,7 @@ const EventTimelines = createEntity({
   name: "timelines",
   nameOne: "timeline",
   path: "/api/timeline",
+  forms,
 
   objectActions: {
     setArchived: (
