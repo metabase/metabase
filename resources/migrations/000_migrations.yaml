@@ -9936,6 +9936,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: icon
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+                  remarks: the icon to use when displaying the event
+              - column:
                   remarks: ID of the collection containing the timeline
                   name: collection_id
                   type: int
@@ -9981,7 +9987,7 @@ databaseChangeLog:
       comment: Added 0.43.0 - Events table
       changes:
         - createTable:
-            tableName: events
+            tableName: timeline_events
             remarks: Events table
             columns:
               - column:
@@ -10013,28 +10019,16 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: date
-                  type: date
-                  constraints:
-                    nullable: false
-                  remarks: The date on which the event occurred
-              - column:
-                  name: time
-                  type: time
-                  constraints:
-                    nullable: true
-                  remarks: The optional details of when on the date the event occurred
-              - column:
-                  name: timezone
+                  name: timestamp
                   type: timestamp with time zone
                   constraints:
-                    nullable: true
-                  remarks: The optional timezone to display the event's datetime in
+                    nullable: false
+                  remarks: When the event happened
               - column:
                   name: icon
                   type: varchar(128)
                   constraints:
-                    nullable: false
+                    nullable: true
                   remarks: the icon to use when displaying the event
               - column:
                   remarks: Whether or not the event has been archived
