@@ -181,11 +181,6 @@ describe("scenarios > question > null", () => {
   });
 
   describe("aggregations with null values", () => {
-    beforeEach(() => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
-    });
-
     it("summarize with null values (metabase#12585)", () => {
       openOrdersTable();
 
@@ -200,10 +195,6 @@ describe("scenarios > question > null", () => {
       // Group by
       cy.contains("Created At").click();
       cy.contains("Cumulative sum of Discount by Created At: Month");
-      cy.wait(["@dataset", "@dataset"]).then(xhrs => {
-        expect(xhrs[0].status).to.equal(202);
-        expect(xhrs[1].status).to.equal(202);
-      });
 
       cy.findByText("There was a problem with your question").should(
         "not.exist",
