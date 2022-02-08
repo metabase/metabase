@@ -16,10 +16,6 @@ export const CardRoot = styled(Link)`
   align-items: center;
   border: 1px solid ${color("border")};
   border-radius: 6px;
-
-  &:hover {
-    border-color: ${color("brand")};
-  }
 `;
 
 export const CardIcon = styled(Icon)`
@@ -27,10 +23,6 @@ export const CardIcon = styled(Icon)`
   width: 1.375rem;
   height: 1.375rem;
   margin-right: 1.75rem;
-
-  ${CardRoot}:hover & {
-    color: ${color("brand")};
-  }
 `;
 
 export const CardBody = styled.span`
@@ -43,10 +35,6 @@ export const CardTitle = styled.span`
   color: ${color("text-dark")};
   font-weight: bold;
   margin-bottom: 0.125rem;
-
-  ${CardRoot}:hover & {
-    color: ${color("brand")};
-  }
 `;
 
 export const CardDescription = styled.span`
