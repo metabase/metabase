@@ -2,7 +2,6 @@
 import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import cx from "classnames";
 
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
@@ -89,11 +88,7 @@ export default class NativeQueryButton extends React.Component {
           title={title}
           footer={
             loading || error ? null : (
-              <Button
-                primary
-                className={cx("text-dark")}
-                onClick={this.handleConvert}
-              >
+              <Button primary onClick={this.handleConvert}>
                 {button}
               </Button>
             )
