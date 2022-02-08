@@ -9946,7 +9946,7 @@ databaseChangeLog:
                   name: collection_id
                   type: int
                   constraints:
-                    nullable: false
+                    nullable: true
                     references: collection(id)
                     foreignKeyName: fk_timeline_collection_id
                     deleteCascade: true
