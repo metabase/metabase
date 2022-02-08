@@ -98,8 +98,6 @@ describe("binning related reproductions", () => {
   });
 
   it("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         database: 1,
@@ -117,8 +115,6 @@ describe("binning related reproductions", () => {
       },
       display: "line",
     });
-
-    cy.wait("@dataset");
 
     cy.contains("Summarize").click();
 

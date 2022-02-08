@@ -21,13 +21,10 @@ describe("issue 18976", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should display a pivot table as regular one when pivot columns are missing (metabase#18976)", () => {
     visitQuestionAdhoc(questionDetails);
-
-    cy.wait("@dataset");
 
     cy.findByText("Showing 1 row");
   });

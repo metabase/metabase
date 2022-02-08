@@ -436,10 +436,6 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should display an error message for native queries", () => {
-    cy.server();
-    // native queries should use the normal dataset endpoint even when set to pivot
-    cy.route("POST", `/api/dataset`).as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "native",
@@ -450,7 +446,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       visualization_settings: {},
     });
 
-    cy.wait("@dataset");
     cy.findByText("Pivot tables can only be used with aggregated queries.");
   });
 
@@ -740,7 +735,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       display: "line",
     });
 
-    cy.wait("@dataset");
     cy.findByText("Visualization").click();
     sidebar().within(() => {
       cy.findByText("Pivot Table")
@@ -821,8 +815,6 @@ describe("scenarios > visualizations > pivot tables", () => {
   });
 
   it("should not show subtotals for flat tables", () => {
-    cy.intercept("POST", "api/dataset/pivot").as("createPivotedDataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -860,7 +852,6 @@ describe("scenarios > visualizations > pivot tables", () => {
       },
     });
 
-    cy.wait("@createPivotedDataset");
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
 });

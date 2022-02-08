@@ -93,13 +93,10 @@ testCases.forEach(fileType => {
       // TODO: Please remove this line when issue gets fixed
       cy.skipOn(fileType === "csv");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       restore();
       cy.signInAsAdmin();
 
       visitQuestionAdhoc(questionDetails);
-      cy.wait("@dataset");
     });
 
     it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {

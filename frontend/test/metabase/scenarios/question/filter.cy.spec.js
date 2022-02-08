@@ -405,8 +405,6 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -427,7 +425,6 @@ describe("scenarios > question > filter", () => {
       display: "table",
     });
 
-    cy.wait("@dataset");
     cy.findByText(/Created At > Product? → Created At/i).click();
 
     cy.contains(/\[Created At\] > \[Products? → Created At\]/);
@@ -646,6 +643,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
+
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -669,6 +667,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
+
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
@@ -700,9 +699,6 @@ describe("scenarios > question > filter", () => {
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -719,7 +715,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "table",
     });
-    cy.wait("@dataset");
+
     cy.findByText("wilma-muller");
     cy.findByText("Reviewer contains MULLER").click();
     cy.get(".Icon-chevronleft").click();
@@ -874,6 +870,7 @@ describe("scenarios > question > filter", () => {
         type: "query",
       },
     });
+
     cy.get(".ScalarValue").contains("5");
     cy.findAllByRole("button")
       .contains("Filter")
@@ -926,6 +923,7 @@ describe("scenarios > question > filter", () => {
       },
       display: "line",
     });
+
     assertOnLegendLabels();
     cy.get(".line").should("have.length", 3);
     cy.findByText("Save").click();

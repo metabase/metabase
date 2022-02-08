@@ -23,8 +23,6 @@ describe("scenarios > visualizations > scatter", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("should show correct labels in tooltip (metabase#15150)", () => {
@@ -88,7 +86,6 @@ describe("scenarios > visualizations > scatter", () => {
 });
 
 function triggerPopoverForBubble(index = 13) {
-  cy.wait("@dataset");
   // Hack that is needed because of the flakiness caused by adding throttle to the ExplicitSize component
   // See: https://github.com/metabase/metabase/pull/15235
   cy.get("[class*=ViewFooter]").within(() => {
