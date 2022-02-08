@@ -207,6 +207,11 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
+export const getPreviousQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.previousQueryBuilderMode,
+);
+
 export const getDatasetEditorTab = createSelector(
   [getUiControls],
   uiControls => uiControls.datasetEditorTab,
