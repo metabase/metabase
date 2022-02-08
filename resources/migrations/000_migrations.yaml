@@ -10025,6 +10025,19 @@ databaseChangeLog:
                     nullable: false
                   remarks: When the event happened
               - column:
+                  name: time_matters
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  remarks: >-
+                     Indicate whether the time component matters or if the timestamp should just serve to indicate the
+                     day of the event without any time associated to it.
+              - column:
+                  name: timezone
+                  constraints:
+                    nullable: false
+                  type: varchar(255)
+              - column:
                   name: icon
                   type: varchar(128)
                   constraints:
