@@ -30,7 +30,6 @@ type TextInputProps = {
 
 export default forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
   {
-    as,
     value = "",
     className,
     placeholder = t`Find...`,
@@ -57,7 +56,6 @@ export default forwardRef<HTMLInputElement, TextInputProps>(function TextInput(
     <TextInputRoot className={className}>
       {icon && <IconWrapper>{icon}</IconWrapper>}
       <Input
-        as={as}
         ref={ref}
         colorScheme={colorScheme}
         autoFocus={autoFocus}

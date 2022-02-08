@@ -6,7 +6,7 @@ describe("visual tests > internal > components", () => {
     cy.signInAsNormalUser();
   });
 
-  it.skip("UserAvatar", () => {
+  it("UserAvatar", () => {
     cy.visit("/_internal/components/useravatar");
     cy.findByText("<UserAvatar />");
 
