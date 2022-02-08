@@ -50,8 +50,11 @@
   (log/warn (trs "Don''t know how to process event with model {0}" model-name)))
 
 (defmethod process-activity! :card
-  [_ topic {query :dataset_query, :as object}]
-  (let [details-fn  #(select-keys % [:name :description])
+  [_ topic {query :dataset_query, dataset? :dataset :as object}]
+  (let [details-fn  #(cond-> (select-keys % [:name :description])
+                       ;; right now datasets are all models. In the future this will change so lets keep a breadcumb
+                       ;; around
+                       dataset? (assoc :original-model "card"))
         query       (when (seq query)
                       (try (qp/query->preprocessed query)
                            (catch Throwable e
@@ -61,6 +64,7 @@
     (activity/record-activity!
       :topic       topic
       :object      object
+      :model       (when dataset? "dataset")
       :details-fn  details-fn
       :database-id database-id
       :table-id    table-id)))

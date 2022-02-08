@@ -32,4 +32,9 @@ export const VizCard = styled(Card)`
       color: ${color("brand")};
     }
   }
+
+  .leaflet-container,
+  .leaflet-container * {
+    pointer-events: none !important;
+  }
 `;

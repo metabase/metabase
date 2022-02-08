@@ -8,7 +8,7 @@
             [java-time :as java-time]
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
-            [metabase.test-runner.effects :as test-runner.effects]
+            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
@@ -173,7 +173,7 @@
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
-  (let [http-body   (test-runner.effects/derecordize http-body)
+  (let [http-body   (test-runner.assert-exprs/derecordize http-body)
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)

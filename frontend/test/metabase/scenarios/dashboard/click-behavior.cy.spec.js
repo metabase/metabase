@@ -51,7 +51,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
               cy.intercept(
                 "POST",
-                `/api/dashboard/${dashboardId}/card/${question1Id}/query`,
+                `/api/dashboard/${dashboardId}/dashcard/*/card/${question1Id}/query`,
               ).as("cardQuery");
 
               cy.intercept("POST", `/api/card/${nativeId}/query`).as(
@@ -138,7 +138,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           cy.intercept(
             "POST",
-            `/api/dashboard/${dashboard_id}/card/${card_id}/query`,
+            `/api/dashboard/${dashboard_id}/dashcard/*/card/${card_id}/query`,
           ).as("cardQuery");
         },
       );

@@ -310,7 +310,6 @@ class MyComponent extends React.Component {
 ```
 
 * For styling components we currently use a mix of `styled-components` and ["atomic" / "utility-first" CSS classes](https://github.com/metabase/metabase/tree/master/frontend/src/metabase/css/core).
-* Prefer using `grid-styled`'s `Box` and `Flex` components over raw `div`.
 * Components should typically pass along their `className` prop to the root element of the component. It can be merged with additional classes using the `cx` function from the `classnames` package.
 * In order to make components more reusable, a component should only apply classes or styles to the root element of the component which affects the layout/styling of it's own content, but *not* the layout of itself within it's parent container. For example, it can include padding or the `flex` class, but it shouldn't include margin or `flex-full`, `full`, `absolute`, `spread`, etc. Those should be passed via `className` or `style` props by the consumer of the component, which knows how the component should be positioned within itself.
 * Avoid breaking JSX up into separate method calls within a single component. Prefer inlining JSX so that you can better see what the relation is of the JSX a `render` method returns to what is in the `state` or `props` of a component. By inlining JSX you'll also get a better sense of what parts should and should not be separate components.

@@ -15,9 +15,7 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 - Collections
 - Dashboards
 - Saved questions
-- Pulses
 - Segments and Metrics defined in the Data Model
-- Archived collections, dashboards, saved questions, or pulses
 - Public sharing settings for questions and dashboards
 
 **They also contain a number of system settings:**
@@ -51,12 +49,11 @@ Currently, you can only load dumps into a Metabase instance that were created fr
 
 `java -jar metabase.jar load [my_dump] --mode [skip/update] --on-error [continue/abort]`
 
-The `--mode` flag lets you specify what to do when encountering a duplicate dashboard, question, or any Admin Panel settings that already set (again, except for permissions and user settings, which are not currently included in data dumps). It can either `skip` that item and do nothing to it, or `update` it with the version being loaded. The default is `skip`.
+The `--mode` flag lets you specify what to do when encountering a duplicate dashboard, question, or any Admin Panel settings that already set (again, except for permissions and user settings, which are not currently included in data dumps). It can either `skip` that item and do nothing to it, or `update` it with the version being loaded. The default is `skip`. For example, even if you change the card order for a dashboard, or add or remove any cards in a dashboard, the `skip` mode won't modify the dashboard object, as the load process "skips" any object that previously existed, regardless of changes in the source file.
 
 The `--on-error` flag allows you to specify whether the load process should keep going or stop when there's an error. The default is `continue`. Note that `abort` won't undo any successful artifact loads that happened before an error was encountered.
 
 Both of these flags are optional.
-
 
 ---
 

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { useState, useCallback } from "react";
-import { Flex, Box } from "grid-styled";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -22,6 +21,12 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
+import {
+  CollectionEmptyContent,
+  CollectionMain,
+  CollectionRoot,
+  CollectionTable,
+} from "./CollectionContent.styled";
 
 const PAGE_SIZE = 25;
 
@@ -137,8 +142,8 @@ function CollectionContent({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <Box pt={2}>
-            <Box width="90%" ml="auto" mr="auto">
+          <CollectionRoot>
+            <CollectionMain>
               <Header
                 isRoot={isRoot}
                 isAdmin={isAdmin}
@@ -186,18 +191,14 @@ function CollectionContent({
 
                   if (isEmpty && !loadingUnpinnedItems) {
                     return (
-                      <Flex
-                        alignItems="start"
-                        justifyContent="center"
-                        mt="3rem"
-                      >
+                      <CollectionEmptyContent>
                         <CollectionEmptyState />
-                      </Flex>
+                      </CollectionEmptyContent>
                     );
                   }
 
                   return (
-                    <Box mt={hasPinnedItems ? 3 : 0}>
+                    <CollectionTable>
                       <ItemsTable
                         items={unpinnedItems}
                         collection={collection}
@@ -238,17 +239,17 @@ function CollectionContent({
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                       />
-                    </Box>
+                    </CollectionTable>
                   );
                 }}
               </Search.ListLoader>
-            </Box>
+            </CollectionMain>
             <ItemsDragLayer
               selectedItems={selected}
               pinnedItems={pinnedItems}
               collection={collection}
             />
-          </Box>
+          </CollectionRoot>
         );
       }}
     </Search.ListLoader>

@@ -364,7 +364,7 @@
               (is (partial= {:cols [{:name "NAME", :display_name "Name"}
                                     {:name "CATEGORY_ID", :display_name "Category ID", :remapped_to "NAME_2"}
                                     {:name "NAME_2", :display_name "Category ID [external remap]", :remapped_from "CATEGORY_ID"}]}
-                            (#'add-dim-projections/add-remapped-cols metadata remap-info nil))))))))))
+                            (#'add-dim-projections/add-remapped-to-and-from-metadata metadata remap-info nil))))))))))
 
 (deftest multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)\n"
@@ -443,7 +443,7 @@
                                       {:display_name "Text", :name "TEXT"}
                                       {:display_name "Sender ID [external remap]", :name "NAME", :remapped_from "SENDER_ID"}
                                       {:display_name "Receiver ID [external remap]", :name "NAME_2", :remapped_from "RECEIVER_ID"}]}
-                              (#'add-dim-projections/add-remapped-cols metadata remap-info nil)))))))))))
+                              (#'add-dim-projections/add-remapped-to-and-from-metadata metadata remap-info nil)))))))))))
 
 (deftest add-remappings-inside-joins-test
   (testing "Remappings should work inside joins (#15578)"

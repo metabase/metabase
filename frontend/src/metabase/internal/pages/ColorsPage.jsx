@@ -1,13 +1,17 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
 import CopyToClipboard from "react-copy-to-clipboard";
 import Subhead from "metabase/components/type/Subhead";
 
 import colors, { harmony } from "metabase/lib/colors";
 
 import withToast from "metabase/hoc/Toast";
+import {
+  ColorsList,
+  ColorsSection,
+  ColorSwatchRoot,
+} from "./ColorsPage.styled";
 
 const SWATCH_SIZE = 150;
 
@@ -16,14 +20,7 @@ class ColorSwatch extends React.Component {
     const { color, name } = this.props;
 
     return (
-      <Flex
-        align="center"
-        justify="center"
-        flexDirection="column"
-        mr={2}
-        mb={2}
-        px={1}
-        py={2}
+      <ColorSwatchRoot
         style={{
           backgroundColor: color,
           height: SWATCH_SIZE,
@@ -36,7 +33,7 @@ class ColorSwatch extends React.Component {
         <Copy text={color}>
           <h2>{color}</h2>
         </Copy>
-      </Flex>
+      </ColorSwatchRoot>
     );
   }
 }
@@ -55,23 +52,23 @@ const colorStyles = require("!style-loader!css-loader?modules!postcss-loader!met
 
 const ColorsPage = () => (
   <div className="wrapper">
-    <Box my={2}>
+    <ColorsSection>
       <Subhead className="mb2">App colors</Subhead>
-      <Flex wrap>
+      <ColorsList>
         {Object.entries(colors).map(([name, color]) => (
           <ColorSwatch key={name} color={color} name={name} />
         ))}
-      </Flex>
-    </Box>
-    <Box>
+      </ColorsList>
+    </ColorsSection>
+    <div>
       <Subhead className="mb2">Chart colors</Subhead>
-      <Flex wrap>
+      <ColorsList>
         {harmony.map((color, index) => (
           <ColorSwatch key={index} color={color} name={`Series ${index + 1}`} />
         ))}
-      </Flex>
-    </Box>
-    <Box my={2}>
+      </ColorsList>
+    </div>
+    <ColorsSection>
       <Subhead className="mb2">CSS Colors</Subhead>
       {Object.entries(colorStyles).map(([name, className]) => (
         <div
@@ -86,7 +83,7 @@ const ColorsPage = () => (
           {name}
         </div>
       ))}
-    </Box>
+    </ColorsSection>
   </div>
 );
 

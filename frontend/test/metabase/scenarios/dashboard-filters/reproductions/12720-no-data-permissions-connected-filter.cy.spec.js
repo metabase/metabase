@@ -32,7 +32,9 @@ const questionDetails = {
 
 describe.skip("issue 12720", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/1/card/1/query").as("cardQuery");
+    cy.intercept("POST", "/api/dashboard/1/dashcard/1/card/1/query").as(
+      "cardQuery",
+    );
 
     restore();
     cy.signInAsAdmin();

@@ -437,7 +437,7 @@
      ;; Get the entries we're going to add to `:cols` for each of the remapped values we add
      :internal-only-cols (map :new-column internal-only-dims)}))
 
-(s/defn ^:private add-remapped-cols
+(s/defn ^:private add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
   [metadata
@@ -474,5 +474,5 @@
     rff
     (fn remap-results-rff* [metadata]
       (let [internal-cols-info (internal-columns-info (:cols metadata))
-            metadata           (add-remapped-cols metadata external-remaps internal-cols-info)]
+            metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
