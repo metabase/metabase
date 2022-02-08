@@ -14,7 +14,6 @@ import Radio from "metabase/components/Radio";
 import {
   field_visibility_types,
   field_semantic_types,
-  has_field_values_options,
 } from "metabase/lib/core";
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
@@ -77,10 +76,8 @@ function getFormFields({ dataset }) {
       value: type.id,
     }));
 
-  return fieldFormValues => {
-    const hasMappedColumn =
-      !dataset.isNative() || typeof fieldFormValues.id === "number";
-    return [
+  return fieldFormValues =>
+    [
       { name: "display_name", title: t`Display name` },
       {
         name: "description",
@@ -113,18 +110,7 @@ function getFormFields({ dataset }) {
         type: "radio",
         options: visibilityTypeOptions,
       },
-      // has_field_values is only handled properly when the field has an ID
-      // for native data models, the field has to be mapped to a real DB column
-      // before `has_field_values` can be set
-      hasMappedColumn && {
-        name: "has_field_values",
-        title: t`Filtering on this field`,
-        info: t`When this field is used in a filter, what should people use to enter the value they want to filter on?`,
-        type: "select",
-        options: has_field_values_options,
-      },
     ].filter(Boolean);
-  };
 }
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
@@ -178,7 +164,6 @@ function DatasetFieldMetadataSidebar({
       semantic_type: field.semantic_type,
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
-      has_field_values: field.has_field_values || "search",
     };
     if (dataset.isNative()) {
       values.id = field.id;
@@ -302,15 +287,6 @@ function DatasetFieldMetadataSidebar({
     [onFieldMetadataChange],
   );
 
-  const onHasFieldValuesChange = useCallback(
-    value => {
-      onFieldMetadataChange({
-        has_field_values: value,
-      });
-    },
-    [onFieldMetadataChange],
-  );
-
   return (
     <SidebarContent>
       <AnimatableContent
@@ -380,10 +356,6 @@ function DatasetFieldMetadataSidebar({
                         allowlist={VIEW_AS_RELATED_FORMATTING_OPTIONS}
                       />
                     </ViewAsFieldContainer>
-                    <FormField
-                      name="has_field_values"
-                      onChange={onHasFieldValuesChange}
-                    />
                   </React.Fragment>
                 ) : (
                   <ColumnSettings
