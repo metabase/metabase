@@ -3,18 +3,21 @@ import Icon from "metabase/components/Icon";
 import {
   ModalCloseButton,
   ModalHeader,
+  ModalMenuButton,
   ModalRoot,
   ModalTitle,
 } from "./ActionModal.styled";
 
 export interface ActionModalProps {
-  title?: string;
+  title?: ReactNode;
+  menu?: ReactNode;
   children?: ReactNode;
   onClose?: () => void;
 }
 
 const ActionModal = ({
   title,
+  menu,
   children,
   onClose,
 }: ActionModalProps): JSX.Element => {
@@ -22,6 +25,7 @@ const ActionModal = ({
     <ModalRoot>
       <ModalHeader>
         <ModalTitle>{title}</ModalTitle>
+        {menu && <ModalMenuButton>{menu}</ModalMenuButton>}
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
         </ModalCloseButton>

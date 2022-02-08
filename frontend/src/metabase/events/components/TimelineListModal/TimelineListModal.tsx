@@ -1,6 +1,8 @@
 import React from "react";
 import { msgid, ngettext, t } from "ttag";
 import { EventTimeline } from "metabase-types/api";
+import Button from "metabase/core/components/Button";
+import EntityMenu from "metabase/components/EntityMenu";
 import ActionModal from "../ActionModal";
 import {
   CardBody,
@@ -14,7 +16,6 @@ import {
   EmptyStateText,
   ListRoot,
 } from "./TimelineListModal.styled";
-import Button from "metabase/core/components/Button";
 
 export interface TimelineListModalProps {
   timelines: EventTimeline[];
@@ -25,9 +26,15 @@ const TimelineListModal = ({
   timelines,
   onClose,
 }: TimelineListModalProps): JSX.Element => {
+  const hasTimelines = timelines.length > 0;
+
   return (
-    <ActionModal title={t`Events`} onClose={onClose}>
-      {timelines.length ? (
+    <ActionModal
+      title={t`Events`}
+      menu={hasTimelines && <TimelineMenu />}
+      onClose={onClose}
+    >
+      {hasTimelines ? (
         <TimelineList timelines={timelines} />
       ) : (
         <TimelineEmptyState />
@@ -69,6 +76,16 @@ const TimelineCard = ({ timeline }: TimelineCardProps): JSX.Element => {
       </CardInfo>
     </CardRoot>
   );
+};
+
+const TimelineMenu = (): JSX.Element => {
+  const items = [
+    {
+      title: t`New timeline`,
+    },
+  ];
+
+  return <EntityMenu items={items} triggerIcon="ellipsis" />;
 };
 
 const TimelineEmptyState = (): JSX.Element => {

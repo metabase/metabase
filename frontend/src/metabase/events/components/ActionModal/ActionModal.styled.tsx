@@ -18,6 +18,11 @@ export const ModalTitle = styled.div`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
+  margin-right: 1rem;
+`;
+
+export const ModalMenuButton = styled.div`
+  margin-right: 1rem;
 `;
 
 export const ModalCloseButton = styled(IconButtonWrapper)`
