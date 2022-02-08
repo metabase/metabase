@@ -92,8 +92,8 @@
 (defn public-reducedf
   "Reducer function for public data"
   [orig-reducedf]
-  (fn [metadata final-metadata context]
-    (orig-reducedf metadata (transform-results final-metadata) context)))
+  (fn [final-metadata context]
+    (orig-reducedf (transform-results final-metadata) context)))
 
 (defn- run-query-for-card-with-id-async-run-fn
   "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
