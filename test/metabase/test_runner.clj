@@ -6,8 +6,8 @@
             [clojure.pprint :as pprint]
             [clojure.test :as t]
             [clojure.tools.namespace.find :as ns-find]
-            [eftest.report.pretty]
-            [eftest.report.progress]
+            eftest.report.pretty
+            eftest.report.progress
             eftest.runner
             [environ.core :as env]
             [metabase.config :as config]
