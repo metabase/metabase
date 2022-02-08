@@ -795,12 +795,15 @@
         render-fn      (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
                          js-svg/timelineseries-waterfall
                          js-svg/categorical-waterfall)
+        show-total     (if (nil? (:waterfall.show_total viz-settings))
+                         true
+                         (:waterfall.show_total viz-settings))
         settings       (-> (->js-viz x-col y-col viz-settings)
                            (update-in [:colors] assoc
                                       :waterfallTotal (or (:waterfall.total_color viz-settings) (nth colors 0))
                                       :waterfallPositive (or (:waterfall.increase_color viz-settings) (nth colors 1))
                                       :waterfallNegative (or (:waterfall.decrease_color viz-settings) (nth colors 2)))
-                           (assoc :showTotal (or (:waterfall.show_total viz-settings) true)))
+                           (assoc :showTotal show-total))
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (render-fn rows
