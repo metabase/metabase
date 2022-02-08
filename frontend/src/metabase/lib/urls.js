@@ -290,7 +290,7 @@ export function browseTable(table) {
 
 export function timelines(root) {
   const collectionUrl = collection(root);
-  return `${collectionUrl}/timelines`;
+  return `${collectionUrl}/timeline`;
 }
 
 export function newTimeline(collection) {
