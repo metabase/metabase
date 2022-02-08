@@ -109,7 +109,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
    */
   isEditable() {
-    return this.hasMetadata();
+    return !this.readOnly() && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
