@@ -6,7 +6,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-export default function QuickFilterDrill({ question, clicked }) {
+export default function ColumnFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
     !question.isStructured() ||
