@@ -8,10 +8,10 @@
   Metabase."
   ^Connection [^String url ^Properties properties]
   (proxy [HiveConnection] [url properties]
-    (getHoldability [_this]
+    (getHoldability []
       ResultSet/CLOSE_CURSORS_AT_COMMIT)
 
-    (setReadOnly [this read-only?]
+    (setReadOnly [read-only?]
       (when (.isClosed ^Connection this)
         (throw (SQLException. "Connection is closed")))
       (when read-only?

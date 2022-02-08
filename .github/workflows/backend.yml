@@ -29,7 +29,7 @@ jobs:
     - name: Compile Java & AOT Sources
       run: |
         source ./bin/prep.sh && prep_deps
-    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
+    - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
       name: Run Eastwood linter
 
   be-linter-namespace-decls:
