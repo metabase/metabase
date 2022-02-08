@@ -188,7 +188,7 @@ describe("scenarios > question > null", () => {
 
     it("summarize with null values (metabase#12585)", () => {
       openOrdersTable();
-      cy.wait("@dataset");
+
       cy.contains("Summarize").click();
       // remove pre-selected "Count"
       cy.icon("close").click();
