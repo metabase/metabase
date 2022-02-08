@@ -27,6 +27,7 @@ export const Table = styled.table.attrs({ className: "ContentTable" })`
 `;
 
 export const ColumnHeader = styled.th`
+  padding: 1em 1em 0.75em !important;
   font-weight: bold;
   color: ${color("text-medium")};
 `;
