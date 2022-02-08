@@ -212,7 +212,12 @@
 
 ;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------
 
-(defn- truncate-string-to-byte-count ^String [^String s max-length-bytes]
+;; To truncate a string to a number of bytes we just iterate thru it character-by-character and keep a cumulative count
+;; of the total number of bytes up to the current character. Once we exceed `max-length-bytes` we return the substring
+;; from the character before we went past the limit.
+(defn- truncate-string-to-byte-count
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
+  ^String [^String s max-length-bytes]
   {:pre [(not (neg? max-length-bytes))]}
   (loop [i 0, cumulative-byte-count 0]
     (cond
@@ -249,6 +254,9 @@
    (truncate-alias s default-alias-max-length-bytes))
 
   (^String [^String s max-length-bytes]
+   ;; we can't truncate to something SHORTER than the suffix length. This precondition is here mostly to make sure
+   ;; driver authors don't try to do something INSANE -- it shouldn't get hit during normal usage if a driver is
+   ;; implemented properly.
    {:pre [(string? s) (integer? max-length-bytes) (> max-length-bytes truncated-alias-hash-suffix-length)]}
    (if (<= (count (.getBytes s "UTF-8")) max-length-bytes)
      s
