@@ -80,6 +80,9 @@
          (when source-query
            (visible-joins source-query)))))
 
+(defn- distinct-fields [fields]
+  (m/distinct-by mbql.u/remove-namespaced-options fields))
+
 (defn- add-join-alias-to-fields-with-source-field
   "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`."
   [form]
@@ -100,7 +103,7 @@
                                                    {:resolving  &match
                                                     :candidates fk-field-id->join-alias})))]
                 [:field id-or-name (assoc opts :join-alias join-alias)]))
-      (sequential? (:fields form)) (update :fields distinct))))
+      (sequential? (:fields form)) (update :fields distinct-fields))))
 
 (defn- already-has-join?
   "Whether the current query level already has a join with the same alias."
@@ -118,7 +121,7 @@
     form
     (let [needed (set (filter some? (map (comp ::needs meta) joins)))]
       (update-in form [:source-query :fields] (fn [existing-fields]
-                                                (distinct (concat existing-fields needed)))))))
+                                                (distinct-fields (concat existing-fields needed)))))))
 
 (defn- add-referenced-fields-to-source [form reused-joins]
   (let [reused-join-alias? (set (map :alias reused-joins))
@@ -127,7 +130,7 @@
                                                         (reused-join-alias? join-alias)))]
                                   &match))]
     (update-in form [:source-query :fields] (fn [existing-fields]
-                                              (distinct
+                                              (distinct-fields
                                                (concat existing-fields referenced-fields))))))
 
 (defn- add-fields-to-source
