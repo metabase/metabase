@@ -1,6 +1,8 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
   (:require [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.models.card :refer [Card]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
@@ -257,3 +259,64 @@
                       [2 8 3 "Bip bip bip bip" "Annie Albatross" "Peter Pelican"]
                       [3 3 2 "Coo"             "Peter Pelican"   "Lucky Pigeon"]]
                      (mt/rows results))))))))))
+
+(deftest remapped-columns-in-joined-source-queries-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+    (testing "Remapped columns in joined source queries should work (#15578)"
+      (mt/dataset sample-dataset
+        (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
+          (mt/with-column-remappings [orders.product_id products.title]
+            (let [query (mt/mbql-query products
+                          {:joins    [{:source-query {:source-table $$orders
+                                                      :breakout     [$orders.product_id]
+                                                      :aggregation  [[:sum $orders.quantity]]}
+                                       :alias        "Orders"
+                                       :condition    [:= $id &Orders.orders.product_id]
+                                       :fields       [&Orders.title
+                                                      &Orders.*sum/Integer]}]
+                           :fields   [$title $category]
+                           :order-by [[:asc $id]]
+                           :limit    3})]
+              (mt/with-native-query-testing-context query
+                (let [results (qp/process-query query)]
+                  (when (= driver/*driver* :h2)
+                    (testing "Metadata"
+                      (is (= [["TITLE"    "Title"]
+                              ["CATEGORY" "Category"]
+                              ["TITLE_2"  "Orders → Title"]
+                              ["sum"      "Orders → Sum"]]
+                             (map (juxt :name :display_name) (mt/cols results))))))
+                  (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
+                          ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
+                          ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
+                         (mt/formatted-rows [str str str int]
+                           results))))))))))))
+
+(deftest inception-style-nested-query-with-joins-test
+  (testing "source query > source query > query with join (with remappings) should work (#14724)"
+    ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
+    (mt/dataset sample-dataset
+      (mt/with-column-remappings [orders.product_id products.title]
+        ;; this is only triggered when using the results metadata from the Card itself --  see #19895
+        (let [q1 (mt/mbql-query orders
+                   {:fields   [$id $product_id]
+                    :joins    [{:source-table $$products
+                                :alias        "Products"
+                                :condition    [:= $product_id &Products.products.id]
+                                :fields       [$id
+                                               &Products.products.title]}]
+                    :order-by [[:asc $id]]
+                    :limit    3})]
+          (mt/with-temp Card [{card-1-id :id} {:dataset_query   q1
+                                               :result_metadata (get-in (qp/process-query q1)
+                                                                        [:data :results_metadata :columns])}]
+            (let [q2 (mt/mbql-query nil {:source-table (format "card__%d" card-1-id)})]
+              (mt/with-temp Card [{card-2-id :id} {:dataset_query   q2
+                                                   :result_metadata (get-in (qp/process-query q2)
+                                                                            [:data :results_metadata :columns])}]
+                (let [q3 (mt/mbql-query nil {:source-table (format "card__%d" card-2-id)})]
+                  (mt/with-native-query-testing-context q3
+                    (is (= [[1  14 "Awesome Concrete Shoes" "Awesome Concrete Shoes"]
+                            [2 123 "Mediocre Wooden Bench"  "Mediocre Wooden Bench"]
+                            [3 105 "Fantastic Wool Shirt"   "Fantastic Wool Shirt"]]
+                           (mt/rows (qp/process-query q3))))))))))))))
