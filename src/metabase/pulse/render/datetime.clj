@@ -17,7 +17,8 @@
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
   [timezone-id s col]
-  (if (str/blank? s)
+  (try
+    (if (str/blank? s)
     ""
     (case (:unit col)
       ;; these types have special formatting
@@ -32,7 +33,10 @@
       s
 
       ;; for everything else return in this format
-      (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
+       (reformat-temporal-str timezone-id s "MMM d, yyyy")))
+      (catch Exception _
+        ;; Returns the string if this is not a format that the function can handle.
+        s)))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal
