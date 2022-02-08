@@ -16,6 +16,9 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(use-fixtures :each (fn [thunk]
+                      (mt/suppress-output (thunk))))
+
 (defn- card-metadata [card]
   (db/select-one-field :result_metadata Card :id (u/the-id card)))
 
@@ -91,8 +94,8 @@
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
                                                :query    {:source-table (str "card__" (u/the-id card))}})]
-        (when-not (= :completed (:status result))
-          (throw (ex-info "Query failed." result))))
+        (is (partial= {:status :completed}
+                      result)))
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card)))))
 
@@ -107,22 +110,6 @@
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
       (is (= [{:name "NAME", :display_name "Name", :base_type :type/Text}]
              (card-metadata card))))))
-
-(def ^:private example-metadata
-  [{:base_type    :type/Text
-    :display_name "Date"
-    :name         "DATE"
-    :unit         nil
-    :semantic_type nil
-    :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
-                                                                                   :latest   "2015-12-29T00:00:00.000Z"}}}}
-   {:base_type    :type/Integer
-    :display_name "count"
-    :name         "count"
-    :semantic_type :type/Quantity
-    :fingerprint  {:global {:distinct-count 3
-                            :nil%           0.0},
-                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
 
 (deftest metadata-in-results-test
   (testing "make sure that queries come back with metadata"
@@ -228,7 +215,7 @@
 
     (testing "Native queries should come back with valid results metadata (#12265)"
       (is (schema= (su/non-empty qr/ResultsMetadata)
-                   (results-metadata (-> (mt/mbql-query venues) qp/query->native mt/native-query)))))))
+                   (results-metadata (-> (mt/mbql-query venues) qp/compile mt/native-query)))))))
 
 (deftest native-query-datetime-metadata-test
   (testing "Make sure base types inferred by the `annotate` middleware come back with the results metadata"

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import { Flex } from "grid-styled";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -19,13 +18,14 @@ import {
   Container,
   DescriptionHeading,
   MenuContainer,
+  TitleContent,
   ToggleMobileSidebarIcon,
 } from "./CollectionHeader.styled";
 
 function Title({ collection, handleToggleMobileSidebar }) {
   return (
     <div>
-      <Flex align="center">
+      <TitleContent>
         <ToggleMobileSidebarIcon onClick={handleToggleMobileSidebar} />
         <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelIcon
           collection={collection}
@@ -33,7 +33,7 @@ function Title({ collection, handleToggleMobileSidebar }) {
           size={24}
         />
         <PageHeading className="text-wrap">{collection.name}</PageHeading>
-      </Flex>
+      </TitleContent>
       {collection.description && (
         <DescriptionHeading>{collection.description}</DescriptionHeading>
       )}

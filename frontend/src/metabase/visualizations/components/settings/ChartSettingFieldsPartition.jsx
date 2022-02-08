@@ -2,7 +2,6 @@
 import React from "react";
 import cx from "classnames";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
 import { DragSource, DropTarget } from "react-dnd";
 import _ from "underscore";
 import { assocIn } from "icepick";
@@ -22,6 +21,11 @@ import {
   COLUMN_SORT_ORDER_DESC,
 } from "metabase/lib/data_grid";
 import { keyForColumn } from "metabase/lib/dataset";
+import {
+  FormattingOptionsRoot,
+  ShowTotalsOptionRoot,
+  SortOrderOptionRoot,
+} from "./ChartSettingFieldsPartition.styled";
 
 const DragWrapper = styled.div`
   padding: 12px 14px;
@@ -37,10 +41,10 @@ function ShowTotalsOption({ value, onChange }) {
     return null;
   }
   return (
-    <Flex pt={2} justifyContent="space-between" alignItems="center">
+    <ShowTotalsOptionRoot>
       <Text>{t`Show totals`}</Text>
       <Toggle value={value} onChange={() => onChange(!value)}></Toggle>
-    </Flex>
+    </ShowTotalsOptionRoot>
   );
 }
 
@@ -61,7 +65,7 @@ function SortButton({ iconName, onChange, currentValue, buttonValue }) {
 
 function SortOrderOption({ value, onChange }) {
   return (
-    <Flex pt={1} justifyContent="space-between" alignItems="center">
+    <SortOrderOptionRoot>
       <Text>{t`Sort order`}</Text>
       <div>
         <SortButton
@@ -77,19 +81,19 @@ function SortOrderOption({ value, onChange }) {
           buttonValue={COLUMN_SORT_ORDER_DESC}
         />
       </div>
-    </Flex>
+    </SortOrderOptionRoot>
   );
 }
 
 function FormattingOptions({ onEdit }) {
   return (
-    <Flex pt={1} justifyContent="space-between" alignItems="center">
+    <FormattingOptionsRoot>
       <Text>{t`Formatting`}</Text>
       <Text
         onClick={onEdit}
         className="text-brand text-bold cursor-pointer"
       >{t`See options…`}</Text>
-    </Flex>
+    </FormattingOptionsRoot>
   );
 }
 

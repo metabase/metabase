@@ -29,7 +29,7 @@ describe("scenarios > question > new", () => {
         name: "Sample" + i,
         details: {
           db:
-            "zip:./target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest",
+            "zip:./target/uberjar/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest",
         },
         auto_run_queries: false,
         is_full_sync: false,
@@ -287,10 +287,8 @@ describe("scenarios > question > new", () => {
     });
 
     it("should remove `/notebook` from URL when converting question to SQL/Native (metabase#12651)", () => {
-      cy.server();
-      cy.route("POST", "/api/dataset").as("dataset");
       openOrdersTable();
-      cy.wait("@dataset");
+
       cy.url().should("include", "question#");
       // Isolate icons within "QueryBuilder" scope because there is also `.Icon-sql` in top navigation
       cy.get(".QueryBuilder .Icon-notebook").click();

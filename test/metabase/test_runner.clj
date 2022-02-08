@@ -11,12 +11,14 @@
             eftest.runner
             [environ.core :as env]
             [metabase.config :as config]
-            [metabase.test-runner.effects :as effects]
+            [metabase.test-runner.assert-exprs :as assert-exprs]
             [metabase.test-runner.init :as init]
             [metabase.test-runner.junit :as junit]
             [metabase.test-runner.parallel :as parallel]
             [metabase.test.data.env :as tx.env]
             metabase.test.redefs
+            [metabase.util.date-2 :as date-2]
+            [metabase.util.i18n.impl :as i18n.impl]
             [pjstadig.humane-test-output :as humane-test-output]))
 
 ;; initialize Humane Test Output if it's not already initialized.
@@ -25,7 +27,10 @@
 ;; Load redefinitions of stuff like `tt/with-temp` and `with-redefs` that throw an Exception when they are used inside
 ;; parallel tests.
 (comment metabase.test.redefs/keep-me
-         effects/keep-me)
+         assert-exprs/keep-me
+         ;; these are necessary so data_readers.clj functions can function
+         date-2/keep-me
+         i18n.impl/keep-me)
 
 ;; Disable parallel tests with `PARALLEL=false`
 (def ^:private enable-parallel-tests?

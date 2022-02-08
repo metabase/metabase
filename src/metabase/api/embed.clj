@@ -258,10 +258,14 @@
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (public-api/public-dashcard-results-async
-     dashboard-id card-id export-format parameters
-     :qp-runner   qp-runner
-     :context     :embedded-dashboard
-     :constraints constraints)))
+     :dashboard-id  dashboard-id
+     :card-id       card-id
+     :dashcard-id   dashcard-id
+     :export-format export-format
+     :parameters    parameters
+     :qp-runner     qp-runner
+     :context       :embedded-dashboard
+     :constraints   constraints)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------

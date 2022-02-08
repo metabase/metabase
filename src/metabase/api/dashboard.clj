@@ -717,23 +717,24 @@
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
 
-(api/defendpoint POST "/:dashboard-id/card/:card-id/query"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [dashboard-id card-id :as {{:keys [parameters], :as body} :body}]
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body
              {:dashboard-id dashboard-id
-              :card-id      card-id})))
+              :card-id      card-id
+              :dashcard-id  dashcard-id})))
 
-(api/defendpoint POST "/:dashboard-id/card/:card-id/query/:export-format"
+(api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
-  [dashboard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
+  [dashboard-id dashcard-id card-id export-format :as {{:keys [parameters], :as request-parameters} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format api.dataset/ExportFormat}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
@@ -741,27 +742,29 @@
              request-parameters
              {:dashboard-id  dashboard-id
               :card-id       card-id
+              :dashcard-id   dashcard-id
               :export-format export-format
               :parameters    (json/parse-string parameters keyword)
               :constraints   nil
-              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to specify
-              ;; this all over the codebase any time we want to do a query with an export format. Maybe this should be the
-              ;; default if `export-format` isn't `:api`?
+              ;; TODO -- passing this `:middleware` map is a little repetitive, need to think of a way to not have to
+              ;; specify this all over the codebase any time we want to do a query with an export format. Maybe this
+              ;; should be the default if `export-format` isn't `:api`?
               :middleware    {:process-viz-settings?  true
                               :skip-results-metadata? true
                               :ignore-cached-results? true
                               :format-rows?           false
                               :js-int-to-string?      false}})))
 
-(api/defendpoint POST "/:dashboard-id/card/pivot/:card-id/query"
-  "Pivot table version of `POST /api/dashboard/:dashboard-id/card/:card-id`."
-  [dashboard-id card-id :as {{:keys [parameters], :as body} :body}]
+(api/defendpoint POST "/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
+  "Run a pivot table query for a specific DashCard."
+  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
   (m/mapply qp.dashboard/run-query-for-dashcard-async
             (merge
              body
              {:dashboard-id dashboard-id
               :card-id      card-id
+              :dashcard-id  dashcard-id
               :qp-runner    qp.pivot/run-pivot-query})))
 
 (api/define-routes)

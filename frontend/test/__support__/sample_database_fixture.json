@@ -114,7 +114,7 @@
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",
         "details": {
-          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+          "db": "zip:/private/tmp/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest"
         },
         "is_sample": true,
         "id": 1,
@@ -139,7 +139,7 @@
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",
         "details": {
-          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+          "db": "zip:/private/tmp/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest"
         },
         "is_sample": true,
         "id": 2,
@@ -182,7 +182,7 @@
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",
         "details": {
-          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+          "db": "zip:/private/tmp/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest"
         },
         "is_sample": true,
         "id": 4,
@@ -207,7 +207,7 @@
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",
         "details": {
-          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+          "db": "zip:/private/tmp/metabase.jar!/sample-database.db;USER=GUEST;PASSWORD=guest"
         },
         "is_sample": true,
         "id": 5,

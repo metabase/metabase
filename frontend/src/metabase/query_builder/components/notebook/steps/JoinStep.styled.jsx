@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space, breakpointMaxMedium } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
 import { forwardRefToInnerRef } from "metabase/styled-components/utils";
+import { NotebookCell } from "../NotebookCell";
 
 export const Row = styled.div`
   display: flex;
@@ -127,4 +128,15 @@ export const RemoveJoinIcon = styled(Icon).attrs({ name: "close", size: 18 })`
   :hover {
     color: ${color("text-medium")};
   }
+`;
+
+export const PrimaryJoinCell = styled(NotebookCell)`
+  flex: 1;
+  align-self: start;
+`;
+
+export const SecondaryJoinCell = styled(NotebookCell)`
+  flex: 1;
+  flex-direction: column;
+  align-items: start;
 `;

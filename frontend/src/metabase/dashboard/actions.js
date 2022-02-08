@@ -572,6 +572,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         maybeUsePivotEndpoint(PublicApi.dashboardCardQuery, card)(
           {
             uuid: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
             cardId: card.id,
             parameters: datasetQuery.parameters
               ? JSON.stringify(datasetQuery.parameters)
@@ -611,6 +612,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
         maybeUsePivotEndpoint(endpoint, card)(
           {
             dashboardId: dashcard.dashboard_id,
+            dashcardId: dashcard.id,
             cardId: card.id,
             parameters: datasetQuery.parameters,
             ignore_cache: ignoreCache,
@@ -978,7 +980,10 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         .setSettings(dashcard.card.visualization_settings)
         .lockDisplay();
     } else {
-      question = question.setCard(dashcard.card).setDashboardId(dashboard.id);
+      question = question.setCard(dashcard.card).setDashboardProps({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+      });
     }
 
     const parametersMappedToCard = getParametersMappedToDashcard(

@@ -7,7 +7,7 @@ import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter
 import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 import ParametersList from "metabase/parameters/components/ParametersList";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 import { color } from "metabase/lib/colors";
 

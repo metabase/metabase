@@ -2,12 +2,11 @@ import { restore, openOrdersTable, modal } from "__support__/e2e/cypress";
 
 describe("visual tests > visualizations > table", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
     restore();
     cy.signInAsNormalUser();
 
     openOrdersTable();
-    cy.wait("@dataset");
+
     cy.findByTestId("loading-spinner").should("not.exist");
   });
 

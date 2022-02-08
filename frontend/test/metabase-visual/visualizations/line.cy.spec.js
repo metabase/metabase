@@ -7,8 +7,6 @@ describe("visual tests > visualizations > line", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
   });
 
   it("with data points", () => {
@@ -38,8 +36,6 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.wait("@dataset");
-
     cy.percySnapshot();
   });
 
@@ -76,8 +72,6 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.wait("@dataset");
-
     cy.percySnapshot();
   });
 
@@ -113,8 +107,6 @@ describe("visual tests > visualizations > line", () => {
         "graph.metrics": ["count"],
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });
@@ -155,8 +147,6 @@ describe("visual tests > visualizations > line", () => {
       },
     });
 
-    cy.wait("@dataset");
-
     cy.percySnapshot();
   });
 
@@ -196,8 +186,6 @@ describe("visual tests > visualizations > line", () => {
         },
       },
     });
-
-    cy.wait("@dataset");
 
     cy.percySnapshot();
   });

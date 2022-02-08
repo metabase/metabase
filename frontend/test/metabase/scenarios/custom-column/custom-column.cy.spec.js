@@ -355,38 +355,37 @@ describe("scenarios > question > custom column", () => {
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
     const CC_NAME = "CE with case";
 
-    visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            [CC_NAME]: [
-              "case",
-              [
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            expressions: {
+              [CC_NAME]: [
+                "case",
                 [
-                  [">", ["field", ORDERS.DISCOUNT, null], 0],
-                  ["field", ORDERS.CREATED_AT, null],
+                  [
+                    [">", ["field", ORDERS.DISCOUNT, null], 0],
+                    ["field", ORDERS.CREATED_AT, null],
+                  ],
                 ],
+                {
+                  default: [
+                    "field",
+                    PRODUCTS.CREATED_AT,
+                    { "source-field": ORDERS.PRODUCT_ID },
+                  ],
+                },
               ],
-              {
-                default: [
-                  "field",
-                  PRODUCTS.CREATED_AT,
-                  { "source-field": ORDERS.PRODUCT_ID },
-                ],
-              },
-            ],
+            },
           },
+          database: 1,
         },
-        database: 1,
+        display: "table",
       },
-      display: "table",
-    });
-
-    cy.wait("@dataset").should(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
-    });
+      { callback: xhr => expect(xhr.response.body.error).not.to.exist },
+    );
 
     cy.findByText(CC_NAME);
     cy.contains("37.65");

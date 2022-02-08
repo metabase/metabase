@@ -54,6 +54,7 @@ import {
   getIsPreviewing,
   getTableForeignKeys,
   getQueryBuilderMode,
+  getPreviousQueryBuilderMode,
   getDatasetEditorTab,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
@@ -256,9 +257,10 @@ export const updateUrl = createThunkAction(
 
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
       dirty =
         !originalQuestion ||
-        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+        (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
     }
 
     // prevent clobbering of hash when there are fake parameters on the question
@@ -340,13 +342,22 @@ export const resetQB = createAction(RESET_QB);
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
+  dashcardId,
   cardId,
   parameters,
   metadata,
 }) {
   try {
     const dashboard = await DashboardApi.get({ dashId: dashboardId });
-    if (!hasMatchingParameters({ dashboard, cardId, parameters, metadata })) {
+    if (
+      !hasMatchingParameters({
+        dashboard,
+        dashcardId,
+        cardId,
+        parameters,
+        metadata,
+      })
+    ) {
       dispatch(setErrorPage({ status: 403 }));
     }
   } catch (error) {
@@ -420,10 +431,11 @@ export const initializeQB = (location, params, queryParams) => {
           // if there's a card in the url, it may have parameters from a dashboard
           if (deserializedCard && deserializedCard.parameters) {
             const metadata = getMetadata(getState());
-            const { dashboardId, parameters } = deserializedCard;
+            const { dashboardId, dashcardId, parameters } = deserializedCard;
             verifyMatchingDashcardAndParameters({
               dispatch,
               dashboardId,
+              dashcardId,
               cardId,
               parameters,
               metadata,
@@ -431,6 +443,7 @@ export const initializeQB = (location, params, queryParams) => {
 
             card.parameters = parameters;
             card.dashboardId = dashboardId;
+            card.dashcardId = dashcardId;
           }
         } else if (card.original_card_id) {
           const deserializedCard = card;
@@ -446,10 +459,11 @@ export const initializeQB = (location, params, queryParams) => {
               })
             ) {
               const metadata = getMetadata(getState());
-              const { dashboardId, parameters } = deserializedCard;
+              const { dashboardId, dashcardId, parameters } = deserializedCard;
               verifyMatchingDashcardAndParameters({
                 dispatch,
                 dashboardId,
+                dashcardId,
                 cardId: card.id,
                 parameters,
                 metadata,
@@ -457,6 +471,7 @@ export const initializeQB = (location, params, queryParams) => {
 
               card.parameters = parameters;
               card.dashboardId = dashboardId;
+              card.dashcardId = dashcardId;
             }
           }
         }
@@ -769,17 +784,23 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+  const previousQueryBuilderMode = getPreviousQueryBuilderMode(getState());
   const queryBuilderMode = getQueryBuilderMode(getState());
   const datasetEditorTab = getDatasetEditorTab(getState());
   const isEditingDatasetMetadata =
     queryBuilderMode === "dataset" && datasetEditorTab === "metadata";
+  const wasJustEditingModel =
+    previousQueryBuilderMode === "dataset" && queryBuilderMode !== "dataset";
   const changedSettings = Object.keys(settings);
   const isColumnWidthResetEvent =
     changedSettings.length === 1 &&
     changedSettings.includes("table.column_widths") &&
     settings["table.column_widths"] === undefined;
 
-  if (isEditingDatasetMetadata && isColumnWidthResetEvent) {
+  if (
+    (isEditingDatasetMetadata || wasJustEditingModel) &&
+    isColumnWidthResetEvent
+  ) {
     return;
   }
 
@@ -1236,7 +1257,13 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
+      const isAdHocModel =
+        question.isDataset() &&
+        isAdHocModelQuestion(question, originalQuestion);
+
+      dispatch(
+        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
+      );
     }
 
     if (getIsPreviewing(getState())) {
@@ -1315,7 +1342,14 @@ export const queryCompleted = (question, queryResults) => {
         .switchTableScalar(data);
     }
 
-    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
+    const card = question.card();
+    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
+    const resultsMetadata = data?.results_metadata?.columns;
+    if (isEditingModel && Array.isArray(resultsMetadata)) {
+      card.result_metadata = resultsMetadata;
+    }
+
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 

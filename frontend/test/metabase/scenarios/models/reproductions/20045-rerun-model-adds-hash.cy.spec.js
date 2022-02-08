@@ -1,6 +1,6 @@
 import { restore } from "__support__/e2e/cypress";
 
-describe.skip("issue 20045", () => {
+describe("issue 20045", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 

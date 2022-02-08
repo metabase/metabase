@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
 
 const SettingSelect = ({
   setting: { placeholder, value, options, defaultValue, searchProp },

@@ -185,12 +185,24 @@
   [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
   (let [join                      (when (:join-alias opts)
                                     (join-with-alias inner-query (:join-alias opts)))
-        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))]
+        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+        ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
+        ;; needs to add extra info to track things that it did (e.g. the
+        ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
+        ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
+        ;; remapping based on that info)
+        namespaced-options        (not-empty (into {}
+                                                   (filter (fn [[k _v]]
+                                                             (and (keyword? k) (namespace k))))
+                                                   opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref clause}
+    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
+
+      namespaced-options
+      (assoc :options namespaced-options)
 
       (string? id-or-name)
       (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
@@ -643,24 +655,20 @@
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  [qp]
-  (fn [{query-type :type, :as query
-        {:keys [:metadata/dataset-metadata]} :info} rff context]
-    (qp
-     query
-     (fn [metadata]
-       (if (= query-type :query)
-         (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-                (seq dataset-metadata)
-                (update :cols qputil/combine-metadata dataset-metadata)))
-         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
-         ;; queries...
-         (let [metadata (cond-> (update metadata :cols annotate-native-cols)
-                          ;; annotate-native-cols ensures that column refs are present which we need to match metadata
-                          (seq dataset-metadata)
-                          (update :cols qputil/combine-metadata dataset-metadata)
-                          ;; but we want those column refs removed since they have type info which we don't know yet
-                          :always
-                          (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
-           (add-column-info-xform query metadata (rff metadata)))))
-     context)))
+  [{query-type :type, :as query
+    {:keys [:metadata/dataset-metadata]} :info} rff]
+  (fn add-column-info-rff* [metadata]
+    (if (= query-type :query)
+      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+             (seq dataset-metadata)
+             (update :cols qputil/combine-metadata dataset-metadata)))
+      ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+      ;; queries...
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
+                       ;; annotate-native-cols ensures that column refs are present which we need to match metadata
+                       (seq dataset-metadata)
+                       (update :cols qputil/combine-metadata dataset-metadata)
+                       ;; but we want those column refs removed since they have type info which we don't know yet
+                       :always
+                       (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]
+        (add-column-info-xform query metadata (rff metadata))))))

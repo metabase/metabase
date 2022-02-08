@@ -1056,6 +1056,8 @@
   driver supports `:full-join` before generating a Join clause using that strategy."
   (apply s/enum join-strategies))
 
+(declare Fields)
+
 (def Join
   "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
   specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.
@@ -1110,7 +1112,7 @@
     (s/named
      (s/cond-pre
       (s/enum :all :none)
-      [field])
+      (s/recursive #'Fields))
     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
@@ -1502,16 +1504,14 @@
    (s/optional-key :card-name)    (s/maybe helpers/NonBlankString)
    (s/optional-key :dashboard-id) (s/maybe helpers/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe helpers/IntGreaterThanZero)
-   (s/optional-key :nested?)      (s/maybe s/Bool)
-
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.
    (s/optional-key :metadata/dataset-metadata) (s/maybe [{s/Any s/Any}])
    ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe #?(:clj (Class/forName "[B")
-                                              :cljs s/Any))})
+   (s/optional-key :query-hash) (s/maybe #?(:clj (Class/forName "[B")
+                                            :cljs s/Any))})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

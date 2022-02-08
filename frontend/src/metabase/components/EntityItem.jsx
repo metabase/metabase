@@ -2,7 +2,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
@@ -14,6 +13,7 @@ import { isItemPinned } from "metabase/collections/utils";
 
 import {
   EntityIconWrapper,
+  EntityItemActions,
   EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
@@ -93,6 +93,7 @@ function EntityItemMenu({
 }) {
   const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
+  const showUnpinnedAction = onPin && !isPinned;
 
   const actions = useMemo(
     () =>
@@ -138,7 +139,7 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {!isPinned && (
+      {showUnpinnedAction && (
         <Tooltip tooltip={t`Pin this`}>
           <PinButton icon="pin" onClick={onPin} />
         </Tooltip>
@@ -151,17 +152,6 @@ function EntityItemMenu({
     </EntityMenuContainer>
   );
 }
-
-const ENTITY_ITEM_SPACING = {
-  list: {
-    px: 2,
-    py: 2,
-  },
-  small: {
-    px: 2,
-    py: 1,
-  },
-};
 
 const EntityItem = ({
   analyticsContext,
@@ -182,15 +172,14 @@ const EntityItem = ({
   loading,
   disabled,
 }) => {
-  const spacing = ENTITY_ITEM_SPACING[variant] || { py: 2 };
   const icon = useMemo(() => ({ name: iconName }), [iconName]);
 
   return (
     <EntityItemWrapper
-      {...spacing}
       className={cx("hover-parent hover--visibility", {
         "bg-light-hover": variant === "list",
       })}
+      variant={variant}
       disabled={disabled}
     >
       <EntityIconCheckBox
@@ -202,17 +191,14 @@ const EntityItem = ({
         selected={selected}
         disabled={disabled}
         onToggleSelected={onToggleSelected}
-        style={{
-          marginRight: "16px",
-        }}
       />
 
-      <Box className="overflow-hidden">
+      <div className="overflow-hidden">
         <EntityItemName name={name} />
-        <Box>{extraInfo && extraInfo}</Box>
-      </Box>
+        <div>{extraInfo && extraInfo}</div>
+      </div>
 
-      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
+      <EntityItemActions onClick={e => e.preventDefault()}>
         {buttons}
         {loading && <EntityItemSpinner size={24} borderWidth={3} />}
         <EntityItemMenu
@@ -224,7 +210,7 @@ const EntityItem = ({
           className="ml1"
           analyticsContext={analyticsContext}
         />
-      </Flex>
+      </EntityItemActions>
     </EntityItemWrapper>
   );
 };
