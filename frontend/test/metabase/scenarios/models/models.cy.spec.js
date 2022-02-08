@@ -246,7 +246,7 @@ describe("scenarios > models", () => {
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products");
+      selectFromDropdown("Products", { force: true });
       selectFromDropdown("Price", { force: true });
       selectFromDropdown("Equal to");
       selectFromDropdown("Less than");
