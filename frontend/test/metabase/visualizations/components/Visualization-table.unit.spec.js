@@ -1,7 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
 
-import { ORDERS } from "__support__/sample_database_fixture";
 import { NumberColumn } from "../__support__/visualizations";
 
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -39,10 +38,7 @@ describe("Table", () => {
       ],
     };
     const { getByText } = render(
-      <Visualization
-        rawSeries={series(rows, settings)}
-        query={ORDERS.question().query()}
-      />,
+      <Visualization rawSeries={series(rows, settings)} />,
     );
     jest.runAllTimers();
     const bgColors = rows.map(

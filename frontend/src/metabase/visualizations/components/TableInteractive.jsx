@@ -586,7 +586,7 @@ export default class TableInteractive extends Component {
 
     const clicked = this.getHeaderClickedObject(columnIndex);
 
-    const isDraggable = !isPivoted && query.isEditable();
+    const isDraggable = !isPivoted && query && query.isEditable();
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;

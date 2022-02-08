@@ -24,11 +24,7 @@ export default class QuestionApp extends React.Component {
         >
           {({ question, rawSeries }) =>
             rawSeries && (
-              <Visualization
-                className="flex-full"
-                rawSeries={rawSeries}
-                query={question.query()}
-              />
+              <Visualization className="flex-full" rawSeries={rawSeries} />
             )
           }
         </QuestionAndResultLoader>
