@@ -36,4 +36,6 @@ const UserAvatar = ({ user, ...props }) => (
   <Avatar {...props}>{userInitials(user) || "?"}</Avatar>
 );
 
+UserAvatar.displayName = "UserAvatar";
+
 export default UserAvatar;
