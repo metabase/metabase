@@ -37,6 +37,7 @@
   "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
+  {:pre [(every? keyword? (cons feature more-features))]}
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
   (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
